@@ -1,28 +1,16 @@
-findcoor.c
-  findCoords() takes a list of reference star positions and a list
-  of object coordinates from an image and finds the image pixels which
-  correspond to each of the reference stars using  matching triangles
-  algorithm.  It then *should* produce a WCS, including center shift,
-  rotation, and plate scale.  It includes all
-  of the subroutines which are needed, including several from Numerical
-  Recipes.
-findreg.c
-  findRegistration() takes a list of reference star positions and a list
-  of object coordinates from an image and finds the image pixels
-  which correspond to each of the reference stars.  It then uses these
-  matches to get an image center shift and rotation.  It includes all
-  of the subroutines which are needed, including several from Numerical
-  Recipes.
+libwcs Subroutines
+
 findstar.c
-  findStars() gets the location and brightest pixel of stars in the given image.
-  Included are subroutines to find and reject bright pixels and compute
-  a star centroid.
+  findStars() gets the location and brightest pixel of stars in the given
+  image.  Included are subroutines to find and reject bright pixels and
+  compute a star centroid.
 fitsio.c
   FITS header and image reading and writing subroutines, including FITS
   table support.
-getwcs.c
-  getWCS() returns a WCS structure used by wcs.c subroutines from a FITS
+fitswcs.c
+  GetWCS() returns a WCS structure used by wcs.c subroutines from a FITS
   or IRAF .imh image, reading only the header.
+  DelWCS() delete the WCS keywords in a FITS header.
 gscread.c
   Return HST Guide Stars from standard CDROM format FITS table files for
   a given RA, Dec, and magnitude range.
@@ -32,6 +20,12 @@ hget.c
 hput.c
   Subroutines to implant values into FITS headers by keyword (and to
   delete headers).
+imio.c
+  Subroutines to get, put, and move pixels of various data types between images
+  im memory and a program.
+imrotate.c
+  rotFITS() rotates an image by 90, 180, or 270 degrees, with an optional
+  left-right reflection before the rotation.
 imsetwcs.c
   setWCSFITS() uses findStars to find the stars in an image, gscread to
   find the Guide Stars in the nominal image region, and findRegisration or
@@ -40,12 +34,30 @@ irafio.c
   IRAF header and image reading and writing subroutines.  IRAF headers
   are converted to FITS headers for use by other programs and can be
   derived from FITS headers for writing.
+matchstar.c
+  StarMatch() takes a list of reference star positions and a list
+  of object coordinates from an image and finds the image pixels
+  which correspond to each of the reference stars.  It then uses these
+  matches to get an image center, plate scale, and rotation.  It uses
+  the sla_lib FITXY subroutine to fit the coordinate pairs.
 platepos.c
   platepos() uses the WCS structure to compute sky coordinates given
   image pixel X and Y for images with Digitized Sky Survey plate solutions
   in their headers.  platepix() uses the WCS structure to compute image
   pixel X and Y given sky coordinates for DSS images.  Algorithms from
   StSCI CASB.
+pressfit.c
+  call_amoeba() fits matched sky and image coordinates to a plane tangent
+  world coordinate system.  It is based on the amoeba subroutine in Numerical
+  Recipes, and all necessary subroutines are included.
+sortstars.c
+  Subroutines to sort lists of stars by right ascension, magnitude, or flux
+tabread.c
+  Return stars from a tab table format catalog file for a given RA, Dec,
+  and magnitude range.  Based on John Roll's Starbase format.
+ujcread.c
+  Return USNO UJ Catalog stars from its standard CDROM format files for
+  a given RA, Dec, and magnitude range.
 wcs.c
   Subroutines for using FITS or IRAF header spatial world coordinate
   system information.
@@ -58,6 +70,7 @@ worldpos.c
   standard world coordinate systems.  worldpix() uses the WCS structure
   to compute image pixel X and Y given sky coordinates for the same images.
   Mostly from NRAO.
+
 fitshead.h
   Declarations of FITS header and image access subroutines and FITS
   table data structure.

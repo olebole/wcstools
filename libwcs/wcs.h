@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
-   February 20, 1996
+   August 5, 1996
    By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 struct WorldCoor {
@@ -14,6 +14,7 @@ struct WorldCoor {
   double	cd11,cd12,cd21,cd22;
 				/* rotation matrix */
   double	equinox;	/* Equinox of coordinates default to 1950.0 */
+  double	epoch;		/* Epoch of coordinates default to equinox */
   double	nxpix;		/* Number of pixels in X-dimension of image */
   double	nypix;		/* Number of pixels in Y-dimension of image */
   double	plate_ra;	/* Right ascension of plate center */
@@ -65,6 +66,24 @@ struct WorldCoor {
 #define hrrad(x)	degrad(hrdeg(x))
 #define radhr(x)	deghr(raddeg(x))
 
+/* WCS subroutines in wcs.c */
+struct WorldCoor *wcsinit (); /* set up a WCS structure from a FITS image header */
+struct WorldCoor *wcsninit (); /* set up a WCS structure from a FITS image header */
+struct WorldCoor *wcsset (); /* set up a WCS structure */
+int iswcs ();		/* Return 1 if WCS structure is filled, else 0 */
+int nowcs ();		/* Return 0 if WCS structure is filled, else 1 */
+void wcsshift ();	/* Reset the center of a WCS structure */
+void wcscent ();
+void wcssize ();	/* Return RA and Dec of image center, size in RA and Dec */
+void wcsfull ();	/* Return RA and Dec of image center, size in degrees */
+double wcsdist ();	/* Compute distance in degrees between two sky coordinates */
+void wcscominit ();	/* Initialize catalog search command set by -wcscom */
+void wcscom ();		/* Execute catalog search command set by -wcscom */
+void wcsoutinit ();	/* Initialize WCS output coordinate system set by -wcsout */
+int pix2wcst ();	/* Convert pixel coordinates to World Coordinate string */
+void pix2wcs ();	/* Convert pixel coordinates to World Coordinates */
+void wcs2pix ();	/* Convert World Coordinates to pixel coordinates */
+
 /* Oct 26 1994	New file
  * Dec 21 1994	Add rotation matrix
  * Dec 22 1994	Add flag for coordinate reversal
@@ -78,4 +97,8 @@ struct WorldCoor {
 
  * Feb 15 1996	Add coordinate conversion functions
  * Feb 20 1996	Add flag for tab tables
+ * Apr 26 1996	Add epoch of positions (actual date of image)
+ * Jul  5 1996	Add subroutine declarations
+ * Jul 19 1996	Add WCSFULL declaration
+ * Aug  5 1996	Add WCSNINIT to initialize WCS for non-terminated header
  */

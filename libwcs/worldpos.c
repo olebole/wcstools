@@ -84,7 +84,8 @@
 #include <stdio.h>
 #include "wcs.h"
 
-int worldpos (xpix, ypix, wcs, xpos, ypos)
+int
+worldpos (xpix, ypix, wcs, xpos, ypos)
 
 /* Routine to determine accurate position for pixel coordinates */
 /* returns 0 if successful otherwise 1 = angle too large for projection; */
@@ -321,7 +322,8 @@ double	*ypos;		/* y (dec) coordinate (deg) */
 }  /* End of worldpos */
 
 
-int worldpix (xpos, ypos, wcs, xpix, ypix)
+int
+worldpix (xpos, ypos, wcs, xpix, ypix)
 
 /*-----------------------------------------------------------------------*/
 /* routine to determine accurate pixel coordinates for an RA and Dec     */

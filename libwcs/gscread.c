@@ -1,27 +1,37 @@
 /*** File libwcs/gscread.c
- *** February 16, 1996
+ *** August 6, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 #include "fitshead.h"
+
+char cdn[64]="/data/gsc1";	/* pathname of northern hemisphere GSC CDROM */
+char cds[64]="/data/gsc2";	/* pathname of southern hemisphere GSC CDROM */
+
+static void gscpath();
+static int gscreg();
 
 /* GSCREAD -- Read HST Guide Star Catalog stars from CDROM */
 
-int gscread (ra1,ra2,dec1,dec2,mag1,mag2,classd,nstarmax,gnum,gra,gdec,gmag)
+int
+gscread (ra1,ra2,dec1,dec2,mag1,mag2,classd,nstarmax,gnum,gra,gdec,gmag,gtype,
+	 nlog)
 
 double	ra1,ra2;	/* Limiting right ascensions of region in degrees */
-double dec1,dec2;	/* Limiting declinations of region in degrees */
-double mag1,mag2;	/* Limiting magnitudes (none if equal) */
-int classd;		/* Desired object class (-1=all, 0=stars, 3=nonstars) */
-int nstarmax;		/* Maximum number of stars to be returned */
-double *gnum;		/* Array of Guide Star numbers (returned) */
-double *gra;		/* Array of right ascensions (returned) */
-double *gdec;		/* Array of declinations (returned) */
-double *gmag;		/* Array of magnitudes (returned) */
+double	dec1,dec2;	/* Limiting declinations of region in degrees */
+double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	classd;		/* Desired object class (-1=all, 0=stars, 3=nonstars) */
+int	nstarmax;	/* Maximum number of stars to be returned */
+double	*gnum;		/* Array of Guide Star numbers (returned) */
+double	*gra;		/* Array of right ascensions (returned) */
+double	*gdec;		/* Array of declinations (returned) */
+double	*gmag;		/* Array of magnitudes (returned) */
+int	*gtype;		/* Array of object types (returned) */
+int	nlog;		/* 1 for diagnostics */
 {
-    char *header;	/* FITS header */
     char *table;	/* FITS table */
     int nreg;		/* Number of input FITS tables files */
     int rlist[100];	/* List of input FITS tables files */
@@ -29,24 +39,25 @@ double *gmag;		/* Array of magnitudes (returned) */
     char entry[100];	/* Buffer for FITS table row */
     int class, class0;	/* Object class (0>star, 3>other) */
     struct Keyword kw[8];	/* Keyword structure */
+    struct Keyword *kwn;
 
-    int first;
+    int verbose;
     int wrap;
-    char temp[50];
-    int rnum, num0, num, itot,jtot,ireg,ltab,lhead;
-    int nlog,ik,nk,ier,itable,ntable,jstar;
+    int rnum, num0, num, itot,ireg,ltab;
+    int ik,nk,itable,ntable,jstar;
     int nbline,npos,nbhead;
-    int ift,nbr,nrmax,nstar,i;
+    int nbr,nrmax,nstar,i;
+    FILE *ift;
     double ra,ra0,rasum,dec,dec0,decsum,perr,perr0,perr2,perrsum,msum;
     double mag,mag0,merr,merr0,merr2,merrsum;
-    int fitsrtline();
 
     itot = 0;
-    jtot = 0;
+    if (nlog == 1)
+	verbose = 1;
+    else
+	verbose = 0;
     ltab = 10000;
     table = malloc (10000);
-    lhead = 14400;
-    header = malloc (14400);
     for (i = 0; i < 100; i++)
 	entry[i] = 0;
 
@@ -73,18 +84,14 @@ double *gmag;		/* Array of magnitudes (returned) */
 
 /* Find Guide Star Catalog regions in which to search */
     nrmax = 100;
-    nreg = gscreg (ra1,ra2,dec1,dec2, lhead,header, ltab,table, nrmax,rlist);
+    nreg = gscreg (ra1,ra2,dec1,dec2,ltab,table,nrmax,rlist,verbose);
     if (nreg <= 0) {
 	printf ("GSCREAD:  no Guide Star regions found\n");
 	free (table);
-	free (header);
 	return (0);
 	}
 
     classd = -1;
-
-/* Logging interval */
-	nlog = 0;
 
 /* Set keyword list */
     nk = 8;
@@ -101,27 +108,15 @@ double *gmag;		/* Array of magnitudes (returned) */
 	kw[ik].kf = 0;
 	kw[ik].kl = 0;
 	}
-    first = 1;
     nstar = 0;
 
 /* Loop through region list */
     for (ireg = 0; ireg < nreg; ireg++) {
 	gscpath (rlist[ireg],inpath);
 
-	/* Read keyword info from FITS table header for first region */
-	if (first) {
-	    ift = fitsrtopen (inpath,lhead,header,nk,kw,&ntable,&nbline,&nbhead);
-	    first = 0;
-	    }
-
-	/* Open FITS table for this region */
-	else {
-	    ift =  fitsropen (inpath, lhead,header, &nbhead);
-	    if (ift < 0) {
-		printf ("GSCREAD: file %s table not found\n",inpath);
-		break;
-		}
-	    }
+    /* Read size and keyword info from FITS table header */
+	kwn = kw;
+	ift = fitsrtopen (inpath,&nk,&kwn,&ntable,&nbline,&nbhead);
 
 	rnum = rlist[ireg];
 	num0 = 0;
@@ -134,6 +129,7 @@ double *gmag;		/* Array of magnitudes (returned) */
 	num = 0;
 	fitsrtlset();
 	jstar = 0;
+	class = 0;
 
 	/* Loop through FITS table for this region */
 	for (itable = 0; itable <= ntable; itable++) {
@@ -149,44 +145,28 @@ double *gmag;		/* Array of magnitudes (returned) */
 	 /* Extract selected fields */
 
 		/* Star number within region */
-		strncpy (temp,entry+kw[0].kf,kw[0].kl);
-		temp[kw[0].kl] = 0;
-		num0 = atoi (temp);
+		num0 = ftgeti4 (entry, &kw, 0);
 
 		/* Right ascension in degrees */
-		strncpy (temp,entry+kw[1].kf,kw[1].kl);
-		temp[kw[1].kl] = 0;
-		ra0 = atof (temp);
+		ra0 = ftgetr8 (entry, &kw, 1);
 
 		/* Declination in degrees */
-		strncpy (temp,entry+kw[2].kf,kw[2].kl);
-		temp[kw[2].kl] = 0;
-		dec0 = atof (temp);
+		dec0 = ftgetr8 (entry, &kw, 2);
 
 		/* Position error */
-		strncpy (temp,entry+kw[3].kf,kw[3].kl);
-		temp[kw[3].kl] = 0;
-		perr0 = atof (temp);
+		perr0 = ftgetr8 (entry, &kw, 3);
 
 		/* Magnitude */
-		strncpy (temp,entry+kw[4].kf,kw[4].kl);
-		temp[kw[4].kl] = 0;
-		mag0 = atof (temp);
+		mag0 = ftgetr8 (entry, &kw, 4);
 
 		/* Magnitude error */
-		strncpy (temp,entry+kw[5].kf,kw[5].kl);
-		temp[kw[5].kl] = 0;
-		merr0 = atof (temp);
+		merr0 = ftgetr8 (entry, &kw, 5);
 
-		/* Bandpass code
-		strncpy (temp,entry+kw[6].kf,kw[6].kl);
-		temp[kw[6].kl] = 0;
-		band0 = atoi (temp); */
+		/* Bandpass code */
+		/* band0 = ftgeti4 (entry, &kw, 6); */
 
 		/* Object class code */
-		strncpy (temp,entry+kw[7].kf,kw[7].kl);
-		temp[kw[7].kl] = 0;
-		class0 = atoi (temp);
+		class0 = ftgeti4 (entry, &kw, 7);
 		}
 	    else
 		num0 = 0;
@@ -199,7 +179,8 @@ double *gmag;		/* Array of magnitudes (returned) */
 		mag = msum / merrsum;
 
 	/* Check magnitude amd position limits */
-		if ((mag1 != mag2 && (mag >= mag1 && mag <= mag2)) &&
+		if (((mag1 != mag2 && (mag >= mag1 && mag <= mag2)) ||
+		    (mag1 == mag2)) &&
 		    ((wrap && (ra <= ra1 || ra >= ra2)) ||
 		    (!wrap && (ra >= ra1 && ra <= ra2))) &&
      		    (dec >= dec1 && dec <= dec2)) {
@@ -210,6 +191,7 @@ double *gmag;		/* Array of magnitudes (returned) */
 			gra[nstar] = ra;
 			gdec[nstar] = dec;
 			gmag[nstar] = mag;
+			gtype[nstar] = class;
 			}
 		    nstar = nstar + 1;
 		    jstar = jstar + 1;
@@ -258,7 +240,7 @@ double *gmag;		/* Array of magnitudes (returned) */
 	    }
 
 /* Close region input file */
-	ier = close (ift);
+	(void) fclose (ift);
 	itot = itot + itable;
 	if (nlog > 0)
 	    printf ("%4d / %4d: %6d / %6d sources from %s\n",
@@ -273,13 +255,9 @@ double *gmag;		/* Array of magnitudes (returned) */
 	    printf ("1 region: %d / %d found\n",nstar,itable);
 	}
     free (table);
-    free (header);
     return (nstar);
 }
 
-
-char cdn[64]="/data/gsc1";	/* pathname of northern hemisphere GSC CDROM */
-char cds[64]="/data/gsc2";	/* pathname of southern hemisphere GSC CDROM */
 
 /* First region in each declination zone */
 int zreg1[24]={1,594,1178,1729,2259,2781,3246,3652,4014,4294, 4492,4615,
@@ -303,16 +281,16 @@ static int nrkw = 13;
  * list containing the pathnames of the files on the cd-rom.
  */
 
-int gscreg (ra1,ra2,dec1,dec2, lhead,header, ltab,table, nrmax,rgns)
+static int
+gscreg (ra1, ra2, dec1, dec2, ltab, table, nrmax, rgns, verbose)
 
-double ra1, ra2;	/* Right ascension limits in degrees */
-double dec1, dec2; 	/* Declination limits in degrees */
-int lhead;		/* Maximum length of FITS header in bytes */
-char *header;		/* Table data fits header */
-int ltab;		/* Maximum length of table buffer in bytes */
-char *table;		/* Table data buffer */
-int nrmax;		/* Maximum number of regions to find */
-int *rgns;		/* Region numbers (returned)*/
+double	ra1, ra2;	/* Right ascension limits in degrees */
+double	dec1, dec2; 	/* Declination limits in degrees */
+int	ltab;		/* Maximum length of table buffer in bytes */
+char	*table;		/* Table data buffer */
+int	nrmax;		/* Maximum number of regions to find */
+int	*rgns;		/* Region numbers (returned)*/
+int	verbose;	/* 1 for diagnostics */
 
 {
     int nrgn;		/* Number of regions found (returned) */
@@ -321,18 +299,17 @@ int *rgns;		/* Region numbers (returned)*/
     int nchar;		/* Number of characters per line in table */
     int nwrap;		/* 1 if 0h included in RA span*/
     int iwrap;
+    struct Keyword *kwn;
     double gscra(), gscdec();
     int gsczone();
 
-    int verbose;
     char fitsline[120];
-    char temp[8];
     int irow,iz1,iz2,ir1,ir2,jr1,jr2,i;
-    int nsrch,nsrch1,nbhead,ift,nbr;
+    int nsrch,nsrch1,nbhead,nbr;
+    FILE *ift;
     double ralow, rahi;
     double declow, dechi, decmin, decmax;
     int regnum;
-    int fitsrtline();
 
 /* Set up keyword list for table entries to extract */
     strcpy (rkw[0].kname,"REG_NO");
@@ -353,7 +330,6 @@ int *rgns;		/* Region numbers (returned)*/
 	rgns[i] = 0;
 
     nrgn = 0;
-    verbose = 0;
 
 /* Set pathnames to guide star catalog cdroms */
     strcpy (tabpath,cdn);
@@ -362,14 +338,15 @@ int *rgns;		/* Region numbers (returned)*/
     strcat (tabpath,"/tables/regions.tbl");
 
 /* Open the index table */
-    ift = fitsrtopen (tabpath,lhead,header,nrkw,rkw, &nrows, &nchar, &nbhead);
-    if (ift <= 0) {
+    kwn = rkw;
+    ift = fitsrtopen (tabpath,&nrkw,&kwn, &nrows, &nchar, &nbhead);
+    if (!ift) {
 
 /* If the northern hemisphere CDROM cannot be read, try the southern */
 	strcpy (tabpath,cds);
 	strcat (tabpath,"/tables/regions.tbl");
-	ift = fitsrtopen (tabpath,lhead,header,nrkw,rkw,&nchar,&nrows,&nbhead);
-	if (ift <= 0) {
+	ift = fitsrtopen (tabpath,&nrkw,&kwn,&nchar,&nrows,&nbhead);
+	if (!ift) {
 	    printf ("GSCREG:  error reading region table %s\n",tabpath);
 	    return (0);
 	    }
@@ -439,21 +416,20 @@ int *rgns;		/* Region numbers (returned)*/
 		decmax = declow;
 		decmin = dechi;
 		}
+
 	    if (decmax >= dec1 && decmin <= dec2) {
 
-	    /* right ascension range of the gs region */
+	    /* Right ascension range of the Guide Star Catalog region */
 		ralow = gscra (fitsline, 1, 2, 3);
 		rahi = gscra (fitsline, 4, 5, 6);
 		if (rahi <= 0.0) rahi = 360.0;
-		if (ralow > rahi) rahi = rahi + 360.0;
 
-	/* Check RA if 0h RA not between region RA limits */
+	    /* Check RA if 0h RA not between region RA limits */
 		if (ra1 < ra2) {
-		    if (ralow <= ra1 && rahi >= ra2)  {
+		    if (ralow <= ra2 && rahi >= ra1) {
 
 			/* Get region number from FITS table */
-    			strncpy (temp, fitsline+rkw[0].kf, rkw[0].kl);
-			regnum = atoi (temp);
+			regnum = ftgeti4 (fitsline, &rkw, 0);
 			if (verbose)
 			    printf ("GSCREG: Region %d added to search\n",regnum);
 
@@ -463,17 +439,19 @@ int *rgns;		/* Region numbers (returned)*/
 			    nrgn = nrgn + 1;
 			    }
 			}
+		    }
 
-	/* Check RA if 0h RA is between region RA limits */
-		    else if (ralow >= ra2 && rahi <= ra1) {
+	    /* Check RA if 0h RA is between region RA limits */
+		else {
+		    if (ralow > rahi) rahi = rahi + 360.0;
+		    if (ralow <= ra2 || rahi >= ra1) {
 
-			/* Get region number from FITS table */
-			strncpy (temp, fitsline+rkw[0].kf, rkw[0].kl);
-			regnum = atoi (temp);
+		    /* Get region number from FITS table */
+			regnum = ftgeti4 (fitsline, &rkw, 0);
 			if (verbose)
 			    printf ("GSCREG: Region %d added to search\n",regnum);
 
-			/* Add this region to list, if there is space */
+		    /* Add this region to list, if there is space */
 			if (nrgn < nrmax) {
 			    rgns[nrgn] = regnum;
 			    nrgn = nrgn + 1;
@@ -490,7 +468,7 @@ int *rgns;		/* Region numbers (returned)*/
 	jr2 = 0;
 	}
 
-    close (ift);
+    (void) fclose (ift);
     return (nrgn);
 }
 
@@ -499,31 +477,28 @@ int *rgns;		/* Region numbers (returned)*/
  *  This is converted from the hours, minutes, and seconds columns.
  */
 
-double gscra (fitsline, hcol, mcol, scol)
+double
+gscra (fitsline, hcol, mcol, scol)
 
-char *fitsline;		/* index table line */
-int hcol;		/* column index for hours */
-int mcol;		/* column index for minutes */
-int scol;		/* column index for seconds */
+char *fitsline;		/* Index table line */
+int hcol;		/* Column index for hours */
+int mcol;		/* Column index for minutes */
+int scol;		/* Column index for seconds */
 
 {
-    double ra;		/* right ascension in fractional degrees */
-    double hrs;		/* hours of right ascension */
-    double min;		/* minutes of right ascension */
-    double sec;		/* seconds of right ascension */
-    char temp[16];
+    double ra;		/* Right ascension in fractional degrees */
+    double hrs;		/* Hours of right ascension */
+    double min;		/* Minutes of right ascension */
+    double sec;		/* Seconds of right ascension */
 
 /*  hours of right ascension */
-    strncpy (temp, fitsline+rkw[hcol].kf, rkw[hcol].kl);
-    hrs = atof (temp);
+    hrs = ftgetr8 (fitsline,&rkw,hcol);
 
 /* minutes of right ascension */
-    strncpy (temp, fitsline+rkw[mcol].kf, rkw[mcol].kl);
-    min = atof (temp);
+    min = ftgetr8 (fitsline,&rkw,mcol);
 
 /* seconds of right ascension */
-    strncpy (temp, fitsline+rkw[scol].kf, rkw[scol].kl);
-    sec = atof (temp);
+    sec = ftgetr8 (fitsline,&rkw,scol);
 
 /* right ascension in degrees */
     ra = hrs + (min / 60.0) + (sec / 3600.0);
@@ -537,36 +512,34 @@ int scol;		/* column index for seconds */
  *  This is converted from the sign, degrees, minutes, and seconds columns.
  */
 
-double gscdec (fitsline, sgncol, dcol, mcol)
+double
+gscdec (fitsline, sgncol, dcol, mcol)
 
-char *fitsline;		/* index table line */
-int sgncol;		/* column index for sign */
-int dcol;		/* column index for degrees */
-int mcol;		/* column index for minutes */
+char *fitsline;		/* Index table line */
+int sgncol;		/* Column index for sign */
+int dcol;		/* Column index for degrees */
+int mcol;		/* Column index for minutes */
 
 {
-double	dec;		/* declination in fractional degrees */
+double	dec;		/* Declination in fractional degrees */
 
-char sign[4];		/* sign of declination */
-double deg;		/* degrees of declination*/
-double min;		/* minutes of declination */
-char temp[8];
+char sgn[4];		/* Sign of declination */
+double deg;		/* Degrees of declination*/
+double min;		/* Minutes of declination */
 
 /* get declination sign from table */
-    strncpy (sign, fitsline+rkw[sgncol].kf, rkw[sgncol].kl);
+    (void) ftgetc (fitsline, &rkw, sgncol, sgn, 3);
 
 /* get degrees of declination from table */
-    strncpy (temp, fitsline+rkw[dcol].kf, rkw[dcol].kl);
-    deg = atof (temp);
+    deg = ftgetr8 (fitsline,&rkw,dcol);
 
 /* get minutes of declination from table */
-    strncpy (temp, fitsline+rkw[mcol].kf, rkw[mcol].kl);
-    min = atof (temp);
+    min = ftgetr8 (fitsline,&rkw,mcol);
 
     dec = deg + (min / 60.0);
 
 /* negative declination */
-    if (strchr (sign, '-') != NULL)
+    if (strchr (sgn, '-') != NULL)
 	dec = -dec;
 
     return (dec);
@@ -575,14 +548,14 @@ char temp[8];
 
 /*  GSCZONE -- find the zone number where a declination can be found */
 
-int gsczone (dec)
+int
+gsczone (dec)
 
 double dec;	/* declination in degrees */
 
 {
 int zone;		/* gsc zone (returned) */
 double	zonesize;
-int numdir = 24;	/* number of declination zone directories */
 int ndeczones = 12;	/* number of declination zones per hemisphere */
 
 /* width of declination zones */
@@ -598,6 +571,7 @@ int ndeczones = 12;	/* number of declination zones per hemisphere */
 
 /* GSCPATH -- Get HST Guide Star Catalog region FITS file pathname */
 
+static void
 gscpath (regnum,path)
 
 int regnum;	/* Guide Star Catalog region number */
@@ -605,7 +579,6 @@ char *path;	/* Pathname of GSC region FITS file */
 
 {
     int zone;		/* Name of Guide Star Catalog zone directory */
-    char root[20];	/* Name of Guide Star Catalog region file */
     int i;
 
 /* get zone directory name given region number */
@@ -624,7 +597,17 @@ char *path;	/* Pathname of GSC region FITS file */
 
 /* Southern hemisphere disk (volume 2) */
     else
-	sprintf (path,"%s/%s/gsc/%04d.gsc", cds, zdir[zone], regnum);
+	sprintf (path,"%s/gsc/%s/%04d.gsc", cds, zdir[zone], regnum);
 
     return;
 }
+/* Feb 16 1996	New program
+ * May 14 1996	Change arguments to FITSRTOPEN
+ * May 17 1996	Fix bug so equal magnitude limits accepts anything
+ * May 17 1996	Use new FITSRTOPEN which internalizes FITS header
+ * May 24 1996	Fix string decoding bug and region search
+ * May 31 1996	Use stream I/O
+ * Jun 10 1996	Remove unused variables after using lint
+ * Jul  1 1996	Fix GSC pathname
+ * Aug  6 1996	Minor changes after lint
+ */

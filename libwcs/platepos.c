@@ -17,7 +17,8 @@
 #include <stdio.h>
 #include "wcs.h"
 
-int platepos (xpix, ypix, wcs, xpos, ypos)
+int
+platepos (xpix, ypix, wcs, xpos, ypos)
 
 /* Routine to determine accurate position for pixel coordinates */
 /* returns 0 if successful otherwise 1 = angle too large for projection; */
@@ -107,7 +108,8 @@ double	*ypos;		/* Declination or latitude in degrees */
 }
 
 
-int platepix (xpos, ypos, wcs, xpix, ypix)
+int
+platepix (xpos, ypos, wcs, xpix, ypix)
 
 /* Routine to determine pixel coordinates for sky position */
 /* returns 0 if successful otherwise 1 = angle too large for projection; */

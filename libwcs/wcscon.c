@@ -1,14 +1,16 @@
 /*** File wcscon.c
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Based on Starlink subroutines by Patrick Wallace
- *** April 1, 1996
+ *** August 6, 1996
 
  * Module:	wcscon.c (World Coordinate System conversion)
  * Purpose:	Convert between various sky coordinate systems
  * Subroutine:	fk524 (ra,dec) Convert J2000(FK5) to B1950(FK4) coordinates
- * Subroutine:	fk524m (ra,dec,rapm,decpm)
+ * Subroutine:	fk524e (ra, dec, epoch) (more accurate for known position epoch
+ * Subroutine:	fk524m (ra,dec,rapm,decpm) exact
  * Subroutine:	fk425 (ra,dec) Convert B1950(FK4) to J2000(FK5) coordinates
- * Subroutine:	fk425m (ra, dec, rapm, decpm)
+ * Subroutine:	fk425e (ra, dec, epoch) (more accurate for known position epoch
+ * Subroutine:	fk425m (ra, dec, rapm, decpm) exact
  * Subroutine:	fk42gal (dtheta,dphi) Convert B1950(FK4) to galactic coordinates
  * Subroutine:	fk52gal (dtheta,dphi) Convert J2000(FK5) to galactic coordinates
  * Subroutine:	gal2fk4 (dtheta,dphi) Convert galactic coordinates to B1950(FK4)
@@ -23,6 +25,7 @@
 #endif
 #include <ctype.h>
 #include <string.h>
+#include "wcs.h"
 
 /*  Constant vector and matrix (by columns)
     These values were obtained by inverting C.Hohenkerk's forward matrix
@@ -61,26 +64,50 @@ double	*ra;		/* Right ascension in degrees (J2000 in, B1950 out) */
 double	*dec;		/* Declination in degrees (J2000 in, B1950 out) */
 
 {
-double	rra;		/* Right ascension in radians (J2000 in, B1950 out) */
-double	rdec;		/* Declination in radians (J2000 in, B1950 out) */
-double	rapm;		/* Proper motion in right ascension */
-double	decpm;		/* Proper motion in declination  */
+    double	rra;	/* Right ascension in radians (J2000 in, B1950 out) */
+    double	rdec;	/* Declination in radians (J2000 in, B1950 out) */
+    double	rapm;	/* Proper motion in right ascension */
+    double	decpm;	/* Proper motion in declination  */
 			/* In:  rad/jul.yr.  Out: rad/trop.yr.  */
-double	rcon = 1.74532925199433e-2; /* radians per degree */
-void
-fk524m();
+    void	fk524m();
 
-	rra = *ra * rcon;
-	rdec = *dec * rcon;
-	rapm = (double) 0.0;
-	decpm = (double) 0.0;
-	fk524m (&rra, &rdec, &rapm, &decpm);
-	*ra = rra / rcon;
-	*dec = rdec / rcon;
-	return;
+    rra = degrad (*ra);
+    rdec = degrad (*dec);
+    rapm = (double) 0.0;
+    decpm = (double) 0.0;
+    fk524m (&rra, &rdec, &rapm, &decpm);
+    *ra = raddeg (rra);
+    *dec = raddeg (rdec);
+    return;
 }
 
-void fk524m (ra,dec,rapm,decpm)
+void
+fk524e (ra, dec, epoch)
+
+double	*ra;		/* Right ascension in degrees (J2000 in, B1950 out) */
+double	*dec;		/* Declination in degrees (J2000 in, B1950 out) */
+double	epoch;		/* Besselian epoch in years */
+
+{
+    double	rra;	/* Right ascension in radians (J2000 in, B1950 out) */
+    double	rdec;	/* Declination in radians (J2000 in, B1950 out) */
+    double	rapm;	/* Proper motion in right ascension */
+    double	decpm;	/* Proper motion in declination  */
+			/* In:  rad/jul.yr.  Out: rad/trop.yr.  */
+    void	fk524m();
+
+    rra = degrad (*ra);
+    rdec = degrad (*dec);
+    rapm = (double) 0.0;
+    decpm = (double) 0.0;
+    fk524m (&rra, &rdec, &rapm, &decpm);
+    *ra = raddeg (rra + (rapm * (epoch - 1950.0)));
+    *dec = raddeg (rdec + (decpm * (epoch - 1950.0)));
+    return;
+}
+
+void
+fk524m (ra,dec,rapm,decpm)
 
 double	*ra;		/* Right ascension in radians (J2000 in, B1950 out) */
 double	*dec;		/* Declination in radians (J2000 in, B1950 out) */
@@ -291,7 +318,7 @@ static double em[6][6] = {
 	-0.004857669684959, -0.000027184471371,  1.000009560363559};
 
 void
-fk425 (ra,dec)
+fk425 (ra, dec)
 
 double	*ra;		/* Right ascension in degrees (B1950 in, J2000 out) */
 double	*dec;		/* Declination in degrees (B1950 in, J2000 out) */
@@ -302,16 +329,40 @@ double	rdec;		/* Declination in radians (B1950 in, J2000 out) */
 double	rapm;		/* Proper motion in right ascension */
 double	decpm;		/* Proper motion in declination  */
 			/* In: rad/trop.yr.  Out:  rad/jul.yr. */
-double	rcon = 1.74532925199433e-2; /* radians per degree */
 void	fk425m();
 
-	rra = *ra * rcon;
-	rdec = *dec * rcon;
+	rra = degrad (*ra);
+	rdec = degrad (*dec);
 	rapm = (double) 0.0;
 	decpm = (double) 0.0;
 	fk425m (&rra, &rdec, &rapm, &decpm);
-	*ra = rra / rcon;
-	*dec = rdec / rcon;
+	*ra = raddeg (rra);
+	*dec = raddeg (rdec);
+	return;
+}
+
+
+void
+fk425e (ra, dec, epoch)
+
+double	*ra;		/* Right ascension in degrees (B1950 in, J2000 out) */
+double	*dec;		/* Declination in degrees (B1950 in, J2000 out) */
+double	epoch;		/* Besselian epoch in years */
+{
+double	rra;		/* Right ascension in radians (B1950 in, J2000 out) */
+double	rdec;		/* Declination in radians (B1950 in, J2000 out) */
+double	rapm;		/* Proper motion in right ascension */
+double	decpm;		/* Proper motion in declination  */
+			/* In: rad/trop.yr.  Out:  rad/jul.yr. */
+void	fk425m();
+
+	rra = degrad (*ra);
+	rdec = degrad (*dec);
+	rapm = (double) 0.0;
+	decpm = (double) 0.0;
+	fk425m (&rra, &rdec, &rapm, &decpm);
+	*ra = raddeg (rra + (rapm * (epoch - 2000.0)));
+	*dec = raddeg (rdec + (decpm * (epoch - 2000.0)));
 	return;
 }
 
@@ -495,17 +546,17 @@ double	zero = (double) 0.0;
 int	idg=0;
 
 /*  l2,b2 system of galactic coordinates
-/*  p = 192.25       ra of galactic north pole (mean b1950.0)
-/*  q =  62.6        inclination of galactic to mean b1950.0 equator
-/*  r =  33          longitude of ascending node
-/*  p,q,r are degrees
+ *  p = 192.25       ra of galactic north pole (mean b1950.0)
+ *  q =  62.6        inclination of galactic to mean b1950.0 equator
+ *  r =  33          longitude of ascending node
+ *  p,q,r are degrees
 
-/*  Equatorial to galactic rotation matrix
+ *  Equatorial to galactic rotation matrix
     (The Eulerian angles are p, q, 90-r)
-
-	+cp.cq.sr-sp.cr     +sp.cq.sr+cp.cr     -sq.sr
-	-cp.cq.cr-sp.sr     -sp.cq.cr+cp.sr     +sq.cr
-	cp.sq              +sp.sq              +cq */
+	+cp.cq.sr-sp.cr	+sp.cq.sr+cp.cr	-sq.sr
+	-cp.cq.cr-sp.sr	-sp.cq.cr+cp.sr	+sq.cr
+	cp.sq		+sp.sq		+cq
+ */
 
 static double bgal[3][3] = {
 	-0.066988739415,-0.872755765852,-0.483538914632,
@@ -513,8 +564,9 @@ static double bgal[3][3] = {
 	-0.867600811151,-0.188374601723, 0.460199784784};
 
 /*---  Transform b1950.0 'fk4' equatorial coordinates to
-/*     IAU 1958 galactic coordinates */
+ *     IAU 1958 galactic coordinates */
 
+void
 fk42gal (dtheta,dphi)
 
 double *dtheta;	/* b1950.0 'fk4' ra in radians
@@ -573,7 +625,8 @@ double *dphi;	/* b1950.0 'fk4' dec in radians
 /*--- Transform IAU 1958 galactic coordinates to B1950.0 'fk4'
  *    equatorial coordinates */
 
-void gal2fk4 (dtheta,dphi)
+void
+gal2fk4 (dtheta,dphi)
 
 double *dtheta;	/* Galactic longitude (l2) in radians
 		   B1950 FK4 RA in radians (returned) */
@@ -648,7 +701,8 @@ static double jgal[3][3] = {
 
 /* Transform J2000 equatorial coordinates to IAU 1958 galactic coordinates */
 
-void fk52gal (dtheta,dphi)
+void
+fk52gal (dtheta,dphi)
 
 double *dtheta;	/* J2000 right ascension in degrees
 		   Galactic longitude (l2) in degrees (returned) */
@@ -703,7 +757,8 @@ double *dphi;	/* J2000 declination in degrees
 
 /*--- Transform IAU 1958 galactic coordinates to J2000 equatorial coordinates */
 
-void gal2fk5 (dtheta,dphi)
+void
+gal2fk5 (dtheta,dphi)
 
 double *dtheta;	/* Galactic longitude (l2) in degrees
 		   J2000.0 ra in degrees (returned) */
@@ -803,7 +858,8 @@ double	xpos,ypos,xp,yp,ras,decs;
 /* Convert geocentric equatorial rectangular coordinates to
    right ascension and declination, and distance */
 
-void jpcon (pos,rra,rdec,r)
+void
+jpcon (pos,rra,rdec,r)
 
 double pos[3];	/* x,y,z geocentric equatorial position of object */
 double *rra;	/* Right ascension in radians */
@@ -834,7 +890,8 @@ double *r;	/* Distance to object in same units as pos */
 /* Convert right ascension, declination, and distance to
    geocentric equatorial rectangular coordinates */
 
-void jpcop (rra,rdec,r,pos)
+void
+jpcop (rra,rdec,r,pos)
 
 double rra;	/* Right ascension in radians */
 double rdec;	/* Declination in radians */
@@ -850,7 +907,8 @@ double pos[3];	/* x,y,z geocentric equatorial position of object */
 
 /* The following routines are almost verbatim from Patrick Wallace's SLALIB */
 
-void fk4prec (ep0, ep1, ra, dec)
+void
+fk4prec (ep0, ep1, ra, dec)
 
 double ep0;	/* Starting Besselian epoch */
 double ep1;	/* Ending Besselian epoch */
@@ -888,7 +946,8 @@ double *dec;	/* Dec in radians mean equator & equinox of epoch ep0
     *ra = slaDranrm ( *ra );
 }
 
-void fk5prec (ep0, ep1, ra, dec)
+void
+fk5prec (ep0, ep1, ra, dec)
 
 double ep0;	/* Starting epoch */
 double ep1;	/* Ending epoch */
@@ -927,7 +986,8 @@ double *dec;	/* Dec in radians mean equator & equinox of epoch ep0
 }
 
 
-void slaDcs2c (a, b, v)
+void
+slaDcs2c (a, b, v)
 
 double a;	/* Right ascension in radians */
 double b;	/* Declination in radians */
@@ -954,7 +1014,8 @@ double *v;	/* x,y,z unit vector (returned) */
 }
 
 
-void slaDmxv (dm, va, vb)
+void
+slaDmxv (dm, va, vb)
 
 double (*dm)[3];	/* 3x3 Matrix */
 double *va;		/* Vector */
@@ -987,7 +1048,8 @@ double *vb;		/* Result vector (returned) */
 }
 
 
-void slaDcc2s (v, a, b)
+void
+slaDcc2s (v, a, b)
 
 double *v;	/* x,y,z vector */
 double *a;	/* Right ascension in radians */
@@ -1050,7 +1112,8 @@ double angle;	/* angle in radians */
 /* pi/(180*3600):  arcseconds to radians */
 #define DAS2R 4.8481368110953599358991410235794797595635330237270e-6
 
-void mprecfk4 (bep0, bep1, rmatp)
+void
+mprecfk4 (bep0, bep1, rmatp)
 
 double bep0;		/* Beginning Besselian epoch */
 double bep1;		/* Ending Besselian epoch */
@@ -1094,7 +1157,8 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
 }
 
 
-void mprecfk5 (ep0, ep1, rmatp)
+void
+mprecfk5 (ep0, ep1, rmatp)
 
 double ep0;		/* Beginning epoch */
 double ep1;		/* Ending epoch */
@@ -1137,7 +1201,8 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
 }
 
 
-void slaDeuler (order, phi, theta, psi, rmat)
+void
+slaDeuler (order, phi, theta, psi, rmat)
 
 char *order;		/* specifies about which axes the rotations occur */
 double phi;		/* 1st rotation (radians) */
@@ -1273,4 +1338,6 @@ double (*rmat)[3];	/* 3x3 Rotation matrix (returned) */
 /*
  * Nov  6 1995	Include stdlib.h instead of malloc.h
  * Apr  1 1996	Add arbitrary epoch precession
+ * Apr 26 1996	Add FK4 <-> FK5 subroutines for use when epoch is known
+ * Aug  6 1996	Clean up after lint
  */

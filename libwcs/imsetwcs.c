@@ -1,241 +1,250 @@
 /* File libwcs/imsetwcs.c
- * February 21, 1996
- * By Elwood Downey, revised by Doug Mink
+ * August 7, 1996
+ * By Doug Mink, based on UIowa code
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 #include "fitshead.h"
 #include "wcs.h"
 
 
-#define MINSTARS	4	/* min stars we require from GSC and image */
-#define MINBIN		4	/* min coincident hits required */
+#define MINSTARS	4	/* minimum stars from reference and image */
 #define MAXSTARS	25	/* max star pairs we need to try using */
-#define MAXGSC		100	/* max Guide Stars to find in image region */
+#define MAXREF		100	/* max reference stars to use in image region */
+#define GSC		1	/* refcat value for HST Guide Star Catalog */
+#define UJ		2	/* refcat value for USNO UJ Star Catalog */
 
+extern int FindStars ();
+extern int TriMatch ();
+extern int FocasMatch ();
+extern int StarMatch ();
 extern int findStars ();
-extern int findRegistration ();
-extern int findCoords ();
+extern int gscread();
+extern int ujcread();
+extern int tabread();
+extern void MagSortStars ();
+extern void FluxSortStars ();
 
-static int getNominalPos ();
-static void sky2im ();
-static void setFITSWCS ();
-void sortStars ();
-static void sortGuideStars ();
-static int starstatSortF ();
+extern void fk425(), fk425e(), fk524e();
 
-/* set the C* WCS fields in header based on the gsc limiting values and dimmer.
- * do it by finding stars in image and in GSC and finding the rotation and
- *   offsets which result in a best-fit.
- * verbose generates extra info on stdout.
- * try using deeper gsc searches if we have trouble.
+static struct WorldCoor *GetFITSWCS ();
+static void SetFITSWCS ();
+
+/* set the C* WCS fields in  a FITS header based on a reference catalog
+ * do it by finding stars in the image and in the reference catalog and
+ * finding the rotation and offsets which result in a best-fit.
+ * verbose generates extra info on stderr.
+ * try using deeper reference star catalog searches if there is trouble.
  * return 1 if all ok, else 0
  */
 
-static int tolerance = 20;	/* +/- this many pixels is a hit */
-void settolerance (tol)
-int tol;
-{
-    tolerance = tol;
-    return;
-}
-
-static double gsclim = 17;	/* initial GSC search limiting magnitude */
-void setgsclim (lim)
-double lim;
-{
-    gsclim = lim;
-    return;
-}
-
+/* These parameters can be set on the command line */
+static double tolerance = 20.0;	/* +/- this many pixels is a hit */
+static int refcat = 1;		/* reference catalog switch */
+static char refcatname[32]="GSC"; /* reference catalog name */
+static double reflim = 0.0;	/* reference catalog limiting magnitude */
 static double rot0 = 0.0;	/* Initial image rotation */
-void setrot (rot)
-double rot;
-{
-    rot0 = rot;
-    return;
-}
-
 static double secpix0 = 0.0;	/* Set image scale--override image header */
-void setsecpix (secpix)
-double secpix;
-{
-    secpix0 = secpix;
-    return;
-}
-
-static double flip = -1.0;	/* Flip around N-S axis */
-void setflip ()
-{
-    flip = 1.0;
-    return;
-}
-
+static int fk4 = 0;	/* Command line center is FK4 (default FK5) */
+static int classd = -1;	/* Guide Star Catalog object classes */
+static int uplate = 0;	/* UJ Catalog plate number to use */
 static double frac = 1.0;	/* Additional catalog or image stars to use */
-void setfrac (frac0)
-double frac0;
-{
-    frac = frac0;
-    return;
-}
-
-static int trimatch = 0;	/* Star matching method */
-void setmatch ()
-{
-    trimatch = 1;
-    return;
-}
+static double ra0 = -99.0;	/* Initial center right ascension in degrees */
+static double dec0 = -99.0;	/* Initial center declination in degrees */
+static char wcstype[8]="TAN";	/* WCS projection name */
+static int nfit0 = 0;		/* Number of parameters to fit (0=set by matches */
 
 
-/* set the C* WCS fields in fip based on the given limiting GSC mag.
- * do it by finding stars in fip and in GSC down to gsclim and finding the
- *   angle and offsets which result in a best-fit.
+/* set the C* WCS fields in the input image header based on the given limiting
+ * reference mag.
+ * Finding stars in the input image and in the reference catalog down to
+ * reflim and compute the angle and offsets which result in the best fit.
  * verbose generates extra info on stdout.
  * return 0 if all ok, else -1
  */
 
 int
-setWCSFITS (header, image, verbose)
+SetWCSFITS (header, image, verbose)
 
 char	*header;	/* FITS header */
 char	*image;		/* Image pixels */
 int	verbose;
 
 {
-    double *gnum=0;		/* GSC star numbers */
-    double *gra=0, *gdec=0;	/* GSC stars, ra and dec, rads */
-    double *gm=0;		/* GCS magnitudes */
-    int ng;			/* n GSC stars */
-    int nbg;		/* n brighttest GCS stars we actually use */
-    double *sx=0, *sy=0;	/* image stars, pixels */
-    double *sb=0;		/* image star brightesses */
-    int ns;			/* n image stars */
-    int nbs;		/* n brightest image stars we actually use */
-    double *gx, *gy;	/* GSC stars projected onto plane, pixels */
-    double ra0, dec0;	/* nominal center from RA/DEC FITS fields */
-    double pixsz;		/* pixel size, rads */
-    int imw, imh;		/* image size, pixels */
-    double dra, ddec;	/* errors, in rads */
-    double rot, dx, dy;
+    double *gnum=0;	/* Reference star numbers */
+    double *gra=0;	/* Reference star right ascensions in degrees */
+    double *gdec=0;	/* Reference star declinations in degrees */
+    double *gm=0;	/* Reference star magnitudes */
+    double *gx=0;	/* Reference star image X-coordinates in pixels */
+    double *gy=0;	/* Reference star image Y-coordinates in pixels */
+    int *gc=0;		/* Reference object types */
+    int *goff=0;	/* Reference star offscale flags */
+    int ng;		/* Number of reference stars in image */
+    int nbg;		/* Number of brightest reference stars actually used */
+    double *sx=0;	/* Image star image X-coordinates in pixels */
+    double *sy=0;	/* Image star image X-coordinates in pixels */
+    double sra;		/* Image star right ascension in degrees */
+    double sdec;	/* Image star declination in degrees */
+    double *sb=0;	/* Image star integrated fluxes */
+    int *sp=0;		/* Image star peak fluxes in counts */
+    int ns;		/* Number of image stars */
+    int nbs;		/* Number of brightest image stars actually used */
+    double cra, cdec;	/* Nominal center in degrees from RA/DEC FITS fields */
+    double dra, ddec;	/* Image half-widths in degrees */
+    double secpix;	/* Pixel size in arcseconds */
+    int imw, imh;	/* Image size, pixels */
     double ra1,ra2,dec1,dec2,mag1,mag2;
-    double secpix;
-    double x0, y0;
+    int minstars;
     int ngmax;
-    int classd;
     int nbin, nbytes;
     int ret = 0;
-    int i;
-    int gscread();
+    int is, ig;
+    char rstr[32], dstr[32];
+    struct WorldCoor *wcs=0;	/* WCS structure */
 
     /* get nominal position and scale */
-    if (getNominalPos (header,verbose,&ra0,&dec0,&pixsz,&imw,&imh) < 0)
+    wcs = GetFITSWCS (header,verbose,&cra,&cdec,&dra,&ddec,&secpix,&imw,&imh,2000);
+    if (nowcs (wcs)) {
+	ret = 0;
 	goto out;
+	}
 
-    /* Set the RA and Dec limits in degrees for GSCREAD */
-    ddec = pixsz * imh * 0.48;
-    dra = (pixsz * imw * 0.48) / cos (dec0);
-    ra1 = raddeg (ra0 - dra);
-    ra2 = raddeg (ra0 + dra);
-    dec1 = raddeg (dec0 - ddec);
-    dec2 = raddeg (dec0 + ddec);
-    mag1 = -2.0;
-    mag2 = gsclim;
+    /* Set the RA and Dec limits in degrees for reference star search */
+    ra1 = cra - dra;
+    ra2 = cra + dra;
+    dec1 = cdec - ddec;
+    dec2 = cdec + ddec;
+    if (reflim > 0.0) {
+	mag1 = -2.0;
+	mag2 = reflim;
+	}
+    else {
+	mag1 = 0.0;
+	mag2 = 0.0;
+	}
 
-    ngmax = MAXGSC;
-    nbytes = MAXGSC * sizeof (double);
+    /* Allocate arrays for results of reference star search */
+    ngmax = MAXREF;
+    nbytes = MAXREF * sizeof (double);
     gnum = (double *) malloc (nbytes);
     gra = (double *) malloc (nbytes);
     gdec = (double *) malloc (nbytes);
     gm = (double *) malloc (nbytes);
-    gx = (double *) malloc (nbytes);
-    gy = (double *) malloc (nbytes);
+    gc = (int *) malloc (nbytes);
 
-    /* Find the nearby GSC stars, in ra/dec */
-    ng = gscread (ra1,ra2,dec1,dec2,mag1,mag2,classd,ngmax,gnum,gra,gdec,gm);
-    if (ng < MINSTARS) {
-	if (ng < 0)
-	fprintf (stderr, "Error getting GSC stars: %d\n", ng);
-	else if (ng == 0)
-	fprintf (stderr,"Need at least %d GSC stars but found none\n",
-							MINSTARS);
-	else
-	fprintf (stderr, "Need at least %d GSC stars but only found %d\n",
-							MINSTARS, ng);
+    /* Find the nearby reference stars, in ra/dec */
+    if (refcat == UJ)
+	ng =ujcread (ra1,ra2,dec1,dec2,mag1,mag2,uplate,ngmax,gnum,gra,gdec,
+		     gm,gc,verbose);
+    else if (refcat == GSC)
+	ng = gscread (ra1,ra2,dec1,dec2,mag1,mag2,classd,ngmax,gnum,gra,gdec,
+		      gm,gc,verbose*100);
+    else if (refcatname[0] > 0)
+	ng = tabread (refcatname,ra1,ra2,dec1,dec2,mag1,mag2,ngmax,gnum,gra,gdec,gm,
+		      gc,verbose);
+    else {
+	fprintf (stderr,"No reference star catalog specified\n");
+	ret = 0;
 	goto out;
 	}
 
-    /* Convert ra and dec to radians */
-    for (i = 0; i < ng; i++) {
-	gra[i] = degrad (gra[i]);
-	gdec[i] = degrad (gdec[i]);
+    if (nfit0 > 1)
+	minstars = nfit0;
+    else if (nfit0 == 1)
+	minstars = 2;
+    else
+	minstars = MINSTARS;
+	
+    if (ng < minstars) {
+	if (ng < 0)
+	    fprintf (stderr, "Error getting reference stars: %d\n", ng);
+	else if (ng == 0)
+	    fprintf (stderr,"Need >= %d reference stars; found none\n",
+							minstars);
+	else
+	    fprintf (stderr, "Need >= %d reference stars; found only %d\n",
+							minstars, ng);
+	ret = 0;
+	goto out;
 	}
 
-    /* project the GSC stars onto a plane nominally at ra0/dec0 to
-     * convert them into pixels
-     */
+    /* Project the reference stars into pixels on a plane at ra0/dec0 */
+    gx = (double *) malloc (nbytes);
+    gy = (double *) malloc (nbytes);
+    goff = (int *) malloc (nbytes);
     if (!gx || !gy) {
 	fprintf (stderr, "Could not malloc temp space of %d bytes\n",
 					    ng*sizeof(double)*2);
+	ret = 0;
 	goto out;
 	}
-    sky2im (imw, imh, pixsz, ra0, dec0, ng, gra, gdec, gx, gy);
 
-    /* Sort Guide Stars by brightness */
-    sortGuideStars (gnum, gra, gdec, gx, gy, gm, ng);
+    /* use the nominal WCS info to find x/y on image */
+    for (ig = 0; ig < ng; ig++) {
+	gx[ig] = 0.0;
+	gy[ig] = 0.0;
+	wcs2pix (wcs, gra[ig], gdec[ig], &gx[ig], &gy[ig], &goff[ig]);
+	}
 
-    /* need only use the brightest MAXSTARS Guide Stars */
-    if (ng > MAXSTARS) {
-	nbg = MAXSTARS;
+    /* Sort reference stars by brightness (magnitude) */
+    MagSortStars (gnum, gra, gdec, gx, gy, gm, gc, ng);
+
+    /* Use only the brightest MAXSTARS reference stars */
+    nbg = MAXSTARS;
+    if (ng > nbg) {
 	if (verbose)
-	    printf ("using %d / %d GSC stars brighter than %.1f\n",
-		    gm[nbg-1], nbg,ng);
+	    printf ("using %d / %d reference stars brighter than %.1f\n",
+		     nbg, ng, gm[nbg-1]);
 	}
     else {
 	nbg = ng;
 	if (verbose) {
-	    if (gsclim > 0.0)
-		printf ("using all %d GSC stars brighter than %.1f\n",
-			ng,gsclim);
+	    if (reflim > 0.0)
+		printf ("using all %d reference stars brighter than %.1f\n",
+			ng,reflim);
 	    else
-		printf ("using all %d GSC stars\n", ng);
+		printf ("using all %d reference stars\n", ng);
 	    }
 	}
 
-    for (i = 0; i < ng; i++) {
-	char rstr[64], dstr[64];
-	ra2str (rstr, raddeg (gra[i]), 3);
-	dec2str (dstr, raddeg (gdec[i]), 2);
-	printf ("GS: %9.4f %s %s %5.2f %6.1f %6.1f\n",
-		gnum[i],rstr,dstr,gm[i],gx[i],gy[i]);
+    for (ig = 0; ig < ng; ig++) {
+	ra2str (rstr, gra[ig], 3);
+	dec2str (dstr, gdec[ig], 2);
+	printf ("%s %9.4f %s %s %5.2f %6.1f %6.1f\n",
+		refcatname,gnum[ig],rstr,dstr,gm[ig],gx[ig],gy[ig]);
 	}
 
     /* Discover star-like things in the image, in pixels */
-    ns = findStars (header, image, &sx, &sy, &sb);
-    if (ns < MINSTARS) {
+    ns = FindStars (header, image, &sx, &sy, &sb, &sp, verbose);
+    if (ns < minstars) {
 	fprintf (stderr, "Need at least %d image stars but only found %d\n",
-							MINSTARS, ns);
+							minstars, ns);
+	ret = 0;
 	goto out;
 	}
 
     /* Sort star-like objects in image by brightness */
-    sortStars (sx, sy, sb, ns);
+    FluxSortStars (sx, sy, sb, sp, ns);
 
-    /* Use only as many star-like objects as Guide Stars */
+    /* Use only as many star-like objects as reference stars */
+    /* (Actually use frac * the number of GS if more than image stars or */
+    /*  frac * the number of image stars if more than reference stars) */
     if (ns > nbg) {
 	nbs = nbg * frac;
 	if (nbs > ns)
 	   nbs = ns;
 	if (verbose) {
-	    printf ("using brightest %d / %d GSC stars\n", nbg, ng);
+	    printf ("using brightest %d / %d reference stars\n", nbg, ng);
 	    printf ("using brightest %d / %d image stars\n", nbs,ns);
 	    }
 	}
     else {
 	nbs = ns;
-	nbg = ng * frac;
+	nbg = nbs * frac;
 	if (nbg > ng)
 	    nbg = ng;
 	if (verbose)
@@ -243,353 +252,395 @@ int	verbose;
 	}
 
     if (verbose) {
-	for (i = 0; i < nbs; i++)
-	printf ("Im: %6.1f %6.1f %8.1f\n", sx[i],sy[i],sb[i]);
+	for (is = 0; is < nbs; is++)
+	printf ("Im: %6.1f %6.1f %8.1f %d\n", sx[is],sy[is],sb[is],sp[is]);
 	}
 
-    /* Find offset, scale, and rotation to im x,y which best matches ref x,y */
-    rot = rot0;
-    dx = 0.0;
-    dy = 0.0;
+    /* Check offsets between all pairs of image stars and reference stars */
+    nbin = StarMatch (nbs,sx,sy, nbg,gra,gdec,gx,gy, tolerance, wcs, nfit0, verbose);
 
-    /* Find offset, scale, and rotation to image x,y which best matches
-	reference ra,dec */
-    if (trimatch) {
-	/* secpix = 3600.0 * raddeg (pixsz); */
-	secpix = 0.0;
-	nbin = findCoords (ra0, dec0, nbg, gra, gdec, gm, gx, gy, nbs, sx, sy,
-			   &secpix, &rot);
-	pixsz = degrad (secpix / 3600.0);
-	}
-
-    /* Find offset and rotation to image x,y which best matches reference x,y */
-    else {
-	nbin = findRegistration (sx, sy, nbs, gx, gy, nbg, imw, imh, MINBIN,
-				 tolerance, &rot, &dx, &dy);
-	rot = -rot;
-	}
     if (nbin < 0) {
 	fprintf (stderr, "Star registration failed.\n");
-	goto out;
-	}
-    else if (nbin < MINBIN) {
-	fprintf (stderr, "Require %d bin hits but only found %d\n", MINBIN,nbin);
+	ret = 0;
 	goto out;
 	}
     else if (verbose)
 	printf ("%d bin hits\n", nbin);
 
-    dra = dx * pixsz / cos(dec0);
-    ddec = dy * pixsz;
-    ra0 = ra0 - dra;
-    dec0 = dec0 - ddec;
+    SetFITSWCS (header, wcs);
 
     if (verbose) {
-	char str[64];
-
-	ra2str (str, raddeg (dra), 3);
-	printf ("Delta  RA: %s = %4g pixels\n", str, dx);
-	dec2str (str, raddeg (ddec), 2);
-	printf ("Delta Dec: %s = %4g pixels\n", str, dy);
-	printf ("Rotation:  %g degrees\n", raddeg(rot));
+	double ra,dec;
+	printf ("Rotation:  %g degrees  Arcsec/pixel: %f %f\n",
+		wcs->rot, 3600.0*wcs->xinc, 3600.0*wcs->yinc);
+	ra2str (rstr, wcs->xref, 3);
+	dec2str (dstr, wcs->yref, 2);
+	printf ("New center: %s  %s (FK5)\n",rstr,dstr);
+	ra = wcs->xref;
+	dec = wcs->yref;
+	(void)fk524e (&ra,&dec,wcs->epoch);
+	ra2str (rstr, ra, 3);
+	dec2str (dstr, dec, 2);
+	printf ("New center: %s  %s (FK4)\n",rstr,dstr);
 	}
 
-    /* compute and set (or replace) WCS fields in header */
-    x0 = (double) imw / 2.0;
-    y0 = (double) imh / 2.0;
-    setFITSWCS (header, rot, ra0, dec0, x0, y0, pixsz);
+    /* Find star matches for this offset and print them */
+    if (verbose) {
+	double x, y, dx, dy, dxy, sep, xysep, tol2;
+	double dxsum=0.0, dysum=0.0, dxysum=0.0, sepsum=0.0;
+	int offscl, nmatch=0;
+	/* wcs = wcsinit (header); */
+	tol2 = tolerance * tolerance;
+	for (ig = 0; ig < ng; ig++) {
+	    wcs2pix (wcs, gra[ig], gdec[ig], &x, &y, &offscl);
+	    if (!offscl) {
+		for (is = 0; is < ns; is++) {
+		    dx = x - sx[is];
+		    dy = y - sy[is];
+		    dxy = (dx * dx) + (dy * dy);
+		    if (dxy < tol2) {
+			nmatch++;
+			dxsum = dxsum + dx;
+			dysum = dysum + dy;
+			dxysum = dxysum + sqrt (dxy);
+			pix2wcs (wcs, sx[is], sy[is], &sra, &sdec);
+			xysep = sqrt (dxy);
+			sep = 3600.0 * wcsdist (gra[ig], gdec[ig], sra, sdec);
+			sepsum = sepsum + sep;
+			ra2str (rstr, gra[ig], 3);
+			dec2str (dstr, gdec[ig], 2);
+			printf ("%s %9.4f %s %s %5.2f",
+				refcatname, gnum[ig], rstr, dstr, gm[ig]);
+			printf ("%6.1f %6.1f %6d %5.2f %5.2f\n",
+			    sx[is], sy[is], sp[is], xysep, sep);
+			}
+		    }
+		}
+	    }
+	if (nmatch > 0) {
+	    dx = dxsum / (double)nmatch;
+	    dy = dysum / (double)nmatch;
+	    dxy = dxysum / (double)nmatch;
+	    sep = sepsum / (double)nmatch;
+	    printf ("Mean dx= %.2f  dy= %.2f  dxy= %.2f  sep= %.2f\n",
+		    dx, dy, dxy, sep);
+	    }
+	else
+	    fprintf (stderr,"SetWCSFITS: Error in WCS, no matches found\n");
+	}
 
     ret = 1;
 
     out:
-    if (gra)
-	free ((char *)gra);
-    if (gdec)
-	free ((char *)gdec);
-    if (gm)
-	free ((char *)gm);
-    if (gnum)
-	free ((char *)gnum);
-    if (gx)
-	free ((char *)gx);
-    if (gy)
-	free ((char *)gy);
+    if (gra) free ((char *)gra);
+    if (gdec) free ((char *)gdec);
+    if (gm) free ((char *)gm);
+    if (gnum) free ((char *)gnum);
+    if (gx) free ((char *)gx);
+    if (gy) free ((char *)gy);
+    if (gc) free ((char *)gc);
 
-    if (sx)
-	free ((char *)sx);
-    if (sy)
-	free ((char *)sy);
-    if (sb)
-	free ((char *)sb);
+    if (sx) free ((char *)sx);
+    if (sy) free ((char *)sy);
+    if (sb) free ((char *)sb);
+    if (sp) free ((char *)sp);
+    if (wcs) free (wcs);
 
     return (ret);
 }
 
 
-/* find nominal image center and scale of given image from local header info.
- * If center does not use FK5 (J2000) equinox, convert it
- * return 0 if ok else return -1
+/* Set a nominal world coordinate system from image header info.
+ * If the image center is not FK5 (J2000) equinox, convert it
+ * Return a WCS structure if OK, else return NULL
  */
 
-static int
-getNominalPos (header, verbose, rap, decp, radperpixp, wp, hp)
+static struct WorldCoor *
+GetFITSWCS (header, verbose, cra, cdec, dra, ddec, secpix, wp, hp, eqref)
 
-char	*header;
-int	verbose;
-double	*rap;
-double	*decp;
-double	*radperpixp;
-int	*wp;
-int	*hp;
+char	*header;	/* Image FITS header */
+int	verbose;	/* Extra printing if =1 */
+double	*cra;		/* Center right ascension in degrees (returned) */
+double	*cdec;		/* Center declination in degrees (returned) */
+double	*dra;		/* Right ascension half-width in degrees (returned) */
+double	*ddec;		/* Declination half-width in degrees (returned) */
+double	*secpix;	/* Arcseconds per pixel (returned) */
+int	*wp;		/* Image width in pixels (returned) */
+int	*hp;		/* Image height in pixels (returned) */
+int	eqref;		/* Equinox of reference catalog */
 {
     int nax;
-    double secpix, dra, ddec, eq;
+    int equinox;
+    double epoch;
+    struct WorldCoor *wcs;
 
-    /* find nominal center from RA and DEC fields */
-    dra = 0.0;
-    if (hgetra (header, "RA", &dra) == 0) {
-	fprintf (stderr, "No RA field\n");
-	return (-1);
-	}
-    ddec = 0.0;
-    if (hgetdec (header, "DEC", &ddec) == 0) {
-	fprintf (stderr, "No DEC field\n");
-	return (-1);
-	}
-
-    /* Equinox of coordinates */
-    if (hgetr8 (header, "EPOCH", &eq) == 0) {
-	if (hgetr8 (header, "EQUINOX", &eq) == 0)
-	    eq = 1950.0;
-	}
-
-    /* If not J2000, convert */
-    if (eq == 1950.0)
-	fk425 (&dra, &ddec);
-
-    *rap = degrad (dra);
-    *decp = degrad (ddec);
-
-    /* Plate scale from SECPIX header parameter */
-    if (secpix0 == 0.0) {
-	secpix = 0.5;
-	if (hgetr8 (header, "SECPIX", &secpix) == 0) {
-	    fprintf (stderr, "Cannot find SECPIX in header\n");
-	    return (-1);
-	    }
-	}
-    else
-	secpix = secpix0;
-    *radperpixp = degrad (secpix / 3600.0);
-    /* printf ("SECPIX is %g -> %g\n",secpix,*radperpixp); */
-
-    /* Image size */
+    /* Set image dimensions */
     nax = 0;
     if (hgeti4 (header,"NAXIS",&nax) < 1)
-	return (-1);
+	return (NULL);
     else {
 	if (hgeti4 (header,"NAXIS1",wp) < 1)
-	    return (-1);
+	    return (NULL);
 	else {
 	    if (hgeti4 (header,"NAXIS2",hp) < 1)
-		return (-1);
+		return (NULL);
 	    }
 	}
+
+    /* Find center for pre-existing WCS, if there is one */
+    wcs = wcsinit (header);
+    if (iswcs (wcs)) {
+	wcssize (wcs, cra, cdec, dra, ddec);
+	if (wcs->xref == 0.0 && wcs->yref == 0.0) {
+	    wcs->xref = *cra;
+	    wcs->yref = *cdec;
+	    wcs->xrefpix = (double) wcs->nxpix * 0.5;
+	    wcs->yrefpix = (double) wcs->nypix * 0.5;
+	    wcs->xinc = *dra / wcs->xrefpix;
+	    wcs->yinc = *ddec / wcs->yrefpix;
+	    hchange (header,"PLTRAH","PLT0RAH");
+	    wcs->plate_fit = 0;
+	    }
+	if (strcmp (wcs->radecsys, "FK4") == 0) {
+	    fk425e (cra, cdec, wcs->epoch);
+	    wcsshift (wcs, *cra, *cdec, "FK5");
+	    }
+	}
+
+    /* Otherwise use nominal center from RA and DEC fields */
+    else {
+	*cra = 0.0;
+	*cdec = 0.0;
+	if (hgetra (header, "RA", cra) == 0) {
+	    fprintf (stderr, "No RA field\n");
+	    return (NULL);
+	    }
+	if (hgetdec (header, "DEC", cdec) == 0) {
+	    fprintf (stderr, "No DEC field\n");
+	    return (NULL);
+	    }
+
+	/* Equinox of coordinates */
+	if (hgeti4 (header, "EPOCH", &equinox) == 0) {
+	    if (hgeti4 (header, "EQUINOX", &equinox) == 0)
+		equinox = 1950;
+	    }
+
+	/* Epoch of image (observation date) */
+	if (hgetdate (header," OBS-DATE", &epoch) == 0) {
+	    if (hgetdate (header," DATE-OBS", &epoch) == 0)
+		epoch = (double) equinox;
+	    }
+
+	/* If not J2000, convert */
+	if (equinox != eqref) {
+	    if (eqref == 2000)
+		fk425e (cra, cdec, epoch);
+	    else
+		fk524e (cra, cdec, epoch);
+	    }
+	}
+
+    /* Set plate scale from command line, if it is there */
+    if (secpix0 > 0.0) {
+	*secpix = secpix0;
+	*dra = (*secpix * *wp * 0.5 / 3600.0) / cos (degrad(*cdec));
+	*ddec = *secpix * *hp * 0.5 / 3600.0;
+	hputnr8 (header,"SECPIX",5,*secpix);
+	}
+
+    /* Otherwise set plate scale from FITS header */
+    else {
+
+	/* Plate scale from WCS if it is present */
+	if (iswcs (wcs))
+	    *secpix = 3600.0 * 2.0 * *ddec / (double) *hp;
+
+	/* Plate scale from SECPIX header parameter */
+	else {
+	    *secpix = 0.0;
+	    if (hgetr8 (header, "SECPIX", secpix) == 0) {
+		if (hgetr8 (header, "SECPIX1", secpix) == 0) {
+		    fprintf (stderr, "Cannot find SECPIX in header\n");
+		    return (NULL);
+		    }
+		}
+	    }
+	}
+
+    /* Set WCS structure if it has not already been set */
+    if (nowcs (wcs))
+	wcs = wcsset (*cra, *cdec, *secpix, *wp, *hp, rot0, eqref, epoch);
+
+    /* Reset to center position from the command line, if there is one */
+    if (ra0 > -99.0 && dec0 > -99.0) {
+	char rstr[32],dstr[32];
+
+    /* Reset center for reference star search */
+	*cra = ra0;
+	*cdec = dec0;
+	if (fk4)
+	    fk425e (cra, cdec, wcs->epoch);
+	wcsshift (wcs, *cra, *cdec, "FK5");
+
+	ra2str (rstr, ra0, 3);
+        dec2str (dstr, dec0, 2);
+	hputs (header,"RA",rstr);
+	hputs (header,"DEC",dstr);
+	hputi4 (header,"EQUINOX",eqref);
+
+	if (verbose) {
+	    if (fk4) {
+        	printf ("Center reset to RA=%s DEC=%s (FK4)\n", rstr, dstr);
+		ra2str (rstr, *cra, 3);
+        	dec2str (dstr, *cdec, 2);
+		}
+            printf ("Center reset to RA=%s DEC=%s (FK5)\n", rstr, dstr);
+	    }
+	}
+
+    /* Image size from header */
 
     if (verbose) {
 	char rstr[64], dstr[64];
-	ra2str (rstr, raddeg (*rap), 3);
-	dec2str (dstr, raddeg (*decp), 2);
+	ra2str (rstr, *cra, 3);
+	dec2str (dstr, *cdec, 2);
 	printf ("RA=%s DEC=%s W=%d H=%d ArcSecs/Pixel=%g\n", rstr, dstr, 
-				*wp, *hp, 3600.0*raddeg(*radperpixp));
+				*wp, *hp, *secpix);
 	}
 
-    return (0);
-}
-
-
-/* Project rap/decp onto plane at xp/yp using nominal ra0, dec0 and
- * build up a minimal FITS header so we can use RADectoXY().
- */
-
-static void
-sky2im (imw, imh, pixsz, ra0, dec0, n, rap, decp, xp, yp)
-
-int	imw;
-int	imh;
-double	pixsz;
-double	ra0;
-double	dec0;
-int	n;
-double	rap[];
-double	decp[];
-double	xp[];
-double	yp[];
-{
-    char *header;
-    int i, headlen, off;
-    struct WorldCoor *wcs, *wcsset();
-
-/*  headlen = 2 * FITSBLOCK;
-    header = malloc (headlen);
-    strcpy (header, "END");
-    for (i = 3; i < headlen; i++)
-	header[i] = ' ';
-
-    bare-bones header
-    hputl (header, "SIMPLE", 1);
-    hputi4 (header, "BITPIX", 16);
-    hputi4 (header, "NAXIS", 2);
-    hputi4 (header, "NAXIS1", imw);
-    hputi4 (header, "NAXIS2", imh);
-
-    add WCS header based on nominal position, no rotation
-    x0 = (double) imw / 2.0;
-    y0 = (double) imh / 2.0;
-    setFITSWCS (header, rot0, ra0, dec0, x0, y0, pixsz);
- */
-    wcs = wcsset (raddeg(ra0), raddeg(dec0), 3600.8*raddeg(pixsz),
-		  imw, imh, rot0, 2000);
-
-    /* use the nominal WCS info to find x/y on image */
-    for (i = 0; i < n; i++) {
-	xp[i] = 0.0;
-	yp[i] = 0.0;
-/*	RADec2xy (header, rap[i], decp[i], &xp[i], &yp[i]); */
-	wcs2pix (wcs, raddeg(rap[i]), raddeg(decp[i]), &xp[i], &yp[i], &off);
-	}
-
-/*  free (header); */
-    free (wcs);
-    return;
+    return (wcs);
 }
 
 
 /* Set FITS C* fields, assuming ra/dec refers to the center pixel */
 
 static void
-setFITSWCS (header, rot, ra, dec, x0, y0, pixsz)
+SetFITSWCS (header, wcs)
 
-char	*header;
-double	rot;
-double	ra;
-double	dec;
-double	x0;
-double	y0;
-double	pixsz;
+char	*header;	/* Image FITS header */
+struct WorldCoor *wcs;	/* WCS structure */
 
 {
-    hputr8 (header, "EQUINOX", 2000.0);
-    hputs  (header, "CTYPE1", "RA---TAN");
-    hputr8 (header, "CRVAL1", raddeg(ra));
-    hputr8 (header, "CDELT1", flip * raddeg(pixsz));
-    hputr8 (header, "CRPIX1", x0);
-    hputr8 (header, "CROTA1", raddeg(rot));
+    double eq, ep, ra, dec;
+    char wcstemp[16];
 
-    hputs  (header, "CTYPE2", "DEC--TAN");
-    hputr8 (header, "CRVAL2", raddeg(dec));
-    hputr8 (header, "CDELT2", raddeg(pixsz));
-    hputr8 (header, "CRPIX2", y0);
-    hputr8 (header, "CROTA2", 0.0);
+    /* Rename old center coordinates */
+    if (hgetra (header,"RA", &ra))
+	hchange (header,"RA","WRA");
+    if (hgetdec (header,"DEC", &dec))
+	hchange (header,"DEC","WDEC");
+
+    if (hgetr8 (header, "EQUINOX", &ep))
+	hchange (header, "EQUINOX", "WEQUINOX");
+
+    /* Only change EPOCH if it is used instead of EQUINOX */
+    else if (hgetr8 (header, "EPOCH", &ep))
+	hchange (header, "EPOCH", "WEPOCH");
+
+    /* Set new center coordinates */
+    hputra (header,"RA",wcs->xref);
+    hputdec (header,"DEC",wcs->yref);
+    hputr8 (header, "EQUINOX", wcs->equinox);
+
+    strcpy (wcstemp, "RA---");
+    strcat (wcstemp, wcstype);
+    hputs  (header, "CTYPE1", wcstemp);
+    hputnr8 (header, "CRVAL1", 9, wcs->xref);
+    hputnr8 (header, "CRPIX1", 4, wcs->xrefpix);
+    hputnr8 (header, "CDELT1", 9, wcs->xinc);
+    hputnr8 (header, "CROTA1", 3, wcs->rot);
+
+    strcpy (wcstemp, "DEC--");
+    strcat (wcstemp, wcstype);
+    hputs  (header, "CTYPE2", wcstemp);
+    hputnr8 (header, "CRVAL2", 9, wcs->yref);
+    hputnr8 (header, "CRPIX2", 4, wcs->yrefpix);
+    hputnr8 (header, "CDELT2", 9, wcs->yinc);
+    hputnr8 (header, "CROTA2", 3, 0.0);
     return;
 }
 
-/* structure we use just for building the global star lists needed for sorting
+void settolerance (tol)
+double tol;
+{ tolerance = tol; return; }
+
+void setrefcat (cat)
+char *cat;
+{  if (cat[0]=='G' || cat[0]=='g' || strcmp(cat,"gsc")==0 || strcmp(cat,"GSC")==0)
+	refcat = 1;
+   else if (cat[0]=='U' || cat[0]=='u' || strcmp(cat,"ujc")==0 || strcmp(cat,"UJC")==0)
+	refcat = 2;
+    else
+	refcat = 0;
+    strcpy (refcatname, cat); return; }
+
+void setwcstype (type)
+char *type;
+{ strcpy (wcstype, type); return; }
+
+
+void setreflim (lim)
+double lim;
+{ reflim = lim; return; }
+
+void setrot (rot)
+double rot;
+{ rot0 = rot; return; }
+
+void setsecpix (secpix)
+double secpix;
+{ secpix0 = secpix; return; }
+
+void setfk4 ()
+{ fk4 = 1; return; }
+
+void setclass (class)
+int class;
+{ classd = class; return; }
+
+void setplate (plate)
+int plate;
+{ uplate = plate; return; }
+
+void setfrac (frac0)
+double frac0;
+{ if (frac0 < 1.0) frac = 1.0 + frac0;
+    else frac = frac0; return; }
+
+void setcenter (rastr, decstr)
+char *rastr, *decstr;
+{ ra0 = str2ra (rastr); dec0 = str2dec (decstr); return; }
+
+void setnfit (nfit)
+int nfit;
+{ if (nfit < 2) nfit = 2;
+  else if (nfit > 5) nfit = 5;
+  nfit0 = nfit; return; }
+
+
+/* Feb 29 1996	New program
+ * Apr 30 1996	Add FOCAS-style catalog matching
+ * May  1 1996	Add initial image center from command line
+ * May  2 1996	Set up four star matching modes
+ * May 15 1996	Pass verbose flag; allow other reference catalogs
+ * May 16 1996	Remove sorting to separate file sortstar.c
+ * May 17 1996	Add class and verbose arguments
+ * May 22 1996  Allow for named reference catalog
+ * May 23 1996	Use pre-existing WCS for center, if it is present
+ * May 29 1996	Simplify program by always using WCS structure
+ * May 30 1996	Make reference/image pair matching the default method
+ * Jun 11 1996  Number and zero positions of image stars
+ * Jun 12 1996	Be more careful with nominal WCS setting
+ * Jun 14 1996	Add residual table
+ * Jun 28 1996	Set FITS header from WCS
+ * Jul  3 1996	Set epoch from old equinox if not already set
+ * Jul 19 1996	Declare tabread
+ * Jul 19 1996	Set image center in WCS if DSS WCS
+ * Jul 22 1996	Debug tab table reading
+ * Aug  5 1996	Add option to change WCS projection
+ * Aug  5 1996	Check for SECPIX1 as well as SECPIX
+ * Aug  5 1996	Set number of parameters to fit here
+ * Aug  7 1996	Save specified number of decimal places in header parameters
+ * Aug  7 1996	Rename old center parameters
  */
-typedef struct {
-    double n, ra, dec, x, y, b;
-} _StarInfo;
-
-/* Sort Guide Stars by increasing magnitude */
-
-static void
-sortGuideStars (n, ra, dec, sx, sy, sb, ns)
-
-double	*n;
-double	*ra;
-double	*dec;
-double	*sx;
-double	*sy;
-double	*sb;
-int	ns;
-
-{
-    _StarInfo *sip;
-    int i;
-
-    sip = (_StarInfo *) malloc (ns * sizeof(_StarInfo));
-
-    for (i = 0; i < ns; i++) {
-	sip[i].n = n[i];
-	sip[i].ra = ra[i];
-	sip[i].dec = dec[i];
-	sip[i].x = sx[i];
-	sip[i].y = sy[i];
-	sip[i].b = -sb[i];
-    }
-
-    qsort ((void *)sip, ns, sizeof(_StarInfo), starstatSortF);
-
-    for (i = 0; i < ns; i++) {
-	n[i] = sip[i].n;
-	ra[i] = sip[i].ra;
-	dec[i] = sip[i].dec;
-	sx[i] = sip[i].x;
-	sy[i] = sip[i].y;
-	sb[i] = -sip[i].b;
-    }
-
-    free ((char *)sip);
-    return;
-}
-
-/* Sort stars by decreasing brightness */
-
-void
-sortStars (sx, sy, sb, ns)
-
-double	*sx;
-double	*sy;
-double	*sb;
-int	ns;
-
-{
-    _StarInfo *sip;
-    int i;
-
-    sip = (_StarInfo *) malloc (ns * sizeof(_StarInfo));
-
-    for (i = 0; i < ns; i++) {
-	sip[i].x = sx[i];
-	sip[i].y = sy[i];
-	sip[i].b = sb[i];
-    }
-
-    qsort ((void *)sip, ns, sizeof(_StarInfo), starstatSortF);
-
-    for (i = 0; i < ns; i++) {
-	sx[i] = sip[i].x;
-	sy[i] = sip[i].y;
-	sb[i] = sip[i].b;
-    }
-
-    free ((char *)sip);
-    return;
-}
-
-/* Sort in *decreasing* order */
-
-static int
-starstatSortF (ssp1, ssp2)
-
-void *ssp1, *ssp2;
-
-{
-    double d = ((_StarInfo *)ssp2)->b - ((_StarInfo *)ssp1)->b;
-
-    if (d < 0)
-	return (-1);
-    if (d > 0)
-	return (1);
-    return (0);
-}

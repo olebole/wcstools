@@ -1,18 +1,22 @@
-/*** File hput.c
- *** February 21, 1996
+/*** File libwcs/hput.c
+ *** August 6, 1996
  *** By Doug Mink
 
  * Module:	hput.c (Put FITS Header parameter values)
  * Purpose:	Implant values for parameters into FITS header string
- * Subroutine:	hputi2 (hstring,vname,ival) sets integer*2 ival
- * Subroutine:	hputi4 (hstring,vname,ival) sets int ival
- * Subroutine:	hputr4 (hstring,vname,rval) sets real*4 rval
- * Subroutine:	hputr8 (hstring,vname,dval) sets real*8 dval
- * Subroutine:	hputl  (hstring,vname,lval) sets logical lval
- * Subroutine:	hputs  (hstring,vname,cval) sets character string cval adding ''
- * Subroutine:	hputc  (hstring,vname,cval) sets character string cval
- * Subroutine:	hdel   (hstring,vname) deletes entry for keyword vname
- * Subroutine:	hputcom (hstring,vname,comment) sets comment for parameter vname
+ * Subroutine:	hputi2 (hstring,keyword,ival) sets integer*2 ival
+ * Subroutine:	hputi4 (hstring,keyword,ival) sets int ival
+ * Subroutine:	hputr4 (hstring,keyword,rval) sets real*4 rval
+ * Subroutine:	hputr8 (hstring,keyword,dval) sets real*8 dval
+ * Subroutine:	hputd8 (hstring,keyword,ndec,dval) sets real*8 dval
+ * Subroutine:	hputra (hstring,keyword,lval) sets right ascnesion as string
+ * Subroutine:	hputdec (hstring,keyword,lval) sets declination as string
+ * Subroutine:	hputl  (hstring,keyword,lval) sets logical lval
+ * Subroutine:	hputs  (hstring,keyword,cval) sets character string adding ''
+ * Subroutine:	hputc  (hstring,keyword,cval) sets character string cval
+ * Subroutine:	hdel   (hstring,keyword) deletes entry for keyword keyword
+ * Subroutine:	hchange (hstring,keyword1,keyword2) changes keyword for entry
+ * Subroutine:	hputcom (hstring,keyword,comment) sets comment for parameter keyword
  * Subroutine:	ra2str (out, ra, ndec) converts RA from degrees to string
  * Subroutine:	dec2str (out, dec, ndec) converts Dec from degrees to string
 
@@ -29,180 +33,262 @@
 #include "fitshead.h"
 
 static int verbose=0;	/* Set to 1 to print error messages and other info */
+void hputc();
 
 
-/*  HPUTI4 - Set int vname = ival in FITS header string */
+/*  HPUTI4 - Set int keyword = ival in FITS header string */
 
-hputi4 (hstring,vname,ival)
+void
+hputi4 (hstring,keyword,ival)
 
   char *hstring;	/* character string containing FITS-style header
 			   information in the format
-			   <vname>= <value> {/ <comment>}
+			   <keyword>= <value> {/ <comment>}
 			   each entry is padded with spaces to 80 characters */
 
-  char *vname;		/* character string containing the name of the variable
+  char *keyword;		/* character string containing the name of the variable
 			   to be returned.  hput searches for a line beginning
 			   with this string, and if there isn't one, creates one.
-		   	   The first 8 characters of vname must be unique. */
+		   	   The first 8 characters of keyword must be unique. */
   int ival;		/* int number */
 {
-	char value[30];
+    char value[30];
 
-/*  translate value from binary to ascii */
-	sprintf (value,"%d",ival);
+    /* Translate value from binary to ASCII */
+    sprintf (value,"%d",ival);
 
-/*  put value into header string */
-	hputc (hstring,vname,value);
+    /* Put value into header string */
+    hputc (hstring,keyword,value);
 
-/*  return to calling program */
-	return;
+    /* Return to calling program */
+    return;
 }
 
 
-/*  HPUTI2 - Set short vname = ival in FITS header string */
+/*  HPUTI2 - Set short keyword = ival in FITS header string */
 
-hputi2 (hstring,vname,ival)
+void
+hputi2 (hstring,keyword,ival)
 
-  char *hstring;
-  char *vname;
-  short ival;	/* short number */
+  char *hstring;	/* FITS header string */
+  char *keyword;		/* Keyword name */
+  short ival;		/* short number */
 
 {
-	char value[30];
+    char value[30];
 
-/*  translate value from binary to ascii */
-	sprintf (value,"%d",ival);
+    /* Translate value from binary to ASCII */
+    sprintf (value,"%d",ival);
 
-/*  put value into header string */
-	hputc (hstring,vname,value);
+    /* Put value into header string */
+    hputc (hstring,keyword,value);
 
-/*  return to calling program */
-	return;
+    /* Return to calling program */
+    return;
 }
 
 
-/*  HPUTR4 - Set float vname = rval in FITS header string */
+/*  HPUTR4 - Set float keyword = rval in FITS header string */
 
-hputr4 (hstring,vname,rval)
+void
+hputr4 (hstring,keyword,rval)
 
-  char *hstring;
-  char *vname;
-  float rval;	/* float number */
+char *hstring;		/* FITS header string */
+char *keyword;		/* Keyword name */
+float rval;		/* float number */
 {
-	char value[30];
+    char value[30];
 
-/*  translate value from binary to ascii */
-	sprintf (value,"%f",rval);
+    /* Translate value from binary to ASCII */
+    sprintf (value,"%f",rval);
 
-/*  put value into header string */
-	hputc (hstring,vname,value);
+    /* Put value into header string */
+    hputc (hstring,keyword,value);
 
-/*  return to calling program */
-	return;
+    /* Return to calling program */
+    return;
 }
 
 
-/*  HPUTR8 - Set double vname = dval in FITS header string */
+/*  HPUTR8 - Set double keyword = dval in FITS header string */
 
-hputr8 (hstring,vname,dval)
+void
+hputr8 (hstring,keyword,dval)
 
-  char *hstring;
-  char *vname;
-  double dval;	/* double number */
+char	*hstring;	/* FITS header string */
+char	*keyword;	/* Keyword name */
+double	dval;		/* double number */
 {
-	char value[30];
+    char value[30];
 
-/*  translate value from binary to ascii */
-	sprintf (value,"%f",dval);
+    /* Translate value from binary to ASCII */
+    sprintf (value,"%g",dval);
 
-/*  put value into header string */
-	hputc (hstring,vname,value);
+    /* Put value into header string */
+    hputc (hstring,keyword,value);
 
-/*  return to calling program */
-	return;
+    /* Return to calling program */
+    return;
 }
 
 
-/*  HPUTL - Set vname = F if lval=0, else T, in FITS header string */
+/*  HPUTNR8 - Set double keyword = dval in FITS header string */
 
-hputl (hstring,vname,lval)
+void
+hputnr8 (hstring,keyword,ndec,dval)
 
-  char *hstring;
-  char *vname;
-  int lval;	/* logical variable (0=false, else true */
+char	*hstring;	/* FITS header string */
+char	*keyword;	/* Keyword name */
+int	ndec;		/* Number of decimal places to print */
+double	dval;		/* double number */
 {
-	char value[8];
+    char value[30];
+    char format[8];
 
-/*  translate value from binary to ascii */
-	if (lval)
-	    strcpy (value, "T");
-	else
-	    strcpy (value, "F");
+    /* Translate value from binary to ASCII */
+    if (ndec < 0)
+	sprintf (value,"%g",dval);
+    else {
+	sprintf (format,"%%.%df",ndec);
+	sprintf (value,format,dval);
+	}
 
-/*  put value into header string */
-	hputc (hstring,vname,value);
+    /* Put value into header string */
+    hputc (hstring,keyword,value);
 
-/*  return to calling program */
-	return;
+    /* Return to calling program */
+    return;
 }
 
 
-/*  HPUTS - Set character string vname = 'cval' in FITS header string */
+/*  HPUTRA - Set double keyword = hh:mm:ss.sss in FITS header string */
 
-hputs (hstring,vname,cval)
+void
+hputra (hstring,keyword, ra)
 
-  char *hstring;
-  char *vname;
-  char *cval;	/* character string containing the value for variable
-		   vname.  trailing and leading blanks are removed.  */
+char *hstring;		/* FITS header string */
+char *keyword;		/* Keyword name */
+double ra;		/* Right ascension in degrees */
 {
-	char squot = 39;
-	char value[70];
-	int lcval;
+    char value[30];
 
-/*  find length of variable string */
+    /* Translate value from binary to ASCII */
+    ra2str (value, ra, 3);
 
-	lcval = strlen (cval);
-	if (lcval > 67)
-	    lcval = 67;
+    /* Put value into header string */
+    hputs (hstring,keyword,value);
 
-/*  put quotes around string */
-	value[0] = squot;
-	strncpy (&value[1],cval,lcval);
-	value[lcval+1] = squot;
-	value[lcval+2] = 0;
-
-/*  put value into header string */
-	hputc (hstring,vname,value);
-
-/*  return to calling program */
-	return;
+    /* Return to calling program */
+    return;
 }
 
 
-/*  HPUTC - Set character string vname = value in FITS header string */
+/*  HPUTDEC - Set double keyword = dd:mm:ss.sss in FITS header string */
 
-hputc (hstring,vname,value)
+void
+hputdec (hstring, keyword, dec)
 
-  char *hstring;
-  char *vname;
-  char *value;	/* character string containing the value for variable
-		   vname.  trailing and leading blanks are removed.  */
+char *hstring;		/* FITS header string */
+char *keyword;		/* Keyword name */
+double dec;		/* Declination in degrees */
+{
+    char value[30];
+
+    /* Translate value from binary to ASCII */
+    dec2str (value, dec, 2);
+
+    /* Put value into header string */
+    hputs (hstring,keyword,value);
+
+    /* Return to calling program */
+   return;
+}
+
+
+
+/*  HPUTL - Set keyword = F if lval=0, else T, in FITS header string */
+
+void
+hputl (hstring, keyword,lval)
+
+char *hstring;		/* FITS header */
+char *keyword;		/* Keyword name */
+int lval;		/* logical variable (0=false, else true) */
+{
+    char value[8];
+
+    /* Translate value from binary to ASCII */
+    if (lval)
+	strcpy (value, "T");
+    else
+	strcpy (value, "F");
+
+    /* Put value into header string */
+    hputc (hstring,keyword,value);
+
+    /* Return to calling program */
+    return;
+}
+
+
+/*  HPUTS - Set character string keyword = 'cval' in FITS header string */
+
+void
+hputs (hstring,keyword,cval)
+
+char *hstring;	/* FITS header */
+char *keyword;	/* Keyword name */
+char *cval;	/* character string containing the value for variable
+		   keyword.  trailing and leading blanks are removed.  */
+{
+    char squot = 39;
+    char value[70];
+    int lcval;
+
+    /*  find length of variable string */
+
+    lcval = strlen (cval);
+    if (lcval > 67)
+	lcval = 67;
+
+    /* Put quotes around string */
+    value[0] = squot;
+    strncpy (&value[1],cval,lcval);
+    value[lcval+1] = squot;
+    value[lcval+2] = 0;
+
+    /* Put value into header string */
+    hputc (hstring,keyword,value);
+
+    /* Return to calling program */
+    return;
+}
+
+
+/*  HPUTC - Set character string keyword = value in FITS header string */
+
+void
+hputc (hstring,keyword,value)
+
+char *hstring;
+char *keyword;
+char *value;	/* character string containing the value for variable
+		   keyword.  trailing and leading blanks are removed.  */
 {
 	char squot = 39;
 	char line[100];
 	char newcom[50];
 	char *v, *vp, *v1, *v2, *q1, *q2, *c1, *ve;
 	char *ksearch();
-	int lvname, lcom, lval, lc;
+	int lkeyword, lcom, lval, lc;
 
 /*  find length of keyword and value */
-	lvname = strlen (vname);
+	lkeyword = strlen (keyword);
 	lval = strlen (value);
 
 /*  If COMMENT or HISTORY, always add it just before the END */
-	if (lvname == 7 && (strncmp (vname,"COMMENT",7) == 0 ||
-	    strncmp (vname,"HISTORY",7) == 0)) {
+	if (lkeyword == 7 && (strncmp (keyword,"COMMENT",7) == 0 ||
+	    strncmp (keyword,"HISTORY",7) == 0)) {
 
 	/* Find end of header */
 	    v1 = ksearch (hstring,"END");
@@ -212,10 +298,10 @@ hputc (hstring,vname,value)
 	    strncpy (v2, v1, 80);
 
 	/* Insert keyword */
-	    strncpy (v1,vname,7);
+	    strncpy (v1,keyword,7);
 
 	/* Pad with spaces */
-	    for (vp = v1+lvname; vp < v2; vp++)
+	    for (vp = v1+lkeyword; vp < v2; vp++)
 		*vp = ' ';
 
 	/* Insert comment */
@@ -225,7 +311,7 @@ hputc (hstring,vname,value)
 
 /* Otherwise search for keyword */
 	else
-	    v1 = ksearch (hstring,vname);
+	    v1 = ksearch (hstring,keyword);
 
 /*  Find end of header */
 	ve = ksearch (hstring,"END");
@@ -274,7 +360,7 @@ hputc (hstring,vname,value)
 	    *vp = ' ';
 
 /*  Copy keyword to new entry */
-	strncpy (v1, vname, lvname);
+	strncpy (v1, keyword, lkeyword);
 
 /*  Add parameter value in the appropriate place */
 	vp = v1 + 8;
@@ -309,9 +395,9 @@ hputc (hstring,vname,value)
 
 	if (verbose) {
 	    if (lcom > 0)
-		printf ("HPUT: %s  = %s  / %s\n",vname, value, newcom);
+		printf ("HPUT: %s  = %s  / %s\n",keyword, value, newcom);
 	    else
-		printf ("HPUT: %s  = %s\n",vname, value);
+		printf ("HPUT: %s  = %s\n",keyword, value);
 	    }
 
 	return;
@@ -320,26 +406,27 @@ hputc (hstring,vname,value)
 
 /*  HPUTCOM - Set comment for keyword or on line in FITS header string */
 
-hputcom (hstring,vname,comment)
+void
+hputcom (hstring,keyword,comment)
 
   char *hstring;
-  char *vname;
+  char *keyword;
   char *comment;
 {
 	char squot;
 	char line[100];
-	int lvname, lcom;
+	int lkeyword, lcom;
 	char *vp, *v1, *v2, *c0, *c1, *q1, *q2;
 	char *ksearch();
 
 	squot = 39;
 
 /*  Find length of variable name */
-	lvname = strlen (vname);
+	lkeyword = strlen (keyword);
 
 /*  If COMMENT or HISTORY, always add it just before the END */
-	if (lvname == 7 && (strncmp (vname,"COMMENT",7) == 0 ||
-	    strncmp (vname,"HISTORY",7) == 0)) {
+	if (lkeyword == 7 && (strncmp (keyword,"COMMENT",7) == 0 ||
+	    strncmp (keyword,"HISTORY",7) == 0)) {
 
 	/* Find end of header */
 	    v1 = ksearch (hstring,"END");
@@ -349,17 +436,17 @@ hputcom (hstring,vname,comment)
 	/*  blank out new line and insert keyword */
 	    for (vp = v1; vp < v2; vp++)
 		*vp = ' ';
-	    strncpy (v1, vname, lvname);
+	    strncpy (v1, keyword, lkeyword);
 	    }
 
 /* search header string for variable name */
 	else {
-	    v1 = ksearch (hstring,vname);
+	    v1 = ksearch (hstring,keyword);
 
 	/* if parameter is not found, return without doing anything */
 	    if (v1 == NULL) {
 		if (verbose)
-		    printf ("HPUTCOM: %s not found\n",vname);
+		    printf ("HPUTCOM: %s not found\n",keyword);
 		return;
 		}
 
@@ -392,56 +479,95 @@ hputcom (hstring,vname,comment)
 	    }
 
 	if (verbose) {
-	    printf ("HPUTCOM: %s / %s\n",vname,comment);
+	    printf ("HPUTCOM: %s / %s\n",keyword,comment);
 	    }
 }
 
 
-/*  HDEL - Set character string vname = value in FITS header string
- *	   Returns 1 if entry deleted, else 0
+/*  HDEL - Set character string keyword = value in FITS header string
+ *	    returns 1 if entry deleted, else 0
  */
 
 int
-hdel (hstring,vname)
+hdel (hstring,keyword)
 
-  char *hstring;
-  char *vname;
+char *hstring;		/* FITS header */
+char *keyword;		/* Keyword of entry to be deleted */
 {
-	char *v, *v1, *v2, *ve;
-	char *ksearch();
+    char *v, *v1, *v2, *ve;
+    char *ksearch();
 
-/* Search for keyword */
-	v1 = ksearch (hstring,vname);
+    /* Search for keyword */
+    v1 = ksearch (hstring,keyword);
 
-/*  If keyword is not found, return header unchanged */
-	if (v1 == NULL) {
-	    return (0);
+    /*  If keyword is not found, return header unchanged */
+    if (v1 == NULL) {
+	return (0);
+	}
+
+    /*  Find end of header */
+    ve = ksearch (hstring,"END");
+
+    /* Shift rest of header up one line */
+    for (v = v1; v < ve; v = v + 80) {
+	v2 = v + 80;
+	strncpy (v, v2, 80);
+	}
+
+    /* Cover former last line with spaces */
+    v2 = ve + 80;
+    for (v = ve; v < v2; v++)
+	*v = ' ';
+
+    return (1);
+}
+
+
+/*  HCHANGE - Changes keyword for entry from keyword1 to keyword2 in FITS
+              header string
+ *	      returns 1 if entry changed, else 0
+ */
+
+int
+hchange (hstring, keyword1, keyword2)
+
+char *hstring;		/* FITS header */
+char *keyword1;		/* Keyword to be changed */
+char *keyword2;		/* New keyword name */
+{
+    char *v, *v1, *v2;
+    int lv2, i;
+    char *ksearch();
+
+    /* Search for keyword */
+    v1 = ksearch (hstring,keyword1);
+
+    /*  If keyword is not found, return header unchanged */
+    if (!v1)
+	return (0);
+
+    else {
+	lv2 = strlen (keyword2);
+	v = v1;
+	v2 = keyword2;
+	for (i = 0; i < 8; i++) {
+	    if (i < lv2)
+		v[i] = v2[i];
+	    else
+		v[i] = ' ';
 	    }
+	}
 
-/*  Find end of header */
-	ve = ksearch (hstring,"END");
-
-/* Shift rest of header up one line */
-	for (v = v1; v < ve; v = v + 80) {
-	    v2 = v + 80;
-	    strncpy (v, v2, 80);
-	    }
-
-/* Cover former last line with spaces */
-	v2 = ve + 80;
-	for (v = ve; v < v2; v++)
-	    *v = ' ';
-
-	return (1);
+    return (1);
 }
 
 
 /* sprint the right ascension ra in sexagesimal format into out[] */
 
 void
-ra2str (out, ra, ndec)
+ra2str (string, ra, ndec)
 
-char	*out;	/* Character string (returned) */
+char	*string;	/* Character string (returned) */
 double	ra;	/* Right ascension in degrees */
 int	ndec;	/* Number of decimal places in seconds */
 
@@ -476,7 +602,7 @@ int	ndec;	/* Number of decimal places in seconds */
 	    }
 	if (hours > 23)
 	    hours = hours - 24;
-	(void) sprintf (out,"%2d:%02d:%06.3f",hours,minutes,seconds);
+	(void) sprintf (string,"%2d:%02d:%06.3f",hours,minutes,seconds);
 	}
     else if (ndec > 1) {
 	if (seconds > 59.99) {
@@ -489,7 +615,7 @@ int	ndec;	/* Number of decimal places in seconds */
 	    }
 	if (hours > 23)
 	    hours = hours - 24;
-	(void) sprintf (out,"%2d:%02d:%05.2f",hours,minutes,seconds);
+	(void) sprintf (string,"%2d:%02d:%05.2f",hours,minutes,seconds);
 	}
     else if (ndec > 0) {
 	if (seconds > 59.9) {
@@ -502,7 +628,7 @@ int	ndec;	/* Number of decimal places in seconds */
 	    }
 	if (hours > 23)
 	    hours = hours - 24;
-	(void) sprintf (out,"%2d:%02d:%04.1f",hours,minutes,seconds);
+	(void) sprintf (string,"%2d:%02d:%04.1f",hours,minutes,seconds);
 	}
     else if (ndec > -1) {
 	if (isec > 59) {
@@ -515,18 +641,18 @@ int	ndec;	/* Number of decimal places in seconds */
 	    }
 	if (hours > 23)
 	    hours = hours - 24;
-	(void) sprintf (out,"%2d:%02d:%04.1f",hours,minutes,seconds);
+	(void) sprintf (string,"%2d:%02d:%04.1f",hours,minutes,seconds);
 	}
     return;
 }
 
 
-/* sprint the variable a in sexagesimal format into out[]. */
+/* sprint the variable a in sexagesimal format into string[]. */
 
 void
-dec2str (out, dec, ndec)
+dec2str (string, dec, ndec)
 
-char	*out;	/* Character string (returned) */
+char	*string;	/* Character string (returned) */
 double	dec;	/* Declination in degrees */
 int	ndec;	/* Number of decimal places in arcseconds */
 
@@ -568,7 +694,7 @@ int	ndec;	/* Number of decimal places in arcseconds */
 	    minutes = 0;
 	    degrees = degrees + 1;
 	    }
-	(void) sprintf (out,"%c%02d:%02d:%06.3f",sign,degrees,minutes,seconds);
+	(void) sprintf (string,"%c%02d:%02d:%06.3f",sign,degrees,minutes,seconds);
 	}
     else if (ndec > 1) {
 	if (seconds > 59.99) {
@@ -579,7 +705,7 @@ int	ndec;	/* Number of decimal places in arcseconds */
 	    minutes = 0;
 	    degrees = degrees + 1;
 	    }
-	(void) sprintf (out,"%c%02d:%02d:%05.2f",sign,degrees,minutes,seconds);
+	(void) sprintf (string,"%c%02d:%02d:%05.2f",sign,degrees,minutes,seconds);
 	}
     else if (ndec > 0) {
 	if (seconds > 59.9) {
@@ -590,7 +716,7 @@ int	ndec;	/* Number of decimal places in arcseconds */
 	    minutes = 0;
 	    degrees = degrees + 1;
 	    }
-	(void) sprintf (out,"%c%02d:%02d:%04.1f",sign,degrees,minutes,seconds);
+	(void) sprintf (string,"%c%02d:%02d:%04.1f",sign,degrees,minutes,seconds);
 	}
     else if (ndec > -1) {
 	if (isec > 59) {
@@ -601,13 +727,16 @@ int	ndec;	/* Number of decimal places in arcseconds */
 	    minutes = 0;
 	    degrees = degrees + 1;
 	    }
-	(void) sprintf (out,"%c%02d:%02d:%04.1f",sign,degrees,minutes,seconds);
+	(void) sprintf (string,"%c%02d:%02d:%04.1f",sign,degrees,minutes,seconds);
 	}
-    return;
+   return;
 }
 /* Dec 14 1995	Original subroutines
 
  * Feb  5 1996	Added HDEL to delete keyword entry from FITS header
  * Feb  7 1996	Add EOS to LINE in HPUTC
- * Feb 21 1996	Add RA and Dec to string routines
+ * Feb 21 1996	Add RA2STR and DEC2STR string routines
+ * Jul 19 1996	Add HPUTRA and HPUTDEC
+ * Jul 22 1996	Add HCHANGE to change keywords
+ * Aug  5 1996	Add HPUTNR8 to save specific number of decimal places
  */
