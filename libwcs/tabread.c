@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** March 19, 2004
+ *** November 17, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2004
@@ -1420,14 +1420,14 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
     /* Find column and name of object spectral type */
     sc->enttype = 0;
     sc->keytype[0] = (char) 0;
-    if ((sc->enttype = tabcol (startab, "TYPE")))
-	strcpy (sc->keytype, "TYPE");
-    else if ((sc->enttype = tabcol (startab, "type")))
-	strcpy (sc->keytype, "type");
-    else if ((sc->enttype = tabcol (startab, "SpT")))
+    if ((sc->enttype = tabcol (startab, "SpT")))
 	strcpy (sc->keytype, "spt");
     else if ((sc->enttype = tabcol (startab, "spt")))
 	strcpy (sc->keytype, "spt");
+    else if ((sc->enttype = tabcol (startab, "TYPE")))
+	strcpy (sc->keytype, "TYPE");
+    else if ((sc->enttype = tabcol (startab, "type")))
+	strcpy (sc->keytype, "type");
     else if ((sc->enttype = tabcont (startab, "typ"))) {
 	i = sc->enttype - 1;
 	strncpy (sc->keytype, startab->colname[i], startab->lcol[i]);
@@ -2681,4 +2681,5 @@ char    *filename;      /* Name of file to check */
  * Jan  5 2004	If more than 15 digits in numberic ID, drop excess off front
  * Mar 16 2004	Be more clever about reading by number
  * Mar 19 2004	Make verbose flag global
+ * Nov 17 2004	Accept SpT and spt before type for spectral type
  */

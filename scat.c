@@ -1,5 +1,5 @@
 /* File scat.c
- * October 20, 2004
+ * November 19, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -1944,11 +1944,17 @@ double	eqout;		/* Equinox for output coordinates */
 			    if (srchcat->sptype) {
 				if (strlen (srch->isp) > 2) {
 				    padspt = 1;
-				    printf ("s_type     	");
+				    if (strlen (srchcat->keytype) >0)
+					printf ("s_%s 	",srchcat->keytype);
+				    else
+					printf ("s_type  	");
 				    }
 				else {
 				    padspt = 0;
-				    printf ("s_type	");
+				    if (strlen (srchcat->keytype) >0)
+					printf ("s_%s	",srchcat->keytype);
+				    else
+					printf ("s_type	");
 				    }
 				}
 			    if (srchcat->entrv > 0) {
@@ -2008,7 +2014,7 @@ double	eqout;		/* Equinox for output coordinates */
 			if (mprop == 1)
 			    printf ("pmra  	pmdec 	");
 			if (refcat == UB1)
-			    printf ("pm	ni	");
+			    printf ("pm	ni	sg	");
 			if (refcat == GSC2)
 			    printf ("class	");
 			if ((starcat[icat]!=NULL && starcat[icat]->entrv>0) &&
@@ -2040,7 +2046,7 @@ double	eqout;		/* Equinox for output coordinates */
 				printf ("---------	");
 			    if (srchcat->sptype != 0) {
 				if (padspt)
-				    printf ("---------------	");
+				    printf ("-------	");
 				else
 				    printf ("----	");
 				}
@@ -2073,7 +2079,7 @@ double	eqout;		/* Equinox for output coordinates */
 			if (mprop == 1)
 			    printf ("------	------	");
 			if (refcat == UB1)
-			    printf ("--	--	");
+			    printf ("--	--	--	");
 			printf ("--	");
 			for (i = 0; i < LenNum(das,2); i++)
 			    printf ("-");
@@ -2138,15 +2144,15 @@ double	eqout;		/* Equinox for output coordinates */
 			    }
 			if (srchcat->sptype != 0) {
 			    if (padspt) {
-				for (i = 0; i < 14; i++) {
+				for (i = 0; i < 7; i++) {
 				    if (srch->isp[i] == (char) 0)
 					srch->isp[i] = ' ';
 				    }
-				srch->isp[14] = (char) 0;
+				srch->isp[7] = (char) 0;
 				if (tabout)
-				    printf ("	%14s", srch->isp);
+				    printf ("	%7s", srch->isp);
 				else
-				    printf ("  %14s ", srch->isp);
+				    printf ("  %7s ", srch->isp);
 				}
 			    else if (tabout)
 				printf ("	%s", srch->isp);
@@ -2290,9 +2296,11 @@ double	eqout;		/* Equinox for output coordinates */
 			}
 		    if (refcat == UB1) {
 			if (tabout)
-			    printf ("	%2d	%2d", gc[0]/100, gc[0]%100);
+			    printf ("	%2d	%2d	%2d",
+				    gc[0]%10000/100, gc[0]%100, gc[0]/10000);
 			else
-			    printf (" %2d %2d", gc[0]/100, gc[0]%100);
+			    printf (" %2d %2d %2d",
+				    gc[0]%10000/100, gc[0]%100, gc[0]/10000);
 			}
 		    if (refcat == GSC2) {
 			if (tabout)
@@ -2684,7 +2692,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    else if (refcat == TMXSC)
 		strcat (headline,"	magj  	magh  	magk  	size  ");
 	    else if (refcat == UB1)
-		strcat (headline, "	magb1	magr1	magb2	magr2	magn 	pm	ni");
+		strcat (headline, "	magb1	magr1	magb2	magr2	magn 	pm	ni	sg");
 	    else if (refcat == YB6)
 		strcat (headline, "	magb 	magr 	magj 	magh 	magk ");
 	    else if (refcat == SDSS)
@@ -2765,7 +2773,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    if (refcat == GSC || refcat == GSCACT)
 		strcat (headline,"	-----	----	-");
 	    else if (refcat == UB1)
-		strcat (headline,"	--	--");
+		strcat (headline,"	--	--	--");
 	    else if (typecol == 1)
 		strcat (headline,"	----");
 	    else if (typecol == 2)
@@ -2951,7 +2959,7 @@ double	eqout;		/* Equinox for output coordinates */
 		refcat == UJC)
 		strcat (headline, "  Plate");
 	    else if (refcat == UB1)
-		strcat (headline, " PM  NI");
+		strcat (headline, " PM NI SG");
 	    else if (refcat==GSC2)
 		strcat (headline, " Class");
 	    else if (refcat == GSC || refcat == GSCACT)
@@ -2980,7 +2988,6 @@ double	eqout;		/* Equinox for output coordinates */
 		printf ("%s\n", headline);
 	    }
 	nohead = 0;
-	}
 
     /* Find maximum separation for formatting */
     gdmax = 0.0;
@@ -3133,9 +3140,9 @@ double	eqout;		/* Equinox for output coordinates */
 			}
 		    }
 		else if (refcat == UB1)
-		    sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f	%.2f	%2d	%2d",
+		    sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f	%.2f	%2d	%2d	%2d",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],gm[4][i],
-		     gc[i]/100, gc[i]%100);
+		     gc[i]%10000/100, gc[i]%100, gc[i]/10000);
 		else if (refcat == YB6)
 		    sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f	%.2f",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],gm[4][i]);
@@ -3319,7 +3326,8 @@ double	eqout;		/* Equinox for output coordinates */
 		    strcat (headline, temp);
 		    }
 		else if (refcat == UB1) {
-		    sprintf (temp," %2d %2d", gc[i]/100, gc[i]%100);
+		    sprintf (temp," %2d %2d %2d",
+			    gc[i]%10000/100, gc[i]%100, gc[i]/10000);
 		    strcat (headline, temp);
 		    }
 		else if (refcat == GSC || refcat == GSCACT) {
@@ -3408,6 +3416,7 @@ double	eqout;		/* Equinox for output coordinates */
 		    printf ("%s\n", headline);
 		}
 	    }
+	}
 
 	/* If searching more than one catalog, separate them with blank line */
 	if (ncat > 0 && icat < ncat-1)
@@ -4398,4 +4407,6 @@ PrintGSClass ()
  *		or tab table output mode
  * Sep 17 2004	Use -h to turn off header if no stars found in tab table mode
  * Oct 20 2004	Fix -rr and -r two argument definitions to match reality
+ * Nov 17 2004	Fix main output loop bug and print type name in one line output
+ * Nov 19 2004	Add star/galaxy code to USNO-B1.0 output
  */

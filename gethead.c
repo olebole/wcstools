@@ -1,5 +1,5 @@
 /* File gethead.c
- * April 15, 2004
+ * January 14, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -1060,4 +1060,7 @@ char *string;
  * Nov 18 2003	Fix strclean() to keep all of exponents (found by Anthony Miceli)
  *
  * Apr 15 2004	Allow e as well as E for exponents
+ * Dec 20 2004	If printing filename for tab-separated file, head with PathName
+ *
+ * Jan 14 2005	Change PathName back to filename
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/tmcread.c
- *** January 23, 2004
+ *** November 10, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2003
+ *** Copyright (C) 2001-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -992,6 +992,7 @@ int	verbose;	/* 1 for diagnostics */
 	    }
 	ispd1 = (int) (spd1 * 10.0);
 	ispd2 = (int) (spd2 * 10.0);
+	if (ispd2 > 1799) ispd2 = 1799;
 	for (ispd = ispd1; ispd <= ispd2; ispd++) {
 	    /* Add this region to list, if there is space */
 	    if (nrgn < nrmax) {
@@ -1430,4 +1431,5 @@ int	istar;		/* Star sequence in 2MASS zone file */
  * Jan 13 2004	Add support for 2MASS Extended Source Catalog
  * Jan 14 2004	Add code to fix convergence in tmcsra()
  * Jan 23 2004	Fix search algorith in tmcsra()
+ * Nov 10 2004	Fix region computation at north pole
  */

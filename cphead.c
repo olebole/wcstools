@@ -1,5 +1,5 @@
 /* File cphead.c
- * April 15, 2004
+ * January 13, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -461,11 +461,11 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		hputs (headout, kwd[ikwd], string);
 
 	    if (verbose)
-		printf ("%s = %s", kwd[ikwd], string);
+		printf ("%s = %s\n", kwd[ikwd], string);
 	    nfound++;
 	    }
 	else if (verbose)
-	    printf ("%s not found\n", kwd[ikwd]);
+	    printf ("%s not found\r", kwd[ikwd]);
 	else
 	    notfound = 1;
 	}
@@ -687,4 +687,6 @@ char *string;
  * Dec  4 2003	Initialize infile to null (bug found by Jean-Francois Le Borgne)
  *
  * Apr 15 2004	Avoid removing trailing zeroes from exponents
+ *
+ * Jan 13 2005	Print linefeed after verbose confirmation, not after missing kw
  */

@@ -1,5 +1,5 @@
 /* File getcol.c
- * August 30, 2004
+ * November 10, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -162,6 +162,29 @@ char **av;
 
 	/* Set range and make a list of column numbers from it */
 	else if (isrange (*av)) {
+	    if (ranges) {
+		newbytes = strlen(ranges) + strlen(*av) + 2;
+		newbytes = ((newbytes / 16) + 1) * 16;
+		if (newbytes > nrbytes) {
+		    temp = ranges;
+		    ranges = (char *) calloc (newbytes, 1);
+		    strcpy (ranges, temp);
+		    nrbytes = newbytes;
+		    free (temp);
+		    }
+		strcat (ranges, ",");
+		strcat (ranges, *av);
+		}
+	    else {
+		ranges = (char *) calloc (strlen(*av) + 2, 1);
+		if (strchr (*av,'.'))
+		    match = 1;
+		strcpy (ranges, *av);
+		}
+	    }
+
+	/* Negative numbers aren't ranges, but positive ones are */
+	else if (isnum (*av)) {
 	    if (ranges) {
 		newbytes = strlen(ranges) + strlen(*av) + 2;
 		newbytes = ((newbytes / 16) + 1) * 16;
@@ -1637,4 +1660,5 @@ void *pd1, *pd2;
  * Apr 15 2004	Avoid removing trailing zeroes from exponents
  * Jul 14 2004	Fix bug in online help message
  * Aug 30 2004
+ * Nov 10 2004	Add -column to include rest of line to newline
  */

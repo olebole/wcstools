@@ -1,5 +1,5 @@
 /* File imsize.c
- * December 18, 2003
+ * January 12, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -337,9 +337,15 @@ char *name;
 	filename = namext;
     ext = strsrch (filename, ".imh");
     if (ext == NULL)
+	ext = strsrch (filename,".IMH");
+    if (ext == NULL)
 	ext = strsrch (filename,".fit");
     if (ext == NULL)
+	ext = strsrch (filename,".FIT");
+    if (ext == NULL)
 	ext = strsrch (filename,".fts");
+    if (ext == NULL)
+	ext = strsrch (filename,".FTS");
     if (ext != NULL)
 	nc = ext - filename;
     else
@@ -579,4 +585,6 @@ char *name;
  *
  * Apr 11 2003	Add -d option for degree center
  * Dec 18 2003	Print decimal degrees for longitude/latitude output
+ *
+ * Jan 12 2005	Check for uppercase filename extensions
  */

@@ -1,5 +1,5 @@
 /* File delhead.c
- * July 1, 2004
+ * January 12, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -213,6 +213,7 @@ char	*kwd[];		/* Names of those keywords */
     char *image;	/* FITS image */
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
+    int nblold, nblnew;	/* Number of FITS blocks (=2880 bytes) in header */
     char *irafheader;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
     int lext, lroot, naxis;
@@ -305,6 +306,8 @@ char	*kwd[];		/* Names of those keywords */
 
     /* Compare size of output header to size of input header */
     nbnew = fitsheadsize (header);
+    nblnew = (int) (0.98 + (double) nbnew / 2880.0);
+    nblold = (int) (0.98 + (double) nbold / 2880.0);
     if (nbnew > nbold && naxis == 0 && bitpix != 0) {
 	if (verbose)
 	    fprintf (stderr, "Rewriting primary header, copying rest of file\n");
@@ -398,7 +401,7 @@ char	*kwd[];		/* Names of those keywords */
 	}
 
     /* Rewrite only header if it fits into the space from which it was read */
-    else if (nbnew <= nbold && !newimage) {
+    else if (nblnew == nblold && !newimage) {
 	if (!fitswexhead (newname, header)) {
 	    if (verbose)
 		printf ("%s: rewritten successfully.\n", newname);
@@ -472,4 +475,6 @@ char	*kwd[];		/* Names of those keywords */
  * May  6 2004	Allow keywords to be deleted from extension headers
  * Jul  1 2004	Do not drop lines from multi-extension headers
  * Jul  1 2004	Change first extension if no extension specified
+ *
+ * Jan 12 2005	Write over unread image only if number of header blocks same
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/ubcread.c
- *** August 27, 2004
+ *** January 12, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2004
+ *** Copyright (C) 2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -81,6 +81,7 @@ static double ubcmag();
 static double ubcpra();
 static double ubcpdec();
 static int ubcpmq();
+static int ubcsg();
 static int ubcmagerr();
 static int ubcgsc();
 static int ubcndet();
@@ -150,6 +151,7 @@ int	nlog;		/* Logging interval */
     int itable, jtable,jstar;
     int nstar, nread, pass;
     int ubra1, ubra2, ubdec1, ubdec2;
+    int nsg, qsg;
     double ra,dec, ra0, dec0;
     double mag, magtest, secmarg;
     int istar, istar1, istar2, pmni, nid;
@@ -360,7 +362,19 @@ int	nlog;		/* Logging interval */
 			    pmqual = ubcpmq (star.pm);
 			    if (nid == 0)
 				pmqual = 10;
-			    pmni = (100 * pmqual) + nid;
+			    nsg = 0;
+			    qsg = 0;
+			    for (i = 0; i < 5; i++) {
+				if (star.mag[i] > 0) {
+				    nsg++;
+				    qsg = qsg + ubcsg (star.mag[i]);
+				    }
+				}
+			    if (pmqual == 10 || nsg < 1)
+				qsg = 12;
+			    else
+				qsg = qsg / nsg;
+			    pmni = (10000 * qsg) + (100 * pmqual) + nid;
 
 			    /* Convert to search equinox and epoch */
 			    if (pmqual < minpmqual) {
@@ -418,7 +432,8 @@ int	nlog;		/* Logging interval */
 				printf ("	%6.1f	%6.1f",
 					rapm * 3600000.0 * cosdeg(dec),
 					decpm * 3600000.0);
-				printf ("	%d	%d", pmqual, nid);
+				printf ("	%d	%d	%d",
+					pmqual, nid, qsg);
 				printf ("	%.2f\n", dist/60.0);
 				}
 
@@ -592,6 +607,7 @@ int	nlog;		/* Logging interval */
     double rapm, decpm;
     double dstar;
     int istar, pmni, nid;
+    int nsg, qsg;
     char *str;
 
     /* Set catalog code and path to catalog */
@@ -646,7 +662,19 @@ int	nlog;		/* Logging interval */
 		nid = ubcndet (star.pmerr);
 		if (nid == 0)
 		    pmqual = 10;
-		pmni = (100 * pmqual) + nid;
+		nsg = 0;
+		qsg = 0;
+		for (i = 0; i < 5; i++) {
+		    if (star.mag[i] > 0) {
+			nsg++;
+			qsg = qsg + ubcsg (star.mag[i]);
+			}
+		    }
+		if (pmqual == 10 || nsg < 1)
+		    qsg = 12;
+		else
+		    qsg = qsg / nsg;
+		pmni = (10000 * qsg) + (100 * pmqual) + nid;
 
 		/* Convert to desired equinox and epoch */
 		if (pmqual < minpmqual) {
@@ -744,6 +772,7 @@ int	nlog;		/* Logging interval */
     int wrap, iwrap;
     int verbose;
     int znum, itot,iz, i;
+    int nsg, qsg;
     int itable, jtable,jstar;
     int nstar, nread, pass;
     int ubra1, ubra2, ubdec1, ubdec2;
@@ -917,7 +946,19 @@ int	nlog;		/* Logging interval */
 			    pmqual = ubcpmq (star.pm);
 			    if (nid == 0)
 				pmqual = 10;
-			    pmni = (100 * pmqual) + nid;
+			    nsg = 0;
+			    qsg = 0;
+			    for (i = 0; i < 5; i++) {
+				if (star.mag[i] > 0) {
+				    nsg++;
+				    qsg = qsg + ubcsg (star.mag[i]);
+				    }
+				}
+			    if (pmqual == 10 || nsg < 1)
+				qsg = 12;
+			    else
+				qsg = qsg / nsg;
+			    pmni = (10000 * qsg) + (100 * pmqual) + nid;
 
 			    /* Convert to search equinox and epoch */
 			    if (pmqual < minpmqual) {
@@ -1175,6 +1216,22 @@ int magetc;	/* Quality, plate, and magnitude from UB catalog entry */
 }
 
 
+/* UBCSG -- returns closeness to star PSF (0-11) */
+
+static int
+ubcsg (magetc)
+
+int magetc;	/* Quality, plate, and magnitude from UB catalog entry */
+{
+    if (ucat == YB6)
+	return (0);
+    else if (magetc < 0)
+	return (-magetc / 100000000);
+    else
+	return (magetc / 100000000);
+}
+
+
 /* UBCZONE -- find the UB zone number where a declination can be found */
 
 static int
@@ -1413,4 +1470,7 @@ int nbytes = nbent; /* Number of bytes to reverse */
  * Dec 12 2003	Fix bug in wcs2pix() call in ubcbin()
  *
  * Aug 27 2004	Include fitsfile.h
+ * Nov 19 2004	Return galaxy/star type code (qsg=0-11) in upmni vector
+ *
+ * Jan 12 2005	Declare ubcsg()
  */

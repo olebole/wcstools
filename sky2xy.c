@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * August 30, 2004
+ * January 20, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,6 +17,7 @@
 static void PrintUsage();
 extern void setrot(),setsys(),setcenter(),setsecpix(),setrefpix(),setdateobs();
 extern struct WorldCoor *GetFITSWCS ();	/* Read WCS from FITS or IRAF header */
+extern struct WorldCoor *GetWCSFITS ();	/* Read WCS from FITS or IRAF file */
 extern char *GetFITShead();
 static int version = 0;		/* If 1, print only program name and version */
 
@@ -52,6 +53,7 @@ char **av;
     char coorsys[16];
     int ndec = 3;		/* Number of decimal places in output coords */
     char printonly = 'b';
+    int modwcs = 0;		/* 1 if image WCS modified on command line */
 
     wcs = NULL;
 
@@ -81,6 +83,7 @@ char **av;
 		    PrintUsage (str);
 		drot = atof (*++av);
                 setrot (drot);
+		modwcs = 1;
                 ac--;
                 break;
 
@@ -101,6 +104,7 @@ char **av;
 		    strcpy (decstr, *++av);
 		    ac--;
 		    setcenter (rastr, decstr);
+		    modwcs = 1;
 		    }
     		break;
 
@@ -129,6 +133,7 @@ char **av;
 		    strcpy (decstr, *++av);
 		    ac--;
 		    setcenter (rastr, decstr);
+		    modwcs = 1;
 		    }
     		break;
 
@@ -151,6 +156,7 @@ char **av;
 		if (ac < 2)
 		    PrintUsage (str);
 		setsecpix (atof (*++av));
+		modwcs = 1;
 		ac--;
 		break;
 	
@@ -161,6 +167,7 @@ char **av;
 		ac--;
 		ny = atoi (*++av);
 		ac--;
+		modwcs = 1;
     		break;
 
 	    case 'x':	/* X and Y coordinates of reference pixel */
@@ -171,6 +178,7 @@ char **av;
 		y = atof (*++av);
 		ac--;
 		setrefpix (x, y);
+		modwcs = 1;
 		break;
 
 	    case 'y':	/* Epoch of image in FITS date format */
@@ -178,6 +186,7 @@ char **av;
 		    PrintUsage (str);
 		setdateobs (*++av);
 		ac--;
+		modwcs = 1;
 		break;
 
 	    case 'z':       /* Use AIPS classic WCS */
@@ -202,6 +211,8 @@ char **av;
 	if (verbose)
 	    printf ("%s:\n", fn);
 	header = GetFITShead (fn, verbose);
+	wcs = GetFITSWCS (fn,header,verbose,&cra,&cdec,&dra,&ddec,&secpix,
+			  &wp, &hp, &sysout, &eqout);
 	}
     else {
 	fn = NULL;
@@ -216,13 +227,11 @@ char **av;
 	hputi4 (header, "NAXIS", 2);
 	hputi4 (header, "NAXIS1", 100);
 	hputi4 (header, "NAXIS2", 100);
+	wcs = GetFITSWCS (fn,header,verbose,&cra,&cdec,&dra,&ddec,&secpix,
+			  &wp, &hp, &sysout, &eqout);
 	}
 
     /* Initialize world coordinate system structure */
-    /* if (fn != NULL)
-	wcs = GetWCSFITS (fn, verbose); */
-    wcs = GetFITSWCS (fn, header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-		      &wp, &hp, &sysout, &eqout);
     if (nowcs (wcs)) {
 	if (fn == NULL)
 	    fprintf (stderr, "Incomplete WCS on command line\n");
@@ -439,4 +448,6 @@ char	*command;
  * Jul 22 2003	(bug found and fix suggested by Takehiko Wada, ISAS)
  *
  * Aug 30 2004	Declare undeclared void subroutines
+ *
+ * Jan 20 2005	Set WCS directly from header if no command line changes
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/ucacread.c
- *** December 12, 2003
+ *** January 4, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2003
+ *** Copyright (C) 2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -623,7 +623,7 @@ int	nlog;		/* 1 for diagnostics */
 		    gmag[imag][jstar] = star->xmag[imag];
 		}
 	    if (nlog == 1) {
-		if (ucat = UCAC1)
+		if (ucat == UCAC1)
 		    fprintf (stderr,"UCACRNUM: %11.6f: %9.5f %9.5f %5.2f %s  \n",
 			     num, ra, dec, mag, star->isp);
 		else
@@ -1284,4 +1284,6 @@ char *string;	/* Address of Integer*4 or Real*4 vector */
  * Nov 18 2003	Initialize image size and bits/pixel from header in ucacbin()
  * Dec  1 2003	Add missing tab to n=-1 header
  * Dec 12 2003	Fix bug in wcs2pix() call in ucacbin()
+ *
+ * Jan  4 2005	Fix bug in if statement on line 626 found by Dan Katz at JPL
  */

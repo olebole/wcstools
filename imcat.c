@@ -1,5 +1,5 @@
 /* File imcat.c
- * September 16, 2004
+ * November 19, 2004
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -60,6 +60,7 @@ static int webdump = 0;
 static char *progname;		/* Name of program as executed */
 static int minid = 0;		/* Minimum number of plate IDs for USNO-B1.0 */
 static int minpmqual = 0;	/* Minimum USNO-B1.0 proper motion quality */
+static int printepoch = 0;	/* 1 to print epoch of entry */
 
 extern int getminpmqual();
 extern int getminid();
@@ -651,6 +652,7 @@ int	*region_char;	/* Character for SAOimage region file output */
     char title[80];
     char outfile[80];
     char *fname;
+    char *temp1;
     char magname[8];
     char isp[4];
     int icat;
@@ -907,6 +909,12 @@ int	*region_char;	/* Character for SAOimage region file output */
 	    maxnum = gnum[i];
 	}
     nnfld = CatNumLen (refcat, maxnum, nndec);
+
+    /* Check to see if epoch is contained in entries */
+    if (starcat[icat] != NULL && starcat[icat]->nepoch != 0)
+	printepoch = 1;
+    else
+	printepoch = 0;
 
     /* Get image pixel coordinates for each star found in reference catalog */
     for (i = 0; i < nbg; i++ ) {
@@ -1294,16 +1302,18 @@ int	*region_char;	/* Character for SAOimage region file output */
     else if (refcat == TMXSC)
 	strcat (headline,"magj   	magh   	magk  	");
     else if (refcat == SDSS)
-	printf ("magu       magg    magr    magi    magz    ");
+	printf ("magu   	magg   	magr   	magi   	magz    ");
     else {
 	for (imag = 0; imag < nmag; imag++) {
-	    if (starcat[icat] != NULL &&
+	    if (printepoch && imag == nmag-1)
+		sprintf (temp, "epoch     	");
+	    else if (starcat[icat] != NULL &&
 		strlen (starcat[icat]->keymag[imag]) > 0)
-		sprintf (temp, "    %s ", starcat[icat]->keymag[imag]);
-	    else if (nmag > 1)
-		sprintf (temp, "    mag%d ", imag);
+		sprintf (temp, "%s 	", starcat[icat]->keymag[imag]);
+	    else if ((!printepoch && nmag > 1) || (printepoch && nmag > 2))
+		sprintf (temp, "mag%d 	", imag);
 	    else
-		sprintf (temp, "    mag  ");
+		sprintf (temp, "mag  	");
 	    strcat (headline, temp);
 	    }
 	}
@@ -1318,7 +1328,7 @@ int	*region_char;	/* Character for SAOimage region file output */
     else if (refcat == GSC || refcat == GSCACT)
 	strcat (headline,"class 	band	N	");
     else if (refcat == UB1)
-	strcat (headline,"pm 	ni	");
+	strcat (headline,"pm 	ni	sg	");
     else if (refcat == TMXSC)
 	strcat (headline,"size  	");
     else if (sptype == 1)
@@ -1360,7 +1370,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"	-----	-----	-----	-----");
     else {
 	for (imag = 1; imag < nmag; imag++) {
-	    sprintf (temp, "	-----");
+	    if (printepoch && imag == nmag-1)
+		sprintf (temp, "	----------");
+	    else
+		sprintf (temp, "	-----");
 	    strcat (headline, temp);
 	    }
 	}
@@ -1368,7 +1381,7 @@ int	*region_char;	/* Character for SAOimage region file output */
     if (refcat == GSC || refcat == GSCACT)
 	strcat (headline,"	-----	----	-");	/* class, band, n */
     else if (refcat == UB1)
-	strcat (headline,"	--	--");
+	strcat (headline,"	--	--	--");
     else if (refcat == TMXSC)
 	strcat (headline,"	------");
     else if (gcset)
@@ -1439,7 +1452,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 	    else if (refcat == UCAC2)
 		printf ("MagJ  MagH  MagK  MagC    X       Y   \n");
 	    else if (refcat == UB1)
-		printf ("MagB1 MagR1 MagB2 MagR2 MagN  PM NI    X       Y   \n");
+		printf ("MagB1 MagR1 MagB2 MagR2 MagN  PM NI SG    X       Y   \n");
 	    else if (refcat == YB6)
 		printf ("MagB  MagR  MagJ  MagH  MagK    X       Y   \n");
 	    else if (refcat == SDSS)
@@ -1458,10 +1471,12 @@ int	*region_char;	/* Character for SAOimage region file output */
 		printf ("MagR   MagV    X       Y     \n");
 	    else if (refcat == TABCAT) {
 		for (imag = 0; imag < nmag; imag++) {
-		    if (starcat[icat] != NULL &&
+		    if (printepoch && imag == nmag-1)
+			sprintf (temp, "    epoch   ");
+		    else if (starcat[icat] != NULL &&
 			strlen (starcat[icat]->keymag[imag]) > 0)
 			sprintf (temp, "    %s ", starcat[icat]->keymag[imag]);
-		    else if (nmag > 1)
+		    else if ((!printepoch && nmag > 1) || (printepoch && nmag > 2))
 			sprintf (temp, "    mag%d ", imag);
 		    else
 			sprintf (temp, "    mag  ");
@@ -1517,9 +1532,9 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
 		else if (refcat == UB1)
-		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%5.2f	%2d	%2d",
+		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%5.2f	%2d	%2d	%2d",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],
-		     gm[4][i],gc[i]/100,gc[i]%100);
+		     gm[4][i],gc[i]%10000/100,gc[i]%100,gc[i]/10000);
 		else if (refcat == YB6 || refcat == SDSS)
 		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%5.2f",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],
@@ -1571,7 +1586,14 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline, "%s	%s	%s",
 			     numstr, rastr, decstr);
 		    for (imag = 0; imag < nmag; imag++) {
-			if (gm[imag][i] > 100.0)
+			if (printepoch && imag == nmag-1) {
+			    temp1 = ep2fd (gm[nmag-1][i]);
+			    if (strlen (temp1) > 10)
+				temp1[10] = (char) 0;
+			    sprintf (temp, "	%10s", temp1);
+			    free (temp1);
+			    }
+			else if (gm[imag][i] > 100.0)
 			    sprintf (temp, "	%5.2fL",gm[imag][i]-100.0);
 			else
 			    sprintf (temp, "	%5.2f",gm[imag][i]);
@@ -1632,9 +1654,9 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline,"%s %s %s %5.2f %5.2f %5.2f %5.2f",
 			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
 		else if (refcat == UB1)
-		    sprintf (headline,"%s %s %s %5.2f %5.2f %5.2f %5.2f %5.2f %2d %2d",
+		    sprintf (headline,"%s %s %s %5.2f %5.2f %5.2f %5.2f %5.2f %2d %2d %2d",
 			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],
-			     gm[3][i],gm[4][i],gc[i]/100,gc[i]%100);
+			     gm[3][i],gm[4][i],gc[i]%10000/100,gc[i]%100,gc[i]/10000);
 		else if (refcat == YB6)
 		    sprintf (headline,"%s %s %s %5.2f %5.2f %5.2f %5.2f %5.2f",
 			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],
@@ -1667,7 +1689,14 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline,"%s %s %s",
 			     numstr,rastr,decstr);
 		    for (imag = 0; imag < nmag; imag++) {
-			if (gm[imag][i] > 100.0)
+			if (printepoch && imag == nmag-1) {
+			    temp1 = ep2fd (gm[nmag-1][i]);
+			    if (strlen (temp1) > 10)
+				temp1[10] = (char) 0;
+			    sprintf (temp, "	%10s", temp1);
+			    free (temp1);
+			    }
+			else if (gm[imag][i] > 100.0)
 			    sprintf (temp, " %5.2fL",gm[imag][i]-100.0);
 			else
 			    sprintf (temp, " %5.2f ",gm[imag][i]);
@@ -2000,4 +2029,6 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Jan 22 2004	Call setlimdeg() to optionally print limits in degrees
  * Aug 30 2004	Fix declarations
  * Sep 16 2004	Fix RA limits in ImageLim() to deal with wrap through 0:00
+ * Nov  5 2004	Print epoch if in ASCII catalog
+ * Nov 19 2004	Print star/galaxy type for USNO-B1.0
  */

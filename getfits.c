@@ -1,5 +1,5 @@
 /* File getfits.c
- * September 17, 2004
+ * December 6, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -342,6 +342,7 @@ char *errmsg;	/* Error message */
     fprintf(stderr,"  -k file: file of keyword names to delete from output header\n");
     fprintf(stderr,"  -o name: output name for one file\n");
     fprintf(stderr,"  -s: write output to standard output\n");
+    fprintf(stderr,"  -x dx dy: dimensions of image section to be extracted\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
 }
@@ -648,7 +649,8 @@ int	nkwd;
     else if (verbose)
 	fprintf (stderr, "NEWFITS: File %s not written.\n", fitspath);
 
-    fprintf (stderr, "\n");
+    if (verbose)
+	fprintf (stderr, "\n");
     free (newimage);
     free (header);
     return (0);
@@ -920,4 +922,5 @@ char *newname;
  * Apr 16 2004	Delete NAXISn for n > 2 in output image
  * Sep 15 2004	Fix bug dealing with center specified as sky coordinates
  * Sep 17 2004	Add option to set extraction center as decimal degrees
+ * Dec  6 2004	Don't print gratuitous newline at end of process
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/ctgread.c
- *** April 23, 2004
+ *** January 18, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2004
+ *** Copyright (C) 1998-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -370,6 +370,10 @@ int	nlog;
 		    if (tmag[imag] != NULL)
 			tmag[imag][nstar] = star->xmag[imag];
 		    }
+		if (sc->mprop == 1) {
+		    tpra[nstar] = rapm;
+		    tpdec[nstar] = decpm;
+		    }
 		if (sc->sptype)
 		    tc[nstar] = isp;
 		tdist[nstar] = dist;
@@ -399,6 +403,10 @@ int	nlog;
 		    tnum[farstar] = num;
 		    tra[farstar] = ra;
 		    tdec[farstar] = dec;
+		    if (sc->mprop == 1) {
+			tpra[farstar] = rapm;
+			tpdec[farstar] = decpm;
+			}
 		    for (imag = 0; imag < sc->nmag; imag++) {
 			if (tmag[imag] != NULL)
 			    tmag[imag][farstar] = star->xmag[imag];
@@ -434,6 +442,10 @@ int	nlog;
 		tnum[faintstar] = num;
 		tra[faintstar] = ra;
 		tdec[faintstar] = dec;
+		if (sc->mprop == 1) {
+		    tpra[faintstar] = rapm;
+		    tpdec[faintstar] = decpm;
+		    }
 		for (imag = 0; imag < sc->nmag; imag++) {
 		    if (tmag[imag] != NULL)
 			tmag[imag][faintstar] = star->xmag[imag];
@@ -673,6 +685,10 @@ int	nlog;
 	    tnum[nstar] = star->num;
 	    tra[nstar] = ra;
 	    tdec[nstar] = dec;
+	    if (sc->mprop == 1) {
+		tpra[nstar] = rapm;
+		tpdec[nstar] = decpm;
+		}
 	    for (imag = 0; imag < sc->nmag; imag++) {
 		if (tmag[imag] != NULL)
 		    tmag[imag][nstar] = star->xmag[imag];
@@ -856,6 +872,10 @@ int	nlog;
 	tnum[nstar] = star->num;
 	tra[nstar] = ra;
 	tdec[nstar] = dec;
+	if (sc->mprop == 1) {
+	    tpra[nstar] = rapm;
+	    tpdec[nstar] = decpm;
+	    }
 	for (imag = 0; imag < sc->nmag; imag++) {
 	    if (tmag[imag] != NULL)
 		tmag[imag][nstar] = star->xmag[imag];
@@ -1510,7 +1530,7 @@ struct StarCat *sc; /* Star catalog data structure */
 struct Star *st; /* Star data structure, updated on return */
 {
     struct Tokens tokens;
-    double ydate, dtemp;
+    double ydate, dtemp, xhr;
     char *line;
     char *nextline;
     char token[80];
@@ -1663,9 +1683,12 @@ struct Star *st; /* Star data structure, updated on return */
 	int decsgn = 0;
 	double sec;
 
-	deg = (int) (atof (token) + 0.5);
-	if (strchr (token, '-') != NULL)
+	if (strchr (token, '-') != NULL) {
 	    decsgn = 1;
+	    deg = (int) (atof (token) - 0.5);
+	    }
+	else
+	    deg = (int) (atof (token) + 0.5);
 	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok < 1)
 	    return (-1);
@@ -1675,7 +1698,7 @@ struct Star *st; /* Star data structure, updated on return */
 	    return (-1);
 	sec = atof (token);
 	st->dec = (double) deg + ((double) min / 60.0) + (sec / 3600.0);
-	if (deg > 0 && decsgn)
+	if (deg > -1 && decsgn)
 	    st->dec = -st->dec;
 	}
 
@@ -2042,4 +2065,7 @@ char	*in;	/* Character string */
  * Jan 12 2004	Add 2MASS Extended Source Catalog to ctgread() and ctgrnum()
  * Apr 23 2004	Add ctgrdate() to read by date range
  * Apr 23 2004	Fix bug in ctgrnum() to index all returns on nstar, not jnum
+ * Nov  5 2004	Finish implementing proper motion in ASCII catalogs
+ *
+ * Jan 18 2005	Fix bug dealing with negative declinations in ASCII table format
  */

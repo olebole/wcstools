@@ -1,5 +1,5 @@
 /* File setpix.c
- * February 19, 2003
+ * November 17, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -70,40 +70,8 @@ char **av;
     for (av++; --ac > 0; av++) {
 	str = *av;
 
-	if (str[0] == '-') {
-	    char c;
-	    while (c = *++str) {
-		switch (c) {
-		    case 'a':	/* Add constant to image section */
-			op = PIX_ADD;
-			break;
-		    case 'd':	/* Divide image section by constant */
-			op = PIX_DIV;
-			break;
-		    case 'i':	/* print each change */
-			eachpix++;
-			break;
-		    case 'm':	/* Multiply image section by constant */
-			op = PIX_MUL;
-			break;
-		    case 'n':	/* ouput new file */
-			newimage++;
-			break;
-		    case 's':	/* Subtract constant from image section */
-			op = PIX_SUB;
-			break;
-		    case 'v':	/* some verbosity */
-			verbose++;
-			break;
-		    default:
-			usage ();
-			break;
-		    }
-		}
-	    }
-
 	/* Set up pixel changes from a file */
-	else if (str[0] == '@') {
+	if (str[0] == '@') {
 	    listfile = str+1;
 	    if ((flist = fopen (listfile, "r")) == NULL) {
 		fprintf (stderr,"CONPIX: List file %s cannot be read\n",
@@ -180,6 +148,39 @@ char **av;
 		value[iv] = NULL;
 		}
 	    }
+
+	else if (str[0] == '-') {
+	    char c;
+	    while (c = *++str) {
+		switch (c) {
+		    case 'a':	/* Add constant to image section */
+			op = PIX_ADD;
+			break;
+		    case 'd':	/* Divide image section by constant */
+			op = PIX_DIV;
+			break;
+		    case 'i':	/* print each change */
+			eachpix++;
+			break;
+		    case 'm':	/* Multiply image section by constant */
+			op = PIX_MUL;
+			break;
+		    case 'n':	/* ouput new file */
+			newimage++;
+			break;
+		    case 's':	/* Subtract constant from image section */
+			op = PIX_SUB;
+			break;
+		    case 'v':	/* some verbosity */
+			verbose++;
+			break;
+		    default:
+			usage ();
+			break;
+		    }
+		}
+	    }
+
 	else {
 	    fn[i] = str;
 	    i++;
@@ -682,4 +683,6 @@ char	**value;	/* value to insert into pixel */
  * Dec  5 2002	Drop header HISTORY if more than 10 ranges of pixels set
  *
  * Feb 19 2003	Fix bug which caused pixels to always be set as integers
+ *
+ * Nov 17 2004	Check for arguments after numbers so negative pixel values work
  */

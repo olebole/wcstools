@@ -1,8 +1,8 @@
 /*** File libwcs/imgetwcs.c
- *** October 29, 2004
+ *** January 20, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -387,8 +387,14 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 
     wcs->crval[0] = wcs->xref;
     wcs->crval[1] = wcs->yref;
-    wcs->cel.ref[0] = wcs->crval[0];
-    wcs->cel.ref[1] = wcs->crval[1];
+    if (wcs->coorflip) {
+	wcs->cel.ref[0] = wcs->crval[1];
+	wcs->cel.ref[1] = wcs->crval[0];
+	}
+    else {
+	wcs->cel.ref[0] = wcs->crval[0];
+	wcs->cel.ref[1] = wcs->crval[1];
+	}
     wcs->cel.flag = 0;
     wcs->wcsl.flag = 0;
     wcs->equinox = *eqout;
@@ -688,4 +694,6 @@ char *dateobs;
  * Jul 26 2004	Fix image size when wrapping around RA=0:00
  * Sep 16 2004	Fix verbose mode search size in GetFITSWCS()
  * Oct 29 2004	Fix problem setting RA size from limits
+ *
+ * Jan 20 2005	Fix cel.ref assignment if axis are switched
  */
