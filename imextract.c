@@ -1,5 +1,5 @@
 /* File imextract.c
- * September 28, 2000
+ * December 11, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -195,7 +195,7 @@ char **av;
 		filename[strlen (filename) - 1] = 0;
 		cspace = strchr (filename,' ');
 		if (cspace != NULL)
-		    *cspace = NULL;
+		    *cspace = (char) 0;
 		ExtractImage (filename, ranges, ifile, nkwd, kwd);
 		}
 	    }
@@ -576,4 +576,5 @@ char	*kwd[];		/* Names and values of those keywords */
  *
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  * Sep 28 2000	Read only first token of listfile
+ * Dec 11 2000	Set character to 0, not null
  */

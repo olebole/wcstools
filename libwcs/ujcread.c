@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** June 26, 20000
+ *** November 29, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -22,6 +22,9 @@ typedef struct {
 static int nstars;	/* Number of stars in catalog */
 static int cswap = 0;	/* Byte reverse catalog to Intel/DEC order if 1 */
 static FILE *fcat;
+static int refcat;	/* Code for catalog */
+static char *catname;
+
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 #define NZONES 24
 
@@ -37,12 +40,13 @@ static int ujcpath();
 static int ujcstar();
 static void ujcswap();
 
-/* UJCREAD -- Read USNO J Catalog stars from CDROM */
+/* UJCREAD -- Read USNO J Catalog stars from CDROM or plate catalog from file */
 
 int
-ujcread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,
-	 nstarmax,unum,ura,udec,umag,uplate,verbose)
+ujcread (refcatname,cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,
+	 mag1,mag2,nstarmax,unum,ura,udec,umag,uplate,verbose)
 
+char    *refcatname;    /* Name of catalog (UJC, xxxxx.usno) */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
@@ -74,6 +78,7 @@ int	verbose;	/* 1 for diagnostics */
     UJCstar star;	/* UJ catalog entry for one star */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
     char cstr[32];
     double num;		/* UJ number */
     int xplate;		/* If nonzero, use objects only from this plate */
@@ -88,13 +93,25 @@ int	verbose;	/* 1 for diagnostics */
     int istar, istar1, istar2, plate;
     int nzmax = NZONES;	/* Maximum number of declination zones */
     char *str;
+    char title[128];
 
     itot = 0;
     xplate = getuplate ();
 
-    /* Set path to USNO J Catalog */
-    if ((str = getenv("UJ_PATH")) != NULL )
-	strcpy (cdu,str);
+    /* Set catalog code and path to catalog */
+    catname = refcatname;
+    refcat = RefCat (refcatname, title, &sysref, &eqref, &epref);
+    if (refcat == UJC && (str = getenv("UJ_PATH")) != NULL ) {
+
+	/* If pathname is a URL, search and return */
+	if (!strncmp (str, "http:",5)) {
+	    return (webread (str,"ujc",distsort,cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nstarmax,
+			     unum,ura,udec,NULL,NULL,umag,NULL,uplate,verbose));
+	    }
+	else
+	    strcpy (cdu,str);
+	}
 
     wcscstr (cstr, sysout, eqout, epout);
 
@@ -106,19 +123,23 @@ int	verbose;	/* 1 for diagnostics */
 	mag2 = mag1;
 	mag1 = mag;
 	}
-
-    /* Find UJ Star Catalog regions in which to search */
     rra1 = ra1;
     rra2 = ra2;
     rdec1 = dec1;
     rdec2 = dec2;
-    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
-	    &rra1, &rra2, &rdec1, &rdec2, verbose);
-    nz = ujczones (rra1, rra2, rdec1, rdec2, nzmax, zlist, verbose);
-    if (nz <= 0) {
-	fprintf (stderr,"UJCREAD:  no UJ zones found\n");
-	return (0);
+
+    /* Find UJ Star Catalog regions in which to search */
+    if (refcat == UJC) {
+	RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
+		&rra1, &rra2, &rdec1, &rdec2, verbose);
+	nz = ujczones (rra1, rra2, rdec1, rdec2, nzmax, zlist, verbose);
+	if (nz <= 0) {
+	    fprintf (stderr,"UJCREAD:  no UJ zones found\n");
+	    return (0);
+	    }
 	}
+    else
+	nz = 1;
 
     /* If RA range includes zero, set a flag */
     wrap = 0;
@@ -191,7 +212,10 @@ int	verbose;	/* 1 for diagnostics */
 			    (drad == 0.0 || dist < drad) &&
 			    (xplate == 0 || plate == xplate)) {
 
-			    num = (double) znum + (0.0000001 * (double)istar);
+			    if (refcat == UJC)
+				num = (double) znum + (0.0000001*(double)istar);
+			    else
+				num = (double)istar;
 
 			    /* Save star position and magnitude in table */
 			    if (nstar < nstarmax) {
@@ -301,10 +325,12 @@ int	verbose;	/* 1 for diagnostics */
     return (nstar);
 }
 
+/* UJCRNUM -- Read USNO J Catalog stars from CDROM or plate catalog from file */
 
 int
-ujcrnum (nnum,sysout,eqout,epout,unum,ura,udec,umag,uplate,nlog)
+ujcrnum (refcatname,nnum,sysout,eqout,epout,unum,ura,udec,umag,uplate,nlog)
 
+char    *refcatname;    /* Name of catalog (UAC, USAC, UAC2, USAC2) */
 int	nnum;		/* Number of stars to find */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
@@ -319,6 +345,7 @@ int	nlog;		/* Logging interval */
     UJCstar star;	/* UJ catalog entry for one star */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
 
     int znum;
     int jnum;
@@ -328,10 +355,22 @@ int	nlog;		/* Logging interval */
     double mag;
     int istar, plate;
     char *str;
+    char title[128];
 
-    /* Set path to USNO J Catalog */
-    if ((str = getenv("UJ_PATH")) != NULL )
-	strcpy (cdu,str);
+    /* Set catalog code and path to catalog */
+    catname = refcatname;
+    refcat = RefCat (refcatname, title, &sysref, &eqref, &epref);
+
+    if (refcat == UJC && (str = getenv("UJ_PATH")) != NULL ) {
+
+	/* If pathname is a URL, search and return */
+	if (!strncmp (str, "http:",5)) {
+	    return (webrnum (str,"ujc",nnum,sysout,eqout,epout,
+			     unum,ura,udec,NULL,NULL,umag,NULL,uplate,nlog));
+	    }
+	else
+	    strcpy (cdu,str);
+	}
 
 /* Loop through star list */
     for (jnum = 0; jnum < nnum; jnum++) {
@@ -340,18 +379,21 @@ int	nlog;		/* Logging interval */
 	znum = (int) unum[jnum];
 	if ((nzone = ujcopen (znum)) != 0) {
 
-	    istar = (int) (((unum[jnum] - znum) * 100000000.0) + 0.5);
+	    if (refcat == UJC)
+		istar = (int) (((unum[jnum] - znum) * 100000000.0) + 0.5);
+	    else
+		istar = (int) (unum[jnum] + 0.5);
 
 	/* Check to make sure star can be in this zone */
 	    if (istar > nzone) {
-		fprintf (stderr,"UACRNUM: Star %d > zone max. %d\n",
+		fprintf (stderr,"UJCRNUM: Star %d > zone max. %d\n",
 			 istar, nzone);
 		break;
 		}
 
 	/* Read star entry from catalog */
 	    if (ujcstar (istar, &star)) {
-		fprintf (stderr,"UACRNUM: Cannot read star %d\n", istar);
+		fprintf (stderr,"UJCRNUM: Cannot read star %d\n", istar);
 		break;
 		}
 
@@ -582,7 +624,7 @@ ujcopen (znum)
 
 int znum;	/* UJ Catalog zone */
 {
-    char zonepath[64];	/* Pathname for input UJ zone file */
+    char zonepath[128];	/* Pathname for input UJ zone file */
     UJCstar star;	/* UJ catalog entry for one star */
     struct stat statbuff;
     
@@ -614,7 +656,7 @@ int znum;	/* UJ Catalog zone */
 	return (0);
 	}
     else {
-	if (star.rasec > 100000 || star.rasec < 0) {
+	if (star.decsec < 0) {
 	    cswap = 1;
 	    fprintf (stderr,"UJCOPEN: swapping bytes in UJ zone catalog %s\n",
 		     zonepath);
@@ -636,7 +678,11 @@ int zn;		/* UJ zone number */
 char *path;	/* Pathname of UJ zone file */
 
 {
-    if (zn < 0 || zn > 1725) {
+    if (refcat == USNO) {
+	strcpy (path, catname);
+	return (0);
+	}
+    else if (zn < 0 || zn > 1725) {
 	fprintf (stderr, "UJCPATH: zone %d out of range 0-1725\n",zn);
 	return (-1);
 	}
@@ -736,4 +782,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Oct 21 1999	Delete unused variables after lint
  *
  * Jun 26 2000	Add coordinate system to SearchLim() arguments
+ * Oct 25 2000	Add USNO plate catalogs; fix byte order test
+ * Nov 29 2000	Add option to read UJ catalog using HTTP
  */

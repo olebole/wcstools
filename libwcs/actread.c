@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** September 25, 2000
+ *** December 11, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -12,9 +12,9 @@
 #include "wcs.h"
 #include "wcscat.h"
 
-char cdpath[64]="/data/act";	/* pathname of ACT CDROM */
+/* pathname of ACT CDROM or catalog search engine URL */
+char actcd[64]="/data/act";
 
-static void actpath();
 static int actreg();
 struct StarCat *actopen();
 void actclose();
@@ -59,7 +59,6 @@ int	nlog;		/* 1 for diagnostics */
     double *gdist;	/* Array of distances to stars */
     int nreg;		/* Number of ACT regions in search */
     int rlist[100];	/* List of input region files */
-    char inpath[128];	/* Pathname for input region file */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
@@ -85,8 +84,20 @@ int	nlog;		/* 1 for diagnostics */
 	verbose = 0;
 
     /* Set path to ACT Catalog */
-    if ((str = getenv("ACT_PATH")) != NULL )
-	strcpy (cdpath,str);
+    if ((str = getenv("ACT_PATH")) != NULL ) {
+
+	/* If pathname is a URL, search and return */
+	if (!strncmp (str, "http:",5)) {
+	    return (webread (str,"act",distsort,cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nstarmax,
+			     gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+	    }
+	}
+    if (!strncmp (actcd, "http:",5)) {
+	return (webread (actcd,"act",distsort,cra,cdec,dra,ddec,drad,
+			 sysout,eqout,epout,mag1,mag2,nstarmax,
+			 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+	}
 
     wcscstr (cstr, sysout, eqout, epout);
 
@@ -147,10 +158,9 @@ int	nlog;		/* 1 for diagnostics */
 
 	/* Loop through region list */
 	for (ireg = 0; ireg < nreg; ireg++) {
-	    actpath (rlist[ireg],inpath);
 
 	    /* Open catalog file for this region */
-	    starcat = actopen (inpath);
+	    starcat = actopen (rlist[ireg]);
 	    rnum = rlist[ireg];
 
 	    /* Set first and last stars to check */
@@ -330,7 +340,6 @@ double	*gmagb;		/* Array of B magnitudes (returned) */
 int	*gtype;		/* Array of object types (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
-    char inpath[128];	/* Pathname for input region file */
     int sysref;		/* Catalog coordinate system */
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
@@ -344,8 +353,18 @@ int	nlog;		/* 1 for diagnostics */
     char *str;
 
     /* Set path to ACT Catalog */
-    if ((str = getenv("ACT_PATH")) != NULL )
-	strcpy (cdpath,str);
+    if ((str = getenv("ACT_PATH")) != NULL ) {
+
+	/* If pathname is a URL, search and return */
+	if (!strncmp (str, "http:",5)) {
+	    return (webrnum (str,"act",nstars, sysout,eqout,epout,
+			     gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+	    }
+	}
+    if (!strncmp (actcd, "http:",5)) {
+	return (webrnum (actcd,"act",nstars, sysout,eqout,epout,
+			 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+	}
 
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
@@ -356,13 +375,11 @@ int	nlog;		/* 1 for diagnostics */
 /* Loop through star list */
     for (jstar = 0; jstar < nstars; jstar++) {
 	rnum = (int) gnum[jstar];
-	actpath (rnum,inpath);
 	snum = (int) (((gnum[jstar] - (double)rnum) * 100000.0) + 0.01);
 
 	/* Open file for this region of ACT catalog */
-	starcat = actopen (inpath);
+	starcat = actopen (rnum);
 	if (starcat == NULL) {
-	    fprintf (stderr,"ACTRNUM: File %s not found\n",inpath);
 	    free ((void*) star);
 	    return (0);
 	    }
@@ -515,58 +532,50 @@ int	verbose;	/* 1 for diagnostics */
 }
 
 
-/* ACTPATH -- Get ACT Catalog region file pathname */
-
-static void
-actpath (regnum,path)
-
-int regnum;	/* ACT Catalog region number */
-char *path;	/* Pathname of ACT region file */
-
-{
-
-/* Set the pathname using the appropriate ACT CDROM directory */
-
-/* Declination zoned regions */
-    if (regnum > 0 && regnum < 5)
-	sprintf (path,"%s/data2/act%1d.dat", cdpath, regnum);
-
-/* Right ascension zoned regions */
-    else
-	sprintf (path,"%s/data1/act%04d.dat", cdpath, regnum);
-
-    return;
-}
-
-
 /* ACTOPEN -- Open ACT catalog region file, returning number of entries */
 
 struct StarCat *
-actopen (actcat)
+actopen (regnum)
 
-char *actcat;	/* ACT catalog region file name */
+int regnum;	/* ACT Catalog region number */
+
 {
     FILE *fcat;
     struct StarCat *sc;
-    int lfile;
+    int lfile, lpath;
     char *actfile;
-    char actpath[128];	/* Full pathname for catalog file */
+    char *path;		/* Full pathname for catalog file */
     static int actsize();
+    char *cdpath;
+
+    /* Set the pathname using the appropriate ACT CDROM directory */
+    if ((cdpath = getenv("ACT_PATH")) == NULL )
+	cdpath = actcd;
+    lpath = strlen (cdpath) + 32;
+    path = (char *) calloc (lpath, 1);
+
+    /* Declination zoned regions */
+    if (regnum > 0 && regnum < 5)
+	sprintf (path,"%s/data2/act%1d.dat", cdpath, regnum);
+
+    /* Right ascension zoned regions */
+    else
+	sprintf (path,"%s/data1/act%04d.dat", cdpath, regnum);
 
     /* Find length of ACT catalog region file */
-    lfile = actsize (actcat);
+    lfile = actsize (path);
 
     /* Check for existence of catalog */
     if (lfile < 2) {
-	fprintf (stderr,"ACTOPEN: Binary catalog %s has no entries\n",actcat);
+	fprintf (stderr,"ACTOPEN: Binary catalog %s has no entries\n", path);
+	free (path);
 	return (0);
 	}
-    else
-	strcpy (actpath, actcat);
 
     /* Open ACT region file */
-    if (!(fcat = fopen (actpath, "r"))) {
-	fprintf (stderr,"ACTOPEN: ACT region file %s cannot be read\n",actpath);
+    if (!(fcat = fopen (path, "r"))) {
+	fprintf (stderr,"ACTOPEN: ACT region file %s cannot be read\n",path);
+	free (path);
 	return (0);
 	}
 
@@ -578,11 +587,11 @@ char *actcat;	/* ACT catalog region file name */
     sc->nstars = lfile / sc->nbent;
 
     /* Separate filename from pathname and save in structure */
-    actfile = strrchr (actpath,'/');
+    actfile = strrchr (path,'/');
     if (actfile)
 	actfile = actfile + 1;
     else
-	actfile = actpath;
+	actfile = path;
     if (strlen (actfile) < 24)
 	strcpy (sc->isfil, actfile);
     else
@@ -827,4 +836,6 @@ char	*filename;	/* Name of file for which to find size */
  * Jun  9 2000	Fix bug which caused memory overflow if limiting number
  * Jun 26 2000	Add coordinate system to SearchLim() arguments
  * Sep 25 2000	Set sc->sptype to 2 to indicate presence of spectral type
+ * Nov 29 2000	Add option to read catalog using HTTP
+ * Dec 11 2000	Allow catalog search engine URL in actcd[]
  */

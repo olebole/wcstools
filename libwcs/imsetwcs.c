@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * July 25, 2000
+ * December 18, 2000
  * By Doug Mink, based on UIowa code
  */
 
@@ -17,6 +17,8 @@ extern int FindStars();
 extern int TriMatch();
 extern int FocasMatch();
 extern int StarMatch();
+extern int ReadMatch();
+extern int FitMatch();
 extern int FitPlate();
 extern struct WorldCoor *GetFITSWCS ();
 extern char *getimcat();
@@ -37,7 +39,6 @@ static double tolerance = PIXDIFF;	/* +/- this many pixels is a hit */
 static double refmag1 = MAGLIM1;	/* reference catalog magnitude limit */
 static double refmag2 = MAGLIM2;	/* reference catalog magnitude limit */
 static int refcat = GSC;		/* reference catalog switch */
-static char refcatname[32]="GSC";	/* reference catalog name */
 static double frac = 1.0;		/* Additional catalog/image stars */
 static int nofit = 0;			/* if =1, do not fit WCS */
 static int maxcat = MAXSTARS;		/* Maximum number of catalog stars to use */
@@ -99,7 +100,6 @@ int	verbose;
     int imw, imh;	/* Image size, pixels */
     int imsearch = 1;	/* Flag set if image should be searched for sources */
     int nmax;		/* Maximum number of matches possible (nrg or nbs) */
-    int mprop = 0;	/* 1 if proper motion in catalog */
     double mag1,mag2;
     double dxys;
     char numstr[32];
@@ -154,27 +154,32 @@ int	verbose;
     else {
 	refcat = RefCat (refcatname, title, &refsys, &refeq, &refep);
 	wcscstr (refcoor, refsys, refeq, refep);
-	mprop = PropCat ();
 	}
 
     /* Use already-matched stars first, if they are present */
     if (strlen (matchcat) > 0) {
+	if ((nbin = ReadMatch (matchcat, sx, sy, gra, gdec)) < 1) {
+	    ret = 0;
+	    goto out;
+	    }
+
+	/* Set WCS from image header and command line */
 	wcs = GetFITSWCS (filename,header,verbose,&cra,&cdec,&dra,&ddec,
 			  &secpix, &imw,&imh,&refsys, &refeq);
-	nbin = FitMatch (nbin, sx, sy, gra, gdec, gx, gy, dx, dy, wcs, verbose);
-	imcatname = getimcat ();
-	if (strlen (imcatname) == 0)
-	    imcatname = filename;
-	hputs (header, "WCSRFCAT", refcatname);
-	hputs (header, "WCSIMCAT", imcatname);
+	if (nowcs (wcs)) {
+	    ret = 0;
+	    goto out;
+	    }
+	nbin = FitMatch (nbin, sx, sy, gra, gdec, gx, gy, wcs, verbose);
+	hputs (header, "WCSRFCAT", matchcat);
+	hputs (header, "WCSIMCAT", matchcat);
 	hputi4 (header, "WCSMATCH", nbin);
-	if (ns < nbg)
-	    hputi4 (header, "WCSNREF", ns);
-	else
-	    hputi4 (header, "WCSNREF", nbg);
+	hputi4 (header, "WCSNREF", nbin);
 	hputnr8 (header, "WCSTOL", 4, tolerance);
 
 	SetFITSWCS (header, wcs);
+	if (refcatname == NULL)
+	    goto match;
 	}
 
     /* get nominal position and scale */
@@ -224,18 +229,12 @@ getfield:
     if (!(gdec = (double *) calloc (ngmax, sizeof(double))))
 	fprintf (stderr, "Could not calloc %d bytes for gdec\n",
 		 ngmax*sizeof(double));
-    if (mprop) {
-	if (!(gpra = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gpra\n",
+    if (!(gpra = (double *) calloc (ngmax, sizeof(double))))
+	fprintf (stderr, "Could not calloc %d bytes for gpra\n",
 		 ngmax*sizeof(double));
-	if (!(gpdec = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
+    if (!(gpdec = (double *) calloc (ngmax, sizeof(double))))
+	fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
 		 ngmax*sizeof(double));
-	}
-    else {
-	gpra = NULL;
-	gpdec = NULL;
-	}
     if (!(gm = (double *) calloc (ngmax, sizeof(double))))
 	fprintf (stderr, "Could not calloc %d bytes for gm\n",
 		 ngmax*sizeof(double));
@@ -436,7 +435,7 @@ getfield:
 	    goto out;
 	    }
 	else if (verbose)
-	    printf ("%d / %d bin hits\n", nbin, nmax);
+	    printf ("%d / %d bin hits\n", nbin, nbg);
 
 	imcatname = getimcat ();
 	if (strlen (imcatname) == 0)
@@ -454,6 +453,7 @@ getfield:
 	}
 
     /* Match reference and image stars */
+match:
     nmatch=0;
 
     if (verbose || !fitwcs) {
@@ -764,7 +764,6 @@ int	verbose;	/* True for more information */
     return;
 }
 
-
 /* Subroutines to initialize various parameters */
 void
 settolerance (tol)
@@ -782,11 +781,6 @@ char *cat;
     strcpy (matchcat, cat);
     return;
 }
-
-void
-setrefcat (cat)
-char *cat;
-{ strcpy (refcatname, cat); return; }
 
 void
 setreflim (lim1, lim2)
@@ -989,4 +983,8 @@ int recenter;
  * Jun 22 2000	Fix bug created in last update (found by J.-B. Marquette)
  * Jul 12 2000	Add catalog data structre to ctgread() call
  * Jul 25 2000	Pass address of star catalog data structure address
+ * Dec  6 2000	If no reference catalog is set, skip catalog fit
+ * Dec  6 2000	Drop static refcatname and setrefcat()
+ * Dec 18 2000	Always allocate proper motion arrays; clean up code after lint
+ * Dec 18 2000	Call ReadMatch() to read file of X/Y/RA/Dec matches
  */

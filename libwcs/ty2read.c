@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** September 25, 2000
+ *** December 11, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -15,7 +15,8 @@
 
 #define MAXREG 100
 
-char ty2cd[32]="/data/catalogs/tycho2";	/* pathname of Tycho 2 CDROM */
+/* pathname of Tycho 2 CDROM or catalog search engine URL */
+char ty2cd[64]="/data/catalogs/tycho2";
 
 static int ty2reg();
 static int ty2regn();
@@ -80,12 +81,27 @@ int	nlog;		/* 1 for diagnostics */
     double num, ra, dec, rapm, decpm, mag, magb;
     double rra1, rra2, rra2a, rdec1, rdec2;
     char cstr[32];
+    char *str;
 
     ntot = 0;
     if (nlog > 0)
 	verbose = 1;
     else
 	verbose = 0;
+
+    /* If pathname is a URL, search and return */
+    if ((str = getenv("TY2_PATH")) != NULL ) {
+	if (!strncmp (str, "http:",5)) {
+	    return (webread (str,"tycho2",distsort,cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nstarmax,
+			     gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+	    }
+	}
+    if (!strncmp (ty2cd, "http:",5)) {
+	return (webread (ty2cd,"tycho2",distsort,cra,cdec,dra,ddec,drad,
+			 sysout,eqout,epout,mag1,mag2,nstarmax,
+			 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+	}
 
     wcscstr (cstr, sysout, eqout, epout);
 
@@ -329,6 +345,7 @@ int	nlog;		/* 1 for diagnostics */
     double epref=2000.0;	/* Catalog epoch */
     struct StarCat *starcat;
     struct Star *star;
+    char *str;
 
     int verbose;
     int rnum;
@@ -340,6 +357,18 @@ int	nlog;		/* 1 for diagnostics */
 	verbose = 1;
     else
 	verbose = 0;
+
+    /* If pathname is a URL, search and return */
+    if ((str = getenv("TY2_PATH")) != NULL ) {
+	if (!strncmp (str, "http:",5)) {
+	    return (webrnum (str,"tycho2",nstars,sysout,eqout,epout,
+			     gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+	    }
+	}
+    if (!strncmp (ty2cd, "http:",5)) {
+	return (webrnum (ty2cd,"tycho2",nstars,sysout,eqout,epout,
+			 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+	}
 
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
@@ -460,12 +489,13 @@ int	*star2;		/* Last star number in region (returned)*/
 int	verbose;	/* 1 for diagnostics */
 
 {
-    char tabpath[64];	/* Pathname for regions table */
+    char *tabpath;	/* Pathname for regions table */
     char *buffer;	/* Buffer to hold index table */
     char *line;
     char *str;
     int deczone;
     int nchar=44;	/* Number of characters per line in table */
+    int lpath;
 
     *star1 = 0;
     *star2 = 0;
@@ -479,10 +509,16 @@ int	verbose;	/* 1 for diagnostics */
 	return (0);
 
 /* Set path to Tycho 2 Catalog CDROM */
-    if ((str = getenv("TY2_PATH")) != NULL )
+    if ((str = getenv("TY2_PATH")) != NULL ) {
+	lpath = strlen (str) + 16;
+	tabpath = (char *) malloc (lpath);
 	strcpy (tabpath, str);
-    else
+	}
+    else {
+	lpath = strlen (ty2cd) + 16;
+	tabpath = (char *) malloc (lpath);
 	strcpy (tabpath, ty2cd);
+	}
 
 /* Set pathname for index table file */
     strcat (tabpath,"/data/index.dat");
@@ -500,6 +536,7 @@ int	verbose;	/* 1 for diagnostics */
 /* Read last star + 1 from region+1th line of region table */
     *star2 = atoi (line+nchar);
     free (buffer);
+    free (tabpath);
     return (1);
 }
 
@@ -521,7 +558,7 @@ int	verbose;	/* 1 for diagnostics */
 
 {
     int nrgn;		/* Number of regions found (returned) */
-    char tabpath[64];	/* Pathname for regions table */
+    char *tabpath;	/* Pathname for regions table */
     char *buffer;	/* Buffer to hold index table */
     char *line;
     char *str;
@@ -541,10 +578,14 @@ int	verbose;	/* 1 for diagnostics */
     nrgn = 0;
 
 /* Set path to Tycho 2 Catalog CDROM */
-    if ((str = getenv("TY2_PATH")) != NULL )
+    if ((str = getenv("TY2_PATH")) != NULL ) {
+	tabpath = (char *) malloc (strlen (str) + 16);
 	strcpy (tabpath, str);
-    else
+	}
+    else {
+	tabpath = (char *) malloc (strlen (ty2cd) + 16);
 	strcpy (tabpath, ty2cd);
+	}
 
 /* Set pathname for index table file */
     strcat (tabpath,"/data/index.dat");
@@ -707,17 +748,23 @@ int	nread;	/* Number of star entries to read */
 {
     FILE *fcat;
     struct StarCat *sc;
-    int lfile;
+    int lfile, lpath;
     int lread, lskip, nr;
     char *str;
     char *ty2file;
-    char ty2path[128];	/* Full pathname for catalog file */
+    char *ty2path;	/* Full pathname for catalog file */
 
     /* Set path to Tycho 2 Catalog CDROM */
-    if ((str = getenv("TY2_PATH")) != NULL )
+    if ((str = getenv("TY2_PATH")) != NULL ) {
+	lpath = strlen(str) + 18;
+	ty2path = (char *) malloc (lpath);
 	strcpy (ty2path, str);
-    else
+	}
+    else {
+	lpath = strlen(ty2cd) + 18;
+	ty2path = (char *) malloc (lpath);
 	strcpy (ty2path, ty2cd);
+	}
 
     /* Set pathname for catalog file */
     strcat (ty2path, "/data/catalog.dat");
@@ -728,12 +775,14 @@ int	nread;	/* Number of star entries to read */
     /* Check for existence of catalog */
     if (lfile < 2) {
 	fprintf (stderr,"TY2OPEN: Binary catalog %s has no entries\n",ty2path);
+	free (ty2path);
 	return (NULL);
 	}
 
     /* Open Tycho 2 file */
     if (!(fcat = fopen (ty2path, "r"))) {
 	fprintf (stderr,"TY2OPEN: Tycho 2 file %s cannot be read\n",ty2path);
+	free (ty2path);
 	return (0);
 	}
 
@@ -776,6 +825,7 @@ int	nread;	/* Number of star entries to read */
 	if (nr < lread) {
 	    fprintf (stderr,"TY2OPEN: Read %d / %d bytes\n", nr, lread);
             ty2close (sc);
+	    free (ty2path);
             return (NULL);
             }
 	sc->catlast = sc->catdata + lread;
@@ -783,9 +833,11 @@ int	nread;	/* Number of star entries to read */
     else {
 	fprintf (stderr,"TY2OPEN: Cannot allocate %d-byte buffer.\n", lread);
         ty2close (sc);
+	free (ty2path);
 	return (NULL);
 	}
     sc->istar = nstar;
+    free (ty2path);
     return (sc);
 }
 
@@ -904,4 +956,6 @@ char	*filename;	/* Name of file for which to find size */
  * Jun 13 2000	Correctly order magnitudes: 0=V, 1=B
  * Jun 26 2000	Add coordinate system to SearchLim() arguments
  * Sep 25 2000	Set sc->sptype to 2 to indicate presence of spectral type
+ * Nov 29 2000	Add option to read catalog using HTTP
+ * Dec 11 2000	Accept catalog search engine URL in ty2cd[]
  */

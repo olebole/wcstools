@@ -2,6 +2,8 @@ CFLAGS= -g
 CC=cc
 LIBWCS = libwcs/libwcs.a
 LIBS = $(LIBWCS) -lm
+#CATLIBS = $(LIBS) -lnsl -lsocket
+CATLIBS = $(LIBS)
 BIN = bin
 .PRECIOUS: ${LIBWCS}
 .c.o:
@@ -34,25 +36,25 @@ fixpix: fixpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/fixpix fixpix.c $(LIBS)
 
 getcol: getcol.c $(LIBWCS) libwcs/wcscat.h
-	$(CC) $(CFLAGS) -o $(BIN)/getcol getcol.c $(LIBS)
+	$(CC) $(CFLAGS) -o $(BIN)/getcol getcol.c $(CATLIBS)
 
 getdate: getdate.c $(LIBWCS) libwcs/wcscat.h
-	$(CC) $(CFLAGS) -o $(BIN)/getdate getdate.c $(LIBS)
+	$(CC) $(CFLAGS) -o $(BIN)/getdate getdate.c $(CATLIBS)
 
-gethead: gethead.c $(LIBWCS) libwcs/fitsfile.h
-	$(CC) $(CFLAGS) -o $(BIN)/gethead gethead.c $(LIBS)
+gethead: gethead.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
+	$(CC) $(CFLAGS) -o $(BIN)/gethead gethead.c $(CATLIBS)
 
 getpix: getpix.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
-	$(CC) $(CFLAGS) -o $(BIN)/getpix getpix.c $(LIBS)
+	$(CC) $(CFLAGS) -o $(BIN)/getpix getpix.c $(CATLIBS)
 
 gettab: gettab.c $(LIBWCS) libwcs/wcscat.h
-	$(CC) $(CFLAGS) -o $(BIN)/gettab gettab.c $(LIBS)
+	$(CC) $(CFLAGS) -o $(BIN)/gettab gettab.c $(CATLIBS)
 
 i2f: i2f.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/i2f i2f.c $(LIBS)
 
 imcat: imcat.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $(BIN)/imcat imcat.c $(LIBS)
+	$(CC) $(CFLAGS) -o $(BIN)/imcat imcat.c $(CATLIBS)
 
 imhead: imhead.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/imhead imhead.c $(LIBS)
@@ -66,20 +68,20 @@ imsize: imsize.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
 imstack: imstack.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/imstack imstack.c $(LIBS)
 
-imextract: imextract.c $(LIBWCS) libwcs/fitsfile.h
-	$(CC) $(CFLAGS) -o $(BIN)/imextract imextract.c $(LIBS)
+imextract: imextract.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
+	$(CC) $(CFLAGS) -o $(BIN)/imextract imextract.c $(CATLIBS)
 
-imstar: imstar.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h libwcs/lwcs.h
-	$(CC) $(CFLAGS) -o $(BIN)/imstar imstar.c $(LIBS)
+imstar: imstar.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h libwcs/lwcs.h libwcs/wcscat.h
+	$(CC) $(CFLAGS) -o $(BIN)/imstar imstar.c $(CATLIBS)
 
 imwcs: imwcs.c $(LIBWCS) libwcs/fitsfile.h libwcs/lwcs.h
-	$(CC) $(CFLAGS) -o $(BIN)/imwcs imwcs.c $(LIBS)
+	$(CC) $(CFLAGS) -o $(BIN)/imwcs imwcs.c $(CATLIBS)
 
 immatch: immatch.c $(LIBWCS) libwcs/fitsfile.h libwcs/lwcs.h
-	$(CC) $(CFLAGS) -o $(BIN)/immatch immatch.c $(LIBS)
+	$(CC) $(CFLAGS) -o $(BIN)/immatch immatch.c $(CATLIBS)
 
 immwcs: immwcs.c $(LIBWCS) libwcs/fitsfile.h libwcs/lwcs.h
-	$(CC) $(CFLAGS) -o $(BIN)/immwcs immwcs.c $(LIBS)
+	$(CC) $(CFLAGS) -o $(BIN)/immwcs immwcs.c $(CATLIBS)
 
 keyhead: keyhead.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/keyhead keyhead.c $(LIBS)
@@ -91,25 +93,25 @@ remap: remap.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/remap remap.c $(LIBS)
 
 scat: scat.c $(LIBWCS) libwcs/wcscat.h libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $(BIN)/scat scat.c $(LIBS)
+	$(CC) $(CFLAGS) -o $(BIN)/scat scat.c $(CATLIBS)
 
 sethead: sethead.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/sethead sethead.c $(LIBS)
 
-setpix: setpix.c $(LIBWCS) libwcs/fitsfile.h
-	$(CC) $(CFLAGS) -o $(BIN)/setpix setpix.c $(LIBS)
+setpix: setpix.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
+	$(CC) $(CFLAGS) -o $(BIN)/setpix setpix.c $(CATLIBS)
 
 sky2xy: sky2xy.c $(LIBWCS) libwcs/wcs.h libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/sky2xy sky2xy.c $(LIBS)
 
-skycoor: skycoor.c $(LIBWCS) libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $(BIN)/skycoor skycoor.c $(LIBS)
+skycoor: skycoor.c $(LIBWCS) libwcs/wcs.h libwcs/wcscat.h
+	$(CC) $(CFLAGS) -o $(BIN)/skycoor skycoor.c $(CATLIBS)
 
 subpix: subpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/subpix subpix.c $(LIBS)
 
 sumpix: sumpix.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
-	$(CC) $(CFLAGS) -o $(BIN)/sumpix sumpix.c $(LIBS)
+	$(CC) $(CFLAGS) -o $(BIN)/sumpix sumpix.c $(CATLIBS)
 
 wcshead: wcshead.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/wcshead wcshead.c $(LIBS)

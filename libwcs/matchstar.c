@@ -1,10 +1,13 @@
 /* File libwcs/matchstar.c
- * March 10, 2000
+ * December 18, 2000
  * By Doug Mink, Smithsonian Astrophyscial Observatory
  */
 
 /* StarMatch (ns, sx, sy, ng, gra, gdec, gx, gy, tol, wcs, nfit, debug)
  *  Find shift, scale, and rotation of image stars to best-match reference stars
+ *
+ * ReadMatch (filename, sx, sy, gra, gdec, debug)
+ *  Read in x, y, RA, and Dec of pre-match stars in image
  *
  * FitMatch (ns, sx, sy, ng, gra, gdec, gx, gy, tol, wcs, nfit, debug)
  *  Find shift, scale, and rotation of image stars to RA/Dec/X/Y matches
@@ -32,6 +35,7 @@
 
 static void wcs_amoeba ();
 extern void setnofit();
+extern int getfilelines();
 
 /* Statics used by the chisqr evaluator */
 static double	*sx_p;
@@ -440,17 +444,17 @@ int	debug;
 }
 
 int
-ReadMatch (filename, sbx, sby, gbra, gbdec, debug)
+ReadMatch (filename, sx, sy, gra, gdec)
 
 char	*filename;	/* Name of file containing matches */
-double	*sbx;		/* Image star X coordinates in pixels */
-double	*sby;		/* Image star Y coordinates in pixels */
-double	*gbra;		/* Reference star right ascensions in degrees */
-double	*gbdec;		/* Reference star right ascensions in degrees */
-int	debug;
+double	*sx;		/* Image star X coordinates in pixels */
+double	*sy;		/* Image star Y coordinates in pixels */
+double	*gra;		/* Reference star right ascensions in degrees */
+double	*gdec;		/* Reference star right ascensions in degrees */
 
 {
     int nmatch = 0;	/* Number of matches read from file */
+    int nbytes, nread, ir, ntok;
 
     /* If tab file, read from ra, dec, x, y  columns */
     if (istab (filename)) {
@@ -458,6 +462,91 @@ int	debug;
 
     /* Otherwise, assume first 4 columns are x, y, ra, dec */
     else {
+	char line[1025];
+	char *nextline, *lastchar;
+	FILE *fd;
+	struct Tokens tokens;	/* Token structure */
+	char *cwhite;		/* additional whitespace characters */
+	char token[256];
+
+	cwhite = NULL;
+
+	/* Open input file */
+	if (!strcmp (filename, "stdin")) {
+	    fd = stdin;
+	    nread = 1000;
+	    }
+	else {
+	    nread = getfilelines (filename);
+	    if (!(fd = fopen (filename, "r"))) {
+	    fprintf (stderr, "SetWCSFITS: Match file %s could not be opened\n",
+		     filename);
+		return (0);
+		}
+	    }
+	nbytes = nread * sizeof (double);
+	if (!(gra = (double *) calloc (nread, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gra\n", nbytes);
+	if (!(gdec = (double *) calloc (nread, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gdec\n", nbytes);
+	if (!(sx = (double *) calloc (nread, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for sx\n", nbytes);
+	if (!(sy = (double *) calloc (nread, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for sy\n", nbytes);
+	nmatch = 0;
+	nextline = line;
+        for (ir = 0; ir < nread; ir++) {
+	    if (fgets (line, 1024, fd) == NULL)
+		break;
+
+	    /* Skip lines with comments */
+	    if (line[0] == '#')
+		continue;
+
+	    /* Drop linefeeds */
+	    lastchar = nextline + strlen(nextline) - 1;
+	    if (*lastchar < 32)
+		*lastchar = (char) 0;
+
+	    /* Read RA, Dec, X, and Y from each line,
+		skipping line if all four are not present and numbers */
+	    ntok = setoken (&tokens, line, cwhite);
+	    if (ntok < 1)
+		break;
+	    if (getoken(&tokens, 1, token)) {
+		if (isnum (token))
+		    gra[ir] = str2ra (token);
+		else
+		    continue;
+		}
+	    else
+		continue;
+	    if (getoken(&tokens, 2, token)) {
+		if (isnum (token))
+		    gdec[ir] = str2dec (token);
+		else
+		    continue;
+		}
+	    else
+		continue;
+	    if (getoken(&tokens, 3, token)) {
+		if (isnum (token))
+		    sx[ir] = atof (token);
+		else
+		    continue;
+		}
+	    else
+		continue;
+	    if (getoken(&tokens, 4, token)) {
+		if (isnum (token))
+		    sy[ir] = atof (token);
+		else
+		    continue;
+		}
+	    else
+		continue;
+	    nmatch++;
+	    }
 	}
 
     return (nmatch);
@@ -469,7 +558,7 @@ int	debug;
  */
 
 int
-FitMatch (nmatch, sbx, sby, gbra, gbdec, gx, gy, dx, dy, wcs, debug)
+FitMatch (nmatch, sbx, sby, gbra, gbdec, gx, gy, wcs, debug)
 
 int	nmatch;		/* Number of matched stars */
 double	*sbx;		/* Image star X coordinates in pixels */
@@ -478,19 +567,17 @@ double	*gbra;		/* Reference star right ascensions in degrees */
 double	*gbdec;		/* Reference star right ascensions in degrees */
 double	*gx;		/* Reference star X coordinates in pixels */
 double	*gy;		/* Reference star Y coordinates in pixels */
-double	dx, dy;		/* Nominal offset between current WCS and ref stars */
 struct WorldCoor *wcs;	/* World coordinate structure (fit returned) */
 int	debug;
 
 {
-    int nbin;
-    int maxnbin, i;
-    int minmatch;
+    int i;
     char rastr[16], decstr[16];
     double xref0, yref0, xinc0, yinc0, rot0, xrefpix0, yrefpix0, cd0[4];
     int bestbin;	/* Number of coincidences for refit */
     int pfit;		/* List of parameters to fit, 1 per digit */
     char vpar[16];	/* List of parameters to fit */
+    double dx, dy;	/* Nominal offset between current WCS and ref stars */
     char *vi;
     char vc;
     int offscl;
@@ -503,16 +590,16 @@ int	debug;
     if (nmatch < minbin)
 	return (nmatch);
 
-    /* Use mean offset if no best offset is passed */
-    if (dx == 0.0 && dy == 0.0) {
-	for (i = 0; i < nmatch; i++) {
-	    wcs2pix (wcs, gbra[i], gbdec[i], &gx[i], &gy[i], &offscl);
-	    dx = dx + (sbx[i] - gx[i]);
-	    dy = dy + (sby[i] - gy[i]);
-	    }
-	dx = dx / (double) nmatch;
-	dy = dy / (double) nmatch;
+    /* Start with mean offset */
+    dx = 0.0;
+    dy = 0.0;
+    for (i = 0; i < nmatch; i++) {
+	wcs2pix (wcs, gbra[i], gbdec[i], &gx[i], &gy[i], &offscl);
+	dx = dx + (sbx[i] - gx[i]);
+	dy = dy + (sby[i] - gy[i]);
 	}
+    dx = dx / (double) nmatch;
+    dy = dy / (double) nmatch;
 
     /* Reset image center based on star matching */
     wcs->xref = wcs->xref + (dx * wcs->xinc);
@@ -1327,4 +1414,5 @@ iscdfit ()
  * Feb 15 2000	Add iscdfit() to return wheterh CD matrix is being fit
  * Mar 10 2000	Add debug statement to list max matches as they are found
  * Mar 10 2000	Change loop order to image stars first
+ * Dec 18 2000	Write half of ReadMatch() to deal with ASCII files
  */ 

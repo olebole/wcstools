@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** September 29, 2000
+ *** October 11, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcsinit.c (World Coordinate Systems)
@@ -203,9 +203,9 @@ char *hstring;	/* character string containing FITS header information
 	wcs->ncoeff1 = 0;
 	wcs->ncoeff2 = 0;
 	cd11p = hgetr8 (hstring,"CD1_1",&cd[0]);
-	cd12p = hgetr8 (hstring,"CD1_2",&cd[0]);
-	cd21p = hgetr8 (hstring,"CD2_1",&cd[0]);
-	cd22p = hgetr8 (hstring,"CD2_2",&cd[0]);
+	cd12p = hgetr8 (hstring,"CD1_2",&cd[1]);
+	cd21p = hgetr8 (hstring,"CD2_1",&cd[2]);
+	cd22p = hgetr8 (hstring,"CD2_2",&cd[3]);
 	if (wcs->wcsproj != WCS_OLD && (hcoeff = ksearch (hstring,"CO1_1")) != NULL) {
 	    wcs->prjcode = WCS_PLT;
 	    (void)strcpy (wcs->ptype, "PLATE");
@@ -246,14 +246,10 @@ char *hstring;	/* character string containing FITS header information
 	    wcs->yinc = wcs->cdelt[1];
 
 	    /* Set CD matrix from header */
-	    wcs->cd[0] = 0.;
-	    hgetr8 (hstring,"CD1_1",&wcs->cd[0]);
-	    wcs->cd[1] = 0.;
-	    hgetr8 (hstring,"CD1_2",&wcs->cd[1]);
-	    wcs->cd[2] = 0.;
-	    hgetr8 (hstring,"CD2_1",&wcs->cd[2]);
-	    wcs->cd[3] = 0.;
-	    hgetr8 (hstring,"CD2_2",&wcs->cd[3]);
+	    wcs->cd[0] = cd[0];
+	    wcs->cd[1] = cd[1];
+	    wcs->cd[2] = cd[2];
+	    wcs->cd[3] = cd[3];
 	    (void) matinv (2, wcs->cd, wcs->dc);
 	    }
 
@@ -812,4 +808,5 @@ struct WorldCoor *wcs;
  * Feb 29 2000	Compute inverse CD matrix even if polynomial solution
  * May  9 2000	Add PROJR0 keyword for WCSLIB projections
  * Sep 29 2000	Use CDi_j matrix if any elements are present
+ * Oct 11 2000	Fix bug initializing CD matrix
  */

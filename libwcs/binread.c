@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** September 25, 2000
+ *** December 18, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -60,7 +60,7 @@ double  *tpra;		/* Array of right ascension proper motions (returned) */
 double  *tpdec;		/* Array of declination proper motions (returned) */
 double	*tmag;		/* Array of V magnitudes (returned) */
 double	*tmagb;		/* Array of B magnitudes (returned) */
-int	*tpeak;		/* Array of peak counts (returned) */
+int	*tpeak;		/* Array of encoded spectral types (returned) */
 char	**tobj;		/* Array of object names (returned) */
 int	nlog;
 {
@@ -93,6 +93,7 @@ int	nlog;
     int isp;
     int verbose;
     char cstr[16];
+    char *str;
 
     star = NULL;
     sc = *starcat;
@@ -101,6 +102,39 @@ int	nlog;
 	verbose = 1;
     else
 	verbose = 0;
+
+    /* If pathname is a URL, search and return */
+    if (!strncmp (bincat,"PPM",3) || !strncmp (bincat,"ppm",3)) {
+	if ((str = getenv("PPM_PATH")) != NULL ) {
+	    if (!strncmp (str, "http:",5)) {
+		return (webread (str,bincat,distsort,cra,cdec,dra,ddec,drad,
+			sysout,eqout,epout,mag1,mag2,nstarmax,
+			tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
+		}
+	    else if (strlen (str) < 64)
+		strcpy (bindir, str);
+            }
+	}
+    if (!strncmp (bincat,"SAO",3) || !strncmp (bincat,"sao",3)) {
+	if ((str = getenv("SAO_PATH")) != NULL ) {
+	    if (!strncmp (str, "http:",5)) {
+		return (webread (str,bincat,distsort,cra,cdec,dra,ddec,drad,
+			sysout,eqout,epout,mag1,mag2,nstarmax,
+			tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
+		}
+	    else if (strlen (str) < 64)
+		strcpy (bindir, str);
+            }
+	}
+    if ((str = getenv("WCS_BINDIR")) != NULL ) {
+	if (!strncmp (str, "http:",5)) {
+	    return (webread (str,bincat,distsort,cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nstarmax,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
+            }
+	else if (strlen (str) < 64)
+	    strcpy (bindir, str);
+	}
 
     /* Keep mag1 the smallest magnitude */
     if (mag2 < mag1) {
@@ -417,6 +451,41 @@ int	nlog;
     char *objname;
     struct StarCat *starcat;
     struct Star *star;
+    char *str;
+    int binset;
+
+    /* If pathname is a URL, search and return */
+    binset = 0;
+    if (!strncmp (bincat,"PPM",3) || !strncmp (bincat,"ppm",3)) {
+	if ((str = getenv("PPM_PATH")) != NULL ) {
+	    if (!strncmp (str, "http:",5)) {
+		return (webrnum (str,bincat,nnum,sysout,eqout,epout,
+			tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
+		}
+	    else if (strlen (str) < 64) {
+		strcpy (bindir, str);
+		binset = 1;
+		}
+            }
+	}
+    if (!strncmp (bincat,"SAO",3) || !strncmp (bincat,"sao",3)) {
+	if ((str = getenv("SAO_PATH")) != NULL ) {
+	    if (!strncmp (str, "http:",5)) {
+		return (webrnum (str,bincat,nnum,sysout,eqout,epout,
+			tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
+		}
+	    else if (strlen (str) < 64) {
+		strcpy (bindir, str);
+		binset = 1;
+		}
+            }
+	}
+    if (!binset && (str = getenv("WCS_BINDIR")) != NULL ) {
+	if (!strncmp (str, "http:",5)) {
+	    return (webrnum (str,bincat,nnum,sysout,eqout,epout,
+		    tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
+            }
+	}
 
     nstar = 0;
     starcat = binopen (bincat);
@@ -553,7 +622,6 @@ char *bincat;	/* Binary catalog file name */
     int nr, lfile;
     char *binfile;
     char binpath[128];	/* Full pathname for catalog file */
-    char *str;
     int lf, nb;
 
     /* Find length of binary catalog */
@@ -563,15 +631,13 @@ char *bincat;	/* Binary catalog file name */
     if (lfile < 2) {
 
 	/* Prepend directory name file not in working directory */
-	if ((str = getenv("WCS_BINDIR")) != NULL )
-	    strcpy (bindir, str);
 	strcpy (binpath, bindir);
 	strcat (binpath, "/");
 	strcat (binpath, bincat);
 	lfile = binsize (binpath);
 	if (lfile < 2) {
 	    fprintf (stderr,"BINOPEN: Binary catalog %s has no entries\n",bincat);
-	    return (0);
+	    return (NULL);
 	    }
 	}
     else
@@ -580,7 +646,7 @@ char *bincat;	/* Binary catalog file name */
     /* Open binary catalog */
     if ((fcat = open (binpath, O_RDONLY)) < 3) {
 	fprintf (stderr,"BINOPEN: Binary catalog %s cannot be read\n",binpath);
-	return (0);
+	return (NULL);
 	}
 
     /* Read binary catalog header information */
@@ -590,7 +656,7 @@ char *bincat;	/* Binary catalog file name */
 	fprintf (stderr,"BINOPEN: read only %d / %d bytes of file %s\n",
 		 nr, lfile, binpath);
 	(void) close (fcat);
-	return (0);
+	return (NULL);
 	}
 
     /* Check for byte reversal */
@@ -1088,4 +1154,7 @@ char *from, *last, *to;
  * Jul 12 2000	Add star catalog structure to binread() argument list
  * Jul 25 2000	Pass star catalog address of data structure address
  * Sep 25 2000	Set sc->sptype to 1 to indicate presence of spectral type
+ * Nov 29 2000	Add option to read catalogs using HTTP
+ * Dec  1 2000	Add separate paths for SAO and PPM catalogs
+ * Dec 18 2000	Drop unused variable str in binopen()
  */

@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * September 25, 2000
+ * December 18, 2000
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -22,17 +22,21 @@
 #define ACT		14	/* USNO ACT Star Catalog */
 #define BSC		15	/* Yale Bright Star Catalog */
 #define TYCHO2		16	/* Tycho-2 Star Catalog */
+#define USNO		17	/* USNO-format plate catalog */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */
+#define WEBCAT		-4	/* Tab catalog via the web */
 
 /* Subroutines for dealing with catalogs */
 int RefCat();		/* Return catalog type code, title, coord. system */
 char *ProgCat();	/* Return catalog name given program name used */
 char *ProgName();	/* Return program name given program path used */
-int PropCat();		/* Return 1 if catalog has proper motions, else 0 */
 void CatNum();		/* Return formatted source number */
 int CatNumLen();	/* Return length of source numbers */
+int CatNdec();		/* Return number of decimal places in source numbers */
+
+int StrNdec();		/* Return number of decimal places in numeric string */
 void SearchLim();	/* Compute limiting RA and Dec */
 void RefLim();		/* Compute limiting RA and Dec in new system */
 int isfile();		/* Return 1 if string is name of readable file */
@@ -49,6 +53,8 @@ int binread();		/* Read sources from SAO TDC binary format catalog */
 int ctgread();		/* Read sources from SAO TDC ASCII format catalog */
 int actread();		/* Read sources from USNO ACT Catalog */
 int ty2read();		/* Read sources from Tycho 2 Catalog */
+int webread();		/* Read sources from catalog on the World Wide Web */
+
 
 /* Subroutines for extracting sources from catalogs by ID number */
 int gscrnum();		/* Read sources from HST Guide Star Catalog */
@@ -59,6 +65,8 @@ int binrnum();		/* Read sources from SAO TDC binary format catalog */
 int ctgrnum();		/* Read sources from SAO TDC ASCII format catalog */
 int actrnum();		/* Read sources from USNO ACT Catalog */
 int ty2rnum();		/* Read sources from Tycho 2 Catalog */
+int webrnum();		/* Read sources from catalog on the World Wide Web */
+
 void setgsclass();	/* Set GSC object class */
 void setuplate();	/* Set USNO catalog plate number to search */
 int getuplate();	/* Get USNO catalog plate number to search */
@@ -79,7 +87,7 @@ struct Star {
     float xno;		/* Catalog number */
     double ra;		/* Right Ascension (degrees) */
     double dec;		/* Declination (degrees) */
-    char isp[2];	/* Spectral type or other 2-char identifier */
+    char isp[4];	/* Spectral type or other 2-char identifier */
     short mag[11];	/* Up to 10 Magnitudes * 100 */
     double rapm;	/* RA proper motion (degrees per year) */
     double decpm;	/* Dec proper motion (degrees per year) */
@@ -88,6 +96,8 @@ struct Star {
     int coorsys;	/* Coordinate system (WCS_J2000, WCS_B1950,...) */
     double equinox;	/* Equinox of coordinate system as fractional year */
     double epoch;	/* Epoch of position as fractional year */
+    double parallax;	/* Parallax in arcseconds */
+    double radvel;	/* Radial velocity in km/sec, positive away */
     char objname[32];	/* Object name */
     int peak;		/* Peak flux per pixel in star image */
 };
@@ -97,7 +107,10 @@ struct Star {
 #define PM_ARCSECYR		2	/* arcseconds per year */
 #define PM_DEGYR		3	/* degrees per year */
 #define PM_RADYR		4	/* radians per year */
-#define PM_TSECYR		5	/* seconds of time (RA) per year */
+#define PM_TSECYR		5	/* seconds of time (RA) per century */
+#define PM_ARCSECCEN		6	/* arcseconds per year */
+#define PM_TSECCEN		7	/* seconds of time (RA) per century */
+#define PM_MTSYR		8	/* milliseconds of time (RA) per year */
 
 struct StarCat {
     int star0;		/* Subtract from star number for file sequence number */
@@ -134,6 +147,7 @@ struct StarCat {
     int nndec;		/* Number of decimal places in star number */
     int nepoch;		/* 1 if epoch of coordinates is present */
     int sptype;		/* 1 if spectral type is present in catalog */
+    int plate;		/* 1 if plate or field number is present in catalog */
     char *catbuff;	/* Pointer to start of catalog */
     char *catdata;	/* Pointer to first entry in catalog */
     char *catline;	/* Pointer to current entry in catalog */
@@ -151,6 +165,9 @@ struct StarCat {
     int entadd;		/* Entry number for additional keyword */
     int entrpm;		/* Entry number for proper motion in right ascension */
     int entdpm;		/* Entry number for proper motion in declination */
+    int entpx;		/* Entry number for parallax */
+    int entrv;		/* Entry number for radial velocity */
+    int enttype;	/* Entry number for spectral type */
     int rpmunit;	/* Units for RA proper motion (PM_x) */
     int dpmunit;	/* Units for DEC proper motion (PM_x) */
     char keyid[16];	/* Entry name for ID */
@@ -161,6 +178,7 @@ struct StarCat {
     char keyrpm[16];	/* Entry name for right ascension proper motion */
     char keydpm[16];	/* Entry name for declination proper motion */
     char keypeak[16];	/* Entry name for integer code */
+    char keytype[16];	/* Entry name for spectral type */
     char keyadd[16];	/* Entry name for additional keyword */
 };
 
@@ -199,6 +217,7 @@ int tabcol();		/* Find column for name */
 int tabgetk();		/* Get tab table entries for named column */
 int tabgetc();		/* Get tab table entry for named column */
 int tabgeti4();		/* Return 4-byte integer from tab table line */
+int tabparse();		/* Aeturn column names and positions in tabtable */
 double tabgetra();	/* Return right ascension in degrees from tab table*/
 double tabgetdec();	/* Return declination in degrees from tab table*/
 double tabgetpm();	/* Return RA or Dec p.m. in degrees from tab table*/
@@ -304,4 +323,15 @@ int getoken();		/* Get specified token from tokenized string */
  * Jul 12 2000	Add catalog type code to ctalog data structure
  * Sep 20 2000	Add isacat() to detect ASCII catalog files
  * Sep 25 2000	Add starcat.sptype to flag spectral type in catalog
+ * Oct 23 2000	Add USNO plate catalog to catalog type table
+ * Oct 26 2000	Add proper motion flags for seconds and arcseconds per century
+ * Oct 31 2000	Add proper motion flags for milliseconds per year
+ * Nov  2 2000	Add parallax and radial velocity to star structure
+ * Nov 21 2000	Add WEBCAT catalog type for tab ctalogs returned from the Web
+ * Nov 22 2000	Add webread() and webrnum()
+ * Nov 28 2000	Add tabparse()
+ * Nov 30 2000	Add spectral type to catalog header; make star->isp 4 char.
+ * Dec 13 2000	Add StrNdec() to get number of decimal places in number strings
+ * Dec 15 2000	Add CatNdec() to get number of decimal places in source numbers
+ * Dec 18 2000	Drop PropCat(), a cludgy proper motion flag
  */

@@ -235,6 +235,7 @@
 *===========================================================================*/
 
 #include <math.h>
+#include <string.h>
 #include "wcslib.h"
 
 /* Map error number to error message for each function. */
@@ -568,4 +569,5 @@ double *lng, *lat;
 }
 /* Dec 20 1999	Doug Mink -Change cosd() and sind() to cosdeg() and sindeg()
  * Dec 20 1999	Doug Mink -Include wcslib.h, which includes wcsmath.h and cel.h
+ * Dec 18 2000	Doug Mink - Include string.h for strcmp()
  */

@@ -975,6 +975,11 @@ struct WorldCoor *wcs;	/* World coordinate system structure */
 	return;
 	}
 
+
+    /* Do not try anything if image is LINEAR (not Cartesian projection) */
+    if (wcs->syswcs == WCS_LINEAR)
+	return;
+
     wcs->xinc = fabs (wcs->xinc);
     wcs->yinc = fabs (wcs->yinc);
 

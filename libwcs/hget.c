@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** September 20, 2000
+ *** October 23, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -1224,7 +1224,7 @@ isnum (string)
 char *string;	/* Character string */
 {
     int lstr, i, nd;
-    char cstr;
+    char cstr, cstr1;
     int fpcode;
 
     lstr = strlen (string);
@@ -1243,14 +1243,25 @@ char *string;	/* Character string */
 	cstr = string[i];
 	if (cstr == '\n')
 	    break;
+	if (cstr == ' ' && nd == 0)
+	    continue;
 	if ((cstr < 48 || cstr > 57) &&
 	    cstr != '+' && cstr != '-' &&
 	    cstr != 'D' && cstr != 'd' &&
 	    cstr != 'E' && cstr != 'e' &&
 	    cstr != '.')
 	    return (0);
-	else if (cstr == '+' && string[i+1] == '-')
-	    return (0);
+	else if (cstr == '+' || cstr == '-') {
+	    if (string[i+1] == '-' || string[i+1] == '+')
+		return (0);
+	    else if (i > 0) {
+		cstr1 = string[i-1];
+		if (cstr1 != 'D' && cstr1 != 'd' &&
+		    cstr1 != 'E' && cstr1 != 'e' &&
+		    cstr1 != ' ')
+		    return (0);
+		}
+	    }
 	else if (cstr >= 47 && cstr <= 57)
 	    nd++;
 	if (cstr=='.' || cstr=='d' || cstr=='e' || cstr=='d' || cstr=='e')
@@ -1342,4 +1353,5 @@ int set_saolib(hstring)
  * Apr  5 2000	Reject +- in isnum()
  * Jun  9 2000	Read keyword values even if no equal sign is present
  * Sep 20 2000	Ignore linefeed at end of number in isnum()
+ * Oct 23 2000	Fix handling of embedded + or - in isnum()
  */

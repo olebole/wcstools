@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** September 25, 2000
+ *** December 18, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include <sys/types.h>
 #include "fitshead.h"
 #include "wcs.h"
@@ -105,8 +106,8 @@ int	nlog;
             nstar = uacread (catfile,distsort,
                           cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
                           mag2,nsmax,tnum,tra,tdec,tmag,tmagb,tc,nlog);
-        else if (refcat == UJC)
-            nstar = ujcread (cra,cdec,dra,ddec,drad,distsort,
+        else if (refcat == UJC || refcat == USNO)
+            nstar = ujcread (catfile,cra,cdec,dra,ddec,drad,distsort,
 			     sysout,eqout,epout,mag1,mag2,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == ACT)
@@ -116,7 +117,7 @@ int	nlog;
         else if (refcat == TYCHO2)
             nstar = ty2read (cra,cdec,dra,ddec,drad,distsort,
 			     sysout,eqout,epout,mag1,mag2,nsmax,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,nlog);
         else if (refcat == SAO)
             nstar = binread ("SAOra", distsort,cra,cdec,dra,ddec,drad,
 			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
@@ -145,7 +146,7 @@ int	nlog;
             nstar = binread (catfile, distsort, cra,cdec,dra,ddec,drad,
 			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
-        else if (refcat == TABCAT)
+        else if (refcat == TABCAT || refcat == WEBCAT)
             nstar = tabread (catfile, distsort,cra,cdec,dra,ddec,drad,
 			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
@@ -186,11 +187,14 @@ int	nlog;
     tdist = (double *) malloc (nsmax * sizeof (double));
 
     /* Open catalog file */
-    if (sc == NULL)
-	sc = ctgopen (catfile, refcat);
+    if (sc == NULL) {
+	if ((sc = ctgopen (catfile, refcat)) == NULL) {
+	    fprintf (stderr,"CTGRNUM: Cannot read catalog %s\n", catfile);
+	    *starcat = sc;
+	    return (0);
+	    }
+	}
     *starcat = sc;
-    if (sc == NULL)
-	return (0);
     if (sc->nstars <= 0) {
 	free (sc);
 	if (star != NULL)
@@ -381,7 +385,7 @@ int	nlog;
 /* CTGRNUM -- Read ASCII stars with specified numbers */
 
 int
-ctgrnum (catfile,refcat, nnum,sysout,eqout,epout,match,
+ctgrnum (catfile,refcat, nnum,sysout,eqout,epout,match,starcat,
 	 tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog)
 
 char	*catfile;	/* Name of reference star catalog file */
@@ -391,6 +395,7 @@ int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 int	match;		/* 1 to match star number exactly, else sequence num.*/
+struct StarCat **starcat; /* Catalog data structure */
 double	*tnum;		/* Array of star numbers to look for */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
@@ -406,14 +411,13 @@ int	nlog;
     int nstar;
     double ra,dec;
     double rapm, decpm;
-    double num;
     int peak;
     int istar;
     int sysref;		/* Catalog coordinate system */
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
     char cstr[32];
-    struct StarCat *starcat;
+    struct StarCat *sc;
     struct Star *star;
     char *objname;
     int lname;
@@ -431,8 +435,8 @@ int	nlog;
 	         refcat == UAC  || refcat == UA1  || refcat == UA2)
 	    nstar = uacrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tmagb,tc,nlog);
-	else if (refcat == UJC)
-	    nstar = ujcrnum (nnum,sysout,eqout,epout,
+        else if (refcat == UJC || refcat == USNO)
+	    nstar = ujcrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
 	else if (refcat == SAO)
 	    nstar = binrnum ("SAO",nnum,sysout,eqout,epout,match,
@@ -458,22 +462,27 @@ int	nlog;
 	else if (refcat == TYCHO2)
 	    nstar = ty2rnum (nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,nlog);
-	else if (refcat == TABCAT)
-	    nstar = tabrnum (catfile,nnum,sysout,eqout,epout,
+	else if (refcat == TABCAT || refcat == WEBCAT)
+	    nstar = tabrnum (catfile,nnum,sysout,eqout,epout,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
 	else if (refcat == BINCAT)
 	    nstar = binrnum (catfile,nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tmag,tmagb,tc,tobj,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
 	return (nstar);
 	}
 
-    if ((starcat = ctgopen (catfile, refcat)) == NULL) {
-	fprintf (stderr,"CTGRNUM: Cannot read catalog %s\n", catfile);
-	return (0);
+    sc = *starcat;
+    if (sc == NULL) {
+	if ((sc = ctgopen (catfile, refcat)) == NULL) {
+	    fprintf (stderr,"CTGRNUM: Cannot read catalog %s\n", catfile);
+	    *starcat = sc;
+	    return (0);
+	    }
 	}
-    sysref = starcat->coorsys;
-    eqref = starcat->equinox;
-    epref = starcat->epoch;
+    *starcat = sc;
+    sysref = sc->coorsys;
+    eqref = sc->equinox;
+    epref = sc->epoch;
     if (!sysout)
 	sysout = sysref;
     if (!eqout)
@@ -484,7 +493,7 @@ int	nlog;
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
     star->num = 0.0;
-    if (tobj == NULL || starcat->ignore)
+    if (tobj == NULL || sc->ignore)
 	nameobj = 0;
     else
 	nameobj = 1;
@@ -494,9 +503,9 @@ int	nlog;
 
 	/* Loop through catalog to star */
 	starfound = 0;
-	if (match && starcat->stnum > 0 && starcat->stnum < 5) {
-	    for (istar = 1; istar <= starcat->nstars; istar++) {
-		if (ctgstar (istar, starcat, star)) {
+	if (match && sc->stnum > 0 && sc->stnum < 5) {
+	    for (istar = 1; istar <= sc->nstars; istar++) {
+		if (ctgstar (istar, sc, star)) {
 		    fprintf (stderr,"CTGRNUM: Cannot read star %d\n", istar);
 		    break;
 		    }
@@ -508,7 +517,7 @@ int	nlog;
 	    }
 	else {
 	    istar = (int) (tnum[jnum] + 0.5);
-	    if (ctgstar (istar, starcat, star)) {
+	    if (ctgstar (istar, sc, star)) {
 		fprintf (stderr,"CTGRNUM: Cannot read star %d\n", istar);
 		continue;
 		}
@@ -519,7 +528,6 @@ int	nlog;
 	if (starfound) {
 
 	    /* Extract selected fields  */
-	    num = star->num;
 	    ra = star->ra;
 	    dec = star->dec;
 	    rapm = star->rapm;
@@ -530,8 +538,8 @@ int	nlog;
 	    eqref = star->equinox;
 	    epref = star->epoch;
     
-	    if (starcat->inform != 'X') {
-		if (starcat->mprop)
+	    if (sc->inform != 'X') {
+		if (sc->mprop)
 		    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
 			     &ra, &dec, &rapm, &decpm);
 		else
@@ -544,11 +552,11 @@ int	nlog;
 	    tra[jnum] = ra;
 	    tdec[jnum] = dec;
 	    tmag[jnum] = star->xmag[0];
-	    if (starcat->nmag > 1)
+	    if (sc->nmag > 1)
 		tmagb[jnum] = star->xmag[1];
 
 	    /* Spectral type */
-	    if (starcat->sptype)
+	    if (sc->sptype)
 		tc[jnum] = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 
 	    if (nameobj) {
@@ -568,7 +576,7 @@ int	nlog;
 	/* Log operation */
 	if (nlog > 0 && jnum%nlog == 0)
 	    fprintf (stderr,"CTGRNUM: %5d / %5d / %5d sources catalog %s\r",
-		     nstar,jnum,starcat->nstars,catfile);
+		     nstar,jnum,sc->nstars,catfile);
 
 	/* End of star loop */
 	}
@@ -576,9 +584,8 @@ int	nlog;
 /* Summarize search */
     if (nlog > 0)
 	fprintf (stderr,"CTGRNUM: Catalog %s : %d / %d found\n",
-		 catfile,nstar,starcat->nstars);
+		 catfile,nstar,sc->nstars);
 
-    ctgclose(starcat);
     free (star);
     return (nstar);
 }
@@ -609,7 +616,7 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	if (refcat == BINCAT)
 	    sc = binopen (catfile);
 	else if (refcat == TABCAT)
-	    sc = tabcatopen (catfile);
+	    sc = tabcatopen (catfile, NULL);
 	else
 	    sc = NULL;
 	return (sc);
@@ -1336,4 +1343,9 @@ char	*in;	/* Character string */
  * Sep 20 2000	Implement multiple catalog magnitudes; return only first 2
  * Sep 20 2000	Add isacat() subroutine to detect ASCII catalogs
  * Sep 25 2000	Add spectral type with flag /s
+ * Oct 17 2000	Add missing arguments in generic binrnum() call
+ * Oct 24 2000	Use ujcread() and ujcrnum() for USNO plate catalogs
+ * Nov 21 2000	Add WEBCAT as tab catalog results returned from the Web
+ * Nov 28 2000	Add starcat structure to *rnum() calls
+ * Dec 18 2000	Include math.h for sqrt()
  */

@@ -1,5 +1,5 @@
 /* File imcat.c
- * September 21, 2000
+ * December 18, 2000
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -511,6 +511,12 @@ int	*region_char;	/* Character for SAOimage region file output */
     double pra, pdec;
     double maxnum;
 
+    /* Drop out if no catalog is specified */
+    if (ncat < 1) {
+	fprintf (stderr, "No catalog specified\n");
+	exit (-1);
+	}
+
     gnum = NULL;
     gra = NULL;
     gdec = NULL;
@@ -534,6 +540,12 @@ int	*region_char;	/* Character for SAOimage region file output */
     /* Loop through catalogs */
     for (icat = 0; icat < ncat; icat++) {
 
+	/* Skip this catalog if no name is given */
+	if (refcatname[icat] == NULL || strlen (refcatname[icat]) == 0) {
+	    fprintf (stderr, "Catalog %d not specified\n", icat);
+	    continue;
+	    }
+
     /* Find title and coordinate system for catalog */
     if (!(refcat = RefCat (refcatname[icat],title,&sysref,&eqref,&epref))) {
 	fprintf (stderr,"ListCat: No catalog named %s\n", refcatname[icat]);
@@ -544,15 +556,10 @@ int	*region_char;	/* Character for SAOimage region file output */
     else if (classd == 3)
 	strcat (title, " nonstars");
     if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==TYCHO ||
-	refcat== TYCHO2 || refcat==HIP || refcat==ACT || refcat==BSC ||
-	refcat == UAC  || refcat == UA1  || refcat == UA2 ||
-	refcat == USAC || refcat == USA1 || refcat == USA2)
+	refcat== TYCHO2 || refcat==HIP || refcat==ACT || refcat==BSC)
 	sptype = 1;
     else
 	sptype = 0;
-
-    /* Find out whether catalog has proper motions */
-    mprop = PropCat ();
 
     /* Read world coordinate system information from the image header */
     if ((header = GetFITShead (filename)) == NULL)
@@ -629,16 +636,15 @@ int	*region_char;	/* Character for SAOimage region file output */
     if (!(gobj = (char **) calloc (ngmax, sizeof (void *))))
 	fprintf (stderr, "Could not calloc %d bytes for obj\n",
 		 ngmax*sizeof(void *));
-    if (mprop) {
-	if (!(gpra = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gpra\n",
-		     ngmax*sizeof(double));
-	if (!(gpdec = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
-		     ngmax*sizeof(double));
-	}
+    if (!(gpra = (double *) calloc (ngmax, sizeof(double))))
+	fprintf (stderr, "Could not calloc %d bytes for gpra\n",
+		 ngmax*sizeof(double));
+    if (!(gpdec = (double *) calloc (ngmax, sizeof(double))))
+	fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
+		 ngmax*sizeof(double));
 
-    if (!gnum || !gra || !gdec || !gm || !gmb || !gc || !gx || !gy || !gobj) {
+    if (!gnum || !gra || !gdec || !gm || !gmb || !gc || !gx || !gy || !gobj ||
+	!gpra || !gpdec) {
 	if (gm) free ((char *)gm);
 	if (gmb) free ((char *)gmb);
 	if (gra) free ((char *)gra);
@@ -672,6 +678,16 @@ int	*region_char;	/* Character for SAOimage region file output */
 		  cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
 		  ngmax,&starcat[icat],
 		  gnum,gra,gdec,gpra,gpdec,gm,gmb,gc,gobj,nlog);
+
+    /* Set flag if any proper motions are non-zero */
+    mprop = 0;
+    for (i = 0; i < ng; i++) {
+	if (gpra[i] != 0.0 || gpdec[i] != 0.0) {
+	    mprop = 1;
+	    break;
+	    }
+	}
+
     if (refcat == BINCAT || refcat == TABCAT || refcat == TXTCAT)
 	nndec = starcat[icat]->nndec;
 
@@ -1039,7 +1055,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"ra      	dec           	");
     if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
 	refcat == USAC || refcat == USA1 || refcat == USA2)
-	strcat (headline,"magb  	magr  	");
+	strcat (headline,"magb  	magr  	plate	");
     else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT)
 	strcat (headline,"magb  	magv  	");
     else
@@ -1214,7 +1230,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 		     numstr, rastr, decstr, gm[i], gc[i]);
 		else if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
 			 refcat == USAC || refcat == USA1 || refcat == USA2)
-		    sprintf (headline, "%s	%s	%s	%5.1f	%5.1f	%2s",
+		    sprintf (headline, "%s	%s	%s	%5.1f	%5.1f	%d",
 		     numstr,rastr,decstr,gmb[i],gm[i],gc[i]);
 		else if (refcat == UJC)
 		    sprintf (headline, "%s	%s	%s	%5.2f	%d",
@@ -1255,8 +1271,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	    else if (!tabout) {
 		if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		    refcat == UAC  || refcat == UA1  || refcat == UA2)
-		    sprintf (headline,"%s %s %s %5.1f %5.1f %2s",
-			numstr,rastr,decstr,gmb[i],gm[i],isp);
+		    sprintf (headline,"%s %s %s %5.1f %5.1f %d",
+			numstr,rastr,decstr,gmb[i],gm[i],gc[i]);
 		else if (refcat == UJC)
 		    sprintf (headline,"%s %s %s %6.2f %4d",
 			numstr, rastr, decstr, gm[i], gc[i]);
@@ -1456,4 +1472,7 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Jul 25 2000	Fix star catalog structure initialization bug
  * Jul 25 2000	Pass address of star catalog data structure address
  * Sep 21 2000	Print spectral type instead of plate number of USNO-A catalogs
+ * Dec  1 2000	Print plate, not type for USNO catalogs
+ * Dec 15 2000	Deal with missing catalog names
+ * Dec 18 2000	Always allocate proper motion arrays
  */

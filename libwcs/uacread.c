@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** September 22, 2000
+ *** December 15, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Subroutines to read from the USNO A and SA catalogs
@@ -21,26 +21,29 @@
 #define	USNOSA20	3	/* USNO SA-2.0 Catalog */
 static int ucat=USNOA10;
 
-/* USNO SA-1.0 directory pathname; replaced by USA1_PATH environment variable */
+/* USNO SA-1.0 directory pathname; replaced by USA1_PATH environment variable
+ * This may also be a URL to a catalog search engine */
 static char usa1path[64]="/data/usnosa10";
 
-/* USNO SA-2.0 directory pathname; replaced by USA2_PATH environment variable */
+/* USNO SA-2.0 directory pathname; replaced by USA2_PATH environment variable
+ * This may also be a URL to a catalog search engine */
 static char usa2path[64]="/data/usnosa20";
-static char *usapath;
 
-/* USNO A-1.0 directory pathname; replaced by UA1_PATH environment variable */
-/* Use this if CDROMs have been transferred to a single hard disk */
-/* Otherwise set to null string ("") and use cdroot */
+/* USNO A-1.0 directory pathname; replaced by UA1_PATH environment variable
+ * Use this if CDROMs have been transferred to a single hard disk
+ * Otherwise set to null string ("") and use cdroot
+ * This may also be a URL to a catalog search engine */
 static char ua1path[64]="/data/ua1";
 
-/* USNO A-2.0 directory pathname; replaced by UA2_PATH environment variable */
-/* Use this if CDROMs have been transferred to a single hard disk */
-/* Otherwise set to null string ("") and use cdroot */
+/* USNO A-2.0 directory pathname; replaced by UA2_PATH environment variable
+ * Use this if CDROMs have been transferred to a single hard disk
+ * Otherwise set to null string ("") and use cdroot
+ * This may also be a URL to a catalog search engine */
 static char ua2path[64]="/data/ua2";
 static char *uapath;
 
 /* Root directory for CDROMs; replaced by UA_ROOT environment variable */
-/* Ignored if uapath or UA_PATH are set */
+/* Ignored if uapath or UA*_PATH are set */
 static char cdroot[32]="/cdrom";
 
 /* Names of CDROM's for USNO A Catalogs */
@@ -90,7 +93,7 @@ int getuplate ()
 
 int
 usaread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,nstarmax,
-	 unum,ura,udec,umag,umagb,utype,nlog)
+	 unum,ura,udec,umag,umagb,uplate,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
@@ -108,7 +111,7 @@ double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
 double	*umag;		/* Array of red magnitudes (returned) */
 double	*umagb;		/* Array of blue magnitudes (returned) */
-int	*utype;		/* Array of plate numbers (returned) */
+int	*uplate;	/* Array of plate numbers (returned) */
 int	nlog;		/* Logging interval */
 {
     int i;
@@ -117,7 +120,7 @@ int	nlog;		/* Logging interval */
     ucat = USNOSA10;
     i = uacread ("usac",distsort,cra,cdec,dra,ddec,drad,
 		 sysout,eqout,epout,mag1,mag2,nstarmax,
-		 unum,ura,udec,umag,umagb,utype,nlog);
+		 unum,ura,udec,umag,umagb,uplate,nlog);
     ucat = USNOA10;
     return (i);
 }
@@ -126,7 +129,7 @@ int	nlog;		/* Logging interval */
 
 int
 uacread (refcatname,distsort,cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-	 mag1,mag2,nstarmax,unum,ura,udec,umag,umagb,utype,nlog)
+	 mag1,mag2,nstarmax,unum,ura,udec,umag,umagb,uplate,nlog)
 
 char	*refcatname;	/* Name of catalog (UAC, USAC, UAC2, USAC2) */
 int	distsort;	/* 1 to sort stars by distance from center */
@@ -145,7 +148,7 @@ double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
 double	*umag;		/* Array of red magnitudes (returned) */
 double	*umagb;		/* Array of blue magnitudes (returned) */
-int	*utype;		/* Array of plate numbers (returned) */
+int	*uplate;		/* Array of plate numbers (returned) */
 int	nlog;		/* Logging interval */
 {
     double ra1,ra2;	/* Limiting right ascensions of region in degrees */
@@ -192,13 +195,13 @@ int	nlog;		/* Logging interval */
 	    if ((str = getenv("USA2_PATH")) != NULL)
 		strcpy (usa2path,str);
 	    ucat = USNOSA20;
-	    usapath = usa2path;
+	    uapath = usa2path;
 	    }
 	else {
 	    if ((str = getenv("USA1_PATH")) != NULL)
 		strcpy (usa1path,str);
 	    ucat = USNOSA10;
-	    usapath = usa1path;
+	    uapath = usa1path;
 	    }
 	}
     else if (strncmp (refcatname,"ua",2)==0 ||
@@ -227,6 +230,13 @@ int	nlog;		/* Logging interval */
     else {
 	fprintf (stderr, "UACREAD:  %s not a USNO catalog\n", refcatname);
 	return (0);
+	}
+
+    /* If root pathname is a URL, search and return */
+    if (!strncmp (uapath, "http:",5)) {
+	return (webread (uapath,refcatname,distsort,cra,cdec,dra,ddec,drad,
+			 sysout,eqout,epout,mag1,mag2,nstarmax,unum,ura,udec,
+			 NULL,NULL,umag,umagb,uplate,nlog));
 	}
 
     wcscstr (cstr, sysout, eqout, epout);
@@ -343,7 +353,7 @@ int	nlog;		/* Logging interval */
 				    udec[nstar] = dec;
 				    umag[nstar] = mag;
 				    umagb[nstar] = magb;
-				    utype[nstar] = isp;
+				    uplate[nstar] = plate;
 				    udist[nstar] = dist;
 				    if (dist > maxdist) {
 					maxdist = dist;
@@ -364,7 +374,7 @@ int	nlog;		/* Logging interval */
 					udec[farstar] = dec;
 					umag[farstar] = mag;
 					umagb[farstar] = magb;
-					utype[farstar] = isp;
+					uplate[farstar] = plate;
 					udist[farstar] = dist;
 
 				    /* Find new farthest star */
@@ -385,7 +395,7 @@ int	nlog;		/* Logging interval */
 				    udec[faintstar] = dec;
 				    umag[faintstar] = mag;
 				    umagb[faintstar] = magb;
-				    utype[faintstar] = isp;
+				    uplate[faintstar] = plate;
 				    udist[faintstar] = dist;
 
 			    /* Find new faintest star */
@@ -450,7 +460,7 @@ int	nlog;		/* Logging interval */
 
 
 int
-usarnum (nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,utype,nlog)
+usarnum (nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,uplate,nlog)
 
 int	nnum;		/* Number of stars to find */
 int	sysout;		/* Search coordinate system */
@@ -461,14 +471,14 @@ double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
 double	*umag;		/* Array of red magnitudes (returned) */
 double	*umagb;		/* Array of blue magnitudes (returned) */
-int	*utype;		/* Array of spectral types (returned) */
+int	*uplate;	/* Array of plate numbers (returned) */
 int	nlog;		/* Logging interval */
 {
     int i;
     int uacrnum();
 
     ucat = USNOSA10;
-    i = uacrnum ("USAC",nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,utype,
+    i = uacrnum ("USAC",nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,uplate,
 		 nlog);
     ucat = USNOA10;
     return (i);
@@ -476,7 +486,7 @@ int	nlog;		/* Logging interval */
 
 
 int
-uacrnum (refcatname,nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,utype,
+uacrnum (refcatname,nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,uplate,
 	 nlog)
 
 char	*refcatname;	/* Name of catalog (UAC, USAC, UAC2, USAC2) */
@@ -489,7 +499,7 @@ double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
 double	*umag;		/* Array of red magnitudes (returned) */
 double	*umagb;		/* Array of blue magnitudes (returned) */
-int	*utype;		/* Array of spectral types (returned) */
+int	*uplate;		/* Array of spectral types (returned) */
 int	nlog;		/* Logging interval */
 {
     UACstar star;	/* UA catalog entry for one star */
@@ -514,13 +524,13 @@ int	nlog;		/* Logging interval */
 	    if ((str = getenv("USA2_PATH")) != NULL)
 		strcpy (usa2path,str);
 	    ucat = USNOSA20;
-	    usapath = usa2path;
+	    uapath = usa2path;
 	    }
 	else {
 	    if ((str = getenv("USA1_PATH")) != NULL)
 		strcpy (usa1path,str);
 	    ucat = USNOSA10;
-	    usapath = usa1path;
+	    uapath = usa1path;
 	    }
 	}
     else if (strncmp (refcatname,"ua",2)==0 ||
@@ -550,6 +560,13 @@ int	nlog;		/* Logging interval */
 	fprintf (stderr, "UACREAD:  %s not a USNO catalog\n", refcatname);
 	return (0);
 	}
+
+    /* If root pathname is a URL, search and return */
+    if (!strncmp (uapath, "http:",5)) {
+	return (webrnum (uapath,refcatname,nnum,sysout,eqout,epout,
+			 unum,ura,udec,NULL,NULL,umag,umagb,uplate,nlog));
+	}
+
 
 /* Loop through star list */
     for (jnum = 0; jnum < nnum; jnum++) {
@@ -587,7 +604,7 @@ int	nlog;		/* Logging interval */
 		umagb[nfound] = magb;
 		br2sp (NULL, magb, mag, ispc);
 		isp = (1000 * (int)ispc[0]) + (int)ispc[1];
-		utype[nfound] = isp;
+		uplate[nfound] = plate;
 
 		nfound++;
 		if (nlog == 1)
@@ -922,7 +939,7 @@ char *path;	/* Pathname of UA zone file */
 
     /* Set path for USNO SA zone catalog */
     if (ucat == USNOSA10 || ucat == USNOSA20)
-	sprintf (path,"%s/zone%04d.cat", usapath, zn);
+	sprintf (path,"%s/zone%04d.cat", uapath, zn);
 
     /* Set zone catalog path when USNO A is in a single directory */
     else if (strlen (uapath) > 0)
@@ -1036,4 +1053,8 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Jun  9 2000	Fix bug detecting swapped files on Alphas and PCs if RA=0
  * Jun 26 2000	Add coordinate system to SearchLim() arguments
  * Sep 22 2000	Return approximate spectral type instead of plate number
+ * Nov 28 2000	Add option to read catalog using HTTP
+ * Dec  1 2000	Return plate number, not bad spectral type
+ * Dec 11 2000	Path may be set to catalog search engine URL
+ * Dec 15 2000	Do away with separate usapath variable; use uapath
  */

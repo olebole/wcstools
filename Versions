@@ -1,3 +1,14 @@
+Version 2.8.6 (January 2, 2001)
+scat, imcat, imwcs, immatch: Read catalogs across the web from CGI scat
+webread.c: New subroutines to read catalogs via http
+scat: Improve error handling and feedback
+scat: Read USNO plate catalogs reformatted like UJC
+imwcs: Implement first pass at dealing with pre-matched stars
+ujcread.c: Add code to read USNO plate catalogs (ra, dec, mag)
+tabread.c: Read proper motion in seconds/century as well as seconds/year
+hget.c: isnum() now rejects strings with embedded hyphens so that ISO dates
+are aligned as strings in FITS headers, not as right-justified numbers.
+
 Version 2.8.5 (September 29, 2000)
 scat, imcat: Print approximate spectral type instead of plate number for A2.0
 scat: Print spectral type and 2nd mag in one-line closest star output format

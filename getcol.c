@@ -1,5 +1,5 @@
 /* File getcol.c
- * August 8, 2000
+ * December 11, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -12,21 +12,19 @@
 #include <unistd.h>
 #include <math.h>
 #include "libwcs/wcscat.h"
+#include "libwcs/fitshead.h"
 
 static void usage();
+static int ListFile();
+static int iscolop();
 
 static int maxncond = 100;
 static int maxnop = 100;
 static int verbose = 0;		/* Verbose/debugging flag */
-static int wfile = 0;		/* True to print output file */
 static int debug = 0;		/* True for extra information */
 static int sumcol = 0;		/* True to sum columns */
 static int meancol = 0;		/* True to compute mean of columns */
 static int countcol = 0;	/* True to count entries in columns */
-static char *objname = NULL;	/* Object name for output */
-static char *keyword = NULL;	/* Column to add to tab table output */
-static char progpath[128];
-static int ncat = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int nread = 0;		/* Number of lines to read (0=all) */
 static int nskip = 0;		/* Number of lines to skip */
@@ -51,12 +49,11 @@ char **av;
     char *str;
     char *temp;
     char *filename;
-    int systemp = 0;		/* Input search coordinate system */
     char *ranges = NULL;
     char *lfile = NULL;
     char *lranges = NULL;
-    int match, newbytes, nrbytes;
-    int icond;
+    int match, newbytes;
+    int nrbytes = 0;
 
     if (ac == 1)
         usage ();
@@ -89,6 +86,7 @@ char **av;
 		    temp = ranges;
 		    ranges = (char *)calloc (newbytes, 1);
 		    strcpy (ranges, temp);
+		    nrbytes = newbytes;
 		    free (temp);
 		    }
 		strcat (ranges, ",");
@@ -111,6 +109,7 @@ char **av;
 		    temp = ranges;
 		    ranges = (char *) calloc (newbytes, 1);
 		    strcpy (ranges, temp);
+		    nrbytes = newbytes;
 		    free (temp);
 		    }
 		strcat (ranges, ",");
@@ -141,23 +140,6 @@ char **av;
 	    if (ccond[ncond] == NULL)
 		ccond[ncond] = strchr (*av, '<');
 	    ncond++;
-	    }
-
-	/* Operation */
-	else if (strchr (*av, '*') != NULL || strchr (*av, '+') != NULL ||
-		 strchr (*av, '/') != NULL ) {
-	    if (nop >= maxnop) {
-		maxnop = maxnop * 2;
-		op = (char **)realloc((void *)op, maxncond*sizeof(void *));
-		cop = (char **)realloc((void *)cop, maxncond*sizeof(void *));
-		}
-	    op[nop] = *av;
-	    cop[nop] = strchr (*av, '*');
-	    if (cop[nop] == NULL)
-		cop[nop] = strchr (*av, '+');
-	    if (cop[nop] == NULL)
-		cop[nop] = strchr (*av, '/');
-	    nop++;
 	    }
 
 	/* Otherwise, read command */
@@ -238,10 +220,28 @@ char **av;
 		break;
 	    }
 	    }
+
+	/* Operation */
+	else if (iscolop (*av)) {
+	    if (nop >= maxnop) {
+		maxnop = maxnop * 2;
+		op = (char **)realloc((void *)op, maxncond*sizeof(void *));
+		cop = (char **)realloc((void *)cop, maxncond*sizeof(void *));
+		}
+	    op[nop] = *av;
+	    cop[nop] = strchr (*av, '*');
+	    if (cop[nop] == NULL)
+		cop[nop] = strchr (*av, '+');
+	    if (cop[nop] == NULL)
+		cop[nop] = strchr (*av, '/');
+	    nop++;
+	    }
+
+	/* File to read */
 	else
 	    filename = *av;
 	}
-    ListFile (filename, ranges, lranges, lfile);
+    (void)ListFile (filename, ranges, lranges, lfile);
 
     free (lranges);
     free (ranges);
@@ -282,7 +282,6 @@ char	*lfile;		/* Name of file with lines to list */
 {
     int i, j, il, ir, nbytes;
     char line[1024];
-    char fline[1024];
     char *nextline;
     char *lastchar;
     FILE *fd;
@@ -302,7 +301,7 @@ char	*lfile;		/* Name of file with lines to list */
     double dtok, dnum;
     int nfind, ntok, nt, ltok,iop;
     int *inum;
-    int skipline, icond, itok;
+    int icond, itok;
     char tcond, *cstr, *cval, top;
     char numstr[32], numstr1[32];
     double dcond, dval;
@@ -334,7 +333,7 @@ char	*lfile;		/* Name of file with lines to list */
 	nbytes = nline * sizeof (int);
 	if (!(iline = (int *) calloc (nline, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for iline\n", nbytes);
-	    return;
+	    return (-1);
 	    }
 	for (i = 0; i < nline; i++)
 	    iline[i] = rgeti4 (lrange);
@@ -344,14 +343,14 @@ char	*lfile;		/* Name of file with lines to list */
     /* Make list of line numbers to read from file specified on command line */
     if (lfile != NULL) {
 	if (!(lfd = fopen (lfile, "r")))
-            return (0);
+            return (-1);
 	nlmax = 99;
 	nline = 0;
 	nbytes = nlmax * sizeof(int);
 	if (!(iline = (int *) calloc (nlmax, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for iline\n", nbytes);
 	    fclose (lfd);
-	    return;
+	    return (-1);
 	    }
 	il = 0;
 	nextline = line;
@@ -359,7 +358,7 @@ char	*lfile;		/* Name of file with lines to list */
 	    if (fgets (nextline, 1024, lfd) == NULL)
 		break;
 
-	    /* Skip lines with comments
+	    /* Skip lines with comments */
 	    if (line[0] == '#')
 		continue;
 
@@ -387,7 +386,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    fprintf (stderr, "Could not realloc %d bytes for iline\n",
 			     nbytes);
 		    fclose (lfd);
-		    return;
+		    return (-1);
 		    }
 		}
 	    for (i = 0; i < ntok; i++) {
@@ -408,7 +407,7 @@ char	*lfile;		/* Name of file with lines to list */
     if (!strcmp (filename, "stdin"))
 	fd = stdin;
     else if (!(fd = fopen (filename, "r"))) {
-        return (0);
+        return (-1);
 	}
 
     /* Skip lines into input file */
@@ -429,7 +428,7 @@ char	*lfile;		/* Name of file with lines to list */
 	    if (fgets (nextline, 1024, fd) == NULL)
 		break;
 
-	    /* Skip lines with comments
+	    /* Skip lines with comments */
 	    if (nextline[0] == '#')
 		continue;
 
@@ -557,29 +556,28 @@ char	*lfile;		/* Name of file with lines to list */
 	if (!(sum = (double *) calloc (nfind, sizeof (double))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for sum\n", nbytes);
 	    if (fd != stdin) fclose (fd);
-	    return;
+	    return (-1);
 	    }
 	nbytes = nfind * sizeof (int);
 	if (!(nsum = (int *) calloc (nfind, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for nsum\n", nbytes);
 	    if (fd != stdin) fclose (fd);
-	    return;
+	    return (-1);
 	    }
 	if (!(nent = (int *) calloc (nfind, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for nent\n", nbytes);
 	    if (fd != stdin) fclose (fd);
-	    return;
+	    return (-1);
 	    }
 	if (!(inum = (int *) calloc (nfind, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for inum\n", nbytes);
 	    if (fd != stdin) fclose (fd);
-	    return;
+	    return (-1);
 	    }
 	else {
 	    for (i = 0; i < nfind; i++)
 		inum[i] = rgeti4 (range);
 	    }
-	wfile = 0;
 	iln = 0;
 	iapp = 0;
 	nextline = line;
@@ -883,7 +881,7 @@ strclean (string)
 char *string;
 
 {
-    char *sdot, *s, *strend, *str;
+    char *sdot, *s;
     int ndek, lstr, i;
 
     /* Remove positive exponent if there are enough digits given */
@@ -931,6 +929,24 @@ char *string;
 	
 }
 
+static int
+iscolop (string)
+
+char *string;
+{
+    if (strchr (string, '*') != NULL || strchr (string, '+') != NULL)
+	return (1);
+    else if (strchr (string, '/') != NULL || strchr (string, '-') != NULL) {
+	int notafile = access(string,0);
+	if (notafile)
+	    return (1);
+	else
+	    return (0);
+	}
+    else
+	return (0);
+}
+
 
 /* Nov  2 1999	New program
  * Nov  3 1999	Add option to read from stdin as input filename
@@ -946,4 +962,7 @@ char *string;
  * Apr  5 2000	Simply echo lines starting with #
  * Jul 21 2000	Link lines with escaped linefeeds at end to next line
  * Aug  8 2000	Add -l option to append lines without backslashes
+ * Oct 23 2000	Declare ListFile(); fix column arithmetic command line options
+ * Nov 20 2000	Clean up code using lint
+ * Dec 11 2000	Include fitshead.h for string search
  */

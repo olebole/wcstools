@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
- * June 26, 2000
+ * November 2, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 #ifndef _wcs_h_
@@ -350,6 +350,22 @@ extern "C" {
 
 
     /* Coordinate conversion subroutines in wcscon.c */
+    void wcsconv(	/* Convert between coordinate systems and equinoxes */
+	int sys1,	/* Input coordinate system (J2000, B1950, ECLIPTIC, GALACTIC */
+	int sys2,	/* Output coordinate system (J2000, B1950, ECLIPTIC, G ALACTIC */
+	double eq1,	/* Input equinox (default of sys1 if 0.0) */
+	double eq2,	/* Output equinox (default of sys2 if 0.0) */
+	double ep1,	/* Input Besselian epoch in years */
+	double ep2,	/* Output Besselian epoch in years */
+	double *dtheta,	/* Longitude or right ascension in degrees
+			   Input in sys1, returned in sys2 */
+	double *dphi,	/* Latitude or declination in degrees
+			   Input in sys1, returned in sys2 */
+	double *ptheta,	/* Longitude or right ascension proper motion in degrees/year
+			   Input in sys1, returned in sys2 */
+	double *pphi,	/* Latitude or declination proper motion in degrees/year
+	double *px,	/* Parallax in arcseconds */
+	double *rv);	/* Radial velocity in km/sec */
     void wcsconp(	/* Convert between coordinate systems and equinoxes */
 	int sys1,	/* Input coordinate system (J2000, B1950, ECLIPTIC, GALACTIC */
 	int sys2,	/* Output coordinate system (J2000, B1950, ECLIPTIC, G ALACTIC */
@@ -444,8 +460,9 @@ void setwcsfile();	/* Set filename for WCS error message */
 /* Coordinate conversion subroutines in wcscon.c */
 void wcscon();		/* Convert between coordinate systems and equinoxes */
 void wcsconp();		/* Convert between coordinate systems and equinoxes */
+void wcsconv();		/* Convert between coordinate systems and equinoxes */
 int wcscsys();		/* Set coordinate system from string */
-double wcsceq();		/* Set equinox from string (return 0.0 if not obvious) */
+double wcsceq();	/* Set equinox from string (return 0.0 if not obvious) */
 void wcscstr();		/* Return system string from system code, equinox, epoch */
 #endif
 #endif
@@ -528,4 +545,5 @@ void wcscstr();		/* Return system string from system code, equinox, epoch */
  *
  * Jan 28 2000	Add flags for choice of WCS projection subroutines
  * Jun 26 2000	Add XY coordinate system
+ * Nov  2 2000	Add wcsconv() to convert coordinates when parallax or rv known
  */

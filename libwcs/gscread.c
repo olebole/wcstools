@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** June 26, 2000
+ *** December 12, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -11,8 +11,11 @@
 #include "wcs.h"
 #include "wcscat.h"
 
-char cdn[64]="/data/gsc1";	/* Pathname of northern hemisphere GSC CDROM */
-char cds[64]="/data/gsc2";	/* Pathname of southern hemisphere GSC CDROM */
+/* Pathname of northern hemisphere GSC CDROM  or search engine URL */
+char cdn[64]="/data/gsc1";
+
+/* Pathname of southern hemisphere GSC CDROM */
+char cds[64]="/data/gsc2";
 
 static void gscpath();
 static int gscreg();
@@ -86,6 +89,20 @@ int	nlog;		/* 1 for diagnostics */
     else
 	verbose = 0;
     verbose = nlog;
+
+    /* If root pathname is a URL, search and return */
+    if ((str = getenv("GSC_PATH")) != NULL) {
+	if (!strncmp (str, "http:",5)) {
+	    return (webread (str,"gsc",distsort,cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nstarmax,gnum,gra,
+			     gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+	    }
+	}
+    if (!strncmp (cdn, "http:",5)) {
+	return (webread (cdn,"gsc",distsort,cra,cdec,dra,ddec,drad,
+			 sysout,eqout,epout,mag1,mag2,nstarmax,gnum,gra,
+			 gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+	}
 
     if (ltab < 1) {
 	ltab = 10000;
@@ -397,6 +414,18 @@ int	nlog;		/* 1 for diagnostics */
     char *str;
 
     itot = 0;
+
+    /* If root pathname is a URL, search and return */
+    if ((str = getenv("GSC_PATH")) != NULL) {
+	if (!strncmp (str, "http:",5)) {
+	    return (webrnum (str,"gsc",nstars,sysout,eqout,epout,
+			     gnum,gra,gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+	    }
+	}
+    if (!strncmp (cdn, "http:",5)) {
+	return (webrnum (cdn,"gsc",nstars,sysout,eqout,epout,
+			 gnum,gra,gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+	}
 
     if (ltab < 1) {
 	ltab = 10000;
@@ -951,4 +980,7 @@ char *path;	/* Pathname of GSC region FITS file */
  * Mar 27 2000	Drop unused variables after lint
  * Mar 28 2000	Make default to read all classes
  * Jun 26 2000	Add coordinate system to SearchLim() arguments
+ * Nov 29 2000	Add option to read cataog across the web
+ * Dec 11 2000	Allow search engine URL in cdn[]
+ * Dec 12 2000	Fix wrong web subroutine in gscrnum()
  */

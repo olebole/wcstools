@@ -112,6 +112,8 @@ wcscon.c
   coordinates, mostly based on Starlink SLA_LIB subroutines.
 wcsfort.c
   Fortran wrapper subroutines for all useful subroutines in wcs.c and wcsinit.c
+webread.c
+  Open Starbase files across the Internet using HTTP queries
 worldpos.c
   worldpos() uses the WCS structure to compute sky coordinates given
   image pixel X and Y for images with header information for any of 8
