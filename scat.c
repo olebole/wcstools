@@ -1,5 +1,5 @@
 /* File scat.c
- * January 10, 1997
+ * April 25, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,13 +17,19 @@
 
 #define GSC	1	/* refcat value for HST Guide Star Catalog */
 #define UJC	2	/* refcat value for USNO UJ Star Catalog */
-#define UAC	3	/* refcat value for USNO A Star Catalog */
+#define UAC	3	/* refcat value for USNO A-1.0 Star Catalog */
+#define USAC	4	/* refcat value for USNO SA-1.0 Star Catalog */
 
 #define MAXREF 100
 
 static void usage();
 
 extern int gscread();
+extern int uacread();
+extern int ujcread();
+extern int gscrnum();
+extern int uacrnum();
+extern int ujcrnum();
 static int ListCat ();
 extern void XSortStars ();
 extern void RASortStars ();
@@ -148,11 +154,14 @@ char **av;
 		if (strncmp(refcatname,"gs",2)==0 ||
 		    strncmp (refcatname,"GS",2)== 0)
 		    refcat = GSC;
+		else if (strncmp(refcatname,"us",2)==0 ||
+		    strncmp(refcatname,"US",2)==0)
+		    refcat = USAC;
 		else if (strncmp(refcatname,"ua",2)==0 ||
-		     strncmp(refcatname,"UA",2)==0)
+		    strncmp(refcatname,"UA",2)==0)
 		    refcat = UAC;
 		else if (strncmp(refcatname,"uj",2)==0 ||
-		     strncmp(refcatname,"UJ",2)==0)
+		    strncmp(refcatname,"UJ",2)==0)
 		    refcat = UJC;
 		else
 		    refcat = 0;
@@ -248,7 +257,24 @@ char **av;
     		break;
 
     	    case '2':	/* check second catalog */
-    		refcat2 = UAC;
+		if (ac < 2)
+		    usage();
+		strcpy (refcatname, *++av);
+		if (strncmp(refcatname,"gs",2)==0 ||
+		    strncmp (refcatname,"GS",2)== 0)
+		    refcat2 = GSC;
+		else if (strncmp(refcatname,"us",2)==0 ||
+		    strncmp(refcatname,"US",2)==0)
+		    refcat2 = USAC;
+		else if (strncmp(refcatname,"ua",2)==0 ||
+		    strncmp(refcatname,"UA",2)==0)
+		    refcat2 = UAC;
+		else if (strncmp(refcatname,"uj",2)==0 ||
+		    strncmp(refcatname,"UJ",2)==0)
+		    refcat2 = UJC;
+		else
+		    refcat2 = 0;
+		ac--;
     		break;
 
 	    default:
@@ -258,7 +284,7 @@ char **av;
 	}
     }
 
-    if (refcat2 > 0 && ListCat (nfind, snum) < 1) {
+    if (ListCat (nfind, snum) < 1 && refcat2 > 0) {
 	refcat = refcat2;
 	(void)ListCat (nfind, snum);
 	}
@@ -341,6 +367,8 @@ double *snum;		/* Catalog numbers */
 	strcpy (title, "HST Guide Stars");
     else if (refcat == UAC)
 	strcpy (title, "USNO A Catalog Stars");
+    else if (refcat == USAC)
+	strcpy (title, "USNO SA Catalog Stars");
     else if (refcat == UJC)
 	strcpy (title, "USNO J Catalog Stars");
     else if (refcatname[0] > 0)
@@ -389,6 +417,8 @@ double *snum;		/* Catalog numbers */
 	/* Find the specified catalog stars */
 	if (refcat == GSC)
 	    nbg = gscrnum (nfind,gnum,gra,gdec,gm,gc,nlog);
+	else if (refcat == USAC)
+	    nbg = usarnum (nfind,gnum,gra,gdec,gm,gmb,gc,nlog);
 	else if (refcat == UAC)
 	    nbg = uacrnum (nfind,gnum,gra,gdec,gm,gmb,gc,nlog);
 	else if (refcat == UJC)
@@ -432,10 +462,12 @@ double *snum;		/* Catalog numbers */
 	else {
 	    if (refcat == GSC)
 		printf ("HST GSC   %s %s  ", rastr, decstr);
+	    else if (refcat == USAC)
+		printf ("USNO SA 1.0   %s %s  ", rastr, decstr);
 	    else if (refcat == UAC)
-		printf ("USNO A 1.0     %s %s  ", rastr, decstr);
+		printf ("USNO A 1.0    %s %s  ", rastr, decstr);
 	    else if (refcat == UJC)
-		printf ("USNO UJ1.0    %s %s  ", rastr, decstr);
+		printf ("USNO UJ1.0   %s %s  ", rastr, decstr);
 	    else
 		printf ("%9s %s %s  ", refcatname, rastr, decstr);
 	    }
@@ -489,6 +521,9 @@ double *snum;		/* Catalog numbers */
     if (refcat == GSC)
 	ng = gscread (cra,cdec,dra,ddec,ddec,mag1,mag2,classd,ngmax,
 		      gnum,gra,gdec,gm,gc,nlog);
+    else if (refcat == USAC)
+	ng = usaread (cra,cdec,dra,ddec,ddec,mag1,mag2,uplate,ngmax,
+		      gnum,gra,gdec,gm,gmb,gc,debug);
     else if (refcat == UAC)
 	ng = uacread (cra,cdec,dra,ddec,ddec,mag1,mag2,uplate,ngmax,
 		      gnum,gra,gdec,gm,gmb,gc,debug);
@@ -576,6 +611,8 @@ double *snum;		/* Catalog numbers */
 	    strcat (filename,".gsc");
 	else if (refcat == UJC)
 	    strcat (filename,".ujc");
+	else if (refcat == USAC)
+	    strcat (filename,".usac");
 	else if (refcat == UAC)
 	    strcat (filename,".uac");
 	else {
@@ -600,6 +637,8 @@ double *snum;		/* Catalog numbers */
     /* Write heading */
     if (refcat == GSC)
 	sprintf (headline, "CATALOG	HSTGSC1.1");
+    else if (refcat == USAC)
+	sprintf (headline, "CATALOG	USNO SA 1.0");
     else if (refcat == UAC)
 	sprintf (headline, "CATALOG	USNO A 1.0");
     else if (refcat == UJC)
@@ -672,6 +711,11 @@ double *snum;		/* Catalog numbers */
 	    sprintf (headline,"GSC_NUMBER	RA1950    	DEC1950    	MAG   	TYPE	DISTANCE");
 	else
 	    sprintf (headline,"GSC_NUMBER	RA2000    	DEC2000    	MAG   	TYPE	DISTANCE");
+    else if (refcat == USAC)
+	if (strcmp (coorout,"FK4") == 0)
+	    sprintf (headline,"USAC_NUMBER	RA1950  	DEC1950  	MAGB	MAGR	X    	Y    	Plate");
+	else
+	    sprintf (headline,"USAC_NUMBER	RA2000  	DEC2000  	MAGB	MAGR	X    	Y    	Plate");
     else if (refcat == UAC)
 	if (strcmp (coorout,"FK4") == 0)
 	    sprintf (headline,"UAC_NUMBER	RA1950  	DEC1950  	MAGB	MAGR	X    	Y    	Plate");
@@ -694,6 +738,8 @@ double *snum;		/* Catalog numbers */
 
     if (refcat == UAC)
 	sprintf(headline,"----------	--------	---------	----	-----	-----	-----	-----");
+    else if (refcat == USAC)
+	sprintf(headline,"-----------	--------	---------	----	-----	-----	-----	-----");
     else
         sprintf (headline,"----------	------------	------------	------	----	_______");
     if (wfile)
@@ -708,6 +754,13 @@ double *snum;		/* Catalog numbers */
 		printf ("GSC number RA1950       Dec1950       Mag Type Arcsec\n");
 	    else
 		printf ("GSC number RA2000       Dec2000       Mag Type Arcsec\n");
+	else if (refcat == USAC)
+	    if (nbg == 0)
+		printf ("No USNO SA 1.0 Stars Found\n");
+	    else if (strcmp (coorout,"FK4") == 0)
+		printf ("USNO SA number RA1950       Dec1950      MagB  MagR Plate  Arcsec\n");
+	    else
+		printf ("USNO SA number RA2000       Dec2000      MagB  MagR Plate  Arcsec\n");
 	else if (refcat == UAC)
 	    if (nbg == 0)
 		printf ("No USNO A 1.0 Stars Found\n");
@@ -735,7 +788,7 @@ double *snum;		/* Catalog numbers */
 	if (gx[i] > 0.0 && gy[i] > 0.0) {
 	    ra2str (rastr, gra[i], 3);
 	    dec2str (decstr, gdec[i], 2);
-	    if (refcat == UAC)
+	    if (refcat == UAC || refcat == USAC)
 		sprintf (headline, "%13.8f	%s	%s	%.1f	%.1f	%.1f	%.1f	%.1f	%d",
 		 gnum[i], rastr, decstr, gmb[i], gm[i], gx[i], gy[i], gc[i]);
 	    else if (refcat == UJC)
@@ -748,7 +801,7 @@ double *snum;		/* Catalog numbers */
 		fprintf (fd, "%s\n", headline);
 	    else if (tabout)
 		printf ("%s\n", headline);
-	    else if (refcat == UAC)
+	    else if (refcat == UAC || refcat == USAC)
 		printf ("%13.8f %s %s %5.1f %5.1f %4d %8.2f\n",
 			gnum[i],rastr,decstr,gmb[i],gm[i],gc[i], 3600.0*gx[i]);
 	    else if (refcat == UJC)
@@ -789,5 +842,8 @@ double *snum;		/* Catalog numbers */
  * Dec 18 1996	Add option to print entries for specified catalog numbers
  * Dec 30 1996	Clean up closest star message
  * Dec 30 1996	Print message instead of heading if no stars are found
+ *
  * Jan 10 1997	Fix bug in RASort Stars which did not sort magnitudes
+ * Mar 12 1997	Add USNO SA 1.0 catalog as USAC
+ * Apr 25 1997	Fix bug in uacread
  */

@@ -1,4 +1,4 @@
-/* File suac.c
+/* File susac.c
  * April 25, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
@@ -19,8 +19,8 @@
 
 static void usage();
 
-extern int uacread();
-extern int uacrnum();
+extern int usaread();
+extern int usarnum();
 static void ListUAC ();
 extern void XSortStars ();
 extern void RASortStars ();
@@ -332,7 +332,7 @@ double *uacnum;		/* USNO A Catalog zone.number */
 	    return;
 	    }
 	wfile = 0;
-	nbg = uacrnum (nfind, unum, ura, udec, um, umb, up, nlog);
+	nbg = usarnum (nfind, unum, ura, udec, um, umb, up, nlog);
 	for (i = 0; i < nbg; i++ ) {
 	    if (strcmp (coorout,"FK4") == 0)
 		fk524 (&ura[i],&udec[i]);
@@ -367,7 +367,7 @@ double *uacnum;		/* USNO A Catalog zone.number */
 	if (objname)
 	    printf ("%12s %s %s ", objname, rastr, decstr);
 	else
-	    printf ("USNO A 1.0    %s %s ", rastr, decstr);
+	    printf ("USNO SA 1.0   %s %s ", rastr, decstr);
 	if (strcmp (coorout,"FK4") == 0)
 	    printf ("(B1950)  ");
 	else
@@ -413,7 +413,7 @@ double *uacnum;		/* USNO A Catalog zone.number */
 	}
 
     /* Find the catalog stars in the search box */
-    ng = uacread (cra,cdec,dra,ddec,ddec,mag1,mag2,plate,numax,
+    ng = usaread (cra,cdec,dra,ddec,ddec,mag1,mag2,plate,numax,
 		  unum,ura,udec,um,umb,up,nlog);
 
     /* Find the distance to each star from the search center */
@@ -488,7 +488,7 @@ double *uacnum;		/* USNO A Catalog zone.number */
 	    strcpy (filename,objname);
 	else
 	    strcpy (filename,"search");
-	strcat (filename,".uac");
+	strcat (filename,".usac");
 	fd = fopen (filename, "w");
 	if (fd == NULL) {
 	    if (ux) free ((char *)ux);
@@ -505,7 +505,7 @@ double *uacnum;		/* USNO A Catalog zone.number */
         }
 
     /* Write heading */
-    sprintf (headline, "CATALOG	UA1.0");
+    sprintf (headline, "CATALOG	USA1.0");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
@@ -565,14 +565,14 @@ double *uacnum;		/* USNO A Catalog zone.number */
 
     /* Print column headings */
     if (strcmp (coorout,"FK4") == 0)
-	sprintf (headline,"UAC_NUMBER	RA1950  	DEC1950  	MAGB	MAGR	PLATE	ARCSEC");
+	sprintf (headline,"USAC_NUMBER	RA1950  	DEC1950  	MAGB	MAGR	PLATE	ARCSEC");
     else
-	sprintf (headline,"UAC_NUMBER	RA2000  	DEC2000  	MAGB	MAGR	PLATE	ARCSEC");
+	sprintf (headline,"USAC_NUMBER	RA2000  	DEC2000  	MAGB	MAGR	PLATE	ARCSEC");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
-    sprintf (headline,"----------	------------	------------	----	----	------	------");
+    sprintf (headline,"-----------	------------	------------	----	----	------	------");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
@@ -581,9 +581,9 @@ double *uacnum;		/* USNO A Catalog zone.number */
 	if (nbg == 0)
 	    printf ("No USNO A 1.0 Stars Found\n");
 	else if (strcmp (coorout,"FK4") == 0)
-	    printf ("USNO A number  RA1950       Dec1950      MagB  MagR Plate  Arcsec\n");
+	    printf ("USNO SA number RA1950       Dec1950      MagB  MagR Plate  Arcsec\n");
 	else
-	    printf ("USNO A number  RA2000       Dec2000      MagB  MagR Plate  Arcsec\n");
+	    printf ("USNO SA number RA2000       Dec2000      MagB  MagR Plate  Arcsec\n");
 	}
 
     for (i = 0; i < nbg; i++) {
@@ -614,17 +614,6 @@ double *uacnum;		/* USNO A Catalog zone.number */
     return;
 }
 
-/* Nov 15 1996	New program based on sujc
- * Nov 19 1996	Fix usage()
- * Dec 11 1996	Fix search across 0/360 degrees in RA
- * Dec 12 1996	Allow search with minimum and maximum magnitudes
- * Dec 12 1996	Fix header for magnitudes
- * Dec 13 1996	Fix bug writing plate into header
- * Dec 13 1996	Add code to accept input center as colon'ed string
- * Dec 17 1996	Fix UACREAD to keep closest stars, not brightest ones
- * Dec 18 1996	Set radius to 1 minute, not 5, if finding closest star
- * Dec 30 1996	Clean up closest star message
- * Dec 30 1996	Print message instead of heading if no stars are found
- * Jan 10 1997	Fix bug in RASortStars
+/* Mar 13 1996	New program based on suac
  * Apr 25 1997	Fix bug in uacread
  */

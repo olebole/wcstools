@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** December 17, 1996
+ *** April 23, 1997
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -12,8 +12,28 @@
 #include "fitshead.h"
 #include "wcs.h"
 
-static char cdu[64]="/data/ua"; /* pathname of USNO A 1.0 directory */
-				/* Replaced by UA_PATH environment variable */
+#define	USNOA10		0	/* USNO A-1.0 Catalog */
+#define	USNOSA10	1	/* USNO SA-1.0 Catalog */
+static int ucat=USNOA10;
+
+/* Pathname of USNO SA-1.0 directory; replaced by USA_PATH environment variable */
+static char usapath[64]="/data/usnosa10";
+
+/* Pathname of USNO A-1.0 directory; replaced by UA_PATH environment variable */
+/* Use this if CDROMs have been transferred to a single hard disk */
+/* Otherwise set to null string ("") and use cdroot */
+static char uapath[64]="/data/ua";
+
+/* Root directory for CDROMs; replaced by UA_ROOT environment variable */
+/* Ignored if uapath or UA_PATH are set */
+static char cdroot[32]="/cdrom";
+
+/* Names of CDROM's for USNO A-1.0 Catalog */
+static char cdname[10][8]={"ua001","ua002","ua003","ua004","ua005","ua006",
+			"ua007","ua008","ua009","ua010"};
+
+/* Disks for 24 zones of USNO A-1.0 Catalog */
+static int zdisk[24]={1,1,6,5,3,2,1,4,6,5,7,10,8,7,8,9,9,4,10,3,2,6,2,3};
 
 typedef struct {
     int rasec, decsec, magetc;
@@ -41,7 +61,39 @@ static int uacpath();
 static int uacstar();
 static void uacswap();
 
-/* UACREAD -- Read USNO J Catalog stars from CDROM */
+/* USACREAD -- Read USNO SA-1.0 Catalog stars from CDROM */
+
+int
+usaread (cra,cdec,dra,ddec,drad,mag1,mag2,xplate,nstarmax,
+	 unum,ura,udec,umag,umagb,uplate,nlog)
+
+double	cra;		/* Search center J2000 right ascension in degrees */
+double	cdec;		/* Search center J2000 declination in degrees */
+double	dra;		/* Search half width in right ascension in degrees */
+double	ddec;		/* Search half-width in declination in degrees */
+double	drad;		/* Limiting separation in degrees (ignore if 0) */
+double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	xplate;		/* If nonzero, use objects only from this plate */
+int	nstarmax;	/* Maximum number of stars to be returned */
+double	*unum;		/* Array of UA numbers (returned) */
+double	*ura;		/* Array of right ascensions (returned) */
+double	*udec;		/* Array of declinations (returned) */
+double	*umag;		/* Array of red magnitudes (returned) */
+double	*umagb;		/* Array of blue magnitudes (returned) */
+int	*uplate;	/* Array of plate numbers (returned) */
+int	nlog;		/* Logging interval */
+{
+    int i;
+    int uacread();
+
+    ucat = USNOSA10;
+    i = uacread (cra,cdec,dra,ddec,drad,mag1,mag2,xplate,nstarmax,
+		 unum,ura,udec,umag,umagb,uplate,nlog);
+    ucat = USNOA10;
+    return (i);
+}
+
+/* UACREAD -- Read USNO A-1.0 Catalog stars from CDROM */
 
 int
 uacread (cra,cdec,dra,ddec,drad,mag1,mag2,xplate,nstarmax,
@@ -92,9 +144,19 @@ int	nlog;		/* Logging interval */
     else
 	verbose = 0;
 
-    /* Set path to USNO A Catalog */
-    if ((str = getenv("UA_PATH")) != NULL )
-	strcpy (cdu,str);
+    /* Set path to catalog */
+    if (ucat == USNOSA10) {
+	if ((str = getenv("USA_PATH")) != NULL)
+	    strcpy (usapath,str);
+	}
+    else {
+	if ((str = getenv("UA_PATH")) != NULL)
+	    strcpy (uapath,str);
+	else if ((str = getenv("UA_ROOT")) != NULL) {
+	    uapath[0] = 0;
+	    strcpy (cdroot,str);
+	    }
+	}
 
     /* Set right ascension limits for search */
     ra1 = cra - dra;
@@ -201,8 +263,8 @@ int	nlog;		/* Logging interval */
 			break;
 			}
 
-		/* Extract selected fields if not probable duplicate */
-		    else if (star.magetc > 0) {
+		/* Extract selected fields */
+		    else {
 			ra = uacra (star.rasec); /* Right ascension in degrees */
 			dec = uacdec (star.decsec); /* Declination in degrees */
 			magb = uacmagb (star.magetc); /* Blue magnitude */
@@ -333,9 +395,31 @@ int	nlog;		/* Logging interval */
 
 
 int
-uacrnum (nstars,unum,ura,udec,umag,umagb,uplate,nlog)
+usarnum (nnum,unum,ura,udec,umag,umagb,uplate,nlog)
 
-int	nstars;		/* Number of stars to find */
+int	nnum;		/* Number of stars to find */
+double	*unum;		/* Array of UA numbers to find */
+double	*ura;		/* Array of right ascensions (returned) */
+double	*udec;		/* Array of declinations (returned) */
+double	*umag;		/* Array of red magnitudes (returned) */
+double	*umagb;		/* Array of blue magnitudes (returned) */
+int	*uplate;	/* Array of plate numbers (returned) */
+int	nlog;		/* Logging interval */
+{
+    int i;
+    int uacrnum();
+
+    ucat = USNOSA10;
+    i = uacrnum (nnum,unum,ura,udec,umag,umagb,uplate,nlog);
+    ucat = USNOA10;
+    return (i);
+}
+
+
+int
+uacrnum (nnum,unum,ura,udec,umag,umagb,uplate,nlog)
+
+int	nnum;		/* Number of stars to find */
 double	*unum;		/* Array of UA numbers to find */
 double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
@@ -346,43 +430,51 @@ int	nlog;		/* Logging interval */
 {
     UACstar star;	/* UA catalog entry for one star */
 
-    int verbose;
-    int znum, itot,iz, i;
-    int itable, jtable,jstar;
-    int nstar, nread, nzone;
+    int znum;
+    int jnum;
+    int nzone;
     int nfound = 0;
     double ra,dec;
     double mag, magb;
-    int istar, istar1, istar2, plate;
-    int nzmax = NZONES;	/* Maximum number of declination zones */
+    int istar, plate;
     char *str;
 
-    itot = 0;
-    if (nlog > 0)
-	verbose = 1;
-    else
-	verbose = 0;
-
-    /* Set path to USNO A Catalog */
-    if ((str = getenv("UA_PATH")) != NULL )
-	strcpy (cdu,str);
+    /* Set path to catalog */
+    if (ucat == USNOSA10) {
+	if ((str = getenv("USA_PATH")) != NULL)
+	    strcpy (usapath,str);
+	}
+    else {
+	if ((str = getenv("UA_PATH")) != NULL)
+	    strcpy (uapath,str);
+	else if ((str = getenv("UA_ROOT")) != NULL) {
+	    uapath[0] = 0;
+	    strcpy (cdroot,str);
+	    }
+	}
 
 /* Loop through star list */
-    for (jstar = 0; jstar < nstars; jstar++) {
+    for (jnum = 0; jnum < nnum; jnum++) {
 
     /* Get path to zone catalog */
-	znum = (int) unum[jstar];
+	znum = (int) unum[jnum];
 	if ((nzone = uacopen (znum)) != 0) {
 
-	    istar = (int) (((unum[jstar] - znum) * 100000000.0) + 0.5);
+	    istar = (int) (((unum[jnum] - znum) * 100000000.0) + 0.5);
+
+	    if (istar > nzone) {
+		fprintf (stderr,"UACRNUM: Star %d > max. in zone %d\n",
+			 istar,nzone);
+		break;
+		}
 
 	    if (uacstar (istar, &star)) {
 		fprintf (stderr,"UACRNUM: Cannot read star %d\n", istar);
 		break;
 		}
 
-	    /* Extract selected fields if not probable duplicate */
-	    else if (star.magetc > 0) {
+	    /* Extract selected fields */
+	    else {
 		ra = uacra (star.rasec); /* Right ascension in degrees */
 		dec = uacdec (star.decsec); /* Declination in degrees */
 		magb = uacmagb (star.magetc); /* Blue magnitude */
@@ -402,9 +494,9 @@ int	nlog;		/* Logging interval */
 			     znum,istar,ra,dec,mag);
 
 		/* Log operation */
-		if (nlog > 0 && jstar%nlog == 0)
+		if (nlog > 0 && jnum%nlog == 0)
 		    fprintf (stderr,"UACRNUM: %4d.%8d  %8d / %8d sources\r",
-			     znum, istar, jstar, nstar);
+			     znum, istar, jnum, nnum);
 
 		(void) fclose (fcat);
 		/* End of star processing */
@@ -418,7 +510,7 @@ int	nlog;		/* Logging interval */
 
     /* Summarize search */
     if (nlog > 0)
-	fprintf (stderr,"UACRNUM:  %d / %d found\n",nfound,nstars);
+	fprintf (stderr,"UACRNUM:  %d / %d found\n",nfound,nnum);
 
     return (nfound);
 }
@@ -710,14 +802,30 @@ int zn;		/* UA zone number */
 char *path;	/* Pathname of UA zone file */
 
 {
+    int iz;		/* Zone index (0000 = 0, 0075 = 1, ...) */
+    int icd;		/* CDROM number if multiple CDROMs used */
+
+    /* Return error code and null path if zone is out of range */
     if (zn < 0 || zn > 1725) {
 	fprintf (stderr, "UACPATH: zone %d out of range 0-1725\n",zn);
+	path[0] = 0;
 	return (-1);
 	}
-    else if (strchr (cdu,'C'))
-	sprintf (path,"%s/ZONE%04d.CAT", cdu, zn);
-    else
-	sprintf (path,"%s/zone%04d.cat", cdu, zn);
+
+    /* Set path for USNO SA-1.0 zone catalog */
+    if (ucat == USNOSA10)
+	sprintf (path,"%s/zone%04d.cat", usapath, zn);
+
+    /* If all USNO A-1.0 zones are in a single directory, set zone catalog path */
+    else if (strlen (uapath) > 0)
+	sprintf (path,"%s/zone%04d.cat", uapath, zn);
+
+    /* If USNO A-1.0 zones are split between 10 CDROMs, set the path accordinagly */
+    else {
+	iz = zn / 75;
+	icd = zdisk[iz];
+	sprintf (path,"%s/%s/zone%04d.cat", cdroot, cdname[icd], zn);
+	}
 
     return (0);
 }
@@ -784,4 +892,8 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Dec 11 1996	Set ra<0 to ra+360 and ra>360 to ra-360
  * Dec 16 1996	Add code to read a specific star
  * Dec 17 1996	Keep closest stars, not brightest, if searching within radius
+ *
+ * Mar 12 1997	Set paths for SA-1.0 and multiple CDROM A-1.0
+ * Mar 20 1997	Clean up UACRNUM after lint
+ * Apr 23 1997	Fix bug which rejected stars in HST Guide Star Catalog
  */

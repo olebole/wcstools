@@ -1,5 +1,5 @@
 /* File imcat.c
- * February 21, 1997
+ * April 25, 1997
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -19,10 +19,13 @@
 
 #define GSC	1	/* refcat value for HST Guide Star Catalog */
 #define UJC	2	/* refcat value for USNO UJ Star Catalog */
-#define UAC	3	/* refcat value for USNO UA Star Catalog */
+#define UAC	3	/* refcat value for USNO A-1.0 Star Catalog */
+#define USAC	4	/* refcat value for USNO SA-1.0 Star Catalog */
 
 extern int gscread();
 extern int ujcread();
+extern int uacread();
+extern int usaread();
 extern int tabread();
 static void usage();
 static void ListCat();
@@ -92,6 +95,9 @@ char **av;
 	    else if (strncmp(refcatname,"ua",2)==0 ||
 		     strncmp(refcatname,"UA",2)==0)
 		refcat = UAC;
+	    else if (strncmp(refcatname,"us",2)==0 ||
+		     strncmp(refcatname,"US",2)==0)
+		refcat = USAC;
 	    else if (strncmp(refcatname,"uj",2)==0 ||
 		     strncmp(refcatname,"UJ",2)==0)
 		refcat = UJC;
@@ -213,12 +219,12 @@ usage ()
     fprintf (stderr,"  -g: Guide Star Catalog class (-1=all,0,3 (default -1)\n");
     fprintf (stderr,"  -h: print heading, else do not \n");
     fprintf (stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
-    fprintf (stderr,"  -m: GSC or UAC limiting magnitude(s) (default none)\n");
+    fprintf (stderr,"  -m: limiting catalog magnitude(s) (default none)\n");
     fprintf (stderr,"  -n: number of brightest stars to print \n");
     fprintf (stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
     fprintf (stderr,"  -s: sort by RA instead of flux \n");
     fprintf (stderr,"  -t: tab table to standard output as well as file\n");
-    fprintf (stderr,"  -u: UA or J catalog single plate number to accept\n");
+    fprintf (stderr,"  -u: USNO catalog single plate number to accept\n");
     fprintf (stderr,"  -w: Write tab table output file imagename.cat\n");
     fprintf (stderr,"  -v: verbose\n");
     exit (1);
@@ -262,6 +268,8 @@ char	*filename;	/* FITS or IRAF file filename */
 	strcpy (title, "HST Guide Stars");
     else if (refcat == UAC)
 	strcpy (title, "USNO A Catalog Stars");
+    else if (refcat == USAC)
+	strcpy (title, "USNO SA Catalog Stars");
     else if (refcat == UJC)
 	strcpy (title, "USNO J Catalog Stars");
     else if (refcatname[0] > 0)
@@ -354,6 +362,9 @@ char	*filename;	/* FITS or IRAF file filename */
     else if (refcat == UAC)
 	ng = uacread (cra,cdec,dra,ddec,0.0,mag1,mag2,uplate,ngmax,
 		      gnum,gra,gdec,gm,gmb,gc,debug);
+    else if (refcat == USAC)
+	ng = usaread (cra,cdec,dra,ddec,0.0,mag1,mag2,uplate,ngmax,
+		      gnum,gra,gdec,gm,gmb,gc,debug);
     else if (refcat == UJC)
 	ng = ujcread (cra,cdec,dra,ddec,0.0,mag1,mag2,uplate,ngmax,
 		      gnum,gra,gdec,gm,gc,debug);
@@ -430,6 +441,8 @@ char	*filename;	/* FITS or IRAF file filename */
 	    strcat (outfile,".gsc");
 	else if (refcat == UAC)
 	    strcat (outfile,".uac");
+	else if (refcat == USAC)
+	    strcat (outfile,".usac");
 	else if (refcat == UJC)
 	    strcat (outfile,".ujc");
 	else {
@@ -462,6 +475,8 @@ char	*filename;	/* FITS or IRAF file filename */
 	sprintf (headline, "CATALOG     HSTGSC1.1");
     else if (refcat == UAC)
 	sprintf (headline, "CATALOG     USNO A 1.0");
+    else if (refcat == USAC)
+	sprintf (headline, "CATALOG     USNO SA 1.0");
     else if (refcat == UJC)
 	sprintf (headline, "CATALOG     USNO UJ1.0");
     else
@@ -501,6 +516,8 @@ char	*filename;	/* FITS or IRAF file filename */
 	sprintf (headline,"GSC_NUMBER	RA      	DEC      	MAG   	X    	Y    	Type");
     else if (refcat == UAC)
 	sprintf (headline,"UAC_NUMBER	RA      	DEC      	MAGB	MAGR	X    	Y    	Plate");
+    else if (refcat == USAC)
+	sprintf (headline,"USAC_NUMBER	RA      	DEC      	MAGB	MAGR	X    	Y    	Plate");
     else if (refcat == UJC)
 	sprintf (headline,"UJC_NUMBER	RA      	DEC      	MAG   	X    	Y    	Plate");
     else
@@ -523,6 +540,8 @@ char	*filename;	/* FITS or IRAF file filename */
 	    printf ("GSC number RA           Dec           Mag    X      Y   Type\n");
 	else if (refcat == UAC)
 	    printf ("USNO A number  RA           Dec          MagB  MagR   X      Y   Plate\n"); 
+	else if (refcat == USAC)
+	    printf ("USNO SA number  RA           Dec          MagB  MagR   X      Y   Plate\n"); 
 	else if (refcat == UJC)
 	    printf (" UJ number    RA           Dec           Mag    X      Y   Plate\n");
 	else
@@ -536,7 +555,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    if (refcat == GSC)
 		sprintf (headline, "%9.4f	%s	%s	%.2f	%.1f	%.1f	%d",
 		 gnum[i], rastr, decstr, gm[i], gx[i], gy[i], gc[i]);
-	    else if (refcat == UAC)
+	    else if (refcat == UAC || refcat == USAC)
 		sprintf (headline, "%13.8f	%s	%s	%.1f	%.1f	%.1f	%.1f	%d",
 		 gnum[i], rastr, decstr, gmb[i], gm[i], gx[i], gy[i], gc[i]);
 	    else if (refcat == UJC)
@@ -549,7 +568,7 @@ char	*filename;	/* FITS or IRAF file filename */
 		fprintf (fd, "%s\n", headline);
 	    else if (tabout)
 		printf ("%s\n", headline);
-	    else if (refcat == UAC)
+	    else if (refcat == UAC || refcat == USAC)
 		printf ("%13.8f %s %s %5.1f %5.1f %6.1f %6.1f %4d\n",
 			gnum[i],rastr,decstr,gmb[i],gm[i],gx[i],gy[i],gc[i]);
 	    else if (refcat == UJC)
@@ -598,4 +617,6 @@ char	*filename;	/* FITS or IRAF file filename */
  *
  * Jan 10 1997	Fix bug in RASort Stars which did not sort magnitudes
  * Feb 21 1997  Get image header from GetFITSWCS()
+ * Mar 14 1997	Add support for USNO SA-1.0 catalog
+ * Apr 25 1997	Fix bug in uacread
  */

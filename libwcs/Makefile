@@ -1,5 +1,5 @@
 CFLAGS= -g
-$CC= cc
+$CC= gcc
 
 OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \
 	slasubs.o fitswcs.o wcs.o gscread.o ujcread.o uacread.o tabread.o \

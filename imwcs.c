@@ -1,5 +1,5 @@
 /* File imwcs.c
- * February 21, 1997
+ * April 25, 1997
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -510,4 +510,6 @@ char *
  * Dec 10 1996	Add option to get image stars from DAOFIND output list
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
+ * Mar 20 1997	Fix bug in GetFITSWCS which affected odd equinoxes
+ * Apr 25 1997	Fix bug in uacread
  */

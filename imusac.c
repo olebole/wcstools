@@ -1,4 +1,4 @@
-/* File imuac.c
+/* File imusac.c
  * April 25, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
@@ -19,8 +19,8 @@
 
 static void usage();
 
-extern int uacread();
-static void ListUAC ();
+extern int usaread();
+static void ListUSAC ();
 extern void XSortStars ();
 extern void RASortStars ();
 extern void MagSortStars ();
@@ -33,8 +33,8 @@ extern void fk524e();
 
 static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
-static double maglim1 = MAGLIM1; /* USNO A-1.0 Catalog magnitude limit */
-static double maglim2 = MAGLIM;	/* USNO A-1.0 Catalog magnitude limit */
+static double maglim1 = MAGLIM1; /* USNO SA-1.0 Catalog magnitude limit */
+static double maglim2 = MAGLIM;	/* USNO SA-1.0 Catalog magnitude limit */
 static char coorsys[4];		/* Output coordinate system */
 static int nstars = 0;		/* Number of brightest stars to list */
 static int printhead = 0;	/* 1 to print table heading */
@@ -156,7 +156,7 @@ char **av;
     while (ac-- > 0) {
 	char *fn = *av++;
 
-	ListUAC (fn);
+	ListUSAC (fn);
 	if (verbose)
 	    printf ("\n");
 	}
@@ -167,7 +167,7 @@ char **av;
 static void
 usage ()
 {
-    fprintf (stderr,"Find USNO A Catalog stars in FITS or IRAF image files\n");
+    fprintf (stderr,"Find USNO SA Catalog stars in FITS or IRAF image files\n");
     fprintf (stderr,"Usage: [-vwhst] [-m [bright] faint mag] [-n num] [-u plate]\n");
     fprintf (stderr,"       [-p scale] [-b ra dec] [-j ra dec] FITS or IRAF file(s)\n");
     fprintf (stderr,"       [-b ra dec] [-j ra dec] file.fts ...\n");
@@ -187,22 +187,22 @@ usage ()
 
 
 static void
-ListUAC (filename)
+ListUSAC (filename)
 
 char	*filename;	/* FITS or IRAF file filename */
 
 {
     char *header;	/* FITS header */
-    double *unum=0;	/* UAC star numbers */
-    double *ura=0;	/* UAC star right ascensions, rads */
-    double *udec=0;	/* UAC star declinations rads */
-    double *um=0;	/* UAC magnitudes */
-    double *umb=0;	/* UAC blue magnitudes */
-    double *ux=0;	/* UAC X positions on image */
-    double *uy=0;	/* UAC Y positions on image */
-    int *up=0;		/* UAC plate numbers */
-    int nu;		/* Number of UAC stars */
-    int nbu;		/* Number of brightest UAC stars actually used */
+    double *unum=0;	/* USAC star numbers */
+    double *ura=0;	/* USAC star right ascensions, rads */
+    double *udec=0;	/* USAC star declinations rads */
+    double *um=0;	/* USAC magnitudes */
+    double *umb=0;	/* USAC blue magnitudes */
+    double *ux=0;	/* USAC X positions on image */
+    double *uy=0;	/* USAC Y positions on image */
+    int *up=0;		/* USAC plate numbers */
+    int nu;		/* Number of USAC stars */
+    int nbu;		/* Number of brightest USAC stars actually used */
     int imw, imh;	/* Image width and height in pixels */
     int i, numax, nbytes;
     FILE *fd;
@@ -323,23 +323,23 @@ char	*filename;	/* FITS or IRAF file filename */
 	nbu = nstars;
 	if (verbose || printhead)
 	    if (maglim1 > 0.0)
-		printf ("%d / %d USNO A Catalog Stars between R magnitude %.1f and %.1f",
+		printf ("%d / %d USNO SA Catalog Stars between R magnitude %.1f and %.1f",
 			nbu, nu, um[0], um[nbu-1]);
 	    else
-		printf ("%d / %d USNO A Catalog Stars brighter than R magnitude %.1f",
+		printf ("%d / %d USNO SA Catalog Stars brighter than R magnitude %.1f",
 			nbu, nu, um[nbu-1]);
 	}
     else {
 	nbu = nu;
 	if (verbose || printhead) {
 	    if (maglim2 > 0.0)
-		printf ("%d USNO A Catalog Stars between R magnitude %.1f and %.1f",
+		printf ("%d USNO SA Catalog Stars between R magnitude %.1f and %.1f",
 			nu, maglim1, maglim2);
 	    else if (maglim1 > 0.0)
-		printf ("%d USNO A Catalog Stars brighter than R magnitude %.1f",
+		printf ("%d USNO SA Catalog Stars brighter than R magnitude %.1f",
 			nu, maglim2);
 	    else
-		printf ("%d USNO A Catalog Stars", nu);
+		printf ("%d USNO SA Catalog Stars", nu);
 	    }
 	}
     if (verbose || printhead) {
@@ -359,7 +359,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	strcat (filename,".uac");
 	fd = fopen (filename, "w");
 	if (fd == NULL) {
-	    fprintf (stderr, "IMUAC:  cannot write file %s\n", filename);
+	    fprintf (stderr, "IMUSAC:  cannot write file %s\n", filename);
 	    if (ux) free ((char *)ux);
 	    if (uy) free ((char *)uy);
 	    if (um) free ((char *)um);
@@ -408,7 +408,7 @@ char	*filename;	/* FITS or IRAF file filename */
     if (wfile)
     if (tabout)
 
-    sprintf (headline,"UAC_NUMBER	RA      	DEC      	MAGB	MAGR	X     	Y     	PLATE");
+    sprintf (headline,"USAC_NUMBER	RA      	DEC      	MAGB	MAGR	X     	Y     	PLATE");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
@@ -419,7 +419,7 @@ char	*filename;	/* FITS or IRAF file filename */
     if (tabout)
 	printf ("%s\n", headline);
     if (printhead)
-	printf ("USNO A number  RA           Dec          MagB  MagR   X      Y   Plate\n"); 
+	printf ("USNO SA number RA           Dec          MagB  MagR   X      Y   Plate\n"); 
 
     for (i = 0; i < nbu; i++) {
 	if (ux[i] > 0.0 && uy[i] > 0.0) {
@@ -453,13 +453,6 @@ char	*filename;	/* FITS or IRAF file filename */
     return;
 }
 
-/* Nov 19 1996	New program
- * Dec 10 1996	Change equinox in getfitswcs call to double
- * Dec 12 1996	Add option to set upper and lower magnitudes
- * Dec 12 1996	Fix header for magnitudes
- * Dec 13 1996	Fix bug writing sorted header
- *
- * Jan 10 1997	Fix bug in RASortStars
- * Feb 21 1997  Move all header reading to subroutine
+/* Mar 14 1997	New program
  * Apr 25 1997	Fix bug in uacread
  */
