@@ -1,5 +1,5 @@
 /* File imrot.c
- * February 24, 1998
+ * May 26, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -316,4 +316,5 @@ char *name;
  * Dec 15 1997	Add capability of reading and writing IRAF 2.11 images
  *
  * Feb 24 1998	Add ext. to filename if writing part of multi-ext. file
+ * May 26 1998	Fix bug when writing .imh images
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** April 30, 1998
+ *** May 26, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -14,6 +14,7 @@
  * Subroutine:	hgets  (hstring,keyword, lstr, str) returns character string
  * Subroutine:	hgetm  (hstring,keyword, lstr, str) returns multi-keyword string
  * Subroutine:	hgetdate (hstring,keyword,date) returns date as fractional year
+ * Subroutine:  hgetndec (hstring, keyword, ndec) returns number of dec. places
  * Subroutine:	hgetc  (hstring,keyword) returns character string
  * Subroutine:	blsearch (hstring,keyword) returns pointer to blank lines
 		before keyword
@@ -535,6 +536,41 @@ char *str;	/* String (returned) */
 	    }
 	else
 	    return (0);
+}
+
+
+/* Extract number of decimal places for value in FITS header string */
+
+int
+hgetndec (hstring, keyword, ndec)
+
+char *hstring;	/* character string containing FITS header information
+		   in the format <keyword>= <value> {/ <comment>} */
+char *keyword;	/* character string containing the name of the keyword
+		   the value of which is returned.  hget searches for a
+		   line beginning with this string.  if "[n]" is present,
+		   the n'th token in the value is returned.
+		   (the first 8 characters must be unique) */
+int *ndec;	/* Number of decimal places in keyword value */
+{
+    char *value,val[30];
+    int i, nchar;
+
+    /* Get value and comment from header string */
+    value = hgetc (hstring,keyword);
+
+    /* Find end of string and count backward to decimal point */
+    *ndec = 0;
+    if (value != NULL) {
+	nchar = strlen (value);
+	for (i = nchar-1; i >= 0; i--) {
+	    if (value[i] == '.')
+		return (1);
+	    *ndec = *ndec + 1;
+	    }
+	}
+    else
+	return (0);
 }
 
 
@@ -1114,4 +1150,5 @@ int set_saolib(hstring)
  * Mar 12 1998	Add subroutine NOTNUM
  * Mar 27 1998	Add changes to match SKYCAT version
  * Apr 30 1998	Add BLSEARCH() to find blank lines before END
+ * May 26 1998	Add HGETNDEC() to get number of decimal places in entry
  */

@@ -1,5 +1,5 @@
 /* File edhead.c
- * February 21, 1997
+ * May 20, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -10,6 +10,8 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <math.h>
 #include "libwcs/fitshead.h"
 #include "libwcs/wcs.h"
@@ -177,9 +179,14 @@ char	*filename;	/* FITS or IRAF file filename */
 
     /* Read the new header from the temporary file */
     if ((fd = fopen (tempname, "r")) != NULL) {
-	header = (char *) calloc (14400, 1);
+	struct stat buff;
+	if (stat (tempname, &buff))
+            nbytes = -errno;
+	else
+            nbytes = ((((int) buff.st_size * 4) / 2880) + 1) * 2880;
+	header = (char *) calloc (nbytes, 1);
 	head = header;
-	hlast = header + 14400 - 1;
+	hlast = header + nbytes - 1;
 	for (i = 0; i< 81; i++)
 	    headline[i] = 0;
 	while (fgets (headline,82,fd)) {
@@ -190,10 +197,10 @@ char	*filename;	/* FITS or IRAF file filename */
 	    head = head + 80;
 	    if (head > hlast) {
 		nhblk = (head - header) / 2880;
-		nhb = (nhblk + 1) * 2880;
+		nhb = (nhblk + 10) * 2880;
 		header = (char *) realloc (header,nhb);
 		head = header + nhb;
-		hlast = hlast + 2880;
+		hlast = hlast + 28800;
 		}
 	    for (i = 0; i< 80; i++)
 		headline[i] = 0;
@@ -265,4 +272,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Dec 11 1996	Allocate editcom if environment variable is not set
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
+ *
+ * May 20 1998	Set reread buffer size based on temporary file size
  */

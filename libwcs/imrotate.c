@@ -1,5 +1,5 @@
 /* File libwcs/imrotate.c
- * February 23, 1998
+ * May 26, 1998
  * By Doug Mink
  */
 
@@ -8,6 +8,8 @@
 #include <math.h>
 #include <string.h>
 #include "fitshead.h"
+
+static void RotWCSFITS();
 
 /* Rotate an image by 90, 180, or 270 degrees, with an optional
  * reflection across the vertical axis.
@@ -33,7 +35,6 @@ int	verbose;
     char history[72];
     char *filename;
     char *image;		/* Image pixels */
-    extern int DelWCSFITS();
 
     image = *image0;
 
@@ -71,7 +72,7 @@ int	verbose;
 
     /* Delete WCS fields in header */
     if (rotate != 0 || mirror)
-	(void) DelWCSFITS (header, verbose);
+	RotWCSFITS (header, rotate, mirror, verbose);
 
     /* Allocate buffer for rotated image */
     switch (bitpix2) {
@@ -233,6 +234,246 @@ int	verbose;
     *image0 = rotimage;
     return (0);
 }
+
+
+/* rotate all the C* fields.
+ * return 0 if at least one such field is found, else -1.  */
+
+static void
+RotWCSFITS (header, angle, mirror, verbose)
+
+char	*header;	/* FITS header */
+int	angle;		/* Angle to be rotated (0, 90, 180, 270) */
+int	mirror;		/* 1 if mirrored left to right, else 0 */
+int	verbose;	/* Print progress if 1 */
+
+{
+    static char flds[15][8];
+    char ctype1[16], ctype2[16];
+    double ctemp1, ctemp2, ctemp3, ctemp4, naxis1, naxis2;
+    int i, n, ndec1, ndec2, ndec3, ndec4;
+
+    strcpy (flds[0], "CTYPE1");
+    strcpy (flds[1], "CTYPE2");
+    strcpy (flds[2], "CRVAL1");
+    strcpy (flds[3], "CRVAL2");
+    strcpy (flds[4], "CDELT1");
+    strcpy (flds[5], "CDELT2");
+    strcpy (flds[6], "CRPIX1");
+    strcpy (flds[7], "CRPIX2");
+    strcpy (flds[8], "CROTA1");
+    strcpy (flds[9], "CROTA2");
+    strcpy (flds[10], "IMWCS");
+    strcpy (flds[11], "CD1_1");
+    strcpy (flds[12], "CD1_2");
+    strcpy (flds[13], "CD2_1");
+    strcpy (flds[14], "CD2_2");
+
+    n = 0;
+    hgetr8 (header, "NAXIS1", &naxis1);
+    hgetr8 (header, "NAXIS2", &naxis2);
+
+    /* Find out if there any WCS keywords in this header */
+    for (i = 0; i < sizeof(flds)/sizeof(flds[0]); i++) {
+	if (ksearch (header, flds[i]) != NULL) {
+	    n++;
+	    if (verbose)
+		printf ("%s: found\n", flds[i]);
+	    }
+	}
+
+    /* Return if no WCS keywords to change */
+    if (n == 0) {
+	if (verbose)
+	    printf ("RotWCSFITS: No WCS in header\n");
+	return;
+	}
+
+    /* Reset CTYPEn and CRVALn if axes have been exchanged */
+    if (angle == 90 || angle == 270) {
+	if (hgets (header, "CTYPE1", 16, ctype1) &&
+	    hgets (header, "CTYPE2", 16, ctype2)) {
+	    hputs (header, "CTYPE1", ctype2);
+	    hputs (header, "CTYPE2", ctype1);
+	    }
+	if (hgetr8 (header, "CRVAL1", &ctemp1) &&
+	    hgetr8 (header, "CRVAL2", &ctemp2)) { 
+	    hgetndec (header, "CRVAL1", &ndec1);
+	    hgetndec (header, "CRVAL2", &ndec2);
+	    hputnr8 (header, "CRVAL1", ndec2, ctemp2);
+	    hputnr8 (header, "CRVAL2", ndec1, ctemp1);
+	    }
+	if (hgets (header, "CUNIT1", 16, ctype1) &&
+	    hgets (header, "CUNIT2", 16, ctype2)) {
+	    hputs (header, "CUNIT1", ctype2);
+	    hputs (header, "CUNIT2", ctype1);
+	    }
+	}
+
+    /* Negate rotation angle if mirrored */
+    if (mirror) {
+	if (hgetr8 (header, "CROTA1", &ctemp1)) {
+	    hgetndec (header, "CROTA1", &ndec1);
+	    hputr8 (header, "CROTA1", ndec1, -ctemp1);
+	    }
+	if (hgetr8 (header, "CROTA2", &ctemp2)) {
+	    hgetndec (header, "CROTA2", &ndec2);
+	    hputr8 (header, "CROTA2", ndec2, -ctemp2);
+	    }
+	}
+
+    /* Reset CRPIXn */
+    if (hgetr8 (header, "CRPIX1", &ctemp1) &&
+	hgetr8 (header, "CRPIX2", &ctemp2)) { 
+	hgetndec (header, "CRPIX1", &ndec1);
+	hgetndec (header, "CRPIX2", &ndec2);
+	if (mirror) {
+	    if (angle == 0)
+		hputnr8 (header, "CRPIX1", ndec1, naxis1-ctemp1);
+	    else if (angle == 90) {
+		hputnr8 (header, "CRPIX1", ndec2, naxis2-ctemp2);
+		hputnr8 (header, "CRPIX2", ndec1, naxis1-ctemp1);
+		}
+	    else if (angle == 180) {
+		hputnr8 (header, "CRPIX1", ndec1, ctemp1);
+		hputnr8 (header, "CRPIX2", ndec2, naxis2-ctemp2);
+		}
+	    else if (angle == 270) {
+		hputnr8 (header, "CRPIX1", ndec2, ctemp2);
+		hputnr8 (header, "CRPIX2", ndec1, ctemp1);
+		}
+	    }
+	else {
+	    if (angle == 90) {
+		hputnr8 (header, "CRPIX1", ndec2, naxis2-ctemp2);
+		hputnr8 (header, "CRPIX2", ndec1, ctemp1);
+		}
+	    else if (angle == 180) {
+		hputnr8 (header, "CRPIX1", ndec1, naxis1-ctemp1);
+		hputnr8 (header, "CRPIX2", ndec2, naxis2-ctemp2);
+		}
+	    else if (angle == 270) {
+		hputnr8 (header, "CRPIX1", ndec2, ctemp2);
+		hputnr8 (header, "CRPIX2", ndec1, naxis1-ctemp1);
+		}
+	    }
+	}
+
+    /* Reset CDELTn (degrees per pixel) */
+    if (hgetr8 (header, "CDELT1", &ctemp1) &&
+	hgetr8 (header, "CDELT2", &ctemp2)) { 
+	hgetndec (header, "CDELT1", &ndec1);
+	hgetndec (header, "CDELT2", &ndec2);
+	if (mirror) {
+	    if (angle == 0)
+		hputnr8 (header, "CDELT1", ndec1, -ctemp1);
+	    else if (angle == 90) {
+		hputnr8 (header, "CDELT1", ndec2, -ctemp2);
+		hputnr8 (header, "CDELT2", ndec1, -ctemp1);
+		}
+	    else if (angle == 180) {
+		hputnr8 (header, "CDELT1", ndec1, ctemp1);
+		hputnr8 (header, "CDELT2", ndec2, -ctemp2);
+		}
+	    else if (angle == 270) {
+		hputnr8 (header, "CDELT1", ndec2, ctemp2);
+		hputnr8 (header, "CDELT2", ndec1, ctemp1);
+		}
+	    }
+	else {
+	    if (angle == 90) {
+		hputnr8 (header, "CDELT1", ndec2, -ctemp2);
+		hputnr8 (header, "CDELT2", ndec1, ctemp1);
+		}
+	    else if (angle == 180) {
+		hputnr8 (header, "CDELT1", ndec1, -ctemp1);
+		hputnr8 (header, "CDELT2", ndec2, -ctemp2);
+		}
+	    else if (angle == 270) {
+		hputnr8 (header, "CDELT1", ndec2, ctemp2);
+		hputnr8 (header, "CDELT2", ndec1, -ctemp1);
+		}
+	    }
+	}
+
+    /* Reset CD matrix, if present */
+    ctemp1 = 0.0;
+    ctemp2 = 0.0;
+    ctemp3 = 0.0;
+    ctemp4 = 0.0;
+    if (hgetr8 (header, "CD1_1", &ctemp1)) {
+	hgetr8 (header, "CD1_2", &ctemp2);
+	hgetr8 (header, "CD2_1", &ctemp3);
+	hgetr8 (header, "CD2_2", &ctemp4);
+	hgetndec (header, "CD1_1", &ndec1);
+	hgetndec (header, "CD1_2", &ndec2);
+	hgetndec (header, "CD2_1", &ndec3);
+	hgetndec (header, "CD2_2", &ndec4);
+	if (mirror) {
+	    if (angle == 0) {
+		hputnr8 (header, "CD1_2", ndec2, -ctemp2);
+		hputnr8 (header, "CD2_1", ndec3, -ctemp3);
+		}
+	    else if (angle == 90) {
+		hputnr8 (header, "CD1_1", ndec4, -ctemp4);
+		hputnr8 (header, "CD1_2", ndec3, -ctemp3);
+		hputnr8 (header, "CD2_1", ndec2, -ctemp2);
+		hputnr8 (header, "CD2_2", ndec1, -ctemp1);
+		}
+	    else if (angle == 180) {
+		hputnr8 (header, "CD1_1", ndec1, ctemp1);
+		hputnr8 (header, "CD1_2", ndec2, ctemp2);
+		hputnr8 (header, "CD2_1", ndec3, -ctemp3);
+		hputnr8 (header, "CD2_2", ndec4, -ctemp4);
+		}
+	    else if (angle == 270) {
+		hputnr8 (header, "CD1_1", ndec4, ctemp4);
+		hputnr8 (header, "CD1_2", ndec3, ctemp3);
+		hputnr8 (header, "CD2_1", ndec2, ctemp2);
+		hputnr8 (header, "CD2_2", ndec1, ctemp1);
+		}
+	    }
+	else {
+	    if (angle == 90) {
+		hputnr8 (header, "CD1_1", ndec4, -ctemp4);
+		hputnr8 (header, "CD1_2", ndec3, -ctemp3);
+		hputnr8 (header, "CD2_1", ndec2, ctemp2);
+		hputnr8 (header, "CD2_2", ndec1, ctemp1);
+		}
+	    else if (angle == 180) {
+		hputnr8 (header, "CD1_1", ndec1, -ctemp1);
+		hputnr8 (header, "CD1_2", ndec2, -ctemp2);
+		hputnr8 (header, "CD2_1", ndec3, -ctemp3);
+		hputnr8 (header, "CD2_2", ndec4, -ctemp4);
+		}
+	    else if (angle == 270) {
+		hputnr8 (header, "CD1_1", ndec4, ctemp4);
+		hputnr8 (header, "CD1_2", ndec3, ctemp3);
+		hputnr8 (header, "CD2_1", ndec2, -ctemp2);
+		hputnr8 (header, "CD2_2", ndec1, -ctemp1);
+		}
+	    }
+	}
+
+    /* Delete any polynomial solution */
+    /* (These could maybe be switched, but I don't want to work them out yet */
+    if (ksearch (header, "CO1_1")) {
+	int i;
+	char keyword[16];
+
+	for (i = 1; i < 13; i++) {
+	    sprintf (keyword,"CO1_%d", i);
+	    hdel (header, keyword);
+	    }
+	for (i = 1; i < 13; i++) {
+	    sprintf (keyword,"CO2_%d", i);
+	    hdel (header, keyword);
+	    }
+	}
+
+    return;
+}
+
 /* May 29 1996	Change name from rotFITS to RotFITS
  * Jun  4 1996	Fix bug when handling assymetrical images
  * Jun  5 1996	Print filename, not pathname, in history
@@ -243,4 +484,5 @@ int	verbose;
  * Jul 11 1997	If rotation is 360, flip top bottom if mirror flat is set
  *
  * Feb 23 1998	Do not delete WCS if image not rotated or mirrored
+ * May 26 1998	Rotate WCS instead of deleting it
  */

@@ -1,3 +1,7 @@
+Version 2.2.1 (June 2, 1998)
+Fix bug in hput() so blank lines before END are filled correctly
+Fix fatal bug in tabread()
+
 Version 2.2 (May 14, 1998)
 Compute pixels from galactic coordinates correctly.
 Implement arbitrary equinox in form Jyyyy.ffff or Byyyy.ffff.

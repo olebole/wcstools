@@ -8,7 +8,7 @@
  * Subroutine:	hputi4 (hstring,keyword,ival) sets int ival
  * Subroutine:	hputr4 (hstring,keyword,rval) sets real*4 rval
  * Subroutine:	hputr8 (hstring,keyword,dval) sets real*8 dval
- * Subroutine:	hputd8 (hstring,keyword,ndec,dval) sets real*8 dval
+ * Subroutine:	hputnr8 (hstring,keyword,ndec,dval) sets real*8 dval
  * Subroutine:	hputra (hstring,keyword,lval) sets right ascension as string
  * Subroutine:	hputdec (hstring,keyword,lval) sets declination as string
  * Subroutine:	hputl  (hstring,keyword,lval) sets logical lval
@@ -338,6 +338,8 @@ char *value;	/* character string containing the value for variable
 	    v2 = v1 + 80;
 	    strncpy (v2, ve, 80);
 	    }
+	else
+	    v2 = v1 + 80;
 	lcom = 0;
 	newcom[0] = 0;
 	}

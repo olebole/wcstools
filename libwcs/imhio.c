@@ -1,5 +1,5 @@
 /* File imh2io.c
- * May 15, 1998
+ * May 26, 1998
  * By Doug Mink, based on Mike VanHilst's readiraf.c
 
  * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
@@ -941,6 +941,7 @@ int	nbhead;		/* Length of IRAF header */
 	}
     hgeti4 (fitsheader, "PIXOFF", &pixoff);
     hdel (fitsheader, "PIXOFF");
+    fitsend = ksearch (fitsheader,"END");
 
     /*  Replace user portion of IRAF header with remaining FITS header */
     if (imhver == 2) {
@@ -1371,4 +1372,5 @@ machswap ()
  * Apr 30 1998  Fix error return if illegal data type after Allan Brighton
  * May 15 1998	Delete header keywords used for IRAF binary values
  * May 15 1998	Fix bug so FITS OBJECT is put into IRAF title
+ * May 26 1998	Fix bug in fits2iraf keeping track of end of header
  */

@@ -214,7 +214,7 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 		if (extnum > -1 && hdu == extnum)
 		    break;
 		else if (extnum < 0) {
-		    hgets (header, 32, "EXTNAME", extname);
+		    hgets (header, "EXTNAME", 32, extname);
 		    if (!strcmp (ext,extname))
 			break;
 		    }

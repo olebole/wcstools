@@ -1,5 +1,5 @@
 /* File imwcs.c
- * May 4, 1998
+ * June 2, 1998
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -646,4 +646,5 @@ char *
  * Apr 27 1998	Add image extension name/number to output file name
  * Apr 28 1998	Change coordinate system flags to WCS_*
  * May  4 1998	Make erasure of original image WCS optional
+ * Jun  2 1998	Fix bugs in tabread() and hput()
  */

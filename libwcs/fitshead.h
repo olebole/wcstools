@@ -1,5 +1,5 @@
 /* fitshead.h  FITS and IRAF file access subroutines
- * May 12, 1998
+ * May 26, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -15,6 +15,7 @@ extern int hgetdec();	/* Declination in degrees from string */
 extern int hgetdate(); /* Date in years from FITS date string */
 extern int hgetl();	/* T->1, F->0 from FITS logical entry */
 extern int hgets();	/* Previously allocated string */
+extern int hgetndec();	/* Number of decimal places in keyword value */
 extern int mgets();	/* Previously allocated string from multiline keyword */
 extern int mgetr8();	/* double from multiline keyword */
 extern int mgeti4();	/* int from multiline keyword */
@@ -129,4 +130,5 @@ extern int imswapped();
  * Mar 12 1998	Add NOTNUM
  * Apr 30 1998	Clean up declarations and add more comments
  * May 12 1998	Add MGETS, MGETR8, MGETI4 for IRAF multi-line keywords
+ * May 26 1998	Add HGETNDEC for number of decimal places in keyword value
  */

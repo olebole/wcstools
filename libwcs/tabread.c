@@ -721,6 +721,8 @@ char *headbuff;		/* Line containing column headings */
 	nextab = strchr (colhead, tab);
 	if (nextab < headlast)
 	    endcol = nextab - 1;
+	else
+	    endcol = headlast - 1;
 	while (*endcol == ' ')
 	    endcol = endcol - 1;
 	lcol[ientry] = (int) (endcol - colhead) + 1;
