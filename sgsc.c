@@ -1,5 +1,5 @@
 /* File sgsc.c
- * January 10, 1997
+ * November 12, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -530,9 +530,9 @@ double *gscnum;		/* Catalog numbers */
     if (cdec >= -90.0) {
 	dec2str (decstr, cdec, 2);
 	if (wfile)
-	    fprintf (fd, "DEC	%s\n", rastr);
+	    fprintf (fd, "DEC	%s\n", decstr);
 	if (tabout)
-	    printf ("DEC	%s\n", rastr);
+	    printf ("DEC	%s\n", decstr);
 	}
 
     if (ddec > 0.0) {
@@ -568,14 +568,14 @@ double *gscnum;		/* Catalog numbers */
     if (tabout)
 
     if (strcmp (coorout,"FK4") == 0)
-	sprintf (headline,"GSC_NUMBER	RA1950    	DEC1950    	MAG   	TYPE	DISTANCE");
+	sprintf (headline,"GSC_NUMBER	RA1950    	DEC1950    	MAG   	TYPE	ARCSEC");
     else
-	sprintf (headline,"GSC_NUMBER	RA2000    	DEC2000    	MAG   	TYPE	DISTANCE");
+	sprintf (headline,"GSC_NUMBER	RA2000    	DEC2000    	MAG   	TYPE	ARCSEC");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
-    sprintf (headline,"----------	------------	------------	------	----	_______");
+    sprintf (headline,"----------	------------	------------	------	----	------");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
@@ -628,4 +628,5 @@ double *gscnum;		/* Catalog numbers */
  * Dec 30 1996	Clean up closest star message
  * Dec 30 1996	Print message instead of heading if no stars are found
  * Jan 10 1997	Fix bug in RASort Stars which did not sort magnitudes
+ * Nov 12 1997	Fix DEC in header to print Dec string instead of RA string
  */

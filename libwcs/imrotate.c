@@ -1,5 +1,5 @@
 /* File libwcs/imrotate.c
- * June 18, 1996
+ * July 11, 1996
  * By Doug Mink
  */
 
@@ -121,6 +121,7 @@ int	verbose;
 		}
 	    sprintf (history,"Copy of image %s reflected",filename);
 	    hputc (header,"HISTORY",history);
+            hputc (header,"HISTORY",history);
 	    }
 	else if (new) {
 	    for (y1 = 0; y1 < ny; y1++) {
@@ -146,6 +147,7 @@ int	verbose;
 		    }
 		}
 	    sprintf (history,"Copy of image %s reflected and rotated 90 degrees",filename);
+            hputc (header,"HISTORY",history);
 	    }
 	else {
 	    for (y1 = 0; y1 < ny; y1++) {
@@ -156,6 +158,7 @@ int	verbose;
 		    }
 		}
 	    sprintf (history,"Copy of image %s rotated 90 degrees",filename);
+            hputc (header,"HISTORY",history);
 	    }
 	hputi4 (header,"NAXIS1",ny);
 	hputi4 (header,"NAXIS2",nx);
@@ -172,6 +175,7 @@ int	verbose;
 		    }
 		}
 	    sprintf (history,"Copy of image %s reflected and rotated 180 degrees",filename);
+            hputc (header,"HISTORY",history);
 	    }
 	else {
 	    for (y1 = 0; y1 < ny; y1++) {
@@ -182,6 +186,7 @@ int	verbose;
 		    }
 		}
 	    sprintf (history,"Copy of image %s rotated 180 degrees",filename);
+            hputc (header,"HISTORY",history);
 	    }
 	}
 
@@ -196,6 +201,7 @@ int	verbose;
 		    }
 		}
 	    sprintf (history,"Copy of image %s reflected and rotated 270 degrees",filename);
+            hputc (header,"HISTORY",history);
 	    }
 	else {
 	    for (y1 = 0; y1 < ny; y1++) {
@@ -206,12 +212,25 @@ int	verbose;
 		    }
 		}
 	    sprintf (history,"Copy of image %s rotated 270 degrees",filename);
+            hputc (header,"HISTORY",history);
 	    }
 	hputi4 (header,"NAXIS1",ny);
 	hputi4 (header,"NAXIS2",nx);
 	}
 
-    hputc (header,"HISTORY",history);
+    /* If rotating by more than 315 degrees, assume top-bottom reflection */
+    else if (rotate >= 315 && mirror) {
+	for (y1 = 0; y1 < ny; y1++) {
+	    for (x1 = 0; x1 < nx; x1++) {
+		x2 = y1;
+		y2 = x1;
+		movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,ny,x2,y2);
+		}
+	    }
+	sprintf (history,"Copy of image %s reflected top to bottom",filename);
+        hputc (header,"HISTORY",history);
+	}
+    
     if (verbose)
 	printf ("%s\n",history);
 
@@ -225,4 +244,5 @@ int	verbose;
  * Jun 10 1996	Remove unused variables after running lint
  * Jun 13 1996	Replace image with rotated image
  * Jun 18 1996	Fix formatting bug in history
+ * Jul 11 1997	If rotation is 360, flip top bottom if mirror flat is set
  */

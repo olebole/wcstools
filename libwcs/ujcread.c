@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** December 18, 1996
+ *** March 20, 1997
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -317,9 +317,9 @@ int	verbose;	/* 1 for diagnostics */
 
 
 int
-ujcrnum (nstars,unum,ura,udec,umag,uplate,nlog)
+ujcrnum (nnum,unum,ura,udec,umag,uplate,nlog)
 
-int	nstars;		/* Number of stars to find */
+int	nnum;		/* Number of stars to find */
 double	*unum;		/* Array of UA numbers to find */
 double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
@@ -329,36 +329,36 @@ int	nlog;		/* Logging interval */
 {
     UJCstar star;	/* UJ catalog entry for one star */
 
-    int verbose;
-    int znum, itot,iz, i;
-    int itable, jtable,jstar;
-    int nstar, nread, nzone;
+    int znum;
+    int jnum;
+    int nzone;
     int nfound = 0;
     double ra,dec;
     double mag;
-    int istar, istar1, istar2, plate;
-    int nzmax = NZONES;	/* Maximum number of declination zones */
+    int istar, plate;
     char *str;
 
-    itot = 0;
-    if (nlog > 0)
-	verbose = 1;
-    else
-	verbose = 0;
-
-    /* Set path to USNO A Catalog */
-    if ((str = getenv("UA_PATH")) != NULL )
+    /* Set path to USNO J Catalog */
+    if ((str = getenv("UJ_PATH")) != NULL )
 	strcpy (cdu,str);
 
 /* Loop through star list */
-    for (jstar = 0; jstar < nstars; jstar++) {
+    for (jnum = 0; jnum < nnum; jnum++) {
 
     /* Get path to zone catalog */
-	znum = (int) unum[jstar];
+	znum = (int) unum[jnum];
 	if ((nzone = ujcopen (znum)) != 0) {
 
-	    istar = (int) (((unum[jstar] - znum) * 100000000.0) + 0.5);
+	    istar = (int) (((unum[jnum] - znum) * 100000000.0) + 0.5);
 
+	/* Check to make sure star can be in this zone */
+	    if (istar > nzone) {
+		fprintf (stderr,"UACRNUM: Star %d > zone max. %d\n",
+			 istar, nzone);
+		break;
+		}
+
+	/* Read star entry from catalog */
 	    if (ujcstar (istar, &star)) {
 		fprintf (stderr,"UACRNUM: Cannot read star %d\n", istar);
 		break;
@@ -383,9 +383,9 @@ int	nlog;		/* Logging interval */
 			     znum,istar,ra,dec,mag);
 
 		/* Log operation */
-		if (nlog > 0 && jstar%nlog == 0)
-		    fprintf (stderr,"UJCRNUM: %4d.%8d  %8d / %8d sources\r",
-			     znum, istar, jstar, nstar);
+		if (nlog > 0 && jnum%nlog == 0)
+		    fprintf (stderr,"UJCRNUM: %04d.%08d  %8d / %8d sources\r",
+			     znum, istar, jnum, nnum);
 
 		(void) fclose (fcat);
 		/* End of star processing */
@@ -399,7 +399,7 @@ int	nlog;		/* Logging interval */
 
     /* Summarize search */
     if (nlog > 0)
-	fprintf (stderr,"UJCRNUM:  %d / %d found\n",nfound,nstars);
+	fprintf (stderr,"UJCRNUM:  %d / %d found\n",nfound,nnum);
 
     return (nfound);
 }
@@ -724,4 +724,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Dec 12 1996	Improve logging
  * Dec 17 1996	Add code to keep brightest or closest stars if too many found
  * Dec 18 1996	Add code to read a specific star
+ * Mar 20 1997	Clean up UJCRNUM after lint
  */

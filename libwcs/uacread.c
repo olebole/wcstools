@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** April 23, 1997
+ *** November 6, 1997
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -385,8 +385,9 @@ int	nlog;		/* Logging interval */
 	    fprintf (stderr,"UACREAD: 1 zone: %d / %d found\n",nstar,itable);
 	}
     if (nstar > nstarmax) {
-	fprintf (stderr,"UACREAD: %d stars found; only %d returned\n",
-		 nstar,nstarmax);
+	if (nlog > 0)
+	    fprintf (stderr,"UACREAD: %d stars found; only %d returned\n",
+		     nstar,nstarmax);
 	nstar = nstarmax;
 	}
     free ((char *)udist);
@@ -896,4 +897,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Mar 12 1997	Set paths for SA-1.0 and multiple CDROM A-1.0
  * Mar 20 1997	Clean up UACRNUM after lint
  * Apr 23 1997	Fix bug which rejected stars in HST Guide Star Catalog
+ * Nov  6 1997	Don't print star overrun unless logging
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/hput.c
- *** November 1, 1996
+ *** December 31, 1997
  *** By Doug Mink
 
  * Module:	hput.c (Put FITS Header parameter values)
@@ -21,7 +21,7 @@
  * Subroutine:	dec2str (out, dec, ndec) converts Dec from degrees to string
  * Subroutine:	deg2str (out, deg, ndec) converts degrees to string
 
- * Copyright:   1995, 1996 Smithsonian Astrophysical Observatory
+ * Copyright:   1997 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -279,9 +279,12 @@ char *value;	/* character string containing the value for variable
 	char squot = 39;
 	char line[100];
 	char newcom[50];
+	char blank[80];
 	char *v, *vp, *v1, *v2, *q1, *q2, *c1, *ve;
-	char *ksearch();
-	int lkeyword, lcom, lval, lc;
+	int lkeyword, lcom, lval, lc, i;
+
+	for (i = 0; i < 80; i++)
+	    blank[i] = ' ';
 
 /*  find length of keyword and value */
 	lkeyword = strlen (keyword);
@@ -343,7 +346,7 @@ char *value;	/* character string containing the value for variable
 
 	    c1 = strchr (q2,'/');
 	    if (c1 != NULL) {
-		lcom = 80 - (c1 -line);
+		lcom = 80 - (c1 - line);
 		strncpy (newcom, c1+1, lcom);
 		vp = newcom + lcom - 1;
 		while (vp-- > newcom && *vp == ' ')
@@ -386,9 +389,9 @@ char *value;	/* character string containing the value for variable
 	if (lcom > 0) {
 	    if (lc+2+lcom > 80)
 		lcom = 78 - lc;
-	    vp = v1 + lc * 2;
-	    strncpy (vp, "/ ", 2);
-	    vp = vp + 2;
+	    vp = v1 + lc + 2;     /* Jul 16 1997: was vp = v1 + lc * 2 */
+	    *vp = '/';
+	    vp = vp + 1;
 	    strncpy (vp, newcom, lcom);
 	    for (v = vp + lcom; v < v2; v++)
 		*v = ' ';
@@ -443,6 +446,7 @@ hputcom (hstring,keyword,comment)
 /* search header string for variable name */
 	else {
 	    v1 = ksearch (hstring,keyword);
+	    v2 = v1 + 80;
 
 	/* if parameter is not found, return without doing anything */
 	    if (v1 == NULL) {
@@ -461,10 +465,10 @@ hputcom (hstring,keyword,comment)
 	    else
 		q2 = NULL;
 
-	    if (q2-line < 31)
-		c0 = v1 + 39;
+	    if (q2 == NULL || q2-line < 31)
+		c0 = v1 + 31;
 	    else
-		c0 = q2 + 2;
+		c0 = v1 + (q2-line) + 2; /* allan: 1997-09-30, was c0=q2+2 */
 
 	    strncpy (c0, "/ ",2);
 	    }
@@ -603,7 +607,7 @@ int	ndec;		/* Number of decimal places in seconds */
 	    }
 	if (hours > 23)
 	    hours = hours - 24;
-	(void) sprintf (string,"%2d:%02d:%09.6f",hours,minutes,seconds);
+	(void) sprintf (string,"%02d:%02d:%09.6f",hours,minutes,seconds);
 	}
     else if (ndec > 4) {
 	if (seconds > 59.99999) {
@@ -616,7 +620,7 @@ int	ndec;		/* Number of decimal places in seconds */
 	    }
 	if (hours > 23)
 	    hours = hours - 24;
-	(void) sprintf (string,"%2d:%02d:%08.5f",hours,minutes,seconds);
+	(void) sprintf (string,"%02d:%02d:%08.5f",hours,minutes,seconds);
 	}
     else if (ndec > 3) {
 	if (seconds > 59.9999) {
@@ -629,7 +633,7 @@ int	ndec;		/* Number of decimal places in seconds */
 	    }
 	if (hours > 23)
 	    hours = hours - 24;
-	(void) sprintf (string,"%2d:%02d:%07.4f",hours,minutes,seconds);
+	(void) sprintf (string,"%02d:%02d:%07.4f",hours,minutes,seconds);
 	}
     else if (ndec > 2) {
 	if (seconds > 59.999) {
@@ -642,7 +646,7 @@ int	ndec;		/* Number of decimal places in seconds */
 	    }
 	if (hours > 23)
 	    hours = hours - 24;
-	(void) sprintf (string,"%2d:%02d:%06.3f",hours,minutes,seconds);
+	(void) sprintf (string,"%02d:%02d:%06.3f",hours,minutes,seconds);
 	}
     else if (ndec > 1) {
 	if (seconds > 59.99) {
@@ -655,7 +659,7 @@ int	ndec;		/* Number of decimal places in seconds */
 	    }
 	if (hours > 23)
 	    hours = hours - 24;
-	(void) sprintf (string,"%2d:%02d:%05.2f",hours,minutes,seconds);
+	(void) sprintf (string,"%02d:%02d:%05.2f",hours,minutes,seconds);
 	}
     else if (ndec > 0) {
 	if (seconds > 59.9) {
@@ -668,7 +672,7 @@ int	ndec;		/* Number of decimal places in seconds */
 	    }
 	if (hours > 23)
 	    hours = hours - 24;
-	(void) sprintf (string,"%2d:%02d:%04.1f",hours,minutes,seconds);
+	(void) sprintf (string,"%02d:%02d:%04.1f",hours,minutes,seconds);
 	}
     else if (ndec > -1) {
 	if (isec > 59) {
@@ -681,7 +685,7 @@ int	ndec;		/* Number of decimal places in seconds */
 	    }
 	if (hours > 23)
 	    hours = hours - 24;
-	(void) sprintf (string,"%2d:%02d:%04.1f",hours,minutes,seconds);
+	(void) sprintf (string,"%02d:%02d:%04.1f",hours,minutes,seconds);
 	}
     return;
 }
@@ -826,7 +830,7 @@ int	ndec;		/* Number of decimal places in degree string */
 	sprintf (string, degform, deg);
 	}
     else {
-	sprintf (degform, "%%4d", field);
+	sprintf (degform, "%%%4d", field);
 	sprintf (string, degform, (int)deg);
 	}
     deg1 = atof (string);
@@ -852,4 +856,12 @@ int	ndec;		/* Number of decimal places in degree string */
  * Oct 15 1996	Fix spelling
  * Nov  1 1996	Add DEG2STR to set specific number of decimal places
  * Nov  1 1996	Allow DEC2STR to handle upt to 6 decimal places
+ *
+ * Mar 20 1997	Fix format error in DEG2STR
+ * Jul  7 1997	Fix 2 errors in HPUTCOM found by Allan Brighton
+ * Jul 16 1997	Fix error in HPUTC found by Allan Brighton
+ * Jul 17 1997	Fix error in HPUTC found by Allan Brighton
+ * Sep 30 1997	Fix error in HPUTCOM found by Allan Brighton
+ * Dec 15 1997	Fix minor bugs after lint
+ * Dec 31 1997	Always put two hour digits in RA2STR
  */

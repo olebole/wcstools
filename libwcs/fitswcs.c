@@ -1,5 +1,5 @@
 /* File libwcs/fitswcs.c
- * February 21, 1997
+ * January 7, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
@@ -26,14 +26,13 @@ char *filename;	/* FITS or IRAF file filename */
 
 {
     char *header;		/* FITS header */
-    int lhead;			/* Maximum number of bytes in FITS header */
-    int *irafheader;		/* IRAF image header */
     struct WorldCoor *wcs;	/* World coordinate system structure */
-    int nbiraf, nbfits;
     char *GetFITShead();
 
     /* Read the FITS or IRAF image file header */
     header = GetFITShead (filename);
+    if (header == NULL)
+	return (NULL);
 
     /* Set the world coordinate system from the image header */
     wcs = wcsinit (header);
@@ -59,7 +58,7 @@ char *filename;	/* FITS or IRAF file filename */
 	    if ((header = iraf2fits (filename, irafheader, nbiraf, &lhead)) == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
 		free (irafheader);
-		return;
+		return (NULL);
 		}
 	    free (irafheader);
 	    }
@@ -148,6 +147,71 @@ int verbose;
 
     return (n);
 }
+
+
+/* check the WCS fields and print any that are found if verbose.
+ * return 0 if all are found, else -1.
+ */
+int
+PrintWCS (header, verbose)
+char	*header;	/* FITS header */
+int	verbose;	/* 1 to print WCS header keyword values */
+
+{
+    char str[80];
+    double v;
+    int n;
+
+    n = 0;
+
+    if (hgets (header,"CTYPE1",16,str)) {
+	if (verbose) printf ("CTYPE1 = %s\n", str);
+	n++;
+	}
+    if (hgetr8 (header, "CRVAL1", &v)) {
+	if (verbose) printf ("CRVAL1 = %.8f\n", v);
+	n++;
+	}
+    if (hgetr8 (header, "CDELT1", &v)) {
+	if (verbose) printf ("CDELT1 = %.8f\n", v);
+	n++;
+	}
+    if (hgetr8 (header, "CRPIX1", &v)) {
+	if (verbose) printf ("CRPIX1 = %.8f\n", v);
+	n++;
+	}
+    if (hgetr8 (header, "CROTA1", &v)) {
+	if (verbose) printf ("CROTA1 = %.3f\n", v);
+	n++;
+	}
+
+    if (hgets (header,"CTYPE2",16,str)) {
+	if (verbose) printf ("CTYPE2 = %s\n", str);
+	n++;
+	}
+    if (hgetr8 (header, "CRVAL2", &v)) {
+	if (verbose) printf ("CRVAL2 = %.8f\n", v);
+	n++;
+	}
+    if (hgetr8 (header, "CDELT2", &v)) {
+	if (verbose) printf ("CDELT2 = %.8f\n", v);
+	n++;
+	}
+    if (hgetr8 (header, "CRPIX2", &v)) {
+	if (verbose) printf ("CRPIX2 = %.8f\n", v);
+	n++;
+	}
+    if (hgetr8 (header, "CROTA2", &v)) {
+	if (verbose) printf ("CROTA2 = %.3f\n", v);
+	n++;
+	}
+    if (hgets (header,"IMWCS",80,str)) {
+	if (verbose) printf ("IMWCS = %s\n", str);
+	n++;
+	}
+
+    return (n == 11 ? 0 : -1);
+}
 /* May 29 1996	Change name from delWCSFITS to DelWCSFITS
  * May 31 1996	Print single message if no WCS is found in header
  * May 31 1996	Use stream I/O instead of standard I/O
@@ -160,4 +224,8 @@ int verbose;
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
  * Feb 21 1997  Add GetFITShead subroutine and use it
+ * Mar 20 1997	Remove unused variables
+ * Nov  6 1997	Add PrintWCS subroutine from IMWCS
+ *
+ * Jan  7 1998	Return NULL WCS structure if no FITS header can be read
  */

@@ -32,7 +32,7 @@ Initial rotation angle in degrees (default 0)
 Initial center in B1950 (FK4) RA and Dec (default=RA,DEC from file)
 .TP
 .B \-c <catalog name>
-Reference catalog (gsc, uac, ujc, tab table file) (default=gsc)
+Reference catalog (gsc, uac, ujc, usac, or tab table file) (default=gsc)
 .TP
 .B \-d <catalog name>
 Use this DAOFIND output catalog of X, Y, and magnitude instead of searching
@@ -45,6 +45,11 @@ Write FITS output no matter what input
 .B \-g <class>
 Guide Star Catalog class (-1=all,0,3) (default -1)
 .TP
+.B \-h <number>
+Change the maximum number of reference stars to match from 25 to
+.B <number>
+
+.TP
 .B \-i <counts>
 Minimum peak value for star in image (<0=-sigma)
 .TP
@@ -55,18 +60,22 @@ Initial center in J2000 (FK5) RA and Dec (default=RA,DEC from file)
 Reflect left<->right before rotating and fitting
 .TP
 .B \-m <magnitude>
-Initial GSC, UAC, or UJC limiting magnitude (default 17)
+Initial GSC, UAC, USAC, or UJC limiting magnitude (default 17)
 .TP
 .B \-n <number>
 Number of parameters to fit (2-5). The default is 2 (RA+Dec) if <3 stars
 are matched, 3 (RA+Dec+scale) if <5 stars are matched, or 4 (RA+Dec+scale+rot)
 if 5 or more stars are matched.  To fit separate plate scales in X and Y, this
-argument must be explicitly set to 5.
+argument must be explicitly set to 5.  Alternatively this may be a list of
+all of the parameters to fit, in the form nnnnnn.., where 1=RA, 2=Dec,
+3=RA scale, 4=Dec scale, 5=rotation angle, 6=chip rotation angle,
+7=RA reference pixel, and 8=Dec reference pixel.
 .TP
-.B \-o
-Allow overwriting of input image, else write new one if
-.B -w
-is set
+.B \-o <filename>
+Write output to this file; may be the same as input file.  This option
+automatically sets the
+.B \-w
+option to write the file.
 .TP
 .B \-p <scale>
 Initial plate scale in arcsec per pixel (default 0)

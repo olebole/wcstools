@@ -1,5 +1,5 @@
 /* File imrot.c
- * February 21, 1997
+ * August 13, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -30,10 +30,17 @@ int ac;
 char **av;
 {
     char *str;
+    int readlist = 0;
+    char *lastchar;
+    char filename[128];
+    FILE *flist;
+    char *listfile;
 
     /* crack arguments */
-    for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
+    for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
 	char c;
+	if (*str == '@')
+	    str = str - 1;
 	while (c = *++str)
     	switch (c) {
     	case 'f':	/* FITS file output */
@@ -66,13 +73,37 @@ char **av;
     	    verbose++;
     	    break;
 
+	case '@':	/* List of files to be read */
+	    readlist++;
+	    listfile = ++str;
+	    str = str + strlen (str) - 1;
+	    av++;
+	    ac--;
+
     	default:
     	    usage();
     	    break;
     	}
     }
 
-    /* now there are ac remaining file names starting at av[0] */
+    /* Find number of images to search and leave listfile open for reading */
+    if (readlist) {
+	if ((flist = fopen (listfile, "r")) == NULL) {
+	    fprintf (stderr,"IMROT: List file %s cannot be read\n",
+		     listfile);
+	    usage ();
+	    }
+	while (fgets (filename, 128, flist) != NULL) {
+	    lastchar = filename + strlen (filename) - 1;
+	    if (*lastchar < 32) *lastchar = 0;
+	    imRot (filename);
+	    if (verbose)
+		printf ("\n");
+	    }
+	fclose (flist);
+	}
+
+    /* If no arguments left, print usage */
     if (ac == 0)
 	usage ();
 
@@ -215,10 +246,10 @@ char *name;
 	    fprintf (stderr, "IMROT: %d bits/pixel -> %d bits/pixel\n",
 		     bitpix0, bitpix);
 	sprintf (history, "New copy of %s BITPIX %d -> %d",
-		 fname, bitpix0, bitpix);
+		 name, bitpix0, bitpix);
 	}
     else
-	sprintf (history,"New copy of image %s", fname);
+	sprintf (history,"New copy of image %s", name);
     hputc (header,"HISTORY",history);
 
     if (RotFITS (name, header, &image, rotate, mirror, bitpix, verbose)) {
@@ -254,4 +285,5 @@ char *name;
  * Aug 27 1996	Remove unused variables after lint
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
+ * Aug 13 1997	Fix bug when overwriting an image
  */

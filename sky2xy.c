@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * November 5, 1996
+ * November 4, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -151,13 +151,15 @@ char **av;
 		    }
 		}
 	    else {
-		if (wcs->equinox == 1950.0)
+		if (wcs->pcode < 0)
+		    strcpy (csys, "PIXEL");
+		else if (wcs->equinox == 1950.0)
 		    strcpy (csys, "B1950");
 		else
 		    strcpy (csys, "J2000");
 		}
 
-	    if (ra != ra0 && verbose) {
+	    if (ra != ra0 || verbose) {
 		printf ("%s %s %s -> ", rastr, decstr, csys);
 		ra2str (rastr, ra, 3);
 		dec2str (decstr, dec, 2);
@@ -202,4 +204,7 @@ char *progname;
  * Oct 30 1996	Exit if image file is not found
  * Nov  1 1996	Fix bug so systemless coordinates do not cause crash
  * Nov  5 1996	Fix multiple sets of coordinates on command line
+ *
+ * Jun  4 1997	Add PIXEL wcs for linear non-sky projections
+ * Nov  4 1997	If verbose mode, always print converted input string
  */

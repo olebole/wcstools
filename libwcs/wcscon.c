@@ -1,7 +1,7 @@
 /*** File wcscon.c
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Based on Starlink subroutines by Patrick Wallace
- *** December 10, 1996
+ *** March 20, 1997
 
  * Module:	wcscon.c (World Coordinate System conversion)
  * Purpose:	Convert between various sky coordinate systems
@@ -318,8 +318,6 @@ double	*ra;		/* Right ascension in degrees (B1950 in, J2000 out) */
 double	*dec;		/* Declination in degrees (B1950 in, J2000 out) */
 
 {
-double	rra;		/* Right ascension in radians (B1950 in, J2000 out) */
-double	rdec;		/* Declination in radians (B1950 in, J2000 out) */
 double	rapm;		/* Proper motion in right ascension */
 double	decpm;		/* Proper motion in declination  */
 			/* In: rad/trop.yr.  Out:  rad/jul.yr. */
@@ -339,8 +337,6 @@ double	*ra;		/* Right ascension in degrees (B1950 in, J2000 out) */
 double	*dec;		/* Declination in degrees (B1950 in, J2000 out) */
 double	epoch;		/* Besselian epoch in years */
 {
-double	rra;		/* Right ascension in radians (B1950 in, J2000 out) */
-double	rdec;		/* Declination in radians (B1950 in, J2000 out) */
 double	rapm;		/* Proper motion in right ascension */
 double	decpm;		/* Proper motion in declination  */
 			/* In: rad/trop.yr.  Out:  rad/jul.yr. */
@@ -1078,4 +1074,6 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
  * Nov  4 1996	Break SLA subroutines into separate file slasubs.c
  * Dec  9 1996	Change arguments to degrees in FK4 and FK5 precession programs
  * Dec 10 1996	All subroutine arguments are degrees except vector conversions
+ *
+ * Mar 20 1997	Drop unused variables after lint
  */

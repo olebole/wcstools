@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** February 6, 1998
+ *** January 9, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -23,7 +23,7 @@
  * Subroutine:	pix2wcst (wcs,xpix,ypix,wcstring,lstr) pixels -> sky coordinate string
  * Subroutine:	wcs2pix (wcs,xpos,ypos,xpix,ypix,offscl) sky coordinates -> pixel coordinates
 
- * Copyright:   1996 Smithsonian Astrophysical Observatory
+ * Copyright:   1998 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -69,6 +69,7 @@ char *hstring;	/* character string containing FITS header information
 	char wcstemp[16];
 	char *hcoeff;		/* pointer to first coeff's in header */
 	char decsign;
+	double cosr, sinr;
 	double rah,ram,ras, dsign,decd,decm,decs;
 	double dec_deg,ra_hours, secpix, cddet;
 	int ieq, i;
@@ -92,8 +93,10 @@ char *hstring;	/* character string containing FITS header information
 
 	/* Plate solution coefficients */
 	wcs->plate_fit = 0;
-	hgetr8 (hstring,"NAXIS1",&wcs->nxpix);
-	hgetr8 (hstring,"NAXIS2",&wcs->nypix);
+	hgetr8 (hstring, "NAXIS1", &wcs->nxpix);
+	hgetr8 (hstring, "NAXIS2", &wcs->nypix);
+	hgets (hstring, "INSTRUME", 16, wcs->instrument);
+	hgeti4 (hstring, "DETECTOR", &wcs->detector);
 	wcs->xmpix = 0.5 * wcs->nxpix;
 	wcs->ympix = 0.5 * wcs->nypix;
 	wcs->mrot = 0.0;
@@ -332,21 +335,15 @@ char *hstring;	/* character string containing FITS header information
 		cddet = (wcs->cd11 * wcs->cd22) - (wcs->cd12 * wcs->cd21);
 		if (cddet != 0.0) {
 		    wcs->dc11 = wcs->cd22 / cddet;
-		    wcs->dc12 = -wcs->cd12 / cddet;
-		    wcs->dc21 = -wcs->cd21 / cddet;
+		    wcs->dc12 = -wcs->cd21 / cddet;
+		    wcs->dc21 = -wcs->cd12 / cddet;
 		    wcs->dc22 = wcs->cd11 / cddet;
 		    }
-		wcs->xinc = sqrt (wcs->cd11*wcs->cd11 + wcs->cd21*wcs->cd21);
-		wcs->yinc = sqrt (wcs->cd12*wcs->cd12 + wcs->cd22*wcs->cd22);
-		if ((wcs->cd11*wcs->cd11 - wcs->cd12*wcs->cd12) < 0) {
-		    if (!strncmp(wcs->c1type,"RA",2) || !strncmp(wcs->c1type,"GLON",4))
-			wcs->xinc = -wcs->xinc;
-		    if (!strncmp(wcs->c2type,"RA",2) || !strncmp(wcs->c2type,"GLON",4))
-			wcs->yinc = -wcs->yinc;
-		    wcs->rot = raddeg (atan2 (-wcs->cd12, wcs->cd22));
-		    }
-		else
-		    wcs->rot = raddeg (atan2 (wcs->cd12, wcs->cd22));
+		wcs->xinc = sqrt (wcs->cd11*wcs->cd11 + wcs->cd12*wcs->cd12);
+		cosr = wcs->cd11 / wcs->xinc;
+		sinr = wcs->cd21 / wcs->xinc;
+		wcs->yinc = wcs->cd22 / cosr;
+		wcs->rot = raddeg (atan2 (sinr, -cosr));
 		}
 	    else {
 		wcs->xinc = 1.0;
@@ -482,7 +479,17 @@ struct WorldCoor *wcs;
     char wcstemp[16];
 
     /* Set equinox from EQUINOX, EPOCH, or RADECSYS; default to 2000 */
-    if (hgeti4 (hstring,"EQUINOX",&ieq))
+    wcstemp[0] = 0;
+    hgets (hstring,"EQUINOX",16,wcstemp);
+    if (wcstemp[0] == 'J') {
+	wcs->equinox = atof (wcstemp+1);
+	ieq = atoi (wcstemp+1);
+	}
+    else if (wcstemp[0] == 'B') {
+	wcs->equinox = atof (wcstemp+1);
+	ieq = atoi (wcstemp+1);
+	}
+    else if (hgeti4 (hstring,"EQUINOX",&ieq))
 	hgetr8 (hstring,"EQUINOX",&wcs->equinox);
 
     else if (hgeti4 (hstring,"EPOCH",&ieq))
@@ -1093,7 +1100,10 @@ int	lstr;		/* Length of world coordinate string (returned) */
 		lstr = lstr - minlength;
 		}
 	    else {
-		strncpy (wcstring,"*******************",lstr);
+		if (wcs->tabsys)
+		    strncpy (wcstring,"*********	**********",lstr);
+		else
+		    strncpy (wcstring,"*******************",lstr);
 		lstr = 0;
 		}
 	    }
@@ -1110,7 +1120,10 @@ int	lstr;		/* Length of world coordinate string (returned) */
 	        lstr = lstr - minlength;
 		}
 	    else {
-		strncpy (wcstring,"**************************",lstr);
+		if (wcs->tabsys)
+		    strncpy (wcstring,"*************	*************",lstr);
+		else
+		    strncpy (wcstring,"**************************",lstr);
 		lstr = 0;
 		}
 	    }
@@ -1124,22 +1137,34 @@ int	lstr;		/* Length of world coordinate string (returned) */
 	/* Label ecliptic coordinates */
 	else if (!strncmp (wcs->sysout,"ECL",3)) {
 	    if (lstr > 9 && wcs->printsys)
-		strcat (wcstring," ecliptic");
+		if (wcs->tabsys)
+		    strcat (wcstring,"	ecliptic");
+		else
+		    strcat (wcstring," ecliptic");
 	    }
 
 	/* Label alt-az coordinates */
 	else if (!strncmp (wcs->sysout,"ALT",3)) {
 	    if (lstr > 7 && wcs->printsys)
-		strcat (wcstring," alt-az");
+		if (wcs->tabsys)
+		    strcat (wcstring,"	alt-az");
+		else
+		    strcat (wcstring," alt-az");
 	    }
 
 	/* Label equatorial coordinates */
 	else if (!strncmp (wcs->sysout,"FK",2)) {
 	    if (lstr > 6 && wcs->printsys) {
 		if (!strncmp (wcs->sysout,"FK5",3))
-		    strcat (wcstring," J2000");
+		    if (wcs->tabsys)
+			strcat (wcstring,"	J2000");
+		    else
+			strcat (wcstring," J2000");
 		else if (!strncmp (wcs->sysout,"FK4",3))
-		    strcat (wcstring," B1950");
+		    if (wcs->tabsys)
+			strcat (wcstring,"	B1950");
+		    else
+			strcat (wcstring," B1950");
 		}
 	    }
 
@@ -1152,9 +1177,15 @@ int	lstr;		/* Length of world coordinate string (returned) */
 		    xpos = xpos + 360.0;
 		}
 	    if (lstr > 23)
-		(void)sprintf (wcstring,"%11.5f %11.5f", xpos,ypos);
+		if (wcs->tabsys)
+		    (void)sprintf (wcstring,"%11.5f	%11.5f", xpos,ypos);
+		else
+		    (void)sprintf (wcstring,"%11.5f %11.5f", xpos,ypos);
 	    else
-		strncpy (wcstring,"*******************",lstr);
+		if (wcs->tabsys)
+		    strncpy (wcstring,"**********	*********",lstr);
+		else
+		    strncpy (wcstring,"*******************",lstr);
 	    }
 	return (1);
 }
@@ -1189,7 +1220,7 @@ double	*xpos,*ypos;	/* RA and Dec in degrees (returned) */
 	    wcs->offscl = 1;
 	    }
 
-	if (wcs->pcode > 0) {
+	if (wcs->pcode > 0 || wcs->plate_fit > 0) {
 
 	    /* Convert coordinates to FK4 or FK5 */
 	    if (strncmp (wcs->radecsys,"FK4",3) == 0) {
@@ -1363,6 +1394,10 @@ wcserr ()
  * Oct 20 1997	Set chip rotation
  * Oct 24 1997	Keep longitudes between 0 and 360, not -180 and +180
  * Nov  5 1997	Do no compute crot and srot; they are now computed in worldpos
+ * Dec 16 1997	Set rotation and axis increments from CD matrix
  *
- * Feb  6 1998	Set deltas and rotation from CD matrix in WCSINIT()
+ * Jan  6 1998	Deal with J2000 and B1950 as EQUINOX values (from ST)
+ * Jan  7 1998	Read INSTRUME and DETECTOR header keywords
+ * Jan  7 1998	Fix tab-separated output
+ * Jan  9 1998	Precess coordinates if either FITS projection or *DSS plate*
  */

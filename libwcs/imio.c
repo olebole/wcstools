@@ -1,6 +1,6 @@
 /*** File wcslib/imio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** June 13, 1996
+ *** July 24, 1997
 
  * Module:      imio.c (image pixel manipulation)
  * Purpose:     Read and write pixels from arbitrary data type 2D arrays
@@ -68,6 +68,9 @@ int	y;
 /* Extract pixel from appropriate type of array */
     switch (bitpix) {
 
+	case 8:
+	  return ((double) image[(y*w) + x]);
+
 	case 16:
 	  im2 = (short *)image;
 	  return ((double) im2[(y*w) + x]);
@@ -124,6 +127,10 @@ double	dpix;
 
     switch (bitpix) {
 
+	case 8:
+	    image[(y*w) + x] = (char) dpix;
+	    break;
+
 	case 16:
 	    im2 = (short *)image;
 	    im2[(y*w) + x] = (short) dpix;
@@ -154,7 +161,7 @@ double	dpix;
 }
 
 
-/* MOVEPIX -- Copy pixel between 2D images of same numeric type */
+/* MOVEPIX -- Copy pixel between images */
 
 void
 movepix (image1, bitpix1, w1, x1, y1, image2, bitpix2, w2, x2, y2)
@@ -182,8 +189,37 @@ int	x2, y2;		/* Row and column for output pixel */
 
     switch (bitpix1) {
 
+	case 8:
+	    switch (bitpix2) {
+		case 16:
+		    ims2 = (short *)image2;
+		    ims2[(y2*w2) + x2] = image1[(y1*w1) + x1];
+		    break;
+		case 32:
+		    imi2 = (int *)image2;
+		    imi2[(y2*w2) + x2] = (int) image1[(y1*w1) + x1];
+		    break;
+		case -16:
+		    imu2 = (unsigned int *)image2;
+		    imu2[(y2*w2) + x2] = (unsigned int) image1[(y1*w1) + x1];
+		    break;
+		case -32:
+		    imr2 = (float *)image2;
+		    imr2[(y2*w2) + x2] = (float) image1[(y1*w1) + x1];
+		    break;
+		case -64:
+		    imd2 = (double *)image2;
+		    imd2[(y2*w2) + x2] = (double) image1[(y1*w1) + x1];
+		    break;
+		}
+	    break;
+
 	case 16:
 	    switch (bitpix2) {
+		case 8:
+		    ims1 = (short *)image1;
+		    image2[(y2*w2) + x2] = (char) ims1[(y1*w1) + x1];
+		    break;
 		case 16:
 		    ims1 = (short *)image1;
 		    ims2 = (short *)image2;
@@ -214,6 +250,10 @@ int	x2, y2;		/* Row and column for output pixel */
 
 	case 32:
 	    switch (bitpix2) {
+		case 8:
+		    imi1 = (int *)image1;
+		    image2[(y2*w2) + x2] = (char) imi1[(y1*w1) + x1];
+		    break;
 		case 16:
 		    imi1 = (int *)image1;
 		    ims2 = (short *)image2;
@@ -244,6 +284,10 @@ int	x2, y2;		/* Row and column for output pixel */
 
 	case -16:
 	    switch (bitpix2) {
+		case 8:
+		    imu1 = (unsigned int *)image1;
+		    image2[(y2*w2) + x2] = (char) imu1[(y1*w1) + x1];
+		    break;
 		case 16:
 		    imu1 = (unsigned int *)image1;
 		    ims2 = (short *)image2;
@@ -274,6 +318,10 @@ int	x2, y2;		/* Row and column for output pixel */
 
 	case -32:
 	    switch (bitpix2) {
+		case 8:
+		    imr1 = (float *)image1;
+		    image2[(y2*w2) + x2] = (char) imr1[(y1*w1) + x1];
+		    break;
 		case 16:
 		    imr1 = (float *)image1;
 		    ims2 = (short *)image2;
@@ -304,6 +352,10 @@ int	x2, y2;		/* Row and column for output pixel */
 
 	case -64:
 	    switch (bitpix2) {
+		case 8:
+		    imd1 = (double *)image1;
+		    image2[(y2*w2) + x2] = (char) imd1[(y1*w1) + x1];
+		    break;
 		case 16:
 		    imd1 = (double *)image1;
 		    ims2 = (short *)image2;
@@ -360,6 +412,11 @@ double	*dpix;
     pix2 = pix1 + pixoff;
 
     switch (bitpix) {
+
+	case 8:
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		*dpix++ = (char) *(image+ipix);
+	    break;
 
 	case 16:
 	    im2 = (short *)image;
@@ -422,6 +479,11 @@ double	*dpix;
 
     switch (bitpix) {
 
+	case 8:
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		*(image+ipix) = (char) *dp++;
+	    break;
+
 	case 16:
 	    im2 = (short *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
@@ -469,6 +531,9 @@ int	nbytes;		/* Number of bytes to swap */
 
 {
     switch (bitpix) {
+
+	case 8:
+	    break;
 
 	case 16:
 	    if (nbytes < 2) return;
@@ -612,4 +677,6 @@ imswapped ()
  * May 22 1996	Add H so that PUTPIX and GETPIX can check coordinates
  * Jun 11 1996	Simplify NEWIMAGE subroutine
  * Jun 12 1996	Add byte-swapping subroutines
+ *
+ * Jul 24 1997	Add 8-bit option to subroutines
  */

@@ -1,5 +1,5 @@
 /* File libwcs/matchstar.c
- * November 12, 1997
+ * October 2, 1997
  * By Doug Mink, Smithsonian Astrophyscial Observatory
  */
 
@@ -15,18 +15,16 @@
 #include <stdlib.h>
 #include <math.h>
 #include <malloc.h>
-#include <string.h>
 #include "fitshead.h"
 #include "wcs.h"
 #include "lwcs.h"
 
-#define NPAR 8
-#define NPAR1 9
+#define NPAR 6
+#define NPAR1 7
 
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 
 static void call_amoeba ();
-extern void setnofit();
 
 /* Statics used by the chisqr evaluator */
 static double	*sx_p;
@@ -34,15 +32,9 @@ static double	*sy_p;
 static double	*gx_p;
 static double	*gy_p;
 static double	xref_p, yref_p;
-static double	xrefpix, yrefpix;
+static double	xref_pix, yref_pix;
 static int	nbin_p;
 static int	nfit;	/* Number of parameters to fit */
-static int	pfit0 = 0;	/* List of parameters to fit, 1 per digit */
-static int	vfit[NPAR1]; /* Parameters being fit: index to value vector
-				1= RA,		  2= Dec,
-				3= X plate scale, 4= Y plate scale
-				5= rotation,	  6= chip rotation,
-				7= optical axis X,8= optical axis Y
 
 /* Find shift, scale, and rotation of image stars to best-match reference stars
  * Get best match by finding which offsets between pairs of s's and g's
@@ -53,7 +45,7 @@ static int	vfit[NPAR1]; /* Parameters being fit: index to value vector
  */
 
 int
-StarMatch (ns, sx, sy, ng, gra, gdec, gx, gy, tol, wcs, debug)
+StarMatch (ns, sx, sy, ng, gra, gdec, gx, gy, tol, wcs, nfit0, debug)
 
 int	ns;		/* Number of image stars */
 double	*sx;		/* Image star X coordinates in pixels */
@@ -65,6 +57,7 @@ double	*gx;		/* Reference star X coordinates in pixels */
 double	*gy;		/* Reference star Y coordinates in pixels */
 double	tol;		/* +/- this many pixels is a hit */
 struct WorldCoor *wcs;	/* World coordinate structure (fit returned) */
+int	nfit0;		/* Number of parameters to fit (0=set from matches) */
 int	debug;
 
 {
@@ -76,20 +69,15 @@ int	debug;
     double *sbx, *sby;	/* malloced array of s stars in best bin */
     double *gbra, *gbdec;	/* malloced array of g stars in best bin */
     double vguess[NPAR];	/* Initial values for fit */
-    int peaks[NPEAKS+1];	/* history of bin counts */
-    int dxpeaks[NPEAKS+1], dypeaks[NPEAKS+1]; /* history of dx/dy at peaks */
+    int peaks[NPEAKS];	/* history of bin counts */
+    int dxpeaks[NPEAKS], dypeaks[NPEAKS]; /* history of dx/dy at peaks */
     int npeaks;		/* entries in use in peaks[] */
     int maxnbin, i, nmatchd;
     int *is, *ig, *ibs, *ibg;
     char rastr[16], decstr[16];
-    double xref0, yref0, xinc0, yinc0, rot0, mrot0, xrefpix0, yrefpix0;
     int minbin;		/* Minimum number of coincidence hits needed */
-    int bestbin;	/* Number of coincidences for refit */
     int resid_refine = 0;
-    int pfit;		/* List of parameters to fit, 1 per digit */
-    char vpar[16];	/* List of parameters to fit */
-    char *vi;
-    char vc;
+    int bestbin;	/* Number of coincidences for refit */
 
     /* Do coarse alignment assuming no rotation required.
      * This will allow us to collect a set of stars that correspond and
@@ -97,13 +85,13 @@ int	debug;
      */
     npeaks = 0;
     nmatch = 0;
+    maxnbin = ns;
     minbin = 2;
     for (i = 0; i < NPEAKS; i++) {
 	peaks[i] = 0;
 	dxpeaks[i] = 0;
 	dypeaks[i] = 0;
 	}
-    maxnbin = ns;
     if (ng > ns)
 	maxnbin = ng;
     is = (int *) malloc (maxnbin * sizeof(int));
@@ -211,79 +199,47 @@ int	debug;
     gy_p = gbdec;
     xref_p = wcs->xref;
     yref_p = wcs->yref;
-    xrefpix = wcs->xrefpix;
-    yrefpix = wcs->yrefpix;
+    xref_pix = wcs->xrefpix;
+    yref_pix = wcs->yrefpix;
     nbin_p = nbin;
 
+    vguess[0] = wcs->xref;
+    vguess[1] = wcs->yref;
+    vguess[2] = wcs->xinc;
+    vguess[3] = wcs->rot;
+    vguess[4] = wcs->yinc;
+
     /* Number of parameters to fit from command line or number of matches */
-    if (pfit0 != 0) {
-	if (pfit0 < 0) {
-	    pfit = -pfit0;
+    if (nfit0 > -8) {
+	if (nfit0 < 0) {
+	    nfit = -nfit0;
 	    resid_refine = 1;
 	    }
-	else if (pfit0 == 3)	/* Fit center and plate scale */
-	    pfit = 123;
-	else if (pfit0 == 4)	/* Fit center, plate scale, rotation */
-	    pfit = 1235;
-	else if (pfit0 == 5)	/* Fit center, x and y plate scale, rotation */
-	    pfit = 12345;
 	else
-	    pfit = pfit0;
+	    nfit = nfit0;
 	}
     else if (nbin < 4)
-	pfit = 12;
-    else if (nbin < 6)
-	pfit = 123;
+	nfit = 2;
+    else if (nbin > 5)
+	nfit = 4;
     else
-	pfit = 12345;
-
-    /* Get parameters to fit from digits of pfit */
-    sprintf (vpar, "%d", pfit);
-    nfit = 0;
-    vfit[0] = -1;
-    for (i = 1; i < NPAR1; i++) {
-	vc = i + 48;
-	vi = strchr (vpar, vc);
-	if (vi != NULL) {
-	    vfit[i] = vi - vpar;
-	    nfit++;
-	    }
-	else
-	    vfit[i] = -1;
-	}
-
-    /* Set initial guesses for parameters which are being fit */
-    xref0 = wcs->xref;
-    yref0 = wcs->yref;
-    xinc0 = wcs->xinc;
-    yinc0 = wcs->yinc;
-    rot0 = wcs->rot;
-    mrot0 = wcs->mrot;
-    xrefpix0 = wcs->xrefpix;
-    yrefpix0 = wcs->yrefpix;
+	nfit = 3;
 
     /* Fit image star coordinates to reference star positions */
     call_amoeba (wcs);
 
     if (debug) {
 	fprintf (stderr,"Amoeba:\n");
-	ra2str (rastr, xref0, 3);
-	dec2str (decstr, yref0, 2);
+	ra2str (rastr, vguess[0], 3);
+	dec2str (decstr, vguess[1], 2);
 	fprintf (stderr,"   initial guess:\n");
-	fprintf (stderr," cra= %s cdec= %s del=%7.4f,%7.4f rot=%7.4f ",
-		rastr, decstr, xinc0*3600.0, yinc0*3600.0, rot0);
-	if (mrot0 != 0.0)
-	    fprintf (stderr,"mrot=%7.4f ", mrot0);
-	fprintf (stderr,"(%8.2f,%8.2f\n", xrefpix0, yrefpix0);
-
+	fprintf (stderr," cra= %s cdec= %s rot=%7.4f del=%7.4f,%7.4f\n",
+		rastr, decstr, vguess[3], vguess[2]*3600.0, vguess[4]*3600.0);
 	ra2str (rastr, wcs->xref, 3);
 	dec2str (decstr, wcs->yref, 2);
 	fprintf (stderr,"first solution:\n");
-	fprintf (stderr," cra= %s cdec= %s del=%7.4f,%7.4f rot=%7.4f ",
-		 rastr, decstr, 3600.0*wcs->xinc, 3600.0*wcs->yinc, wcs->rot);
-	if (wcs->mrot != 0.0)
-	    fprintf (stderr,"mrot=%7.4f ", wcs->mrot);
-	fprintf (stderr,"(%8.2f,%8.2f)\n", wcs->xrefpix, wcs->yrefpix);
+	fprintf (stderr," cra= %s cdec= %s rot=%7.4f del=%7.4f,%7.4f\n", 
+		 rastr, decstr, wcs->rot, 3600.0*wcs->xinc, 3600.0*wcs->yinc);
 	}
 
     /* If we have extra bins, repeat with the best ones */
@@ -319,21 +275,18 @@ int	debug;
 
 	xref_p = wcs->xref;
 	yref_p = wcs->yref;
-	xrefpix = wcs->xrefpix;
-	yrefpix = wcs->yrefpix;
+	xref_pix = wcs->xrefpix;
+	yref_pix = wcs->yrefpix;
 	nbin_p = bestbin;
 	call_amoeba (wcs);
 
-	if (debug) {
+	if (debug)
 	    ra2str (rastr, wcs->xref, 3);
 	    dec2str (decstr, wcs->yref, 2);
 	    fprintf (stderr,"resid solution:\n");
-	    fprintf (stderr," cra= %s cdec= %s del=%7.4f,%7.4f rot=%7.4f ",
-		 rastr, decstr, 3600.0*wcs->xinc, 3600.0*wcs->yinc, wcs->rot);
-	    if (wcs->mrot != 0.0)
-		fprintf (stderr,"mrot=%7.4f ", wcs->mrot);
-	    fprintf (stderr,"(%8.2f,%8.2f)\n", wcs->xrefpix, wcs->yrefpix);
-	    }
+	    fprintf (stderr," cra=%s cdec=%s rot=%7.4f secpix=%7.4f,%7.4f\n", 
+	      rastr,decstr,wcs->rot,3600.0*wcs->xinc,3600.0*wcs->yinc);
+
 	free (resid);
 	}
 
@@ -370,7 +323,7 @@ struct WorldCoor *wcs0;
     double p0[NPAR], p1[NPAR], p2[NPAR], p3[NPAR], p4[NPAR],
 	   p5[NPAR], p6[NPAR], p7[NPAR], p8[NPAR]; /* used as px[0..NPAR-1] */
     double y[NPAR1];				  /* used as y[1..NPAR] */
-    double xinc1, yinc1, xrefpix1, yrefpix1, rot, mrot;
+    double xinc1, yinc1, xref_pix1, yref_pix1, rot;
     int iter;
     int i, j;
     int nfit1;
@@ -383,49 +336,23 @@ struct WorldCoor *wcs0;
     nfit1 = nfit + 1;
     wcsf = wcs0;
 
-/* Optical axis center (RA and Dec degrees) */
-    if (vfit[1] > -1) {
-	vguess[vfit[1]] = 0.0;
-	vdiff[vfit[1]] = 5.0 * wcsf->xinc;
-	}
-    if (vfit[2] > -1) {
-	vguess[vfit[2]] = 0.0;
-	vdiff[vfit[2]] = 5.0 * wcsf->yinc;
-	}
+/* Optical axis center (RA and Dec degrees)*/
+    vguess[0] = 0.0;
+    vguess[1] = 0.0;
+    vdiff[0] = 5.0 * wcsf->xinc;
+    vdiff[1] = 5.0 * wcsf->yinc;
 
 /* Plate scale at optical axis right ascension or both (degrees/pixel) */
-    if (vfit[3] > -1) {
-	vguess[vfit[3]] = wcsf->xinc;
-	vdiff[vfit[3]] = wcsf->xinc * 0.03;
-	}
-
-/* Plate scale in declination at optical axis (degrees/pixel) */
-    if (vfit[4] > -1) {
-	vguess[vfit[4]] = wcsf->yinc;
-	vdiff[vfit[4]] = wcsf->yinc * 0.03;
-	}
+    vguess[2] = wcsf->xinc;
+    vdiff[2] = wcsf->xinc * 0.03;
 
 /* Rotation about optical axis in degrees */
-    if (vfit[5] > -1) {
-	vguess[vfit[5]] = wcsf->rot;
-	vdiff[vfit[5]] = 0.5;
-	}
+    vguess[3] = wcsf->rot;
+    vdiff[3] = 1.0;
 
-/* Rotation about chip center (degrees) */
-    if (vfit[6] > -1) {
-	vguess[vfit[6]] = wcsf->mrot;
-	vdiff[vfit[6]] = 0.5;
-	}
-
-/* Reference pixel (optical axis) */
-    if (vfit[7] > -1) {
-	vguess[vfit[7]] = 0.0;
-	vdiff[vfit[7]] = 10.0;
-	}
-    if (vfit[8] > -1) {
-	vguess[vfit[8]] = 0.0;
-	vdiff[vfit[8]] = 10.0;
-	}
+/* Plate scale in declination at optical axis (degrees/pixel) */
+    vguess[4] = wcsf->yinc;
+    vdiff[4] = wcsf->yinc * 0.03;
 
 /* Set up matrix of nfit+1 initial guesses.
  * The supplied guess, plus one for each parameter altered by a small amount
@@ -437,140 +364,73 @@ struct WorldCoor *wcs0;
 	p0[3] = vguess[3];
 	p0[4] = vguess[4];
 	p0[5] = vguess[5];
-	p0[6] = vguess[6];
 	 y[0] = chisqr (p0, 0);
 
-    if (nfit > 0) {
-	p[1] = p1;
+    /* Change optical axis right ascension */
+    p[1] = p1;
 	p1[0] = vguess[0] + vdiff[0];
 	p1[1] = vguess[1];
 	p1[2] = vguess[2];
 	p1[3] = vguess[3];
 	p1[4] = vguess[4];
 	p1[5] = vguess[5];
-	p1[6] = vguess[6];
 	 y[1] = chisqr (p1, -1);
-	}
 
-    if (nfit > 1) {
-	p[2] = p2;
+    /* Change optical axis declination */
+    p[2] = p2;
 	p2[0] = vguess[0];
 	p2[1] = vguess[1] + vdiff[1];
 	p2[2] = vguess[2];
 	p2[3] = vguess[3];
 	p2[4] = vguess[4];
 	p2[5] = vguess[5];
-	p2[6] = vguess[6];
 	 y[2] = chisqr (p2, -2);
-	}
 
-    if (nfit > 2) {
-	p[3] = p3;
+    /* Change right ascension plate scale */
+    p[3] = p3;
 	p3[0] = vguess[0];
 	p3[1] = vguess[1];
 	p3[2] = vguess[2] + vdiff[2];
 	p3[3] = vguess[3];
 	p3[4] = vguess[4];
 	p3[5] = vguess[5];
-	p3[6] = vguess[6];
 	 y[3] = chisqr (p3, -3);
-	}
 
-    if (nfit > 3) {
-	p[4] = p4;
+    /* Change rotation about optical axis */
+    p[4] = p4;
 	p4[0] = vguess[0];
 	p4[1] = vguess[1];
 	p4[2] = vguess[2];
 	p4[3] = vguess[3] + vdiff[3];
 	p4[4] = vguess[4];
 	p4[5] = vguess[5];
-	p4[6] = vguess[6];
 	 y[4] = chisqr (p4, -4);
-	}
 
-    if (nfit > 4) {
-	p[5] = p5;
+    /* Change declination plate scale */
+    p[5] = p5;
 	p5[0] = vguess[0];
 	p5[1] = vguess[1];
 	p5[2] = vguess[2];
 	p5[3] = vguess[3];
 	p5[4] = vguess[4] + vdiff[4];
-	p5[5] = vguess[5];
-	p5[6] = vguess[6];
+	p4[5] = vguess[5];
 	 y[5] = chisqr (p5, -5);
-	}
-
-    if (nfit > 5) {
-	p[6] = p6;
-	for (i = 0; i < nfit; i++)
-	    p6[i] = vguess[i];
-	p6[5] = vguess[5] + vdiff[5];
-	 y[6] = chisqr (p6, -6);
-	}
-
-    if (nfit > 6) {
-	p[7] = p7;
-	for (i = 0; i < nfit; i++)
-	    p7[i] = vguess[i];
-	p7[6] = vguess[6] + vdiff[6];
-	 y[7] = chisqr (p7, -7);
-	}
-
-    if (nfit > 7) {
-	p[8] = p8;
-	for (i = 0; i < nfit; i++)
-	    p8[i] = vguess[i];
-	p8[7] = vguess[7] + vdiff[7];
-	 y[8] = chisqr (p8, -8);
-	}
 
 #define	PDUMP
 #ifdef	PDUMP
     printf ("Before:\n");
     for (i = 0; i < nfit1; i++) {
-	if (vfit[1] > -1)
-	    ra2str (rastr, p[i][vfit[1]] + xref_p, 3);
+	ra2str (rastr,p[i][0]+xref_p,3);
+	dec2str (decstr,p[i][1]+yref_p,2);
+	xinc1 = p[i][2];
+	rot = p[i][3];
+	if (nfit > 4)
+	    yinc1 = p[i][4];
 	else
-	    ra2str (rastr, wcsf->xref, 3);
-	if (vfit[2] > -1)
-	    dec2str (decstr, p[i][vfit[2]]+yref_p, 2);
-	else
-	    dec2str (decstr, wcsf->yref, 2);
-	if (vfit[3] > -1)
-	    xinc1 = p[i][vfit[3]];
-	else
-	    xinc1 = wcsf->xinc;
-	if (vfit[4] > -1)
-	    yinc1 = p[i][vfit[4]];
-	else if (vfit[3] > -1) {
-	    if (xinc1 < 0)
-		yinc1 = -xinc1;
-	    else
-		yinc1 = xinc1;
-	    }
-	else
-	    yinc1 = wcsf->yinc;
-	if (vfit[5] > -1)
-	    rot = p[i][vfit[5]];
-	else
-	    rot = wcsf->rot;
-	if (vfit[6] > -1)
-	    mrot = p[i][vfit[6]];
-	else
-	    mrot = wcsf->mrot;
-	if (vfit[7] > -1)
-	    xrefpix1 = xrefpix + p[i][vfit[7]];
-	else
-	    xrefpix1 = wcsf->xrefpix;
-	if (vfit[8] > -1)
-	    yrefpix1 = yrefpix + p[i][vfit[8]];
-	else
-	    yrefpix1 = wcsf->yrefpix;
-	printf ("%d: %s %s del=%6.4f,%6.4f rot=%5.3f ",
-		i, rastr, decstr, 3600.0*xinc1, 3600.0*yinc1, rot);
-	if (mrot != 0.0)
-	    printf ("mrot=%5.3f ", mrot);
-	printf ("(%8.2f,%8.2f) y=%g\n", xrefpix1, yrefpix1, y[i]);
+	    yinc1 = xinc1;
+	printf ("%d: %s %s rot=%5.3f del=%6.4f,%6.4f (%8.2f,%8.2f) y=%g\n",
+		i,rastr,decstr, rot, 3600.0*xinc1, 3600.0*yinc1,
+		xref_pix, yref_pix, y[i]);
 	}
 #endif
 
@@ -580,49 +440,24 @@ struct WorldCoor *wcs0;
 #ifdef	PDUMP
     printf ("\nAfter:\n");
     for (i = 0; i < nfit1; i++) {
-	if (vfit[1] > -1)
-	    ra2str (rastr, p[i][vfit[1]] + xref_p, 3);
-	else
-	    ra2str (rastr, wcsf->xref, 3);
-	if (vfit[2] > -1)
-	    dec2str (decstr, p[i][vfit[2]]+yref_p, 2);
-	else
-	    dec2str (decstr, wcsf->yref, 2);
-	if (vfit[3] > -1)
-	    xinc1 = p[i][vfit[3]];
-	else
-	    xinc1 = wcsf->xinc;
-	if (vfit[4] > -1)
-	    yinc1 = p[i][vfit[4]];
-	else if (vfit[3] > -1) {
+	ra2str (rastr,p[i][0]+xref_p,3);
+	dec2str (decstr,p[i][1]+yref_p,2);
+	xinc1 = p[i][2];
+	if (nfit > 3)
+	   rot = p[i][3];
+	if (nfit > 4)
+	    yinc1 = p[i][4];
+	else if (nfit > 2) {
 	    if (xinc1 < 0)
 		yinc1 = -xinc1;
 	    else
 		yinc1 = xinc1;
 	    }
-	else
-	    yinc1 = wcsf->yinc;
-	if (vfit[5] > -1)
-	    rot = p[i][vfit[5]];
-	else
-	    rot = wcsf->rot;
-	if (vfit[6] > -1)
-	    mrot = p[i][vfit[6]];
-	else
-	    mrot = wcsf->mrot;
-	if (vfit[7] > -1)
-	    xrefpix1 = xrefpix + p[i][vfit[7]];
-	else
-	    xrefpix1 = wcsf->xrefpix;
-	if (vfit[8] > -1)
-	    yrefpix1 = yrefpix + p[i][vfit[8]];
-	else
-	    yrefpix1 = wcsf->yrefpix;
-	printf ("%d: %s %s del=%6.4f,%6.4f rot=%5.3f ",
-		i,rastr,decstr, 3600.0*xinc1, 3600.0*yinc1, rot);
-	if (mrot != 0.0)
-	    printf ("crot=%5.3f ", mrot);
-	printf ("(%8.2f,%8.2f) y=%g\n", xrefpix1, yrefpix1, y[i]);
+	xref_pix1 = xref_pix;
+	yref_pix1 = yref_pix;
+	printf ("%d: %s %s rot=%5.3f del=%6.4f,%6.4f (%8.2f,%8.2f) y=%g\n",
+		i,rastr,decstr, rot, 3600.0*xinc1, 3600.0*yinc1,
+		xref_pix1, yref_pix1, y[i]);
 	}
 #endif
 
@@ -635,40 +470,39 @@ struct WorldCoor *wcs0;
 	    sum += p[i][j];
 	vp[j] = sum / (double)nfit1;
 	}
-    if (vfit[1] > -1)
-	wcsf->xref = xref_p + vp[vfit[1]];
-    if (vfit[2] > -1)
-	wcsf->yref = yref_p + vp[vfit[2]];
-    if (vfit[3] > -1)
-	wcsf->xinc = vp[vfit[3]];
-    if (vfit[4] > -1)
-	wcsf->yinc = vp[vfit[4]];
-    else if (vfit[3] > -1) {
+    wcsf->xref = xref_p + vp[0];
+    wcsf->yref = yref_p + vp[1];
+    if (nfit > 2)
+	wcsf->xinc = vp[2];
+    if (nfit > 3) {
+	wcsf->rot = vp[3];
+	wcsf->srot = sin (degrad (vp[3]));
+	wcsf->crot = cos (degrad (vp[3]));
+	}
+    if (nfit > 6) {
+	wcsf->xrefpix = xref_pix + vp[4];
+	wcsf->yrefpix = yref_pix + vp[5];
+	}
+    if (nfit > 4)
+	wcsf->yinc = vp[4];
+    else if (nfit > 2) {
 	if (wcsf->xinc < 0)
-	    wcsf->yinc = -wcsf->xinc;
+	    wcsf->yinc = -vp[2];
 	else
-	    wcsf->yinc = wcsf->xinc;
+	    wcsf->yinc = vp[2];
 	}
-    if (vfit[5] > -1) {
-	wcsf->rot = vp[vfit[5]];
-	}
-    if (vfit[6] > -1)
-	wcsf->mrot = vp[vfit[6]];
-    if (vfit[7] > -1)
-	wcsf->xrefpix = xrefpix + vp[vfit[7]];
-    if (vfit[8] > -1)
-	wcsf->yrefpix = yrefpix + vp[vfit[8]];
 
 #define RESIDDUMP
 #ifdef RESIDDUMP
     ra2str (rastr,wcsf->xref,3);
     dec2str (decstr,wcsf->yref,2);
 
-    printf ("iter=%d\n cra= %s cdec= %s del=%7.4f,%7.4f rot=%7.4f ", iter,
-	    rastr, decstr, wcsf->xinc*3600.0, wcsf->yinc*3600.0, wcsf->rot);
-    if (wcsf->mrot != 0.0)
-	printf ("mrot=%7.4f ", wcsf->mrot);
-    printf ("(%8.2f,%8.2f)\n", wcsf->xrefpix, wcsf->yrefpix);
+    /* printf ("iter=%d\n cra= %s cdec= %s rot=%7.4f del=%7.4f,%7.4f (%8.2f,%8.2f)\n",
+	    iter, rastr, decstr, wcsf->rot, wcsf->xinc*3600.0, wcsf->yinc*3600.0,
+	    wcsf->xrefpix, wcsf->yrefpix); */
+    printf ("iter=%d\n cra= %s cdec= %s rot=%7.4f del=%7.4f,%7.4f (%8.2f,%8.2f)\n",
+	    iter, rastr, decstr, wcsf->rot, wcsf->xinc*3600.0, wcsf->yinc*3600.0,
+	    wcsf->xrefpix, wcsf->yrefpix);
     for (i = 0; i < nbin_p; i++) {
 	double mx, my, ex, ey;
 	char gstr[16], sstr[16];
@@ -711,30 +545,23 @@ int	iter;	/* Number of iterations */
     int i, offscale;
 
     /* Set WCS parameters from fit parameter vector */
-    if (vfit[1] > -1)
-	wcsf->xref = xref_p + v[vfit[1]];
-    if (vfit[2] > -1)
-	wcsf->yref = yref_p + v[vfit[2]];
-    if (vfit[3] > -1)
-	wcsf->xinc = v[vfit[3]];
-    if (vfit[4] > -1)
-	wcsf->yinc = v[vfit[4]];
-    else if (vfit[3] > -1) {
+    wcsf->xref = xref_p + v[0];
+    wcsf->yref = yref_p + v[1];
+    if (nfit > 2)
+	wcsf->xinc = v[2];
+    if (nfit > 3) {
+	wcsf->rot = v[3];
+	wcsf->crot = cos (degrad(v[3]));
+	wcsf->srot = sin (degrad(v[3]));
+	}
+    if (nfit > 4)
+	wcsf->yinc = v[4];
+    else if (nfit > 2) {
 	if (wcsf->xinc < 0)
 	    wcsf->yinc = -wcsf->xinc;
 	else
 	    wcsf->yinc = wcsf->xinc;
 	}
-    if (vfit[5] > -1) {
-	wcsf->rot = v[vfit[5]];
-	}
-    if (vfit[6] > -1) {
-	wcsf->mrot = v[vfit[6]];
-	}
-    if (vfit[7] > -1)
-	wcsf->xrefpix = xrefpix + v[vfit[7]];
-    if (vfit[8] > -1)
-	wcsf->yrefpix = yrefpix + v[vfit[8]];
 
     /* Compute sum of squared residuals for these parameters */
     chsq = 0.0;
@@ -751,13 +578,9 @@ int	iter;	/* Number of iterations */
 #ifdef TRACE_CHSQR
     ra2str (rastr,wcsf->xref,3);
     dec2str (decstr,wcsf->yref,2);
-    fprintf (stderr,"%4d: %s %s %9.7f,%9.7f %8.5f %8.5f (%8.2f,%8.2f) -> %f\r",
-	    iter, rastr, decstr, wcsf->xinc*3600.0, wcsf->yinc*3600.0,
-	    wcsf->rot);
-    if (wcsf->mrot != 0.0)
-	fprintf (stderr,"%8.5f ", wcsf->mrot);
-    fprintf (stderr,"(%8.2f,%8.2f) -> %f\r",
-	     wcsf->xrefpix, wcsf->yrefpix, chsq);
+    fprintf (stderr,"%4d: %s %s %8.5f %9.7f,%9.7f (%8.2f,%8.2f) -> %f\r",
+	    iter, rastr, decstr, wcsf->rot, wcsf->xinc*3600.0, wcsf->yinc*3600.0,
+	    wcsf->xrefpix, wcsf->yrefpix, chsq);
 #endif
     return (chsq);
 }
@@ -769,6 +592,9 @@ int	iter;	/* Number of iterations */
 #define ALPHA 1.0
 #define BETA 0.5
 #define GAMMA 2.0
+
+#define GET_PSUM for (j=0; j<ndim; j++) { for (i=0,sum=0.0; i<ndim1; i++)\
+						sum += p[i][j]; psum[j]=sum;}
 
 static void
 amoeba (p, y, ndim, ftol, itmax, funk, nfunk)
@@ -787,10 +613,7 @@ double ytry,ysave,sum,rtol,*psum;
 
     psum = (double *) malloc ((unsigned)ndim * sizeof(double));
     *nfunk = 0;
-    for (j=0; j<ndim; j++) {
-	for (i=0,sum=0.0; i<ndim1; i++)
-	    sum += p[i][j]; psum[j]=sum;
-	}
+    GET_PSUM
     for (;;) {
 	ilo=1;
 	if (y[0] > y[1]) {
@@ -838,15 +661,11 @@ double ytry,ysave,sum,rtol,*psum;
 			}
 		    }
 		*nfunk += ndim;
-		for (j=0; j<ndim; j++) {
-		    for (i=0,sum=0.0; i<ndim1; i++)
-			sum += p[i][j]; psum[j]=sum;
-		    }
+		GET_PSUM
 		}
 	    }
 	}
     free (psum);
-    return;
 }
 
 
@@ -883,14 +702,6 @@ int	*nfunk;
     free (ptry);
     return ytry;
 }
-
-void
-setnfit (nfit)
-int nfit;
-{ if (nfit == 0) setnofit();
-  else pfit0 = nfit;
-  return; }
-
 /* Aug  6 1996	New subroutine
  * Sep  1 1996	Move constants to lwcs.h
  * Sep  3 1996	Use offscale pixels for chi^2 computation
@@ -906,8 +717,5 @@ int nfit;
  * Sep  9 1997	Fit separate horizontal and vertical plate scales if nfit=5
  * Sep  9 1997	Fix bugs associated with fitting optical axis
  * Sep 12 1997	Add chip rotation instead of second plate scale
- * Oct  2 1997	Keep second plate scale AND chip rotation
- * Oct 16 1997	Try to deal with reference pixel position correctly
- * Nov  5 1997	Select parameters one at a time, in any order
- * Nov 12 1997	Add PFIT=3 to fit center and plate scale only
+ * Oct  2 1997	Keep second plate scale AND chip rotation; drop optical axis x and y
  */ 

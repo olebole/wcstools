@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** December 10, 1996
+ *** November 6, 1997
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -11,6 +11,8 @@
 #include "lwcs.h"
 
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
+
+extern int daoread();
 
 static int HotPixel();
 static int starRadius();
@@ -37,6 +39,10 @@ static char imcatname[32] = "";
 void setimcat (cat)
 char *cat;
 {strcpy (imcatname, cat); return; }
+
+/* Get input catalog for image stars */
+char *getimcat ()
+{return (imcatname); }
 
 static int minsep = MINSEP;	/* Minimum separation for stars */
 static int minrad = MINRAD;	/* Minimum radius for a star */
@@ -102,9 +108,9 @@ int	verbose;	/* 1 to print each star's position */
 
     /* Read star list from file */
     if (imcatname[0] != 0) {
-	int nlog;
+	int nlog = 0;
 	if (verbose) nlog = 10;
-	nstars = daoread (imcatname, xa, ya, ba, pa,nlog);
+	nstars = daoread (imcatname, xa, ya, ba, pa, nlog);
 	return (nstars);
 	}
 
@@ -633,4 +639,7 @@ double	background;
  * Oct 15 1996	Drop unused variables
  * Dec 10 1996	Check for hot columns as well as hot rows
  * Dec 10 1996	Add option to read image stars from DAOFIND file
+ *
+ * Mar 20 1997	Declare external subroutine DAOREAD
+ * Nov 6 1997	Add subroutine to return image catalog filename
  */

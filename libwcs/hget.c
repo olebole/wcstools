@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** January 27, 1997
+ *** July 25, 1997
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -314,9 +314,9 @@ char *keyword;	/* character string containing the name of the variable
 		   (the first 8 characters must be unique) */
 double *dval;
 {
-	double yeardays;
-	char *value,*sstr, *nval;
-	int year, month, day, yday, i;
+	double yeardays, seconds, fday;
+	char *value,*sstr, *dstr, *tstr, *cstr, *nval;
+	int year, month, day, yday, i, hours, minutes;
 	static int mday[12] = {31,28,31,30,31,30,31,31,30,31,30,31};
 
 /* Get value and comment from header string */
@@ -325,8 +325,9 @@ double *dval;
 /* Translate value from ASCII to binary */
 	if (value != NULL) {
 	    sstr = strchr (value,'/');
-	    if (sstr == NULL)
-		sstr = strchr (value,'-');
+	    dstr = strchr (value,'-');
+
+	/* Original FITS date format: dd/mm/yy */
 	    if (sstr > value) {
 		*sstr = '\0';
 		day = (int) atof (value);
@@ -366,12 +367,75 @@ double *dval;
 		else
 		    return (0);
 		}
+
+	/* New FITS date format: yyyy-mm-ddThh:mm:ss[.sss] */
+	    else if (dstr > value) {
+		*dstr = '\0';
+		year = (int) atof (value);
+		nval = dstr + 1;
+		dstr = strchr (nval,'-');
+		month = 1;
+		day = 1;
+		tstr = NULL;
+		if (dstr > value) {
+		    *dstr = '\0';
+		    month = (int) atof (nval);
+		    nval = dstr + 1;
+		    tstr = strchr (nval,'T');
+		    if (tstr > value)
+			*tstr = '\0';
+		    day = (int) atof (nval);
+		    }
+		if ((year % 4) == 0)
+		    mday[1] = 29;
+		else
+		    mday[1] = 28;
+		if ((year % 100) == 0 && (year % 400) != 0)
+		    mday[1] = 28;
+		if (day > mday[month-1])
+		    day = mday[month-1];
+		else if (day < 1)
+		    day = 1;
+		if (mday[1] == 28)
+		    yeardays = 365.0;
+		else
+		    yeardays = 366.0;
+		yday = day - 1;
+		for (i = 0; i < month-1; i++)
+		    yday = yday + mday[i];
+		*dval = (double) year + ((double)yday / yeardays);
+
+	/* Extract time, if it is present */
+		if (tstr > value) {
+		    nval = tstr + 1;
+		    hours = 0.0;
+		    minutes = 0.0;
+		    seconds = 0.0;
+		    cstr = strchr (nval,':');
+		    if (cstr > value) {
+			*cstr = '\0';
+			hours = (int) atof (nval);
+			nval = cstr + 1;
+			cstr = strchr (nval,':');
+			if (cstr > value) {
+			    minutes = (int) atof (nval);
+			    nval = cstr + 1;
+			    cstr = strchr (nval,':');
+			    if (cstr > value)
+				seconds = atof (nval);
+			    }
+			}
+		    fday = ((3.6e3 * (double)hours) + (6.e1 * (double)minutes) +
+			   seconds) / 8.64e4;
+		    *dval = *dval + (fday / yeardays);
+		    }
+		return (1);
+		}
 	    else
 		return (0);
 	    }
-	else {
+	else
 	    return (0);
-	    }
 }
 
 
@@ -872,4 +936,5 @@ int set_saolib(hstring)
  *
  * Jan 22 1997	Add ifdefs for Eric Mandel (SAOtng)
  * Jan 27 1997	Convert to integer through ATOF so exponents are recognized
+ * Jul 25 1997	Implement FITS version of ISO date format
  */

@@ -22,6 +22,8 @@ imgsc.c
   the sky covered by a specific image using its WCS.
 imhead.c
   Print FITS or IRAF header
+immatch.c
+  Match catalog and image stars using the WCS in the image file.
 imrot.c
   Rotate and/or reflect FITS or IRAF image files
 imsize.c

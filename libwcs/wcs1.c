@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** February 6, 1998
+ *** October 9, 1997
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -79,14 +79,14 @@ char *hstring;	/* character string containing FITS header information
 	set_saolib((void *)hstring);
 #endif
 
-	strcpy (ctypes[0],"-SIN");
-	strcpy (ctypes[1],"-TAN");
-	strcpy (ctypes[2],"-ARC");
-	strcpy (ctypes[3],"-NCP");
-	strcpy (ctypes[4],"-GLS");
-	strcpy (ctypes[5],"-MER");
-	strcpy (ctypes[6],"-AIT");
-	strcpy (ctypes[7],"-STG");
+	strcpy (ctypes[0],"SIN");
+	strcpy (ctypes[1],"TAN");
+	strcpy (ctypes[2],"ARC");
+	strcpy (ctypes[3],"NCP");
+	strcpy (ctypes[4],"GLS");
+	strcpy (ctypes[5],"MER");
+	strcpy (ctypes[6],"AIT");
+	strcpy (ctypes[7],"STG");
 
 	wcs = (struct WorldCoor *) calloc (1, sizeof(struct WorldCoor));
 
@@ -94,9 +94,6 @@ char *hstring;	/* character string containing FITS header information
 	wcs->plate_fit = 0;
 	hgetr8 (hstring,"NAXIS1",&wcs->nxpix);
 	hgetr8 (hstring,"NAXIS2",&wcs->nypix);
-	wcs->xmpix = 0.5 * wcs->nxpix;
-	wcs->ympix = 0.5 * wcs->nypix;
-	wcs->mrot = 0.0;
 	if (ksearch (hstring,"PLTRAH") != NULL) {
 	    wcs->plate_fit = 1;
 	    hcoeff = ksearch (hstring,"PLTRAH");
@@ -210,27 +207,25 @@ char *hstring;	/* character string containing FITS header information
 		     wcstemp[0] == 'D' ||
 		     wcstemp[0] == 'A' ||
 		     wcstemp[1] == 'L') {
-		wcs->c1type[0] = wcstemp[0];
-		wcs->c1type[1] = wcstemp[1];
-		if (wcstemp[2] == '-')
+
+		strncpy (wcs->c1type, wcstemp,4);
+		if (wcs->c1type[2] == '-')
 		    wcs->c1type[2] = 0;
-		else
-		    wcs->c1type[2] = wcstemp[2];
-		if (wcstemp[3] == '-')
+		if (wcs->c1type[3] == '-')
 		    wcs->c1type[3] = 0;
-		else
-		    wcs->c1type[3] = wcstemp[3];
 		wcs->c1type[4] = 0;
-		wcs->ptype[0] = wcstemp[4];
-		wcs->ptype[1] = wcstemp[5];
-		wcs->ptype[2] = wcstemp[6];
-		wcs->ptype[3] = wcstemp[7];
+
+		if (wcstemp[4] == '-')
+		    strncpy (wcs->ptype, wcstemp+5,3);
+		else
+		    strncpy (wcs->ptype, wcstemp+4,4);
 		wcs->ptype[4] = 0;
 
 	    /*  Find projection type  */
+		celset (wcs->ptype, wcs->cel, wcs->prj);
 		wcs->pcode = 0;  /* default type is linear */
-		for (i=0; i<8; i++)
-		    if (!strncmp(wcs->ptype, ctypes[i], 4))
+		for (i = 0; i < 8; i++)
+		    if (!strncmp(wcs->ptype, ctypes[i], 3))
 			wcs->pcode = i + 1;
 		}
 
@@ -319,6 +314,8 @@ char *hstring;	/* character string containing FITS header information
 		wcs->cd21 = 0.;
 		wcs->cd12 = 0.;
 		wcs->cd22 = 0.;
+		wcs->crot = cos (degrad (wcs->rot));
+		wcs->srot = sin (degrad (wcs->rot));
 		wcs->rotmat = 0;
 		}
 	    else if (hgetr8 (hstring,"CD1_1",&wcs->cd11) != 0) {
@@ -332,32 +329,21 @@ char *hstring;	/* character string containing FITS header information
 		cddet = (wcs->cd11 * wcs->cd22) - (wcs->cd12 * wcs->cd21);
 		if (cddet != 0.0) {
 		    wcs->dc11 = wcs->cd22 / cddet;
-		    wcs->dc12 = -wcs->cd12 / cddet;
-		    wcs->dc21 = -wcs->cd21 / cddet;
+		    wcs->dc12 = -wcs->cd21 / cddet;
+		    wcs->dc21 = -wcs->cd12 / cddet;
 		    wcs->dc22 = wcs->cd11 / cddet;
 		    }
-		wcs->xinc = sqrt (wcs->cd11*wcs->cd11 + wcs->cd21*wcs->cd21);
-		wcs->yinc = sqrt (wcs->cd12*wcs->cd12 + wcs->cd22*wcs->cd22);
-		if ((wcs->cd11*wcs->cd11 - wcs->cd12*wcs->cd12) < 0) {
-		    if (!strncmp(wcs->c1type,"RA",2) || !strncmp(wcs->c1type,"GLON",4))
-			wcs->xinc = -wcs->xinc;
-		    if (!strncmp(wcs->c2type,"RA",2) || !strncmp(wcs->c2type,"GLON",4))
-			wcs->yinc = -wcs->yinc;
-		    wcs->rot = raddeg (atan2 (-wcs->cd12, wcs->cd22));
-		    }
-		else
-		    wcs->rot = raddeg (atan2 (wcs->cd12, wcs->cd22));
+		wcs->xinc = 0.;
+		wcs->yinc = 0.;
+		wcs->rot = 0.;
+		wcs->crot = 1.;
+		wcs->srot = 0.;
 		}
 	    else {
 		wcs->xinc = 1.0;
 		wcs->yinc = 1.0;
 		(void)sprintf (wcserrmsg,"WCSINIT: setting CDELT to 1\n");
 		}
-
-	/* Chip rotation */
-	    hgetr8 (hstring,"CCPIX1",&wcs->xmpix);
-	    hgetr8 (hstring,"CCPIX2",&wcs->ympix);
-	    hgetr8 (hstring,"CCROT1",&wcs->mrot);
 
 	/* Coordinate reference frame, equinox, and epoch */
 	    if (strncmp (wcs->ptype,"LINEAR",6) &&
@@ -429,12 +415,9 @@ char *hstring;	/* character string containing FITS header information
 	    wcs->dc21 = 0.;
 	    wcs->dc12 = 0.;
 	    wcs->dc22 = 0.;
+	    wcs->crot = cos (degrad (wcs->rot));
+	    wcs->srot = sin (degrad (wcs->rot));
 	    wcs->rotmat = 0;
-
-	/* Chip rotation */
-	    hgetr8 (hstring,"CCPIX1",&wcs->xmpix);
-	    hgetr8 (hstring,"CCPIX2",&wcs->ympix);
-	    hgetr8 (hstring,"CCROT1",&wcs->mrot);
 
 	/* Coordinate reference frame and equinox */
 	    wcseq (hstring,wcs);
@@ -605,6 +588,8 @@ char	*proj;	/* Projection */
 	wcs->pcode = 1;
 	wcs->coorflip = 0;
 	wcs->rot = rotate;
+	wcs->crot = cos (degrad (wcs->rot));
+	wcs->srot = sin (degrad (wcs->rot));
 	wcs->rotmat = 0;
 	wcs->cd11 = 0.;
 	wcs->cd21 = 0.;
@@ -679,11 +664,11 @@ struct WorldCoor *wcs;		/* World coordinate system structure */
 /* Reset the center of a WCS structure */
 
 void
-wcsshift (wcs,rra,rdec,coorsys)
+wcsshift (wcs,cra,cdec,coorsys)
 
 struct WorldCoor *wcs;	/* World coordinate system structure */
-double	rra;		/* Reference pixel right ascension in degrees */
-double	rdec;		/* Reference pixel declination in degrees */
+double	cra;		/* New center right ascension in degrees */
+double	cdec;		/* New center declination in degrees */
 char	*coorsys;	/* FK4 or FK5 coordinates (1950 or 2000) */
 
 {
@@ -691,8 +676,10 @@ char	*coorsys;	/* FK4 or FK5 coordinates (1950 or 2000) */
 	return;
 
 /* Approximate world coordinate system from a known plate scale */
-    wcs->xref = rra;
-    wcs->yref = rdec;
+    wcs->xrefpix = wcs->nxpix * 0.5;
+    wcs->yrefpix = wcs->nypix * 0.5;
+    wcs->xref = cra;
+    wcs->yref = cdec;
 
 /* Coordinate reference frame */
     strcpy (wcs->radecsys,coorsys);
@@ -1070,10 +1057,11 @@ int	lstr;		/* Length of world coordinate string (returned) */
 	pix2wcs (wcs,xpix,ypix,&xpos,&ypos);
 
 	/* Keep ra/longitude within range */
-	if (xpos < 0.0)
-	    xpos = xpos + 360.0;
+	if ((!strncmp (wcs->sysout,"GAL",3) ||
+	    !strncmp (wcs->sysout,"ECL",3)) && xpos > 180.0) 
+	    xpos = xpos - 360.0;
 
-	else if (xpos > 360.0)
+	else if (!strncmp (wcs->sysout,"FK",2) && xpos > 360.0)
 	    xpos = xpos - 360.0;
 
 	/* If point is off scale, set string accordingly */
@@ -1145,12 +1133,9 @@ int	lstr;		/* Length of world coordinate string (returned) */
 
 	/* Output linear coordinates */
 	else {
-	    if (!strncmp (wcs->ptype, "LINEAR",6)) {
-		if (xpos > 360.0)
-		    xpos = xpos - 360.0;
-		if (xpos < 0.0)
-		    xpos = xpos + 360.0;
-		}
+	    if (!strncmp (wcs->ptype, "LINEAR",6) &&
+		xpos > 180.0)
+		xpos = xpos - 360.0;
 	    if (lstr > 23)
 		(void)sprintf (wcstring,"%11.5f %11.5f", xpos,ypos);
 	    else
@@ -1359,10 +1344,6 @@ wcserr ()
  * May 22 1997	Add PIXEL pcode = -1;
  * Jul 11 1997	Get center pixel x and y from header even if no WCS
  * Aug  7 1997	Add NOAO PIXSCALi keywords for default WCS
- * Oct 15 1997	Do not reset reference pixel in WCSSHIFT
- * Oct 20 1997	Set chip rotation
- * Oct 24 1997	Keep longitudes between 0 and 360, not -180 and +180
- * Nov  5 1997	Do no compute crot and srot; they are now computed in worldpos
- *
- * Feb  6 1998	Set deltas and rotation from CD matrix in WCSINIT()
+ * Oct  3 1997	Add MROT and XMPIX,YMPIX for chip rotation
+ * Oct  9 1997	Implement Mark Calabretta's WCSLIB
  */

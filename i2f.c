@@ -1,5 +1,5 @@
 /* File i2f.c
- * February 21, 1997
+ * January 14, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -161,4 +161,6 @@ char *name;
  * Oct 17 1996	Clean up after lint
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
+ *
+ * Jan 14 1998	Version 1.3 to handle IRAF 2.11 .imh files
  */

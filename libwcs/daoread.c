@@ -1,5 +1,5 @@
 /*** File libwcs/daocread.c
- *** December 11, 1996
+ *** March 20, 1997
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -31,9 +31,7 @@ double	**ba;		/* Fluxes of stars in counts, array returned */
 int	**pa;		/* Peak counts of stars in counts, array returned */
 int	nlog;		/* 1 to print each star's position */
 {
-    int wrap;
-    int jstar;
-    int nstars, nstar;
+    int nstars;
     double xi, yi, magi;
     double flux;
     int iline;
@@ -70,7 +68,7 @@ int	nlog;		/* 1 to print each star's position */
 		(*pa)[nstars-1] = (int)(magi * 100.0);
 
 		if (nlog == 1)
-		    fprintf (stderr,"DAOREAD: %11.6f: %9.5f %9.5f %15.2f %6.2f\n",
+		    fprintf (stderr,"DAOREAD: %6d: %9.5f %9.5f %15.2f %6.2f\n",
 			   nstars,xi,yi,flux,magi);
 		}
 
@@ -105,10 +103,8 @@ char *daofile;	/* DAOFIND catalog file name */
 {
     struct stat statbuff;
     FILE *fcat;
-    char *headbuff;
-    int nr, lfile, ientry;
-    char *headlast, *daonew, *lastline;
-    char headend[4];
+    int nr, lfile;
+    char *daonew;
     
 /* Find length of DAOFIND catalog */
     if (stat (daofile, &statbuff)) {
@@ -177,4 +173,6 @@ char *line;	/* Pointer to iline'th entry (returned updated) */
 }
 
 /* Dec 11 1996	New subroutines
+ *
+ * Mar 20 1997	Removed unused variables, fixed logging after lint
  */

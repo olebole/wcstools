@@ -1,5 +1,5 @@
 /* File scat.c
- * April 25, 1997
+ * November 12, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -40,6 +40,10 @@ extern void setcenter();
 extern void setradius();
 extern int GetArea();
 extern double wcsdist();
+extern int tabopen();
+extern int tabgetk();
+extern void tabclose();
+extern char *tabstar();
 
 static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
@@ -59,6 +63,7 @@ static char *objname = NULL;	/* Object name for output */
 static int refcat = GSC;	/* reference catalog switch */
 static char refcatname[32]="GSC";	/* reference catalog name */
 static int refcat2 = 0;		/* Second reference catalog switch */
+static char *keyword = NULL;	/* Column to add to tab table output */
 
 main (ac, av)
 int ac;
@@ -204,6 +209,13 @@ char **av;
 		    }
     		break;
 
+	    case 'k':	/* Keyword (column) to add to output from tab table */
+		if (ac < 2)
+		    usage ();
+		keyword = *++av;
+		ac--;
+		break;
+
 	    case 'm':	/* Magnitude limit */
 		if (ac < 2)
 		    usage ();
@@ -304,6 +316,7 @@ usage ()
     fprintf(stderr,"  -g: object type (0=stars 3=galaxies -1=all)\n");
     fprintf(stderr,"  -h: print heading, else do not \n");
     fprintf(stderr,"  -j: output J2000 (FK5) coordinates around this center\n");
+    fprintf(stderr,"  -k: add this keyword to output from tab table search\n");
     fprintf(stderr,"  -m: magnitude limit(s)\n");
     fprintf(stderr,"  -n: number of brightest stars to print \n");
     fprintf(stderr,"  -o: object name \n");
@@ -316,6 +329,8 @@ usage ()
     exit (1);
 }
 
+
+#define TABMAX 64
 
 static int
 ListCat (nfind, snum)
@@ -351,6 +366,9 @@ double *snum;		/* Catalog numbers */
     char headline[160];
     char filename[80];
     char title[80];
+    char *tabline;
+    char string[TABMAX];
+    int ntab;
 
     if (verbose || printhead) {
 	if (nstars == 1)
@@ -661,9 +679,9 @@ double *snum;		/* Catalog numbers */
     if (cdec >= -90.0) {
 	dec2str (decstr, cdec, 2);
 	if (wfile)
-	    fprintf (fd, "DEC	%s\n", rastr);
+	    fprintf (fd, "DEC	%s\n", decstr);
 	if (tabout)
-	    printf ("DEC	%s\n", rastr);
+	    printf ("DEC	%s\n", decstr);
 	}
 
     if (ddec > 0.0) {
@@ -708,9 +726,9 @@ double *snum;		/* Catalog numbers */
     /* Print column headings */
     if (refcat == GSC)
 	if (strcmp (coorout,"FK4") == 0)
-	    sprintf (headline,"GSC_NUMBER	RA1950    	DEC1950    	MAG   	TYPE	DISTANCE");
+	    sprintf (headline,"GSC_NUMBER	RA1950    	DEC1950    	MAG   	TYPE	ARCSEC");
 	else
-	    sprintf (headline,"GSC_NUMBER	RA2000    	DEC2000    	MAG   	TYPE	DISTANCE");
+	    sprintf (headline,"GSC_NUMBER	RA2000    	DEC2000    	MAG   	TYPE	ARCSEC");
     else if (refcat == USAC)
 	if (strcmp (coorout,"FK4") == 0)
 	    sprintf (headline,"USAC_NUMBER	RA1950  	DEC1950  	MAGB	MAGR	X    	Y    	Plate");
@@ -737,11 +755,11 @@ double *snum;		/* Catalog numbers */
 	printf ("%s\n", headline);
 
     if (refcat == UAC)
-	sprintf(headline,"----------	--------	---------	----	-----	-----	-----	-----");
+	sprintf(headline,"----------	--------	---------	----	-----	-----	-----	------");
     else if (refcat == USAC)
-	sprintf(headline,"-----------	--------	---------	----	-----	-----	-----	-----");
+	sprintf(headline,"-----------	--------	---------	----	-----	-----	-----	------");
     else
-        sprintf (headline,"----------	------------	------------	------	----	_______");
+        sprintf (headline,"----------	------------	------------	------	----	------");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
@@ -784,6 +802,9 @@ double *snum;		/* Catalog numbers */
 		printf (" Number    RA2000       Dec2000       Mag   Peak    Arcsec\n");
 	}
 
+    if (keyword != NULL)
+	ntab = tabopen (refcat);
+
     for (i = 0; i < nbg; i++) {
 	if (gx[i] > 0.0 && gy[i] > 0.0) {
 	    ra2str (rastr, gra[i], 3);
@@ -794,9 +815,16 @@ double *snum;		/* Catalog numbers */
 	    else if (refcat == UJC)
 	        sprintf (headline, "%12.7f	%s	%s	%.2f	%d	%.2f",
 		 gnum[i], rastr, decstr, gm[i], gc[i], 3600.0*gx[i]);
-	    else
+	    else {
 	        sprintf (headline, "%9.4f	%s	%s	%.2f	%d	%.2f",
 		 gnum[i], rastr, decstr, gm[i], gc[i], 3600.0*gx[i]);
+		if (keyword != NULL) {
+		    tabline = tabstar ((int)gnum[i], tabline);
+		    (void) tabgetk (tabline, keyword, string, TABMAX);
+		    strcat (headline, "	");
+		    strcat (headline, string);
+		    }
+		}
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
 	    else if (tabout)
@@ -810,12 +838,24 @@ double *snum;		/* Catalog numbers */
 	    else if (refcat == GSC)
 		printf ("%9.4f %s %s %6.2f %2d %7.2f\n",
 			gnum[i], rastr, decstr, gm[i],gc[i], 3600.0*gx[i]);
-	    else
-		printf ("%9.4f %s %s %6.2f %7d %7.2f\n",
+	    else {
+		if (keyword != NULL) {
+		    tabline = tabstar ((int)gnum[i], tabline);
+		    (void) tabgetk (tabline, keyword, string, TABMAX);
+		    strcat (headline, "	");
+		    strcat (headline, string);
+		    printf ("%9.4f %s %s %6.2f %7d %7.2f %s\n",
+		     gnum[i], rastr, decstr, gm[i],gc[i], 3600.0*gx[i], string);
+		    }
+		else
+		    printf ("%9.4f %s %s %6.2f %7d %7.2f\n",
 			gnum[i], rastr, decstr, gm[i],gc[i], 3600.0*gx[i]);
+		}
 	    }
 	}
 
+    if (keyword != NULL)
+	tabclose();
     if (wfile)
 	fclose (fd);
     if (gx) free ((char *)gx);
@@ -846,4 +886,6 @@ double *snum;		/* Catalog numbers */
  * Jan 10 1997	Fix bug in RASort Stars which did not sort magnitudes
  * Mar 12 1997	Add USNO SA 1.0 catalog as USAC
  * Apr 25 1997	Fix bug in uacread
+ * May 29 1997	Add option to add keyword to tab table output
+ * Nov 12 1997	Fix DEC in header to print Dec string instead of RA string
  */

@@ -1,5 +1,5 @@
 /* File gethead.c
- * February 21, 1997
+ * December 12, 1997
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -13,12 +13,17 @@
 #include <math.h>
 #include "libwcs/fitshead.h"
 
-#define MAXKWD 50
+#define MAXKWD 100
+#define MAXFILES 1000
 
 static void usage();
 static void PrintValues ();
 
 static int verbose = 0;		/* verbose/debugging flag */
+static int nfile = 0;
+static int maxlfn = 0;
+static int tabout = 0;
+static int printhead = 0;
 
 main (ac, av)
 int ac;
@@ -27,37 +32,156 @@ char **av;
     char *progname = av[0];
     char *str;
     char *kwd[MAXKWD];
-    int nkwd;
-    char *fn;
+    int ifile;
+    int nkwd = 0;
+    char *fn[MAXFILES];
+    int readlist = 0;
+    int lfn;
+    char *lastchar;
+    char filename[128];
+    FILE *flist;
+    char *listfile;
+    int ikwd, lkwd, i;
+    char *kw, *kwe;
+    char string[80];
 
     /* crack arguments */
-    for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
+    for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
 	char c;
+	if (*str == '@')
+	    str = str - 1;
 	while (c = *++str)
 	switch (c) {
+
 	case 'v':	/* more verbosity */
 	    verbose++;
 	    break;
+
+	case 'h':	/* output column headings */
+	    printhead++;
+	    break;
+
+	case 't':	/* output tab table */
+	    tabout++;
+	    break;
+
+	case '@':	/* List of files to be read */
+	    readlist++;
+	    listfile = ++str;
+	    str = str + strlen (str) - 1;
+	    av++;
+	    ac--;
+
 	default:
 	    usage(progname);
 	    break;
 	}
     }
 
-    /* now there are ac remaining file names starting at av[0] */
+    /* If no arguments left, print usage */
     if (ac == 0)
 	usage (progname);
 
-    if (ac-- > 0) {
-	fn = *av++;
-	}
     nkwd = 0;
-    while (ac-- > 0 && nkwd < MAXKWD) {
-	kwd[nkwd] = *av++;
-	nkwd++;
+    nfile = 0;
+    while (ac-- > 0  && nfile < MAXFILES && nkwd < MAXKWD) {
+	if (strsrch (*av,".fit") != NULL ||
+	    strsrch (*av,".fts") != NULL ||
+	    strsrch (*av,".FIT") != NULL ||
+	    strsrch (*av,".FTS") != NULL ||
+	    strsrch (*av,".imh") != NULL) {
+	    fn[nfile] = *av;
+	    lfn = strlen (fn[nfile]);
+	    if (lfn > maxlfn)
+		maxlfn = lfn;
+	    nfile++;
+	    }
+	else {
+	    kwd[nkwd] = *av;
+	    nkwd++;
+	    }
+	av++;
 	}
-    if (nkwd > 0)
-	PrintValues (fn, nkwd, kwd);
+
+    if (nkwd > 0) {
+
+	/* Print column headings if tab table or headings requested */
+	if (tabout || printhead) {
+	    printf ("FILENAME");
+	    if (maxlfn > 8) {
+		for (i = 8; i < maxlfn; i++)
+		    printf (" ");
+		}
+	    if (tabout)
+	    	printf ("	");
+	    else
+		printf (" ");
+	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
+		lkwd = strlen (kwd[ikwd]);
+		kwe = kwd[ikwd] + lkwd;
+		for (kw = kwd[ikwd]; kw < kwe; kw++) {
+		    if (*kw > 96 && *kw < 123)
+			*kw = *kw - 32;
+		    }
+		printf ("%s",kwd[ikwd]);
+		if (verbose || ikwd == nkwd - 1)
+	    	    printf ("\n");
+		else if (tabout)
+	    	    printf ("	");
+		else
+		    printf (" ");
+		}
+	    }
+	/* Print field-defining hyphens if tab table output requested */
+	if (tabout) {
+	    printf ("--------");
+	    if (maxlfn > 8) {
+		for (i = 8; i < maxlfn; i++)
+		    printf (" ");
+		}
+	    if (tabout)
+	    	printf ("	");
+	    else
+		printf (" ");
+	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
+		strcpy (string, "----------");
+		lkwd = strlen (kwd[ikwd]);
+		string[lkwd] = 0;
+		printf ("%s",string);
+		if (verbose || ikwd == nkwd - 1)
+	    	    printf ("\n");
+		else if (tabout)
+	    	    printf ("	");
+		else
+		    printf (" ");
+		}
+	    }
+
+    /* Get keyword values one at a time */
+
+	/* Read through headers of images in listfile */
+	if (readlist) {
+	    if ((flist = fopen (listfile, "r")) == NULL) {
+		fprintf (stderr,"GETHEAD: List file %s cannot be read\n",
+		     listfile);
+		usage ();
+		}
+	    while (fgets (filename, 128, flist) != NULL) {
+		lastchar = filename + strlen (filename) - 1;
+		if (*lastchar < 32) *lastchar = 0;
+		PrintValues (filename, nkwd, kwd);
+		if (verbose)
+		    printf ("\n");
+		}
+	    fclose (flist);
+	    }
+
+	/* Read image headers from command line list */
+	else {
+	    for (ifile = 0; ifile < nfile; ifile++)
+	    	PrintValues (fn[ifile], nkwd, kwd);
+	    }
+	}
 
     return (0);
 }
@@ -67,7 +191,9 @@ usage (progname)
 char *progname;
 {
     fprintf (stderr,"Print FITS or IRAF header keyword values\n");
-    fprintf(stderr,"%s: usage: [-v] file.fit kw1 kw2 ... kwn\n", progname);
+    fprintf(stderr,"gethead: usage: [-htv] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
+    fprintf(stderr,"  -h: print column headings\n");
+    fprintf(stderr,"  -t: output in tab-separated table format\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
 }
@@ -86,6 +212,7 @@ char	*kwd[];	/* Names of keywords for which to print values */
     int nbhead;		/* Actual number of bytes in FITS header */
     int *irafheader;	/* IRAF image header */
     int iraffile;
+    char fnform[8];
     char string[80];
     char *kw, *kwe;
     int ikwd, lkwd;
@@ -122,8 +249,14 @@ char	*kwd[];	/* Names of keywords for which to print values */
 	else
 	    fprintf (stderr,"FITS image file %s\n", name);
 	}
+    if (nfile > 1) {
+	if (tabout)
+	    sprintf (fnform,"%%-%ds	",maxlfn);
+	else
+	    sprintf (fnform,"%%-%ds ",maxlfn);
+	printf (fnform, name);
+	}
 
-    /* Get keyword values one at a time */
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
 	lkwd = strlen (kwd[ikwd]);
 	kwe = kwd[ikwd] + lkwd;
@@ -144,6 +277,8 @@ char	*kwd[];	/* Names of keywords for which to print values */
 
 	if (verbose || ikwd == nkwd - 1)
 	    printf ("\n");
+	else if (tabout)
+	    printf ("	");
 	else
 	    printf (" ");
 	}
@@ -156,4 +291,7 @@ char	*kwd[];	/* Names of keywords for which to print values */
  * Oct  8 1996	Add newline after file name in verbose mode
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
+ * Nov  2 1997	Allow search of multiple files from command line or list file
+ * Nov 12 1997	Add option to print tab tables or column headings
+ * Dec 12 1997	Read IRAF version 2 .imh files
  */

@@ -4,9 +4,9 @@ LIBWCS = libwcs/libwcs.a
 LIBS = $(LIBWCS) -lm
 .PRECIOUS: ${LIBWCS}
 
-all:	delwcs edhead gethead i2f imcat imgsc imhead imrot imsize imstar \
-	imuac imusac imujc imwcs scat sethead addpix getpix setpix sgsc \
-	sky2xy skycoor suac susac subpix sujc xy2sky
+all:	delwcs edhead fixpix gethead i2f imcat imgsc imhead immatch imrot \
+	imsize imstar imuac imujc imusac imwcs scat sethead addpix getpix \
+	keyhead setpix sgsc sky2xy skycoor suac susac subpix sujc xy2sky
 
 addpix: addpix.c $(LIBWCS) libwcs/fitshead.h
 	$(CC) $(CFLAGS) -o addpix addpix.c $(LIBS)
@@ -16,6 +16,9 @@ delwcs: delwcs.c $(LIBWCS) libwcs/fitshead.h
 
 edhead: edhead.c $(LIBWCS) libwcs/fitshead.h
 	$(CC) $(CFLAGS) -o edhead edhead.c $(LIBS)
+
+fixpix: fixpix.c $(LIBWCS) libwcs/fitshead.h
+	$(CC) $(CFLAGS) -o fixpix fixpix.c $(LIBS)
 
 gethead: gethead.c $(LIBWCS) libwcs/fitshead.h
 	$(CC) $(CFLAGS) -o gethead gethead.c $(LIBS)
@@ -41,6 +44,9 @@ imrot: imrot.c $(LIBWCS) libwcs/fitshead.h
 imsize: imsize.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o imsize imsize.c $(LIBS)
 
+imstack: imstack.c $(LIBWCS) libwcs/fitshead.h
+	$(CC) $(CFLAGS) -o imstack imstack.c $(LIBS)
+
 imstar: imstar.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h libwcs/lwcs.h
 	$(CC) $(CFLAGS) -o imstar imstar.c $(LIBS)
 
@@ -55,6 +61,12 @@ imujc: imujc.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
 
 imwcs: imwcs.c $(LIBWCS) libwcs/fitshead.h libwcs/lwcs.h
 	$(CC) $(CFLAGS) -o imwcs imwcs.c $(LIBS)
+
+immatch: immatch.c $(LIBWCS) libwcs/fitshead.h libwcs/lwcs.h
+	$(CC) $(CFLAGS) -o immatch immatch.c $(LIBS)
+
+keyhead: keyhead.c $(LIBWCS) libwcs/fitshead.h
+	$(CC) $(CFLAGS) -o keyhead keyhead.c $(LIBS)
 
 scat: scat.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o scat scat.c $(LIBS)

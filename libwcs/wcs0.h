@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
-   September 12, 1997
+   January 7, 1998
    By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 struct WorldCoor {
@@ -48,6 +48,8 @@ struct WorldCoor {
   int		offscl;		/* 0 if OK, 1 if offscale */
   int		plate_fit;	/* 1 if plate fit, else 0 */
   int		wcson;		 /* 1 if WCS is set, else 0 */
+  int		detector;	/* Instrument detector number */
+  char		instrument[16];	/* Instrument name */
   char		c1type[8];	/*  1st coordinate type code:
 					RA--, GLON, ELON */
   char		c2type[8];	/*  2nd coordinate type code:
@@ -113,4 +115,6 @@ void wcs2pix ();	/* Convert World Coordinates to pixel coordinates */
  *
  * May 22 1997	Change range of pcode from 1-8 to -1-8 for linear transform
  * Sep 12 1997	Add chip rotation MROT, XMPIX, YMPIX
+ *
+ * Jan  7 1998	Add INSTRUME and DETECTOR for HST metric correction
  */

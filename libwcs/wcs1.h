@@ -1,6 +1,9 @@
 /* libwcs/wcs.h
-   September 12, 1997
+   October 3, 1997
    By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
+
+#include "cel.h"
+#include "proj.h"
 
 struct WorldCoor {
   double	xref;		/* X reference coordinate value (deg) */
@@ -15,9 +18,6 @@ struct WorldCoor {
 				/* rotation matrix */
   double	dc11,dc12,dc21,dc22;
 				/* inverse rotation matrix */
-  double	mrot;		/* Chip rotation angle (deg) (N through E) */
-  double	cmrot,smrot;	/* Cosine and sine of chip rotation angle */
-  double	xmpix,ympix;	/* X and Y center for chip rotation */
   double	equinox;	/* Equinox of coordinates default to 1950.0 */
   double	epoch;		/* Epoch of coordinates default to equinox */
   double	nxpix;		/* Number of pixels in X-dimension of image */
@@ -56,6 +56,8 @@ struct WorldCoor {
 				    -SIN, -TAN, -ARC, -NCP, -GLS, -MER, -AIT */
   char		radecsys[16];	/* Reference frame: FK4, FK4-NO-E, FK5, GAPPT*/
   char		sysout[16];	/* Reference frame for output: FK4, FK5 */
+  struct celprm cel;		/* WCSLIB projection type */
+  struct prjprm prj;		/* WCSLIB projection parameters */
   char		center[32];	/* Center coordinates (with frame) */
   char		search_format[120];	/* search command format */
 				/* where %s is replaced by WCS coordinates */
@@ -113,4 +115,5 @@ void wcs2pix ();	/* Convert World Coordinates to pixel coordinates */
  *
  * May 22 1997	Change range of pcode from 1-8 to -1-8 for linear transform
  * Sep 12 1997	Add chip rotation MROT, XMPIX, YMPIX
+ * Oct  3 1997	Add Mark Calabretta's WCSLIB data structures
  */

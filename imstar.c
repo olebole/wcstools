@@ -1,5 +1,5 @@
 /* File imstar.c
- * February 21, 1997
+ * November 7, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -46,11 +46,18 @@ char **av;
     char *str;
     double bmin;
     char rastr[32], decstr[32];
+    int readlist = 0;
+    char *lastchar;
+    char filename[128];
+    FILE *flist;
+    char *listfile;
     int maxrad;
 
     /* crack arguments */
-    for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
+    for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
 	char c;
+	if (*str == '@')
+	    str = str - 1;
 	while (c = *++str)
 	switch (c) {
 	case 'v':	/* more verbosity */
@@ -129,6 +136,13 @@ char **av;
 	    ac--;
 	    break;
 
+    	case 'p':	/* Plate scale in arcseconds per pixel */
+    	    if (ac < 2)
+    		usage();
+    	    setsecpix (atof (*++av));
+    	    ac--;
+    	    break;
+
 	case 'r':	/* Maximum acceptable radius for a star */
 	    if (ac < 2)
 		usage (progname);
@@ -149,16 +163,47 @@ char **av;
 	    daoout = 1;
 	    break;
 
+	case 'x':	/* X and Y coordinates of reference pixel */
+	    if (ac < 3)
+		usage();
+    	    setrefpix (atof (*++av), atof (*++av));
+	    ac--;
+	    ac--;
+    	    break;
+
+	case '@':	/* List of files to be read */
+	    readlist++;
+	    listfile = ++str;
+	    str = str + strlen (str) - 1;
+	    av++;
+	    ac--;
+
 	default:
 	    usage (progname);
 	    break;
 	}
     }
 
-    /* now there are ac remaining file names starting at av[0] */
+    /* Find number of images to search and leave listfile open for reading */
+    if (readlist) {
+	if ((flist = fopen (listfile, "r")) == NULL) {
+	    fprintf (stderr,"IMSTAR: List file %s cannot be read\n",
+		     listfile);
+	    usage (progname);
+	    }
+	while (fgets (filename, 128, flist) != NULL) {
+	    lastchar = filename + strlen (filename) - 1;
+	    if (*lastchar < 32) *lastchar = 0;
+	    ListStars (filename);
+	    }
+	fclose (flist);
+	}
+
+    /* If no arguments left, print usage */
     if (ac == 0)
 	usage (progname);
 
+    /* now there are ac remaining file names starting at av[0] */
     while (ac-- > 0) {
 	char *fn = *av++;
 	ListStars (fn);
@@ -187,11 +232,14 @@ char *progname;
     fprintf(stderr,"  -k: Print each star as it is found for debugging \n");
     fprintf(stderr,"  -m: Magnitude offset\n");
     fprintf(stderr,"  -n: Number of brightest stars to print \n");
+    fprintf(stderr,"  -p: Plate scale in arcsec per pixel (default 0)\n");
     fprintf(stderr,"  -r: Maximum radius for star in pixels \n");
     fprintf(stderr,"  -s: Sort by RA instead of flux \n");
-    fprintf(stderr,"  -t: Tab table to standard output as well as file\n");
-    fprintf(stderr,"  -v: Verbose\n");
-    fprintf(stderr,"  -w: DAOFIND format output to standard output\n");
+    fprintf(stderr,"  -t: Tab table format star list\n");
+    fprintf(stderr,"  -v: Verbose; print star list to stdout\n");
+    fprintf(stderr,"  -w: DAOFIND format star list\n");
+    fprintf(stderr,"  -x: X and Y coordinates of reference pixel (if not in header or center)\n");
+    fprintf(stderr,"  @listfile: file containing a list of filenames to search\n");
     exit (1);
 }
 
@@ -293,16 +341,21 @@ char	*filename;	/* FITS or IRAF file filename */
 	}
 
     /* Compute right ascension and declination for all stars to be listed */
+    smag = (double *) malloc (ns * sizeof (double));
     sra = (double *) malloc (ns * sizeof (double));
     sdec = (double *) malloc (ns * sizeof (double));
-    smag = (double *) malloc (ns * sizeof (double));
     for (i = 0; i < ns; i++) {
-	pix2wcs (wcs, sx[i], sy[i], &sra[i], &sdec[i]);
+	if (iswcs (wcs))
+	    pix2wcs (wcs, sx[i], sy[i], &sra[i], &sdec[i]);
+	else {
+	    sra[i] = 0.0;
+	    sdec[i] = 0.0;
+	    }
 	smag[i] = -2.5 * log10 (sb[i]) + magoff;
 	}
 
     /* Sort star-like objects in image by right ascension */
-    if (rasort)
+    if (rasort && iswcs (wcs))
 	RASortStars (0, sra, sdec, sx, sy, sb, sp, ns);
     sprintf (headline, "IMAGE	%s", filename);
 
@@ -329,46 +382,65 @@ char	*filename;	/* FITS or IRAF file filename */
     fprintf (fd,"%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
-    if (rasort) {
-	fprintf (fd, "RASORT	T\n");
-	if (tabout)
-	    printf ("RASORT	T\n");
-	}
+    if (iswcs (wcs)) {
+	if (rasort) {
+	    fprintf (fd, "RASORT	T\n");
+	    if (tabout)
+		printf ("RASORT	T\n");
+	    }
 
-    if (strcmp (wcs->sysout,"FK4") == 0 || strcmp (wcs->sysout,"fk4") == 0)
-	sprintf (headline, "EQUINOX	1950.0");
-    else
-	sprintf (headline, "EQUINOX	2000.0");
-    fprintf (fd, "%s\n", headline);
-    if (tabout)
-	printf ("%s\n", headline);
-
-    if (tabout)
-
-    sprintf (headline,"ID 	RA      	DEC     	MAG   	X    	Y    	COUNTS   	PEAK");
-    fprintf (fd, "%s\n", headline);
-    if (tabout)
-	printf ("%s\n", headline);
-    sprintf (headline,"---	------------	------------	------	-----	-----	--------	------");
-    fprintf (fd, "%s\n", headline);
-    if (tabout)
-	printf ("%s\n", headline);
-
-    for (i = 0; i < ns; i++) {
-	pix2wcs (wcs, sx[i], sy[i], &ra, &dec);
-	ra2str (rastr, ra, 3);
-	dec2str (decstr, dec, 2);
-	sprintf (headline, "%d	%s	%s	%.2f	%.2f	%.2f	%.2f	%d",
-		 i+1, rastr,decstr, smag[i], sx[i], sy[i], sb[i], sp[i]);
+	if (strcmp (wcs->sysout,"FK4") == 0 || strcmp (wcs->sysout,"fk4") == 0)
+	    sprintf (headline, "EQUINOX	1950.0");
+	else
+	    sprintf (headline, "EQUINOX	2000.0");
 	fprintf (fd, "%s\n", headline);
 	if (tabout)
 	    printf ("%s\n", headline);
-	if (daoout)
-	    printf ("%7.2f %7.2f %6.2f %d %s %s\n",
+	}
+
+    if (tabout) {
+	if (verbose)
+
+	sprintf (headline,"ID 	RA      	DEC     	MAG   	X    	Y    	COUNTS   	PEAK");
+	fprintf (fd, "%s\n", headline);
+	if (verbose)
+	    printf ("%s\n", headline);
+	sprintf (headline,"---	------------	------------	------	-----	-----	--------	------");
+	fprintf (fd, "%s\n", headline);
+	if (verbose)
+	    printf ("%s\n", headline);
+	}
+
+    for (i = 0; i < ns; i++) {
+	if (iswcs (wcs))
+	    pix2wcs (wcs, sx[i], sy[i], &ra, &dec);
+	else {
+	    ra = 0.0;
+	    dec = 0.0;
+	    }
+	ra2str (rastr, ra, 3);
+	dec2str (decstr, dec, 2);
+	if (tabout) {
+	    sprintf (headline, "%d	%s	%s	%.2f	%.2f	%.2f	%.2f	%d",
+		     i+1, rastr,decstr, smag[i], sx[i], sy[i], sb[i], sp[i]);
+	    fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
+	    }
+	else if (daoout) {
+	    sprintf (headline, "%7.2f %7.2f %6.2f %d %s %s\n",
 		    sx[i],sy[i],smag[i],sp[i],rastr,decstr);
-	else if (verbose)
-	    printf ("%3d %s %s %6.2f %7.2f %7.2f %8.1f %d\n",
-		    i+1, rastr, decstr, smag[i],sx[i],sy[i],sb[i], sp[i]);
+	    fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
+	    }
+	else {
+	    sprintf (headline, "%3d %s %s %6.2f %7.2f %7.2f %8.1f %d\n",
+		     i+1, rastr, decstr, smag[i],sx[i],sy[i],sb[i], sp[i]);
+	    fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
+	    }
 	}
 
     fclose (fd);
@@ -404,4 +476,8 @@ char	*filename;	/* FITS or IRAF file filename */
  * Dec 11 1996	Add WCS default rotation and use getfitswcs
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
+ * Mar 18 1997	Skip WCS calls if no WCS
+ * May 28 1997	Add option to read a list of filenames from a file
+ * Jul 12 1997  Add option to center reference pixel coords on the command line
+ * Nov  7 1997	Print file in tab, DAO, or ASCII format, just like STDOUT
  */

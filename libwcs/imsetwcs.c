@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * December 10, 1996
+ * November 6, 1997
  * By Doug Mink, based on UIowa code
  */
 
@@ -15,6 +15,7 @@
 #define GSC		1	/* refcat value for HST Guide Star Catalog */
 #define UJC		2	/* refcat value for USNO UJ Star Catalog */
 #define UAC		3	/* refcat value for USNO A Star Catalog */
+#define USAC		4	/* refcat value for USNO SA Star Catalog */
 
 extern int FindStars ();
 extern int TriMatch ();
@@ -23,11 +24,13 @@ extern int StarMatch ();
 extern int findStars ();
 extern int gscread();
 extern int uacread();
+extern int usaread();
 extern int ujcread();
 extern int tabread();
 extern void MagSortStars ();
 extern void FluxSortStars ();
 extern struct WorldCoor *GetFITSWCS ();
+extern char *getimcat();
 
 extern void fk425(), fk425e(), fk524e();
 
@@ -50,8 +53,10 @@ static int classd = -1;			/* Guide Star Catalog object classes */
 static int uplate = 0;			/* UJ Catalog plate number to use */
 static double frac = 1.0;		/* Additional catalog/image stars */
 static char wcstype[8]="TAN";		/* WCS projection name */
-static int nfit0 = 0;			/* Number of parameters to fit
-					   (0=1 per match */
+static int nofit = 0;			/* if =1, do not fit WCS */
+static int maxcat = MAXSTARS;		/* Maximum number of catalog stars to use */
+static int fitwcs = 1;			/* If 1, fit WCS, else use current WCS */
+static double imfrac = 1.0;		/* Multiply image dimensions by this for search */
 
 
 /* set the C* WCS fields in the input image header based on the given limiting
@@ -63,8 +68,9 @@ static int nfit0 = 0;			/* Number of parameters to fit
  */
 
 int
-SetWCSFITS (header, image, verbose)
+SetWCSFITS (filename, header, image, verbose)
 
+char	*filename;	/* image file name */
 char	*header;	/* FITS header */
 char	*image;		/* Image pixels */
 int	verbose;
@@ -100,6 +106,7 @@ int	verbose;
     int ret = 0;
     int is, ig;
     char rstr[32], dstr[32];
+    char *imcatname;	/* file name for imagestar catalog, if used */
     struct WorldCoor *wcs=0;	/* WCS structure */
 
     /* get nominal position and scale */
@@ -108,6 +115,15 @@ int	verbose;
 	ret = 0;
 	goto out;
 	}
+
+    if (nofit) {
+	SetFITSWCS (header, wcs);
+	ret = 1;
+	goto out;
+	}
+
+    dra = dra * imfrac;
+    ddec = ddec * imfrac;
 
     if (reflim > 0.0) {
 	mag1 = -2.0;
@@ -119,8 +135,8 @@ int	verbose;
 	}
 
     /* Allocate arrays for results of reference star search */
-    ngmax = MAXREF;
-    nbytes = MAXREF * sizeof (double);
+    ngmax = maxcat;
+    nbytes = ngmax * sizeof (double);
     gnum = (double *) malloc (nbytes);
     gra = (double *) malloc (nbytes);
     gdec = (double *) malloc (nbytes);
@@ -135,6 +151,9 @@ int	verbose;
     else if (refcat == UAC)
 	ng = uacread (cra,cdec,dra,ddec,0.0,mag1,mag2,uplate,ngmax,
 		      gnum,gra,gdec,gm,gmb,gc,verbose*100);
+    else if (refcat == USAC)
+	ng = usaread (cra,cdec,dra,ddec,0.0,mag1,mag2,uplate,ngmax,
+		      gnum,gra,gdec,gm,gmb,gc,verbose*100);
     else if (refcat == GSC)
 	ng = gscread (cra,cdec,dra,ddec,0.0,mag1,mag2,classd,ngmax,
 		      gnum,gra,gdec,gm,gc,verbose*100);
@@ -147,25 +166,7 @@ int	verbose;
 	goto out;
 	}
 
-    if (nfit0 > 1)
-	minstars = nfit0;
-    else if (nfit0 == 1)
-	minstars = 2;
-    else
-	minstars = MINSTARS;
-	
-    if (ng < minstars) {
-	if (ng < 0)
-	    fprintf (stderr, "Error getting reference stars: %d\n", ng);
-	else if (ng == 0)
-	    fprintf (stderr,"Need >= %d reference stars; found none\n",
-							minstars);
-	else
-	    fprintf (stderr, "Need >= %d reference stars; found only %d\n",
-							minstars, ng);
-	ret = 0;
-	goto out;
-	}
+    minstars = MINSTARS;
 
     /* Project the reference stars into pixels on a plane at ra0/dec0 */
     gx = (double *) malloc (nbytes);
@@ -188,8 +189,8 @@ int	verbose;
     /* Sort reference stars by brightness (magnitude) */
     MagSortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, ng);
 
-    /* Use only the brightest MAXSTARS reference stars */
-    nbg = MAXSTARS;
+    /* Use only the brightest reference stars */
+    nbg = maxcat;
     if (ng > nbg) {
 	if (verbose)
 	    printf ("using %d / %d reference stars brighter than %.1f\n",
@@ -206,12 +207,35 @@ int	verbose;
 	    }
 	}
 
-    printf ("%s:\n",refcatname);
-    for (ig = 0; ig < ng; ig++) {
-	ra2str (rstr, gra[ig], 3);
-	dec2str (dstr, gdec[ig], 2);
-	printf (" %9.4f %s %s %5.2f %6.1f %6.1f\n",
-		gnum[ig],rstr,dstr,gm[ig],gx[ig],gy[ig]);
+    if (verbose) {
+	printf ("%s:\n",refcatname);
+	for (ig = 0; ig < ng; ig++) {
+	    ra2str (rstr, gra[ig], 3);
+	    dec2str (dstr, gdec[ig], 2);
+	    if (refcat == GSC)
+		printf (" %9.4f",gnum[ig]);
+	    else if (refcat == UAC || refcat == USAC)
+		printf (" %13.8f",gnum[ig]);
+	    else if (refcat == UJC)
+		printf (" %12.7f",gnum[ig]);
+	    else
+		printf (" %9.4f",gnum[ig]);
+	    printf (" %s %s %5.2f %6.1f %6.1f\n",
+		    rstr,dstr,gm[ig],gx[ig],gy[ig]);
+	    }
+	}
+
+    if (ng < minstars) {
+	if (ng < 0)
+	    fprintf (stderr, "Error getting reference stars: %d\n", ng);
+	else if (ng == 0)
+	    fprintf (stderr,"Need >= %d reference stars; found none\n",
+							minstars);
+	else
+	    fprintf (stderr, "Need >= %d reference stars; found only %d\n",
+							minstars, ng);
+	ret = 0;
+	goto out;
 	}
 
     /* Discover star-like things in the image, in pixels */
@@ -223,107 +247,171 @@ int	verbose;
 	goto out;
 	}
 
-    /* Sort star-like objects in image by brightness */
-    FluxSortStars (sx, sy, sb, sp, ns);
+    if (fitwcs) {
 
-    /* Use only as many star-like objects as reference stars */
-    /* (Actually use frac * the number of GS if more than image stars or */
-    /*  frac * the number of image stars if more than reference stars) */
-    if (ns > nbg) {
-	nbs = nbg * frac;
-	if (nbs > ns)
-	   nbs = ns;
-	if (verbose) {
-	    printf ("using brightest %d / %d reference stars\n", nbg, ng);
-	    printf ("using brightest %d / %d image stars\n", nbs,ns);
+	/* Sort star-like objects in image by brightness */
+	FluxSortStars (sx, sy, sb, sp, ns);
+
+	/* Use only as many star-like objects as reference stars */
+	/* (Actually use frac * the number of GS if more than image stars or */
+	/*  frac * the number of image stars if more than reference stars) */
+	if (ns > nbg) {
+	    nbs = nbg * frac;
+	    if (nbs > ns)
+		nbs = ns;
+	    if (verbose) {
+		printf ("using brightest %d / %d reference stars\n", nbg, ng);
+		printf ("using brightest %d / %d image stars\n", nbs,ns);
+		}
 	    }
+	else {
+	    nbs = ns;
+	    nbg = nbs * frac;
+	    if (nbg > ng)
+		nbg = ng;
+	    if (verbose)
+		printf ("using all %d image stars\n", ns);
+	    }
+
+	if (verbose) {
+	    char rastr[32], decstr[32];
+	    double xmag, mdiff, ra, dec;
+	    for (is = 0; is < nbs; is++) {
+		pix2wcs (wcs, sx[is], sy[is], &ra, &dec);
+		ra2str (rastr, ra, 3);
+		dec2str (decstr, dec, 2);
+		xmag = -2.5 * log10 (sb[is]);
+		if (!is) mdiff = gm[0] - xmag;
+		xmag = xmag + mdiff;
+		printf ("%4d %s %s %6.2f %6.1f %6.1f %d\n",
+			is+1, rastr, decstr, xmag, sx[is], sy[is], sp[is]);
+		}
+	    }
+
+	/* Check offsets between all pairs of image stars and reference stars */
+	nbin = StarMatch (nbs,sx,sy, nbg,gra,gdec,gx,gy, tolerance, wcs,
+			  verbose);
+
+	if (nbin < 0) {
+	    fprintf (stderr, "Star registration failed.\n");
+	    ret = 0;
+	    goto out;
+	    }
+	else if (verbose)
+	    printf ("%d bin hits\n", nbin);
+
+	SetFITSWCS (header, wcs);
 	}
-    else {
-	nbs = ns;
-	nbg = nbs * frac;
-	if (nbg > ng)
-	    nbg = ng;
-	if (verbose)
-	    printf ("using all %d image stars\n", ns);
-	}
 
-    if (verbose) {
-	for (is = 0; is < nbs; is++)
-	printf ("Im: %6.1f %6.1f %8.1f %d\n", sx[is],sy[is],sb[is],sp[is]);
-	}
-
-    /* Check offsets between all pairs of image stars and reference stars */
-    nbin = StarMatch (nbs,sx,sy, nbg,gra,gdec,gx,gy, tolerance, wcs, nfit0, verbose);
-
-    if (nbin < 0) {
-	fprintf (stderr, "Star registration failed.\n");
-	ret = 0;
-	goto out;
-	}
-    else if (verbose)
-	printf ("%d bin hits\n", nbin);
-
-    SetFITSWCS (header, wcs);
-
-    if (verbose) {
+    if (verbose || !fitwcs) {
 	double ra,dec;
-	printf ("Rotation:  %g degrees  Arcsec/pixel: %f %f\n",
-		wcs->rot, 3600.0*wcs->xinc, 3600.0*wcs->yinc);
+	double x,y,dx,dy,dx2,dy2,dxy, rsep,dsep,sep,xysep, tol2, rsep2, dsep2;
+	double dxsum=0.0, dysum=0.0, dxysum=0.0, dx2sum=0.0, dy2sum=0.0;
+	double sepsum=0.0, rsepsum=0.0, dsepsum=0.0, rsep2sum=0.0, dsep2sum=0.0;
+	int offscl, nmatch=0;
+
+	if (wcs->mrot == 0.0)
+	    printf ("# Arcsec/Pixel: %.6f %.6f  Rotation: %.6f degrees\n",
+		    3600.0*wcs->xinc, 3600.0*wcs->yinc, wcs->rot);
+	else
+	    printf ("# Arcsec/Pixel: %.5f %.5f  Rotation: %.5f degrees  Chip Rot: %.5f degrees\n",
+		    3600.0*wcs->xinc, 3600.0*wcs->yinc, wcs->rot, wcs->mrot);
 	ra2str (rstr, wcs->xref, 3);
 	dec2str (dstr, wcs->yref, 2);
-	printf ("New center: %s  %s (FK5)\n",rstr,dstr);
+	printf ("# Optical axis: %s  %s J2000 at (%.2f,%.2f)\n",
+		rstr,dstr, wcs->xrefpix, wcs->yrefpix);
 	ra = wcs->xref;
 	dec = wcs->yref;
-	(void)fk524e (&ra,&dec,wcs->epoch);
+	(void)fk524e (&ra, &dec, wcs->epoch);
 	ra2str (rstr, ra, 3);
 	dec2str (dstr, dec, 2);
-	printf ("New center: %s  %s (FK4)\n",rstr,dstr);
-	}
+	printf ("# Optical axis: %s  %s B1950 at (%.2f,%.2f)\n",
+		rstr,dstr, wcs->xrefpix, wcs->yrefpix);
 
     /* Find star matches for this offset and print them */
-    if (verbose) {
-	double x, y, dx, dy, dxy, sep, xysep, tol2;
-	double dxsum=0.0, dysum=0.0, dxysum=0.0, sepsum=0.0;
-	int offscl, nmatch=0;
-	/* wcs = wcsinit (header); */
 	tol2 = tolerance * tolerance;
-	printf ("Matches in %s:\n", refcatname);
 	for (ig = 0; ig < ng; ig++) {
 	    wcs2pix (wcs, gra[ig], gdec[ig], &x, &y, &offscl);
 	    if (!offscl) {
 		for (is = 0; is < ns; is++) {
 		    dx = x - sx[is];
 		    dy = y - sy[is];
-		    dxy = (dx * dx) + (dy * dy);
-		    if (dxy < tol2) {
+		    dx2 = dx * dx;
+		    dy2 = dy * dy;
+		    dxy = dx2 + dy2;
+		    if (dxy < tol2)
 			nmatch++;
-			dxsum = dxsum + dx;
-			dysum = dysum + dy;
-			dxysum = dxysum + sqrt (dxy);
-			pix2wcs (wcs, sx[is], sy[is], &sra, &sdec);
-			xysep = sqrt (dxy);
-			sep = 3600.0 * wcsdist (gra[ig], gdec[ig], sra, sdec);
-			sepsum = sepsum + sep;
-			ra2str (rstr, gra[ig], 3);
-			dec2str (dstr, gdec[ig], 2);
-			printf ("%9.4f %s %s %5.2f",
-			    gnum[ig], rstr, dstr, gm[ig]);
-			printf ("%6.1f %6.1f %6d %5.2f %5.2f\n",
-			    sx[is], sy[is], sp[is], xysep, sep);
-			}
 		    }
 		}
 	    }
+	imcatname = getimcat ();
+	if (imcatname == NULL)
+	    imcatname = filename;
 	if (nmatch > 0) {
+	    printf ("# %d matches between %s and %s:\n",
+		    nmatch, refcatname, imcatname);
+	    for (ig = 0; ig < ng; ig++) {
+		wcs2pix (wcs, gra[ig], gdec[ig], &x, &y, &offscl);
+		if (!offscl) {
+		    for (is = 0; is < ns; is++) {
+			dx = x - sx[is];
+			dy = y - sy[is];
+			dx2 = dx * dx;
+			dy2 = dy * dy;
+			dxy = dx2 + dy2;
+			if (dxy < tol2) {
+			    dxsum = dxsum + dx;
+			    dysum = dysum + dy;
+			    dx2sum = dx2sum + dx2;
+			    dy2sum = dy2sum + dy2;
+			    dxysum = dxysum + sqrt (dxy);
+			    pix2wcs (wcs, sx[is], sy[is], &sra, &sdec);
+			    xysep = sqrt (dxy);
+			    sep = 3600.0 * wcsdist (gra[ig],gdec[ig],sra,sdec);
+			    rsep = 3600.0 * ((gra[ig]-sra) / cos(degrad(sdec)));
+			    rsep2 = rsep * rsep;
+			    dsep = 3600.0 * (gdec[ig] - sdec);
+			    dsep2 = dsep * dsep;
+			    sepsum = sepsum + sep;
+			    rsepsum = rsepsum + rsep;
+			    dsepsum = dsepsum + dsep;
+			    rsep2sum = rsep2sum + rsep2;
+			    dsep2sum = dsep2sum + dsep2;
+			    ra2str (rstr, gra[ig], 3);
+			    dec2str (dstr, gdec[ig], 2);
+			    if (refcat == GSC)
+				printf (" %9.4f",gnum[ig]);
+			    else if (refcat == UAC || refcat == USAC)
+				printf (" %13.8f",gnum[ig]);
+			    else if (refcat == UJC)
+				printf (" %12.7f",gnum[ig]);
+			    else
+				printf (" %9.4f",gnum[ig]);
+			    printf (" %s %s %5.2f", rstr, dstr, gm[ig]);
+			    printf (" %6.1f %6.1f %6.2f %6.2f %6.2f\n",
+			        sx[is], sy[is], rsep, dsep, sep);
+			    }
+		        }
+		    }
+	        }
 	    dx = dxsum / (double)nmatch;
 	    dy = dysum / (double)nmatch;
+	    dx2 = sqrt (dx2sum / (double)nmatch);
+	    dy2 = sqrt (dy2sum / (double)nmatch);
 	    dxy = dxysum / (double)nmatch;
+	    rsep = rsepsum / (double)nmatch;
+	    dsep = dsepsum / (double)nmatch;
+	    rsep2 = sqrt (rsep2sum / (double)nmatch);
+	    dsep2 = sqrt (dsep2sum / (double)nmatch);
 	    sep = sepsum / (double)nmatch;
-	    printf ("Mean dx= %.2f  dy= %.2f  dxy= %.2f  sep= %.2f\n",
-		    dx, dy, dxy, sep);
+	    printf ("# Mean  dx= %.2f/%.2f  dy= %.2f/%.2f  dxy= %.2f\n",
+		    dx, dx2, dy, dy2, dxy);
+	    printf ("# Mean dra= %.2f/%.2f  ddec= %.2f/%.2f sep= %.2f\n",
+		    rsep, rsep2, dsep, dsep2, sep);
 	    }
 	else
-	    fprintf (stderr,"SetWCSFITS: Error in WCS, no matches found\n");
+	    fprintf (stderr, "SetWCSFITS: No matches between %s and %s:\n",
+		    nmatch, refcatname, imcatname);
 	}
 
     ret = 1;
@@ -401,11 +489,15 @@ struct WorldCoor *wcs;	/* WCS structure */
     return;
 }
 
-void settolerance (tol)
+
+/* Subroutines to initialize various parameters */
+void
+settolerance (tol)
 double tol;
 { tolerance = tol; return; }
 
-void setrefcat (cat)
+void
+setrefcat (cat)
 char *cat;
 {  if (strcmp(cat,"gsc")==0 || strcmp(cat,"GSC")==0)
 	refcat = GSC;
@@ -417,33 +509,61 @@ char *cat;
 	refcat = 0;
     strcpy (refcatname, cat); return; }
 
-void setwcstype (type)
+void
+setwcstype (type)
 char *type;
 { strcpy (wcstype, type); return; }
 
-
-void setreflim (lim)
+void
+setreflim (lim)
 double lim;
-{ reflim = lim; return; }
+{ reflim = lim;
+  return; }
 
-void setclass (class)
+void
+setclass (class)
 int class;
-{ classd = class; return; }
+{ classd = class;
+  return; }
 
-void setplate (plate)
+void
+setfitwcs (wfit)
+int wfit;
+{ fitwcs = wfit;
+  return; }
+
+void
+setplate (plate)
 int plate;
-{ uplate = plate; return; }
+{ uplate = plate;
+  return; }
 
-void setfrac (frac0)
+void
+setnofit ()
+{ nofit = 1;
+  return; }
+
+void
+setfrac (frac0)
 double frac0;
 { if (frac0 < 1.0) frac = 1.0 + frac0;
-    else frac = frac0; return; }
+    else frac = frac0;
+  return; }
 
-void setnfit (nfit)
-int nfit;
-{ if (nfit < 2) nfit = 2;
-  else if (nfit > 5) nfit = 5;
-  nfit0 = nfit; return; }
+void
+setimfrac (frac0)
+double frac0;
+{ if (frac0 > 0.0) imfrac = frac0;
+  else imfrac = 1.0;
+  return; }
+
+void
+setmaxcat (ncat)
+int ncat;
+{ if (ncat < 1) maxcat = 25;
+  else if (ncat > 200) maxcat = 200;
+  else maxcat = ncat;
+  return; }
 
 
 /* Feb 29 1996	New program
@@ -482,4 +602,19 @@ int nfit;
  * Nov 18 1996	Write same number into CROAT2 as CROTA1
  * Nov 19 1996	If EPOCH was equinox in original image or not set, set it
  * Dec 10 1996	Make equinox double in getfitswcs call
+ *
+ * Mar 17 1997	Print found reference stars even when there are not enough
+ * Jul 14 1997	If nfit is negative return with header set for nominal WCS
+ * Aug  4 1997	Reset nfit limit to 7 for reference pixel fit and fix nfit0 bug
+ * Aug 20 1997	Make maximum number of reference stars settable on the command line
+ * Aug 28 1997	Print star ID numbers in appropriate format for each catalog
+ * Aug 28 1997	Add option to match image to reference stars without fitting WCS
+ * Sep  3 1997	Add option to change image dimensions by a fraction
+ * Sep  9 1997	Return with default WCS in header only if nfit < -7
+ * Sep  9 1997	Print separate right ascension and declination residuals
+ * Sep 11 1997	Print average magnitude as well as value of residuals
+ * Oct 16 1997	Print same information for image stars as for reference stars
+ * Oct 22 1997	Print result of chip rotation as well as optical axis rotation
+ * Nov  6 1997	Move nfit entirely to matchstar
+ * Nov  6 1997	Rearrange output for IMMATCH use, adding filename argument
  */

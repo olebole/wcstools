@@ -1,6 +1,6 @@
 /*** File libwcs/fitsio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** December 27, 1996
+ *** October 9, 1997
 
  * Module:      fitsio.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -29,7 +29,7 @@
  * Subroutine:	fitswimage (filename, header, image)
  *		Write FITS header and image
 
- * Copyright:   1996 Smithsonian Astrophysical Observatory
+ * Copyright:   1997 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -47,12 +47,6 @@
 #include "fitshead.h"
 
 static int verbose=0;		/* if 1 print diagnostics */
-static int nbskip=0;		/* Number of bytes to skip before header */
-
-void setbskip (nskip)
-int nskip;
-{ nbskip = nskip; return; }
-
 
 /* FITSRHEAD -- Read a FITS header */
 
@@ -65,27 +59,54 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 			/* This includes the first, simple header block */
 
 {
-    FILE *fd;
+    int fd;
     char *header;	/* FITS image header (filled) */
     int extend;
     int nbytes,naxis, i;
-    int ntry,nbr,irec,nrec, nbh;
+    int ntry,nbr,irec,nrec, nbh, ipos, npos, nbprim, lprim, lext;
+    int nax1, nax2, nax3, nax4, nbpix, ibpix, nblock, nbskip;
     char fitsbuf[2884];
     char *headend;	/* Pointer to last line of header */
     char *headnext;	/* Pointer to next line of header to be added */
+    int hdu;		/* header/data unit counter */
+    int extnum;		/* desired header data number
+			   (0=primary -1=first with data -2=use EXTNAME) */
+    char extname[32];	/* FITS extension name */
+    char *ext;		/* Desired FITS extension name--if extnum is -2 */
+    char *pheader;	/* Primary header (naxis is 0) */
+
+    pheader = NULL;
+    lprim = 0;
+    header = NULL;
 
     /* Open the image file and read the header */
     if (strcmp (filename,"stdin")) {
+
+    /* Check for FITS extension and ignore for file opening */
+	ext = strchr (filename, ',');
+	if (ext != NULL)
+	    ext = ext + 1;
+
+	fd = -1;
 	fd = fitsropen (filename);
-	if (!fd) {
+	if (fd < 0) {
 	    fprintf (stderr, "FITSRHEAD:  cannot read file %s\n", filename);
 	    return (NULL);
 	    }
-	if (nbskip > 0)
-	    (void)fseek (fd, (long)nbskip, SEEK_SET);
+	if (ext != NULL) {
+	    if (isnum (ext))
+		extnum = atoi (ext);
+	    else
+		extnum = -2;
+	    }
+	else
+	    extnum = -1;
+	
 	}
-    else
-	fd = stdin;
+    else {
+	fd = STDIN_FILENO;
+	extnum = -1;
+	}
 
     nbytes = FITSBLOCK;
     *nbhead = 0;
@@ -94,6 +115,7 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
     header = (char *) calloc ((unsigned int) nbh, 1);
     headnext = header;
     nrec = 1;
+    hdu = 0;
 
 /* Read FITS header from input file one FITS block at a time */
     irec = 0;
@@ -101,7 +123,7 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 	nbytes = FITSBLOCK;
 	for (ntry = 0; ntry < 10; ntry++) {
 	    for (i = 0; i < 2884; i++) fitsbuf[i] = 0;
-	    nbr = fread (fitsbuf, 1, nbytes, fd);
+	    nbr = read (fd, fitsbuf, nbytes);
 
 /* Short records are allowed only if they contain the last header line */
 	    if (nbr < nbytes) {
@@ -115,9 +137,11 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 		    else {
 			fprintf(stderr, "FITSRHEAD: '%d / %d bytes of header read from %s\n"
 				,nbr,nbytes,filename);
-			if (fd != stdin)
-			    fclose (fd);
+			if (fd != STDIN_FILENO)
+			    (void)close (fd);
 			free (header);
+			if (pheader != NULL)
+			    free (pheader);
 			return (NULL);
 			}
 		    }
@@ -146,13 +170,100 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 	    headnext = headnext + FITSBLOCK;
 	    }
 
-/* If this is not the real header, read it, starting with the next record */
 	else {
 	    naxis = 0;
 	    hgeti4 (header,"NAXIS",&naxis);
-	    extend = 0;
-	    hgetl (header,"EXTEND",&extend);
-	    if (naxis == 0 && extend) {
+
+	/* If header has no data, save it for appending to desired header */
+	    if (naxis < 1) {
+		nbprim = nrec * FITSBLOCK;
+		headend = ksearch (header,"END");
+		lprim = headend + 80 - header;
+		pheader = (char *) calloc ((unsigned int) nbprim, 1);
+		strncpy (pheader, header, lprim);
+		pheader[lprim] = 0;
+		}
+
+	/* If header has no data, start with the next record */
+	    if (naxis < 1 && extnum == -1) {
+		extend = 0;
+		hgetl (header,"EXTEND",&extend);
+		if (naxis == 0 && extend) {
+		    headnext = header;
+		    *headend = ' ';
+		    headend = NULL;
+		    nrec = 1;
+		    hdu = hdu + 1;
+		    }
+		else
+		    break;
+		}
+
+	/* If this is the desired header data unit, keep it */
+	    else if (ext != NULL) {
+		if (extnum > -1 && hdu == extnum)
+		    break;
+		else if (extnum < 0) {
+		    hgetc (header,"EXTNAME",extname);
+		    if (!strcmp (ext,extname))
+			break;
+		    }
+
+	/* If this is not the desired header data unit, skip over data */
+		hdu = hdu + 1;
+		if (naxis > 0) {
+		    ibpix = 0;
+		    hgeti4 (header,"BITPIX",&ibpix);
+		    if (ibpix < 0)
+			nbpix = -ibpix / 8;
+		    else
+			nbpix = ibpix / 8;
+		    nax1 = 1;
+		    hgeti4 (header,"NAXIS1",&nax1);
+		    nax2 = 1;
+		    if (naxis > 1)
+			hgeti4 (header,"NAXIS2",&nax2);
+		    nax3 = 1;
+		    if (naxis > 2)
+			hgeti4 (header,"NAXIS3",&nax3);
+		    nax4 = 1;
+		    if (naxis > 3)
+			hgeti4 (header,"NAXIS4",&nax4);
+		    nbskip = nax1 * nax2 * nax3 * nax4 * nbpix;
+		    nblock = nbskip / 2880;
+		    if (nblock*2880 < nbskip)
+			nblock = nblock + 1;
+		    }
+		else
+		    nblock = 0;
+		*nbhead = *nbhead + (nblock * 2880);
+
+	/* Set file pointer to beginning of next header/data unit */
+		if (nblock > 0) {
+		    if (fd != STDIN_FILENO) {
+			ipos = lseek (fd, *nbhead, SEEK_SET);
+			npos = *nbhead;
+			}
+		    else {
+			ipos = 0;
+			for (i = 0; i < nblock; i++) {
+			    nbytes = FITSBLOCK;
+			    nbr = read (fd, fitsbuf, nbytes);
+			    if (nbr < nbytes) {
+				ipos = ipos + nbr;
+				break;
+				}
+			    else
+				ipos = ipos + nbytes;
+			    }
+			npos = nblock * 2880;
+			}
+		    if (ipos < npos) {
+			fprintf (stderr,"FITSRHEAD: %d / %d bytes skipped\n",
+				 ipos,npos);
+			break;
+			}
+		    }
 		headnext = header;
 		headend = NULL;
 		nrec = 1;
@@ -162,8 +273,8 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 	    }
 	}
 
-    if (fd != stdin)
-	fclose (fd);
+    if (fd != STDIN_FILENO)
+	(void)close (fd);
 
     /* Allocate an extra block for good measure */
     *lhead = (nrec + 1) * FITSBLOCK;
@@ -172,6 +283,19 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
     else
 	*lhead = nbh;
 
+    if (pheader != NULL) {
+	headend = ksearch (header,"END");
+	lext = headend - header;
+	if (lext + lprim > nbh) {
+	    nrec = (lext + lprim) / FITSBLOCK;
+	    if (FITSBLOCK*nrec < lext+lprim)
+		nrec = nrec + 1;
+	    *lhead = (nrec+1) * FITSBLOCK;
+	    header = (char *) realloc (header,(unsigned int) *lhead);
+	    }
+	strncpy (headend, pheader, lprim);
+	free (pheader);
+	}
     return (header);
 }
 
@@ -186,29 +310,30 @@ int	nbhead;		/* Actual length of image header(s) in bytes */
 char	*header;	/* FITS header for image (previously read) */
 
 {
-    FILE *fd;
+    int fd;
     int nbimage, naxis1, naxis2, bytepix, nbr;
     int bitpix, naxis, nblocks, nbytes;
     char *image;
 
     /* Open the image file and read the header */
     if (strcmp (filename,"stdin")) {
+	fd = -1;
 	fd = fitsropen (filename);
-	if (!fd) {
+	if (fd < 0) {
 	    fprintf (stderr, "FITSRIMAGE:  cannot read file %s\n", filename);
 	    return (NULL);
 	    }
 
 	/* Skip over FITS header */
-	if (fseek (fd, nbhead, SEEK_SET)) {
-	    fclose (fd);
+	if (lseek (fd, nbhead, SEEK_SET) < 0) {
+	    (void)close (fd);
 	    fprintf (stderr, "FITSRIMAGE:  cannot skip header of file %s\n",
 		     filename);
 	    return (NULL);
 	    }
 	}
     else
-	fd = stdin;
+	fd = STDIN_FILENO;
 
     /* Compute size of image in bytes using relevant header parameters */
     hgeti4 (header,"NAXIS",&naxis);
@@ -227,9 +352,9 @@ char	*header;	/* FITS header for image (previously read) */
 
     /* Allocate and read image */
     image = malloc (nbytes);
-    nbr = fread (image, 1, nbytes, fd);
-    if (fd != stdin)
-	fclose (fd);
+    nbr = read (fd, image, nbytes);
+    if (fd != STDIN_FILENO)
+	(void)close (fd);
     if (nbr < nbimage) {
 	fprintf (stderr, "FITSRIMAGE:  %d of %d bytes read from file %s\n",
 		 nbr, nbimage, filename);
@@ -246,23 +371,31 @@ char	*header;	/* FITS header for image (previously read) */
 
 /* FITSROPEN -- Open a FITS file, returning the file descriptor */
 
-FILE *
+int
 fitsropen (inpath)
 
 char	*inpath;	/* Pathname for FITS tables file to read */
 
 {
     int ntry;
-    FILE *fd;		/* file descriptor for FITS tables file (returned) */
+    int fd;		/* file descriptor for FITS tables file (returned) */
+    char *ext;		/* extension name or number */
+
+/* Check for FITS extension and ignore for file opening */
+    ext = strchr (inpath, ',');
 
 /* Open input file */
     for (ntry = 0; ntry < 3; ntry++) {
-	fd = fopen (inpath, "r");
-	if (fd)
+	if (ext != NULL)
+	    *ext = 0;
+	fd = open (inpath, O_RDONLY);
+	if (ext != NULL)
+	    *ext = ',';
+	if (fd >= 0)
 	    break;
 	else if (ntry == 2) {
 	    fprintf (stderr, "FITSROPEN:  cannot read file %s\n", inpath);
-	    return (NULL);
+	    return (-1);
 	    }
 	}
 
@@ -277,7 +410,7 @@ char	*inpath;	/* Pathname for FITS tables file to read */
  *		 selected keywords, as well as file descriptor
  */
 
-FILE *
+int
 fitsrtopen (inpath, nk, kw, nrows, nchar, nbhead)
 
 char	*inpath;	/* Pathname for FITS tables file to read */
@@ -289,7 +422,7 @@ int	*nbhead;	/* Number of characters before table starts */
 
 {
     char temp[16];
-    FILE *fd;
+    int fd;
     int	lhead;		/* Maximum length in bytes of FITS header */
     char *header;	/* Header for FITS tables file to read */
 
@@ -312,7 +445,7 @@ int	*nbhead;	/* Number of characters before table starts */
     else {
 	if (fitsrthead (header, nk, kw, nrows, nchar)) {
 	    fprintf (stderr, "FITSRTOPEN: Cannot read FITS table from %s\n",inpath);
-	    return (NULL);
+	    return (-1);
 	    }
 	else {
 	    fd = fitsropen (inpath);
@@ -453,7 +586,7 @@ static int offset2=0;
 int
 fitsrtline (fd, nbhead, lbuff, tbuff, irow, nbline, line)
 
-FILE	*fd;		/* File descriptor for FITS file */
+int	fd;		/* File descriptor for FITS file */
 int	nbhead;		/* Number of bytes in FITS header */
 int	lbuff;		/* Number of bytes in table buffer */
 char	*tbuff;		/* FITS table buffer */
@@ -474,14 +607,14 @@ char	*line;		/* One line of FITS table (returned) */
 	nlbuff = lbuff / nbline;
 	nbuff = nlbuff * nbline;
 	for (ntry = 0; ntry < 3; ntry++) {
-	    ioff = fseek (fd, (long)offset, SEEK_SET);
-	    if (ioff) {
+	    ioff = lseek (fd, offset, SEEK_SET);
+	    if (ioff < offset) {
 		if (ntry == 2)
 		    return (0);
 		else
 		    continue;
 		}
-	    nbr = fread (tbuff, 1, nbuff, fd);
+	    nbr = read (fd, tbuff, nbuff);
 	    if (nbr < nbline) {
 		if (verbose)
 		    printf ("FITSRHEAD: %d / %d bytes read %d\n",
@@ -690,6 +823,7 @@ char	*image;		/* FITS image pixels */
 	}
     return (nbw);
 }
+
 /*
  * Feb  8 1996	New subroutines
  * Apr 10 1996	Add subroutine list at start of file
@@ -710,4 +844,6 @@ char	*image;		/* FITS image pixels */
  * Oct 15 1996	Drop unused variable 
  * Dec 17 1996	Add option to skip bytes in file before reading the header
  * Dec 27 1996	Turn nonprinting header characters into spaces
+ *
+ * Oct  9 1997	Add FITS extension support as filename,extension
  */

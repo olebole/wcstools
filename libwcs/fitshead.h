@@ -1,5 +1,5 @@
 /* fitshead.h  FITS and IRAF file access subroutines
- * December 12, 1996
+ * October 10, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -60,13 +60,13 @@ struct Keyword {
 #define FITSBLOCK 2880
 
 /* FITS file access subroutines */
-extern FILE *fitsropen ();
+extern int fitsropen ();
 extern char *fitsrhead ();
 extern char *fitsrimage ();
 extern int fitswimage ();
 
 /* FITS table file access subroutines */
-extern FILE *fitsrtopen ();
+extern int fitsrtopen ();
 extern int fitsrthead ();
 extern void fitsrtlset();
 extern int fitsrtline ();
@@ -109,4 +109,6 @@ extern int imswapped();
  * Aug  6 1996	Add MOVEPIX, HDEL and HCHANGE declarations
  * Nov  1 1996	Add DEG2STR
  * Dec 12 1996	Add ISNUM
+ *
+ * Oct 10 1997	FITS file opening subroutines now return int instead of FILE *
  */

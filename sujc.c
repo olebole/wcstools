@@ -1,5 +1,5 @@
 /* File sujc.c
- * January 10, 1997
+ * November 12, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -353,7 +353,7 @@ double *ujcnum;		/* USNO J Catalog zone.number */
 	if (objname)
 	    printf ("%12s %s %s ", objname, rastr, decstr);
 	else
-	    printf ("USNO J 1.0    %s %s ", rastr, decstr);
+	    printf ("USNO J 1.0   %s %s ", rastr, decstr);
 	if (strcmp (coorout,"FK4") == 0)
 	    printf ("(B1950)  ");
 	else
@@ -515,9 +515,9 @@ double *ujcnum;		/* USNO J Catalog zone.number */
     if (cdec >= -90.0) {
 	dec2str (decstr, cdec, 2);
 	if (wfile)
-	fprintf (fd, "DEC	%s\n", rastr);
+	fprintf (fd, "DEC	%s\n", decstr);
 	if (tabout)
-	    printf ("DEC	%s\n", rastr);
+	    printf ("DEC	%s\n", decstr);
 	}
 
     if (ddec > 0.0) {
@@ -559,20 +559,18 @@ double *ujcnum;		/* USNO J Catalog zone.number */
     if (tabout)
 
     if (strcmp (coorout,"FK4") == 0)
-	sprintf (headline,"UJC_NUMBER	RA1950  	DEC1950  	MAG   	PLATE	DISTANCE");
+	sprintf (headline,"UJC_NUMBER	RA1950  	DEC1950  	MAG   	PLATE	ARCSEC");
     else
-	sprintf (headline,"UJC_NUMBER	RA2000  	DEC2000  	MAG   	PLATE	DISTANCE");
+	sprintf (headline,"UJC_NUMBER	RA2000  	DEC2000  	MAG   	PLATE	ARCSEC");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
-    sprintf (headline,"----------	------------	------------	------	----	_______");
+    sprintf (headline,"----------	------------	------------	------	----	------");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
-    if (printhead)
-	printf (" UJ number    RA           Dec           Mag  Plate Arcsec\n");
     if (printhead) {
 	if (nbg == 0)
 	    printf ("No UJ Stars Found\n");
@@ -622,4 +620,6 @@ double *ujcnum;		/* USNO J Catalog zone.number */
  * Dec 30 1996	Clean up closest star message
  * Dec 30 1996	Print message instead of heading if no stars are found
  * Jan 10 1997	Fix bug in RASort Stars which did not sort magnitudes
+ * Mar 12 1997	Fix header alignment
+ * Nov 12 1997	Fix DEC in header to print Dec string instead of RA string
  */

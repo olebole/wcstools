@@ -1,22 +1,17 @@
-/*** File libwcs/tabcread.c
- *** June 4, 1997
+/*** File libwcs/txtread.c
+ *** October 16, 1997
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
-/* int tabread()	Read tab table stars in specified region
- * int tabrnum()	Read tab table stars with specified numbers
- * int tabopen()	Open tab table catalog, returning number of entries
- * char *tabstar()	Get tab table catalog entry for one star
- * double tabgetra()	Return double right ascension in degrees
- * double tabgetdec()	Return double declination in degrees
- * double tabgetr8()	Return 8-byte floating point number from tab table line
- * int tabgeti4()	Return 4-byte integer from tab table line
- * int tabgetk()	Return character entry from tab table line for column
- * int tabgetc()	Return n'th character entry from tab table line
- * double tabhgetr8()	Return 8-byte floating point from tab table header
- * int tabhgeti4()	Return 4-byte integer from tab table header
- * int tabparse()	Make a table of column headings
- * int tabcol()		Search a table of column headings for a particlar entry
+/* int txtread()	Read ASCII catalog stars in specified region
+ * int txtrnum()	Read ASCII catalog stars with specified numbers
+ * int txtopen()	Open ASCII catalog catalog, returning number of entries
+ * char *txtstar()	Get ASCII catalog catalog entry for one star
+ * double txtgetra()	Return double right ascension in degrees
+ * double txtgetdec()	Return double declination in degrees
+ * double txtgetmag()	Return magnitude from ASCII catalog line
+ * int txtgetobj()	Return object name from ASCII catalog line
+ * int txtgetc()	Return n'th character entry from ASCII catalog line
  */
 
 #include <unistd.h>
@@ -31,38 +26,36 @@
 static int nstars;	/* Number of stars in catalog */
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 
-int tabopen();
-int tabparse();
-int tabcol();
-int tabgetk();
-char *tabstar();
-static int tabgeti4();
-static double tabgetra();
-static double tabgetdec();
-static double tabgetr8();
-static int tabgetc();
-void tabclose();
+int txtopen();
+int txtparse();
+int txtcol();
+int txtgetk();
+char *txtstar();
+static int txtgeti4();
+static double txtgetra();
+static double txtgetdec();
+static double txtgetmag();
+static int txtgetc();
 
 static char newline = 10;
-static char tab = 9;
-static char *tabhead;
-static char *tabdata;
-static char *tabbuff;
+static char txt = 9;
+static char *txthead;
+static char *txtdata;
+static char *txtbuff;
 static int nentry = 0;
 static int entid, entra, entdec, entmag, entpeak;
-static int iline = 0;	/* Current line of data */
 
 #define MAXCOL	50
 static char *colname[MAXCOL];	/* Column headers */
 static int lcol[MAXCOL];
 
-/* TABREAD -- Read tab table stars in specified region */
+/* TXTREAD -- Read txt table stars in specified region */
 
 int
-tabread (tabcat,cra,cdec,dra,ddec,drad,mag1,mag2,nstarmax,
+txtread (txtcat,cra,cdec,dra,ddec,drad,mag1,mag2,nstarmax,
 	 tnum,tra,tdec,tmag,tpeak,nlog)
 
-char	*tabcat;	/* Name of reference star catalog file */
+char	*txtcat;	/* Name of reference star catalog file */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
@@ -141,7 +134,7 @@ int	nlog;
         dec2str (dstr1, dec1, 2);
 	ra2str (rstr2, ra2, 3);
         dec2str (dstr2, dec2, 2);
-	fprintf (stderr,"TABREAD: RA: %s - %s  Dec: %s - %s\n",
+	fprintf (stderr,"TXTREAD: RA: %s - %s  Dec: %s - %s\n",
 		 rstr1,rstr2,dstr1,dstr2);
 	}
 
@@ -163,26 +156,24 @@ int	nlog;
     nstar = 0;
     tdist = (double *) malloc (nstarmax * sizeof (double));
 
-    if ((nstars = tabopen (tabcat)) > 0) {
+    if ((nstars = txtopen (txtcat)) > 0) {
 	jstar = 0;
-	line = tabdata;
+	line = txtdata;
 
     /* Loop through catalog */
 	for (istar = 1; istar <= nstars; istar++) {
-	    line = tabstar (istar, line);
+	    line = txtstar (istar, line);
 	    if (line == NULL) {
-		fprintf (stderr,"TABREAD: Cannot read star %d\n", istar);
+		fprintf (stderr,"TXTREAD: Cannot read star %d\n", istar);
 		break;
 		}
 
 	/* Extract selected fields  */
-	    num = tabgetr8 (line, entid);	/* ID number */
-	    if (num == 0.0)
-		num = (double)istar;
-	    ra = tabgetra (line, entra);	/* Right ascension in degrees */
-	    dec = tabgetdec (line, entdec);	/* Declination in degrees */
-	    mag = tabgetr8 (line, entmag);	/* Magnitude */
-	    peak = tabgeti4 (line, entpeak);	/* Peak counts */
+	    num = txtgetr8 (line, entid);	/* ID number */
+	    ra = txtgetra (line, entra);	/* Right ascension in degrees */
+	    dec = txtgetdec (line, entdec);	/* Declination in degrees */
+	    mag = txtgetr8 (line, entmag);	/* Magnitude */
+	    peak = txtgeti4 (line, entpeak);	/* Peak counts */
 	    if (drad > 0)
 		dist = wcsdist (cra,cdec,ra,dec);
 	    else
@@ -253,7 +244,7 @@ int	nlog;
 		nstar++;
 		jstar++;
 		if (nlog == 1)
-		    fprintf (stderr,"TABREAD: %11.6f: %9.5f %9.5f %5.2f %d    \n",
+		    fprintf (stderr,"TXTREAD: %11.6f: %9.5f %9.5f %5.2f %d    \n",
 			   num,ra,dec,mag,peak);
 
 	    /* End of accepted star processing */
@@ -261,8 +252,8 @@ int	nlog;
 
 	/* Log operation */
 	    if (nlog > 0 && istar%nlog == 0)
-		fprintf (stderr,"TABREAD: %5d / %5d / %5d sources catalog %s\r",
-			jstar,istar,nstars,tabcat);
+		fprintf (stderr,"TXTREAD: %5d / %5d / %5d sources catalog %s\r",
+			jstar,istar,nstars,txtcat);
 
 	/* End of star loop */
 	    }
@@ -272,27 +263,27 @@ int	nlog;
 
 /* Summarize search */
     if (nlog > 0)
-	fprintf (stderr,"TABREAD: Catalog %s : %d / %d / %d found\n",tabcat,jstar,istar,nstars);
+	fprintf (stderr,"TXTREAD: Catalog %s : %d / %d / %d found\n",txtcat,jstar,istar,nstars);
 
+    free (txtbuff);
 
     if (nstar > nstarmax) {
-	fprintf (stderr,"TABREAD: %d stars found; only %d returned\n",
+	fprintf (stderr,"TXTREAD: %d stars found; only %d returned\n",
 		 nstar,nstarmax);
 	nstar = nstarmax;
 	}
 
-    tabclose();
     free ((char *)tdist);
     return (nstar);
 }
 
 
-/* TABRNUM -- Read tab table stars with specified numbers */
+/* TXTRNUM -- Read txt table stars with specified numbers */
 
 int
-tabrnum (tabcat, nnum, tnum,tra,tdec,tmag,tpeak,nlog)
+txtrnum (txtcat, nnum, tnum,tra,tdec,tmag,tpeak,nlog)
 
-char	*tabcat;	/* Name of reference star catalog file */
+char	*txtcat;	/* Name of reference star catalog file */
 int	nnum;		/* Number of stars to look for */
 double	*tnum;		/* Array of star numbers to look for */
 double	*tra;		/* Array of right ascensions (returned) */
@@ -313,25 +304,23 @@ int	nlog;
     line = 0;
 
     nstar = 0;
-    if ((nstars = tabopen (tabcat)) <= 0) {
-	fprintf (stderr,"TABRNUM: Cannot read catalog %s\n", tabcat);
+    if ((nstars = txtopen (txtcat)) <= 0) {
+	fprintf (stderr,"TXTRNUM: Cannot read catalog %s\n", txtcat);
 	return (0);
 	}
 
     /* Loop through star list */
     for (jnum = 0; jnum < nnum; jnum++) {
-	line = tabdata;
+	line = txtdata;
 
 	/* Loop through catalog to star */
 	for (istar = 1; istar <= nstars; istar++) {
-	    line = tabstar (istar, line);
+	    line = txtstar (istar, line);
 	    if (line == NULL) {
-		fprintf (stderr,"TABRNUM: Cannot read star %d\n", istar);
+		fprintf (stderr,"TXTRNUM: Cannot read star %d\n", istar);
 		break;
 		}
-	    num = tabgetr8 (line, entid);	/* ID number */
-	    if (num == 0.0)
-		num = (double) istar;
+	    num = txtgetr8 (line, entid);	/* ID number */
 	    if (num == tnum[jnum])
 		break;
 	    }
@@ -340,10 +329,10 @@ int	nlog;
 	if (num == tnum[jnum]) {
 
 	    /* Extract selected fields  */
-	    ra = tabgetra (line, entra);	/* Right ascension in degrees */
-	    dec = tabgetdec (line, entdec);	/* Declination in degrees */
-	    mag = tabgetr8 (line, entmag);	/* Magnitude */
-	    peak = tabgeti4 (line, entpeak);	/* Peak counts */
+	    ra = txtgetra (line, entra);	/* Right ascension in degrees */
+	    dec = txtgetdec (line, entdec);	/* Declination in degrees */
+	    mag = txtgetr8 (line, entmag);	/* Magnitude */
+	    peak = txtgeti4 (line, entpeak);	/* Peak counts */
 
 	    /* Save star position and magnitude in table */
 	    tra[jnum] = ra;
@@ -352,7 +341,7 @@ int	nlog;
 	    tpeak[jnum] = peak;
 	    nstar++;
 	    if (nlog == 1)
-		fprintf (stderr,"TABRNUM: %11.6f: %9.5f %9.5f %5.2f %d    \n",
+		fprintf (stderr,"TXTRNUM: %11.6f: %9.5f %9.5f %5.2f %d    \n",
 			 num,ra,dec,mag,peak);
 
 	    /* End of accepted star processing */
@@ -360,146 +349,131 @@ int	nlog;
 
 	/* Log operation */
 	if (nlog > 0 && jnum%nlog == 0)
-	    fprintf (stderr,"TABRNUM: %5d / %5d / %5d sources catalog %s\r",
-		     nstar,jnum,nstars,tabcat);
+	    fprintf (stderr,"TXTRNUM: %5d / %5d / %5d sources catalog %s\r",
+		     nstar,jnum,nstars,txtcat);
 
 	/* End of star loop */
 	}
 
 /* Summarize search */
     if (nlog > 0)
-	fprintf (stderr,"TABRNUM: Catalog %s : %d / %d found\n",
-		 tabcat,nstar,nstars);
+	fprintf (stderr,"TXTRNUM: Catalog %s : %d / %d found\n",
+		 txtcat,nstar,nstars);
 
-    tabclose();
+    free (txtbuff);
     return (nstars);
 }
 
 
-/* TABOPEN -- Open tab table catalog, returning number of entries */
+/* TXTOPEN -- Open txt table catalog, returning number of entries */
 
 int
-tabopen (tabfile)
+txtopen (txtfile)
 
-char *tabfile;	/* Tab table catalog file name */
+char *txtfile;	/* Tab table catalog file name */
 {
     struct stat statbuff;
     FILE *fcat;
     char *headbuff;
     int nr, lfile, ientry;
-    char *headlast, *tabnew, *tabline, *lastline;
+    char *headlast, *txtnew, *txtline, *lastline;
     char headend[4];
 
     nentry = 0;
     
-/* Find length of tab table catalog */
-    if (stat (tabfile, &statbuff)) {
-	fprintf (stderr,"TABOPEN: Tab table catalog %s has no entries\n",tabfile);
+/* Find length of txt table catalog */
+    if (stat (txtfile, &statbuff)) {
+	fprintf (stderr,"TXTOPEN: Tab table catalog %s has no entries\n",txtfile);
 	return (0);
 	}
     else
 	lfile = (int) statbuff.st_size;
 
-/* Open tab table catalog */
-    if (!(fcat = fopen (tabfile, "r"))) {
-	fprintf (stderr,"TABOPEN: Tab table catalog %s cannot be read\n",tabfile);
+/* Open txt table catalog */
+    if (!(fcat = fopen (txtfile, "r"))) {
+	fprintf (stderr,"TXTOPEN: Tab table catalog %s cannot be read\n",txtfile);
 	return (0);
 	}
 
 /* Allocate buffer to hold entire catalog and read it */
-    if ((tabbuff = malloc (lfile)) != NULL) {
-	nr = fread (tabbuff, 1, lfile, fcat);
+    if ((txtbuff = malloc (lfile)) != NULL) {
+	nr = fread (txtbuff, 1, lfile, fcat);
 	if (nr < lfile) {
-	    fprintf (stderr,"TABOPEN: read only %d / %d bytes of file %s\n",
-		     nr, lfile, tabfile);
+	    fprintf (stderr,"TXTOPEN: read only %d / %d bytes of file %s\n",
+		     nr, lfile, txtfile);
 	    (void) fclose (fcat);
 	    return (0);
 	    }
-	tabhead = tabbuff;
+	txthead = txtbuff;
 	headend[0] = '-';
 	headend[1] = '-';
 	headend[2] = 0;
-	tabline = tabbuff;
-	while (strncmp (tabline,headend, 2)) {
-	    lastline = tabline;
-	    tabline = strchr (tabline,newline) + 1;
+	txtline = txtbuff;
+	while (strncmp (txtline,headend, 2)) {
+	    lastline = txtline;
+	    txtline = strchr (txtline,newline) + 1;
 	    }
-	tabhead = lastline;
-	tabdata = strchr (tabline, newline) + 1;
+	txthead = lastline;
+	txtdata = strchr (txtline, newline) + 1;
 
     /* Extract positions of keywords we will want to use */
 	ientry = 0;
-	headbuff = tabhead;
-	if (tabparse (headbuff)) {
-	    if (!(entid = tabcol ("ID")))
-		entid = tabcol ("id");
-	    if (!(entra = tabcol ("RA")))
-		entra = tabcol ("ra");
-	    if (!(entdec = tabcol ("DEC")))
-		entdec = tabcol ("dec");
-	    if (!(entmag = tabcol ("MAG")))
-		entmag = tabcol ("mag");
-	    if (!(entpeak = tabcol ("PEAK")))
-		entpeak = tabcol ("peak");
+	headbuff = txthead;
+	if (txtparse (headbuff)) {
+	    if (!(entid = txtcol ("ID")))
+		entid = txtcol ("id");
+	    if (!(entid = txtcol ("RA")))
+		entid = txtcol ("ra");
+	    if (!(entid = txtcol ("DEC")))
+		entid = txtcol ("dec");
+	    if (!(entid = txtcol ("MAG")))
+		entid = txtcol ("mag");
+	    if (!(entid = txtcol ("PEAK")))
+		entid = txtcol ("peak");
 	    }
 	else {
-	    fprintf (stderr,"TABOPEN: No columns in tab table %s\n",tabfile);
+	    fprintf (stderr,"TXTOPEN: No columns in txt table %s\n",txtfile);
 	    return (0);
 	    }
 
-    /* Enumerate entries in tab table catalog by counting newlines */
-	tabnew = strchr (tabdata, newline) + 1;
-	tabnew = tabdata;
+    /* Enumerate entries in txt table catalog by counting newlines */
+	txtnew = strchr (txtdata, newline) + 1;
+	txtnew = txtdata;
 	nstars = 0;
-	while ((tabnew = strchr (tabnew, newline)) != NULL) {
-	    tabnew = tabnew + 1;
+	while ((txtnew = strchr (txtnew, newline)) != NULL) {
+	    txtnew = txtnew + 1;
 	    nstars = nstars + 1;
 	    }
 	}
 
     (void) fclose (fcat);
-    iline = 1;
     return (nstars);
 }
 
 
-void
-tabclose()
-{
-    free (tabbuff);
-    return;
-}
-
-
-/* TABSTAR -- Get tab table catalog entry for one star; return 0 if successful */
+/* TXTSTAR -- Get txt table catalog entry for one star; return 0 if successful */
 
 char *
-tabstar (istar, line)
+txtstar (istar, line)
 
-int istar;	/* Star sequence number in tab table catalog */
-char *line;	/* Pointer to istar'th entry (updated as returned value) */
+int istar;	/* Star sequence number in txt table catalog */
+char *line;	/* Pointer to istar'th entry (returned updated) */
 {
-    char *nextline = line;
+    int iline;
+    char *nextline;
 
     if (istar > nstars) {
-	fprintf (stderr, "TABSTAR:  %d is not in catalog\n",istar);
+	fprintf (stderr, "TXTSTAR:  %d is not in catalog\n",istar);
 	return (NULL);
 	}
     else if (istar < 1 && line) {
-	nextline = strchr (nextline, newline) + 1;
-	}
-    else if (istar < iline || iline < 1) {
-	iline = 1;
-	nextline = tabdata;
-	while (iline < istar) {
-	    nextline = strchr (nextline, newline) + 1;
-	    line = nextline;
-	    iline ++;
-	    }
+	nextline = strchr (line, newline) + 1;
 	}
     else {
+	nextline = txtdata;
+	iline = 1;
 	while (iline < istar) {
-	    nextline = strchr (nextline, newline) + 1;
+	    nextline = strchr (line, newline) + 1;
 	    iline ++;
 	    }
 	}
@@ -508,34 +482,34 @@ char *line;	/* Pointer to istar'th entry (updated as returned value) */
 }
 
 
-/* TABGETRA -- returns double right ascension in degrees */
+/* TXTGETRA -- returns double right ascension in degrees */
 
 static double
-tabgetra (line, ientry)
+txtgetra (line, ientry)
 
-char	*line;	/* tab table line */
+char	*line;	/* txt table line */
 int	ientry;	/* sequence of entry on line */
 {
     char str[24];
 
-    if (tabgetc (line, ientry, str, 24))
+    if (txtgetc (line, ientry, str, 24))
 	return (0.0);
     else
 	return (str2ra (str));
 }
 
 
-/* TABGETDEC -- returns double declination in degrees */
+/* TXTGETDEC -- returns double declination in degrees */
 
 static double
-tabgetdec (line, ientry)
+txtgetdec (line, ientry)
 
-char	*line;	/* tab table line */
+char	*line;	/* txt table line */
 int	ientry;	/* sequence of entry on line */
 {
     char str[24];
 
-    if (tabgetc (line, ientry, str, 24))
+    if (txtgetc (line, ientry, str, 24))
 	return (0.0);
     else
 	return (str2dec (str));
@@ -543,67 +517,67 @@ int	ientry;	/* sequence of entry on line */
 
 
 
-/* TABGETR8 -- returns 8-byte floating point number from tab table line */
+/* TXTGETR8 -- returns 8-byte floating point number from txt table line */
 
 static double
-tabgetr8 (line, ientry)
+txtgetr8 (line, ientry)
 
-char	*line;	/* tab table line */
+char	*line;	/* txt table line */
 int	ientry;	/* sequence of entry on line */
 {
     char str[24];
 
-    if (tabgetc (line, ientry, str, 24))
+    if (txtgetc (line, ientry, str, 24))
 	return (0.0);
     else
         return (atof (str));
 }
 
 
-/* TABGETI4 -- returns a 4-byte integer from tab table line */
+/* TXTGETI4 -- returns a 4-byte integer from txt table line */
 
 static int
-tabgeti4 (line, ientry)
+txtgeti4 (line, ientry)
 
-char	*line;	/* tab table line */
+char	*line;	/* txt table line */
 int	ientry;	/* sequence of entry on line */
 {
     char str[24];
 
-    if (tabgetc (line, ientry, str, 24))
+    if (txtgetc (line, ientry, str, 24))
 	return (0);
     else
         return ((int) atof (str));
 }
 
 
-/* TABGETK -- returns a character entry from tab table line for named column */
+/* TXTGETK -- returns a character entry from txt table line for named column */
 
 int
-tabgetk (line, keyword, string, maxchar)
+txtgetk (line, keyword, string, maxchar)
 
-char	*line;		/* tab table line */
+char	*line;		/* txt table line */
 char	*keyword;	/* column header of desired value */
 char	*string;	/* character string (returned) */
 int	maxchar;	/* Maximum number of characters in returned string */
 {
-    int ientry = tabcol (keyword);
+    int ientry = txtcol (keyword);
 
-    return (tabgetc (line, ientry, string, maxchar));
+    return (txtgetc (line, ientry, string, maxchar));
 }
 
 
-/* TABGETC -- returns n'th entry from tab table line as character string */
+/* TXTGETC -- returns n'th entry from txt table line as character string */
 
 static int
-tabgetc (line, ientry, string, maxchar)
+txtgetc (line, ientry, string, maxchar)
 
-char	*line;		/* tab table line */
+char	*line;		/* txt table line */
 int	ientry;		/* sequence of entry on line */
 char	*string;	/* character string (returned) */
 int	maxchar;	/* Maximum number of characters in returned string */
 {
-    char *entry, *nextab;
+    char *entry, *nextxt;
     int ient, ncstr;
 
     ient = 1;
@@ -612,20 +586,20 @@ int	maxchar;	/* Maximum number of characters in returned string */
 	return (-1);
     for (ient  = 1; ient <= ientry; ient ++) {
 
-    /* End ient'th entry with tab, newline, or end of string */
+    /* End ient'th entry with txt, newline, or end of string */
 	if (ient < nentry) 
-	    nextab = strchr (entry, tab);
+	    nextxt = strchr (entry, txt);
 	else {
-	    nextab = strchr (entry, newline);
-	    if (!nextab)
-		nextab = strchr (entry, 0);
+	    nextxt = strchr (entry, newline);
+	    if (!nextxt)
+		nextxt = strchr (entry, 0);
 	    }
-	if (!nextab)
+	if (!nextxt)
 	    return (-1);
 	if (ient < ientry)
-	    entry = nextab + 1;
+	    entry = nextxt + 1;
 	}
-    ncstr = nextab - entry;
+    ncstr = nextxt - entry;
     if (ncstr > maxchar - 1)
 	ncstr = maxchar - 1;
     strncpy (string, entry, ncstr);
@@ -635,22 +609,22 @@ int	maxchar;	/* Maximum number of characters in returned string */
 }
 
 
-/* TABHGETR8 -- returns 8-byte floating point number from tab table header */
+/* TXTHGETR8 -- returns 8-byte floating point number from txt table header */
 
 double
-tabhgetr8 (keyword)
+txthgetr8 (keyword)
 
 char	*keyword;	/* sequence of entry on line */
 {
     char *str0, *str1, *line, *head, str[24];
     int ncstr;
 
-    head = tabhead;
+    head = txthead;
     str0 = 0;
-    while (head < tabdata) {
+    while (head < txtdata) {
 	line = strsrch (head, keyword);
-	if (line == tabhead || line[-1] == newline) {
-	    str0 = strchr (line, tab) + 1;
+	if (line == txthead || line[-1] == newline) {
+	    str0 = strchr (line, txt) + 1;
 	    str1 = strchr (line, newline);
 	    break;
 	    }
@@ -667,22 +641,22 @@ char	*keyword;	/* sequence of entry on line */
 }
 
 
-/* TABHGETI4 -- returns a 4-byte integer from tab table header */
+/* TXTHGETI4 -- returns a 4-byte integer from txt table header */
 
 int
-tabhgeti4 (keyword)
+txthgeti4 (keyword)
 
 char	*keyword;	/* sequence of entry on line */
 {
     char *str0, *str1, *line, *head, str[24];
     int ncstr;
 
-    head = tabhead;
+    head = txthead;
     str0 = 0;
-    while (head < tabdata) {
+    while (head < txtdata) {
 	line = strsrch (head, keyword);
-	if (line == tabhead || line[-1] == newline) {
-	    str0 = strchr (line, tab) + 1;
+	if (line == txthead || line[-1] == newline) {
+	    str0 = strchr (line, txt) + 1;
 	    str1 = strchr (line, newline);
 	    break;
 	    }
@@ -698,73 +672,5 @@ char	*keyword;	/* sequence of entry on line */
 	return (0);
 }
 
-
-/* Make a table of column headings */
-int
-tabparse (headbuff)
-
-char *headbuff;		/* Line containing column headings */
-
-{
-    char *colhead;	/* Column heading first character */
-    char *endcol;	/* Column heading last character */
-    char *headlast;
-    char *nextab;
-    int ientry = 0;
-
-    headlast = strchr (headbuff, newline);
-    colhead = headbuff;
-    while (colhead) {
-	nextab = strchr (colhead, tab);
-	if (nextab < headlast)
-	    endcol = nextab - 1;
-	while (*endcol == ' ')
-	    endcol = endcol - 1;
-	lcol[ientry] = (int) (endcol - colhead) + 1;
-	colname[ientry] = colhead;
-	ientry++;
-	colhead = strchr (colhead, tab) + 1;
-	if (colhead > headlast)
-	    break;
-	}
-    nentry = ientry;
-    return (ientry);
-}
-
-
-/* Search table of column headings for a particlar entry (case-dependent) */
-
-int
-tabcol (keyword)
-
-char	*keyword;	/* Column heading to find */
-
-{
-    int i;
-
-    for (i = 0; i < nentry; i++) {
-	if (!strncmp (keyword, colname[i], lcol[i])) {
-	    return (i + 1);
-	    }
-	}
-    return (0);
-}
-
-/* Jul 18 1996	New subroutines
- * Aug  6 1996	Remove unused variables after lint
- * Aug  8 1996	Fix bugs in entry reading and logging
- * Oct 15 1996  Add comparison when testing an assignment
- * Nov  5 1996	Drop unnecessary static declarations
- * Nov 13 1996	Return no more than maximum star number
- * Nov 13 1996	Write all error messages to stderr with subroutine names
- * Nov 15 1996  Implement search radius; change input arguments
- * Nov 19 1996	Allow lower case column headings
- * Dec 18 1996	Add UJCRNUM to read specified catalog entries
- * Dec 18 1996  Keep closest stars, not brightest, if searching within radius
- *
- * Mar 20 1997	Clean up code in TABRNUM
- * May  7 1997	Set entry number to zero if column not found
- * May 29 1997	Add TABPARSE and TABCOL to more easily extract specific columns
- * May 29 1997	Add TABCLOSE to free memory from outside this file
- * Jun  4 1997	Set ID to sequence number in table if no ID/id entry present
+/* Oct 16 1997	New file
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** December 18, 1996
+ *** November 6, 1997
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -59,7 +59,7 @@ int	nlog;		/* 1 for diagnostics */
     int ik,nk,itable,ntable,jstar;
     int nbline,npos,nbhead;
     int nbr,nrmax,nstar,i;
-    FILE *ift;
+    int ift;
     double ra,ra0,rasum,dec,dec0,decsum,perr,perr0,perr2,perrsum,msum;
     double mag,mag0,merr,merr0,merr2,merrsum;
     char *str;
@@ -345,7 +345,7 @@ int	nlog;		/* 1 for diagnostics */
 	    }
 
 /* Close region input file */
-	(void) fclose (ift);
+	(void) close (ift);
 	itot = itot + itable;
 	if (nlog > 0)
 	    fprintf (stderr,"GSCREAD: %4d / %4d: %5d / %5d  / %5d sources from region %4d    \n",
@@ -361,8 +361,9 @@ int	nlog;		/* 1 for diagnostics */
 	}
     free (table);
     if (nstar > nstarmax) {
-	fprintf (stderr,"GSCREAD: %d stars found; only %d returned\n",
-		 nstar,nstarmax);
+	if (nlog > 0)
+	    fprintf (stderr,"GSCREAD: %d stars found; only %d returned\n",
+		     nstar,nstarmax);
 	nstar = nstarmax;
 	}
     free ((char *)gdist);
@@ -383,29 +384,22 @@ int	*gtype;		/* Array of object types (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
     char *table;	/* FITS table */
-    int nreg;		/* Number of input FITS tables files */
     char inpath[64];	/* Pathname for input FITS table file */
     char entry[100];	/* Buffer for FITS table row */
     int class, class0;	/* Object class (0>star, 3>other) */
     struct Keyword kw[8];	/* Keyword structure */
     struct Keyword *kwn;
 
-    int verbose;
-    int wrap;
-    int rnum, num0, num, itot,ireg,ltab;
+    int rnum, num0, num, itot,ltab;
     int ik,nk,itable,ntable,jstar;
     int nbline,npos,nbhead;
-    int nbr,nrmax,nstar,i, snum;
-    FILE *ift;
+    int nbr,nstar,i, snum;
+    int ift;
     double ra,ra0,rasum,dec,dec0,decsum,perr,perr0,perr2,perrsum,msum;
     double mag,mag0,merr,merr0,merr2,merrsum;
     char *str;
 
     itot = 0;
-    if (nlog == 1)
-	verbose = 1;
-    else
-	verbose = 0;
     ltab = 10000;
     table = malloc (10000);
     for (i = 0; i < 100; i++)
@@ -443,7 +437,7 @@ int	nlog;		/* 1 for diagnostics */
     /* Read size and keyword info from FITS table header */
 	kwn = kw;
 	ift = fitsrtopen (inpath,&nk,&kwn,&ntable,&nbline,&nbhead);
-	if (ift == NULL) {
+	if (ift < 0) {
 	    fprintf (stderr,"GSCRNUM: File %s not found\n",inpath);
 	    return (0);
 	    }
@@ -548,17 +542,17 @@ int	nlog;		/* 1 for diagnostics */
 /* Log operation */
 
 	    if (nlog > 0 && itable%nlog == 0)
-		fprintf (stderr,"GSCRNUM: %4d / %4d: %5d / %5d  / %5d sources, region %4d.%04d\r",
+		fprintf (stderr,"GSCRNUM: %4d / %4d: %5d / %5d sources, region %4d.%04d\r",
 			 jstar+1,nstars,itable,ntable,rnum,snum);
 
 /* End of region */
 	    }
 
 /* Close region input file */
-	(void) fclose (ift);
+	(void) close (ift);
 	itot = itot + itable;
 	if (nlog > 0)
-	    fprintf (stderr,"GSCRNUM: %4d / %4d: %5d / %5d  / %5d sources, region %4d.%04d\n",
+	    fprintf (stderr,"GSCRNUM: %4d / %4d: %5d / %5d sources, region %4d.%04d\n",
 		     jstar+1,nstars,itable,ntable,rnum,snum);
 	}
 
@@ -615,7 +609,7 @@ int	verbose;	/* 1 for diagnostics */
     char fitsline[120];
     int irow,iz1,iz2,ir1,ir2,jr1,jr2,i;
     int nsrch,nsrch1,nbhead,nbr;
-    FILE *ift;
+    int ift;
     double ralow, rahi;
     double declow, dechi, decmin, decmax;
     int regnum;
@@ -649,13 +643,13 @@ int	verbose;	/* 1 for diagnostics */
 /* Open the index table */
     kwn = rkw;
     ift = fitsrtopen (tabpath,&nrkw,&kwn, &nrows, &nchar, &nbhead);
-    if (!ift) {
+    if (ift < 0) {
 
 /* If the northern hemisphere CDROM cannot be read, try the southern */
 	strcpy (tabpath,cds);
 	strcat (tabpath,"/tables/regions.tbl");
 	ift = fitsrtopen (tabpath,&nrkw,&kwn,&nchar,&nrows,&nbhead);
-	if (!ift) {
+	if (ift < 0) {
 	    fprintf (stderr,"GSCREG:  error reading region table %s\n",tabpath);
 	    return (0);
 	    }
@@ -777,7 +771,7 @@ int	verbose;	/* 1 for diagnostics */
 	jr2 = 0;
 	}
 
-    (void) fclose (ift);
+    (void) close (ift);
     return (nrgn);
 }
 
@@ -928,4 +922,8 @@ char *path;	/* Pathname of GSC region FITS file */
  * Dec 12 1996	Make logging run on single line per region
  * Dec 17 1996  Add code to keep brightest or closest stars if too many found
  * Dec 18 1996	Add code to get star information by number
+ *
+ * Mar 20 1997	Remove unused variables and fixed logging in GSCRNUM after lint
+ * Oct 10 1997	Use standard I/O instead of stream I/O when reading FITS files
+ * Nov  6 1997	Do not print overrun unless logging
  */

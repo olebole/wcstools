@@ -13,12 +13,12 @@
 #define MINSEP		10	/* Minimum separations for stars */
 
 /* The following are used in star matching (matchstar.c) */
-#define	FTOL	0.000001	/* Fractional change of chisqr() to be done */
-#define NMAX		750	/* Maximum number of minimization iterations */
+#define	FTOL	0.0000001	/* Fractional change of chisqr() to be done */
+#define NMAX		3000	/* Maximum number of minimization iterations */
 #define	NPEAKS		20	/* Binning peak history */
 
 /* The following are used in world coordinate system fitting (imsetwcs.c) */
-#define MINSTARS	4	/* Minimum stars from reference and image */
+#define MINSTARS	3	/* Minimum stars from reference and image */
 #define MAXSTARS	25	/* Max star pairs we need to try using */
 #define MAXREF		100	/* Max reference stars to use in image region */
 #define MAGLIM1		-2	/* Faintest reference catalog magnitude to use*/

@@ -1,6 +1,8 @@
 /*  worldpos.c -- WCS Algorithms from Classic AIPS.
-    Copyright (C) 1994
-    Associated Universities, Inc. Washington DC, USA.
+ *  February 6, 1998
+ *  Copyright (C) 1994
+ *  Associated Universities, Inc. Washington DC, USA.
+ *  With code added by Doug Mink, Smithsonian Astrophysical Observatory
 
  * Module:	worldpos.c
  * Purpose:	Perform forward and reverse WCS computations for 8 projections
@@ -94,7 +96,7 @@ worldpos (xpix, ypix, wcs, xpos, ypos)
 
 /* Input: */
 double	xpix;		/* x pixel number  (RA or long without rotation) */
-double	ypix;		/* y pixel number  (dec or lat without rotation) */
+double	ypix;		/* y pixel number  (Dec or lat without rotation) */
 struct WorldCoor *wcs;		/* WCS parameter structure */
 
 /* Output: */
@@ -102,7 +104,7 @@ double	*xpos;		/* x (RA) coordinate (deg) */
 double	*ypos;		/* y (dec) coordinate (deg) */
 
 {
-  double cosr, sinr, dx, dy, dz, temp;
+  double cosr, sinr, dx, dy, dz, tx;
   double sins, coss, dect, rat, dt, l, m, mg, da, dd, cos0, sin0;
   double dec0, ra0, decout, raout;
   double geo1, geo2, geo3;
@@ -111,14 +113,14 @@ double	*ypos;		/* y (dec) coordinate (deg) */
   double deps = 1.0e-5;
 
   /* Structure elements */
-  double xref;		/* x reference coordinate value (deg) */
-  double yref;		/* y reference coordinate value (deg) */
-  double xrefpix;	/* x reference pixel */
-  double yrefpix;	/* y reference pixel */
-  double xinc;		/* x coordinate increment (deg) */
-  double yinc;		/* y coordinate increment (deg) */
-  double rot;		/* rotation (deg)  (from N through E) */
-  int itype;
+  double xref;		/* X reference coordinate value (deg) */
+  double yref;		/* Y reference coordinate value (deg) */
+  double xrefpix;	/* X reference pixel */
+  double yrefpix;	/* Y reference pixel */
+  double xinc;		/* X coordinate increment (deg) */
+  double yinc;		/* Y coordinate increment (deg) */
+  double rot;		/* Optical axis rotation (deg)  (N through E) */
+  int itype = wcs->pcode;
 
 /* Set local projection parameters */
   xref = wcs->xref;
@@ -127,6 +129,9 @@ double	*ypos;		/* y (dec) coordinate (deg) */
   yrefpix = wcs->yrefpix;
   xinc = wcs->xinc;
   yinc = wcs->yinc;
+  rot = degrad (wcs->rot);
+  cosr = cos (rot);
+  sinr = sin (rot);
 
 /* Offset from ref pixel */
   dx = xpix - xrefpix;
@@ -134,9 +139,9 @@ double	*ypos;		/* y (dec) coordinate (deg) */
 
 /* Scale and rotate using CD matrix */
   if (wcs->rotmat) {
-    temp = dx * wcs->cd11 + dy * wcs->cd12;
+    tx = dx * wcs->cd11 + dy * wcs->cd12;
     dy = dx * wcs->cd21 + dy * wcs->cd22;
-    dx = temp;
+    dx = tx;
     }
   else {
 
@@ -152,27 +157,26 @@ double	*ypos;		/* y (dec) coordinate (deg) */
     dy = dy * yinc;
 
 /* Take out rotation from CROTA */
-    rot = wcs->rot;
-    cosr = wcs->crot;
-    sinr = wcs->srot;
     if (rot != 0.0) {
-      temp = dx * cosr - dy * sinr;
-      dy = dy * cosr + dx * sinr;
-      dx = temp;
+      tx = dx * cosr - dy * sinr;
+      dy = dx * sinr + dy * cosr;
+      dx = tx;
       }
     }
 
-/* Default, linear result for error return  */
+/* Default, linear result for error or pixel return  */
   *xpos = xref + dx;
   *ypos = yref + dy;
+  if (itype < 0)
+    return 0;
 
 /* Convert to radians  */
   if (wcs->coorflip) {
     dec0 = degrad (xref);
     ra0 = degrad (yref);
-    temp = dx;
+    tx = dx;
     dx = dy;
-    dy = temp;
+    dy = tx;
     }
   else {
     ra0 = degrad (xref);
@@ -183,12 +187,12 @@ double	*ypos;		/* y (dec) coordinate (deg) */
   sins = l*l + m*m;
   decout = 0.0;
   raout = 0.0;
-  cos0 = cos(dec0);
-  sin0 = sin(dec0);
+  cos0 = cos (dec0);
+  sin0 = sin (dec0);
 
 /* process by case  */
-  itype = wcs->pcode;
   switch (itype) {
+    case -1:   /* pixel */
     case 0:   /* linear */
       rat =  ra0 + l;
       dect = dec0 + m;
@@ -348,7 +352,7 @@ double	*xpix;		/* x pixel number  (RA or long without rotation) */
 double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 {
   double dx, dy, ra0, dec0, ra, dec, coss, sins, dt, da, dd, sint;
-  double l, m, geo1, geo2, geo3, sinr, cosr, temp;
+  double l, m, geo1, geo2, geo3, sinr, cosr, tx;
   double cond2r=1.745329252e-2, deps=1.0e-5, twopi=6.28318530717959;
 
 /* Structure elements */
@@ -358,7 +362,8 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
   double yrefpix;	/* y reference pixel */
   double xinc;		/* x coordinate increment (deg) */
   double yinc;		/* y coordinate increment (deg) */
-  double rot;		/* rotation (deg)  (from N through E) */
+  double rot;		/* Optical axis rotation (deg)  (from N through E) */
+  double mrot;		/* Chip rotation (deg)  (from N through E) */
   int itype;
 
 /* Set local projection parameters */
@@ -368,15 +373,9 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
   yrefpix = wcs->yrefpix;
   xinc = wcs->xinc;
   yinc = wcs->yinc;
-  rot = wcs->rot;
-  cosr = wcs->crot;
-  sinr = wcs->srot;
-
-  /* 0h wrap-around tests added by D.Wells 10/12/94: */
-  dt = (xpos - xref);
-  if (dt > 180.0) xpos -= 360.0;
-  if (dt < -180.0) xpos += 360.0;
-  /* NOTE: changing input argument xpos is OK (call-by-value in C!) */
+  rot = degrad (wcs->rot);
+  cosr = cos (rot);
+  sinr = sin (rot);
 
 /* Projection type */
   itype = wcs->pcode;
@@ -386,11 +385,21 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
     if (wcs->coorflip) {
       dec0 = degrad (xref);
       ra0 = degrad (yref);
+      dt = xpos - yref;
       }
     else {
       ra0 = degrad (xref);
       dec0 = degrad (yref);
+      dt = xpos - xref;
       }
+
+    /* 0h wrap-around tests added by D.Wells 10/12/94: */
+    if (itype >= 0) {
+      if (dt > 180.0) xpos -= 360.0;
+      if (dt < -180.0) xpos += 360.0;
+      /* NOTE: changing input argument xpos is OK (call-by-value in C!) */
+      }
+
     ra = degrad (xpos);
     dec = degrad (ypos);
 
@@ -504,19 +513,25 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
     dy = ypos - yref;
     }
 
+  if (wcs->coorflip) {
+    tx = dx;
+    dx = dy;
+    dy = tx;
+    }
+
 /* Scale and rotate using CD matrix */
   if (wcs->rotmat) {
-    temp = dx * wcs->dc11 + dy * wcs->dc12;
+    tx = dx * wcs->dc11 + dy * wcs->dc12;
     dy = dx * wcs->dc21 + dy * wcs->dc22;
-    dx = temp;
+    dx = tx;
     }
   else {
 
 /* Correct for rotation */
     if (rot!=0.0) {
-      temp = dx*cosr + dy*sinr;
+      tx = dx*cosr + dy*sinr;
       dy = dy*cosr - dx*sinr;
-      dx = temp;
+      dx = tx;
       }
 
 /* Scale using CDELT */
@@ -524,12 +539,6 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
       dx = dx / xinc;
     if (yinc != 0.)
       dy = dy / yinc;
-    }
-
-  if (wcs->coorflip) {
-    temp = dx;
-    dx = dy;
-    dy = temp;
     }
 
 /* Convert to pixels  */
@@ -543,4 +552,10 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
  * Oct 31 1996	Fix CD matrix use in WORLDPIX
  * Nov  4 1996	Eliminate extra code for linear projection in WORLDPIX
  * Nov  5 1996	Add coordinate flip in WORLDPIX
+ *
+ * May 22 1997	Avoid angle wraparound when CTYPE is pixel
+ * Jun  4 1997	Return without angle conversion from worldpos if type is PIXEL
+ * Oct 20 1997	Add chip rotation; compute rotation angle trig functions
+ * Feb  6 1998	Move coordinate exchange to correct place
+ * Feb  6 1998	Drop chip rotation; more CD->rotation to WCSINIT()
  */
