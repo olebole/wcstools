@@ -1,5 +1,5 @@
 /* File libwcs/imrotate.c
- * July 11, 1996
+ * February 23, 1998
  * By Doug Mink
  */
 
@@ -28,7 +28,7 @@ int	verbose;
 
 {
     int bitpix1, ny, nx, nax;
-    int x1, y1, x2, y2, new, nbytes;
+    int x1, y1, x2, y2, nbytes;
     char *rotimage;
     char history[72];
     char *filename;
@@ -66,15 +66,12 @@ int	verbose;
 	}
     bitpix1 = 16;
     hgeti4 (header,"BITPIX", &bitpix1);
-    new = 0;
     if (bitpix2 == 0)
 	bitpix2 = bitpix1;
-    else
-	new = 1;
-
 
     /* Delete WCS fields in header */
-    (void) DelWCSFITS (header, verbose);
+    if (rotate != 0 || mirror)
+	(void) DelWCSFITS (header, verbose);
 
     /* Allocate buffer for rotated image */
     switch (bitpix2) {
@@ -123,7 +120,7 @@ int	verbose;
 	    hputc (header,"HISTORY",history);
             hputc (header,"HISTORY",history);
 	    }
-	else if (new) {
+	else {
 	    for (y1 = 0; y1 < ny; y1++) {
 		for (x1 = 0; x1 < nx; x1++) {
 		    x2 = x1;
@@ -132,8 +129,6 @@ int	verbose;
 		    }
 		}
 	    }
-	else
-	    return (-1);
 	}
 
     /* Rotate by 90 degrees */
@@ -244,5 +239,8 @@ int	verbose;
  * Jun 10 1996	Remove unused variables after running lint
  * Jun 13 1996	Replace image with rotated image
  * Jun 18 1996	Fix formatting bug in history
+ *
  * Jul 11 1997	If rotation is 360, flip top bottom if mirror flat is set
+ *
+ * Feb 23 1998	Do not delete WCS if image not rotated or mirrored
  */

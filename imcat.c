@@ -1,5 +1,5 @@
 /* File imcat.c
- * April 25, 1997
+ * May 13, 1998
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -34,9 +34,10 @@ extern void MagSortStars();
 extern void fk524e();
 extern struct WorldCoor *GetFITSWCS();
 extern char *GetFITShead();
-extern void setfk4();
+extern void setsys();
 extern void setcenter();
 extern void setsecpix();
+extern void setoldwcs();	/* AIPS classic WCS flag */
 
 
 static int verbose = 0;		/* verbose/debugging flag */
@@ -46,13 +47,15 @@ static char refcatname[32]="GSC"; /* reference catalog name */
 static int classd = -1;		/* Guide Star Catalog object classes */
 static int uplate = 0;		/* UJ Catalog plate number to use */
 static double maglim1 = MAGLIM1; /* reference catalog bright magnitude limit */
-static double maglim2 = MAGLIM;	/* reference catalog faint magnitude limit */
+static double maglim2 = MAGLIM2; /* reference catalog faint magnitude limit */
 static char coorsys[4];		/* Output coordinate system */
 static int nstars = 0;		/* Number of brightest stars to list */
 static int printhead = 0;	/* 1 to print table heading */
 static int tabout = 0;		/* 1 for tab table to standard output */
 static int rasort = 0;		/* 1 to sort stars by brighness */
 static int debug = 0;		/* True for extra information */
+static char *progname;		/* Name of program as executed */
+static char progpath[128];
 
 main (ac, av)
 int ac;
@@ -61,22 +64,54 @@ char **av;
     char *str, *str1;
     char rastr[16];
     char decstr[16];
+    int readlist = 0;
+    char *lastchar;
+    char filename[128];
+    FILE *flist;
+    char *listfile;
+    int i;
+
+    /* Check name used to execute programe and set catalog name accordingly */
+    strcpy (progpath, av[0]);
+    progname = progpath;
+    for (i = strlen (progpath); i > -1; i--) {
+	if (progpath[i] > 95 && progpath[i] < 122)
+	    progpath[i] = progpath[i] - 32;
+	if (progpath[i] == '/') {
+	    progname = progpath + i;
+	    break;
+	    }
+	}
+    if (strsrch (progname,"GSC") != NULL)
+	refcat = GSC;
+    else if (strsrch (progname,"UAC") != NULL)
+	refcat = UAC;
+    else if (strsrch (progname,"USAC") != NULL)
+	refcat = USAC;
+    else if (strsrch (progname,"UJC") != NULL)
+	refcat = UJC;
+    else
+	refcat = -1;
 
     /* Decode arguments */
-    for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
+    for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
 	char c;
+	if (*str == '@')
+	    str = str - 1;
 	while (c = *++str)
     	switch (c) {
 
     	case 'b':	/* initial coordinates on command line in B1950 */
-	    strcpy (coorsys, "FK4");
 	    str1 = *(av+1);
-	    if (*(str+1) || (str1[0] > 47 && str[0] < 58))
-		setfk4();
+	    if (*(str+1) || (str1[0] > 47 && str[0] < 58)) {
+		setsys(WCS_B1950);
+		strcpy (coorsys, "FK4");
+		}
 	    else if (ac < 3)
 		usage ();
 	    else {
-		setfk4 ();
+		setsys(WCS_B1950);
+		strcpy (coorsys, "FK4");
 		strcpy (rastr, *++av);
 		ac--;
 		strcpy (decstr, *++av);
@@ -116,11 +151,14 @@ char **av;
 
     	case 'j':	/* center coordinates on command line in J2000 */
 	    str1 = *(av+1);
-	    if (*(str+1) || (str1[0] > 47 && str[0] < 58))
+	    if (*(str+1) || (str1[0] > 47 && str[0] < 58)) {
 		strcpy (coorsys, "FK5");
+		setsys(WCS_J2000);
+		}
 	    else if (ac < 3)
 		usage ();
 	    else {
+		setsys(WCS_J2000);
 		strcpy (coorsys, "FK5");
 		strcpy (rastr, *++av);
 		ac--;
@@ -147,6 +185,8 @@ char **av;
 		maglim2 = atof (*++av);
 		ac--;
 		}
+	    else if (maglim1 == 0.0)
+		maglim1 = -2.0;
     	    break;
 
 	case 'n':	/* Number of brightest stars to read */
@@ -177,23 +217,55 @@ char **av;
     	    uplate = (int) atof (*++av);
     	    ac--;
     	    break;
+
     	case 'v':	/* more verbosity */
     	    verbose++;
     	    break;
+
     	case 'w':	/* write output file */
     	    wfile++;
     	    break;
+
+	case 'z':       /* Use AIPS classic WCS */
+	    setoldwcs (1);
+	    break;
+
+	case '@':       /* List of files to be read */
+	    readlist++;
+	    listfile = ++str;
+	    str = str + strlen (str) - 1;
+	    av++;
+	    ac--;
+
+
     	default:
     	    usage();
     	    break;
     	}
     }
+    /* if (!verbose && !wfile)
+	verbose = 1; */
 
-    /* now there are ac remaining file names starting at av[0] */
-    if (ac == 0)
+    /* Find number of images to search and leave listfile open for reading */
+    if (readlist) {
+	if ((flist = fopen (listfile, "r")) == NULL) {
+	    fprintf (stderr,"IMCAT: List file %s cannot be read\n",
+		     listfile);
+	    usage ();
+	    }
+	while (fgets (filename, 128, flist) != NULL) {
+	    lastchar = filename + strlen (filename) - 1;
+	    if (*lastchar < 32) *lastchar = 0;
+    	    if (debug)
+    		printf ("%s:\n", filename);
+	    ListCat (filename);
+	    }
+	fclose (flist);
+	}
+
+    /* If no arguments left, print usage */
+    if (ac == 0 || refcat < 0)
 	usage();
-    if (!verbose && !wfile)
-	verbose = 1;
 
     while (ac-- > 0) {
     	char *fn = *av++;
@@ -211,8 +283,26 @@ static void
 usage ()
 {
     fprintf (stderr,"\n");
-    fprintf (stderr,"List catalog stars in FITS and IRAF image files\n");
-    fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-g class] [-c catalog]\n");
+    if (refcat == GSC) {
+	fprintf (stderr,"List HST Guide Stars in FITS and IRAF image files\n");
+	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-g class]\n");
+	}
+    else if (refcat == UJC) {
+	fprintf (stderr,"List USNO J Catalog stars in FITS and IRAF image files\n");
+	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-u plate]\n");
+	}
+    else if (refcat == UAC) {
+	fprintf (stderr,"List USNO A 1.0 stars in FITS and IRAF image files\n");
+	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-u plate]\n");
+	}
+    else if (refcat == USAC) {
+	fprintf (stderr,"List USNO SA 1.0 stars in FITS and IRAF image files\n");
+	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-u plate]\n");
+	}
+    else {
+	fprintf (stderr,"List catalog stars in FITS and IRAF image files\n");
+	fprintf (stderr,"Usage: [-vwhst] [-m [mag1] mag2] [-c catalog]\n");
+	}
     fprintf (stderr,"       [-p scale] [-b ra dec] [-j ra dec] FITS or IRAF file(s)\n");
     fprintf (stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
     fprintf (stderr,"  -c: reference catalog (gsc, ujc, or tab table file\n");
@@ -227,6 +317,7 @@ usage ()
     fprintf (stderr,"  -u: USNO catalog single plate number to accept\n");
     fprintf (stderr,"  -w: Write tab table output file imagename.cat\n");
     fprintf (stderr,"  -v: verbose\n");
+    fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     exit (1);
 }
 
@@ -323,7 +414,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	mag2 = mag;
 	}
 
-    if (nstars > MAXREF)
+    if (nstars > 0)
 	ngmax = nstars;
     else
 	ngmax = MAXREF;
@@ -392,7 +483,7 @@ char	*filename;	/* FITS or IRAF file filename */
 
     for (i = 0; i < ng; i++ ) {
 	offscale = 0;
-	if (strcmp (wcs->sysout,"FK4") == 0 || strcmp (wcs->sysout,"fk4") == 0)
+	if (wcs->sysout== WCS_B1950)
 	    fk524e (&gra[i],&gdec[i], wcs->epoch);
 	wcs2pix (wcs, gra[i], gdec[i], &gx[i], &gy[i], &offscale);
 	}
@@ -418,7 +509,7 @@ char	*filename;	/* FITS or IRAF file filename */
 		printf ("%d %s between %.1f and %.1f",ng,title,maglim1,maglim2);
 	    else if (maglim2 > 0.0)
 		printf ("%d %s brighter than %.1f",ng, title, maglim2);
-	    else if (verbose)
+	    else
 		printf ("%d %s", ng, title);
 	    }
 	}
@@ -500,7 +591,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    printf ("RASORT	T\n");
 	}
 
-    if (strcmp (wcs->sysout,"FK4") == 0 || strcmp (wcs->sysout,"fk4") == 0)
+    if (wcs->sysout == WCS_B1950)
 	sprintf (headline, "EQUINOX	1950.0");
     else
 	sprintf (headline, "EQUINOX	2000.0");
@@ -619,4 +710,17 @@ char	*filename;	/* FITS or IRAF file filename */
  * Feb 21 1997  Get image header from GetFITSWCS()
  * Mar 14 1997	Add support for USNO SA-1.0 catalog
  * Apr 25 1997	Fix bug in uacread
+ * May 28 1997  Add option to read a list of filenames from a file
+ * Nov 17 1997	Initialize both magnitude limits
+ * Dec  8 1997	Set up program to be called by various names
+ * Dec 15 1997	Add capability of reading and writing IRAF 2.11 images
+ *
+ * Jan 27 1998  Implement Mark Calabretta's WCSLIB
+ * Jan 27 1998  Add -z for AIPS classic WCS projections
+ * Feb 18 1998	Version 2.0: Full Calabretta WCS implementation
+ * Mar 27 1998	Version 2.1: Add IRAF TNX projection
+ * Apr 14 1998	Version 2.2: Add polynomial plate fit
+ * Apr 24 1998	change coordinate setting to setsys() from setfk4()
+ * Apr 28 1998	Change coordinate system flags to WCS_*
+ * May 13 1998	If nstars is set use it as a limit no matter how small
  */

@@ -1,0 +1,71 @@
+WCSTools Programs
+
+addpix.c
+  Add a constant value(s) to specified pixel(s)
+delwcs.c
+  Delete the WCS keywords from an image. If both EPOCH and EQUINOX are
+  present, EQUINOX is also deleted. 
+edhead.c
+  Edit the header of a FITS file or the user parameters of an IRAF image file
+  using a the text editor specified by the EDITOR environment variable.
+gethead.c
+  Return values for keyword(s) specified after filename.
+getpix.c
+  Return value(s) of specified pixel(s)
+i2f.c
+  Read two-dimensional IRAF image file and write FITS image file
+imcat.c
+  List catalog sources which should be found in the area of the sky
+  covered by a specific image.
+imgsc.c
+  List Guide Star Catalog sources which should be found in the area of
+  the sky covered by a specific image using its WCS.
+imhead.c
+  Print FITS or IRAF header
+immatch.c
+  Match catalog and image stars using the WCS in the image file.
+imrot.c
+  Rotate and/or reflect FITS or IRAF image files
+imsize.c
+  Print center and size of image using WCS keywords in header
+imstar.c
+  Find and list the n brightest stars in an IRAF or FITS image, with their
+  sky coordinates if there is WCS information in the image header. 
+imuac.c
+  List USNO A Catalog sources which should be found in the area of
+  the sky covered by a specific image using its WCS.
+imujc.c
+  List USNO UJ Catalog sources which should be found in the area of
+  the sky covered by a specific image using its WCS.
+imtab.c
+  List sources from a tab-table catalog which should be found in the area of
+  the sky covered by a specific image using its WCS.
+imwcs.c
+  Automaticaly find stars in a FITS or IRAF image, match them to HST Guide
+  or UJC Stars, compute the relation between sky coordinates and image
+  coordinates, and write in in the image header. [after U of Iowa SETWCS]
+keyhead.c
+  Change keyword names in headers of FITS or IRAF images.
+sethead.c
+  Set header keyword values in FITS or IRAF images.
+setpix.c
+  Set specified pixel(s) to specified value(s)
+sgsc.c
+  Search the HST Guide Star Catalog given a region on the sky.
+suac.c
+  Search the USNO A Catalog given a region on the sky.
+sujc.c
+  Search the USNO UJ Catalog given a region on the sky.
+scat.c
+  Search the HST GSC, USNO UJC, or a local catalog given a region on the sky.
+sky2xy.c
+  Print image pixel coordinates for given sky coordinates on the command line
+  or in a list file. 
+skycoor.c
+  Convert between J2000, B1950, and Galactic coordinates from the command
+  line or a file.
+wcshead.c
+  Print basic world coordinate system information on one line per image
+xy2sky.c
+  Print sky coordinates for given image pixel coordinates on the command line
+  or in a list file.

@@ -1,5 +1,5 @@
 /* File skycoor.c
- * February 21, 1997
+ * May 13, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -12,12 +12,15 @@
 #include <unistd.h>
 #include <math.h>
 #include "libwcs/fitshead.h"
+#include "libwcs/wcs.h"
 
 static void usage();
 static void skycons();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static double epoch = 0.0;
+static double eqout = 0.0;
+static double eqin = 0.0;
 
 main (ac, av)
 int ac;
@@ -30,11 +33,19 @@ char **av;
     char line[80];
     char rastr0[32], decstr0[32];
     char rastr1[32], decstr1[32];
-    char sys0[16], sys1[16];
+    char csys[32];
+    int sys0;
+    int sys1 = -1;
     double ra, dec;
     int degout = 0;
     int ndec = 3;		/* Number of decimal places in RA seconds */
     int ndecset = 0;
+    char coorsys[4][12];
+    char coorout[16];
+    strcpy (coorsys[0], "J2000");
+    strcpy (coorsys[1], "B1950");
+    strcpy (coorsys[2], "galactic");
+    strcpy (coorsys[3], "ecliptic");
 
     listname = NULL;
 
@@ -53,7 +64,7 @@ char **av;
     	    break;
 
 	case 'b':
-	    strcpy (sys1,"B1950");
+	    sys1 = WCS_B1950;
     	    break;
 
 	case 'd':
@@ -63,20 +74,33 @@ char **av;
     	    break;
 
 	case 'e':
-	    if (ac < 2)
-		usage();
-	    epoch = atof (*++av);
-	    ac--;
+	    sys1 = WCS_ECLIPTIC;
+	    if (!ndecset)
+		ndec = 5;
     	    break;
 
 	case 'g':
-	    strcpy (sys1,"galactic");
+	    sys1 = WCS_GALACTIC;
 	    if (!ndecset)
 		ndec = 5;
     	    break;
 
 	case 'j':
-	    strcpy (sys1,"J2000");
+	    sys1 = WCS_J2000;
+    	    break;
+
+	case 'q':
+	    if (ac < 2)
+		usage();
+	    strcpy (coorout, *++av);
+	    ac--;
+    	    break;
+
+	case 'y':
+	    if (ac < 2)
+		usage();
+	    epoch = atof (*++av);
+	    ac--;
     	    break;
 
 	case 'n':
@@ -88,7 +112,8 @@ char **av;
     	    break;
 
     	default:
-    	    usage(progname);
+	    if (notnum (str))
+    		usage(progname);
     	    break;
     	}
     }
@@ -103,24 +128,31 @@ char **av;
 		*(ln-1) = *ln;
 	    if (fd = fopen (listname, "r")) {
 		while (fgets (line, 80, fd)) {
-		    sys0[0] = 0;
-		    sscanf (line,"%s %s %s", rastr0, decstr0, sys0);
-	    	    if (sys0[0] == 0) {
-			if (!strcmp (sys1,"J2000"))
-			    strcpy (sys0, "B1950");
+		   csys[0] = 0;
+		    sscanf (line,"%s %s %s", rastr0, decstr0, csys);
+	    	    if (csys[0] == 0) {
+			if (sys1 = WCS_J2000)
+			    sys0 = WCS_B1950;
 			else
-			    strcpy (sys0, "J2000");
+			    sys0 = WCS_J2000;
 			}
-		    if (sys0[0] == 0)
-			strcpy (sys0, "B1950");
+		    else
+			sys0 = wcscsys (csys);
+		    if (sys1 < 0) {
+			if (sys0 = WCS_J2000)
+			    sys1 = WCS_B1950;
+			else
+			    sys1 = WCS_J2000;
+			}
 		    skycons (rastr0, decstr0, sys0, rastr1, decstr1, sys1,ndec);
 		    if (verbose)
 			printf ("%s %s %s -> %s %s %s\n",
-			    rastr0, decstr0, sys0, rastr1, decstr1, sys1);
+			    rastr0, decstr0, coorsys[sys0],
+			    rastr1, decstr1, coorsys[sys1]);
 		    else
-			printf ("%s %s %s\n", rastr1, decstr1, sys1);
+			printf ("%s %s %s\n", rastr1, decstr1, coorsys[sys1]);
+		    }
 		}
-	    }
 	    else
 		fprintf (stderr, "Cannot read file %s\n", listname);
 	    av++;
@@ -135,13 +167,24 @@ char **av;
 	/* Convert coordinates system to that of image */
 	    if (ac > 0) {
 		ac--;
-		strcpy (sys0, *av);
+		strcpy (csys, *av);
 		av++;
+		sys0 = wcscsys (csys);
+		eqin = wcsceq (csys);
 		}
-	    else if (!strcmp (sys1,"J2000"))
-		strcpy (sys0, "B1950");
+	    else if (sys1 == WCS_J2000)
+		sys0 = WCS_B1950;
 	    else
-		strcpy (sys0, "J2000");
+		sys0 = WCS_J2000;
+	    if (sys1 < 0) {
+		if (sys0 == WCS_J2000)
+		    sys1 = WCS_B1950;
+		else
+		    sys1 = WCS_J2000;
+		}
+	    if (strlen (coorout) == 0)
+		strcpy (coorout, coorsys[sys1]);
+	    eqout = wcsceq (coorout);
 	    skycons (rastr0, decstr0, sys0, rastr1, decstr1, sys1, ndec);
 	    if (degout) {
 		ra = str2ra (rastr1);
@@ -151,9 +194,10 @@ char **av;
 		}
 	    if (verbose)
 		printf ("%s %s %s -> %s %s %s\n",
-		        rastr0, decstr0, sys0, rastr1, decstr1, sys1);
+		        rastr0, decstr0, coorsys[sys0],
+			rastr1, decstr1, coorout);
 	    else
-		printf ("%s %s %s\n", rastr1, decstr1, sys1);
+		printf ("%s %s %s\n", rastr1, decstr1, coorout);
 	    }
 	}
 
@@ -166,56 +210,38 @@ skycons (rastr0, decstr0, sys0, rastr1, decstr1, sys1, ndec)
 
 char *rastr0;	/* Input right ascension */
 char *decstr0;	/* Input declination */
-char *sys0;	/* Input coordinate system */
+int sys0;	/* Input coordinate system */
 char *rastr1;	/* Output right ascension (returned) */
 char *decstr1;	/* Output declination (returned) */
-char *sys1;	/* Output coordinate system */
+int sys1;	/* Output coordinate system */
 int ndec;	/* Number of decimal places in output RA seconds */
 {
     double ra, dec;
     ra = str2ra (rastr0);
     dec = str2dec (decstr0);
 
+    wcscon (sys0, sys1, eqin, eqout, &ra, &dec, epoch);
+
     /* Convert to B1950 FK4 */
-    if (sys1[0] == 'B' || sys1[0] == 'b' ||
-	!strcmp (sys1,"FK4") || !strcmp (sys1, "fk4")) {
-	if (sys0[0] == 'J' || sys0[0] == 'j' ||
-	    !strcmp (sys0,"FK5") || !strcmp (sys0, "fk5")) {
-	    if (epoch > 0)
-		fk524e (&ra, &dec, epoch);
-	    else
-		fk524 (&ra, &dec);
-	    }
-	else if (sys0[0] == 'G' || sys0[0] == 'g')
-	    gal2fk4 (&ra, &dec);
+    if (sys1 == WCS_B1950) {
 	ra2str (rastr1,ra, ndec);
 	dec2str (decstr1, dec, ndec-1);
 	}
 
     /* Convert to J2000 FK5 */
-    else if (sys1[0] == 'J' || sys1[0] == 'j' ||
-	!strcmp (sys1,"FK5") || !strcmp (sys1, "fk5")) {
-	if (sys0[0] == 'B' || sys0[0] == 'b' ||
-	    !strcmp (sys0,"FK4") || !strcmp (sys0, "fk4")) {
-	    if (epoch > 0)
-		fk425e (&ra, &dec, epoch);
-	    else
-		fk425 (&ra, &dec);
-	    }
-	else if (sys0[0] == 'G' || sys0[0] == 'g')
-	    gal2fk5 (&ra, &dec);
+    else if (sys1 == WCS_J2000) {
 	ra2str (rastr1,ra, ndec);
 	dec2str (decstr1, dec, ndec-1);
 	}
 
     /* Convert to galactic coordinates */
-    else if (sys1[0] == 'G' || sys1[0] == 'g') {
-	if (sys0[0] == 'B' || sys0[0] == 'b' ||
-	    !strcmp (sys0,"FK4") || !strcmp (sys0, "fk4"))
-	    fk42gal (&ra, &dec);
-	else if (sys0[0] == 'J' || sys0[0] == 'j' ||
-	    !strcmp (sys0,"FK5") || !strcmp (sys0, "fk5"))
-	    fk52gal (&ra, &dec);
+    else if (sys1 == WCS_GALACTIC) {
+	deg2str (rastr1, ra, ndec);
+	deg2str (decstr1, dec, ndec);
+	}
+
+    /* Convert to ecliptic coordinates */
+    else if (sys1 == WCS_ECLIPTIC) {
 	deg2str (rastr1, ra, ndec);
 	deg2str (decstr1, dec, ndec);
 	}
@@ -227,19 +253,26 @@ static void
 usage ()
 {
     fprintf (stderr,"Convert coordinates\n");
-    fprintf (stderr,"Usage [-bdgjv] [-e epoch] [-n ndec] ra1 dec1 sys1 ... ran decn sysn\n");
-    fprintf (stderr,"Usage: [-vbjg] [-e epoch] [-n ndec] @listfile\n");
+    fprintf (stderr,"Usage [-bdegjv] [-y epoch] [-q system] [-n ndec] ra1 dec1 sys1 ... ran decn sysn\n");
+    fprintf (stderr,"Usage: [-vbejg] [-y epoch] [-q system] [-n ndec] @listfile\n");
     fprintf (stderr,"  -b: B1950 (FK4) output\n");
     fprintf (stderr,"  -d: RA and Dec output in degrees\n");
-    fprintf (stderr,"  -e: Epoch of coordinates in years\n");
+    fprintf (stderr,"  -e: ecliptic longitude and latitude output\n");
     fprintf (stderr,"  -g: galactic longitude and latitude output\n");
     fprintf (stderr,"  -j: J2000 (FK5) output\n");
     fprintf (stderr,"  -n: number of decimal places in output RA seconds\n");
+    fprintf (stderr,"  -q: output system, including equinox\n");
     fprintf (stderr,"  -v: verbose\n");
+    fprintf (stderr,"  -y: Epoch of coordinates in years\n");
     exit (1);
 }
 /* Oct 30 1996	New program
  * Nov  1 1996	Use DEG2STR to get rounded degrees to output appropriately
  *
  * Feb 21 1997	Add option to input epoch of coordinates
+ *
+ * Apr 14 1998	Add ecliptic longitude, latitude output
+ * Apr 28 1998	Change coordinate system flags to WCS_*
+ * May  1 1998	Increase coordinate system name array from 8 to 12 characters
+ * May 13 1998	Add q command for output equinox; allow input equinox, too
  */

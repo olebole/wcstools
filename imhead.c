@@ -1,5 +1,5 @@
 /* File imhead.c
- * January 14, 1998
+ * March 16, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -149,8 +149,12 @@ char	*header;	/* Image FITS header */
 	while (line[i] <= 32 && i > 0)
 	    line[i--] = 0;
 	if (i > 0) {
-	    if (nblank > 0) {
+	    if (nblank > 1) {
 		printf ("COMMENT   %d blank lines\n",nblank);
+		nblank = 0;
+		}
+	    else if (nblank > 0) {
+		printf ("COMMENT   %d blank line\n",nblank);
 		nblank = 0;
 		}
 	    printf ("%s\n",line);
@@ -177,4 +181,5 @@ char	*header;	/* Image FITS header */
  * Jan  5 1998	Print file name if multiple headers printed
  * Jan  5 1998	Print error message if no END is found in header
  * Jan 14 1998	Really get IRAF 2.11 files right on any architecture
+ * Mar 16 1998	Print line instead of lines if there is only one blank line
  */

@@ -1,5 +1,5 @@
 /* File imrot.c
- * August 13, 1997
+ * February 24, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -147,22 +147,24 @@ char *name;
     int *irafheader;		/* IRAF image header */
     char newname[64];		/* Name for revised image */
     char *ext;
+    char *imext, *imext1;
     char *fname;
     int lext, lroot;
     int bitpix0;
+    char echar;
     char temp[8];
     char history[64];
     char pixname[128];
 
     /* If not overwriting input file, make up a name for the output file */
     if (!overwrite) {
-	ext = strrchr (name, '.');
 	fname = strrchr (name, '/');
 	if (fname)
 	    fname = fname + 1;
 	else
 	    fname = name;
-	if (ext) {
+	ext = strrchr (fname, '.');
+	if (ext != NULL) {
 	    lext = (fname + strlen (fname)) - ext;
 	    lroot = ext - fname;
 	    strncpy (newname, fname, lroot);
@@ -173,6 +175,23 @@ char *name;
 	    lroot = strlen (fname);
 	    strcpy (newname, fname);
 	    }
+	imext = strchr (fname, ',');
+	imext1 = NULL;
+	if (imext == NULL) {
+	    imext = strchr (fname, '[');
+	    if (imext != NULL) {
+		imext1 = strchr (fname, ']');
+		*imext1 = (char) 0;
+		}
+	    }
+	if (imext != NULL) {
+	    strcat (newname, "_");
+	    strcat (newname, imext+1);
+	    }
+	if (mirror)
+	    strcat (newname, "m");
+	else if (rotate != 0)
+	    strcat (newname, "r");
 	if (rotate < 10 && rotate > -1)
 	    sprintf (temp,"%1d",rotate);
 	else if (rotate < 100 && rotate > -10)
@@ -183,12 +202,20 @@ char *name;
 	    sprintf (temp,"%4d",rotate);
 	if (rotate != 0)
 	    strcat (newname, temp);
-	if (mirror)
-	    strcat (newname, "m");
 	if (fitsout)
 	    strcat (newname, ".fit");
-	else if (lext > 0)
-	    strcat (newname, ext);
+	else if (lext > 0) {
+	    if (imext != NULL) {
+		echar = *imext;
+		*imext = (char) 0;
+		strcat (newname, ext);
+		*imext = echar;
+		if (imext1 != NULL)
+		    *imext1 = ']';
+		}
+	    else
+		strcat (newname, ext);
+	    }
 	}
     else
 	strcpy (newname, name);
@@ -286,4 +313,7 @@ char *name;
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
  * Aug 13 1997	Fix bug when overwriting an image
+ * Dec 15 1997	Add capability of reading and writing IRAF 2.11 images
+ *
+ * Feb 24 1998	Add ext. to filename if writing part of multi-ext. file
  */

@@ -43,18 +43,11 @@ static double tabgetr8();
 static int tabgetc();
 void tabclose();
 
-static char newline = 10;
-static char tab = 9;
-static char *tabhead;
-static char *tabdata;
-static char *tabbuff;
-static int nentry = 0;
 static int entid, entra, entdec, entmag, entpeak;
 static int iline = 0;	/* Current line of data */
 
-#define MAXCOL	50
-static char *colname[MAXCOL];	/* Column headers */
-static int lcol[MAXCOL];
+static char *tabdata;
+
 
 /* TABREAD -- Read tab table stars in specified region */
 
@@ -188,7 +181,7 @@ int	nlog;
 	    else
 		dist = 0.0;
 
-	/* Check magnitude amd position limits */
+	/* Check magnitude and position limits */
 	    if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
 		((wrap && (ra <= ra1 || ra >= ra2)) ||
 		(!wrap && (ra >= ra1 && ra <= ra2))) &&
@@ -374,6 +367,13 @@ int	nlog;
     tabclose();
     return (nstars);
 }
+
+
+static char newline = 10;
+static char tab = 9;
+static char *tabhead;
+static char *tabbuff;
+static int nentry = 0;
 
 
 /* TABOPEN -- Open tab table catalog, returning number of entries */
@@ -698,6 +698,9 @@ char	*keyword;	/* sequence of entry on line */
 	return (0);
 }
 
+#define MAXCOL	50
+static char *colname[MAXCOL];	/* Column headers */
+static int lcol[MAXCOL];
 
 /* Make a table of column headings */
 int
@@ -723,7 +726,7 @@ char *headbuff;		/* Line containing column headings */
 	lcol[ientry] = (int) (endcol - colhead) + 1;
 	colname[ientry] = colhead;
 	ientry++;
-	colhead = strchr (colhead, tab) + 1;
+	colhead = nextab + 1;
 	if (colhead > headlast)
 	    break;
 	}

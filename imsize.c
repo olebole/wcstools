@@ -1,5 +1,5 @@
 /* File imsize.c
- * October 14, 1997
+ * April 27, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -16,9 +16,10 @@
 
 static void usage();
 static void PrintWCS ();
-extern void setfk4();
+extern void setsys();
 extern void setcenter();
 extern void setsecpix();
+extern void setoldwcs();	/* AIPS classic WCS flag */
 extern struct WorldCoor *GetFITSWCS();
 extern char *GetFITShead();
 
@@ -62,16 +63,18 @@ char **av;
 	    break;
 
 	case 'b':	/* ouput B1950 (B1950) coordinates */
-	    strcpy (coorsys, "B1950");
 	    ieq = 1950;
 	    equinox = 1950.0;
 	    str1 = *(av+1);
-	    if (*(str+1) || !strchr (str1,':'))
-		setfk4 ();
+	    if (*(str+1) || !strchr (str1,':')) {
+		setsys (WCS_B1950);
+		strcpy (coorsys, "B1950");
+		}
 	    else if (ac < 3)
 		usage ();
 	    else {
-		setfk4 ();
+		setsys (WCS_B1950);
+		strcpy (coorsys, "B1950");
 		strcpy (rastr, *++av);
 		ac--;
 		strcpy (decstr, *++av);
@@ -116,11 +119,14 @@ char **av;
 	    str1 = *(av+1);
 	    ieq = 2000;
 	    equinox = 2000.0;
-	    if (*(str+1) || !strchr (str1,':'))
+	    if (*(str+1) || !strchr (str1,':')) {
+		setsys (WCS_J2000);
 		strcpy (coorsys, "J2000");
+		}
 	    else if (ac < 3)
 		usage ();
 	    else {
+		setsys (WCS_J2000);
 		strcpy (coorsys, "J2000");
 		strcpy (rastr, *++av);
 		ac--;
@@ -139,6 +145,10 @@ char **av;
 
 	case 'r':
 	    printrange++;
+	    break;
+
+	case 'z':       /* Use AIPS classic WCS */
+	    setoldwcs (1);
 	    break;
 
 	case '@':	/* List of files to be read */
@@ -189,14 +199,15 @@ static void
 usage ()
 {
     fprintf (stderr,"Print size of image in WCS and pixels\n");
-    fprintf(stderr,"Usage: [-vcd] [-p scale] [-b ra dec] [-j ra dec] FITS or IRAF file(s)\n");
-    fprintf(stderr,"  -b: Output B1950 (B1950) coordinates (optional center)\n");
-    fprintf(stderr,"  -c: Format output without pixel dimensions (optional size change)\n");
-    fprintf(stderr,"  -d: Format output as input to DSS getimage (optional size change)\n");
-    fprintf(stderr,"  -e: Add epoch of image to output line\n");
-    fprintf(stderr,"  -j: Output J2000 (J2000) coordinates (optional center)\n");
-    fprintf(stderr,"  -p: Initial plate scale in arcsec per pixel (default 0)\n");
-    fprintf(stderr,"  -v: Verbose\n");
+    fprintf (stderr,"Usage: [-vcd] [-p scale] [-b ra dec] [-j ra dec] FITS or IRAF file(s)\n");
+    fprintf (stderr,"  -b: Output B1950 (B1950) coordinates (optional center)\n");
+    fprintf (stderr,"  -c: Format output without pixel dimensions (optional size change)\n");
+    fprintf (stderr,"  -d: Format output as input to DSS getimage (optional size change)\n");
+    fprintf (stderr,"  -e: Add epoch of image to output line\n");
+    fprintf (stderr,"  -j: Output J2000 (J2000) coordinates (optional center)\n");
+    fprintf (stderr,"  -p: Initial plate scale in arcsec per pixel (default 0)\n");
+    fprintf (stderr,"  -v: Verbose\n");
+    fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     exit (1);
 }
 
@@ -268,6 +279,10 @@ char *name;
     /* Read world coordinate system information from the image header */
     wcs = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
                 &wp, &hp, equinox);
+    if (nowcs (wcs)) {
+	printf ("%s: No WCS for file, cannot compute image size\n", name);
+	return;
+	}
 
     /* Image center */
     ra2str (rstr, cra, 3);
@@ -351,12 +366,14 @@ char *name;
 	ra2str (ramax, xmax, 3);
 	dec2str (decmin, ymin, 3);
 	dec2str (decmax, ymax, 3);
-	dx1 = wcsdist (xpos[0],ypos[0],xpos[2],ypos[2]);
+	/* dx1 = wcsdist (xpos[0],ypos[0],xpos[2],ypos[2]);
 	dx2 = wcsdist (xpos[1],ypos[1],xpos[3],ypos[3]);
 	dx = 0.5 * (dx1 + dx2) * 3600.0 / (double)wcs->nxpix;
 	dy1 = wcsdist (xpos[0],ypos[0],xpos[1],ypos[1]);
 	dy2 = wcsdist (xpos[2],ypos[2],xpos[3],ypos[3]);
-	dy = 0.5 * (dy1 + dy2) * 3600.0 / (double)wcs->nypix;
+	dy = 0.5 * (dy1 + dy2) * 3600.0 / (double)wcs->nypix; */
+	dx = wcs->xinc * 3600.0;
+	dy = wcs->yinc * 3600.0;
 	strcpy (blanks, "                                       ");
 	lfroot = strlen (fileroot);
 	blanks[lfroot-1] = 0;
@@ -389,8 +406,14 @@ char *name;
 	else if (dssc)
 	    printf (" 10.000\'x10.000\'");
 	if (!dssc) {
-	    if (secpix > 0.0)
-		printf (" %.3f \"/pix", secpix);
+	    dx = wcs->xinc * 3600.0;
+	    dy = wcs->yinc * 3600.0;
+	    if (secpix > 0.0) {
+		if (dx == dy)
+		    printf (" %.4f\"/pix", secpix);
+		else
+		    printf (" %.4f/%.4f\"/pix", dx, dy);
+		}
 	    printf ("  %dx%d pix", wp, hp);
 	    }
 	if (printepoch)
@@ -421,4 +444,12 @@ char *name;
  * May 28 1997  Add option to read a list of filenames from a file
  * Sep  8 1997	Add option to change size by fraction of size or constant
  * Oct 14 1997	Add option to print RA and Dec range
+ * Nov 13 1997	Print both plate scales if they are different
+ * Dec 15 1997	Read IRAF 2.11 image format; fix bug if no WCS
+ *
+ * Jan 27 1998  Implement Mark Calabretta's WCSLIB
+ * Jan 29 1998  Add -z for AIPS classic WCS projections
+ * Feb 18 1998	Version 2.0: Full Calabretta WCS
+ * Apr 24 1998	change coordinate setting to setsys() from setfk4()
+ * Apr 28 1998	Change coordinate system flags to WCS_*
  */

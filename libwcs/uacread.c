@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** November 6, 1997
+ *** April 10, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -132,6 +132,7 @@ int	nlog;		/* Logging interval */
     int znum, itot,iz, i;
     int itable, jtable,jstar;
     int nstar, nread;
+    int uara1, uara2, uadec1, uadec2;
     double ra,dec;
     double mag, magb;
     int istar, istar1, istar2, plate;
@@ -221,6 +222,11 @@ int	nlog;		/* Logging interval */
 	return (0);
 	}
 
+    uara1 = (int) (ra1 * 360000.0 + 0.5);
+    uara2 = (int) (ra2 * 360000.0 + 0.5);
+    uadec1 = (int) ((dec1 * 360000.0) + 32400000.5);
+    uadec2 = (int) ((dec2 * 360000.0) + 32400000.5);
+    
     udist = (double *) malloc (nstarmax * sizeof (double));
 
 /* Loop through region list */
@@ -265,89 +271,99 @@ int	nlog;		/* Logging interval */
 
 		/* Extract selected fields */
 		    else {
-			ra = uacra (star.rasec); /* Right ascension in degrees */
-			dec = uacdec (star.decsec); /* Declination in degrees */
-			magb = uacmagb (star.magetc); /* Blue magnitude */
-			mag = uacmagr (star.magetc); /* Red magnitude */
-			plate = uacplate (star.magetc);	/* Plate number */
-			if (drad > 0)
-			    dist = wcsdist (cra,cdec,ra,dec);
-			else
-			    dist = 0.0;
 
-		    /* Check magnitude amd position limits and plate number */
-			if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
-     			    (dec >= dec1 && dec <= dec2) &&
-			    ((wrap && (ra <= ra1 || ra >= ra2)) ||
-			    (!wrap && (ra >= ra1 && ra <= ra2))) &&
-			    (drad == 0.0 || dist < drad) &&
-			    (xplate == 0 || plate == xplate)) {
+		    /* Check position limits */
+     			if ((star.decsec >= uadec1 && star.decsec <= uadec2) &&
+			    ((wrap && (star.rasec<=uara1 || star.rasec>=ra2)) ||
+			     (!wrap && (star.rasec>=uara1 && star.rasec<=uara2))
+			    )){
 
-			/* Save star position and magnitude in table */
-			    if (nstar < nstarmax) {
-				unum[nstar] = (double) znum +
-					      (0.00000001 * (double)istar);
-				ura[nstar] = ra;
-				udec[nstar] = dec;
-				umag[nstar] = mag;
-				umagb[nstar] = magb;
-				uplate[nstar] = plate;
-				udist[nstar] = dist;
-				if (dist > maxdist) {
-				    maxdist = dist;
-				    farstar = nstar;
-				    }
-				if (mag > faintmag) {
-				    faintmag = mag;
-				    faintstar = nstar;
-				    }
+			/* Check magnitude, distance, and plate number */
+			    mag = uacmagr (star.magetc); /* Red magnitude */
+			    plate = uacplate (star.magetc);
+			    if (drad > 0) {
+				ra = uacra (star.rasec);
+				dec = uacdec (star.decsec);
+				dist = wcsdist (cra,cdec,ra,dec);
 				}
+			    else
+				dist = 0.0;
+			    if ((mag1==mag2 || (mag>=mag1 && mag<=mag2)) &&
+				(drad == 0.0 || dist < drad) &&
+				(xplate == 0 || plate == xplate)) {
 
-			/* If too many stars and radial search,
-			   replace furthest star */
-			    else if (drad > 0 && dist < maxdist) {
-				ura[farstar] = ra;
-				udec[farstar] = dec;
-				umag[farstar] = mag;
-				umagb[farstar] = magb;
-				uplate[farstar] = plate;
-				udist[farstar] = dist;
-				maxdist = 0.0;
+				if (drad <= 0) {
+				    ra = uacra (star.rasec);
+				    dec = uacdec (star.decsec);
+				    }
+				magb = uacmagb (star.magetc);
+
+			    /* Save star position and magnitude in table */
+				if (nstar < nstarmax) {
+				    unum[nstar] = (double) znum +
+						(0.00000001 * (double)istar);
+				    ura[nstar] = ra;
+				    udec[nstar] = dec;
+				    umag[nstar] = mag;
+				    umagb[nstar] = magb;
+				    uplate[nstar] = plate;
+				    udist[nstar] = dist;
+				    if (dist > maxdist) {
+					maxdist = dist;
+					farstar = nstar;
+					}
+				    if (mag > faintmag) {
+					faintmag = mag;
+					faintstar = nstar;
+					}
+				    }
+
+			    /* If too many stars and radial search,
+				replace furthest star */
+				else if (drad > 0 && dist < maxdist) {
+				    ura[farstar] = ra;
+				    udec[farstar] = dec;
+				    umag[farstar] = mag;
+				    umagb[farstar] = magb;
+				    uplate[farstar] = plate;
+				    udist[farstar] = dist;
+				    maxdist = 0.0;
 
 			    /* Find new farthest star */
-				for (i = 0; i < nstarmax; i++) {
-				    if (udist[i] > maxdist) {
-					maxdist = udist[i];
-					farstar = i;
+				    for (i = 0; i < nstarmax; i++) {
+					if (udist[i] > maxdist) {
+					    maxdist = udist[i];
+					    farstar = i;
+					    }
 					}
 				    }
-				}
 
-			/* If too many stars, replace faintest star */
-			    else if (mag < faintmag) {
-				ura[faintstar] = ra;
-				udec[faintstar] = dec;
-				umag[faintstar] = mag;
-				umagb[faintstar] = magb;
-				uplate[faintstar] = plate;
-				udist[faintstar] = dist;
-				faintmag = 0.0;
+			    /* If too many stars, replace faintest star */
+				else if (mag < faintmag) {
+				    ura[faintstar] = ra;
+				    udec[faintstar] = dec;
+				    umag[faintstar] = mag;
+				    umagb[faintstar] = magb;
+				    uplate[faintstar] = plate;
+				    udist[faintstar] = dist;
+				    faintmag = 0.0;
 
 			    /* Find new faintest star */
-				for (i = 0; i < nstarmax; i++) {
-				    if (umag[i] > faintmag) {
-					faintmag = umag[i];
-					faintstar = i;
+				    for (i = 0; i < nstarmax; i++) {
+					if (umag[i] > faintmag) {
+					    faintmag = umag[i];
+					    faintstar = i;
+					    }
 					}
 				    }
-				}
-			    nstar++;
-			    jstar++;
-			    if (nlog == 1)
-				fprintf (stderr,"UACREAD: %04d.%08d: %9.5f %9.5f %5.2f\n",
-				    znum,istar,ra,dec,mag);
+				nstar++;
+				jstar++;
+				if (nlog == 1)
+				    fprintf (stderr,"UACREAD: %04d.%08d: %9.5f %9.5f %5.2f\n",
+					znum,istar,ra,dec,mag);
 
-			/* End of accepted star processing */
+			    /* End of accepted star processing */
+				}
 			    }
 
 		    /* End of individual star processing */
@@ -898,4 +914,8 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Mar 20 1997	Clean up UACRNUM after lint
  * Apr 23 1997	Fix bug which rejected stars in HST Guide Star Catalog
  * Nov  6 1997	Don't print star overrun unless logging
+ *
+ * Feb 20 1998	Speed up processing by searching in arcseconds, not degrees
+ * Feb 20 1998	Speed up processing by searching RA and Dec, then rest
+ * Apr 20 1998	Fix bug so stars within radius can be found
  */

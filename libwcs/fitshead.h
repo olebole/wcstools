@@ -1,46 +1,34 @@
 /* fitshead.h  FITS and IRAF file access subroutines
- * October 10, 1997
+ * May 12, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
+/* Subroutines in hget.c */
+
 /* Extract a value from a FITS header for given keyword */
-extern int hgeti4 ();	/* int */
-extern int hgeti2 ();	/* short */
-extern int hgetr4 ();	/* float */
-extern int hgetr8 ();	/* double */
-extern int hgetra ();	/* Right ascension in degrees from string */
-extern int hgetdec ();	/* Declination in degrees from string */
-extern int hgetdate (); /* Date in years from FITS date string */
-extern int hgetl ();	/* T->1, F->0 from FITS logical entry */
-extern int hgets ();	/* Previously allocated string */
+extern int hgeti4();	/* int */
+extern int hgeti2();	/* short */
+extern int hgetr4();	/* float */
+extern int hgetr8();	/* double */
+extern int hgetra();	/* Right ascension in degrees from string */
+extern int hgetdec();	/* Declination in degrees from string */
+extern int hgetdate(); /* Date in years from FITS date string */
+extern int hgetl();	/* T->1, F->0 from FITS logical entry */
+extern int hgets();	/* Previously allocated string */
+extern int mgets();	/* Previously allocated string from multiline keyword */
+extern int mgetr8();	/* double from multiline keyword */
+extern int mgeti4();	/* int from multiline keyword */
 
-/* Implant a value into a FITS header for given keyword */
-extern void hputi4 ();	/* int */
-extern void hputi2 ();	/* short */
-extern void hputr4 ();	/* float */
-extern void hputr8 ();	/* double */
-extern void hputnr8 ();	/* double with specified number of decimal places */
-extern void hputra ();	/* Right ascension in degrees into hh:mm:ss.sss */
-extern void hputdec ();	/* Declination in degrees into dd:mm:ss.ss */
-extern void hputl ();	/* 0 -> F, else T FITS logical entry */
-extern void hputs ();	/* Character string */
-extern void hputc ();	/* Character string without quotes */
-
-extern int hdel ();	/* Delete a keyword line from a FITS header */
-extern int hchange ();	/* Change a keyword name in a FITS header */
-
-/* Subroutines for conversion between strings and RA and Dec */
-extern void ra2str ();
-extern void dec2str ();
-extern void deg2str ();
-extern double str2ra ();
-extern double str2dec ();
-
-/* Find given keyword entry in FITS header */
-extern char *ksearch ();
+/* Subroutines to convert strings to RA and Dec in degrees */
+extern double str2ra();
+extern double str2dec();
 
 /* Check to see whether a string is a number or not */
 extern int isnum ();
+extern int notnum ();
+
+/* Find given keyword entry in FITS header */
+extern char *ksearch();
 
 /* Search for substring s2 within string s1 */
 extern char *strsrch ();	/* s1 null-terminated */
@@ -48,6 +36,30 @@ extern char *strnsrch ();	/* s1 ls1 characters long */
 
 /* Set length of header which is not null-terminated */
 extern int hlength();
+
+/* Subroutines in hput.c */
+
+/* Implant a value into a FITS header for given keyword */
+extern void hputi4();	/* int */
+extern void hputi2();	/* short */
+extern void hputr4();	/* float */
+extern void hputr8();	/* double */
+extern void hputnr8();	/* double with specified number of decimal places */
+extern void hputra();	/* Right ascension in degrees into hh:mm:ss.sss */
+extern void hputdec();	/* Declination in degrees into dd:mm:ss.ss */
+extern void hputl();	/* 0 -> F, else T FITS logical entry */
+extern void hputs();	/* Character string */
+extern void hputc();	/* Character string without quotes */
+
+extern int hdel();	/* Delete a keyword line from a FITS header */
+extern int hchange();	/* Change a keyword name in a FITS header */
+
+/* Subroutines to convert RA and Dec in degrees to strings */
+extern void ra2str();
+extern void dec2str();
+
+extern void deg2str();
+extern void num2str();
 
 /* FITS table keyword structure */
 struct Keyword {
@@ -58,6 +70,8 @@ struct Keyword {
 };
 
 #define FITSBLOCK 2880
+
+/* Subroutines in fitsio.c */
 
 /* FITS file access subroutines */
 extern int fitsropen ();
@@ -76,7 +90,7 @@ extern float ftgetr4 ();
 extern double ftgetr8 ();
 extern int ftgetc ();
 
-/* IRAF file access subroutines */
+/* IRAF file access subroutines in imhio.c */
 extern int *irafrhead ();
 extern char *irafrimage ();
 extern int irafwhead ();
@@ -84,7 +98,7 @@ extern int irafwimage ();
 extern char *iraf2fits();
 extern int fits2iraf();
 
-/* Image pixel access subroutines */
+/* Image pixel access subroutines in imio.c */
 extern double getpix();
 extern void putpix();
 extern void movepix();
@@ -111,4 +125,8 @@ extern int imswapped();
  * Dec 12 1996	Add ISNUM
  *
  * Oct 10 1997	FITS file opening subroutines now return int instead of FILE *
+ *
+ * Mar 12 1998	Add NOTNUM
+ * Apr 30 1998	Clean up declarations and add more comments
+ * May 12 1998	Add MGETS, MGETR8, MGETI4 for IRAF multi-line keywords
  */

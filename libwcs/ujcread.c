@@ -200,7 +200,7 @@ int	verbose;	/* 1 for diagnostics */
 			else
 			    dist = 0.0;
 
-		    /* Check magnitude amd position limits */
+		    /* Check magnitude and position limits */
 			if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
      			    (dec >= dec1 && dec <= dec2) &&
 			    ((wrap && (ra <= ra1 || ra >= ra2)) ||

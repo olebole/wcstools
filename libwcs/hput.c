@@ -1,5 +1,5 @@
 /*** File libwcs/hput.c
- *** December 31, 1997
+ *** April 30, 1998
  *** By Doug Mink
 
  * Module:	hput.c (Put FITS Header parameter values)
@@ -15,13 +15,15 @@
  * Subroutine:	hputs  (hstring,keyword,cval) sets character string adding ''
  * Subroutine:	hputc  (hstring,keyword,cval) sets character string cval
  * Subroutine:	hdel   (hstring,keyword) deletes entry for keyword keyword
+ * Subroutine:	hadd   (hplace,keyword) adds entry for keyword at hplace
  * Subroutine:	hchange (hstring,keyword1,keyword2) changes keyword for entry
  * Subroutine:	hputcom (hstring,keyword,comment) sets comment for parameter keyword
  * Subroutine:	ra2str (out, ra, ndec) converts RA from degrees to string
  * Subroutine:	dec2str (out, dec, ndec) converts Dec from degrees to string
  * Subroutine:	deg2str (out, deg, ndec) converts degrees to string
+ * Subroutine:	num2str (out, num, field, ndec) converts number to string
 
- * Copyright:   1997 Smithsonian Astrophysical Observatory
+ * Copyright:   1998 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -145,13 +147,18 @@ double	dval;		/* double number */
 {
     char value[30];
     char format[8];
+    int i;
 
     /* Translate value from binary to ASCII */
-    if (ndec < 0)
-	sprintf (value,"%g",dval);
+    if (ndec < 0) {
+	sprintf (format, "%%.%dg", -ndec);
+	sprintf (value, format, dval);
+	for (i = 0; i < strlen (value); i++)
+	    if (value[i] == 'e') value[i] = 'E';
+	}
     else {
-	sprintf (format,"%%.%df",ndec);
-	sprintf (value,format,dval);
+	sprintf (format, "%%.%df", ndec);
+	sprintf (value, format, dval);
 	}
 
     /* Put value into header string */
@@ -276,116 +283,122 @@ char *keyword;
 char *value;	/* character string containing the value for variable
 		   keyword.  trailing and leading blanks are removed.  */
 {
-	char squot = 39;
-	char line[100];
-	char newcom[50];
-	char blank[80];
-	char *v, *vp, *v1, *v2, *q1, *q2, *c1, *ve;
-	int lkeyword, lcom, lval, lc, i;
+    char squot = 39;
+    char line[100];
+    char newcom[50];
+    char blank[80];
+    char *v, *vp, *v1, *v2, *q1, *q2, *c1, *ve;
+    int lkeyword, lcom, lval, lc, i;
+    char *blsearch();
 
-	for (i = 0; i < 80; i++)
-	    blank[i] = ' ';
+    for (i = 0; i < 80; i++)
+	blank[i] = ' ';
 
-/*  find length of keyword and value */
-	lkeyword = strlen (keyword);
-	lval = strlen (value);
+    /*  find length of keyword and value */
+    lkeyword = strlen (keyword);
+    lval = strlen (value);
 
-/*  If COMMENT or HISTORY, always add it just before the END */
-	if (lkeyword == 7 && (strncmp (keyword,"COMMENT",7) == 0 ||
-	    strncmp (keyword,"HISTORY",7) == 0)) {
+    /*  If COMMENT or HISTORY, always add it just before the END */
+    if (lkeyword == 7 && (strncmp (keyword,"COMMENT",7) == 0 ||
+	strncmp (keyword,"HISTORY",7) == 0)) {
 
 	/* Find end of header */
-	    v1 = ksearch (hstring,"END");
-	    v2 = v1 + 80;
+	v1 = ksearch (hstring,"END");
+	v2 = v1 + 80;
 
 	/* Move END down one line */
-	    strncpy (v2, v1, 80);
+	strncpy (v2, v1, 80);
 
 	/* Insert keyword */
-	    strncpy (v1,keyword,7);
+	strncpy (v1,keyword,7);
 
 	/* Pad with spaces */
-	    for (vp = v1+lkeyword; vp < v2; vp++)
-		*vp = ' ';
+	for (vp = v1+lkeyword; vp < v2; vp++)
+	    *vp = ' ';
 
 	/* Insert comment */
-	    strncpy (v1+9,value,lval);
-	    return;
-	    }
+	strncpy (v1+9,value,lval);
+	return;
+	}
 
-/* Otherwise search for keyword */
-	else
-	    v1 = ksearch (hstring,keyword);
+    /* Otherwise search for keyword */
+    else
+	v1 = ksearch (hstring,keyword);
 
-/*  Find end of header */
-	ve = ksearch (hstring,"END");
-
-/*  If parameter is not found, create a space for it */
+    /*  If parameter is not found, find a place to put it */
+    if (v1 == NULL) {
+	
+	/* First look for blank lines before END */
+        v1 = blsearch (hstring, "END");
+    
+	/*  Otherwise, create a space for it at the end of the header */
 	if (v1 == NULL) {
+	    ve = ksearch (hstring,"END");
 	    v1 = ve;
 	    v2 = v1 + 80;
 	    strncpy (v2, ve, 80);
-	    lcom = 0;
+	    }
+	lcom = 0;
+	newcom[0] = 0;
+	}
+
+    /*  Otherwise, extract the entry for this keyword from the header */
+    else {
+	strncpy (line, v1, 80);
+	line[80] = 0;
+	v2 = v1 + 80;
+
+	/*  check for quoted value */
+	q1 = strchr (line, squot);
+	if (q1 != NULL)
+	    q2 = strchr (q1+1,squot);
+	else
+	    q2 = line;
+
+	/*  extract comment and remove trailing spaces */
+
+	c1 = strchr (q2,'/');
+	if (c1 != NULL) {
+	    lcom = 80 - (c1 - line);
+	    strncpy (newcom, c1+1, lcom);
+	    vp = newcom + lcom - 1;
+	    while (vp-- > newcom && *vp == ' ')
+		*vp = 0;
+	    lcom = strlen (newcom);
+	    }
+	else {
 	    newcom[0] = 0;
+	    lcom = 0;
 	    }
+	}
 
-/*  Otherwise, extract the entry for this keyword from the header */
-	else {
-	    strncpy (line, v1, 80);
-	    line[80] = 0;
-	    v2 = v1 + 80;
-
-/*  check for quoted value */
-	    q1 = strchr (line, squot);
-	    if (q1 != NULL)
-		q2 = strchr (q1+1,squot);
-	    else
-		q2 = line;
-
-/*  extract comment and remove trailing spaces */
-
-	    c1 = strchr (q2,'/');
-	    if (c1 != NULL) {
-		lcom = 80 - (c1 - line);
-		strncpy (newcom, c1+1, lcom);
-		vp = newcom + lcom - 1;
-		while (vp-- > newcom && *vp == ' ')
-		    *vp = 0;
-		lcom = strlen (newcom);
-		}
-	    else {
-		newcom[0] = 0;
-		lcom = 0;
-		}
-	    }
-
-/* Fill new entry with spaces */
-	for (vp = v1; vp < v2; vp++)
-	    *vp = ' ';
-
-/*  Copy keyword to new entry */
-	strncpy (v1, keyword, lkeyword);
-
-/*  Add parameter value in the appropriate place */
-	vp = v1 + 8;
-	*vp = '=';
-	vp = v1 + 9;
+    /* Fill new entry with spaces */
+    for (vp = v1; vp < v2; vp++)
 	*vp = ' ';
-	vp = vp + 1;
-	if (*value == squot) {
-	    strncpy (vp, value, lval);
-	    if (lval+12 > 31)
-		lc = lval + 12;
-	    else
-		lc = 30;
-	    }
-	else {
-	    vp = v1 + 30 - lval;
-	    strncpy (vp, value, lval);
-	    lc = 30;
-	    }
 
-/* Add comment in the appropriate place */
+    /*  Copy keyword to new entry */
+    strncpy (v1, keyword, lkeyword);
+
+    /*  Add parameter value in the appropriate place */
+    vp = v1 + 8;
+    *vp = '=';
+    vp = v1 + 9;
+    *vp = ' ';
+    vp = vp + 1;
+    if (*value == squot) {
+	strncpy (vp, value, lval);
+	if (lval+12 > 31)
+	    lc = lval + 12;
+	else
+	    lc = 30;
+	}
+    else {
+	vp = v1 + 30 - lval;
+	strncpy (vp, value, lval);
+	lc = 30;
+	}
+
+    /* Add comment in the appropriate place */
 	if (lcom > 0) {
 	    if (lc+2+lcom > 80)
 		lcom = 78 - lc;
@@ -528,6 +541,52 @@ char *keyword;		/* Keyword of entry to be deleted */
 }
 
 
+/*  HADD - Add character string keyword = value to FITS header string
+ *	    returns 1 if entry added, else 0
+ *	    Call hputx() to put value into entry
+ */
+
+int
+hadd (hplace, keyword)
+
+char *hplace;		/* FITS header position for new keyword */
+char *keyword;		/* Keyword of entry to be deleted */
+{
+    char *v, *v1, *v2, *ve;
+    char *ksearch();
+    int i, lkey;
+
+    /*  Find end of header */
+    ve = ksearch (hplace,"END");
+
+    /*  If END is not found, return header unchanged */
+    if (ve == NULL) {
+	return (0);
+	}
+
+    v1 = hplace;
+
+    /* Shift rest of header down one line */
+    for (v = ve; v > v1; v = v - 80) {
+	v2 = v + 80;
+	strncpy (v2, v, 80);
+	}
+
+    /* Cover former first line with new keyword */
+    lkey = strlen (keyword);
+    strncpy (hplace, keyword, lkey);
+    if (lkey < 8) {
+	for (i = lkey; i < 8; i++)
+	    hplace[i] = ' ';
+	hplace[8] = '=';
+	}
+    for (i = 9; i < 80; i++)
+	hplace[i] = ' ';
+
+    return (1);
+}
+
+
 /*  HCHANGE - Changes keyword for entry from keyword1 to keyword2 in FITS
               header string
  *	      returns 1 if entry changed, else 0
@@ -567,7 +626,7 @@ char *keyword2;		/* New keyword name */
 }
 
 
-/* sprint the right ascension ra in sexagesimal format into out[] */
+/* Write the right ascension ra in sexagesimal format into string*/
 
 void
 ra2str (string, ra, ndec)
@@ -691,7 +750,7 @@ int	ndec;		/* Number of decimal places in seconds */
 }
 
 
-/* sprint the variable a in sexagesimal format into string[]. */
+/* Write the variable a in sexagesimal format into string */
 
 void
 dec2str (string, dec, ndec)
@@ -810,7 +869,7 @@ int	ndec;		/* Number of decimal places in arcseconds */
 }
 
 
-/* sprint the variable a in sexagesimal format into string[]. */
+/* Write the angle a in decimal format into string */
 
 void
 deg2str (string, deg, ndec)
@@ -845,6 +904,42 @@ int	ndec;		/* Number of decimal places in degree string */
     return;
 }
 
+
+/* Write the variable a in decimal format into field-character string  */
+
+void
+num2str (string, num, field, ndec)
+
+char	*string;	/* Character string (returned) */
+double	num;		/* Number */
+int	field;		/* Number of characters in output field (0=any) */
+int	ndec;		/* Number of decimal places in degree string */
+
+{
+    char numform[8];
+
+    if (field > 0) {
+	if (ndec > 0) {
+	    sprintf (numform, "%%%d.%df", field, ndec);
+	    sprintf (string, numform, num);
+	    }
+	else {
+	    sprintf (numform, "%%%dd", field);
+	    sprintf (string, numform, (int)num);
+	    }
+	}
+    else {
+	if (ndec > 0) {
+	    sprintf (numform, "%%.%df", ndec);
+	    sprintf (string, numform, num);
+	    }
+	else {
+	    sprintf (string, "%d", (int)num);
+	    }
+	}
+    return;
+}
+
 /* Dec 14 1995	Original subroutines
 
  * Feb  5 1996	Added HDEL to delete keyword entry from FITS header
@@ -864,4 +959,9 @@ int	ndec;		/* Number of decimal places in degree string */
  * Sep 30 1997	Fix error in HPUTCOM found by Allan Brighton
  * Dec 15 1997	Fix minor bugs after lint
  * Dec 31 1997	Always put two hour digits in RA2STR
+ *
+ * Feb 25 1998	Add HADD to insert keywords at specific locations
+ * Mar 27 1998	If n is negative, write g format in HPUTNR8()
+ * Apr 24 1998	Add NUM2STR() for easy output formatting
+ * Apr 30 1998	Use BLSEARCH() to overwrite blank lines before END
  */

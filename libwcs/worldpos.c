@@ -1,5 +1,5 @@
 /*  worldpos.c -- WCS Algorithms from Classic AIPS.
- *  February 6, 1998
+ *  April 28, 1998
  *  Copyright (C) 1994
  *  Associated Universities, Inc. Washington DC, USA.
  *  With code added by Doug Mink, Smithsonian Astrophysical Observatory
@@ -120,7 +120,7 @@ double	*ypos;		/* y (dec) coordinate (deg) */
   double xinc;		/* X coordinate increment (deg) */
   double yinc;		/* Y coordinate increment (deg) */
   double rot;		/* Optical axis rotation (deg)  (N through E) */
-  int itype = wcs->pcode;
+  int itype = wcs->prjcode;
 
 /* Set local projection parameters */
   xref = wcs->xref;
@@ -139,8 +139,8 @@ double	*ypos;		/* y (dec) coordinate (deg) */
 
 /* Scale and rotate using CD matrix */
   if (wcs->rotmat) {
-    tx = dx * wcs->cd11 + dy * wcs->cd12;
-    dy = dx * wcs->cd21 + dy * wcs->cd22;
+    tx = dx * wcs->cd[0] + dy * wcs->cd[1];
+    dy = dx * wcs->cd[2] + dy * wcs->cd[3];
     dx = tx;
     }
   else {
@@ -192,12 +192,12 @@ double	*ypos;		/* y (dec) coordinate (deg) */
 
 /* process by case  */
   switch (itype) {
-    case -1:   /* pixel */
-    case 0:   /* linear */
+    case WCS_PIX:   /* pixel */
+    case WCS_LPR:   /* linear */
       rat =  ra0 + l;
       dect = dec0 + m;
       break;
-    case 1:   /* -SIN sin*/ 
+    case WCS_SIN: /* -SIN sin*/ 
       if (sins>1.0) return 1;
       coss = sqrt (1.0 - sins);
       dt = sin0 * coss + cos0 * m;
@@ -207,14 +207,15 @@ double	*ypos;		/* y (dec) coordinate (deg) */
       if ((rat==0.0) && (l==0.0)) return 1;
       rat = atan2 (l, rat) + ra0;
       break;
-    case 2:   /* -TAN tan */
+    case WCS_TAN:   /* -TAN tan */
+    case WCS_TNX:   /* -TNX tan with polynomial correction */
       if (sins>1.0) return 1;
       dect = cos0 - m * sin0;
       if (dect==0.0) return 1;
       rat = ra0 + atan2 (l, dect);
       dect = atan (cos(rat-ra0) * (m * cos0 + sin0) / dect);
       break;
-    case 3:   /* -ARC Arc*/
+    case WCS_ARC:   /* -ARC Arc*/
       if (sins>=twopi*twopi/4.0) return 1;
       sins = sqrt(sins);
       coss = cos (sins);
@@ -229,7 +230,7 @@ double	*ypos;		/* y (dec) coordinate (deg) */
       if ((da==0.0) && (dt==0.0)) return 1;
       rat = ra0 + atan2 (dt, da);
       break;
-    case 4:   /* -NCP North celestial pole*/
+    case WCS_NCP:   /* -NCP North celestial pole*/
       dect = cos0 - m * sin0;
       if (dect==0.0) return 1;
       rat = ra0 + atan2 (l, dect);
@@ -240,7 +241,7 @@ double	*ypos;		/* y (dec) coordinate (deg) */
       dect = acos (dect);
       if (dec0<0.0) dect = -dect;
       break;
-    case 5:   /* -GLS global sinusoid */
+    case WCS_GLS:   /* -GLS global sinusoid */
       dect = dec0 + m;
       if (fabs(dect)>twopi/4.0) return 1;
       coss = cos (dect);
@@ -248,7 +249,7 @@ double	*ypos;		/* y (dec) coordinate (deg) */
       rat = ra0;
       if (coss>deps) rat = rat + l / coss;
       break;
-    case 6:   /* -MER mercator*/
+    case WCS_MER:   /* -MER mercator*/
       dt = yinc * cosr + xinc * sinr;
       if (dt==0.0) dt = 1.0;
       dy = degrad (yref/2.0 + 45.0);
@@ -266,7 +267,7 @@ double	*ypos;		/* y (dec) coordinate (deg) */
       dt = exp (dt);
       dect = 2.0 * atan (dt) - twopi / 4.0;
       break;
-    case 7:   /* -AIT Aitoff*/
+    case WCS_AIT:   /* -AIT Aitoff*/
       dt = yinc*cosr + xinc*sinr;
       if (dt==0.0) dt = 1.0;
       dt = degrad (dt);
@@ -298,7 +299,7 @@ double	*ypos;		/* y (dec) coordinate (deg) */
       rat = ra0 + 2.0 * da;
       dect = dd;
       break;
-    case 8:   /* -STG Sterographic*/
+    case WCS_STG:   /* -STG Sterographic*/
       dz = (4.0 - sins) / (4.0 + sins);
       if (fabs(dz)>1.0) return 1;
       dect = dz * sin0 + m * cos0 * (1.0+dz) / 2.0;
@@ -363,7 +364,6 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
   double xinc;		/* x coordinate increment (deg) */
   double yinc;		/* y coordinate increment (deg) */
   double rot;		/* Optical axis rotation (deg)  (from N through E) */
-  double mrot;		/* Chip rotation (deg)  (from N through E) */
   int itype;
 
 /* Set local projection parameters */
@@ -378,10 +378,10 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
   sinr = sin (rot);
 
 /* Projection type */
-  itype = wcs->pcode;
+  itype = wcs->prjcode;
 
 /* Nonlinear position */
-  if (itype > 0 && itype < 9) {
+  if (itype > 0) {
     if (wcs->coorflip) {
       dec0 = degrad (xref);
       ra0 = degrad (yref);
@@ -393,12 +393,12 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
       dt = xpos - xref;
       }
 
-    /* 0h wrap-around tests added by D.Wells 10/12/94: */
-    if (itype >= 0) {
-      if (dt > 180.0) xpos -= 360.0;
-      if (dt < -180.0) xpos += 360.0;
-      /* NOTE: changing input argument xpos is OK (call-by-value in C!) */
-      }
+  /* 0h wrap-around tests added by D.Wells 10/12/94: */
+  if (itype >= 0) {
+    if (dt > 180.0) xpos -= 360.0;
+    if (dt < -180.0) xpos += 360.0;
+    /* NOTE: changing input argument xpos is OK (call-by-value in C!) */
+    }
 
     ra = degrad (xpos);
     dec = degrad (ypos);
@@ -412,17 +412,17 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 
 /* Process by case  */
   switch (itype) {
-    case 1:   /* -SIN sin*/ 
+    case WCS_SIN:   /* -SIN sin*/ 
 	 if (sint<0.0) return 1;
 	 m = sins * cos(dec0) - coss * sin(dec0) * cos(ra-ra0);
       break;
-    case 2:   /* -TAN tan */
+    case WCS_TAN:   /* -TAN tan */
 	 if (sint<=0.0) return 1;
  	 m = sins * sin(dec0) + coss * cos(dec0) * cos(ra-ra0);
 	 l = l / m;
 	 m = (sins * cos(dec0) - coss * sin(dec0) * cos(ra-ra0)) / m;
       break;
-    case 3:   /* -ARC Arc*/
+    case WCS_ARC:   /* -ARC Arc*/
 	 m = sins * sin(dec0) + coss * cos(dec0) * cos(ra-ra0);
 	 if (m<-1.0) m = -1.0;
 	 if (m>1.0) m = 1.0;
@@ -434,20 +434,20 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 	 l = l * m;
 	 m = (sins * cos(dec0) - coss * sin(dec0) * cos(ra-ra0)) * m;
       break;
-    case 4:   /* -NCP North celestial pole*/
+    case WCS_NCP:   /* -NCP North celestial pole*/
 	 if (dec0==0.0) 
 	     return 1;  /* can't stand the equator */
 	 else
 	   m = (cos(dec0) - coss * cos(ra-ra0)) / sin(dec0);
       break;
-    case 5:   /* -GLS global sinusoid */
+    case WCS_GLS:   /* -GLS global sinusoid */
 	 dt = ra - ra0;
 	 if (fabs(dec)>twopi/4.0) return 1;
 	 if (fabs(dec0)>twopi/4.0) return 1;
 	 m = dec - dec0;
 	 l = dt * coss;
       break;
-    case 6:   /* -MER mercator*/
+    case WCS_MER:   /* -MER mercator*/
 	 dt = yinc * cosr + xinc * sinr;
 	 if (dt==0.0) dt = 1.0;
 	 dy = degrad (yref/2.0 + 45.0);
@@ -465,7 +465,7 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 	 if (dt<deps) return 2;
 	 m = geo2 * log (dt) - geo3;
 	 break;
-    case 7:   /* -AIT Aitoff*/
+    case WCS_AIT:   /* -AIT Aitoff*/
 	 l = 0.0;
 	 m = 0.0;
 	 da = (ra - ra0) / 2.0;
@@ -490,7 +490,7 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 	 l = 2.0 * geo1 * cos(dec) * sin(da) / dt;
 	 m = geo2 * sin(dec) / dt - geo3;
       break;
-    case 8:   /* -STG Sterographic*/
+    case WCS_STG:   /* -STG Sterographic*/
 	 da = ra - ra0;
 	 if (fabs(dec)>twopi/4.0) return 1;
 	 dd = 1.0 + sins * sin(dec0) + coss * cos(dec0) * cos(da);
@@ -502,7 +502,7 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
   }  /* end of itype switch */
 
 /* Back to degrees  */
-  if (itype > 0 && itype < 9) {
+  if (itype > 0) {
     dx = raddeg (l);
     dy = raddeg (m);
     }
@@ -521,8 +521,8 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 
 /* Scale and rotate using CD matrix */
   if (wcs->rotmat) {
-    tx = dx * wcs->dc11 + dy * wcs->dc12;
-    dy = dx * wcs->dc21 + dy * wcs->dc22;
+    tx = dx * wcs->dc[0] + dy * wcs->dc[1];
+    dy = dx * wcs->dc[2] + dy * wcs->dc[3];
     dx = tx;
     }
   else {
@@ -548,14 +548,20 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
   return 0;
 }  /* end worldpix */
 
+ 
 /* Oct 26 1995	Fix bug which interchanged RA and Dec twice when coorflip
+ *
  * Oct 31 1996	Fix CD matrix use in WORLDPIX
  * Nov  4 1996	Eliminate extra code for linear projection in WORLDPIX
  * Nov  5 1996	Add coordinate flip in WORLDPIX
  *
  * May 22 1997	Avoid angle wraparound when CTYPE is pixel
  * Jun  4 1997	Return without angle conversion from worldpos if type is PIXEL
+ *
  * Oct 20 1997	Add chip rotation; compute rotation angle trig functions
- * Feb  6 1998	Move coordinate exchange to correct place
- * Feb  6 1998	Drop chip rotation; more CD->rotation to WCSINIT()
+ * Jan 23 1998	Change PCODE to PRJCODE
+ * Jan 26 1998	Remove chip rotation code
+ * Feb  5 1998	Make cd[] and dc[] vectors; use xinc, yinc, rot from init
+ * Feb 23 1998	Add NOAO TNX projection as TAN
+ * Apr 28 1998  Change projection flags to WCS_*
  */

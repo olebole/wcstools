@@ -1,5 +1,5 @@
 /* File libwcs/sortstar.c
- * January 10, 1997
+ * March 2, 1998
  * By Doug Mink
  */
 
@@ -97,31 +97,44 @@ int	ns;
 
 {
     StarInfo *stars;
-    int i;
+    int i, hasnum, hasmagr;
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
 
+    if (sn == 0)
+	hasnum = 0;
+    else
+	hasnum = 1;
+    if (sr == 0)
+	hasmagr = 0;
+    else
+	hasmagr = 1;
+
     for (i = 0; i < ns; i++) {
-	stars[i].n = sn[i];
+	if (hasnum)
+	    stars[i].n = sn[i];
 	stars[i].ra = sra[i];
 	stars[i].dec = sdec[i];
 	stars[i].x = sx[i];
 	stars[i].y = sy[i];
 	stars[i].b = sm[i];
-	stars[i].r = sr[i];
+	if (hasmagr)
+	    stars[i].r = sr[i];
 	stars[i].c = sc[i];
 	}
 
     qsort ((char *)stars, ns, sizeof(StarInfo), StarMagSort);
 
     for (i = 0; i < ns; i++) {
-	sn[i] = stars[i].n;
+	if (hasnum)
+	    sn[i] = stars[i].n;
 	sra[i] = stars[i].ra;
 	sdec[i] = stars[i].dec;
 	sx[i] = stars[i].x;
 	sy[i] = stars[i].y;
 	sm[i] = stars[i].b;
-	sr[i] = stars[i].r;
+	if (hasmagr)
+	    sr[i] = stars[i].r;
 	sc[i] = stars[i].c;
 	}
 
@@ -167,31 +180,44 @@ int	ns;
 
 {
     StarInfo *stars;
-    int i;
+    int i, hasnum, hasmag1;
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
 
+    if (sn == 0)
+	hasnum = 0;
+    else
+	hasnum = 1;
+    if (sm1 == 0)
+	hasmag1 = 0;
+    else
+	hasmag1 = 1;
+
     for (i = 0; i < ns; i++) {
-	stars[i].n = sn[i];
+	if (hasnum)
+	    stars[i].n = sn[i];
 	stars[i].ra = sra[i];
 	stars[i].dec = sdec[i];
 	stars[i].x = sx[i];
 	stars[i].y = sy[i];
 	stars[i].b = sm[i];
-	stars[i].r = sm1[i];
+	if (hasmag1)
+	    stars[i].r = sm1[i];
 	stars[i].c = sc[i];
 	}
 
     qsort ((char *)stars, ns, sizeof(StarInfo), StarRASort);
 
     for (i = 0; i < ns; i++) {
-	sn[i] = stars[i].n;
+	if (hasnum)
+	    sn[i] = stars[i].n;
 	sra[i] = stars[i].ra;
 	sdec[i] = stars[i].dec;
 	sx[i] = stars[i].x;
 	sy[i] = stars[i].y;
 	sm[i] = stars[i].b;
-	sm1[i] = stars[i].r;
+	if (hasmag1)
+	    sm1[i] = stars[i].r;
 	sc[i] = stars[i].c;
 	}
 
@@ -237,31 +263,43 @@ int	ns;
 
 {
     StarInfo *stars;
-    int i;
+    int i, hasnum, hasmag1;
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
+    if (sn == 0)
+	hasnum = 0;
+    else
+	hasnum = 1;
+    if (sm1 == 0)
+	hasmag1 = 0;
+    else
+	hasmag1 = 1;
 
     for (i = 0; i < ns; i++) {
-	stars[i].n = sn[i];
+	if (hasnum)
+	    stars[i].n = sn[i];
 	stars[i].ra = sra[i];
 	stars[i].dec = sdec[i];
 	stars[i].x = sx[i];
 	stars[i].y = sy[i];
 	stars[i].b = sm[i];
-	stars[i].r = sm1[i];
+	if (hasmag1)
+	    stars[i].r = sm1[i];
 	stars[i].c = sc[i];
 	}
 
     qsort ((char *)stars, ns, sizeof(StarInfo), StarXSort);
 
     for (i = 0; i < ns; i++) {
-	sn[i] = stars[i].n;
+	if (hasnum)
+	    sn[i] = stars[i].n;
 	sra[i] = stars[i].ra;
 	sdec[i] = stars[i].dec;
 	sx[i] = stars[i].x;
 	sy[i] = stars[i].y;
 	sm[i] = stars[i].b;
-	sm1[i] = stars[i].r;
+	if (hasmag1)
+	    sm1[i] = stars[i].r;
 	sc[i] = stars[i].c;
 	}
 
@@ -293,4 +331,6 @@ void *ssp1, *ssp2;
  * Oct 18 1996	Add sorting by X value
  * Nov 13 1996	Add second magnitude
  * Jan 10 1997	Fix bug in RASortStars to return correct red magnitude
+ *
+ * Mar  2 1998	Make number and second magnitude optional
  */

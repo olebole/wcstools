@@ -1,10 +1,21 @@
 /* File slasubs.c
  *** Starlink subroutines by Patrick Wallace used by wcscon.c subroutines
- *** November 4, 1996
+ *** April 13, 1998
  */
 
 #include <math.h>
 #include <string.h>
+
+/*  slaDcs2c (a, b, v): Spherical coordinates to direction cosines.
+ *  slaDcc2s (v, a, b):  Direction cosines to spherical coordinates.
+ *  slaDmxv (dm, va, vb): vector vb = matrix dm * vector va
+ *  slaImxv (rm, va, vb): vector vb = (inverse of matrix rm) * vector va
+ *  slaDranrm (angle):  Normalize angle into range 0-2 pi.
+ *  slaDrange (angle):  Normalize angle into range +/- pi.
+ *  slaDeuler (order, phi, theta, psi, rmat)
+ *	      Form a rotation matrix from the Euler angles - three successive
+ *	      rotations about specified Cartesian axes.
+ */
 
 void
 slaDcs2c (a, b, v)
@@ -31,40 +42,6 @@ double *v;	/* x,y,z unit vector (returned) */
     v[0] = cos ( a ) * cosb;
     v[1] = sin ( a ) * cosb;
     v[2] = sin ( b );
-}
-
-
-void
-slaDmxv (dm, va, vb)
-
-double (*dm)[3];	/* 3x3 Matrix */
-double *va;		/* Vector */
-double *vb;		/* Result vector (returned) */
-
-/*
-**  slaDmxv:
-**  Performs the 3-d forward unitary transformation:
-**     vector vb = matrix dm * vector va
-**
-**  P.T.Wallace   Starlink   31 October 1993
-*/
-{
-    int i, j;
-    double w, vw[3];
- 
-    /* Matrix dm * vector va -> vector vw */
-    for ( j = 0; j < 3; j++ ) {
-	w = 0.0;
-	for ( i = 0; i < 3; i++ ) {
-	    w += dm[j][i] * va[i];
-	    }
-	vw[j] = w;
-	}
- 
-    /* Vector vw -> vector vb */
-    for ( j = 0; j < 3; j++ ) {
-	vb[j] = vw[j];
-	}
 }
 
 
@@ -105,9 +82,94 @@ double *b;	/* Declination in radians */
     *b = ( z != 0.0 ) ? atan2 ( z, r ) : 0.0;
 }
 
+
+void
+slaDmxv (dm, va, vb)
+
+double (*dm)[3];	/* 3x3 Matrix */
+double *va;		/* Vector */
+double *vb;		/* Result vector (returned) */
+
+/*
+**  slaDmxv:
+**  Performs the 3-d forward unitary transformation:
+**     vector vb = matrix dm * vector va
+**
+**  P.T.Wallace   Starlink   31 October 1993
+*/
+{
+    int i, j;
+    double w, vw[3];
+ 
+    /* Matrix dm * vector va -> vector vw */
+    for ( j = 0; j < 3; j++ ) {
+	w = 0.0;
+	for ( i = 0; i < 3; i++ ) {
+	    w += dm[j][i] * va[i];
+	    }
+	vw[j] = w;
+	}
+ 
+    /* Vector vw -> vector vb */
+    for ( j = 0; j < 3; j++ ) {
+	vb[j] = vw[j];
+	}
+}
+
+
+void slaDimxv (dm, va, vb)
+     double (*dm)[3];
+     double *va;
+     double *vb;
+/*
+**  - - - - - - - - -
+**   s l a D i m x v
+**  - - - - - - - - -
+**
+**  Performs the 3-d backward unitary transformation:
+**
+**     vector vb = (inverse of matrix dm) * vector va
+**
+**  (double precision)
+**
+**  (n.b.  The matrix must be unitary, as this routine assumes that
+**   the inverse and transpose are identical)
+**
+**
+**  Given:
+**     dm       double[3][3]   matrix
+**     va       double[3]      vector
+**
+**  Returned:
+**     vb       double[3]      result vector
+**
+**  P.T.Wallace   Starlink   31 October 1993
+*/
+{
+  long i, j;
+  double w, vw[3];
+ 
+/* Inverse of matrix dm * vector va -> vector vw */
+   for ( j = 0; j < 3; j++ ) {
+      w = 0.0;
+      for ( i = 0; i < 3; i++ ) {
+         w += dm[i][j] * va[i];
+      }
+      vw[j] = w;
+   }
+ 
+/* Vector vw -> vector vb */
+   for ( j = 0; j < 3; j++ ) {
+     vb[j] = vw[j];
+   }
+}
+
  
 /* 2pi */
 #define D2PI 6.2831853071795864769252867665590057683943387987502
+
+/* pi */
+#define DPI 3.1415926535897932384626433832795028841971693993751
 
 double slaDranrm (angle)
 
@@ -126,6 +188,38 @@ double angle;	/* angle in radians */
  
     w = fmod ( angle, D2PI );
     return ( w >= 0.0 ) ? w : w + D2PI;
+}
+
+#ifndef dsign
+#define dsign(A,B) ((B)<0.0?-(A):(A))
+#endif
+
+double
+slaDrange (angle)
+     double angle;
+/*
+**  - - - - - - - - - -
+**   s l a D r a n g e
+**  - - - - - - - - - -
+**
+**  Normalize angle into range +/- pi.
+**
+**  (double precision)
+**
+**  Given:
+**     angle     double      the angle in radians
+**
+**  The result is angle expressed in the +/- pi (double precision).
+**
+**  Defined in slamac.h:  DPI, D2PI
+**
+**  P.T.Wallace   Starlink   31 October 1993
+*/
+{
+  double w;
+ 
+  w = fmod ( angle, D2PI );
+  return ( fabs ( w ) < DPI ) ? w : w - dsign ( D2PI, angle );
 }
 
 
@@ -265,4 +359,6 @@ double (*rmat)[3];	/* 3x3 Rotation matrix (returned) */
 }
 /*
  * Nov  4 1996	New file
+ *
+ * Apr 13 1998	Add list of subroutines to start of file
  */

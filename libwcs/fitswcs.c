@@ -1,5 +1,5 @@
 /* File libwcs/fitswcs.c
- * January 7, 1998
+ * April 17, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
@@ -10,6 +10,10 @@
  *		Open a FITS or IRAF image file and returns a FITS header
  * Subroutine:  DelWCSFITS (filename, verbose)
  *		Delete all standard WCS keywords from a FITS header
+ * Subroutine:	PrintWCS (header, verbose)
+ *		Check the WCS fields and print any that are found if verbose.
+ * Subroutine:	SetFITSWCS (header, wcs)
+ *		Set FITS WCS keywords from WCS data structure
  */
 
 #include <stdlib.h>
@@ -90,13 +94,27 @@ char *header;
 int verbose;
 
 {
-    static char *flds[] = {
-	"CTYPE1", "CRVAL1", "CDELT1", "CRPIX1", "CROTA1",
-	"CTYPE2", "CRVAL2", "CDELT2", "CRPIX2", "CROTA2", "IMWCS" };
+    static char flds[15][8];
     int i;
     int n;
     double eq;
     char rastr[16],decstr[16];
+
+    strcpy (flds[0], "CTYPE1");
+    strcpy (flds[1], "CTYPE2");
+    strcpy (flds[2], "CRVAL1");
+    strcpy (flds[3], "CRVAL2");
+    strcpy (flds[4], "CDELT1");
+    strcpy (flds[5], "CDELT2");
+    strcpy (flds[6], "CRPIX1");
+    strcpy (flds[7], "CRPIX2");
+    strcpy (flds[8], "CROTA1");
+    strcpy (flds[9], "CROTA2");
+    strcpy (flds[10], "IMWCS");
+    strcpy (flds[11], "CD1_1");
+    strcpy (flds[12], "CD1_2");
+    strcpy (flds[13], "CD2_1");
+    strcpy (flds[14], "CD2_2");
 
     n = 0;
 
@@ -145,6 +163,20 @@ int verbose;
 	    printf ("DelWCS: EPOCH, but not EQUINOX found\n");
 	}
 
+    if (ksearch (header, "CO1_1")) {
+	int i;
+	char keyword[16];
+
+	for (i = 1; i < 13; i++) {
+	    sprintf (keyword,"CO1_%d", i);
+	    hdel (header, keyword);
+	    }
+	for (i = 1; i < 13; i++) {
+	    sprintf (keyword,"CO2_%d", i);
+	    hdel (header, keyword);
+	    }
+	}
+
     return (n);
 }
 
@@ -160,10 +192,15 @@ int	verbose;	/* 1 to print WCS header keyword values */
 {
     char str[80];
     double v;
-    int n;
+    int n, i, nc;
+    char keyword[16];
 
     n = 0;
 
+    if (hgets (header,"IMWCS",80,str)) {
+	if (verbose) printf ("IMWCS = %s\n", str);
+	n++;
+	}
     if (hgets (header,"CTYPE1",16,str)) {
 	if (verbose) printf ("CTYPE1 = %s\n", str);
 	n++;
@@ -172,16 +209,8 @@ int	verbose;	/* 1 to print WCS header keyword values */
 	if (verbose) printf ("CRVAL1 = %.8f\n", v);
 	n++;
 	}
-    if (hgetr8 (header, "CDELT1", &v)) {
-	if (verbose) printf ("CDELT1 = %.8f\n", v);
-	n++;
-	}
     if (hgetr8 (header, "CRPIX1", &v)) {
 	if (verbose) printf ("CRPIX1 = %.8f\n", v);
-	n++;
-	}
-    if (hgetr8 (header, "CROTA1", &v)) {
-	if (verbose) printf ("CROTA1 = %.3f\n", v);
 	n++;
 	}
 
@@ -193,24 +222,167 @@ int	verbose;	/* 1 to print WCS header keyword values */
 	if (verbose) printf ("CRVAL2 = %.8f\n", v);
 	n++;
 	}
-    if (hgetr8 (header, "CDELT2", &v)) {
-	if (verbose) printf ("CDELT2 = %.8f\n", v);
-	n++;
-	}
     if (hgetr8 (header, "CRPIX2", &v)) {
 	if (verbose) printf ("CRPIX2 = %.8f\n", v);
 	n++;
 	}
-    if (hgetr8 (header, "CROTA2", &v)) {
-	if (verbose) printf ("CROTA2 = %.3f\n", v);
-	n++;
+
+    /* Polynomial plate fit */
+    if (hgetr8 (header, "CO1_1", &v)) {
+	if (verbose) printf ("CO1_1 = %.8g\n", v);
+	for (i = 1; i < 20; i++) {
+	    sprintf (keyword,"CO1_%d",i+1);
+	    if (hgetr8 (header, keyword, &v)) {
+		if (verbose) printf ("%s = %.8g\n", keyword, v);
+		n++;
+		}
+	    }
 	}
-    if (hgets (header,"IMWCS",80,str)) {
-	if (verbose) printf ("IMWCS = %s\n", str);
-	n++;
+    if (hgetr8 (header, "CO2_1", &v)) {
+	if (verbose) printf ("CO2_1 = %.8g\n", v);
+	for (i = 1; i < 20; i++) {
+	    sprintf (keyword,"CO2_%d",i+1);
+	    if (hgetr8 (header, keyword, &v)) {
+		if (verbose) printf ("%s = %.8g\n", keyword, v);
+		n++;
+		}
+	    }
 	}
 
-    return (n == 11 ? 0 : -1);
+    /* Plate scale and rotation from CD matrix */
+    if (hgetr8 (header, "CD1_1", &v)) {
+	if (verbose) printf ("CD1_1 = %.8g\n", v);
+	n++;
+	if (hgetr8 (header, "CD1_2", &v)) {
+	    if (verbose) printf ("CD1_2 = %.gf\n", v);
+	    n++;
+	    }
+	if (hgetr8 (header, "CD2_1", &v)) {
+	    if (verbose) printf ("CD2_1 = %.gf\n", v);
+	    n++;
+	    }
+	if (hgetr8 (header, "CD2_2", &v)) {
+	    if (verbose) printf ("CD2_2 = %.gf\n", v);
+	    n++;
+	    }
+	}
+
+    /* Plate scale and rotation from CDELTn and CROTAn */
+    else {
+	if (hgetr8 (header, "CDELT1", &v)) {
+	    if (verbose) printf ("CDELT1 = %.8f\n", v);
+	    n++;
+	    }
+	if (hgetr8 (header, "CROTA1", &v)) {
+	    if (verbose) printf ("CROTA1 = %.3f\n", v);
+	    n++;
+	    }
+	if (hgetr8 (header, "CDELT2", &v)) {
+	    if (verbose) printf ("CDELT2 = %.8f\n", v);
+	    n++;
+	    }
+	if (hgetr8 (header, "CROTA2", &v)) {
+	    if (verbose) printf ("CROTA2 = %.3f\n", v);
+	    n++;
+	    }
+	}
+
+    return (n > 8 ? 0 : -1);
+}
+
+static char wcstype[8]="TAN";		/* WCS projection name */
+void
+setwcstype (type)
+char *type;
+{ strcpy (wcstype, type); return; }
+
+
+/* Set FITS C* fields, assuming ra/dec refers to the center pixel */
+
+void
+SetFITSWCS (header, wcs)
+
+char	*header;	/* Image FITS header */
+struct WorldCoor *wcs;	/* WCS structure */
+
+{
+    double ep, ra, dec;
+    char wcstemp[16];
+
+    /* Rename old center coordinates */
+    if (!ksearch (header,"WRA") && ksearch (header,"RA"))
+	hchange (header,"RA","WRA");
+    if (!ksearch (header,"WDEC") && ksearch (header,"DEC"))
+	hchange (header,"DEC","WDEC");
+
+    if (!ksearch (header,"WEQUINOX") && ksearch (header,"EQUINOX"))
+	hchange (header, "EQUINOX", "WEQUINOX");
+
+    /* Only change EPOCH if it is used instead of EQUINOX */
+    else if (!ksearch (header,"WEPOCH") && ksearch (header,"EPOCH"))
+	hchange (header, "EPOCH", "WEPOCH");
+
+    /* Set new center coordinates */
+    hputra (header,"RA",wcs->xref);
+    hputdec (header,"DEC",wcs->yref);
+    hputr8 (header, "EQUINOX", wcs->equinox);
+    if (hgetr8 (header, "WEPOCH", &ep))
+	hputr8 (header, "EPOCH", wcs->equinox);
+    else if (!hgetr8 (header, "EPOCH", &ep))
+	hputr8 (header, "EPOCH", wcs->equinox);
+    hputs (header, "RADECSYS", wcs->radecsys);
+
+    /* Set standard FITS WCS keywords */
+    strcpy (wcstemp, "RA---");
+    strcat (wcstemp, wcstype);
+    hputs  (header, "CTYPE1", wcstemp);
+    strcpy (wcstemp, "DEC--");
+    strcat (wcstemp, wcstype);
+    hputs  (header, "CTYPE2", wcstemp);
+    hputnr8 (header, "CRVAL1", 9, wcs->xref);
+    hputnr8 (header, "CRVAL2", 9, wcs->yref);
+    hputnr8 (header, "CRPIX1", 4, wcs->xrefpix);
+    hputnr8 (header, "CRPIX2", 4, wcs->yrefpix);
+    if (wcs->rotmat) {
+	hputnr8 (header, "CD1_1", 9, wcs->cd[0]);
+	hputnr8 (header, "CD1_2", 9, wcs->cd[1]);
+	hputnr8 (header, "CD2_1", 9, wcs->cd[2]);
+	hputnr8 (header, "CD2_2", 9, wcs->cd[3]);
+	hdel (header, "CDELT1");
+	hdel (header, "CDELT2");
+	hdel (header, "CROTA1");
+	hdel (header, "CROTA2");
+	}
+    else {
+	hputnr8 (header, "CDELT1", 9, wcs->xinc);
+	hputnr8 (header, "CDELT2", 9, wcs->yinc);
+	hputnr8 (header, "CROTA1", 3, wcs->rot);
+	hputnr8 (header, "CROTA2", 3, wcs->rot);
+	hdel (header, "CD1_1");
+	hdel (header, "CD1_2");
+	hdel (header, "CD2_1");
+	hdel (header, "CD2_2");
+	}
+
+    /* Set plate fit, if present */
+    if (wcs->ncoeff1 > 0) {
+	char keyword[16];
+	int i;
+	for (i = 0; i < wcs->ncoeff1; i++) {
+	    sprintf (keyword, "CO1_%d",i+1);
+	    hputr8 (header, keyword, wcs->x_coeff[i]);
+	    }
+	}
+    if (wcs->ncoeff2 > 0) {
+	char keyword[16];
+	int i;
+	for (i = 0; i < wcs->ncoeff2; i++) {
+	    sprintf (keyword, "CO2_%d",i+1);
+	    hputr8 (header, keyword, wcs->y_coeff[i]);
+	    }
+	}
+
+    return;
 }
 /* May 29 1996	Change name from delWCSFITS to DelWCSFITS
  * May 31 1996	Print single message if no WCS is found in header
@@ -223,9 +395,20 @@ int	verbose;	/* 1 to print WCS header keyword values */
  * Aug 26 1996	Fix subroutine arguments after lint
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
- * Feb 21 1997  Add GetFITShead subroutine and use it
+ * Feb 21 1997  Add GetFITShead() subroutine and use it
  * Mar 20 1997	Remove unused variables
- * Nov  6 1997	Add PrintWCS subroutine from IMWCS
+ * Nov  6 1997	Add PrintWCS() from IMWCS
  *
  * Jan  7 1998	Return NULL WCS structure if no FITS header can be read
+ * Feb 18 1998	Move SetFITSWCS() here from imsetwcs.c
+ * Feb 24 1998	Delete CD matrix in DelWCS()
+ * Mar 20 1998	Write CD matrix in SetFITSWCS()
+ * Mar 27 1998	Add plate constants in SetFITSWCS()
+ * Mar 27 1998	Delete plate constants in DelFITSWCS()
+ * Apr  6 1998	Change coefficient keywords from PLTij to COi_j
+ * Apr  7 1998	Change amd_i_coeff to i_coeff
+ * Apr 10 1998	Write out polynomial coefficients correctly
+ * Apr 13 1998	Print polynomial coefficients, if in header
+ * Apr 16 1998	Drop NCOEFF header parameter
+ * Apr 17 1998	Do not write W* keywords if they are already there
  */

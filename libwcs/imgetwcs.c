@@ -1,5 +1,5 @@
 /* File libwcs/imgetwcs.c
- * December 8, 1997
+ * April 28, 1998
  * By Doug Mink, remotely based on UIowa code
  */
 
@@ -24,14 +24,18 @@ extern void fk425e(), fk524e(), fk425(), fk524(), fk5prec(), fk4prec();
 
 /* These parameters can be set on the command line */
 static double secpix0 = PSCALE;		/* Set image scale--override header */
+static double secpix2 = PSCALE;		/* Set image scale 2--override header */
 static double rot0 = 361.0;		/* Initial image rotation */
-static int fk4 = 0;			/* Command line center is FK4 */
+static int comsys = WCS_J2000;		/* Command line center coordinte system */
 static double ra0 = -99.0;		/* Initial center RA in degrees */
 static double dec0 = -99.0;		/* Initial center Dec in degrees */
 static double rad0 = 10.0;		/* Search box radius in arcseconds */
 static double xref0 = -99999.0;		/* Reference pixel X coordinate */
 static double yref0 = -99999.0;		/* Reference pixel Y coordinate */
-
+static int oldwcs0 = 0;			/* 1 to use AIPS classic WCS */
+static int ptype0 = -1;			/* Projection type to fit */
+static int  nctype = 28;		/* Number of possible projections */
+static char ctypes[28][4];		/* 3-letter codes for projections */
 
 /* Set a nominal world coordinate system from image header info.
  * If the image center is not FK5 (J2000) equinox, convert it
@@ -54,10 +58,12 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 {
     int nax;
     int equinox, eqcoor;
-    double eq1, epoch, xref, yref, degpix;
+    double eq1, epoch, xref, yref, degpix, ra1, dec1;
+    double ra2 = -999.0;
+    double dec2 = -999.0;
     struct WorldCoor *wcs;
     int eqref;
-    char rstr[32],dstr[32];
+    char rstr[32],dstr[32], temp[16];
 
     /* Set image dimensions */
     nax = 0;
@@ -78,9 +84,7 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 	hputnr8 (header, "CRVAL2" ,8,dec0);
 	hputra (header, "RA", ra0);
 	hputdec (header, "DEC", dec0);
-	hputc (header, "CTYPE1", "RA---TAN");
-	hputc (header, "CTYPE2", "DEC--TAN");
-	if (fk4) {
+	if (comsys == WCS_B1950) {
 	    hputi4 (header, "EPOCH", 1950);
 	    hputi4 (header, "EQUINOX", 1950);
 	    }
@@ -93,6 +97,14 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 	    hputnr8 (header, "CDELT1", 8, -degpix);
 	    hputnr8 (header, "CDELT2", 8, degpix);
 	    } 
+	}
+    if (ptype0 > -1 && ptype0 < nctype) {
+	strcpy (temp,"RA---");
+	strcat (temp, ctypes[ptype0]);
+	hputc (header, "CTYPE1", temp);
+	strcpy (temp,"DEC--");
+	strcat (temp, ctypes[ptype0]);
+	hputc (header, "CTYPE2", temp);
 	}
 
     /* Set reference pixel from command line, if it is there */
@@ -107,13 +119,44 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 	hputnr8 (header, "CRPIX2", 3, yref);
 	}
 
-    /* Set plate scale from command line, if it is there */
-    if (secpix0 > 0.0) {
+    /* Set X and Y plate scales from command line, if both are there */
+    if (secpix2 > 0.0) {
+	*secpix = 0.5 * (secpix0 + secpix2);
+	hputnr8 (header, "SECPIX1", 5, secpix0);
+	hputnr8 (header, "SECPIX2", 5, secpix2);
+	degpix = secpix0 / 3600.0;
+	hputnr8 (header, "CDELT1", 8, degpix);
+	degpix = secpix2 / 3600.0;
+	hputnr8 (header, "CDELT2", 8, degpix);
+	if (!ksearch (header,"CTYPE1")) {
+	    hputc (header, "CTYPE1", "RA---TAN");
+	    hputc (header, "CTYPE2", "DEC--TAN");
+	    }
+	}
+
+    /* Set single plate scale from command line, if it is there */
+    else if (secpix0 > 0.0) {
 	*secpix = secpix0;
 	hputnr8 (header, "SECPIX", 5, *secpix);
 	degpix = *secpix / 3600.0;
 	hputnr8 (header, "CDELT1", 8, -degpix);
 	hputnr8 (header, "CDELT2", 8, degpix);
+	if (!ksearch (header,"CRVAL1")) {
+	    hgetra (header, "RA", &ra0);
+	    hgetdec (header, "DEC", &dec0);
+	    hputnr8 (header, "CRVAL1", 8, ra0);
+	    hputnr8 (header, "CRVAL2", 8, dec0);
+	    }
+	if (!ksearch (header,"CRPIX1")) {
+	    xref = (double) *wp / 2.0;
+	    yref = (double) *hp / 2.0;
+	    hputnr8 (header, "CRPIX1", 3, xref);
+	    hputnr8 (header, "CRPIX2", 3, yref);
+	    }
+	if (!ksearch (header,"CTYPE1")) {
+	    hputc (header, "CTYPE1", "RA---TAN");
+	    hputc (header, "CTYPE2", "DEC--TAN");
+	    }
 	}
 
     /* Set rotation angle from command line, if it is there */
@@ -123,6 +166,7 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 	}
 
     /* Initialize WCS structure from FITS header */
+    setdefwcs (oldwcs0);
     wcs = wcsinit (header);
 
     /* If incomplete WCS in header, drop out */
@@ -131,18 +175,66 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 	    fprintf (stderr,"Insufficient information for initial WCS\n");
 	return (NULL);
 	}
+    wcs->oldwcs = oldwcs0;
 
     /* Set flag to get appropriate equinox for catalog search */
     equinox = (int) wcs->equinox;
     eq1 = wcs->equinox;
     if (eq2 == 0.0)
-	eqref = equinox;
-    else
-	eqref = (int) eq2;
-    if (eqref == 1950)
-	wcsoutinit (wcs, "FK4");
-    else
-	wcsoutinit (wcs, "FK5");
+	eq2 = wcs->equinox;
+    eqref = (int) eq2;
+    if (wcs->coorflip) {
+	ra1 = wcs->crval[1];
+	dec1 = wcs->crval[0];
+	}
+    else {
+	ra1 = wcs->crval[0];
+	dec1 = wcs->crval[1];
+	}
+    ra2 = ra1;
+    dec2 = dec1;
+    if (eqref == 2000) {
+	if (equinox == 1950) {
+	    fk425e (&ra1, &dec1, wcs->epoch);
+	    wcs->equinox = 2000.0;
+	    wcs->syswcs = WCS_J2000;
+	    strcpy (wcs->radecsys, "FK5");
+	    wcsoutinit (wcs->radecsys);
+	    }
+	else if (equinox != 2000) {
+	    fk5prec (eq1, eq2, &ra1, &dec1);
+	    wcs->equinox = 2000.0;
+	    wcs->syswcs = WCS_J2000;
+	    strcpy (wcs->radecsys, "FK5");
+	    wcsoutinit (wcs->radecsys);
+	    }
+	}
+    else if (eqref == 1950) {
+	if (equinox == 2000) {
+	    fk524e (&ra1, &dec1, wcs->epoch);
+	    wcs->equinox = 1950.0;
+	    wcs->syswcs = WCS_B1950;
+	    strcpy (wcs->radecsys, "FK4");
+	    wcsoutinit (wcs->radecsys);
+	    }
+	else if (equinox != 1950) {
+	    fk4prec (eq1, eq2, &ra1, &dec1);
+	    wcs->equinox = 1950.0;
+	    wcs->syswcs = WCS_B1950;
+	    strcpy (wcs->radecsys, "FK4");
+	    wcsoutinit (wcs->radecsys);
+	    }
+	}
+    if (wcs->coorflip) {
+	wcs->crval[1] = ra1;
+	wcs->crval[0] = dec1;
+	}
+    else {
+	wcs->crval[0] = ra1;
+	wcs->crval[1] = dec1;
+	}
+    wcs->xref = wcs->crval[0];
+    wcs->yref = wcs->crval[1];
 
     /* Get center and size for catalog searching */
     wcssize (wcs, cra, cdec, dra, ddec);
@@ -157,24 +249,26 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 	    }
 	wcs->xinc = *dra / wcs->xrefpix;
 	wcs->yinc = *ddec / wcs->yrefpix;
-	hchange (header,"PLTRAH","PLT0RAH");
-	wcs->plate_fit = 0;
+	/* hchange (header,"PLTRAH","PLT0RAH");
+	wcs->plate_fit = 0; */
 	}
 
     /* Compute plate scale to return if it was not set on the command line */
     if (secpix0 <= 0.0)
 	*secpix = 3600.0 * 2.0 * *ddec / (double) *hp;
 
-    /* Reset to reference pixel position from command line, if there is one */
-    if (ra0 > -99.0 && dec0 > -99.0 && verbose) {
-	ra2str (rstr, ra0, 3);
-        dec2str (dstr, dec0, 2);
-	if (fk4)
-	    printf ("Reference pixel (%.2f,%.2f) %s %s B1950\n",
-		    wcs->xrefpix, wcs->yrefpix, rstr, dstr);
-	else
-	    printf ("Reference pixel (%.2f,%.2f) %s %s J2000\n",
-		    wcs->xrefpix, wcs->yrefpix, rstr, dstr);
+    /* Print reference pixel position and value */
+    if (verbose) {
+	if (eq1 != eq2) {
+	    ra2str (rstr, ra1, 3);
+            dec2str (dstr, dec1, 2);
+	    printf ("Reference pixel (%.2f,%.2f) %s %s %.2f\n",
+		    wcs->xrefpix, wcs->yrefpix, rstr, dstr, eq1);
+	    }
+	ra2str (rstr, ra1, 3);
+        dec2str (dstr, dec1, 2);
+	printf ("Reference pixel (%.2f,%.2f) %s %s %.2f\n",
+		wcs->xrefpix, wcs->yrefpix, rstr, dstr, eq2);
 	}
 
     /* Image size for catalog search */
@@ -197,108 +291,28 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 }
 
 
-/* Get a center and radius for a search area.  If the image center is not
- * given in the equinox of the reference catalog, convert it.
- * Return 0 if OK, else -1
- */
-
-int
-GetArea (verbose, eqref, cra, cdec, dra, ddec)
-
-int	verbose;	/* Extra printing if =1 */
-int	eqref;		/* Equinox of reference catalog */
-double	*cra;		/* Center right ascension in degrees (returned) */
-double	*cdec;		/* Center declination in degrees (returned) */
-double	*dra;		/* Right ascension half-width in degrees (returned) */
-double	*ddec;		/* Declination half-width in degrees (returned) */
-{
-    int eqcoor;
-    char rstr[32], dstr[32];
-
-    /* Set plate center from command line, if it is there */
-    if (ra0 < 0.0 && dec0 < -90.0) {
-	if (verbose)
-	    fprintf (stderr, "GetArea: Illegal center, ra= %.5f, dec= %.5f\n",
-		     ra0,dec0);
-	return (-1);
-	}
-    else {
-	*cra = ra0;
-	*cdec = dec0;
-	}
-
-    /* If coordinate equinox not reference catalog equinox, convert */
-    if (fk4)
-	eqcoor = 1950;
-    else
-	eqcoor = 2000;
-    if (eqcoor != eqref) {
-	if (eqref > 1980)
-	    fk425 (cra, cdec);
-	else
-	    fk524 (cra, cdec);
-	}
-
-    /* Set search box radius from command line, if it is there */
-    if (rad0 > 0.0) {
-	*ddec = rad0 / 3600.0;
-	if (*cdec < 90.0 && *cdec > -90.0)
-	    *dra = *ddec / cos (degrad (*cdec));
-	else
-	    *dra = 180.0;
-	}
-    else {
-	if (verbose)
-	    fprintf (stderr, "GetArea: Illegal radius, rad= %.5f\n",rad0);
-	return (-1);
-	}
-
-
-    if (verbose) {
-	if (eqcoor != eqref) {
-	    ra2str (rstr, ra0, 3);
-            dec2str (dstr, dec0, 2);
-	    if (fk4)
-		fprintf (stderr,"Center:  %s   %s (B1950)\n", rstr, dstr);
-	    else
-		fprintf (stderr,"Center:  %s   %s (J2000)\n", rstr, dstr);
-	    }
-	ra2str (rstr, *cra, 3);
-        dec2str (dstr, *cdec, 2);
-	if (eqref == 2000)
-	    fprintf (stderr,"Center:  %s   %s (J2000)\n", rstr, dstr);
-	else
-	    fprintf (stderr,"Center:  %s   %s (B1950)\n", rstr, dstr);
-	ra2str (rstr, *dra * 2.0, 2); 
-	dec2str (dstr, *ddec * 2.0, 2); 
-	fprintf (stderr,"Area:    %s x %s\n", rstr, dstr);
-	}
-
-    return (0);
-}
-
-
-void setrot (rot)
+void
+setrot (rot)
 double rot;
-{
-    rot0 = rot;
-    return;
-}
+{ rot0 = rot; return; }
 
-void setsecpix (secpix)
+void
+setsecpix (secpix)		/* Set first axis arcseconds per pixel */
 double secpix;
-{
-    secpix0 = secpix;
-    return;
-}
+{ secpix0 = secpix; return; }
 
-void setfk4 ()
-{
-    fk4 = 1;
-    return;
-}
+void
+setsecpix2 (secpix)		/* Set second axis arcseconds per pixel */
+double secpix;
+{ secpix2 = secpix; return; }
 
-void setcenter (rastr, decstr)
+void
+setsys (comsys0)		/* Set WCS coordinates as FK4 */
+int comsys0;
+{ comsys = comsys0; return; }
+
+void
+setcenter (rastr, decstr)	/* Set center sky coordinates in strings */
 char *rastr, *decstr;
 {
     ra0 = str2ra (rastr);
@@ -306,18 +320,71 @@ char *rastr, *decstr;
     return;
 }
 
-void setrefpix (x, y)
-double x, y;
+void
+setdcenter (ra, dec)		/* Set center sky coordinates in degrees */
+double ra, dec;
 {
-    xref0 = x;
-    yref0 = y;
+    ra0 = ra;
+    dec0 = dec;
     return;
 }
 
-void setradius (rad)
+void
+setrefpix (x, y)
+double x, y;
+{ xref0 = x; yref0 = y; return; }
+
+void
+setradius (rad)
 double rad;
+{ rad0 = rad; return; }
+
+void
+setoldwcs (oldwcs)
+int	oldwcs;
+{ oldwcs0 = oldwcs; return; }
+
+void
+setproj (ptype)
+char*	ptype;
 {
-    rad0 = rad;
+    int i;
+
+    /* Set up array of projection types */
+    strcpy (ctypes[0], "DSS");
+    strcpy (ctypes[1], "AZP");
+    strcpy (ctypes[2], "TAN");
+    strcpy (ctypes[3], "SIN");
+    strcpy (ctypes[4], "STG");
+    strcpy (ctypes[5], "ARC");
+    strcpy (ctypes[6], "ZPN");
+    strcpy (ctypes[7], "ZEA");
+    strcpy (ctypes[8], "AIR");
+    strcpy (ctypes[9], "CYP");
+    strcpy (ctypes[10], "CAR");
+    strcpy (ctypes[11], "MER");
+    strcpy (ctypes[12], "CEA");
+    strcpy (ctypes[13], "COP");
+    strcpy (ctypes[14], "COD");
+    strcpy (ctypes[15], "COE");
+    strcpy (ctypes[16], "COO");
+    strcpy (ctypes[17], "BON");
+    strcpy (ctypes[18], "PCO");
+    strcpy (ctypes[19], "GLS");
+    strcpy (ctypes[20], "PAR");
+    strcpy (ctypes[21], "AIT");
+    strcpy (ctypes[22], "MOL");
+    strcpy (ctypes[23], "CSC");
+    strcpy (ctypes[24], "QSC");
+    strcpy (ctypes[25], "TSC");
+    strcpy (ctypes[26], "NCP");
+    strcpy (ctypes[27], "TNX");
+
+    ptype0 = -1;
+    for (i = 0; i < nctype; i++) {
+	if (!strcmp(ptype, ctypes[i]))
+	    ptype0 = i;
+	}
     return;
 }
 
@@ -352,5 +419,16 @@ double rad;
  * Nov  3 1997	Separate WCS reference pixel from search center
  * Dec  8 1997	Set CDELTn using SECPIX if it is in the header
  *
- * Jan  6 1997	Do not print anything unless verbose is set
+ * Jan  6 1998	Do not print anything unless verbose is set
+ * Jan 29 1998	Use flag to allow AIPS classic WCS subroutines
+ * Mar  1 1998	Set x and y plate scales from command line if there are two
+ * Mar  2 1998	Do not reset plate solution switch
+ * Mar  6 1998	Add option to reset center sky coordinates in degrees
+ * Mar  6 1998	Add option to set projection type
+ * Mar 18 1998	Initialize reference pixel if CDELTn's being set
+ * Mar 20 1998	Only set CTYPEn if CDELTn or CRVALn are set
+ * Apr 10 1998	Add option to set search area to circle or box
+ * Apr 20 1998	Move GetArea() to scat.c
+ * Apr 24 1998	Always convert image reference coordinate to catalog equinox
+ * Apr 28 1998	Change coordinate system flags to WCS_*
  */

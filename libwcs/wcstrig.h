@@ -17,21 +17,21 @@ extern "C" {
 #include <TRIGD>
 #else /* not TRIGD */
 #if __STDC__ || defined(__cplusplus)
-   double cosd(const double);
-   double sind(const double);
-   double tand(const double);
-   double acosd(const double);
-   double asind(const double);
-   double atand(const double);
-   double atan2d(const double, const double);
+   double cosdeg(const double);
+   double sindeg(const double);
+   double tandeg(const double);
+   double acosdeg(const double);
+   double asindeg(const double);
+   double atandeg(const double);
+   double atan2deg(const double, const double);
 #else
-   double cosd();
-   double sind();
-   double tand();
-   double acosd();
-   double asind();
-   double atand();
-   double atan2d();
+   double cosdeg();
+   double sindeg();
+   double tandeg();
+   double acosdeg();
+   double asindeg();
+   double atandeg();
+   double atan2deg();
 #endif
 
 /* Domain tolerance for asin and acos functions. */
@@ -43,3 +43,4 @@ extern "C" {
 #endif
 
 #endif /* WCSTRIG */
+/*   Function names changed by Doug Mink, SAO, April 15, 1998 */

@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** November 6, 1997
+ *** December 15, 1997
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -263,7 +263,7 @@ int	verbose;	/* 1 to print each star's position */
 	    }
 	}
 
-    free (svec);
+    free ((char *)svec);
     return (nstars);
 }
 
@@ -344,13 +344,14 @@ double	minsig;
 double	*mean;
 
 {
-    double r;
+    int r, irmax;
+    irmax = (int) rmax;
 
     /* Compute star's radius.
      * Scan in ever-greater circles until find one such that the peak is
      * n sigma above the mean at that radius.
      */
-    for (r = 2; r <= rmax; r++) {
+    for (r = 2; r <= irmax; r++) {
 	int inrr = r*r;
 	int outrr = (r+1)*(r+1);
 	int np = 0;
@@ -528,7 +529,7 @@ double	*sigma;
 	    for (x = x1; x < x2; x++) {
 		p = getpix (image,bitpix,w,h, x, y);
 		if (p > pmin && p < pmax) {
-		    sum += abs (p - pmean);
+		    sum += fabs (p - pmean);
 		    npix++;
 		    }
 		}
@@ -570,7 +571,7 @@ double *sigma;		/* Average deviation of pixels (returned) */
     /* Compute average deviation */
     sumxx = 0.0;
     for (sv = sv1; sv < sv2; sv++) {
-	sumxx += abs (*sv - *mean);
+	sumxx += fabs (*sv - *mean);
 	}
     *sigma = sumxx / (double) npix;
     return;
@@ -641,5 +642,6 @@ double	background;
  * Dec 10 1996	Add option to read image stars from DAOFIND file
  *
  * Mar 20 1997	Declare external subroutine DAOREAD
- * Nov 6 1997	Add subroutine to return image catalog filename
+ * Nov  6 1997	Add subroutine to return image catalog filename
+ * Dec 15 1997	Change calls to ABS to FABS when doubles are involved
  */

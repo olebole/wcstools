@@ -1,5 +1,5 @@
 /* File delwcs.c
- * February 21, 1997
+ * April 14, 1998
  * By Doug Mink, after University of Iowa code
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -165,4 +165,6 @@ char *name;
  * Oct 16 1996	Add newlines to heading
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
+ *
+ * Apr 14 1998	Version 2.2: deletes more parameters
  */

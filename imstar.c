@@ -1,5 +1,5 @@
 /* File imstar.c
- * November 7, 1997
+ * April 28, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -26,6 +26,7 @@ extern void setbmin ();
 extern void setmaxrad ();
 extern void setborder ();
 extern void setimcat();
+extern void setoldwcs();	/* AIPS classic WCS flag */
 extern struct WorldCoor *GetFITSWCS();
 
 static double magoff = 0.0;
@@ -171,6 +172,10 @@ char **av;
 	    ac--;
     	    break;
 
+	case 'z':       /* Use AIPS classic WCS */
+	    setoldwcs (1);
+	    break;
+
 	case '@':	/* List of files to be read */
 	    readlist++;
 	    listfile = ++str;
@@ -239,6 +244,7 @@ char *progname;
     fprintf(stderr,"  -v: Verbose; print star list to stdout\n");
     fprintf(stderr,"  -w: DAOFIND format star list\n");
     fprintf(stderr,"  -x: X and Y coordinates of reference pixel (if not in header or center)\n");
+    fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     fprintf(stderr,"  @listfile: file containing a list of filenames to search\n");
     exit (1);
 }
@@ -356,12 +362,15 @@ char	*filename;	/* FITS or IRAF file filename */
 
     /* Sort star-like objects in image by right ascension */
     if (rasort && iswcs (wcs))
-	RASortStars (0, sra, sdec, sx, sy, sb, sp, ns);
+	RASortStars (0, sra, sdec, sx, sy, sb, 0, sp, ns);
     sprintf (headline, "IMAGE	%s", filename);
 
     /* Open plate catalog file */
     if (strcmp (filename,"stdin")) {
-	strcpy (outfile,filename);
+	if (strrchr (filename, '/'))
+	    strcpy (outfile, strrchr (filename, '/')+1);
+	else
+	    strcpy (outfile,filename);
 	strcat (outfile,".stars");
 	}
     else {
@@ -389,7 +398,7 @@ char	*filename;	/* FITS or IRAF file filename */
 		printf ("RASORT	T\n");
 	    }
 
-	if (strcmp (wcs->sysout,"FK4") == 0 || strcmp (wcs->sysout,"fk4") == 0)
+	if (wcs->sysout == WCS_B1950)
 	    sprintf (headline, "EQUINOX	1950.0");
 	else
 	    sprintf (headline, "EQUINOX	2000.0");
@@ -428,14 +437,14 @@ char	*filename;	/* FITS or IRAF file filename */
 		printf ("%s\n", headline);
 	    }
 	else if (daoout) {
-	    sprintf (headline, "%7.2f %7.2f %6.2f %d %s %s\n",
+	    sprintf (headline, "%7.2f %7.2f %6.2f %d %s %s",
 		    sx[i],sy[i],smag[i],sp[i],rastr,decstr);
 	    fprintf (fd, "%s\n", headline);
 	    if (verbose)
 		printf ("%s\n", headline);
 	    }
 	else {
-	    sprintf (headline, "%3d %s %s %6.2f %7.2f %7.2f %8.1f %d\n",
+	    sprintf (headline, "%3d %s %s %6.2f %7.2f %7.2f %8.1f %d",
 		     i+1, rastr, decstr, smag[i],sx[i],sy[i],sb[i], sp[i]);
 	    fprintf (fd, "%s\n", headline);
 	    if (verbose)
@@ -480,4 +489,15 @@ char	*filename;	/* FITS or IRAF file filename */
  * May 28 1997	Add option to read a list of filenames from a file
  * Jul 12 1997  Add option to center reference pixel coords on the command line
  * Nov  7 1997	Print file in tab, DAO, or ASCII format, just like STDOUT
+ * Dec 16 1997	Support IRAF 2.11 image headers
+ * Dec 16 1997	Fix spacing in non-tab-table output
+ *
+ * Jan 27 1998  Implement Mark Calabretta's WCSLIB
+ * Jan 29 1998  Add -z for AIPS classic WCS projections
+ * Feb 18 1998	Version 2.0: Full Calabretta WCS
+ * Mar  2 1998	Fix RA sorting bug
+ * Mar 27 1998	Version 2.1: Add IRAF TNX projection
+ * Mar 27 1998	Version 2.2: Add polynomial plate fit
+ * Apr 27 1998	Drop directory from output file name
+ * Apr 28 1998	Change coordinate system flags to WCS_*
  */

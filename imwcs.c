@@ -1,5 +1,5 @@
 /* File imwcs.c
- * December 8, 1997
+ * May 4, 1998
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -14,6 +14,7 @@
 #include <math.h>
 
 #include "libwcs/fitshead.h"
+#include "libwcs/wcs.h"
 
 static void usage();
 static void FitWCS ();
@@ -26,22 +27,23 @@ static int mirror = 0;
 static int bitpix = 0;
 static int fitsout = 0; /* Output FITS file from IRAF input if 1 */
 static int imsearch = 1;	/* set to 0 if image catalog provided */
+static int erasewcs = 0;	/* Set to 1 to erase initial image WCS */
 char outname[128];		/* Name for output image */
 
 extern int RotFITS ();
 extern int SetWCSFITS ();
 extern int DelWCSFITS();
 extern int PrintWCS();
-extern void settolerance ();
-extern void setreflim ();
-extern void setrot ();
-extern void setnfit ();
-extern void setsecpix ();
-extern void setcenter ();
-extern void setfk4 ();
-extern void setminb ();
-extern void setmaxcat ();
-extern void setstarsig ();
+extern void settolerance();
+extern void setreflim();
+extern void setrot();
+extern void setnfit();
+extern void setsecpix();
+extern void setcenter();
+extern void setsys();
+extern void setminb();
+extern void setmaxcat();
+extern void setstarsig();
 extern void setclass();
 extern void setplate();
 extern void setrefcat();
@@ -50,6 +52,11 @@ extern void setbmin();
 extern void setfrac();
 extern void setrefpix();
 extern void setwcstype();
+extern void setoldwcs();	/* AIPS classic WCS flag */
+extern void setfitplate();
+extern void setproj();
+extern void setiterate();
+extern void setrecenter();
 
 main (ac, av)
 int ac;
@@ -83,9 +90,9 @@ char **av;
     	    break;
 
     	case 'b':	/* initial coordinates on command line in B1950 */
-	    setfk4 ();
     	    if (ac < 3)
     		usage();
+	    setsys (WCS_B1950);
 	    strcpy (rastr, *++av);
 	    ac--;
 	    strcpy (decstr, *++av);
@@ -108,22 +115,9 @@ char **av;
 	    ac--;
 	    break;
 
-	case 'e':	/* Set WCS projection
-	    if (ac < 2)
-		usage();
-	    setwcsproj (*++av);
-	    ac--;
-	    break; */
-	    
-    	case 'j':	/* center coordinates on command line in J2000 */
-    	    if (ac < 3)
-    		usage();
-	    strcpy (rastr, *++av);
-	    ac--;
-	    strcpy (decstr, *++av);
-	    ac--;
-	    setcenter (rastr, decstr);
-    	    break;
+	case 'e':	/* Erase WCS projection in image header */
+	    erasewcs++;
+	    break;
 
     	case 'f':	/* Write FITS file */
 	    fitsout = 1;
@@ -153,6 +147,17 @@ char **av;
 		setbmin (bmin);
 	    ac--;
 	    break;
+
+    	case 'j':	/* center coordinates on command line in J2000 */
+    	    if (ac < 3)
+    		usage();
+	    setsys (WCS_J2000);
+	    strcpy (rastr, *++av);
+	    ac--;
+	    strcpy (decstr, *++av);
+	    ac--;
+	    setcenter (rastr, decstr);
+    	    break;
 
     	case 'l':	/* Left-right reflection before rotating */
 	    mirror = 1;
@@ -196,6 +201,24 @@ char **av;
     		usage();
     	    setsecpix (atof (*++av));
     	    ac--;
+	    if (ac > 1 && isnum (*(av+1))) {
+		setsecpix2 (atof (*++av));
+		ac--;
+		}
+    	    break;
+
+    	case 'q':	/* fit residuals */
+    	    if (ac < 2)
+    		usage();
+	    if (strchr (*++av,'i') != NULL)
+    		setiterate (1);
+	    if (strchr (*av,'r') != NULL)
+    		setrecenter (1);
+	    if (strchr (*av,'p') != NULL)
+    		setfitplate (6);
+	    if (strchr (*av,'8') != NULL)
+    		setfitplate (8);
+    	    ac--;
     	    break;
 
     	case 'r':	/* Angle in degrees to rotate before fitting */
@@ -212,7 +235,7 @@ char **av;
     	    ac--;
     	    break;
 
-    	case 't':	/* +/- this many pixels is a hit */
+    	case 't':	/* tolerance in pixels for star match */
     	    if (ac < 2)
     		usage();
     	    settolerance (atof (*++av));
@@ -248,7 +271,12 @@ char **av;
 	    if (ac < 2)
 		usage();
 	    setimfrac (atof (*++av));
+	    ac--;
     	    break;
+
+	case 'z':       /* Use AIPS classic WCS */
+	    setoldwcs (1);
+	    break;
 
 	case '@':	/* List of files to be read */
 	    readlist++;
@@ -314,9 +342,9 @@ usage ()
     fprintf(stderr,"       [-r deg] [-t tol] [-x x y] [-y frac] FITS or IRAF file(s)\n");
     fprintf(stderr,"  -a: initial rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
-    fprintf(stderr,"  -c: reference catalog (gsc, uac, ujc, tab table file\n");
+    fprintf(stderr,"  -c: reference catalog (gsc, uac, usac, ujc, tab table file\n");
     fprintf(stderr,"  -d: Use following DAOFIND output catalog instead of search\n");
-    fprintf(stderr,"  -e: WCS type (TAN default)\n");
+    fprintf(stderr,"  -e: Erase image WCS keywords\n");
     fprintf(stderr,"  -f: write FITS output no matter what input\n");
     fprintf(stderr,"  -g: Guide Star Catalog class (-1=all,0,3 (default -1)\n");
     fprintf(stderr,"  -h: maximum number of reference stars to use (10-200, default 25\n");
@@ -327,6 +355,7 @@ usage ()
     fprintf(stderr,"  -n: list of parameters to fit (12345678; negate for refinement)\n");
     fprintf(stderr,"  -o: name for output image, - to overwrite\n");
     fprintf(stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
+    fprintf(stderr,"  -q: <i>terate, <r>ecenter, <p>olynomial fit\n");
     fprintf(stderr,"  -r: rotation angle in degrees before fitting (default 0)\n");
     fprintf(stderr,"  -s: use this fraction extra stars (default 1.0)\n");
     fprintf(stderr,"  -t: offset tolerance in pixels (default 20)\n");
@@ -335,6 +364,7 @@ usage ()
     fprintf(stderr,"  -w: write header (default is read-only)\n");
     fprintf(stderr,"  -x: X and Y coordinates of reference pixel (default is center)\n");
     fprintf(stderr,"  -y: add this fraction to image dimensions for search (default is 0)\n");
+    fprintf(stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     exit (1);
 }
 
@@ -356,6 +386,7 @@ char *name;
     char *fname;
     int lext, lname;
     int newimage;
+    char *imext, *imext1;
 
     image = NULL;
 
@@ -412,9 +443,11 @@ char *name;
 	    fprintf (stderr,"FITS image file %s\n", name);
 	}
 
-    /* Print existing WCS headers */
-    if (PrintWCS (header, verbose) == 0)
-	(void) DelWCSFITS (header, verbose);
+    /* Print existing WCS keywords and optionally erase them */
+    if (PrintWCS (header, verbose) == 0) {
+	if (erasewcs)
+	    (void) DelWCSFITS (header, verbose);
+	}
 
     /* Rotate and/or reflect image */
     if ((imsearch || writeheader) && (rot != 0 || mirror)) {
@@ -455,7 +488,26 @@ char *name;
 	else
 	    strcpy (newname, fname);
 
+    /* Add image extension number or name to output file name */
+	imext = strchr (fname, ',');
+	imext1 = NULL;
+	if (imext == NULL) {
+	    imext = strchr (fname, '[');
+	    if (imext != NULL) {
+		imext1 = strchr (fname, ']');
+		*imext1 = (char) 0;
+		}
+	    }
+	if (imext != NULL) {
+	    strcat (newname, "_");
+	    strcat (newname, imext+1);
+	    }
+
     /* Add rotation and reflection to image name */
+	if (mirror)
+	    strcat (newname, "m");
+	else if (rot != 0)
+	    strcat (newname, "r");
 	if (rot < 10 && rot > -1)
 	    sprintf (temp,"%1d",rot);
 	else if (rot < 100 && rot > -10)
@@ -466,12 +518,10 @@ char *name;
 	    sprintf (temp,"%4d",rot);
 	if (rot != 0)
 	    strcat (newname, temp);
-	if (mirror)
-	    strcat (newname, "m");
 
     /* Add file extension preceded by a w */
 	if (fitsout)
-	    strcat (newname, "w.fit");
+	    strcat (newname, "w.fits");
 	else {
 	    strcpy (pixname, "HDR$");
 	    strcat (pixname, newname);
@@ -579,4 +629,21 @@ char *
  * Nov 14 1997	Change image increase from multiple to fraction added
  * Nov 17 1997	Add optional second magnitude limit
  * Dec  8 1997	Fixed bug in setting nominal WCS
+ * Dec 15 1997	Add capability of reading and writing IRAF 2.11 images
+ *
+ * Jan 27 1998  Implement Mark Calabretta's WCSLIB
+ * Jan 29 1998  Add -z for AIPS classic WCS projections
+ * Feb 18 1998	Version 2.0: Calabretta WCS
+ * Feb 20 1998	Add -q to fit residuals
+ * Mar  1 1998	Add optional second axis plate scale argument to -p
+ * Mar  3 1998	Add option to use first WCS result to try again
+ * Mar  6 1998	Add option to recenter on second pass
+ * Mar  6 1998	Change default FITS extension from .fit to .fits
+ * Mar  6 1998	Add option to set projection type
+ * Mar 27 1998	Version 2.2: Drop residual fitting; add polynomial fit
+ * Apr 14 1998	New coordinate conversion software; polynomial debugged
+ * Apr 24 1998	change coordinate setting to setsys() from setfk4()
+ * Apr 27 1998	Add image extension name/number to output file name
+ * Apr 28 1998	Change coordinate system flags to WCS_*
+ * May  4 1998	Make erasure of original image WCS optional
  */

@@ -240,7 +240,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    hputi4 (header,"NAXIS", 4);
 	    hputi4 (header,"NAXIS4", nfiles);
 	    }
-	hlength (header, &nbhead);
+	nbhead = strlen (header);
 	nblocks = nbhead / FITSBLOCK;
 	if (nblocks * FITSBLOCK < nbhead)
 	    nblocks = nblocks + 1;

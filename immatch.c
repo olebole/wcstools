@@ -1,5 +1,5 @@
 /* File immatch.c
- * December 8, 1997
+ * April 28, 1998
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -14,6 +14,7 @@
 #include <math.h>
 
 #include "libwcs/fitshead.h"
+#include "libwcs/wcs.h"
 
 static void usage();
 static void FitWCS ();
@@ -29,16 +30,16 @@ extern int RotFITS ();
 extern int SetWCSFITS ();
 extern int DelWCSFITS();
 extern int PrintWCS();
-extern void settolerance ();
-extern void setreflim ();
-extern void setrot ();
-extern void setnfit ();
-extern void setsecpix ();
-extern void setcenter ();
-extern void setfk4 ();
-extern void setminb ();
-extern void setmaxcat ();
-extern void setstarsig ();
+extern void settolerance();
+extern void setreflim();
+extern void setrot();
+extern void setnfit();
+extern void setsecpix();
+extern void setcenter();
+extern void setsys();
+extern void setminb();
+extern void setmaxcat();
+extern void setstarsig();
 extern void setclass();
 extern void setplate();
 extern void setrefcat();
@@ -48,6 +49,7 @@ extern void setfrac();
 extern void setrefpix();
 extern void setwcstype();
 extern void setfitwcs();
+extern void setoldwcs();	/* AIPS classic WCS flag */
 
 main (ac, av)
 int ac;
@@ -81,9 +83,9 @@ char **av;
     	    break;
 
     	case 'b':	/* initial coordinates on command line in B1950 */
-	    setfk4 ();
     	    if (ac < 3)
     		usage();
+	    setsys (WCS_B1950);
 	    strcpy (rastr, *++av);
 	    ac--;
 	    strcpy (decstr, *++av);
@@ -116,6 +118,7 @@ char **av;
     	case 'j':	/* center coordinates on command line in J2000 */
     	    if (ac < 3)
     		usage();
+	    setsys (WCS_J2000);
 	    strcpy (rastr, *++av);
 	    ac--;
 	    strcpy (decstr, *++av);
@@ -221,6 +224,10 @@ char **av;
 	    setimfrac (atof (*++av));
     	    break;
 
+	case 'z':       /* Use AIPS classic WCS */
+	    setoldwcs (1);
+	    break;
+
 	case '@':	/* List of files to be read */
 	    readlist++;
 	    listfile = ++str;
@@ -293,6 +300,7 @@ usage ()
     fprintf(stderr,"  -v: verbose\n");
     fprintf(stderr,"  -x: X and Y coordinates of reference pixel (default is center)\n");
     fprintf(stderr,"  -y: multiply image dimensions by this for search (default is 1)\n");
+    fprintf(stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     exit (1);
 }
 
@@ -380,10 +388,7 @@ char *name;
 	    }
 	}
 
-    if (SetWCSFITS (name, header, image, verbose)) {
-	if (verbose)
-	    (void) PrintWCS (header, verbose);	/* print new WCS */
-	}
+    (void) SetWCSFITS (name, header, image, verbose);
 
     free (header);
     if (iraffile)
@@ -400,4 +405,13 @@ char *
 /* Nov  6 1997	New program based on IMWCS
  * Nov 17 1997	Add optional second magnitude limit
  * Dec  8 1997	Fix bug in setting nominal WCS
+ * Dec 15 1997	Add capability of reading and writing IRAF 2.11 images
+ *
+ * Jan 27 1998  Implement Mark Calabretta's WCSLIB
+ * Jan 29 1998  Add -z for AIPS classic WCS projections
+ * Feb 18 1998	Version 2.0: Full Calabretta implementation
+ * Mar 27 1998	Version 2.1: Add IRAF TNX projection
+ * Apr 13 1998	Version 2.2: Add polynomial plate fit
+ * Apr 24 1998	change coordinate setting to setsys() from setfk4()
+ * Apr 28 1998	Change coordinate system flags to WCS_*
  */

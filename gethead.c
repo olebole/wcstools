@@ -1,5 +1,5 @@
 /* File gethead.c
- * December 12, 1997
+ * March 12, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,11 +17,13 @@
 #define MAXFILES 1000
 
 static void usage();
-static void PrintValues ();
+static void PrintValues();
+static void strclean();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;
 static int maxlfn = 0;
+static int listall = 0;
 static int tabout = 0;
 static int printhead = 0;
 
@@ -46,12 +48,14 @@ char **av;
     char string[80];
 
     /* crack arguments */
-    for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
+    for (av++; --ac > 0 && (*(str = *av)=='-'); av++) {
 	char c;
-	if (*str == '@')
-	    str = str - 1;
 	while (c = *++str)
 	switch (c) {
+
+	case 'a':	/* list file even if the keywords are not found */
+	    listall++;
+	    break;
 
 	case 'v':	/* more verbosity */
 	    verbose++;
@@ -64,13 +68,6 @@ char **av;
 	case 't':	/* output tab table */
 	    tabout++;
 	    break;
-
-	case '@':	/* List of files to be read */
-	    readlist++;
-	    listfile = ++str;
-	    str = str + strlen (str) - 1;
-	    av++;
-	    ac--;
 
 	default:
 	    usage(progname);
@@ -95,6 +92,11 @@ char **av;
 	    if (lfn > maxlfn)
 		maxlfn = lfn;
 	    nfile++;
+	    }
+	else if (strsrch (*av,"@") != NULL) {
+	    readlist++;
+	    listfile = *av + 1;
+	    nfile = 2;
 	    }
 	else {
 	    kwd[nkwd] = *av;
@@ -191,7 +193,9 @@ usage (progname)
 char *progname;
 {
     fprintf (stderr,"Print FITS or IRAF header keyword values\n");
-    fprintf(stderr,"gethead: usage: [-htv] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
+    fprintf(stderr,"usage: [-ahtv] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
+    fprintf(stderr,"usage: [-ahtv] @filelist kw1 kw2 ... kwn\n");
+    fprintf(stderr,"  -a: list file even if keywords are not found\n");
     fprintf(stderr,"  -h: print column headings\n");
     fprintf(stderr,"  -t: output in tab-separated table format\n");
     fprintf(stderr,"  -v: verbose\n");
@@ -214,8 +218,11 @@ char	*kwd[];	/* Names of keywords for which to print values */
     int iraffile;
     char fnform[8];
     char string[80];
+    char temp[80];
+    char outline[1000];
+    char mstring[800];
     char *kw, *kwe;
-    int ikwd, lkwd;
+    int ikwd, lkwd, nfound;
 
     /* Open IRAF image if .imh extension is present */
     if (strsrch (name,".imh") != NULL) {
@@ -251,11 +258,12 @@ char	*kwd[];	/* Names of keywords for which to print values */
 	}
     if (nfile > 1) {
 	if (tabout)
-	    sprintf (fnform,"%%-%ds	",maxlfn);
+	    sprintf (fnform, "%%-%ds	", maxlfn);
 	else
-	    sprintf (fnform,"%%-%ds ",maxlfn);
-	printf (fnform, name);
+	    sprintf (fnform, "%%-%ds ", maxlfn);
+	sprintf (outline, fnform, name);
 	}
+    nfound = 0;
 
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
 	lkwd = strlen (kwd[ikwd]);
@@ -265,26 +273,95 @@ char	*kwd[];	/* Names of keywords for which to print values */
 		*kw = *kw - 32;
 	    }
 	if (hgets (header, kwd[ikwd], 80, string)) {
+	    strclean (string);
 	    if (verbose)
 		printf ("%s = %s", kwd[ikwd], string);
 	    else
-		printf ("%s",string);
+		strcat (outline, string);
+	    nfound++;
+	    }
+	else if (hgetm (header, kwd[ikwd], 600, mstring)) {
+	    if (verbose)
+		printf ("%s = %s", kwd[ikwd], mstring);
+	    else
+		strcat (outline, mstring);
+	    nfound++;
 	    }
 	else if (verbose)
 	    printf ("%s not found", kwd[ikwd]);
 	else
-	    printf ("___");
+	    strcat (outline, "___");
 
-	if (verbose || ikwd == nkwd - 1)
+	if (verbose)
 	    printf ("\n");
-	else if (tabout)
-	    printf ("	");
-	else
-	    printf (" ");
+	else if (ikwd < nkwd-1) {
+	    if (tabout)
+		strcat (outline, "	");
+	    else
+		strcat (outline, " ");
+	    }
 	}
+    if (!verbose && (nfile < 2 || nfound > 0 || listall))
+	printf ("%s\n", outline);
 
     free (header);
     return;
+}
+
+
+/* Remove exponent and trailing zeroes, if reasonable */
+static void
+strclean (string)
+
+char *string;
+
+{
+    char *sdot, *s;
+    int ndek, lstr, i;
+
+    /* Remove positive exponent if there are enough digits given */
+    if (strsrch (string, "E+") != NULL) {
+	lstr = strlen (string);
+	ndek = (int) (string[lstr-1] - 48);
+	ndek = ndek + (10 * ((int) (string[lstr-2] - 48)));
+	if (ndek < lstr - 7) {
+	    lstr = lstr - 4;
+	    string[lstr] = (char) 0;
+	    string[lstr+1] = (char) 0;
+	    string[lstr+2] = (char) 0;
+	    string[lstr+3] = (char) 0;
+	    sdot = strchr (string, '.');
+	    if (ndek > 0 && sdot != NULL) {
+		for (i = 1; i <= ndek; i++) {
+		    *sdot = *(sdot+1);
+		    sdot++;
+		    *sdot = '.';
+		    }
+		}
+	    }
+	}
+
+    /* Remove trailing zeroes */
+    if (strchr (string, '.') != NULL) {
+	lstr = strlen (string);
+	s = string + lstr - 1;
+	while (*s == '0' && lstr > 1) {
+	    if (*(s - 1) != '.') {
+		*s = (char) 0;
+		lstr --;
+		}
+	    s--;
+	    }
+	}
+
+    /* Remove trailing decimal point */
+    lstr = strlen (string);
+    s = string + lstr - 1;
+    if (*s == '.')
+	*s = (char) 0;
+
+    return;
+	
 }
 
 /* Sep  4 1996	New program
@@ -294,4 +371,8 @@ char	*kwd[];	/* Names of keywords for which to print values */
  * Nov  2 1997	Allow search of multiple files from command line or list file
  * Nov 12 1997	Add option to print tab tables or column headings
  * Dec 12 1997	Read IRAF version 2 .imh files
+ *
+ * Jan  5 1998	Do not print line unless keyword is found
+ * Jan 27 1998	Clean up scientific notation and trailing zeroes
+ * Mar 12 1998	Read IRAF multi-line keyword values
  */

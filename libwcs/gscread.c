@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** November 6, 1997
+ *** May 13, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -146,7 +146,6 @@ int	nlog;		/* 1 for diagnostics */
 	}
 
     gdist = (double *) malloc (nstarmax * sizeof (double));
-    classd = -1;
 
 /* Set keyword list */
     nk = 8;
@@ -236,7 +235,7 @@ int	nlog;		/* 1 for diagnostics */
 		else
 		    dist = 0.0;
 
-	/* Check magnitude amd position limits */
+	/* Check magnitude and position limits */
 		if (((mag1 != mag2 && (mag >= mag1 && mag <= mag2)) ||
 		    (mag1 == mag2)) &&
 		    ((wrap && (ra <= ra1 || ra >= ra2)) ||
@@ -317,8 +316,8 @@ int	nlog;		/* 1 for diagnostics */
 	/* Add information from current line to current object */
 
 	    /* Check object class */
-     	    if ((classd > 0 && class0 == classd) ||
-		(classd >= -1 && class0 != 5)) {
+     	    if ((classd > -1 && class0 == classd) ||
+		(classd == -1 && class0 != 5) || classd < -1) {
 		perr = perr0;
 		perr2 = perr * perr;
 		if (perr2 <= 0.0) perr2 = 0.01;
@@ -926,4 +925,7 @@ char *path;	/* Pathname of GSC region FITS file */
  * Mar 20 1997	Remove unused variables and fixed logging in GSCRNUM after lint
  * Oct 10 1997	Use standard I/O instead of stream I/O when reading FITS files
  * Nov  6 1997	Do not print overrun unless logging
+ *
+ * May 13 1998	Do not set classd in gscread()
+ * May 13 1998	Print all stars if classd is < -1
  */

@@ -1,0 +1,43 @@
+Version 2.2 (May 14, 1998)
+Compute pixels from galactic coordinates correctly.
+Implement arbitrary equinox in form Jyyyy.ffff or Byyyy.ffff.
+Modify polynomial WCS to be closer to what is being discussed in fitswcs.
+Add support for ecliptic coordinates, and improve coordinate conversion.
+Fix pixel to WCS IRAF TNX projection; WCS to pixel still has problems.
+Add support for IRAF unsigned data types
+
+Version 2.1 (March 31, 1998)
+Add polynomial plate fit and IRAF TNX projection.  Fix various bugs.
+Fit CD matrix as well as CDELT/CROTA.
+Add iteration and recentering to IMWCS.
+
+Version 2.0 (February 18, 1998)
+Use Mark Calabretta's WCS code instead of AIPS classic WCS subroutines
+for the standard FITS projections.
+
+Version 1.5 (December 15, 1997)
+Rewrite IRAF code to deal with IRAF 2.11 reformatted headers.  Fix a variety
+bugs.  Switch to single catalog search and image-based catalog search programs,
+invoked by different names for different catalogs.
+
+Version 1.4 (October 16, 1997)
+Rewrite FITS code to deal with FITS image extensions.  Fix bugs in fitting
+routine and deal with off-axis images, such as those from CCD mosaics.
+
+Version 1.3.1 (April 25, 1997)
+Fixed major bug in USNO A-1.0 and USNO SA-1.0 catalog reading which ignored
+stars which are flagged as being in the Guide Star Catalog
+
+Version 1.3 (February 24, 1997)
+Fixed pointer tests to check for NULL rather than 0 so they will work
+properly in Linux.  Coordinate conversion inconsistencies were repaired.
+All programs which only use header information call a common subroutine
+to read the header.
+
+Version 1.2.2 (January 27, 1997):
+Fixed bug in HGET which ignored exponent of floating point string when
+extracting an integer due to use of atoi() instead of (int)atof().
+This most often affects how EPOCH is interpreted.
+
+Version 1.2.1 (January 15, 1997):
+Fixed bug in RA sorting which affected all catalog search programs

@@ -1,5 +1,5 @@
 /* File xy2sky.c
- * December 31, 1997
+ * May 13, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -19,7 +19,10 @@ extern int pix2wcst();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int append = 0;		/* append input line flag */
+static int tabtable = 0;	/* tab table output flag */
+static int oldwcs = 0;		/* AIPS classic WCS flag */
 static char coorsys[16];
+static int linmode = -1;
 
 main (ac, av)
 int ac;
@@ -27,8 +30,8 @@ char **av;
 {
     char *progname = av[0];
     char *str;
-    char wcstring[40];
-    char lstr = 40;
+    char wcstring[64];
+    char lstr = 64;
     int ndecset = 0;
     int degout = 0;
     int ndec = 3;
@@ -39,6 +42,7 @@ char **av;
     char *fn;
     struct WorldCoor *wcs;
     char xstr[32], ystr[32];
+    char temp[32];
     *coorsys = 0;
 
     /* crack arguments */
@@ -51,43 +55,61 @@ char **av;
     	    verbose++;
     	    break;
 
-	/* Append input line to sky position */
-	case 'a':
+	case 'a':	/* Append input line to sky position */
 	    append++;
     	    break;
 
-	/* Output B1950 coordinates */
-	case 'b':
+	case 'b':	/* Output B1950 coordinates */
 	    strcpy (coorsys,"b1950");
     	    break;
 
-	/* Output degrees instead of hh:mm:ss dd:mm:ss */
-       case 'd':
+       case 'd':	/* Output degrees instead of hh:mm:ss dd:mm:ss */
             degout++;
-            if (!ndecset) {
-                ndec = 5;
-		ndecset++;
-		}
             break;
 
-	/* Output galactic coordinates */
-	case 'g':
-	    strcpy (coorsys,"galactic");
+	case 'e':	/* Output galactic coordinates */
+	    strcpy (coorsys,"ecliptic");
+            degout++;
     	    break;
 
-	/* Output J2000 coordinates */
-	case 'j':
+	case 'g':	/* Output galactic coordinates */
+	    strcpy (coorsys,"galactic");
+            degout++;
+    	    break;
+
+	case 'j':	/* Output J2000 coordinates */
 	    strcpy (coorsys,"j2000");
     	    break;
 
-	/* Number of decimal places in output seconds or degrees */
-	case 'n':
+	case 'm':	/* Mode for output of linear coordinates */
+	    if (ac < 2)
+		usage();
+	    linmode = atoi (*++av);
+	    ac--;
+	    break;
+
+	case 'n':	/* Number of decimal places in output sec or deg */
 	    if (ac < 2)
 		usage();
 	    ndec = atoi (*++av);
 	    ndecset++;
 	    ac--;
 	    break;
+
+	case 'q':	/* Equinox for output */
+	    if (ac < 2)
+		usage();
+	    strcpy (coorsys, *++av);
+	    ac--;
+	    break;
+
+	case 't':	/* Output tab table */
+	    tabtable++;
+    	    break;
+
+    	case 'z':	/* Use AIPS classic WCS */
+    	    oldwcs++;
+    	    break;
 
     	default:
     	    usage();
@@ -107,12 +129,32 @@ char **av;
 	printf ("%s: No WCS for file, cannot compute image size\n", fn);
 	exit(1);
 	}
+    wcs->oldwcs = oldwcs;
+    if (linmode > -1)
+	setlinmode (wcs, linmode);
     if (*coorsys)
 	wcsoutinit (wcs, coorsys);
+    if (tabtable) {
+	wcs->tabsys = 1;
+	if (!append) {
+	    if (wcs->sysout == WCS_B1950 || wcs->sysout == WCS_J2000)
+		printf ("X    	Y    	RA      	Dec     	Equinox\n");
+	    else if (wcs->sysout == WCS_GALACTIC)
+		printf ("X    	Y    	Gal Long 	Gal Lat 	Equinox\n");
+	    else if (wcs->sysout == WCS_ECLIPTIC)
+		printf ("X    	Y    	Ecl Long 	Ecl Lat 	Equinox\n");
+	    printf ("-----	-----	--------	--------	-------\n");
+	    }
+	}
+    if (degout) {
+	wcs->degout = degout;
+        if (!ndecset) {
+            ndec = 5;
+	    ndecset++;
+	    }
+	}
     if (ndecset)
 	wcs->ndec = ndec;
-    if (degout)
-	wcs->degout = degout;
     while (ac-- > 1) {
 	listname = *av;
 	if (listname[0] == '@') {
@@ -129,16 +171,33 @@ char **av;
 		    x = atof (xstr);
 		    y = atof (ystr);
 		    if (pix2wcst (wcs, x, y, wcstring, lstr)) {
-			if (append)
-			    printf ("%s %s", wcstring, line);
-			else if (degout) {
-			    if (wcs->nxpix > 9999 || wcs->nypix > 9999)
-				printf ("%9.3f %9.3f %s\n",x, y, wcstring);
-			    else
-				printf ("%8.3f %8.3f %s\n",x, y, wcstring);
+			if (wcs->sysout == WCS_ECLIPTIC) {
+			    sprintf(temp,"%.5f",wcs->epoch);
+			    strcat (wcstring, " ");
+			    strcat (wcstring, temp);
 			    }
-			else if (append)
-			    printf ("%s %s%.3f -> %s\n",x, y, wcstring);
+			if (append) {
+			    if (tabtable)
+				printf ("%s	%s", wcstring, line);
+			    else
+				printf ("%s %s", wcstring, line);
+			    }
+			else if (degout) {
+			    if (wcs->nxpix > 9999 || wcs->nypix > 9999) {
+				if (tabtable)
+				    printf ("%9.3f	%9.3f	%s\n",x, y, wcstring);
+				else
+				    printf ("%9.3f %9.3f %s\n",x, y, wcstring);
+				}
+			    else {
+				if (tabtable)
+				    printf ("%8.3f	%8.3f	%s\n",x, y, wcstring);
+				else
+				    printf ("%8.3f %8.3f %s\n",x, y, wcstring);
+				}
+			    }
+			else if (tabtable)
+			    printf ("%.3f	%.3f	%s\n",x, y, wcstring);
 			else
 			    printf ("%.3f %.3f -> %s\n",x, y, wcstring);
 			}
@@ -152,8 +211,17 @@ char **av;
 	    x = atof (*av);
 	    ac--;
 	    y = atof (*++av);
-	    if (pix2wcst (wcs, x, y, wcstring, lstr))
-		printf ("%.3f %.3f -> %s\n",x, y, wcstring);
+	    if (pix2wcst (wcs, x, y, wcstring, lstr)) {
+		if (wcs->sysout == WCS_ECLIPTIC) {
+		    sprintf(temp,"%.5f",wcs->epoch);
+		    strcat (wcstring, " ");
+		    strcat (wcstring, temp);
+		    }
+		if (tabtable)
+		    printf ("%.3f	%.3f	%s\n",x, y, wcstring);
+		else
+		    printf ("%.3f %.3f -> %s\n",x, y, wcstring);
+		}
 	    av++;
 	    }
 	}
@@ -172,10 +240,15 @@ usage ()
     fprintf (stderr,"  -a: append input line after output position\n");
     fprintf (stderr,"  -b: B1950 (FK4) output\n");
     fprintf (stderr,"  -d: RA and Dec output in degrees\n");
+    fprintf (stderr,"  -e: ecliptic longitude and latitude output\n");
     fprintf (stderr,"  -g: galactic longitude and latitude output\n");
     fprintf (stderr,"  -j: J2000 (FK5) output\n");
+    fprintf (stderr,"  -m: mode for output of LINEAR WCS coordinates\n");
     fprintf (stderr,"  -n: number of decimal places in output RA seconds\n");
+    fprintf (stderr,"  -q: output equinox if not 2000 or 1950\n");
+    fprintf (stderr,"  -t: tab table output\n");
     fprintf (stderr,"  -v: verbose\n");
+    fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     exit (1);
 }
 /*
@@ -188,4 +261,17 @@ usage ()
  * Dec 15 1997	Print message if no WCS; read IRAF 2.11 header format
  * Dec 15 1997	Drop -> if output sky coordinates are in degrees
  * Dec 31 1997	Allow entire input line to be appended to sky position
+ *
+ * Jan  7 1998	Apply WFPC and WFPC2 pixel corrections if requested
+ * Jan  7 1998	Add tab table output using -t
+ * Jan 26 1998	Implement Mark Calabretta's WCSLIB
+ * Jan 29 1998	Add -z for AIPS classic WCS projections
+ * Feb 18 1998	Version 2.0: Full Calabretta implementation
+ * Mar 12 1998	Version 2.1: IRAF TNX projection added
+ * Mar 27 1998	Version 2.2: Polynomial plate fit added
+ * Apr 24 1998	Increase size of WCS string from 40 to 64
+ * Apr 28 1998	Change coordinate system flag to WCS_*
+ * Apr 28 1998	Add output mode for linear coordinates
+ * Apr 28 1998	Add ecliptic coordinate system output
+ * May 13 1998	Allow arbitrary equinox for output coordinates
  */

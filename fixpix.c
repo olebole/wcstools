@@ -1,5 +1,5 @@
 /* File fixpix.c
- * July 12, 1997
+ * April 14, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -23,8 +23,8 @@ static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
 static int nfix = 0;		/* Number of regions to fix
 				   If < 0 read regions from a file */
-static int x1[MAXFIX],y1[MAXFIX]; /* Lower left corners of regions (1 based) */
-static int x2[MAXFIX],y2[MAXFIX]; /* Upper right corners of regions (1 based) */
+static int xl[MAXFIX],yl[MAXFIX]; /* Lower left corners of regions (1 based) */
+static int xr[MAXFIX],yr[MAXFIX]; /* Upper right corners of regions (1 based) */
 
 static void SetPix();
 
@@ -94,13 +94,13 @@ char **av;
 	    av++;
 	    }
 	else if (ac > 2) {
-	    x1[nfix] = atoi (*av++);
+	    xl[nfix] = atoi (*av++);
 	    ac--;
-	    y1[nfix] = atoi (*av++);
+	    yl[nfix] = atoi (*av++);
 	    ac--;
-	    x2[nfix] = atoi (*av++);
+	    xr[nfix] = atoi (*av++);
 	    ac--;
-	    y2[nfix] = atoi (*av++);
+	    yr[nfix] = atoi (*av++);
 	    nfix++;
 	    }
 	}
@@ -139,9 +139,9 @@ static void
 usage ()
 {
     fprintf (stderr,"Fix pixel regions of FITS or IRAF image file\n");
-    fprintf(stderr,"Usage: fixpix [-vn] file.fits x1 y1 x2 y2...\n");
+    fprintf(stderr,"Usage: fixpix [-vn] file.fits xl yl xr yr...\n");
     fprintf(stderr,"Usage: fixpix [-vn] file.fits @regionlist\n");
-    fprintf(stderr,"Usage: fixpix [-vn] @filelist x1 y1 x2 y2...\n");
+    fprintf(stderr,"Usage: fixpix [-vn] @filelist xl yl xr yr...\n");
     fprintf(stderr,"Usage: fixpix [-vn] @filelist @regionlist\n");
     fprintf(stderr,"  -n: write new file, else overwrite \n");
     fprintf(stderr,"  -v: verbose\n");
@@ -229,11 +229,11 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
     /* Fix pixels over regions from a command line coordinate list */
     if (nfix > 0) {
 	for (i = 0; i < nfix; i++) {
-	    FixReg (image, bitpix, xdim, ydim, x1[i], y1[i], x2[i], y2[i]);
+	    FixReg (image, bitpix, xdim, ydim, xl[i], yl[i], xr[i], yr[i]);
 
 	    /* Note addition as history line in header */
 	    sprintf (history, "FIXPIX: region x: %d-%d, y: %d-%d replaced",
-		     x1[i],x2[i],y1[i],y2[i]);
+		     xl[i],xr[i],yl[i],yr[i]);
 	    hputc (header,"HISTORY",history);
 	    if (verbose)
 		printf ("%s\n", history);
@@ -248,12 +248,12 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
 		usage ();
 		}
 	while (fgets (line, 128, freg) != NULL) {
-	    sscanf (line,"%d %d %d %d", x1[1], y1[1], x1[1], y2[1]);
-	    FixReg (image, bitpix, xdim, ydim, x1[i], y1[i], x2[i], y2[i]);
+	    sscanf (line,"%d %d %d %d", xl[1], yl[1], xl[1], yr[1]);
+	    FixReg (image, bitpix, xdim, ydim, xl[i], yl[i], xr[i], yr[i]);
 
 	    /* Note addition as history line in header */
 	    sprintf (history, "FIXPIX: region x: %d-%d, y: %d-%d replaced",
-			 x1[i],x2[i],y1[i],y2[i]);
+			 xl[i],xr[i],yl[i],yr[i]);
 	    hputc (header,"HISTORY",history);
 	    if (verbose)
 		printf ("%s\n", history);
@@ -309,32 +309,32 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
 }
 
 static void
-FixReg (image, bitpix, xdim, ydim, ix1, iy1, ix2, iy2)
+FixReg (image, bitpix, xdim, ydim, ixl, iyl, ixr, iyr)
 
 char *image;		/* FITS image */
 int bitpix;	/* Number of bits in each pixel */
 int xdim;	/* Number of pixels in image horizontally */
 int ydim;	/* Number of pixels in image vertically */
-int ix1, iy1;	/* Lower left corner of region (1 based) */
-int ix2, iy2;	/* Upper right corner of region (1 based) */
+int ixl, iyl;	/* Lower left corner of region (1 based) */
+int ixr, iyr;	/* Upper right corner of region (1 based) */
 
 {
     int xdiff, ydiff, it, ix, iy;
-    double pix1, pix2, dpix;
+    double pixl, pixr, dpix;
 
     /* Find dimensions of region to fix */
-    if (ix1 > ix2) {
-	it = ix2;
-	ix2 = ix1;
-	ix1 = it;
+    if (ixl > ixr) {
+	it = ixr;
+	ixr = ixl;
+	ixl = it;
 	}
-    xdiff = ix2 - ix1 + 1;
-    if (iy1 > iy2) {
-	it = iy2;
-	iy2 = iy1;
-	iy1 = it;
+    xdiff = ixr - ixl + 1;
+    if (iyl > iyr) {
+	it = iyr;
+	iyr = iyl;
+	iyl = it;
 	}
-    ydiff = iy2 - iy1 + 1;
+    ydiff = iyr - iyl + 1;
 
     /* Return if region contains no points */
     if (xdiff < 1 || ydiff < 1)
@@ -342,30 +342,30 @@ int ix2, iy2;	/* Upper right corner of region (1 based) */
 
     /* If more horizontal than vertical, interpolate vertically */
     if (xdiff > ydiff) {
-	if (iy1 - 1 < 0 || iy2 + 1 > ydim - 1)
+	if (iyl - 1 < 0 || iyr + 1 > ydim - 1)
 	    return;
-	for (ix = ix1; ix <= ix2; ix++) {
-	    pix1 = getpix (image, bitpix, xdim, ydim, ix, iy1-1);
-	    pix2 = getpix (image, bitpix, xdim, ydim, ix, iy2+1);
-	    dpix = (pix2 - pix1) / (double)(ydiff + 1);
-	    for (iy = iy1; iy <= iy2; iy++) {
-		pix1 = pix1 + dpix;
-		putpix (image, bitpix, xdim, ydim, ix, iy, pix1);
+	for (ix = ixl; ix <= ixr; ix++) {
+	    pixl = getpix (image, bitpix, xdim, ydim, ix, iyl-1);
+	    pixr = getpix (image, bitpix, xdim, ydim, ix, iyr+1);
+	    dpix = (pixr - pixl) / (double)(ydiff + 1);
+	    for (iy = iyl; iy <= iyr; iy++) {
+		pixl = pixl + dpix;
+		putpix (image, bitpix, xdim, ydim, ix, iy, pixl);
 		}
 	    }
 	}
 
     /* If more vertical than horizontal, interpolate horizontally */
     else {
-	if (ix1 - 1 < 0 || ix2 + 1 > xdim - 1)
+	if (ixl - 1 < 0 || ixr + 1 > xdim - 1)
 	    return;
-	for (iy = iy1; iy <= iy2; iy++) {
-	    pix1 = getpix (image, bitpix, xdim, ydim, ix1-1, iy);
-	    pix2 = getpix (image, bitpix, xdim, ydim, ix2+1, iy);
-	    dpix = (pix2 - pix1) / (double)(ydiff + 1);
-	    for (ix = ix1; ix <= ix2; ix++) {
-		pix1 = pix1 + dpix;
-		putpix (image, bitpix, xdim, ydim, ix, iy, pix1);
+	for (iy = iyl; iy <= iyr; iy++) {
+	    pixl = getpix (image, bitpix, xdim, ydim, ixl-1, iy);
+	    pixr = getpix (image, bitpix, xdim, ydim, ixr+1, iy);
+	    dpix = (pixr - pixl) / (double)(ydiff + 1);
+	    for (ix = ixl; ix <= ixr; ix++) {
+		pixl = pixl + dpix;
+		putpix (image, bitpix, xdim, ydim, ix, iy, pixl);
 		}
 	    }
 	}
@@ -374,4 +374,8 @@ int ix2, iy2;	/* Upper right corner of region (1 based) */
 }
 
 /* Jul 12 1997	New program
+ * Dec 15 1997	Add capability of reading and writing IRAF 2.11 images
+ *
+ * Apr 14 1998	Change xn, yn variable names due to a header conflict
  */
+

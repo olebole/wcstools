@@ -1,5 +1,5 @@
 /* File addpix.c
- * February 21, 1997
+ * December 15, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -233,4 +233,5 @@ char	**value;	/* value to insert into pixel */
 /* Dec  6 1996	New program
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
+ * Dec 15 1997	Add capability of reading and writing IRAF 2.11 images
  */

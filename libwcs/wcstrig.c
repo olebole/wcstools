@@ -2,6 +2,7 @@
 *
 *   WCSLIB - an implementation of the FITS WCS proposal.
 *   Copyright (C) 1995,1996 Mark Calabretta
+*   Function names changed by Doug Mink, SAO, April 15, 1998
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -35,11 +36,14 @@
 
 #include "wcstrig.h"
 
+#ifndef PI	/* often defined in math.h */
 #define PI 3.141592653589793238462643
+#endif
+
 const double d2r = PI / 180.0;
 const double r2d = 180.0 / PI;
 
-double cosd(angle)
+double cosdeg (angle)
 
 const double angle;
 
@@ -62,7 +66,7 @@ const double angle;
 
 /*--------------------------------------------------------------------------*/
 
-double sind(angle)
+double sindeg (angle)
 
 const double angle;
 
@@ -85,7 +89,7 @@ const double angle;
 
 /*--------------------------------------------------------------------------*/
 
-double tand(angle)
+double tandeg (angle)
 
 const double angle;
 
@@ -106,7 +110,7 @@ const double angle;
 
 /*--------------------------------------------------------------------------*/
 
-double acosd(v)
+double acosdeg (v)
 
 const double v;
 
@@ -124,7 +128,7 @@ const double v;
 
 /*--------------------------------------------------------------------------*/
 
-double asind(v)
+double asindeg (v)
 
 const double v;
 
@@ -142,7 +146,7 @@ const double v;
 
 /*--------------------------------------------------------------------------*/
 
-double atand(v)
+double atandeg (v)
 
 const double v;
 
@@ -160,7 +164,7 @@ const double v;
 
 /*--------------------------------------------------------------------------*/
 
-double atan2d(y, x)
+double atan2deg (y, x)
 
 const double x, y;
 
@@ -181,3 +185,5 @@ const double x, y;
 
    return atan2(y,x)*r2d;
 }
+/* Apr 30 1998	Define PI only if not defined already
+ */

@@ -1,20 +1,27 @@
 /*** File wcscon.c
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Based on Starlink subroutines by Patrick Wallace
- *** March 20, 1997
+ *** May 13, 1998
 
  * Module:	wcscon.c (World Coordinate System conversion)
  * Purpose:	Convert between various sky coordinate systems
+ * Subroutine:	wcscon (sys1,sys2,eq1,eq2,theta,phi,epoch) converts between coordinate systems
+ * Subroutine:	wcscsys (cstring) returns code for coordinate system in string
+ * Subroutine:	wcsceq (wcstring) returns equinox in years from system string
  * Subroutine:	fk524 (ra,dec) Convert J2000(FK5) to B1950(FK4) coordinates
- * Subroutine:	fk524e (ra, dec, epoch) (more accurate for known position epoch
+ * Subroutine:	fk524e (ra, dec, epoch) (more accurate for known position epoch)
  * Subroutine:	fk524m (ra,dec,rapm,decpm) exact
  * Subroutine:	fk425 (ra,dec) Convert B1950(FK4) to J2000(FK5) coordinates
- * Subroutine:	fk425e (ra, dec, epoch) (more accurate for known position epoch
+ * Subroutine:	fk425e (ra, dec, epoch) (more accurate for known position epoch)
  * Subroutine:	fk425m (ra, dec, rapm, decpm) exact
  * Subroutine:	fk42gal (dtheta,dphi) Convert B1950(FK4) to galactic coordinates
  * Subroutine:	fk52gal (dtheta,dphi) Convert J2000(FK5) to galactic coordinates
  * Subroutine:	gal2fk4 (dtheta,dphi) Convert galactic coordinates to B1950(FK4)
  * Subroutine:	gal2fk5 (dtheta,dphi) Convert galactic coordinates to J2000<FK5)
+ * Subroutine:	fk42ecl (dtheta,dphi,epoch) Convert B1950(FK4) to ecliptic coordinates
+ * Subroutine:	fk52ecl (dtheta,dphi,epoch) Convert J2000(FK5) to ecliptic coordinates
+ * Subroutine:	ecl2fk4 (dtheta,dphi,epoch) Convert ecliptic coordinates to B1950(FK4)
+ * Subroutine:	ecl2fk5 (dtheta,dphi,epoch) Convert ecliptic coordinates to J2000<FK5)
  * Subroutine:  fk5prec (ep0, ep1, ra, dec) Precession ep0 to ep1, FK5 system
  * Subroutine:  fk4prec (ep0, ep1, ra, dec) Precession ep0 to ep1, FK4 system
  */
@@ -29,8 +36,190 @@
 
 extern void slaDcs2c();
 extern void slaDmxv();
+extern void slaDimxv();
 extern void slaDcc2s();
 extern void slaDeuler();
+extern double slaDranrm(), slaDrange();
+void fk524(), fk524e(), fk425(), fk425e();
+void fk42gal(), fk52gal(), gal2fk4(), gal2fk5();
+void fk42ecl(), fk52ecl(), ecl2fk4(), ecl2fk5();
+
+/* Convert from coordinate system sys1 to coordinate system sys2 */
+
+void
+wcscon (sys1, sys2, eq1, eq2, dtheta, dphi, epoch)
+
+int	sys1;	/* Input coordinate system (J2000, B1950, ECLIPTIC, GALACTIC */
+int	sys2;	/* Output coordinate system (J2000, B1950, ECLIPTIC, GALACTIC */
+double	eq1;	/* Input equinox (default of sys1 if 0.0) */
+double	eq2;	/* Output equinox (default of sys2 if 0.0) */
+double	*dtheta; /* Longitude or right ascension in degrees
+		   Input in sys1, returned in sys2 */
+double	*dphi;	/* Latitude or declination in degrees
+		   Input in sys1, returned in sys2 */
+double	epoch;	/* Besselian epoch in years */
+
+{
+    void fk5prec(), fk4prec();
+
+    /* Set equinoxes if 0.0 */
+    if (eq1 == 0.0) {
+	if (sys1 == WCS_B1950)
+	    eq1 = 1950.0;
+	else
+	    eq1 = 2000.0;
+	}
+    if (eq2 == 0.0) {
+	if (sys2 == WCS_B1950)
+	    eq2 = 1950.0;
+	else
+	    eq2 = 2000.0;
+	}
+
+    /* If systems and equinoxes are the same, return */
+    if (sys2 == sys1 && eq1 == eq2)
+	return;
+
+    /* Precess from input equinox, if necessary */
+    if (eq1 != eq2) {
+	if (sys1 == WCS_B1950 && eq1 != 1950.0)
+	   fk4prec (eq1, 1950.0, dtheta, dphi);
+	if (sys1 == WCS_J2000 && eq1 != 2000.0)
+	   fk5prec (eq1, 2000.0, dtheta, dphi);
+	}
+
+    /* Convert to B1950 FK4 */
+    if (sys2 == WCS_B1950) {
+	if (sys1 == WCS_J2000) {
+	    if (epoch > 0)
+		fk524e (dtheta, dphi, epoch);
+	    else
+		fk524 (dtheta, dphi);
+	    }
+	else if (sys1 == WCS_GALACTIC) 
+	    gal2fk4 (dtheta, dphi);
+	else if (sys1 == WCS_ECLIPTIC) {
+	    if (epoch > 0)
+		ecl2fk4 (dtheta, dphi, epoch);
+	    else
+		ecl2fk4 (dtheta, dphi, 1950.0);
+	    }
+	}
+
+    else if (sys2 == WCS_J2000) {
+        if (sys1 == WCS_B1950) {
+            if (epoch > 0)
+                fk425e (dtheta, dphi, epoch);
+            else
+                fk425 (dtheta, dphi);
+            }
+        else if (sys1 == WCS_GALACTIC)
+            gal2fk5 (dtheta, dphi);
+	else if (sys1 == WCS_ECLIPTIC) {
+	    if (epoch > 0)
+		ecl2fk5 (dtheta, dphi, epoch);
+	    else
+		ecl2fk5 (dtheta, dphi, 2000.0);
+	    }
+	}
+
+    else if (sys2 == WCS_GALACTIC) {
+        if (sys1 == WCS_B1950)
+	    fk42gal (dtheta, dphi);
+        else if (sys1 == WCS_J2000)
+	    fk52gal (dtheta, dphi);
+        else if (sys1 == WCS_ECLIPTIC) {
+	    if (epoch > 0)
+		ecl2fk5 (dtheta, dphi, epoch);
+	    else
+		ecl2fk5 (dtheta, dphi, 2000.0);
+	    fk52gal (dtheta, dphi);
+	    }
+	}
+
+    else if (sys2 == WCS_ECLIPTIC) {
+        if (sys1 == WCS_B1950) {
+	    if (epoch > 0)
+		fk42ecl (dtheta, dphi, epoch);
+	    else
+		fk42ecl (dtheta, dphi, 1950.0);
+	    }
+        else if (sys1 == WCS_J2000) {
+	    if (epoch > 0)
+		fk52ecl (dtheta, dphi, epoch);
+	    else
+		fk52ecl (dtheta, dphi, 2000.0);
+	    }
+        else if (sys1 == WCS_GALACTIC) {
+	    gal2fk5 (dtheta, dphi);
+	    if (epoch > 0)
+		fk52ecl (dtheta, dphi, epoch);
+	    else
+		fk52ecl (dtheta, dphi, 2000.0);
+	    }
+	}
+
+    /* Precess to desired equinox, if necessary */
+    if (eq1 != eq2) {
+	if (sys2 == WCS_B1950 && eq2 != 1950.0)
+	   fk4prec (1950.0, eq2, dtheta, dphi);
+	if (sys2 == WCS_J2000 && eq2 != 2000.0)
+	   fk5prec (2000.0, eq2, dtheta, dphi);
+	}
+    return;
+}
+
+
+/* Set coordinate system from string */
+int
+wcscsys (wcstring)
+
+char *wcstring;		/* Name of coordinate system */
+{
+
+    if (wcstring[0] == 'J' || wcstring[0] == 'j' ||
+	!strcmp (wcstring,"2000") || !strcmp (wcstring, "2000.0") ||
+	!strncmp (wcstring,"FK5",3) || !strncmp (wcstring, "fk5",3))
+	return WCS_J2000;
+
+    if (wcstring[0] == 'B' || wcstring[0] == 'b' ||
+	!strcmp (wcstring,"1950") || !strcmp (wcstring, "1950.0") ||
+	!strncmp (wcstring,"FK4",3) || !strncmp (wcstring, "fk4",3))
+	return WCS_B1950;
+
+    else if (wcstring[0] == 'G' || wcstring[0] == 'g' )
+	return WCS_GALACTIC;
+
+    else if (wcstring[0] == 'E' || wcstring[0] == 'e' )
+	return WCS_ECLIPTIC;
+
+    else if (wcstring[0] == 'A' || wcstring[0] == 'a' )
+	return WCS_ALTAZ;
+
+    else if (wcstring[0] == 'L' || wcstring[0] == 'l' )
+	return WCS_LINEAR;
+
+    else
+	return -1;
+}
+
+
+/* Set equinox from string (return 0.0 if not obvious) */
+
+double
+wcsceq (wcstring)
+
+char *wcstring;		/* Name of coordinate system */
+{
+    if (wcstring[0] == 'J' || wcstring[0] == 'j' ||
+	wcstring[0] == 'B' || wcstring[0] == 'b')
+	return (atof (wcstring+1));
+    else if (wcstring[0] == '1' || wcstring[0] == '2')
+	return (atof (wcstring));
+    else
+	return (0.0);
+}
+
 
 /*  Constant vector and matrix (by columns)
     These values were obtained by inverting C.Hohenkerk's forward matrix
@@ -884,6 +1073,170 @@ double pos[3];	/* x,y,z geocentric equatorial position of object */
 	return;
 }
 
+
+/* These routines are heavily based on Pat Wallace's slalib package */
+
+/* Convert B1950 right ascension and declination to ecliptic coordinates */
+
+void
+fk42ecl (dtheta, dphi, epoch)
+
+double *dtheta;	/* B1950 right ascension in degrees
+		   Galactic longitude (l2) in degrees (returned) */
+double *dphi;	/* B1950 declination in degrees
+		   Galactic latitude (b2) in degrees (returned) */
+double	epoch;	/* Besselian epoch in years */
+
+{
+    void fk425e(), fk52ecl();
+
+    /* Convert from B1950 to J2000 coordinates */
+    fk425e (dtheta, dphi, epoch);
+
+    /* Convert from J2000 to ecliptic coordinates */
+    fk52ecl (dtheta, dphi, epoch);
+
+    return;
+}
+
+
+/* Convert J2000 right ascension and declination to ecliptic coordinates */
+
+void
+fk52ecl (dtheta, dphi, epoch)
+
+double *dtheta;	/* J2000 right ascension in degrees
+		   Galactic longitude (l2) in degrees (returned) */
+double *dphi;	/* J2000 declination in degrees
+		   Galactic latitude (b2) in degrees (returned) */
+double	epoch;	/* Besselian epoch in years */
+
+{
+    double t, eps0, rphi, rtheta;
+    double rmat[3][3];	/* Rotation matrix from slalib slaEcmat() by P.T. Wallace */
+    double das2r=4.8481368110953599358991410235794797595635330237270e-6;
+    void slaDeuler();
+
+    double pm[3][3], v1[3], v2[3], rra, rdec;
+    void fk5prec();
+
+    rtheta = degrad (*dtheta);
+    rphi = degrad (*dphi);
+
+    /* Precess coordinates from J2000 to epoch */
+    if (epoch != 2000.0)
+	fk5prec (2000.0, epoch, &rtheta, &rphi);
+
+    /* Convert RA,Dec to x,y,z */
+    slaDcs2c (rtheta, rphi, v1);
+
+    /* Interval between basic epoch J2000.0 and current epoch (JC) in centuries*/
+    t = (epoch - 2000.0) * 0.01;
+ 
+    /* Mean obliquity */
+    eps0 = das2r * (84381.448 + (-46.8150 + (-0.00059 + 0.001813 * t) * t) * t);
+ 
+    /* Form the equatorial to ecliptic rotation matrix (IAU 1980 theory).
+     *  References: Murray, C.A., Vectorial Astrometry, section 4.3.
+     *    The matrix is in the sense   v[ecl]  =  rmat * v[equ];  the
+     *    equator, equinox and ecliptic are mean of date. */
+    slaDeuler ("X", eps0, 0.0, 0.0, rmat);
+
+    /* Rotate from equatorial to ecliptic coordinates */
+    slaDmxv (rmat, v1, v2);
+
+    /* Convert x,y,z to latitude, longitude */
+    slaDcc2s (v2, &rtheta, &rphi);
+
+    /* Express in conventional ranges */
+    rtheta = slaDranrm (rtheta);
+    rphi = slaDrange (rphi);
+    *dtheta = raddeg (rtheta);
+    *dphi = raddeg (rphi);
+}
+
+
+/* Convert ecliptic coordinates to B1950 right ascension and declination */
+
+void
+ecl2fk4 (dtheta, dphi, epoch)
+
+double *dtheta;	/* Galactic longitude (l2) in degrees
+		   B1950 right ascension in degrees (returned) */
+double *dphi;	/* Galactic latitude (b2) in degrees
+		   B1950 declination in degrees (returned) */
+double	epoch;	/* Besselian epoch in years */
+
+{
+    void ecl2fk5(), fk524e();
+
+    /* Convert from ecliptic to J2000 coordinates */
+    ecl2fk5 (dtheta, dphi, epoch);
+
+    /* Convert from J2000 to B1950 coordinates */
+    fk524e (dtheta, dphi, epoch);
+
+    return;
+}
+
+
+
+/* Convert ecliptic coordinates to J2000 right ascension and declination */
+
+void
+ecl2fk5 (dtheta, dphi, epoch)
+
+double *dtheta;	/* Galactic longitude (l2) in degrees
+		   J2000 right ascension in degrees  (returned) */
+double *dphi;	/* Galactic latitude (b2) in degrees
+		   J2000 declination in degrees (returned) */
+double	epoch;	/* Besselian epoch in years */
+
+{
+    double rtheta, rphi, v1[3], v2[3];
+    double t, eps0;
+    double rmat[3][3];	/* Rotation matrix from slalib slaEcmat() */
+    double das2r=4.8481368110953599358991410235794797595635330237270e-6;
+    void fk5prec();
+
+    rtheta = degrad (*dtheta);
+    rphi = degrad (*dphi);
+
+    /* Convert RA,Dec to x,y,z */
+    slaDcs2c (rtheta, rphi, v1);
+
+    /* Interval between basic epoch J2000.0 and current epoch (JC) in centuries*/
+    t = (epoch - 2000.0) * 0.01;
+ 
+    /* Mean obliquity */
+    eps0 = das2r * (84381.448 + (-46.8150 + (-0.00059 + 0.001813 * t) * t) * t);
+ 
+    /* Form the equatorial to ecliptic rotation matrix (IAU 1980 theory).
+     *  References: Murray, C.A., Vectorial Astrometry, section 4.3.
+     *    The matrix is in the sense   v[ecl]  =  rmat * v[equ];  the
+     *    equator, equinox and ecliptic are mean of date. */
+    slaDeuler ("X", eps0, 0.0, 0.0, rmat);
+
+    /* Ecliptic to equatorial */
+    slaDimxv (rmat, v1, v2);
+
+    /* Cartesian to spherical */
+    slaDcc2s (v2, &rtheta, &rphi);
+
+    /* Keep RA within 0 to 2pi range */
+    if (rtheta < 0.0)
+	rtheta = rtheta + (2.0 * PI);
+    if (rtheta > 2.0 * PI)
+	rtheta = rtheta - (2.0 * PI);
+
+    /* Precess coordinates from epoch to J2000 */
+    if (epoch != 2000.0)
+	fk5prec (epoch, 2000.0, &rtheta, &rphi);
+    *dtheta = raddeg (rtheta);
+    *dphi = raddeg (rphi);
+}
+
+
 /* The following routines are almost verbatim from Patrick Wallace's SLALIB */
 
 void
@@ -908,8 +1261,7 @@ double *dec;	/* Dec in degrees mean equator & equinox of epoch ep0
 */
 {
     double pm[3][3], v1[3], v2[3], rra, rdec;
-    void mprecfk4(), slaDcs2c(), slaDmxv(), slaDcc2s();
-    double slaDranrm();
+    void mprecfk4();
 
     rra = degrad (*ra);
     rdec = degrad (*dec);
@@ -1076,4 +1428,12 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
  * Dec 10 1996	All subroutine arguments are degrees except vector conversions
  *
  * Mar 20 1997	Drop unused variables after lint
+ *
+ * Apr 14 1998	Add ecliptic coordinate conversions and general conversion routines
+ * Apr 23 1998	Add LINEAR coordinate system
+ * Apr 28 1998	Change coordinate system flags to WCS_*
+ * Apr 28 1998	Return -1 from wcscsys if not a legal coordinate system
+ * May  7 1998	Keep theta within 0 to 2pi in ecl2fk5()
+ * May 13 1998	Add wcsceq()
+ * May 13 1998	Add equinox arguments to wcscon()
  */

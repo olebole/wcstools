@@ -1,6 +1,6 @@
 /*** File libwcs/fitsio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** October 9, 1997
+ *** May 4, 1998
 
  * Module:      fitsio.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -72,7 +72,8 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
     int extnum;		/* desired header data number
 			   (0=primary -1=first with data -2=use EXTNAME) */
     char extname[32];	/* FITS extension name */
-    char *ext;		/* Desired FITS extension name--if extnum is -2 */
+    char *ext;		/* Desired FITS extension name, if any */
+    char *ext1;		/* End of desired FITS extension name */
     char *pheader;	/* Primary header (naxis is 0) */
 
     pheader = NULL;
@@ -86,6 +87,15 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 	ext = strchr (filename, ',');
 	if (ext != NULL)
 	    ext = ext + 1;
+	else {
+	    ext = strchr (filename, '[');
+	    if (ext != NULL) {
+		ext = ext + 1;
+		ext1 = strchr (ext, ']');
+		if (ext1 != NULL)
+		    *ext1 = (char) 0;
+		}
+	    }
 
 	fd = -1;
 	fd = fitsropen (filename);
@@ -204,7 +214,7 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 		if (extnum > -1 && hdu == extnum)
 		    break;
 		else if (extnum < 0) {
-		    hgetc (header,"EXTNAME",extname);
+		    hgets (header, 32, "EXTNAME", extname);
 		    if (!strcmp (ext,extname))
 			break;
 		    }
@@ -283,7 +293,12 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
     else
 	*lhead = nbh;
 
-    if (pheader != NULL) {
+    if (pheader != NULL && extnum != 0) {
+	hgets (header, "XTENSION", 32, extname);
+	if (!strcmp (extname,"IMAGE")) {
+	    strncpy (header, "SIMPLE  ", 8);
+	    hputl (header, "SIMPLE", 1);
+	    }
 	headend = ksearch (header,"END");
 	lext = headend - header;
 	if (lext + lprim > nbh) {
@@ -438,7 +453,7 @@ int	*nbhead;	/* Number of characters before table starts */
     (void) hgets (header,"XTENSION",16,temp);
     if (strncmp (temp, "TABLE", 5)) {
 	fprintf (stderr, "FITSRTOPEN:  %s is not a FITS table file\n",inpath);
-	return (NULL);
+	return (0);
 	}
 
 /* If it is a FITS file, get table information from the header */
@@ -846,4 +861,11 @@ char	*image;		/* FITS image pixels */
  * Dec 27 1996	Turn nonprinting header characters into spaces
  *
  * Oct  9 1997	Add FITS extension support as filename,extension
+ * Dec 15 1997	Fix minor bugs after lint
+ *
+ * Feb 23 1998	Do not append primary header if getting header for ext. 0
+ * Feb 23 1998	Accept either bracketed or comma extension
+ * Feb 24 1998	Add SIMPLE keyword to start of extracted extension
+ * Apr 30 1998	Fix error return if not table file after Allan Brighton
+ * May  4 1998	Fix error in argument sequence in HGETS call
  */

@@ -2,6 +2,7 @@
 *
 *   WCSLIB - an implementation of the FITS WCS proposal.
 *   Copyright (C) 1995,1996 Mark Calabretta
+*   wcstrig function names changed by Doug Mink, SAO, April 15, 1998
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -234,6 +235,7 @@
 *   $Id: cel.c,v 2.4 1996/09/10 06:31:35 mcalabre Exp $
 *===========================================================================*/
 
+#include <string.h>
 #include "cel.h"
 
 int  npcode = 25;
@@ -405,12 +407,12 @@ struct prjprm *prj;
          cel->ref[2] = (cel->ref[1] < theta0) ? 180.0 : 0.0;
       }
 
-      clat0 = cosd(cel->ref[1]);
-      slat0 = sind(cel->ref[1]);
-      cphip = cosd(cel->ref[2]);
-      sphip = sind(cel->ref[2]);
-      cthe0 = cosd(theta0);
-      sthe0 = sind(theta0);
+      clat0 = cosdeg(cel->ref[1]);
+      slat0 = sindeg(cel->ref[1]);
+      cphip = cosdeg(cel->ref[2]);
+      sphip = sindeg(cel->ref[2]);
+      cthe0 = cosdeg(theta0);
+      sthe0 = sindeg(theta0);
 
       x = cthe0*cphip;
       y = sthe0;
@@ -427,8 +429,8 @@ struct prjprm *prj;
             return 1;
          }
 
-         u = atan2d(y,x);
-         v = acosd(slat0/z);
+         u = atan2deg(y,x);
+         v = acosdeg(slat0/z);
 
          latp1 = u + v;
          if (latp1 > 180.0) {
@@ -463,7 +465,7 @@ struct prjprm *prj;
 
       cel->euler[1] = 90.0 - latp;
 
-      z = cosd(latp)*clat0;
+      z = cosdeg(latp)*clat0;
       if (fabs(z) < tol) {
          if (fabs(clat0) < tol) {
             /* Celestial pole at the reference point. */
@@ -479,12 +481,12 @@ struct prjprm *prj;
             cel->euler[1] = 180.0;
          }
       } else {
-         x = (sthe0 - sind(latp)*slat0)/z;
+         x = (sthe0 - sindeg(latp)*slat0)/z;
          y =  sphip*cthe0/clat0;
          if (x == 0.0 && y == 0.0) {
             return 1;
          }
-         cel->euler[0] = cel->ref[0] - atan2d(y,x);
+         cel->euler[0] = cel->ref[0] - atan2deg(y,x);
       }
 
       /* Make euler[0] the same sign as ref[0]. */
@@ -496,8 +498,8 @@ struct prjprm *prj;
    }
 
    cel->euler[2] = cel->ref[2];
-   cel->euler[3] = cosd(cel->euler[1]);
-   cel->euler[4] = sind(cel->euler[1]);
+   cel->euler[3] = cosdeg(cel->euler[1]);
+   cel->euler[4] = sindeg(cel->euler[1]);
    cel->flag = CELSET;
 
    /* Check for ill-conditioned parameters. */

@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * November 4, 1997
+ * May 13, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -19,6 +19,9 @@ extern struct WorldCoor *GetWCSFITS ();	/* Read WCS from FITS or IRAF header */
 
 static int verbose = 0;		/* verbose/debugging flag */
 static char coorsys[16];
+static int oldwcs = 0;		/* AIPS classic WCS flag */
+static double eqin = 0.0;
+static double eqout = 0.0;
 
 main (ac, av)
 int ac;
@@ -32,9 +35,10 @@ char **av;
     char line[80];
     char *fn;
     char csys[16];
+    int sysin;
     struct WorldCoor *wcs;
     char rastr[32], decstr[32];
-    int offscale;
+    int offscale, n;
 
     *coorsys = 0;
 
@@ -43,23 +47,36 @@ char **av;
 	char c;
 	while (c = *++str)
     	switch (c) {
-    	case 'v':	/* more verbosity */
-    	    verbose++;
-    	    break;
-	case 'b':
-	    strcpy (coorsys,"b1950");
-    	    break;
-	case 'j':
-	    strcpy (coorsys,"j2000");
-    	    break;
-	case 'g':
-	    strcpy (coorsys,"galactic");
-    	    break;
-    	default:
-    	    usage(progname);
-    	    break;
-    	}
-    }
+
+    	    case 'v':	/* more verbosity */
+    		verbose++;
+    		break;
+
+	    case 'b':
+		strcpy (coorsys,"B1950");
+    		break;
+
+	    case 'e':
+		strcpy (coorsys,"ecliptic");
+    		break;
+
+	    case 'g':
+		strcpy (coorsys,"galactic");
+    		break;
+
+	    case 'j':
+		strcpy (coorsys,"J2000");
+    		break;
+
+	    case 'z':       /* Use AIPS classic WCS */
+		oldwcs++;
+		break;
+
+    	    default:
+    		usage(progname);
+    		break;
+    	    }
+	}
 
     /* There are ac remaining file names starting at av[0] */
     if (ac == 0)
@@ -73,26 +90,37 @@ char **av;
 	fprintf (stderr, "No WCS in image file %s\n", fn);
 	exit (1);
 	}
-    if (*coorsys)
-	wcsoutinit (wcs, coorsys);
+    wcs->oldwcs = oldwcs;
 
     while (ac-- > 1) {
 	listname = *av;
 	if (listname[0] == '@') {
+	    if (*coorsys)
+		wcsininit (wcs, coorsys);
 	    ln = listname;
 	    while (*ln++)
 		*(ln-1) = *ln;
 	    if (fd = fopen (listname, "r")) {
 		while (fgets (line, 80, fd)) {
-		    sscanf (line,"%s %s", rastr, decstr);
+		    n = sscanf (line,"%s %s %s", rastr, decstr, csys);
 		    ra = str2ra (rastr);
 		    dec = str2dec (decstr);
-		    wcs2pix (wcs, ra, dec, &x, &y, &offscale);
-		    if (verbose)
-			printf ("%s %s -> %.5f %.5f -> %.3f %.3f",
-				 rastr, decstr, ra, dec, x, y);
+		    if (n > 2)
+			sysin = wcscsys (csys);
 		    else
-			printf ("%s %s -> %.3f %.3f",rastr, decstr, x, y);
+			sysin = -1;
+		    if (sysin > -1)
+			wcsc2pix (wcs, ra, dec, csys, &x, &y, &offscale);
+		    else {
+			wcs2pix (wcs, ra, dec, &x, &y, &offscale);
+			strcpy (csys, coorsys);
+			}
+		    if (verbose)
+			printf ("%s %s %s -> %.5f %.5f -> %.3f %.3f",
+				 rastr, decstr, csys, ra, dec, x, y);
+		    else
+			printf ("%s %s %s -> %.3f %.3f",
+				rastr, decstr, csys, x, y);
 		    if (offscale)
 			printf (" (offscale)\n");
 		    else
@@ -119,57 +147,36 @@ char **av;
 	/* Convert coordinates system to that of image */
 	    if (ac > 1) {
 		strcpy (csys, *av);
-		if (csys[0] == 'B' || csys[0] == 'b') {
-		    if (wcs->equinox == 2000.0)
-			fk425e (&ra, &dec, wcs->epoch);
-		    ac--;
-		    av++;
-		    }
-		else if (csys[0] == 'J' || csys[0] == 'j') {
-		    if (wcs->equinox == 1950.0)
-			fk524e (&ra, &dec, wcs->epoch);
-		    ac--;
-		    av++;
-		    }
-		else if ((!strcmp (csys,"FK4") || !strcmp (csys,"fk4")) &&
-			wcs->equinox == 2000.0) {
-			fk425e (&ra, &dec, wcs->epoch);
-		    ac--;
-		    av++;
-		    }
-		else if ((!strcmp (csys,"FK5") || !strcmp (csys,"fk5")) &&
-			wcs->equinox == 1950.0) {
-			fk524e (&ra, &dec, wcs->epoch);
+		if (csys[0] == 'B' || csys[0] == 'b' || csys[2] == '4' ||
+		    csys[0] == 'J' || csys[0] == 'j' || csys[2] == '5' ||
+		    csys[0] == 'G' || csys[0] == 'g' ||
+		    csys[0] == 'E' || csys[0] == 'e' ||
+		    csys[0] == 'L' || csys[0] == 'l') {
 		    ac--;
 		    av++;
 		    }
 		else {
-		    if (wcs->equinox == 1950.0)
-			strcpy (csys, "B1950");
-		    else
-			strcpy (csys, "J2000");
+		    strcpy (csys, wcs->radecsys);
 		    }
 		}
 	    else {
-		if (wcs->pcode < 0)
+		if (wcs->prjcode < 0)
 		    strcpy (csys, "PIXEL");
-		else if (wcs->equinox == 1950.0)
-		    strcpy (csys, "B1950");
-		else
-		    strcpy (csys, "J2000");
+		else {
+		    strcpy (csys, wcs->radecsys);
+		    }
 		}
 
-	    if (ra != ra0 || verbose) {
+	    sysin = wcscsys (csys);
+	    eqin = wcsceq (csys);
+	    wcscon (sysin, wcs->syswcs, eqin, eqout, &ra, &dec, wcs->epoch);
+	    if (sysin != wcs->syswcs && verbose) {
 		printf ("%s %s %s -> ", rastr, decstr, csys);
 		ra2str (rastr, ra, 3);
 		dec2str (decstr, dec, 2);
-		if (wcs->equinox == 1950.0)
-		    strcpy (csys, "B1950");
-		else if (wcs->equinox == 2000.0)
-		    strcpy (csys, "J2000");
-		printf ("%s %s %s\n", rastr, decstr, csys);
+		printf ("%s %s %s\n", rastr, decstr, wcs->radecsys);
 		}
-	    wcs2pix (wcs, ra, dec, &x, &y, &offscale);
+	    wcsc2pix (wcs, ra0, dec0, csys, &x, &y, &offscale);
 	    printf ("%s %s %s -> %.3f %.3f",rastr, decstr, csys, x, y);
 	    if (offscale)
 		printf (" (offscale)\n");
@@ -188,12 +195,15 @@ usage (progname)
 char *progname;
 {
     fprintf (stderr,"Compute X Y from RA Dec using WCS in FITS and IRAF image files\n");
-    fprintf(stderr,"%s: usage: [-vbjg] file.fts ra1 dec1 ... ran decn\n", progname);
-    fprintf(stderr,"%s: usage: [-vbjg] file.fts @listfile\n", progname);
-    fprintf(stderr,"  -b: B1950 (FK4) input\n");
-    fprintf(stderr,"  -j: J2000 (FK5) input\n");
-    fprintf(stderr,"  -g: galactic longitude and latitude input\n");
-    fprintf(stderr,"  -v: verbose\n");
+    fprintf(stderr,"%s: usage: [-vbjg] file.fts ra1 dec1 sys1 ... ran decn sysn\n", progname);
+    fprintf (stderr,"%s: usage: [-vbjg] file.fts @listfile\n", progname);
+    fprintf (stderr,"  -v: verbose\n");
+    fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
+    fprintf (stderr,"These flags are best used for files of coordinates in the same system:\n");
+    fprintf (stderr,"  -b: B1950 (FK4) input\n");
+    fprintf (stderr,"  -e: ecliptic longitude and latitude input\n");
+    fprintf (stderr,"  -j: J2000 (FK5) input\n");
+    fprintf (stderr,"  -g: galactic longitude and latitude input\n");
     exit (1);
 }
 /* Feb 23 1996	New program
@@ -207,4 +217,16 @@ char *progname;
  *
  * Jun  4 1997	Add PIXEL wcs for linear non-sky projections
  * Nov  4 1997	If verbose mode, always print converted input string
+ * Dec 15 1997	Handle new IRAF 2.11 image header format
+ *
+ * Jan 28 1998  Implement Mark Calabretta's WCSLIB
+ * Jan 29 1998  Add -z for AIPS classic WCS projections
+ * Feb 17 1998	Add support for galactic coordinates as input
+ * Feb 18 1998	Version 2.0: Full Calabretta implementation
+ * Mar 27 1998	Version 2.2: Add TNX and polynomial plate fit
+ * Apr 13 1998	Compute pixel from galactic coordinates correctly
+ * Apr 14 1998	Add ecliptic coordinates
+ * Apr 24 1998	Handle linear coodinates
+ * Apr 28 1998	Implement separate coordinate system for input
+ * May 13 1998	Implement arbitrary equinox for input
  */

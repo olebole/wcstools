@@ -1,9 +1,9 @@
 /* File saoimage/wcslib/platepos.c
- * February 25, 1996
+ * April 28, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	platepos.c (Plate solution WCS conversion
- * Purpose:	Compute WCS from Digital Sky Survey plate fit
+ * Purpose:	Compute WCS from plate fit
  * Subroutine:	platepos() converts from pixel location to RA,Dec 
  * Subroutine:	platepix() converts from RA,Dec to pixel location   
 
@@ -34,77 +34,70 @@ double	*xpos;		/* Right ascension or longitude in degrees */
 double	*ypos;		/* Declination or latitude in degrees */
 
 {
-  double x, y, xmm, ymm, xmm2, ymm2, xmm3, ymm3, x2y2;
-  double xi, xir, eta, etar, raoff, ra, dec;
-  double cond2r = 1.745329252e-2;
-  double cons2r = 206264.8062470964;
-  double twopi = 6.28318530717959;
-  double ctan, ccos;
+    double x, y, x2, y2, x3, y3, r2;
+    double xi, xir, eta, etar, raoff, ra, dec, ra0, dec0;
+    double twopi = 6.28318530717959;
+    double ctan, ccos;
+    int ncoeff1 = wcs->ncoeff1;
+    int ncoeff2 = wcs->ncoeff2;
 
-/*  Ignore magnitude and color terms 
-  double mag = 0.0;
-  double color = 0.0; */
+    /*  Ignore magnitude and color terms 
+    double mag = 0.0;
+    double color = 0.0; */
 
-/* Convert from image pixels to plate pixels */
-  x = xpix + wcs->x_pixel_offset - 1.0 + 0.5;
-  y = ypix + wcs->y_pixel_offset - 1.0 + 0.5;
+    /* Convert from pixels to millimeters */
+    x = xpix - wcs->crpix[0];
+    y = ypix - wcs->crpix[1];
+    x2 = x * x;
+    y2 = y * y;
+    x3 = x * x2;
+    y3 = y * y2;
+    r2 = x2 + y2;
 
-/* Convert from pixels to millimeters */
-  xmm = (wcs->ppo_coeff[2] - x * wcs->x_pixel_size) / 1000.0;
-  ymm = (y * wcs->y_pixel_size - wcs->ppo_coeff[5]) / 1000.0;
-  xmm2 = xmm * xmm;
-  ymm2 = ymm * ymm;
-  xmm3 = xmm * xmm2;
-  ymm3 = ymm * ymm2;
-  x2y2 = xmm2 + ymm2;
+    /*  Compute xi,eta coordinates in degrees from x,y and plate model */
+    xi =  wcs->x_coeff[ 0]		+ wcs->x_coeff[ 1]*x +
+	  wcs->x_coeff[ 2]*y	+ wcs->x_coeff[ 3]*x2 +
+	  wcs->x_coeff[ 4]*y2	+ wcs->x_coeff[ 5]*x*y;
 
-/*  Compute coordinates from x,y and plate model */
+    if (ncoeff1 > 6)
+	  xi = xi + wcs->x_coeff[ 6]*x3	+ wcs->x_coeff[ 7]*y3;
 
-  xi =  wcs->amd_x_coeff[ 0]*xmm	+ wcs->amd_x_coeff[ 1]*ymm +
-	wcs->amd_x_coeff[ 2]		+ wcs->amd_x_coeff[ 3]*xmm2 +
-	wcs->amd_x_coeff[ 4]*xmm*ymm	+ wcs->amd_x_coeff[ 5]*ymm2 +
-	wcs->amd_x_coeff[ 6]*(x2y2)	+ wcs->amd_x_coeff[ 7]*xmm3 +
-	wcs->amd_x_coeff[ 8]*xmm2*ymm	+ wcs->amd_x_coeff[ 9]*xmm*ymm2 +
-	wcs->amd_x_coeff[10]*ymm3	+ wcs->amd_x_coeff[11]*xmm*(x2y2) +
-	wcs->amd_x_coeff[12]*xmm*x2y2*x2y2;
+    if (ncoeff1 > 8) {
+	xi = xi + wcs->x_coeff[ 8]*x2*y	+ wcs->x_coeff[ 9]*x*y2 +
+		  wcs->x_coeff[10]*(r2)	+ wcs->x_coeff[11]*x*r2 +
+		  wcs->x_coeff[12]*y*r2;
+	}
 
-/*  Ignore magnitude and color terms 
-	+ wcs->amd_x_coeff[13]*mag	+ wcs->amd_x_coeff[14]*mag*mag +
-	wcs->amd_x_coeff[15]*mag*mag*mag + wcs->amd_x_coeff[16]*mag*xmm +
-	wcs->amd_x_coeff[17]*mag*x2y2	+ wcs->amd_x_coeff[18]*mag*xmm*x2y2 +
-	wcs->amd_x_coeff[19]*color; */
+    eta = wcs->y_coeff[ 0]		+ wcs->y_coeff[ 1]*x +
+	  wcs->y_coeff[ 2]*y	+ wcs->y_coeff[ 3]*x2 +
+	  wcs->y_coeff[ 4]*y2	+ wcs->y_coeff[ 5]*x*y;
 
-  eta =	wcs->amd_y_coeff[ 0]*ymm	+ wcs->amd_y_coeff[ 1]*xmm +
-	wcs->amd_y_coeff[ 2]		+ wcs->amd_y_coeff[ 3]*ymm2 +
-	wcs->amd_y_coeff[ 4]*xmm*ymm	+ wcs->amd_y_coeff[ 5]*xmm2 +
-	wcs->amd_y_coeff[ 6]*(x2y2)	+ wcs->amd_y_coeff[ 7]*ymm3 +
-	wcs->amd_y_coeff[ 8]*ymm2*xmm	+ wcs->amd_y_coeff[ 9]*ymm*xmm2 +
-	wcs->amd_y_coeff[10]*xmm3	+ wcs->amd_y_coeff[11]*ymm*(x2y2) +
-	wcs->amd_y_coeff[12]*ymm*x2y2*x2y2;
+    if (ncoeff2 > 6)
+	eta = eta + wcs->y_coeff[ 6]*x3	+ wcs->y_coeff[ 7]*y3;
 
-/*  Ignore magnitude and color terms 
-	+ wcs->amd_y_coeff[13]*mag	+ wcs->amd_y_coeff[14]*mag*mag +
-	wcs->amd_y_coeff[15]*mag*mag*mag + wcs->amd_y_coeff[16]*mag*ymm +
-	wcs->amd_y_coeff[17]*mag*x2y2)	+ wcs->amd_y_coeff[18]*mag*ymm*x2y2 +
-	wcs->amd_y_coeff[19]*color; */
+    if (ncoeff2 > 8) {
+	eta = eta + wcs->y_coeff[ 8]*x2*y + wcs->y_coeff[ 9]*y2*x +
+		    wcs->y_coeff[10]*r2   + wcs->y_coeff[11]*x*r2 +
+		    wcs->y_coeff[12]*y*r2;
+	}
 
-/* Convert to radians */
+    /* Convert to radians */
+    xir = degrad (xi);
+    etar = degrad (eta);
 
-  xir = xi / cons2r;
-  etar = eta / cons2r;
+    /* Convert to RA and Dec */
+    ra0 = degrad (wcs->crval[0]);
+    dec0 = degrad (wcs->crval[1]);
+    ctan = tan (dec0);
+    ccos = cos (dec0);
+    raoff = atan2 (xir / ccos, 1.0 - etar * ctan);
+    ra = raoff + ra0;
+    if (ra < 0.0) ra = ra + twopi;
+    *xpos = raddeg (ra);
 
-/* Convert to RA and Dec */
-
-  ctan = tan (wcs->plate_dec);
-  ccos = cos (wcs->plate_dec);
-  raoff = atan2 (xir / ccos, 1.0 - etar * ctan);
-  ra = raoff + wcs->plate_ra;
-  if (ra < 0.0) ra = ra + twopi;
-  *xpos = ra / cond2r;
-
-  dec = atan (cos (raoff) / ((1.0 - (etar * ctan)) / (etar + ctan)));
-  *ypos = dec / cond2r;
-  return 0;
+    dec = atan (cos (raoff) / ((1.0 - (etar * ctan)) / (etar + ctan)));
+    *ypos = raddeg (dec);
+    return 0;
 }
 
 
@@ -125,151 +118,236 @@ double	*xpix;		/* x pixel number  (RA or long without rotation) */
 double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 
 {
-  double div,xi,eta,x,y,xy,x2,y2,x2y,y2x,x3,y3,x4,y4,x2y2,cjunk,dx,dy;
-  double sypos,cypos,syplate,cyplate,sxdiff,cxdiff;
-  double f,fx,fy,g,gx,gy, xmm, ymm;
-  double conr2s = 206264.8062470964;
-  double tolerance = 0.0000005;
-  int    max_iterations = 50;
-  int    i;
-  double xr, yr; 	/* position in radians */
-  double cond2r = 1.745329252e-2;
+    double div,xi,eta,x,y,xy,x2,y2,x2y,y2x,x3,y3,r2,dx,dy;
+    double tdec,ctan,ccos,traoff, craoff, etar, xir;
+    double f,fx,fy,g,gx,gy;
+    double ra0, dec0, ra, dec;
+    double tolerance = 0.0000005;
+    int    max_iterations = 50;
+    int    i;
+    int	ncoeff1 = wcs->ncoeff1;
+    int	ncoeff2 = wcs->ncoeff2;
+    double xr, yr; 	/* position in radians */
 
-/* Convert RA and Dec in radians to standard coordinates on a plate */
-  xr = xpos * cond2r;
-  yr = ypos * cond2r;
-  sypos = sin (yr);
-  cypos = cos (yr);
-  syplate = sin (wcs->plate_dec);
-  cyplate = cos (wcs->plate_dec);
-  sxdiff = sin (xr - wcs->plate_ra);
-  cxdiff = cos (xr - wcs->plate_ra);
-  div = (sypos * syplate) + (cypos * cyplate * cxdiff);
-  xi = cypos * sxdiff * conr2s / div;
-  eta = ((sypos * cyplate) - (cypos * syplate * cxdiff)) * conr2s / div;
+    /* Convert RA and Dec in radians to standard coordinates on a plate */
+    ra = degrad (xpos);
+    dec = degrad (ypos);
+    tdec = tan (dec);
+    ra0 = degrad (wcs->crval[0]);
+    dec0 = degrad (wcs->crval[1]);
+    ctan = tan (dec0);
+    ccos = cos (dec0);
+    traoff = tan (ra - ra0);
+    craoff = cos (ra - ra0);
+    etar = (1.0 - ctan * craoff / tdec) / (ctan + (craoff / tdec));
+    xir = traoff * ccos * (1.0 - (etar * ctan));
+    xi = raddeg (xir);
+    eta = raddeg (etar);
 
-/* Set initial value for x,y */
-  xmm = xi / wcs->plate_scale;
-  ymm = eta / wcs->plate_scale;
+    /* Set initial value for x,y */
+    x = (xi - wcs->x_coeff[0]) / wcs->x_coeff[1];
+    y = (eta - wcs->y_coeff[0]) / wcs->y_coeff[2];
 
-/* Iterate by Newton's method */
-  for (i = 0; i < max_iterations; i++) {
+    /* Iterate by Newton's method */
+    for (i = 0; i < max_iterations; i++) {
 
-    /* X plate model */
-    xy = xmm * ymm;
-    x2 = xmm * xmm;
-    y2 = ymm * ymm;
-    x2y = x2 * ymm;
-    y2x = y2 * xmm;
-    x2y2 = x2 + y2;
-    cjunk = x2y2 * x2y2;
-    x3 = x2 * xmm;
-    y3 = y2 * ymm;
-    x4 = x2 * x2;
-    y4 = y2 * y2;
-    f = wcs->amd_x_coeff[0]*xmm      + wcs->amd_x_coeff[1]*ymm +
-        wcs->amd_x_coeff[2]          + wcs->amd_x_coeff[3]*x2 +
-        wcs->amd_x_coeff[4]*xy       + wcs->amd_x_coeff[5]*y2 +
-        wcs->amd_x_coeff[6]*x2y2     + wcs->amd_x_coeff[7]*x3 +
-        wcs->amd_x_coeff[8]*x2y      + wcs->amd_x_coeff[9]*y2x +
-        wcs->amd_x_coeff[10]*y3      + wcs->amd_x_coeff[11]*xmm*x2y2 +
-        wcs->amd_x_coeff[12]*xmm*cjunk;
-    /* magnitude and color terms ignored
-      + wcs->amd_x_coeff[13]*mag +
-        wcs->amd_x_coeff[14]*mag*mag   + wcs->amd_x_coeff[15]*mag*mag*mag +
-        wcs->amd_x_coeff[16]*mag*xmm   + wcs->amd_x_coeff[17]*mag*(x2+y2) +
-        wcs->amd_x_coeff[18]*mag*xmm*(x2+y2)  + wcs->amd_x_coeff[19]*color;
-    */
+	/* X plate model */
+	xy = x * y;
+	x2 = x * x;
+	y2 = y * y;
+	x3 = x2 * x;
+	y3 = y2 * y;
+	x2y = x2 * y;
+	y2x = y2 * x;
+	r2 = x2 + y2;
 
-    /*  Derivative of X model wrt x */
-    fx = wcs->amd_x_coeff[0]           + wcs->amd_x_coeff[3]*2.0*xmm +
-         wcs->amd_x_coeff[4]*ymm       + wcs->amd_x_coeff[6]*2.0*xmm +
-         wcs->amd_x_coeff[7]*3.0*x2    + wcs->amd_x_coeff[8]*2.0*xy +
-         wcs->amd_x_coeff[9]*y2        + wcs->amd_x_coeff[11]*(3.0*x2+y2) +
-         wcs->amd_x_coeff[12]*(5.0*x4 +6.0*x2*y2+y4);
-    /* magnitude and color terms ignored
-         wcs->amd_x_coeff[16]*mag      + wcs->amd_x_coeff[17]*mag*2.0*xmm +
-         wcs->amd_x_coeff[18]*mag*(3.0*x2+y2);
-    */
+	f = wcs->x_coeff[0]	+ wcs->x_coeff[1]*x +
+	    wcs->x_coeff[2]*y	+ wcs->x_coeff[3]*x2 +
+	    wcs->x_coeff[4]*y2	+ wcs->x_coeff[5]*xy;
 
-    /* Derivative of X model wrt y */
-    fy = wcs->amd_x_coeff[1]           + wcs->amd_x_coeff[4]*xmm +
-         wcs->amd_x_coeff[5]*2.0*ymm   + wcs->amd_x_coeff[6]*2.0*ymm +
-         wcs->amd_x_coeff[8]*x2        + wcs->amd_x_coeff[9]*2.0*xy +
-         wcs->amd_x_coeff[10]*3.0*y2   + wcs->amd_x_coeff[11]*2.0*xy +
-         wcs->amd_x_coeff[12]*4.0*xy*x2y2;
-    /* magnitude and color terms ignored
-         wcs->amd_x_coeff[17]*mag*2.0*ymm +
-         wcs->amd_x_coeff[18]*mag*2.0*xy;
-    */
+	/*  Derivative of X model wrt x */
+	fx = wcs->x_coeff[1]	+ wcs->x_coeff[3]*2.0*x +
+	     wcs->x_coeff[5]*y;
 
-    /* Y plate model */
-    g = wcs->amd_y_coeff[0]*ymm       + wcs->amd_y_coeff[1]*xmm +
-       wcs->amd_y_coeff[2]            + wcs->amd_y_coeff[3]*y2 +
-       wcs->amd_y_coeff[4]*xy         + wcs->amd_y_coeff[5]*x2 +
-       wcs->amd_y_coeff[6]*x2y2       + wcs->amd_y_coeff[7]*y3 +
-       wcs->amd_y_coeff[8]*y2x        + wcs->amd_y_coeff[9]*x2y +
-       wcs->amd_y_coeff[10]*x3        + wcs->amd_y_coeff[11]*ymm*x2y2 +
-       wcs->amd_y_coeff[12]*ymm*cjunk;
-    /* magnitude and color terms ignored
-       wcs->amd_y_coeff[13]*mag        + wcs->amd_y_coeff[14]*mag*mag +
-       wcs->amd_y_coeff[15]*mag*mag*mag + wcs->amd_y_coeff[16]*mag*ymm +
-       wcs->amd_y_coeff[17]*mag*x2y2 +
-       wcs->amd_y_coeff[18]*mag*ymm*x2y2 + wcs->amd_y_coeff[19]*color;
-    */
+	/* Derivative of X model wrt y */
+	fy = wcs->x_coeff[2]	+ wcs->x_coeff[4]*2.0*y +
+	     wcs->x_coeff[5]*x;
 
-    /* Derivative of Y model wrt x */
-    gx = wcs->amd_y_coeff[1]           + wcs->amd_y_coeff[4]*ymm +
-         wcs->amd_y_coeff[5]*2.0*xmm   + wcs->amd_y_coeff[6]*2.0*xmm +
-         wcs->amd_y_coeff[8]*y2       + wcs->amd_y_coeff[9]*2.0*xy +
-         wcs->amd_y_coeff[10]*3.0*x2  + wcs->amd_y_coeff[11]*2.0*xy +
-         wcs->amd_y_coeff[12]*4.0*xy*x2y2;
-    /* magnitude and color terms ignored
-         wcs->amd_y_coeff[17]*mag*2.0*xmm +
-         wcs->amd_y_coeff[18]*mag*ymm*2.0*xmm;
-    */
+	if (ncoeff1 > 6) {
+	    f = f + wcs->x_coeff[6]*x3	+ wcs->x_coeff[7]*y3;
+	    fx = fx + wcs->x_coeff[6]*3.0*x2;
+	    fy = fy + wcs->x_coeff[7]*3.0*y2;
+	    }
 
-    /* Derivative of Y model wrt y */
-    gy = wcs->amd_y_coeff[0]            + wcs->amd_y_coeff[3]*2.0*ymm +
-         wcs->amd_y_coeff[4]*xmm        + wcs->amd_y_coeff[6]*2.0*ymm +
-         wcs->amd_y_coeff[7]*3.0*y2     + wcs->amd_y_coeff[8]*2.0*xy +
-         wcs->amd_y_coeff[9]*x2         + wcs->amd_y_coeff[11]*(x2+3.0*y2) +
-         wcs->amd_y_coeff[12]*(5.0*y4 + 6.0*x2*y2 + x4);
-    /* magnitude and color terms ignored
-         wcs->amd_y_coeff[16]*mag       + wcs->amd_y_coeff[17]*mag*2.0*ymm +
-         wcs->amd_y_coeff[18]*mag*(x2+3.0*y2);
-    */
+	if (ncoeff1 > 8) {
+	    f = f +
+		wcs->x_coeff[8]*x2y	+ wcs->x_coeff[9]*y2x +
+		wcs->x_coeff[10]*r2 + wcs->x_coeff[11]*x*r2 +
+		wcs->x_coeff[12]*y*r2;
 
-    f = f - xi;
-    g = g - eta;
-    dx = ((-f * gy) + (g * fy)) / ((fx * gy) - (fy * gx));
-    dy = ((-g * fx) + (f * gx)) / ((fx * gy) - (fy * gx));
-    xmm = xmm + dx;
-    ymm = ymm + dy;
-    if ((fabs(dx) < tolerance) && (fabs(dy) < tolerance)) break;
-    }
+	    fx = fx +	wcs->x_coeff[8]*2.0*xy + 
+			wcs->x_coeff[9]*y2 +
+	 		wcs->x_coeff[10]*2.0*x +
+			wcs->x_coeff[11]*(3.0*x2+y2) +
+			wcs->x_coeff[12]*2.0*xy;
 
-/* Convert mm from plate center to plate pixels */
-  x = (wcs->ppo_coeff[2] - xmm*1000.0) / wcs->x_pixel_size;
-  y = (wcs->ppo_coeff[5] + ymm*1000.0) / wcs->y_pixel_size;
+	    fy = fy +	wcs->x_coeff[8]*x2 +
+			wcs->x_coeff[9]*2.0*xy +
+			wcs->x_coeff[10]*2.0*y +
+			wcs->x_coeff[11]*2.0*xy +
+			wcs->x_coeff[12]*(3.0*y2+x2);
+	    }
 
-/* Convert from plate pixels to image pixels */
-  *xpix = x - wcs->x_pixel_offset + 1.0 - 0.5;
-  *ypix = y - wcs->y_pixel_offset + 1.0 - 0.5;
+	/* Y plate model */
+	g = wcs->y_coeff[0]	+ wcs->y_coeff[1]*x +
+	    wcs->y_coeff[2]*y	+ wcs->y_coeff[3]*x2 +
+	    wcs->y_coeff[4]*y2	+ wcs->y_coeff[5]*xy;
 
-/* If position is off of the image, return offscale code */
-  if (*xpix < 0.5 || *xpix > wcs->nxpix+0.5)
-    return -1;
-  if (*ypix < 0.5 || *ypix > wcs->nypix+0.5)
-    return -1;
+	/* Derivative of Y model wrt x */
+	gx = wcs->y_coeff[1]	+ wcs->y_coeff[3]*2.0*x +
+	     wcs->y_coeff[5]*y;
 
-  return 0;
+	/* Derivative of Y model wrt y */
+	gy = wcs->y_coeff[2]	+ wcs->y_coeff[4]*2.0*y +
+	     wcs->y_coeff[5]*x;
+
+	if (ncoeff2 > 6) {
+	    g = g + wcs->y_coeff[6]*x3	+ wcs->y_coeff[7]*y3;
+	    gx = gx + wcs->y_coeff[6]*3.0*x2;
+	    gy = gy + wcs->y_coeff[7]*3.0*y2;
+	    }
+
+	if (ncoeff2 > 8) {
+	    g = g +
+		wcs->y_coeff[8]*x2y	+ wcs->y_coeff[9]*y2x +
+		wcs->y_coeff[10]*r2	+ wcs->y_coeff[11]*x*r2 +
+		wcs->y_coeff[12]*y*r2;
+
+	    gx = gx +	wcs->y_coeff[8]*2.0*xy + 
+			wcs->y_coeff[9]*y2 +
+	 		wcs->y_coeff[10]*2.0*x +
+			wcs->y_coeff[11]*(3.0*x2+y2) +
+			wcs->y_coeff[12]*2.0*xy;
+
+	    gy = gy +	wcs->y_coeff[8]*x2 +
+			wcs->y_coeff[9]*2.0*xy +
+			wcs->y_coeff[10]*2.0*y +
+			wcs->y_coeff[11]*2.0*xy +
+			wcs->y_coeff[12]*(3.0*y2+x2);
+	    }
+
+	f = f - xi;
+	g = g - eta;
+	dx = ((-f * gy) + (g * fy)) / ((fx * gy) - (fy * gx));
+	dy = ((-g * fx) + (f * gx)) / ((fx * gy) - (fy * gx));
+	x = x + dx;
+	y = y + dy;
+	if ((fabs(dx) < tolerance) && (fabs(dy) < tolerance)) break;
+	}
+
+    /* Convert from plate pixels to image pixels */
+    *xpix = x + wcs->crpix[0];
+    *ypix = y + wcs->crpix[1];
+
+    /* If position is off of the image, return offscale code */
+    if (*xpix < 0.5 || *xpix > wcs->nxpix+0.5)
+	return -1;
+    if (*ypix < 0.5 || *ypix > wcs->nypix+0.5)
+	return -1;
+
+    return 0;
 }
-/* Mar  6 1995	Original version of this code
-   May  4 1995	Fix eta cross terms which were all in y
-   Jun 21 1995	Add inverse routine
-   Oct 17 1995	Fix inverse routine (degrees -> radians)
-   Nov  7 1995	Add half pixel to image coordinates to get astrometric
-                  plate coordinates
-   Feb 26 1996	Fix plate to image pixel conversion error
+
+
+/* Set plate fit coefficients in structure from arguments */
+int
+SetPlate (wcs, ncoeff1, ncoeff2, coeff)
+
+struct WorldCoor *wcs;  /* World coordinate system structure */
+int	ncoeff1;		/* Number of coefficients for x */
+int	ncoeff2;		/* Number of coefficients for y */
+double	*coeff;		/* Plate fit coefficients */
+
+{
+    int i;
+
+    if (nowcs (wcs) || (ncoeff1 < 1 && ncoeff2 < 1))
+	return 1;
+
+    wcs->ncoeff1 = ncoeff1;
+    wcs->ncoeff2 = ncoeff2;
+    wcs->prjcode = WCS_PLT;
+
+    for (i = 0; i < 20; i++) {
+	if (i < ncoeff1)
+	    wcs->x_coeff[i] = coeff[i];
+	else
+	    wcs->x_coeff[i] = 0.0;
+	}
+
+    for (i = 0; i < 20; i++) {
+	if (i < ncoeff2)
+	    wcs->y_coeff[i] = coeff[ncoeff1+i];
+	else
+	    wcs->y_coeff[i] = 0.0;
+	}
+    return 0;
+}
+
+
+/* Return plate fit coefficients from structure in arguments */
+int
+GetPlate (wcs, ncoeff1, ncoeff2, coeff)
+
+struct WorldCoor *wcs;  /* World coordinate system structure */
+int	*ncoeff1;	/* Number of coefficients for x */
+int	*ncoeff2;	/* Number of coefficients for y) */
+double	*coeff;		/* Plate fit coefficients */
+
+{
+    int i;
+
+    if (nowcs (wcs))
+	return 1;
+
+    *ncoeff1 = wcs->ncoeff1;
+    *ncoeff2 = wcs->ncoeff2;
+
+    for (i = 0; i < *ncoeff1; i++)
+	coeff[i] = wcs->x_coeff[i];
+
+    for (i = 0; i < *ncoeff2; i++)
+	coeff[*ncoeff1+i] = wcs->y_coeff[i];
+
+    return 0;
+}
+
+
+/* Set FITS header plate fit coefficients from structure */
+void
+SetFITSPlate (header, wcs)
+
+char    *header;        /* Image FITS header */
+struct WorldCoor *wcs;  /* WCS structure */
+
+{
+    char keyword[16];
+    int i;
+
+    for (i = 0; i < wcs->ncoeff1; i++) {
+	sprintf (keyword,"CO1_%d",i+1);
+	hputnr8 (header, keyword, -15, wcs->x_coeff[i]);
+	}
+    for (i = 0; i < wcs->ncoeff2; i++) {
+	sprintf (keyword,"CO2_%d",i+1);
+	hputnr8 (header, keyword, -15, wcs->y_coeff[i]);
+	}
+    return;
+}
+
+/* Mar 27 1998	New subroutines for direct image pixel <-> sky polynomials
+ * Apr 10 1998	Make terms identical for both x and y polynomials
+ * Apr 10 1998	Allow different numbers of coefficients for x and y
+ * Apr 16 1998	Drom NCOEFF header parameter
+ * Apr 28 1998  Change projection flags to WCS_*
  */

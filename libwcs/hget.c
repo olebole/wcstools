@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** July 25, 1997
+ *** April 30, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -12,8 +12,11 @@
  * Subroutine:	hgetr8 (hstring,keyword,dval) returns double
  * Subroutine:	hgetl  (hstring,keyword,lval) returns logical int (0=F, 1=T)
  * Subroutine:	hgets  (hstring,keyword, lstr, str) returns character string
+ * Subroutine:	hgetm  (hstring,keyword, lstr, str) returns multi-keyword string
  * Subroutine:	hgetdate (hstring,keyword,date) returns date as fractional year
  * Subroutine:	hgetc  (hstring,keyword) returns character string
+ * Subroutine:	blsearch (hstring,keyword) returns pointer to blank lines
+		before keyword
  * Subroutine:	ksearch (hstring,keyword) returns pointer to header string entry
  * Subroutine:	str2ra (in) converts string to right ascension in degrees
  * Subroutine:	str2dec (in) converts string to declination in degrees
@@ -21,8 +24,9 @@
  * Subroutine:	strnsrch (s1, s2, ls1) finds string s2 in ls1-byte string s1
  * Subroutine:	hlength (header,lhead) sets length of FITS header for searching
  * Subroutine:  isnum (string) returns 1 if number, else 0
+ * Subroutine:  notnum (string) returns 0 if number, else 1
 
- * Copyright:   1995, 1996 Smithsonian Astrophysical Observatory
+ * Copyright:   1995-1998 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -44,6 +48,9 @@ static int use_saolib=0;
 char *hgetc ();
 
 char val[30];
+
+
+/* Set the length of the header string, if not terminated by NULL */
 
 static int lhead0 = 0;
 int
@@ -68,10 +75,10 @@ hgeti4 (hstring,keyword,ival)
 
 char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the variable
-		   to be returned.  hget searches for a line beginning
-		   with this string.  if "[n]" is present, the n'th
-		   token in the value is returned.
+char *keyword;	/* character string containing the name of the keyword
+		   the value of which is returned.  hget searches for a
+		   line beginning with this string.  if "[n]" is present,
+		   the n'th token in the value is returned.
 		   (the first 8 characters must be unique) */
 int *ival;
 {
@@ -110,10 +117,10 @@ hgeti2 (hstring,keyword,ival)
 
 char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the variable
-		   to be returned.  hget searches for a line beginning
-		   with this string.  if "[n]" is present, the n'th
-		   token in the value is returned.
+char *keyword;	/* character string containing the name of the keyword
+		   the value of which is returned.  hget searches for a
+		   line beginning with this string.  if "[n]" is present,
+		   the n'th token in the value is returned.
 		   (the first 8 characters must be unique) */
 short *ival;
 {
@@ -151,10 +158,10 @@ hgetr4 (hstring,keyword,rval)
 
 char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the variable
-		   to be returned.  hget searches for a line beginning
-		   with this string.  if "[n]" is present, the n'th
-		   token in the value is returned.
+char *keyword;	/* character string containing the name of the keyword
+		   the value of which is returned.  hget searches for a
+		   line beginning with this string.  if "[n]" is present,
+		   the n'th token in the value is returned.
 		   (the first 8 characters must be unique) */
 float *rval;
 {
@@ -182,10 +189,10 @@ hgetra (hstring,keyword,dval)
 
 char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the variable
-		   to be returned.  hget searches for a line beginning
-		   with this string.  if "[n]" is present, the n'th
-		   token in the value is returned.
+char *keyword;	/* character string containing the name of the keyword
+		   the value of which is returned.  hget searches for a
+		   line beginning with this string.  if "[n]" is present,
+		   the n'th token in the value is returned.
 		   (the first 8 characters must be unique) */
 double *dval;	/* Right ascension in degrees (returned) */
 {
@@ -212,10 +219,10 @@ hgetdec (hstring,keyword,dval)
 
 char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the variable
-		   to be returned.  hget searches for a line beginning
-		   with this string.  if "[n]" is present, the n'th
-		   token in the value is returned.
+char *keyword;	/* character string containing the name of the keyword
+		   the value of which is returned.  hget searches for a
+		   line beginning with this string.  if "[n]" is present,
+		   the n'th token in the value is returned.
 		   (the first 8 characters must be unique) */
 double *dval;	/* Right ascension in degrees (returned) */
 {
@@ -241,10 +248,10 @@ hgetr8 (hstring,keyword,dval)
 
 char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the variable
-		   to be returned.  hget searches for a line beginning
-		   with this string.  if "[n]" is present, the n'th
-		   token in the value is returned.
+char *keyword;	/* character string containing the name of the keyword
+		   the value of which is returned.  hget searches for a
+		   line beginning with this string.  if "[n]" is present,
+		   the n'th token in the value is returned.
 		   (the first 8 characters must be unique) */
 double *dval;
 {
@@ -255,7 +262,7 @@ double *dval;
 
 /* Translate value from ASCII to binary */
 	if (value != NULL) {
-	    strcpy (val, value);
+	    strncpy (val, value, sizeof(val)-1);
 	    *dval = atof (val);
 	    return (1);
 	    }
@@ -272,10 +279,10 @@ hgetl (hstring,keyword,ival)
 
 char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the variable
-		   to be returned.  hget searches for a line beginning
-		   with this string.  if "[n]" is present, the n'th
-		   token in the value is returned.
+char *keyword;	/* character string containing the name of the keyword
+		   the value of which is returned.  hget searches for a
+		   line beginning with this string.  if "[n]" is present,
+		   the n'th token in the value is returned.
 		   (the first 8 characters must be unique) */
 int *ival;
 {
@@ -307,10 +314,10 @@ hgetdate (hstring,keyword,dval)
 
 char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the variable
-		   to be returned.  hget searches for a line beginning
-		   with this string.  if "[n]" is present, the n'th
-		   token in the value is returned.
+char *keyword;	/* character string containing the name of the keyword
+		   the value of which is returned.  hget searches for a
+		   line beginning with this string.  if "[n]" is present,
+		   the n'th token in the value is returned.
 		   (the first 8 characters must be unique) */
 double *dval;
 {
@@ -439,6 +446,61 @@ double *dval;
 }
 
 
+/* Extract IRAF multiple-keyword string value from FITS header string */
+
+int
+hgetm (hstring, keyword, lstr, str)
+
+char *hstring;	/* character string containing FITS header information
+		   in the format <keyword>= <value> {/ <comment>} */
+char *keyword;	/* character string containing the root name of the keyword
+		   the value of which is returned.  hget searches for a
+		   line beginning with this string.  if "[n]" is present,
+		   the n'th token in the value is returned.
+		   (the first 8 characters must be unique) */
+int lstr;	/* Size of str in characters */
+char *str;	/* String (returned) */
+{
+    char *value;
+    char *stri;
+    char keywordi[16];
+    int lval, lstri, ikey;
+
+    stri = str;
+    lstri = lstr;
+
+    /* Loop through sequentially-named keywords */
+    for (ikey = 1; ikey < 20; ikey++) {
+	sprintf (keywordi, "%s_%03d", keyword, ikey);
+
+	/* Get value for this keyword */
+	value = hgetc (hstring, keywordi);
+	if (value != NULL) {
+	    lval = strlen (value);
+	    if (lval < lstri)
+		strcpy (stri, value);
+	    else if (lstri > 1) {
+		strncpy (stri, value, lstri-1);
+		break;
+		}
+	    else {
+		str[0] = value[0];
+		break;
+		}
+	    }
+	else
+	    break;
+	stri = stri + lval;
+	lstri = lstri - lval;
+	}
+
+    /* Return 1 if any keyword found, else 0 */
+    if (ikey > 1)
+	return (1);
+    else
+	return (0);
+}
+
 
 /* Extract string value for variable from FITS header string */
 
@@ -447,10 +509,10 @@ hgets (hstring, keyword, lstr, str)
 
 char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the variable
-		   to be returned.  hget searches for a line beginning
-		   with this string.  if "[n]" is present, the n'th
-		   token in the value is returned.
+char *keyword;	/* character string containing the name of the keyword
+		   the value of which is returned.  hget searches for a
+		   line beginning with this string.  if "[n]" is present,
+		   the n'th token in the value is returned.
 		   (the first 8 characters must be unique) */
 int lstr;	/* Size of str in characters */
 char *str;	/* String (returned) */
@@ -481,14 +543,19 @@ char *str;	/* String (returned) */
 char *
 hgetc (hstring,keyword0)
 
-char *hstring;
-char *keyword0;
+char *hstring;	/* character string containing FITS header information
+		   in the format <keyword>= <value> {/ <comment>} */
+char *keyword0;	/* character string containing the name of the keyword
+		   the value of which is returned.  hget searches for a
+		   line beginning with this string.  if "[n]" is present,
+		   the n'th token in the value is returned.
+		   (the first 8 characters must be unique) */
 {
 	static char cval[80];
 	char *value;
 	char cwhite[2];
 	char squot[2],dquot[2],lbracket[2],rbracket[2],slash[2];
-	char keyword[16];
+	char keyword[81]; /* large for ESO hierarchical keywords */
 	char line[100];
 	char *vpos,*cpar;
 	char *q1, *q2, *v1, *v2, *c1, *brack1, *brack2;
@@ -513,7 +580,7 @@ char *keyword0;
 	slash[1] = 0;
 
 /* Find length of variable name */
-	strcpy (keyword,keyword0);
+	strncpy (keyword,keyword0, sizeof(keyword)-1);
 	brack1 = strsrch (keyword,lbracket);
 	if (brack1 != NULL) *brack1 = '\0';
 
@@ -619,6 +686,98 @@ char *keyword0;
 	    return(get_fits_head_str(keyword0, iel, ip, &nel, &np, &ier, hstring));
 	}
 #endif
+}
+
+
+/* Find beginning of fillable blank line before FITS header keyword line */
+
+char *
+blsearch (hstring,keyword)
+
+/* Find entry for keyword keyword in FITS header string hstring.
+   (the keyword may have a maximum of eight letters)
+   NULL is returned if the keyword is not found */
+
+char *hstring;	/* character string containing fits-style header
+		information in the format <keyword>= <value> {/ <comment>}
+		the default is that each entry is 80 characters long;
+		however, lines may be of arbitrary length terminated by
+		nulls, carriage returns or linefeeds, if packed is true.  */
+char *keyword;	/* character string containing the name of the variable
+		to be returned.  ksearch searches for a line beginning
+		with this string.  The string may be a character
+		literal or a character variable terminated by a null
+		or '$'.  it is truncated to 8 characters. */
+{
+    char *loc, *headnext, *headlast, *pval, *lc, *line;
+    char *bval;
+    int icol, nextchar, lkey, nleft, lhstr;
+
+    pval = 0;
+
+    /* Search header string for variable name */
+    if (lhead0)
+	lhstr = lhead0;
+    else {
+	lhstr = 0;
+	while (lhstr < 57600 && hstring[lhstr] != 0)
+	    lhstr++;
+	}
+    headlast = hstring + lhstr;
+    headnext = hstring;
+    pval = NULL;
+    while (headnext < headlast) {
+	nleft = headlast - headnext;
+	loc = strnsrch (headnext, keyword, nleft);
+
+	/* Exit if keyword is not found */
+	if (loc == NULL) {
+	    break;
+	    }
+
+	icol = (loc - hstring) % 80;
+	lkey = strlen (keyword);
+	nextchar = (int) *(loc + lkey);
+
+	/* If this is not in the first 8 characters of a line, keep searching */
+	if (icol > 7)
+	    headnext = loc + 1;
+
+	/* If parameter name in header is longer, keep searching */
+	else if (nextchar != 61 && nextchar > 32 && nextchar < 127)
+	    headnext = loc + 1;
+
+	/* If preceeding characters in line are not blanks, keep searching */
+	else {
+	    line = loc - icol;
+	    for (lc = line; lc < loc; lc++) {
+		if (*lc != ' ')
+		    headnext = loc + 1;
+		}
+
+	/* Return pointer to start of line if match */
+	    if (loc >= headnext) {
+		pval = line;
+		break;
+		}
+	    }
+	}
+
+    /* Return NULL to calling program if keyword is not found */
+    if (pval == NULL)
+	return (pval);
+
+    /* Find last nonblank line before requested keyword */
+    bval = pval - 80;
+    while (!strncmp (bval,"        ",8))
+	bval = bval - 80;
+    bval = bval + 80;
+
+    /* Return pointer to calling program if blank lines found */
+    if (bval < pval)
+	return (bval);
+    else
+	return (NULL);
 }
 
 
@@ -862,6 +1021,19 @@ int	ls1;	/* Length of string being searched */
     return (NULL);
 }
 
+
+int
+notnum (string)
+
+char *string;	/* Character string */
+{
+    if (isnum (string))
+	return (0);
+    else
+	return (1);
+}
+
+
 int
 isnum (string)
 
@@ -937,4 +1109,9 @@ int set_saolib(hstring)
  * Jan 22 1997	Add ifdefs for Eric Mandel (SAOtng)
  * Jan 27 1997	Convert to integer through ATOF so exponents are recognized
  * Jul 25 1997	Implement FITS version of ISO date format
+ * 
+ * Feb 24 1998	Implement code to return IRAF multiple-keyword strings
+ * Mar 12 1998	Add subroutine NOTNUM
+ * Mar 27 1998	Add changes to match SKYCAT version
+ * Apr 30 1998	Add BLSEARCH() to find blank lines before END
  */

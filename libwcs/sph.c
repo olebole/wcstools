@@ -2,6 +2,7 @@
 *
 *   WCSLIB - an implementation of the FITS WCS proposal.
 *   Copyright (C) 1995, Mark Calabretta
+*   wcstrig function names changed by Doug Mink, SAO, April 15, 1998
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -97,7 +98,7 @@
 #endif
 #endif
 
-#ifdef COPYSIGN
+#ifndef copysign
 #define copysign(X, Y) ((Y) < 0.0 ? -fabs(X) : fabs(X))
 #endif
 
@@ -111,22 +112,22 @@ double *phi, *theta;
 {
    double coslat, coslng, dlng, dphi, sinlat, sinlng, x, y, z;
 
-   coslat = cosd(lat);
-   sinlat = sind(lat);
+   coslat = cosdeg(lat);
+   sinlat = sindeg(lat);
 
    dlng = lng - eul[0];
-   coslng = cosd(dlng);
-   sinlng = sind(dlng);
+   coslng = cosdeg(dlng);
+   sinlng = sindeg(dlng);
 
    /* Compute the native longitude. */
    x = sinlat*eul[4] - coslat*eul[3]*coslng;
    if (fabs(x) < tol) {
       /* Rearrange formula to reduce roundoff errors. */
-      x = -cosd(lat+eul[1]) + coslat*eul[3]*(1.0 - coslng);
+      x = -cosdeg(lat+eul[1]) + coslat*eul[3]*(1.0 - coslng);
    }
    y = -coslat*sinlng;
    if (x != 0.0 || y != 0.0) {
-      dphi = atan2d(y, x);
+      dphi = atan2deg(y, x);
    } else {
       /* Change of origin of longitude. */
       dphi = dlng - 180.0;
@@ -149,9 +150,9 @@ double *phi, *theta;
       z = sinlat*eul[3] + coslat*eul[4]*coslng;
       if (fabs(z) > 0.99) {
          /* Use an alternative formula for greater numerical accuracy. */
-         *theta = copysign(acosd(sqrt(x*x+y*y)), z);
+         *theta = copysign(acosdeg(sqrt(x*x+y*y)), z);
       } else {
-         *theta = asind(z);
+         *theta = asindeg(z);
       }
    }
 
@@ -168,22 +169,22 @@ double *lng, *lat;
 {
    double cosphi, costhe, dlng, dphi, sinphi, sinthe, x, y, z;
 
-   costhe = cosd(theta);
-   sinthe = sind(theta);
+   costhe = cosdeg(theta);
+   sinthe = sindeg(theta);
 
    dphi = phi - eul[2];
-   cosphi = cosd(dphi);
-   sinphi = sind(dphi);
+   cosphi = cosdeg(dphi);
+   sinphi = sindeg(dphi);
 
    /* Compute the celestial longitude. */
    x = sinthe*eul[4] - costhe*eul[3]*cosphi;
    if (fabs(x) < tol) {
       /* Rearrange formula to reduce roundoff errors. */
-      x = -cosd(theta+eul[1]) + costhe*eul[3]*(1.0 - cosphi);
+      x = -cosdeg(theta+eul[1]) + costhe*eul[3]*(1.0 - cosphi);
    }
    y = -costhe*sinphi;
    if (x != 0.0 || y != 0.0) {
-      dlng = atan2d(y, x);
+      dlng = atan2deg(y, x);
    } else {
       /* Change of origin of longitude. */
       dlng = dphi + 180.0;
@@ -212,11 +213,13 @@ double *lng, *lat;
       z = sinthe*eul[3] + costhe*eul[4]*cosphi;
       if (fabs(z) > 0.99) {
          /* Use an alternative formula for greater numerical accuracy. */
-         *lat = copysign(acosd(sqrt(x*x+y*y)), z);
+         *lat = copysign(acosdeg(sqrt(x*x+y*y)), z);
       } else {
-         *lat = asind(z);
+         *lat = asindeg(z);
       }
    }
 
    return 0;
 }
+/* Apr 30 1998	Define copysign only if it is not already defined
+ */
