@@ -1,5 +1,5 @@
 /* File libwcs/fitswcs.c
- * June 11, 1998
+ * August 6, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "fitsio.h"
+#include "fitsfile.h"
 #include "wcs.h"
 
 
@@ -55,7 +55,7 @@ char *filename;	/* FITS or IRAF file filename */
 {
     char *header;		/* FITS header */
     int lhead;			/* Maximum number of bytes in FITS header */
-    int *irafheader;		/* IRAF image header */
+    char *irafheader;		/* IRAF image header */
     int nbiraf, nbfits;
 
     /* Open IRAF image if .imh extension is present */
@@ -64,9 +64,11 @@ char *filename;	/* FITS or IRAF file filename */
 	    if ((header = iraf2fits (filename, irafheader, nbiraf, &lhead)) == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
 		free (irafheader);
+		irafheader = NULL;
 		return (NULL);
 		}
 	    free (irafheader);
+	    irafheader = NULL;
 	    }
 	else {
 	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
@@ -98,7 +100,7 @@ int verbose;
 {
     static char flds[15][8];
     int i;
-    int n;
+    int n, nfields;
     double eq;
     char rastr[16],decstr[16];
 
@@ -119,8 +121,9 @@ int verbose;
     strcpy (flds[14], "CD2_2");
 
     n = 0;
+    nfields = 15;
 
-    for (i = 0; i < sizeof(flds)/sizeof(flds[0]); i++) {
+    for (i = 0; i < nfields; i++) {
 	if (hdel (header, flds[i])) {
 	    n++;
 	    if (verbose)
@@ -416,4 +419,8 @@ struct WorldCoor *wcs;	/* WCS structure */
  * May 27 1998	Include fitsio.h instead of fitshead.h
  * Jun  1 1998	Print error message if WCS cannot be initialized
  * Jun 11 1998	Change WCSTYPE to WCSPROJ to avoid conflict
+ * Jul 23 1998	In DelWCS, delete specific number of fields
+ * Jul 24 1998	Make irafheader char instead of int
+ * Jul 27 1998	Set irafheader pointer to NULL after use
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
  */

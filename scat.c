@@ -1,5 +1,5 @@
 /* File scat.c
- * July 9, 1998
+ * August 6, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitshead.h"
 #include "wcs.h"
 #include "libwcs/lwcs.h"
 
@@ -427,7 +426,7 @@ usage ()
     fprintf(stderr,"  -a: List single closest catalog source\n");
     fprintf(stderr,"  -b: Output B1950 (FK4) coordinates with optional center\n");
     fprintf(stderr,"  -c: Reference catalog (gsc, uac, usac, or tab table file\n");
-    fprintf(stderr,"  -d: Sort by distance from center instead of flux\n");
+    fprintf(stderr,"  -d: Output RA and Dec in degrees instead of hms dms\n");
     fprintf(stderr,"  -e: Output ecliptic coordinates with optional center)\n");
     fprintf(stderr,"  -g: Output galactic coordinates with optional center)\n");
     fprintf(stderr,"  -h: Print heading, else do not \n");
@@ -923,7 +922,7 @@ double *snum;		/* Catalog numbers */
 	    else if (refcat == GSC)
 		printf (" Mag  Type  Arcsec\n");
 	    else
-		printf (" Mag  Plate Arcsec\n");
+		printf (" Mag     Peak  Arcsec\n");
 	    }
 	}
 
@@ -1189,4 +1188,6 @@ double	drad;
  * Jun 30 1998	Fix declaration of GetArea()
  * Jul  1 1998	Allow specification of center different from output system
  * Jul  9 1998	Adjust all report headings
+ * Jul 30 1998	Realign heading and fix help
+ * Aug  6 1998	Do not include fitshead.h; it is in wcs.h
  */

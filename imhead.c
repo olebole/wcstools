@@ -1,5 +1,5 @@
 /* File imhead.c
- * June 2, 1998
+ * August 6, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsio.h"
+#include "fitsfile.h"
 
 static void usage();
 static int PrintFITSHead();
@@ -96,7 +96,7 @@ usage (progname)
 char *progname;
 {
     fprintf (stderr,"Print FITS or IRAF image header\n");
-    fprintf(stderr,"%s: usage: [-v][-b num] file.fit ...\n", progname);
+    fprintf(stderr,"%s: usage: [-v] file.fit ...\n", progname);
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
 }
@@ -184,4 +184,5 @@ char	*header;	/* Image FITS header */
  * Mar 16 1998	Print line instead of lines if there is only one blank line
  * May 27 1998	Include fitsio.h instead of fitshead.h
  * Jun  2 1998	Fix bug in hput()
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
  */

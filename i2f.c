@@ -1,5 +1,5 @@
 /* File i2f.c
- * June 2, 1998
+ * August 17, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "fitsio.h"
+#include "fitsfile.h"
 
 static void usage();
 static void IRAFtoFITS ();
@@ -77,11 +77,15 @@ char *name;
     char *header;	/* FITS header */
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
-    int *irafheader;	/* IRAF image header */
-    char irafname[64];	/* Name of IRAF file */
-    char fitsname[64];	/* Name of FITS file */
-    char *ext;		/* Pointer to start of extension */
+    char *irafheader;	/* IRAF image header */
     char pixname[128];	/* Pixel file name */
+    char history[128];	/* for HISTORY line */
+    char *filename;	/* Pointer to start of file name */
+    char irafname[128];	/* Name of IRAF file */
+    char fitsname[128];	/* Name of FITS file */
+    char *ext;		/* Pointer to start of extension */
+    char *endchar;
+    char *ltime;
 
     /* Open IRAF image if .imh extension is present */
     if (strsrch (name,".imh") != NULL) {
@@ -106,7 +110,7 @@ char *name;
 	    }
 	strcpy (fitsname, name);
 	ext = strsrch (fitsname,".imh");
-	strcpy (ext,".fit");
+	strcpy (ext,".fits");
 	if (verbose) {
 	    fprintf (stderr,"Write FITS files from IRAF image file %s\n", name);
 	    }
@@ -136,11 +140,30 @@ char *name;
 	    return;
 	    }
 	strcpy (fitsname, name);
-	strcat (fitsname,".fit");
+	strcat (fitsname,".fits");
 	if (verbose) {
 	    fprintf (stderr,"Write FITS files from IRAF image file %s\n", irafname);
 	    }
 	}
+
+    /* Add HISTORY notice of this conversion */
+    filename = strrchr (name,'/');
+    if (filename)
+	filename = filename + 1;
+    else
+	filename = name;
+    endchar = strchr (history, ',');
+    *endchar = (char) 0;
+    strcat (history, " ");
+    ltime = getltime ();
+    strcat (history, ltime);
+    endchar = strrchr (history,':');
+    *endchar = (char) 0;
+    strcat (history, " FITS from ");
+    strcat (history, filename);
+    if (strlen (history) > 72)
+	history[72] = 0;
+    hputc (header, "HISTORY", history);
 
     /* Write FITS image */
     if (fitswimage (fitsname, header, image) > 0 && verbose)
@@ -165,4 +188,8 @@ char *name;
  * Jan 14 1998	Version 1.3 to handle IRAF 2.11 .imh files
  * May 27 1998	Include fitsio.h instead of fitshead.h
  * Jun  2 1998  Fix bug in hput()
+ * Jul 24 1998	Make irafheader char instead of int
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Aug 14 1998	Write file.fits instead of file.fit
+ * Aug 17 1998	Add HISTORY to header
  */

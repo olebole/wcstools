@@ -5,7 +5,7 @@ LIBS = $(LIBWCS) -lm
 BIN = bin
 .PRECIOUS: ${LIBWCS}
 
-all:	delwcs edhead fixpix gethead i2f imcat imhead immatch imrot \
+all:	delwcs delhead edhead fixpix gethead i2f imcat imhead immatch imrot \
 	imsize imstar imwcs scat sethead addpix getpix setpix sky2xy \
 	keyhead skycoor subpix xy2sky wcshead
 
@@ -14,6 +14,9 @@ addpix: addpix.c $(LIBWCS) libwcs/fitshead.h
 
 delwcs: delwcs.c $(LIBWCS) libwcs/fitshead.h
 	$(CC) $(CFLAGS) -o $(BIN)/delwcs delwcs.c $(LIBS)
+
+delhead: delhead.c $(LIBWCS) libwcs/fitshead.h
+	$(CC) $(CFLAGS) -o $(BIN)/delhead delhead.c $(LIBS)
 
 edhead: edhead.c $(LIBWCS) libwcs/fitshead.h
 	$(CC) $(CFLAGS) -o $(BIN)/edhead edhead.c $(LIBS)

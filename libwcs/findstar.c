@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** May 27, 1998
+ *** July 30, 1998
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -86,8 +86,8 @@ int	verbose;	/* 1 to print each star's position */
     double lmean, lsigma;	/* left and right stats */
     double rmean, rsigma;
     double lll, rll;		/* left and right lower limits*/
-    double minsig;
-    double *svec, *sv, *svb, *sv1, *sv2, *svlim;
+    double minsig, sigma;
+    double *svec, *svb, *sv, *sv1, *sv2, *svlim;
     double background;
     double rmax;
     int lwidth;
@@ -161,26 +161,33 @@ int	verbose;	/* 1 to print each star's position */
 		sv1 = svec + x - nspix;
 		if (sv1 < svec) sv1 = svec;
 		sv2 = svec + x;
+		lsigma = 0.0;
 		if (sv2 > sv1+1)
 		    mean1d (sv1, sv2, &lmean, &lsigma);
 		else {
 		    lmean = noise;
-		    lsigma = nsigma;
+		    lsigma = sigma;
 		    }
+		sigma = sqrt (lmean);
+		if (lsigma < sigma)
+		    lsigma = sigma;
 		lll = lmean + (starsig * lsigma);
-		sv++;
 
 		/* Find stats to the right */
 		sv1 = svec + x;
 		sv2 = svec + x + nspix;
 		if (sv2 > svlim) sv2 = svlim;
+		rmean = 0.0;
 		if (sv2 > sv1+2)
 		    mean1d (sv1, sv2, &rmean, &rsigma);
 		else {
 		    rmean = noise;
 		    rsigma = nsigma;
 		    }
-		rll = rmean + starsig * rsigma;
+		sigma = sqrt (rmean);
+		if (rsigma < sigma)
+		    rsigma = sigma;
+		rll = rmean + (starsig * rsigma);
 
 		/* pick lower as noise level */
 		minll = lll < rll ? lll : rll;
@@ -647,4 +654,5 @@ double	background;
  * Dec 15 1997	Change calls to ABS to FABS when doubles are involved
  *
  * May 27 1998	Include imio.h
+ * Jul 30 1998	Deal with too-small sigmas
  */

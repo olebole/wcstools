@@ -1,5 +1,5 @@
 /* File imrot.c
- * May 27, 1998
+ * August 6, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "fitsio.h"
+#include "fitsfile.h"
 
 static void usage();
 static void imRot ();
@@ -144,7 +144,7 @@ char *name;
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
-    int *irafheader;		/* IRAF image header */
+    char *irafheader;		/* IRAF image header */
     char newname[64];		/* Name for revised image */
     char *ext;
     char *imext, *imext1;
@@ -318,4 +318,6 @@ char *name;
  * Feb 24 1998	Add ext. to filename if writing part of multi-ext. file
  * May 26 1998	Fix bug when writing .imh images
  * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jul 24 1998	Make irafheader char instead of int
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
  */

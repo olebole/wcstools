@@ -1,5 +1,5 @@
 /* File edhead.c
- * June 24, 1998
+ * August 6, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -13,7 +13,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <math.h>
-#include "fitsio.h"
+#include "fitsfile.h"
 #include "wcs.h"
 
 static void usage();
@@ -64,7 +64,7 @@ usage (progname)
 char *progname;
 {
     fprintf (stderr,"Edit header of FITS or IRAF image file\n");
-    fprintf(stderr,"%s: usage: [-vn] file.fts file.imh...\n",
+    fprintf(stderr,"%s: usage: [-nv] file.fits file.imh...\n",
 	    progname);
     fprintf(stderr,"  -n: write new file, else overwrite \n");
     fprintf(stderr,"  -v: verbose\n");
@@ -83,7 +83,7 @@ char	*filename;	/* FITS or IRAF file filename */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
-    int *irafheader;		/* IRAF image header */
+    char *irafheader;		/* IRAF image header */
     int i, nbytes, nhb, nhblk, lname, lext, lroot;
     char *head, *headend, *hlast;
     char headline[160];
@@ -306,4 +306,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * May 27 1998	Include fitsio.h instead of fitshead.h
  * Jun  2 1998  Fix bug in hput()
  * Jun 24 1998	Preserve file extension
+ * Jul 24 1998	Make irafheader char instead of int
  */

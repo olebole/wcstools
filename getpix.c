@@ -1,5 +1,5 @@
 /* File getpix.c
- * May 27, 1998
+ * August 6, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsio.h"
+#include "fitsfile.h"
 
 static void usage();
 static int PrintFITSHead ();
@@ -80,7 +80,7 @@ int n, *x, *y;
     char *header;	/* FITS image header */
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
-    int *irafheader;	/* IRAF image header */
+    char *irafheader;	/* IRAF image header */
     char *image;	/* FITS or IRAF image */
     int iraffile;
     double dpix;
@@ -164,4 +164,6 @@ int n, *x, *y;
  * Dec 15 1997	Add capability of reading and writing IRAF 2.11 images
  *
  * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jul 24 1998	Make irafheader char instead of int
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
  */

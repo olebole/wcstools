@@ -1,5 +1,5 @@
 /* File imwcs.c
- * June 11, 1998
+ * August 20, 1998
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "fitsio.h"
+#include "fitsfile.h"
 #include "wcs.h"
 
 static void usage();
@@ -377,7 +377,7 @@ char *name;
     int iraffile;		/* 1 if IRAF image */
     char *image;		/* Image */
     char *header;		/* FITS header */
-    int *irafheader;		/* IRAF image header */
+    char *irafheader;		/* IRAF image header */
     char newname[128];		/* Name for revised image */
     char pixname[128];		/* Pixel file name for revised image */
     char temp[16];
@@ -443,10 +443,10 @@ char *name;
 	}
 
     /* Print existing WCS keywords and optionally erase them */
-    if (PrintWCS (header, verbose) == 0) {
-	if (erasewcs)
-	    (void) DelWCSFITS (header, verbose);
-	}
+    if (verbose)
+	(void) PrintWCS (header, verbose);
+    if (erasewcs)
+	(void) DelWCSFITS (header, verbose);
 
     /* Rotate and/or reflect image */
     if ((imsearch || writeheader) && (rot != 0 || mirror)) {
@@ -649,4 +649,7 @@ char *
  * Jun  2 1998	Fix bugs in hput() and tabread()
  * Jun 11 1998	Change setwcstype() to setwcsproj() to avoid conflict
  * Jun 25 1998	Set WCS subroutine choice with SETDEFWCS()
+ * Jul 24 1998	Make irafheader char instead of int
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Aug 20 1998	Delete WCS if -e set no matter what PrintWCS returns
  */

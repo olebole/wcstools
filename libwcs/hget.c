@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** June 18, 1998
+ *** July 21, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -704,6 +704,8 @@ char *keyword0;	/* character string containing the name of the keyword
 	    v2--;
 	    }
 
+	if (!strcmp (v1, "-0"))
+	    v1++;
 	strcpy (cval,v1);
 	value = cval;
 
@@ -1167,4 +1169,5 @@ int set_saolib(hstring)
  * May 27 1998	Add HGETNDEC() to get number of decimal places in entry
  * Jun  1 1998	Add VMS patch from Harry Payne at StSci
  * Jun 18 1998	Fix code which extracts tokens from string values
+ * Jul 21 1998	Drop minus sign for values of -0
  */

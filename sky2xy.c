@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * July 16, 1998
+ * August 6, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <math.h>
 #include "wcs.h"
-#include "fitsio.h"
+#include "fitsfile.h"
 
 static void usage();
 extern struct WorldCoor *GetWCSFITS ();	/* Read WCS from FITS or IRAF header */
@@ -233,4 +233,5 @@ char *progname;
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  * Jun 25 1998	Set WCS subroutine choice with SETDEFWCS()
  * Jul 16 1998	Print face if cube face is returned
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
  */

@@ -1,5 +1,5 @@
 /* File delwcs.c
- * May 27, 1998
+ * August 6, 1998
  * By Doug Mink, after University of Iowa code
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "fitsio.h"
+#include "fitsfile.h"
 
 static void usage();
 static void DelWCS ();
@@ -79,7 +79,7 @@ char *name;
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
     int iraffile;	/* 1 if IRAF image */
-    int *irafheader;	/* IRAF image header */
+    char *irafheader;	/* IRAF image header */
     char pixname[128];	/* IRAF pixel file name */
 
     /* Open IRAF image if .imh extension is present */
@@ -168,4 +168,6 @@ char *name;
  *
  * Apr 14 1998	Version 2.2: deletes more parameters
  * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jul 24 1998	Make irafheader char instead of int
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
  */

@@ -1,10 +1,10 @@
-/* fitsio.h  FITS and IRAF file access subroutines
- * June 4, 1998
+/* fitsfile.h  FITS and IRAF file access subroutines
+ * August 18, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
-#ifndef fitsio_h_
-#define fitsio_h_
+#ifndef fitsfile_h_
+#define fitsfile_h_
 #include "fitshead.h"
 #include "imio.h"
 
@@ -18,7 +18,7 @@ struct Keyword {
 
 #define FITSBLOCK 2880
 
-/* Subroutines in fitsio.c */
+/* Subroutines in fitsfile.c */
 
 /* FITS file access subroutines */
 extern int fitsropen();
@@ -38,12 +38,12 @@ extern double ftgetr8();
 extern int ftgetc();
 
 /* IRAF file access subroutines in imhio.c */
-extern int *irafrhead();
+extern char *irafrhead();
 extern char *irafrimage();
 extern int irafwhead();
 extern int irafwimage();
 extern char *iraf2fits();
-extern int *fits2iraf();
+extern char *fits2iraf();
 
 /* Image pixel access subroutines in imio.c */
 extern double getpix();
@@ -57,7 +57,7 @@ extern void imswap4();
 extern void imswap8();
 extern int imswapped();
 
-#endif /* fitsio_h_ */
+#endif /* fitsfile_h_ */
 
 /* May 31 1996	Use stream I/O for reading as well as writing
  * Jun 12 1996	Add byte-swapping subroutines
@@ -69,4 +69,6 @@ extern int imswapped();
  *
  * May 27 1998	Split off fitsio and imhio subroutines to fitsio.h
  * Jun  4 1998	Change fits2iraf from int to int *
+ * Jul 24 1998	Make IRAF header char instead of int
+ * Aug 18 1998	Change name to fitsfile.h from fitsio.h
  */

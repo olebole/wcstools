@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** July 13, 1998
+ *** September 4, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcsinit.c (World Coordinate Systems)
@@ -27,6 +27,7 @@
 #endif
 
 static void wcseq();
+void wcsrotset();
 char wcserrmsg[80];
 
 /* set up a WCS structure from a FITS image header lhstring bytes long */
@@ -67,8 +68,10 @@ char *hstring;	/* character string containing FITS header information
     char *str;
     double *pci;
     double mjd;
-    double rotate;
+    double rot;
+    double cra, cdec, xc, yc, xn, yn, xe, ye;
     double s, srot, crot, sdelt;
+    int off;
     extern int matinv();
     extern int tnxinit();
     extern int platepos();
@@ -169,6 +172,9 @@ char *hstring;	/* character string containing FITS header information
 	wcs->latpole = 999.0;
 	hgetr8 (hstring,"LATPOLE",&wcs->latpole);
 	wcs->cel.ref[3] = wcs->latpole;
+	wcs->lin.crpix = wcs->crpix;
+	wcs->lin.cdelt = wcs->cdelt;
+	wcs->lin.pc = wcs->pc;
 
 	/* Use polynomial fit instead of projection, if present */
 	wcs->ncoeff1 = 0;
@@ -190,17 +196,25 @@ char *hstring;	/* character string containing FITS header information
 		    wcs->ncoeff2 = i + 1;
 		}
 
-	    /* Compute first order scale and rotation */
+	    /* Compute a nominal scale factor */
 	    platepos (wcs->crpix[0], wcs->crpix[1], wcs, &ra0, &dec0);
-	    platepos (wcs->crpix[0]+1.0, wcs->crpix[1], wcs, &ra1, &dec1);
-	    radiff = (ra0 - ra1) / cos (degrad(0.5*dec0+dec1));
-	    wcs->rot = atan2 ((dec1 - dec0), radiff);
-	    platepos (wcs->crpix[0]+sin(wcs->rot),
-		      wcs->crpix[1]+cos(wcs->rot), wcs, &ra1, &dec1);
+	    platepos (wcs->crpix[0], wcs->crpix[1]+1.0, wcs, &ra1, &dec1);
+	    wcs->yinc = dec1 - dec0;
+	    wcs->xinc = -wcs->yinc;
+
+	    /* Compute image rotation angle */
+	    wcs->wcson = 1;
+	    wcsrotset (wcs);
+	    rot = degrad (wcs->rot);
+
+	    /* Compute scale at reference pixel */
+	    platepos (wcs->crpix[0], wcs->crpix[1], wcs, &ra0, &dec0);
+	    platepos (wcs->crpix[0]+cos(rot),
+		      wcs->crpix[1]+sin(rot), wcs, &ra1, &dec1);
 	    wcs->cdelt[0] = -wcsdist (ra0, dec0, ra1, dec1);
 	    wcs->xinc = wcs->cdelt[0];
-	    platepos (wcs->crpix[0]+cos(wcs->rot),
-		      wcs->crpix[1]-sin(wcs->rot), wcs, &ra1, &dec1);
+	    platepos (wcs->crpix[0]+sin(rot),
+		      wcs->crpix[1]+cos(rot), wcs, &ra1, &dec1);
 	    wcs->cdelt[1] = wcsdist (ra0, dec0, ra1, dec1);
 	    wcs->yinc = wcs->cdelt[1];
 	    }
@@ -269,11 +283,11 @@ char *hstring;	/* character string containing FITS header information
 
 	    /* Otherwise, use CROTAn */
 	    else {
-		rotate = 0.0;
-		hgetr8 (hstring,"CROTA2",&rotate);
-		if (rotate == 0.)
-		    hgetr8 (hstring,"CROTA1",&rotate);
-		wcsdeltset (wcs, cdelt1, cdelt2, rotate);
+		rot = 0.0;
+		hgetr8 (hstring,"CROTA2",&rot);
+		if (rot == 0.)
+		    hgetr8 (hstring,"CROTA1",&rot);
+		wcsdeltset (wcs, cdelt1, cdelt2, rot);
 		}
 	    }
 
@@ -372,6 +386,8 @@ char *hstring;	/* character string containing FITS header information
 	wcs->ndec = 3;
 
 	/* Compute a nominal reference pixel at the image center */
+	strcpy (wcs->ctype[0], "RA---DSS");
+	strcpy (wcs->ctype[1], "DEC--DSS");
 	wcs->crpix[0] = 0.5 * wcs->nxpix;
 	wcs->crpix[1] = 0.5 * wcs->nypix;
 	wcs->xrefpix = wcs->crpix[0];
@@ -382,16 +398,22 @@ char *hstring;	/* character string containing FITS header information
 	wcs->xref = wcs->crval[0];
 	wcs->yref = wcs->crval[1];
 
-	/* Compute first order scale and rotation */
-	dsspos (wcs->crpix[0]+1.0, wcs->crpix[1], wcs, &ra1, &dec1);
-	radiff = (ra0 - ra1) / cos (degrad(0.5*dec0+dec1));
-	wcs->rot = atan2 ((dec1 - dec0), radiff);
-	dsspos (wcs->crpix[0]+sin(wcs->rot),
-		wcs->crpix[1]+cos(wcs->rot), wcs, &ra1, &dec1);
+	/* Compute a nominal scale factor */
+	dsspos (wcs->crpix[0], wcs->crpix[1]+1.0, wcs, &ra1, &dec1);
+	wcs->yinc = dec1 - dec0;
+	wcs->xinc = -wcs->yinc;
+
+	/* Compute image rotation angle */
+	wcs->wcson = 1;
+	wcsrotset (wcs);
+
+	/* Compute image scale at center */
+	dsspos (wcs->crpix[0]+cos(rot),
+		wcs->crpix[1]+sin(rot), wcs, &ra1, &dec1);
 	wcs->cdelt[0] = -wcsdist (ra0, dec0, ra1, dec1);
 	wcs->xinc = wcs->cdelt[0];
-	dsspos (wcs->crpix[0]+cos(wcs->rot),
-		wcs->crpix[1]-sin(wcs->rot), wcs, &ra1, &dec1);
+	dsspos (wcs->crpix[0]+sin(rot),
+		wcs->crpix[1]+cos(rot), wcs, &ra1, &dec1);
 	wcs->cdelt[1] = wcsdist (ra0, dec0, ra1, dec1);
 	wcs->yinc = wcs->cdelt[1];
 	}
@@ -422,13 +444,13 @@ char *hstring;	/* character string containing FITS header information
 	    }
 
 	/* Get rotation angle from the header, if it's there */
-	rotate = 0.0;
-	hgetr8 (hstring,"CROTA1", &rotate);
+	rot = 0.0;
+	hgetr8 (hstring,"CROTA1", &rot);
 	if (wcs->rot == 0.)
-	    hgetr8 (hstring,"CROTA2", &rotate);
+	    hgetr8 (hstring,"CROTA2", &rot);
 
 	/* Set CD and PC matrices */
-	wcsdeltset (wcs, cdelt1, cdelt2, rotate);
+	wcsdeltset (wcs, cdelt1, cdelt2, rot);
 
 	/* By default, set reference pixel to center of image */
 	wcs->crpix[0] = wcs->nxpix * 0.5;
@@ -534,6 +556,7 @@ char *hstring;	/* character string containing FITS header information
     if (strlen (wcs->radecsys) == 0 || wcs->prjcode == WCS_LIN)
 	strcpy (wcs->radecsys, "LINEAR");
     wcs->syswcs = wcscsys (wcs->radecsys);
+
     if (wcs->syswcs == WCS_B1950)
 	strcpy (wcs->radecout, "B1950");
     else if (wcs->syswcs == WCS_J2000)
@@ -548,17 +571,10 @@ char *hstring;	/* character string containing FITS header information
     wcs->printsys = 1;
     wcs->tabsys = 0;
     wcs->linmode = 0;
-    if ((str = getenv("WCS_COMMAND")) != NULL ) {
-	int icom;
-	int lcom = strlen (str);
-	for (icom = 0; icom < lcom; icom++) {
-	    if (str[icom] == '_')
-		str[icom] = ' ';
-	    }
-	strcpy (wcs->search_format, str);
-	}
+    if ((str = getenv("WCS_COMMAND")) != NULL)
+	wcscominit (wcs, 0, str);
     else
-	strcpy (wcs->search_format, "rgsc %s");
+	wcscominit (wcs, 0, "rgsc %s");
     return (wcs);
 }
 
@@ -688,4 +704,6 @@ struct WorldCoor *wcs;
  * Jul  7 1998  Initialize eqin and eqout to equinox,
  * Jul  9 1998	Initialize rotation matrices correctly
  * Jul 13 1998	Initialize rotation, scale for polynomial and DSS projections
+ * Aug  6 1998	Fix CROTA computation for DSS projection
+ * Sep  4 1998	Fix CROTA and CDELT computation for DSS and polynomial projections
  */

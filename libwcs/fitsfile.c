@@ -1,8 +1,8 @@
-/*** File libwcs/fitsio.c
+/*** File libwcs/fitsfile.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** July 13, 1998
+ *** August 6, 1998
 
- * Module:      fitsio.c (FITS file reading and writing)
+ * Module:      fitsfile.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
  * Subroutine:	fitsropen (inpath)
  *		Open a FITS file for reading, returning a FILE pointer
@@ -28,6 +28,8 @@
  *		Extract column from FITS table line as a character string
  * Subroutine:	fitswimage (filename, header, image)
  *		Write FITS header and image
+ * Subroutine:	fitswhead (filename, header)
+ *		Write FITS header and keep file open for further writing 
 
  * Copyright:   1997 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
@@ -46,7 +48,7 @@
 #include <sys/file.h>
 #include <errno.h>
 #include <string.h>
-#include "fitsio.h"
+#include "fitsfile.h"
 
 static int verbose=0;		/* if 1 print diagnostics */
 
@@ -786,6 +788,8 @@ int	maxchar;	/* Maximum number of characters in returned string */
 }
 
 
+/*FITSWIMAGE -- Write FITS header and image */
+
 extern int errno;
 
 int
@@ -880,6 +884,60 @@ char	*image;		/* FITS image pixels */
     return (nbw);
 }
 
+
+/* FITSWHEAD -- Write FITS header and keep file open for further writing */
+
+int
+fitswhead (filename, header)
+
+char	*filename;	/* Name of IFTS image file */
+char	*header;	/* FITS image header */
+
+{
+    int fd;
+    int nbhead, nbimage, nblocks, bytepix;
+    int bitpix, naxis, naxis1, naxis2, nbytes, nbw;
+    char *endhead, *lasthead;
+
+    /* Open the output file */
+    if (!access (filename, 0)) {
+	fd = open (filename, O_WRONLY);
+	if (fd < 3) {
+	    fprintf (stderr, "FITSWHEAD:  file %s not writeable\n", filename);
+	    return (0);
+	    }
+	}
+    else {
+	fd = open (filename, O_RDWR+O_CREAT, 0666);
+	if (fd < 3) {
+	    fprintf (stderr, "FITSWHEAD:  cannot create file %s\n", filename);
+	    return (0);
+	    }
+	}
+
+    /* Write header to file */
+    endhead = ksearch (header,"END") + 80;
+    nbhead = endhead - header;
+    nblocks = nbhead / FITSBLOCK;
+    if (nblocks * FITSBLOCK < nbhead)
+	nblocks = nblocks + 1;
+    nbytes = nblocks * FITSBLOCK;
+
+    /* Pad header with spaces */
+    lasthead = header + nbytes;
+    while (endhead < lasthead)
+	*(endhead++) = ' ';
+    
+    nbw = write (fd, header, nbytes);
+    if (nbw < nbhead) {
+	fprintf (stderr, "FITSWHEAD:  wrote %d / %d bytes of header to file %s\n",
+		 nbw, nbytes, filename);
+	close (fd);
+	return (0);
+	}
+    return (fd);
+}
+
 /*
  * Feb  8 1996	New subroutines
  * Apr 10 1996	Add subroutine list at start of file
@@ -914,4 +972,6 @@ char	*image;		/* FITS image pixels */
  * Jun  3 1998	Fix bug reading EXTNAME
  * Jun 11 1998	Initialize all header parameters before reading them
  * Jul 13 1998	Clarify argument definitions
+ * Aug  6 1998	Rename fitsio.c to fitsfile.c to avoid conflict with CFITSIO
+ * Aug 13 1998	Add FITSWHEAD to write only header
  */

@@ -1,8 +1,8 @@
-.TH sethead(1) WCS "21 October 1996"
+.TH sethead(1) WCS "4 September 1998"
 .SH Name
 sethead \- Set FITS or IRAF header keyword values
 .SH Synopsis
-sethead [-vw] <FITS or IRAF file> kw1=val1 kw2=val2 ... kwn=valuen
+sethead [-knv][r letter] <FITS or IRAF file> kw1=val1 kw2=val2 ... kwn=valuen
 .SH Description
 Set parameters in the header of a FITS or IRAF image.  If the keywords do
 not already exist, they are added at the end of the header.  Values are
@@ -10,11 +10,27 @@ assumed to be numeric if they contain no alphabetic characters and
 right-aligned.  Otherwise they are left-aligned after the equals sign.
 .SH Options
 .TP
+.B \-h
+Write HISTORY line into output header with 
+.B sethead
+version, current date and time, and names of keywords set.
+.TP
+.B \-k
+Write SETHEAD keyword into output header with 
+.B sethead
+version, current date and time, and names of keywords set.  
+If a SETHEAD keyword already exists, move the old value to a
+HISTORY line before writing the new value
+.TP
+.B \-n
+Write a new file with an added "e" before the extension.
+.TP
+.B \-r letter
+Rename existing keywords whose values are being reset by prepending
+the character "letter".  Drop the last character if the changed
+keyword is already 8 characters long.
+.TP
 .B \-v
 Print confirmations of each parameter setting
-.TP
-.B \-w
-Overwrite header; otherwise a new file is written with an "e" inserted into
-the name before the file extension.
 .SH Author
 Doug Mink, SAO (dmink@cfa.harvard.edu)

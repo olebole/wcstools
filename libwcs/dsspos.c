@@ -1,5 +1,5 @@
 /* File saoimage/wcslib/dsspos.c
- * April 7, 1998
+ * September 4, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	dsspos.c (Plate solution WCS conversion)
@@ -102,7 +102,7 @@ double	*ypos;		/* Declination or latitude in degrees */
   if (ra < 0.0) ra = ra + twopi;
   *xpos = ra / cond2r;
 
-  dec = atan (cos (raoff) / ((1.0 - (etar * ctan)) / (etar + ctan)));
+  dec = atan (cos (raoff) * ((etar + ctan) / (1.0 - (etar * ctan))));
   *ypos = dec / cond2r;
   return 0;
 }
@@ -275,4 +275,5 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
  *
  * Mar 23 1998	Change names from plate*() to dss*()
  * Apr  7 1998	Change amd_i_coeff to i_coeff
+ * Sep  4 1998	Fix possible divide by zero in dsspos() from Allen Harris, SAO
  */

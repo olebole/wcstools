@@ -1,3 +1,20 @@
+Version 2.4 (September 4, 1998)
+sethead.c: new arguments to add history to header
+sethead.c delhead.c keyhead.c: Write whole file if modifying primary header
+All files now transfer the extension from the input file if writing a new file
+i2f.c: Write .fits files instead of .fit; write HISTORY line
+wcs.c: Up to 10 commands may be preset
+hput.c: Add getltime() and getutime() to set ISO local time and UT strings
+wcs.h: Added pa_north, pa_east, imrot, and imflip to show image orientation
+
+Version 2.3.4 (July 28, 1998)
+delwcs.c: New program to delete keyword entries from image headers
+setwcs.c: Updated to allow multiple files to be changed
+imhio.c: Properly sets modification date; memory management bugs fixed
+
+Version 2.3.3 (July 24, 1998)
+imhio.c:  Fix major bug by writing length of header to IRAF .imh files
+
 Version 2.3.2 (July 16, 1998)
 wcslib.c, wcs.c: Correct implementation of CSC, and probably all, quad cube
 projections.

@@ -85,6 +85,9 @@ extern "C" {
     int notnum(			/* Return 0 if number, else 1 */
 	const char* string);	/* Character string which may be a number */
 
+    char *getltime();		/* Return current local time in ISO format */
+    char *getutime();		/* Return current UT as an ISO-format string */
+
 /* Subroutines in iget.c */
     int mgets(			/* Extract string from multiline FITS keyword */
 	const char* hstring,	/* FITS header string */
@@ -270,6 +273,9 @@ extern void dec2str();
 extern void deg2str();
 extern void num2str();
 
+extern char *getltime(); /* Return current local time in ISO format */
+extern char *getutime(); /* Return current UT as an ISO-format string */
+
 #endif	/* __cplusplus */
 #endif	/* fitshead_h_ */
 
@@ -298,4 +304,5 @@ extern void num2str();
  * May 27 1998	Add all subroutines in hget.c, hput.c, and iget.c to C++ dec.
  * Jun 24 1998	Add string lengths to ra2str(), dec2str, and deg2str() calls
  * Jun 25 1998	Fix other C++ declarations with added string lengths
+ * Aug 31 1998	Add current date subroutines getltime() and getutime()
  */

@@ -1,7 +1,7 @@
 /*** File wcscon.c
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Based on Starlink subroutines by Patrick Wallace
- *** June 24, 1998
+ *** July 9, 1998
 
  * Module:	wcscon.c (World Coordinate System conversion)
  * Purpose:	Convert between various sky coordinate systems
@@ -30,6 +30,7 @@
 #ifndef VMS
 #include <stdlib.h>
 #endif
+#include <stdio.h>	/* for printf() and sprintf() */
 #include <ctype.h>
 #include <string.h>
 #include "wcs.h"
@@ -1438,4 +1439,5 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
  * May 13 1998	Add wcsceq()
  * May 13 1998	Add equinox arguments to wcscon()
  * Jun 24 1998	Set J2000 from ICRS in wcscsys()
+ * Jul  9 1998	Include stdio.h for printf() and sprintf() declarations
  */

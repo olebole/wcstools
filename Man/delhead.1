@@ -1,0 +1,17 @@
+.TH delhead(1) WCS "4 September 1998"
+.SH Name
+delhead \- Set FITS or IRAF header keyword values
+.SH Synopsis
+delhead [-nv] <FITS or IRAF file> kw1 kw2 ... kwn
+.SH Description
+Delete keyword entries from the header of a FITS or IRAF image.  If
+a keyword does not already exist, ignore it.
+.SH Options
+.TP
+.B \-n
+Write a new file with an added "e" before the extension.
+.TP
+.B \-v
+Print confirmations of each parameter setting
+.SH Author
+Doug Mink, SAO (dmink@cfa.harvard.edu)

@@ -23,11 +23,19 @@ on a line, with # at the beginning of comment lines.
 .B /-e <num>
 Number of pixels to ignore around image edge 
 .TP
+.B /-f
+Write a simple ASCII catalog file instead of tab table or DAOFIND format
+(number RA DEC mag ... per line)
+.TP
 .B /-h
 Print heading, else do not 
 .TP
 .B /-i <num>
 Minimum peak value for star in image (<0=-sigma)
+Setting this to reject all but 10-15 stars is a good way to speed up the
+star-finding process.  If num is less than zero, the minimum peak is -num
+image pixel standard deviations.  Setting this number rejects faint stars
+early in the selection process for a significant saving in computing time.
 .TP
 .B /-j
 Output J2000 (FK5) coordinates (default=image equinox)
@@ -52,5 +60,17 @@ Tab table to standard output as well as file
 .TP
 .B /-v
 Verbose listing of processing intermediate results
+.TP
+.B /-w
+Write output file in DAOFIND format and create the name by adding .dao
+to the image file name.  The first three numbers on each line of the
+output file are X, Y, and magnitude, separated by one or more blanks or
+a tab.  Lines beginning with # are ignored.
+.TP
+.B /-z
+Use AIPS classic projection code (for "-SIN", "-TAN", "-ARC", "-NCP",
+"-GLS", "-MER", "-AIT" and "-STG" only) instead of WCSLIB proposed
+standard projection code.
+
 .SH Author
 Doug Mink, SAO (dmink@cfa.harvard.edu)

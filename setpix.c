@@ -1,5 +1,5 @@
 /* File setpix.c
- * May 27, 1998
+ * August 14, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsio.h"
+#include "fitsfile.h"
 #include "wcs.h"
 
 static void usage();
@@ -92,9 +92,9 @@ char	**value;		/* value to insert into pixel */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
-    int *irafheader;		/* IRAF image header */
-    int i, nbytes, nhb, nhblk, lname, lext;
-    char *head, *headend, *hlast;
+    char *irafheader;		/* IRAF image header */
+    int i, nbytes, nhb, nhblk, lname, lext, lroot;
+    char *head, *headend, *hlast, *imext, *imext1;
     char headline[160];
     char newname[128];
     char pixname[128];
@@ -104,6 +104,7 @@ char	**value;		/* value to insert into pixel */
     char *ext, *fname;
     char *editcom;
     char newline[1];
+    char echar;
     double dpix;
     int bitpix,xdim,ydim;
 
@@ -183,26 +184,53 @@ char	**value;		/* value to insert into pixel */
     if (newimage) {
 
     /* Remove directory path and extension from file name */
-	ext = strrchr (filename, '.');
 	fname = strrchr (filename, '/');
 	if (fname)
 	    fname = fname + 1;
 	else
 	    fname = filename;
-	lname = strlen (fname);
-	if (ext) {
-	    lext = strlen (ext);
-	    strncpy (newname, fname, lname - lext);
-	    *(newname + lname - lext) = 0;
+	ext = strrchr (fname, '.');
+	if (ext != NULL) {
+	    lext = (fname + strlen (fname)) - ext;
+	    lroot = ext - fname;
+	    strncpy (newname, fname, lroot);
+	    *(newname + lroot) = 0;
 	    }
-	else
+	else {
+	    lext = 0;
+	    lroot = strlen (fname);
 	    strcpy (newname, fname);
-
-    /* Add file extension preceded by a e */
-	if (iraffile)
-	    strcat (newname, "e.imh");
+	    }
+	imext = strchr (fname, ',');
+	imext1 = NULL;
+	if (imext == NULL) {
+	    imext = strchr (fname, '[');
+	    if (imext != NULL) {
+		imext1 = strchr (fname, ']');
+		*imext1 = (char) 0;
+		}
+	    }
+	if (imext != NULL) {
+	    strcat (newname, "_");
+	    strcat (newname, imext+1);
+	    }
+	if (fname)
+	    fname = fname + 1;
 	else
-	    strcat (newname, "e.fit");
+	    fname = filename;
+	strcat (newname, "e");
+	if (lext > 0) {
+	    if (imext != NULL) {
+		echar = *imext;
+		*imext = (char) 0;
+		strcat (newname, ext);
+		*imext = echar;
+		if (imext1 != NULL)
+		    *imext1 = ']';
+		}
+	    else
+		strcat (newname, ext);
+	    }
 	}
     else
 	strcpy (newname, filename);
@@ -233,4 +261,7 @@ char	**value;		/* value to insert into pixel */
  * Dec 15 1997	Add capability of reading and writing IRAF 2.11 images
  *
  * May 28 1998	Include fitsio.h instead of fitshead.h
+ * Jul 24 1998	Make irafheader char instead of int
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Aug 14 1998	Preserve extension when creating new file name
  */

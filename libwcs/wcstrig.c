@@ -40,8 +40,8 @@
 #define PI 3.141592653589793238462643
 #endif
 
-const double d2r = PI / 180.0;
-const double r2d = 180.0 / PI;
+static const double d2r = PI / 180.0;
+static const double r2d = 180.0 / PI;
 
 double cosdeg (angle)
 
@@ -186,4 +186,5 @@ const double x, y;
    return atan2(y,x)*r2d;
 }
 /* Apr 30 1998	Define PI only if not defined already
+ * Jul 30 1998	Make r2d and d2r static to avoid conflicts - Allan Brighton
  */

@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
-   July 7, 1998
+   August 14, 1998
    By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 #ifndef _wcs_h_
@@ -45,7 +45,10 @@ struct WorldCoor {
   double	longpole;	/* Longitude of North Pole in degrees */
   double	latpole;	/* Latitude of North Pole in degrees */
   double	rodeg;		/* Radius of the projection generating sphere */
-  char		ctype[4][9];	/* Values of CTYPEn keywords */
+  double	imrot;		/* Rotation angle of north pole */
+  double	pa_north;	/* Position angle of north (0=horizontal) */
+  double	pa_east;	/* Position angle of east (0=horizontal) */
+  int		imflip;		/* If not 0, image is reflected around axis */
   int		prjcode;	/* projection code (-1-32) */
   int		ncoeff1;	/* Number of x-axis plate fit coefficients */
   int		ncoeff2;	/* Number of y-axis plate fit coefficients */
@@ -65,6 +68,7 @@ struct WorldCoor {
   int		linmode;	/* 0=system only, 1=units, 2=system+units */
   int		detector;	/* Instrument detector number */
   char		instrument[32];	/* Instrument name */
+  char		ctype[4][9];	/* Values of CTYPEn keywords */
   char		c1type[8];	/*  1st coordinate type code:
 					RA--, GLON, ELON */
   char		c2type[8];	/*  2nd coordinate type code:
@@ -89,8 +93,10 @@ struct WorldCoor {
   struct prjprm prj;		/* WCSLIB projection parameters */
   struct IRAFsurface *lngcor;	/* RA/longitude correction structure */
   struct IRAFsurface *latcor;	/* Dec/latitude correction structure */
-  char 	search_format[120];	/* search command format */
+  char *command_format[10];	/* WCS command formats */
 				/* where %s is replaced by WCS coordinates */
+				/* where %f is replaced by the image filename */
+				/* where %x is replaced by image coordinates */
 };
 
 /* Projections (1-26 are WCSLIB) */
@@ -181,6 +187,7 @@ extern "C" {
 
     /* WCS subroutines in wcs.c */
     struct WorldCoor *wcsinit (const char* hstring);
+    struct WorldCoor *wcsninit (const char* hstring, int len);
 
     int iswcs(			/* Returns 1 if wcs structure set, else 0 */
 	WorldCoor *wcs);	/* World coordinate system structure */
@@ -314,6 +321,13 @@ extern "C" {
     int wcsout (		/* Return coordinate in third dimension */
         struct WorldCoor *wcs);	/* World coordinate system structure */
 
+    void savewcscoor(		/* Save output coordinate system */
+	char *wcscoor);		/* coordinate system (J2000, B1950, galactic) */
+    char *getwcscoor();		/* Return output coordinate system */
+    void savewcscom(		/* Save WCS shell command */
+	char *wcscom);		/* Shell command using output WCS string */
+    char *getwcscom();		/* Return WCS shell command */
+
 
     /* Coordinate conversion subroutines in wcscon.c */
     void wcscon(	/* Convert between coordinate systems and equinoxes */
@@ -373,6 +387,12 @@ int wcszin();		/* Set coordinate in third dimension (face) */
 int wcsout();		/* Return coordinate in third dimension */
 void wcserr();		/* Print WCS error message to stderr */
 void setwcserr();	/* Set WCS error message for later printing */
+void savewcscoor();	/* Save output coordinate system */
+char *getwcscoor();	/* Return output coordinate system */
+void savewcscom();	/* Save WCS shell command */
+char *getwcscom();	/* Return WCS shell command */
+void setwcscom();	/* Set WCS shell commands from stored values */
+void freewcscom();	/* Free memory used to store WCS shell commands */
 
 /* Coordinate conversion subroutines in wcscon.c */
 void wcscon();		/* Convert between coordinate systems and equinoxes */
@@ -444,4 +464,7 @@ double wcsceq();		/* Set equinox from string (return 0.0 if not obvious) */
  * Jun 25 1998	Add wcsndec()
  * Jul  6 1998	Add wcszin() and wcszout() to use third dimension of images
  * Jul  7 1998	Change setdegout() to setwcsdeg(); setlinmode() to setwcslin()
+ * Jul 17 1998	Add savewcscoor(), getwcscoor(), savewcscom(), and getwcscom()
+ * Aug 14 1998	Add freewcscom(), setwcscom(), and multiple WCS commands
+ * Sep  3 1998	Add pa_north, pa_east, imrot and imflip to wcs structure
  */

@@ -1,5 +1,5 @@
 /* File gethead.c
- * June 18, 1998
+ * September 1, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsio.h"
+#include "fitsfile.h"
 
 #define MAXKWD 100
 #define MAXFILES 1000
@@ -19,9 +19,11 @@
 static void usage();
 static void PrintValues();
 static void strclean();
+extern char *GetFITShead();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;
+static int ndec = -9;
 static int maxlfn = 0;
 static int listall = 0;
 static int listpath = 0;
@@ -65,6 +67,13 @@ char **av;
 
 	case 'h':	/* output column headings */
 	    printhead++;
+	    break;
+
+	case 'n':	/* number of decimal places in output */
+	    if (ac < 2)
+		usage();
+	    ndec = (int) (atof (*++av));
+	    ac--;
 	    break;
 
 	case 'p':	/* output column headings */
@@ -209,13 +218,14 @@ usage (progname)
 char *progname;
 {
     fprintf (stderr,"Print FITS or IRAF header keyword values\n");
-    fprintf(stderr,"usage: [-ahtv] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
-    fprintf(stderr,"usage: [-ahptv] @filelist kw1 kw2 ... kwn\n");
-    fprintf(stderr,"  -a: list file even if keywords are not found\n");
-    fprintf(stderr,"  -h: print column headings\n");
-    fprintf(stderr,"  -p: print full pathnames of files\n");
-    fprintf(stderr,"  -t: output in tab-separated table format\n");
-    fprintf(stderr,"  -v: verbose\n");
+    fprintf(stderr,"usage: [-ahtv][-n num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
+    fprintf(stderr,"usage: [-ahptv][-n num] @filelist kw1 kw2 ... kwn\n");
+    fprintf(stderr,"  -a: List file even if keywords are not found\n");
+    fprintf(stderr,"  -h: Print column headings\n");
+    fprintf(stderr,"  -n: Number of decimal places in numeric output\n");
+    fprintf(stderr,"  -p: Print full pathnames of files\n");
+    fprintf(stderr,"  -t: Output in tab-separated table format\n");
+    fprintf(stderr,"  -v: Verbose\n");
     exit (1);
 }
 
@@ -231,7 +241,6 @@ char	*kwd[];	/* Names of keywords for which to print values */
     char *header;	/* FITS image header */
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
-    int *irafheader;	/* IRAF image header */
     int iraffile;
     char fnform[8];
     char string[80];
@@ -242,33 +251,13 @@ char	*kwd[];	/* Names of keywords for which to print values */
     char *kw, *kwe;
     int ikwd, lkwd, nfound;
 
-    /* Open IRAF image if .imh extension is present */
-    if (strsrch (name,".imh") != NULL) {
-	iraffile = 1;
-	if ((irafheader = irafrhead (name, &lhead)) != NULL) {
-	    header = iraf2fits (name, irafheader, lhead, &nbhead);
-	    free (irafheader);
-	    if (header == NULL) {
-		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
-		return;
-		}
-	    }
-	else {
-	    fprintf (stderr, "Cannot read IRAF file %s\n", name);
-	    return;
-	    }
-	}
+    /* Retrieve FITS header from FITS or IRAF .imh file */
+    if ((header = GetFITShead (name)) == NULL)
+	return;
 
-    /* Open FITS file if .imh extension is not present */
-    else {
-	iraffile = 0;
-	if ((header = fitsrhead (name, &lhead, &nbhead)) == NULL) {
-	    fprintf (stderr, "Cannot read FITS file %s\n", name);
-	    return;
-	    }
-	}
     if (verbose) {
 	fprintf (stderr,"Print Header Parameter Values from ");
+	hgeti4 (header, "IMHVER", &iraffile );
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", name);
 	else
@@ -299,6 +288,8 @@ char	*kwd[];	/* Names of keywords for which to print values */
 	    }
 	if (hgets (header, kwd[ikwd], 80, string)) {
 	    strclean (string);
+	    if (ndec > -9 && isnum (string) && strchr (string, '.'))
+		num2str (string, atof(string), 0, ndec);
 	    if (verbose)
 		printf ("%s = %s", kwd[ikwd], string);
 	    else
@@ -404,4 +395,6 @@ char *string;
  * Jun  2 1998  Fix bug in hput()
  * Jun  3 1998	Add -p option
  * Jun 18 1998	Print tab table heading only if -h option used
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Sep  1 1998	Allow number of decimal places in floating output to be set with -n
  */

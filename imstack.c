@@ -1,5 +1,5 @@
 /* File imstack.c
- * May 27, 1998
+ * August 6, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsio.h"
+#include "fitsfile.h"
 #include "wcs.h"
 
 static void usage();
@@ -164,7 +164,7 @@ char	*filename;	/* FITS or IRAF file filename */
     char *header;		/* FITS header */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
-    int *irafheader;		/* IRAF image header */
+    char *irafheader;		/* IRAF image header */
     int nbimage, naxis, naxis1, naxis2, naxis3, naxis4, bytepix;
     int bitpix, nblocks, nbytes;
     int iraffile;
@@ -308,4 +308,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * May 30 1997	Fix FITS data padding to integral multiple of 2880 bytes
  *
  * May 28 1998	Include fitsio.h instead of fitshead.h
+ * Jul 24 1998	Make irafheader char instead of int
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
  */

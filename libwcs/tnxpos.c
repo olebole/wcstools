@@ -1,5 +1,5 @@
 /* File wcslib/tnxpos.c
- * May 11, 1998
+ * September 4, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * After IRAF mwcs/wftnx.x and mwcs/wfgsurfit.x
  */
@@ -140,7 +140,7 @@ double	*xpos, *ypos;	/*o world coordinates (ra, dec) */
     int	ira, idec;
     double x, y, r, phi, theta, costhe, sinthe, dphi, cosphi, sinphi, dlng, z;
     double colatp, coslatp, sinlatp, longp;
-    double ra, dec;
+    double xs, ys, ra, dec;
     double wf_gseval();
 
     /* Convert from pixels to image coordinates */
@@ -156,23 +156,27 @@ double	*xpos, *ypos;	/*o world coordinates (ra, dec) */
     else {
 
 	/* Check axis increments - bail out if either 0 */
-	if (wcs->xinc == 0.0 || wcs->yinc == 0.0) {
+	if (wcs->cdelt[0] == 0.0 || wcs->cdelt[1] == 0.0) {
 	    *xpos = 0.0;
 	    *ypos = 0.0;
 	    return 2;
 	    }
 
 	/* Scale using CDELT */
-	xpix = xpix * wcs->cdelt[0];
-	ypix = ypix * wcs->cdelt[1];
+	xs = xpix * wcs->cdelt[0];
+	ys = ypix * wcs->cdelt[1];
 
 	/* Take out rotation from CROTA */
 	if (wcs->rot != 0.0) {
 	    double cosr = cos (degrad (wcs->rot));
 	    double sinr = sin (degrad (wcs->rot));
-	    x = xpix * cosr - ypix * sinr;
-	    y = xpix * sinr + ypix * cosr;
+	    x = xs * cosr - ys * sinr;
+	    y = xs * sinr + ys * cosr;
     	    }
+	else {
+	    x = xs;
+	    y = ys;
+	    }
 	}
 
     /* get the axis numbers */
@@ -1163,5 +1167,6 @@ double	*coeff;
 
 /* Mar 26 1998	New subroutines, translated from SPP
  * Apr 28 1998  Change all local flags to TNX_* and projection flag to WCS_TNX
- * MAy 11 1998	Fix use of pole longitude default
+ * May 11 1998	Fix use of pole longitude default
+ * Sep  4 1998	Fix possible missed assignment in tnxpos from Allen Harris, SAO
  */

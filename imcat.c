@@ -743,7 +743,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    else if (refcat == GSC)
 		printf (" Mag     X      Y   Class Arcsec\n");
 	    else
-		printf (" Mag     X      Y   Plate Arcsec\n");
+		printf (" Mag     X      Y   Peak  Arcsec\n");
 	    }
 	}
 

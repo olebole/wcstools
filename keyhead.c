@@ -1,5 +1,5 @@
 /* File keyhead.c
- * May 27, 1998
+ * August 14, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsio.h"
+#include "fitsfile.h"
 
 #define MAXKWD 50
 #define MAXFILES 1000
@@ -146,17 +146,19 @@ char	*kwd[];		/* Names and values of those keywords */
     char *header;	/* FITS image header */
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
-    int *irafheader;	/* IRAF image header */
+    char *irafheader;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
-    int i, lname, lext;
-    char *image;
+    int i, lname, lext, lroot;
+    char *image, *imext, *imext1;
     char newname[128];
     char *ext, *fname;
     char *kw, *kwv, *kwl, *kwn;
+    char echar;
     int ikwd, lkwd, lkwn;
     int squote = 39;
     int dquote = 34;
     char cval[24];
+    int fdr, fdw, ipos, nbr, nbw, naxis;
 
     /* Open IRAF image if .imh extension is present */
     if (strsrch (filename,".imh") != NULL) {
@@ -178,10 +180,18 @@ char	*kwd[];		/* Names and values of those keywords */
     else {
 	iraffile = 0;
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
-	    if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
-		fprintf (stderr, "Cannot read FITS image %s\n", filename);
-		free (header);
-		return;
+	    hgeti4 (header,"NAXIS",&naxis);
+	    if (naxis > 0) {
+		if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
+		    fprintf (stderr, "Cannot read FITS image %s\n", filename);
+		    free (header);
+		    return;
+		    }
+		}
+	    else {
+		if (verbose)
+		    fprintf (stderr, "Rewriting primary header, copying rest\n");
+		newimage = 1;
 		}
 	    }
 	else {
@@ -232,26 +242,53 @@ char	*kwd[];		/* Names and values of those keywords */
     if (newimage) {
 
     /* Remove directory path and extension from file name */
-	ext = strrchr (filename, '.');
 	fname = strrchr (filename, '/');
 	if (fname)
 	    fname = fname + 1;
 	else
 	    fname = filename;
-	lname = strlen (fname);
-	if (ext) {
-	    lext = strlen (ext);
-	    strncpy (newname, fname, lname - lext);
-	    *(newname + lname - lext) = 0;
+	ext = strrchr (fname, '.');
+	if (ext != NULL) {
+	    lext = (fname + strlen (fname)) - ext;
+	    lroot = ext - fname;
+	    strncpy (newname, fname, lroot);
+	    *(newname + lroot) = 0;
 	    }
-	else
+	else {
+	    lext = 0;
+	    lroot = strlen (fname);
 	    strcpy (newname, fname);
-
-    /* Add file extension preceded by a e */
-	if (iraffile)
-	    strcat (newname, "e.imh");
+	    }
+	imext = strchr (fname, ',');
+	imext1 = NULL;
+	if (imext == NULL) {
+	    imext = strchr (fname, '[');
+	    if (imext != NULL) {
+		imext1 = strchr (fname, ']');
+		*imext1 = (char) 0;
+		}
+	    }
+	if (imext != NULL && *(imext+1) != '0') {
+	    strcat (newname, "_");
+	    strcat (newname, imext+1);
+	    }
+	if (fname)
+	    fname = fname + 1;
 	else
-	    strcat (newname, "e.fit");
+	    fname = filename;
+	strcat (newname, "e");
+	if (lext > 0) {
+	    if (imext != NULL) {
+		echar = *imext;
+		*imext = (char) 0;
+		strcat (newname, ext);
+		*imext = echar;
+		if (imext1 != NULL)
+		    *imext1 = ']';
+		}
+	    else
+		strcat (newname, ext);
+	    }
 	}
     else
 	strcpy (newname, filename);
@@ -264,14 +301,30 @@ char	*kwd[];		/* Names and values of those keywords */
 	    printf ("%s could not be written.\n", newname);
 	free (irafheader);
 	}
-    else {
+    else if (naxis > 0) {
 	if (fitswimage (newname, header, image) > 0 && verbose)
 	    printf ("%s: rewritten successfully.\n", newname);
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
 	free (image);
 	}
-
+    else {
+	if ((fdw = fitswhead (newname, header)) > 0) {
+	    fdr = fitsropen (filename);
+	    ipos = lseek (fdr, nbhead, SEEK_SET);
+	    image = (char *) calloc (2880, 1);
+	    while ((nbr = read (fdr, image, 2880)) > 0) {
+		nbw = write (fdw, image, nbr);
+		if (nbw < nbr)
+		    fprintf (stderr,"SETHEAD: %d / %d bytes written\n",nbw,nbr);
+		}
+	    close (fdr);
+	    close (fdw);
+	    if (verbose)
+		printf ("%s: rewritten successfully.\n", newname);
+	    free (image);
+	    }
+	}
     free (header);
     return;
 }
@@ -279,4 +332,8 @@ char	*kwd[];		/* Names and values of those keywords */
 /* Dec 17 1997	New program
  *
  * May 28 1998	Include fitsio.h instead of fitshead.h
+ * Jul 24 1998	Make irafheader char instead of int
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Aug 14 1998	Preserve extension when creating new file name
+ * Aug 14 1998	If changing primary header, write out entire input file
  */

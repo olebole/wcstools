@@ -1,5 +1,5 @@
 /*** File libwcs/iget.c
- *** June 1, 1998
+ *** July 9, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	iget.c (Get IRAF FITS Header parameter values)
@@ -340,7 +340,7 @@ char *keyword0;	/* character string containing the name of the keyword
 {
 	static char cval[500];
 	char *value;
-	char cwhite[2];
+	char cwhite[8];
 	char squot[2],dquot[2],lbracket[2],rbracket[2],slash[2];
 	char keyword[16];
 	char line[500];
@@ -392,16 +392,18 @@ char *keyword0;	/* character string containing the name of the keyword
 
 /* If keyword has brackets, extract appropriate token from value */
 	if (brack1 != NULL) {
-	    brack2 = strsrch (keyword,rbracket);
+	    c1 = (char *) (brack1 + 1);
+	    brack2 = strsrch (c1, rbracket);
 	    if (brack2 != NULL) {
 		*brack2 = '\0';
-		ipar = atoi (brack1);
+		ipar = atoi (c1);
 		if (ipar > 0) {
 		    cwhite[0] = ' ';
-		    cwhite[1] = '\0';
-		    cwhite[2] = ',';
-		    for (i = 0; i < ipar; i++) {
-			cpar = strtok (v1,cwhite);
+		    cwhite[1] = ',';
+		    cwhite[2] = '\0';
+		    cpar = strtok (line, cwhite);
+		    for (i = 1; i < ipar; i++) {
+			cpar = strtok (NULL, cwhite);
 			}
 		    if (cpar != NULL) {
 			strcpy (cval,cpar);
@@ -498,4 +500,5 @@ char *keyword;	/* character string containing the name of the variable
  * Apr 15 1998	Set IGET() and ISEARCH() static when defined
  * Apr 24 1998	Add MGETI4(), MGETR8(), and MGETS() for single step IRAF ext.
  * Jun  1 1998	Add VMS patch from Harry Payne at STScI
+ * Jul  9 1998	Fix bracket token extraction after Paul Sydney
  */

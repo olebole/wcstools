@@ -1,5 +1,5 @@
 /* File wcshead.c
- * July 10, 1998
+ * August 6, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsio.h"
+#include "fitsfile.h"
 #include "wcs.h"
 
 static void usage();
@@ -246,4 +246,5 @@ struct WorldCoor *wcs;
  * May 27 1998	Include fitsio.h instead of fitshead.h
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  * Jul 10 1998	Add option to use AIPS classic WCS subroutines
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
  */

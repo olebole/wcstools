@@ -22,6 +22,8 @@
  * Subroutine:	dec2str (out, lstr, dec, ndec) converts Dec from degrees to string
  * Subroutine:	deg2str (out, lstr, deg, ndec) converts degrees to string
  * Subroutine:	num2str (out, num, field, ndec) converts number to string
+ * Subroutine:  getltime () returns current local time as ISO-style string
+ * Subroutine:  getutime () returns current UT as ISO-style string
 
  * Copyright:   1998 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
@@ -30,6 +32,7 @@
  *              software for any purpose.  It is provided "as is" without
  *              express or implied warranty.
  */
+#include <sys/time.h>
 #include <string.h>             /* NULL, strlen, strstr, strcpy */
 #include <stdio.h>
 #include <stdlib.h>
@@ -989,6 +992,84 @@ int	ndec;		/* Number of decimal places in degree string */
     return;
 }
 
+
+/* Return current local time in ISO-style string */
+char *
+getltime ()
+
+/*   Return current local time as string
+ *
+ */
+{
+    int clock;
+    /* char *tstr, *ctime(); */
+    int i;
+    struct tm *localtime();
+    struct tm *time;
+    struct timeval tp;
+    struct timezone tzp;
+    int month, day, year, hour, minute, second;
+    char *isotime;
+
+    gettimeofday (&tp,&tzp);
+    clock = tp.tv_sec;
+
+    time = localtime (&clock);
+    /* tstr = ctime (&clock);
+    printf ("time is %s\n",tstr); */
+
+    year = time->tm_year;
+    if (year < 1000)
+	year = year + 1900;
+    month = time->tm_mon + 1;
+    day = time->tm_mday;
+    hour = time->tm_hour;
+    minute = time->tm_min;
+    second = time->tm_sec; 
+
+    isotime = (char *) calloc (1,32);
+
+    sprintf (isotime, "%04d-%02d-%02d %02d:%02d:%02d",
+		      year, month, day, hour, minute, second);
+
+    return (isotime);
+}
+
+/*   Return current UT as an ISO-format string */
+
+char *
+getutime ()
+
+{
+    int year, month, day, hour, minute, second;
+    long tsec;
+    struct timeval tp;
+    struct timezone tzp;
+    struct tm *ts;
+    char *isotime;
+
+    gettimeofday (&tp,&tzp);
+
+    tsec = tp.tv_sec;
+    ts = gmtime (&tsec);
+
+    year = ts->tm_year;
+    if (year < 1000)
+	year = year + 1900;
+    month = ts->tm_mon + 1;
+    day = ts->tm_mday;
+    hour = ts->tm_hour;
+    minute = ts->tm_min;
+    second = ts->tm_sec; 
+
+    isotime = (char *) calloc (1,32);
+
+    sprintf (isotime, "%04d-%02d-%02dT%02d:%02d:%02d",
+		      year, month, day, hour, minute, second);
+
+    return (isotime);
+}
+
 /* Dec 14 1995	Original subroutines
 
  * Feb  5 1996	Added HDEL to delete keyword entry from FITS header
@@ -1018,4 +1099,5 @@ int	ndec;		/* Number of decimal places in degree string */
  * Jun  2 1998	Fix bug when filling in blank lines before END
  * Jun 24 1998	Add string length to ra2str(), dec2str(), and deg2str()
  * Jun 25 1998	Make string converstion subroutines more robust
+ * Aug 31 1998	Add getltime() and getutime()
  */

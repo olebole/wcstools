@@ -1,5 +1,5 @@
 /* File imsize.c
- * June 25, 1998
+ * August 6, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsio.h"
+#include "fitsfile.h"
 #include "wcs.h"
 
 static void usage();
@@ -220,7 +220,6 @@ char *name;
     char *header;		/* FITS image header */
     int lhead, nbhead, nc;
     int iraffile;		/* 1 if IRAF image */
-    int *irafheader;		/* IRAF image header */
     char fileroot[64];
     char *filename, *ext;
     int nax;
@@ -454,4 +453,6 @@ char *name;
  * May 27 1998	Include fitsio.h instead of fitshead.h
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  * Jun 25 1998	Set WCS subroutine choice with SETDEFWCS()
+ * Jul 24 1998	Drop unused variable irafheader
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
  */

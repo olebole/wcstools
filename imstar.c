@@ -1,5 +1,5 @@
 /* File imstar.c
- * June 25, 1998
+ * August 6, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsio.h"
+#include "fitsfile.h"
 #include "wcs.h"
 
 static void usage();
@@ -278,7 +278,7 @@ char	*filename;	/* FITS or IRAF file filename */
     char *header;		/* FITS header */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
-    int *irafheader;		/* IRAF image header */
+    char *irafheader;		/* IRAF image header */
     double *sx=0, *sy=0;	/* image stars, pixels */
     double *sb=0;		/* image star brightesses */
     double *sra=0, *sdec=0;	/* image star RA and Dec */
@@ -288,7 +288,7 @@ char	*filename;	/* FITS or IRAF file filename */
     double ra, dec;
     double cra,cdec,dra,ddec,secpix;
     int wp, hp;
-    char rastr[16], decstr[16];
+    char rastr[32], decstr[32];
     int i, bitpix;
     char headline[160];
     char pixname[128];
@@ -465,8 +465,8 @@ char	*filename;	/* FITS or IRAF file filename */
 	    ra = 0.0;
 	    dec = 0.0;
 	    }
-	ra2str (rastr, ra, 3);
-	dec2str (decstr, dec, 2);
+	ra2str (rastr, 32, ra, 3);
+	dec2str (decstr, 32, dec, 2);
 	sprintf (headline, "%d	%s	%s	%.2f	%.2f	%.2f	%.2f	%d",
 		     i+1, rastr,decstr, smag[i], sx[i], sy[i], sb[i], sp[i]);
 	if (tabout)
@@ -542,4 +542,7 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jun 15 1998	Default to tab table file; ASCII table verbosee
  * Jun 15 1998	Write DAO-format file if -w flag set; ASCII table verbose
  * Jun 17 1998	Add option to set 16-bit files to unsigned int BITPIX=-16
+ * Jul 24 1998	Make irafheader char instead of int
+ * Jul 27 1998	Fix bug in ra2str() and dec2str() arguments
+ * Aug  6 1998	Change fitsio.h to fitsfile.h
  */

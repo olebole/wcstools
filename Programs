@@ -2,6 +2,8 @@ WCSTools Programs
 
 addpix.c
   Add a constant value(s) to specified pixel(s)
+delhead.c
+  Delete specified keywords from FITS or IRAF image file headers
 delwcs.c
   Delete the WCS keywords from an image. If both EPOCH and EQUINOX are
   present, EQUINOX is also deleted. 

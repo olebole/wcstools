@@ -15,7 +15,7 @@ findstar.c
   findStars() gets the location and brightest pixel of stars in the given
   image.  Included are subroutines to find and reject bright pixels and
   compute a star centroid.
-fitsio.c
+fitsfile.c
   FITS header and image reading and writing subroutines, including FITS
   table support.
 fitswcs.c
@@ -34,7 +34,7 @@ hput.c
   delete headers).
 iget.c
   Subroutines to extract values from IRAF multi-keyword header parameters
-imhio.c
+imhfile.c
   IRAF header and image reading and writing subroutines.  IRAF headers
   are converted to FITS headers for use by other programs and can be
   derived from FITS headers for writing.
@@ -111,7 +111,7 @@ cel.h
   Declarations for WCSLIB spherical coordinate transformation drivers
 fitshead.h
   Declarations of FITS header access subroutines
-fitsio.h
+fitsfile.h
   Declarations of image access subroutines and FITS table data structure.
 imio.h
   Declarations of subroutines to convert binary formats of numbers
