@@ -1,5 +1,5 @@
 /*** File libwcs/dateutil.c
- *** May 13, 2002
+ *** July 8, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1999-2002
@@ -356,15 +356,34 @@ double	*date;	/* Date as yyyy.mmdd (returned) */
 double	*time;	/* Time as hh.mmssxxxx (returned) */
 {
     double tsec;
+    int iyr,imon,iday,ihr,imn;
+    double sec;
 
-    tsec = jd2ts (dj);
-    ts2dt (tsec, date, time);
+    /* tsec = jd2ts (dj);
+    ts2dt (tsec, date, time); */
+
+    /* Convert Julian Date to date and time */
+    jd2i (dj, &iyr, &imon, &iday, &ihr, &imn, &sec, 4);
+
+    /* Convert date to yyyy.mmdd */
+    if (iyr < 0) {
+	*date = (double) (-iyr) + 0.01 * (double) imon + 0.0001 * (double) iday;
+	*date = -(*date);
+	}
+    else
+	*date = (double) iyr + 0.01 * (double) imon + 0.0001 * (double) iday;
+
+    /* Convert time to hh.mmssssss */
+    *time = (double) ihr + 0.01 * (double) imn + 0.0001 * sec;
 
     return;
 }
 
 
-/* JD2I-- convert Julian date to date as yyyy.mmdd and time as hh.mmssss */
+/* JD2I-- convert Julian date to date as year, month, and day, and time hours,
+          minutes, and seconds */
+/*        after Fliegel and Van Flander, CACM 11, 657 (1968) */
+
 
 void
 jd2i (dj, iyr, imon, iday, ihr, imn, sec, ndsec)
@@ -380,9 +399,59 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 
 {
     double tsec;
+    double frac, dts, ts, sday;
+    int jd, l, n, i, j;
 
     tsec = jd2ts (dj);
-    ts2i (tsec, iyr, imon, iday, ihr, imn, sec, ndsec);
+    /* ts2i (tsec, iyr, imon, iday, ihr, imn, sec, ndsec); */
+
+    /* Round seconds to 0 - 4 decimal places */
+    if (tsec < 0.0)
+	dts = -0.5;
+    else
+	dts = 0.5;
+    if (ndsec < 1)
+	ts = dint (tsec + dts);
+    else if (ndsec < 2)
+	ts = dint (tsec * 10.0 + dts) / 10.0;
+    else if (ndsec < 3)
+	ts = dint (tsec * 100.0 + dts) / 100.0;
+    else if (ndsec < 4)
+	ts = dint (tsec * 1000.0 + dts) / 1000.0;
+    else
+	ts = dint (tsec * 10000.0 + dts) / 10000.0;
+
+    /* Convert back to Julian Date */
+    dj = ts2jd (ts);
+
+    /* Compute time from fraction of a day */
+    frac = dmod (dj, 1.0);
+    if (frac < 0.5) {
+	jd = (int) (dj - frac);
+	sday = (frac + 0.5) * 86400.0;
+	}
+    else {
+	jd = (int) (dj - frac) + 1;
+	sday = (frac - 0.5) * 86400.0;
+	}
+    
+    *ihr = (int) (sday / 3600.0);
+    sday = sday - (double) (*ihr * 3600);
+    *imn = (int) (sday / 60.0);
+    *sec = sday - (double) (*imn * 60);
+
+    /* Compute day, month, year */
+    l = jd + 68569;
+    n = (4 * l) / 146097;
+    l = l - (146097 * n + 3) / 4;
+    i = (4000 * (l + 1)) / 1461001;
+    l = l - (1461 * i) / 4 + 31;
+    j = (80 * l) / 2447;
+    *iday = l - (2447 * j) / 80;
+    l = j / 11;
+    *imon = j + 2 - (12 * l);
+    *iyr = 100 * (n - 49) + i + l;
+
     return;
 }
 
@@ -560,7 +629,8 @@ double	*time;	/* Time as hh.mmssxxxx (returned)
 }
 
 
-/* MJD2I-- convert Modified Julian Date to date as yyyy.mmdd and time as hh.mmssss */
+/* MJD2I-- convert Modified Julian Date to date as year, month, day and
+           time as hours, minutes, seconds */
 
 void
 mjd2i (dj, iyr, imon, iday, ihr, imn, sec, ndsec)
@@ -1703,7 +1773,12 @@ double	*time;	/* Time as hh.mmssxxxx (returned)
     fd2i (string,&iyr,&imon,&iday,&ihr,&imn,&sec, 4);
 
     /* Convert date to yyyy.mmdd */
-    *date = (double) iyr + 0.01 * (double) imon + 0.0001 * (double) iday;
+    if (iyr < 0) {
+	*date = (double) (-iyr) + 0.01 * (double) imon + 0.0001 * (double) iday;
+	*date = -(*date);
+	}
+    else
+	*date = (double) iyr + 0.01 * (double) imon + 0.0001 * (double) iday;
 
     /* Convert time to hh.mmssssss */
     *time = (double) ihr + 0.01 * (double) imn + 0.0001 * sec;
@@ -1893,7 +1968,12 @@ double	*time;	/* Time as hh.mmssxxxx (returned)
     ts2i (tsec,&iyr,&imon,&iday,&ihr,&imn,&sec, 4);
 
     /* Convert date to yyyy.mmdd */
-    *date = (double) iyr + 0.01 * (double) imon + 0.0001 * (double) iday;
+    if (iyr < 0) {
+	*date = (double) (-iyr) + 0.01 * (double) imon + 0.0001 * (double) iday;
+	*date = -(*date);
+	}
+    else
+	*date = (double) iyr + 0.01 * (double) imon + 0.0001 * (double) iday;
 
     /* Convert time to hh.mmssssss */
     *time = (double) ihr + 0.01 * (double) imn + 0.0001 * sec;
@@ -2032,7 +2112,10 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
     double t,d;
 
     t = time;
-    d = date;
+    if (date < 0.0)
+	d = -date;
+    else
+	d = date;
 
     /* Extract components of time */
     *ihr = dint (t + 0.000000001);
@@ -2043,6 +2126,8 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
     /* Extract components of date */
     *iyr = dint (d + 0.00001);
     d = 100.0 * (d - (double) *iyr);
+    if (date < 0.0)
+	*iyr = - *iyr;
     *imon = dint (d + 0.001);
     d = 100.0 * (d - (double) *imon);
     *iday = dint (d + 0.1);
@@ -2093,6 +2178,8 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
     /* Check for various non-numeric characters */
     sstr = strchr (string,'/');
     dstr = strchr (string,'-');
+    if (dstr == string)
+	dstr = strchr (string+1, '-');
     fstr = strchr (string, '.');
     tstr = strchr (string,'T');
     if (tstr == NULL)
@@ -2159,8 +2246,8 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 		*tstr = 'T';
 	    }
 
-	/* If year is < 32, it is really day of month in old format */
-	if (*iyr < 32 || *iday > 31) {
+	/* If date is > 31, it is really year in old format */
+	if (*iday > 31) {
 	    i = *iyr;
 	    if (*iday < 100)
 		*iyr = *iday + 1900;
@@ -2210,7 +2297,6 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
     fixdate (iyr, imon, iday, ihr, imn, sec, ndsec);
 
     return;
-
 }
 
 
@@ -2229,35 +2315,31 @@ double	*sec;	/* seconds (returned) */
 int	ndsec;	/* Number of decimal places in seconds (0=int) */
 
 {
-    double t,days;
+    double t,days, ts, dts;
     int isec,ihms,nc,nc4,nly,ny,m,im;
 
     /* Round seconds to 0 - 4 decimal places */
-    if (ndsec < 1)
-	t = dint (tsec + 61530883200.5) * 10000.0;
-    else if (ndsec < 2)
-	t = dint ((tsec + 61530883200.0) * 10.0 + 0.5) * 1000.0;
-    else if (ndsec < 3)
-	t = dint ((tsec + 61530883200.0) * 100.0 + 0.5) * 100.0;
-    else if (ndsec < 3)
-	t = dint ((tsec + 61530883200.0) * 1000.0 + 0.5) * 10.0;
+    ts = tsec + 61530883200.0;
+    if (ts < 0.0)
+	dts = -0.5;
     else
-	t = dint ((tsec + 61530883200.0) * 10000.0 + 0.5);
+	dts = 0.5;
+    if (ndsec < 1)
+	t = dint (ts + dts) * 10000.0;
+    else if (ndsec < 2)
+	t = dint (ts * 10.0 + dts) * 1000.0;
+    else if (ndsec < 3)
+	t = dint (ts * 100.0 + dts) * 100.0;
+    else if (ndsec < 4)
+	t = dint (ts * 1000.0 + dts) * 10.0;
+    else
+	t = dint (ts * 10000.0 + dts);
+    ts = t / 10000.0;
 
-    /* Time of day (hours, minutes, seconds, .1 msec) */
-    *ihr = (int) (dmod (t/36000000.0, 24.0));
-    *imn = (int) (dmod (t/60000.0, 60.0));
-    if (tsec >= 0) {
-	ihms = (int) (dmod (tsec+0.000001, 1.0) * 10000.0);
-	isec = (int) (dmod (tsec+0.000001, 60.0));
-	}
-    else {
-	ihms = (int) (dmod (tsec-0.000001, 1.0) * 10000.0);
-	isec = (int) (dmod (tsec-0.000001, 60.0));
-	}
-
-    /* Seconds */
-    *sec = (double) isec + 0.0001 * (double) ihms;
+    /* Time of day (hours, minutes, seconds */
+    *ihr = (int) (dmod (ts/3600.0, 24.0));
+    *imn = (int) (dmod (ts/60.0, 60.0));
+    *sec = dmod (ts, 60.0);
 
     /* Number of days since 0 hr 0/0/0000 */
     days = dint ((t / 864000000.0) + 0.000001);
@@ -2488,6 +2570,8 @@ char	*string; /* Possible FITS date string, which may be:
 
     sstr = strchr (string,'/');
     dstr = strchr (string,'-');
+    if (dstr == string)
+	dstr = strchr (string+1,'-');
     tstr = strchr (string,'T');
 
     /* Original FITS date format: dd/mm/yy */
@@ -2537,8 +2621,8 @@ char	*string; /* Possible FITS date string, which may be:
 		*tstr = 'T';
 	    }
 
-	/* If year is < 32, it is really day of month in old format */
-	if (iyr < 32 || iday > 31) {
+	/* If day is > 31, it is really year in old format */
+	if (iday > 31) {
 	    i = iyr;
 	    if (iday < 100)
 		iyr = iday + 1900;
@@ -2577,13 +2661,13 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
     if (ndsec == 0)
 	*sec = dint (*sec + 0.5);
     else if (ndsec < 2)
-	*sec = dint ((*sec * 10.0 + 0.5) / 10.0);
+	*sec = dint (*sec * 10.0 + 0.5) / 10.0;
     else if (ndsec < 3)
-	*sec = dint ((*sec * 100.0 + 0.5) / 100.0);
+	*sec = dint (*sec * 100.0 + 0.5) / 100.0;
     else if (ndsec < 4)
-	*sec = dint ((*sec * 1000.0 + 0.5) / 1000.0);
+	*sec = dint (*sec * 1000.0 + 0.5) / 1000.0;
     else if (ndsec < 5)
-	*sec = dint ((*sec * 10000.0 + 0.5) / 10000.0);
+	*sec = dint (*sec * 10000.0 + 0.5) / 10000.0;
 
     /* Adjust minutes and hours */
     if (*sec > 60.0) {
@@ -2750,4 +2834,8 @@ double	dnum, dm;
  *
  * Apr  8 2002	Change all long declaration to time_t
  * May 13 2002	Fix bugs found by lint
+ * Jul  5 2002	Fix bug in fixdate() so fractional seconds come out
+ * Jul  8 2002	Fix rounding bug in t2i()
+ * Jul  8 2002	Try Fliegel and Van Flandern's algorithm for JD to UT date
+ * Jul  8 2002	If first character of string is -, check for other -'s in isdate
  */

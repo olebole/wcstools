@@ -1,3 +1,8 @@
+Version 3.1.2 (July 8, 2002)
+getdate: Fix command line parsing to handle negative (BCE) dates correctly
+dateutil: Fix handling of negative years
+dateutil: Fix fixdate() to leave in fractional seconds correctly
+
 Version 3.1.1 (June 26, 2002)
 gethead,imsize: Add -x option to specify FITS extensions for file list
 gethead: Add -s option to drop space padding in tab-separated tables

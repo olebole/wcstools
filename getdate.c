@@ -1,5 +1,5 @@
 /* File getdate.c
- * April 9, 2002
+ * July 8, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -144,7 +144,7 @@ char **av;
 
 	if (typeset == 0 && (intype > 0 || outtype > 0))
 	    typeset = 1;
-	else if (*(str = *av) == '-') {
+	else if (*(str = *av) == '-' && !isdate(*av) && !isnum(*av)) {
 	    char c;
 	    while (c = *++str)
 	    switch (c) {
@@ -1053,4 +1053,5 @@ char	*timestring;	/* Input time string */
  *
  * Apr  8 2002	Change all long declarations to time_t
  * Apr  9 2002	Fix declaration of ConvertDate(); fix other bugs
+ * Jul  8 2002	Check for negative dates if argument starts with -
  */
