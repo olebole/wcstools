@@ -1,6 +1,31 @@
-/* libwcs/wcs.h
- * April 9, 2002
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
+/*** File libwcs/wcs.h
+ *** May 9, 2002
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
+ *** Copyright (C) 1994-2002
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+    Correspondence concerning WCSTools should be addressed as follows:
+           Internet email: dmink@cfa.harvard.edu
+           Postal address: Doug Mink
+                           Smithsonian Astrophysical Observatory
+                           60 Garden St.
+                           Cambridge, MA 02138 USA
+ */
 
 #ifndef _wcs_h_
 #define _wcs_h_
@@ -48,6 +73,8 @@ struct WorldCoor {
   double	imrot;		/* Rotation angle of north pole */
   double	pa_north;	/* Position angle of north (0=horizontal) */
   double	pa_east;	/* Position angle of east (0=horizontal) */
+  double	radvel;		/* Radial velocity (km/sec away from observer)*/
+  double	zvel;		/* Radial velocity (v/c away from observer)*/
   int		imflip;		/* If not 0, image is reflected around axis */
   int		prjcode;	/* projection code (-1-32) */
   int		latbase;	/* Latitude base 90 (NPA), 0 (LAT), -90 (SPA) */
@@ -106,6 +133,8 @@ struct WorldCoor {
   int		ndpix[2];	/* Number of pixels to use in image (x, y) */
   struct WorldCoor *wcs;	/* WCS upon which this WCS depends */
   struct WorldCoor *wcsdep;	/* WCS depending on this WCS */
+  char		*wcsname;	/* WCS name (defaults to NULL pointer) */
+  char		wcschar;	/* WCS character (A-Z, null, space) */
 };
 
 /* Projections (1-26 are WCSLIB) */
@@ -589,4 +618,6 @@ void wcscstr();		/* Return system string from system code, equinox, epoch */
  *
  * Apr  3 2002	Add SZP and second GLS/SFL projection
  * Apr  9 2002	Add wcs->wcsdep for pointer to WCS depending on this WCS
+ * Apr 26 2002	Add wcs->wcsname and wcs->wcschar to identify WCS structure
+ * May  9 2002	Add wcs->radvel and wcs->zvel for radial velocity in km/sec
  */

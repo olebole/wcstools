@@ -1,5 +1,5 @@
 /* File imcat.c
- * April 10, 2002
+ * June 19, 2002
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -87,6 +87,7 @@ char **av;
     int lcat;
     int scat = 0;
     char c1, c, *ccom;
+    double drot;
 
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
@@ -142,6 +143,14 @@ char **av;
 
 	    while ((c = *++str) != 0) {
     		switch (c) {
+
+		case 'a':       /* Initial rotation angle in degrees */
+		    if (ac < 2)
+			PrintUsage (str);
+		    drot = atof (*++av);
+                    setrot (drot);
+                    ac--;
+                    break;
 
 		case 'b':	/* initial coordinates on command line in B1950 */
 		    str1 = *(av+1);
@@ -598,9 +607,10 @@ char	*command;
 	}
     else {
 	fprintf (stderr,"List catalog stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vwhst][-m [mag1] mag2][-c or f catalog][-x x y]\n");
+	fprintf (stderr,"Usage: [-vwhst][-a deg][-m [mag1] mag2][-c catalog][-x x y]\n");
 	}
     fprintf (stderr,"       [-p scale][-q osd+x][-b ra dec][-j ra dec][-r arcsec] FITS or IRAF file(s)\n");
+    fprintf (stderr,"  -a: initial rotation angle in degrees (default 0)\n");
     fprintf (stderr,"  -b [RA Dec]: Output, (center) in B1950 (FK4) RA and Dec\n");
     fprintf (stderr,"  -c name: Reference catalog (gsc, ua2, local file, etc.\n");
     fprintf (stderr,"  -d: Output RA,Dec positions in fractional degrees\n");
@@ -742,7 +752,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (title, " nonstars");
 
     /* Read world coordinate system information from the image header */
-    if ((header = GetFITShead (filename)) == NULL)
+    if ((header = GetFITShead (filename, verbose)) == NULL)
 	return;
     wcs = GetFITSWCS (filename, header, verbose, &cra, &cdec, &dra, &ddec,
 		      &secpix, &imw, &imh, &sysout, &eqout);
@@ -1762,4 +1772,6 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Apr  8 2002	Add magnitude number to magnitude limit setting
  * Apr  8 2002	Fix bug so that characters other than circles can be plotted
  * Apr 10 2002	Fix magnitude number bug and add magnitude letter
+ * May  1 2002	Add -a command to set initial rotation angle
+ * Jun 19 2002	Add verbose argument to GetFITShead()
  */

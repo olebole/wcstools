@@ -20,7 +20,7 @@ catutil.o:	wcscat.h wcs.h fitshead.h wcslib.h
 cel.o:		wcslib.h
 dateutil.o:	fitsfile.h wcscat.h fitshead.h
 dsspos.o:	wcs.h fitshead.h wcslib.h
-fileutil.o:	fitshead.h
+fileutil.o:	fitsfile.h fitshead.h
 findstar.o:	fitshead.h lwcs.h imio.h
 fitsfile.o:	fitsfile.h fitshead.h
 fitswcs.o:	fitsfile.h wcs.h fitshead.h wcslib.h

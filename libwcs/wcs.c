@@ -1,7 +1,30 @@
 /*** File libwcs/wcs.c
- *** April 9, 2002
+ *** May 13, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
+ *** Copyright (C) 1994-2002
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+    Correspondence concerning WCSTools should be addressed as follows:
+           Internet email: dmink@cfa.harvard.edu
+           Postal address: Doug Mink
+                           Smithsonian Astrophysical Observatory
+                           60 Garden St.
+                           Cambridge, MA 02138 USA
 
  * Module:	wcs.c (World Coordinate Systems)
  * Purpose:	Convert FITS WCS to pixels and vice versa:
@@ -53,14 +76,6 @@
  * Subroutine:	getwcscom (i)  Return specified WCS command 
  * Subroutine:	wcsfree (wcs)  Free storage used by WCS structure
  * Subroutine:	freewcscom (wcs)  Free storage used by WCS commands 
-
- * Copyright:   2001 Smithsonian Astrophysical Observatory
- *              You may do anything you like with this file except remove
- *              this copyright.  The Smithsonian Astrophysical Observatory
- *              makes no representations about the suitability of this
- *              software for any purpose.  It is provided "as is" without
- *              express or implied warranty.
-
  */
 
 #include <string.h>		/* strstr, NULL */
@@ -93,6 +108,8 @@ struct WorldCoor *wcs;	/* WCS structure */
 	}
 
     freewcscom (wcs);
+    if (wcs->wcsname != NULL)
+	free (wcs->wcsname);
     if (wcs->lin.imgpix != NULL)
 	free (wcs->lin.imgpix);
     if (wcs->lin.piximg != NULL)
@@ -2427,11 +2444,11 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
 	else if ((str = getenv (envar)) != NULL)
 	    wcscominit (wcs, i, str);
 	else if (i == 1)
-	    wcscominit (wcs, i, "suac -ah %s");	/* F1= Search USNO A Catalog */
+	    wcscominit (wcs, i, "sua2 -ah %s");	/* F1= Search USNO-A2.0 Catalog */
 	else if (i == 2)
 	    wcscominit (wcs, i, "sgsc -ah %s");	/* F2= Search HST GSC */
 	else if (i == 3)
-	    wcscominit (wcs, i, "sact -ah %s"); /* F3= Search USNO ACT Catalog */
+	    wcscominit (wcs, i, "sty2 -ah %s"); /* F3= Search Tycho-2 Catalog */
 	else if (i == 4)
 	    wcscominit (wcs, i, "sppm -ah %s");	/* F4= Search PPM Catalog */
 	else if (i == 5)
@@ -2680,4 +2697,6 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Apr  3 2002	Synchronize projection types with other subroutines
  * Apr  3 2002	Drop special cases of projections
  * Apr  9 2002	Implement inversion of multiple WCSs in wcsc2pix()
+ * Apr 25 2002	Use Tycho-2 catalog instead of ACT in setwcscom()
+ * May 13 2002	Free WCSNAME in wcsfree()
  */

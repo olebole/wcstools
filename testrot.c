@@ -1,5 +1,5 @@
 /* File testrot.c
- * January 28, 2000
+ * June 19, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -143,7 +143,7 @@ char	*filename;	/* FITS or IRAF image file name */
     struct WorldCoor *wcs, *GetWCSFITS();
     static void TabRot();
 
-    wcs = GetWCSFITS (filename);
+    wcs = GetWCSFITS (filename, verbose);
     if (nowcs (wcs))
 	return;
 
@@ -240,4 +240,6 @@ struct WorldCoor *wcs;
  * Oct 22 1999	Drop unused variables after lint
  *
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
+ *
+ * Jun 19 2002	Add verbose argument to GetWCSFITS()
  */

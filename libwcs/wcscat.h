@@ -1,6 +1,29 @@
-/* File libwcs/wcscat.h
- * April 10, 2002
- * By Doug Mink, dmink@cfa.harvard.edu
+/*** File libwcs/wcscat.h
+ *** May 13, 2002
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Copyright (C) 1998-2002
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+    Correspondence concerning WCSTools should be addressed as follows:
+           Internet email: dmink@cfa.harvard.edu
+           Postal address: Doug Mink
+                           Smithsonian Astrophysical Observatory
+                           60 Garden St.
+                           Cambridge, MA 02138 USA
  */
 
 /* Source catalog flags and subroutines */
@@ -45,7 +68,7 @@ int CatNdec();		/* Return number of decimal places in source numbers */
 void CatMagName();	/* Return name of specified magnitude */
 int CatMagNum();	/* Returns number of magnitude specified by letter as int */
 
-
+int NumNdec();		/* Return number of decimal places in a number */
 int StrNdec();		/* Return number of decimal places in numeric string */
 void SearchLim();	/* Compute limiting RA and Dec */
 void RefLim();		/* Compute limiting RA and Dec in new system */
@@ -57,6 +80,7 @@ void bv2sp();		/* Approximate main sequence spectral type from B - V */
 
 /* Subroutines for extracting sources from catalogs by sky region */
 int gscread();		/* Read sources from HST Guide Star Catalog */
+int gsc2read();		/* Read sources from GSC II Catalog */
 int tmcread();		/* Read sources from 2MASS Point Source Catalog */
 int uacread();		/* Read sources from USNO A or SA Catalog */
 int ujcread();		/* Read sources from USNO J Catalog */
@@ -70,6 +94,7 @@ int webread();		/* Read sources from catalog on the World Wide Web */
 
 /* Subroutines for extracting sources from catalogs by ID number */
 int gscrnum();		/* Read sources from HST Guide Star Catalog */
+int gsc2rnum();		/* Read sources from GSC II Catalog */
 int tmcrnum();		/* Read sources from 2MASS Point Source Catalog */
 int uacrnum();		/* Read sources from USNO A or SA Catalog */
 int ujcrnum();		/* Read sources from USNO J Catalog */
@@ -124,7 +149,7 @@ struct Star {
     double radvel;	/* Radial velocity in km/sec, positive away */
     double dist;	/* Distance from search center in arcseconds */
     char *entry;	/* Line copied from input catalog */
-    char objname[32];	/* Object name */
+    char objname[80];	/* Object name */
     int peak;		/* Peak flux per pixel in star image */
 };
 
@@ -409,4 +434,6 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  *
  * Apr  9 2002	Fix typo in gettaberr() declaration
  * Apr 10 2002	Add CatMagNum()
+ * May  6 2002	Increase object name length from 31 to 79 characters
+ * May 13 2002	Add NumNdec(), gsc2read(), and gsc2rnum()
  */

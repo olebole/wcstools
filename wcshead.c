@@ -1,5 +1,5 @@
 /* File wcshead.c
- * April 8, 2002
+ * June 19, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -25,6 +25,7 @@ static int hms = 0;		/* 1 for output in hh:mm:ss dd:mm:ss */
 static int nf = 0;		/* Number of files */
 static int version = 0;		/* If 1, print only program name and version */
 static int wave = 0;		/* If 1, print first dimension limits */
+static int restwave = 0;	/* If 1, print first dimension limits */
 
 
 main (ac, av)
@@ -63,6 +64,10 @@ char **av;
 	    tabout++;
 	    break;
 
+	case 'r':	/* Print first dimension as rest wavelength, first and last values */
+	    restwave++;
+	    break;
+
 	case 't':	/* tab table output */
 	    tabout++;
 	    break;
@@ -73,6 +78,7 @@ char **av;
 
 	case 'w':	/* Print only first dimension, first and last values */
 	    wave++;
+	    break;
 
     	case 'z':	/* Use AIPS classic WCS */
     	    setdefwcs (WCS_ALT);
@@ -133,9 +139,10 @@ usage ()
     fprintf (stderr,"Print WCS part of FITS or IRAF image header\n");
     fprintf (stderr,"usage: wcshead [-htv] file.fit ...\n");
     fprintf (stderr,"  -h: Print CRVALs as hh:mm:ss dd:mm:ss\n");
+    fprintf (stderr,"  -r: Print first dimension as rest wavelength limiting values\n");
     fprintf (stderr,"  -t: Print tab table output\n");
     fprintf (stderr,"  -v: Verbose\n");
-    fprintf (stderr, " -w: Print only first dimension, first and last values\n");
+    fprintf (stderr,"  -w: Print only first dimension limiting values\n");
     fprintf (stderr,"  -z: Use AIPS classic WCS subroutines\n");
     exit (1);
 }
@@ -145,24 +152,29 @@ ListWCS (filename)
 
 char	*filename;	/* FITS or IRAF image file name */
 {
+    double w1, w2;
     int i;
     char str[256], temp[80];
     char rastr[32], decstr[32], fform[8];
     struct WorldCoor *wcs, *GetWCSFITS();
     double wlast;
 
-    wcs = GetWCSFITS (filename);
+    wcs = GetWCSFITS (filename, verbose);
     if (nowcs (wcs)) {
 	wcsfree (wcs);
+	wcs = NULL;
 	return;
 	}
 
-    if (wcs->ctype[0][0] == (char) 0)
+    if (wcs->ctype[0][0] == (char) 0) {
+	wcsfree (wcs);
+	wcs = NULL;
 	return;
+	}
     if (tabout && nf == 1) {
 	strcpy (str, "filename");
 	for (i = 1; i < nchar - 7; i++) strcat (str, " ");
-	if (wave) {
+	if (wave || restwave) {
 	    strcat (str, "	naxis1	ctype1	first    ");
 	    strcat (str, "	last     	delt   \n");
 	    strcat (str, "--------");
@@ -196,6 +208,14 @@ char	*filename;	/* FITS or IRAF image file name */
 	    wlast = wcs->xref + ((wcs->nxpix - 1.0) * wcs->cdelt[0]);
 	    sprintf (temp, "	%.0f	%s	%9.4f	%9.4f	%7.4f\n",
 		     wcs->nxpix, wcs->ctype[0], wcs->xref, wlast, wcs->xinc);
+	    strcat (str, temp);
+	    }
+	else if (restwave) {
+	    w1 = wcs->xref / (1.0 + wcs->zvel);
+	    wlast = wcs->xref + ((wcs->nxpix - 1.0) * wcs->cdelt[0]);
+	    w2 = wlast / (1.0 + wcs->zvel);
+	    sprintf (temp, "	%.0f	%s	%9.4f	%9.4f	%7.4f\n",
+		     wcs->nxpix, wcs->ctype[0], w1, w2, wcs->xinc);
 	    strcat (str, temp);
 	    }
 	else {
@@ -237,6 +257,14 @@ char	*filename;	/* FITS or IRAF image file name */
 	    sprintf (temp, " %7.4f", wcs->xinc);
 	    strcat (str, temp);
 	    }
+	else if (restwave) {
+	    w1 = wcs->xref / (1.0 + wcs->zvel);
+	    wlast = wcs->xref + ((wcs->nxpix - 1.0) * wcs->cdelt[0]);
+	    w2 = wlast / (1.0 + wcs->zvel);
+	    sprintf (temp, " %.0f %s %9.4f %9.4f %7.4f\n",
+		     wcs->nxpix, wcs->ctype[0], w1, w2, wcs->xinc);
+	    strcat (str, temp);
+	    }
 	else {
 	    sprintf (temp, " %4.0f %4.0f", wcs->nxpix, wcs->nypix);
 	    strcat (str, temp);
@@ -269,6 +297,7 @@ char	*filename;	/* FITS or IRAF image file name */
     printf ("%s\n", str);
 
     wcsfree (wcs);
+    wcs = NULL;
 
     return;
 }
@@ -290,4 +319,7 @@ char	*filename;	/* FITS or IRAF image file name */
  * Aug  4 2000	Add -w option to printed option list
  *
  * Apr  8 2002	Free wcs structure if no WCS is found in file header
+ * May  9 2002	Add option to print rest wavelength limits
+ * May 13 2002	Set wcs pointer to NULL after freeing data structure
+ * Jun 19 2002	Add verbose argument to GetWCSFITS()
  */

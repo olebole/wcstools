@@ -1,5 +1,5 @@
 /* File xy2sky.c
- * December 13, 2001
+ * June 19, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -186,7 +186,7 @@ char **av;
 
     fn = *av++;
     if (isfits (fn) || isiraf (fn)) {
-	wcs = GetWCSFITS (fn);
+	wcs = GetWCSFITS (fn, verbose);
 	if (nowcs (wcs)) {
 	    printf ("%s: No WCS for file, cannot compute image size\n", fn);
 	    wcsfree (wcs);
@@ -622,4 +622,6 @@ char *listfile;		/* Name of file with list of input coordinates */
  * Dec 13 2001	Add -h for headings and add to verbose output
  *
  * Apr  8 2002	Free wcs structure if no WCS is found in file header
+ *
+ * Jun 19 2002	Add verbose argument to GetWCSFITS()
  */

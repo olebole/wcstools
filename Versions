@@ -1,3 +1,15 @@
+Version 3.1.1 (June 26, 2002)
+gethead,imsize: Add -x option to specify FITS extensions for file list
+gethead: Add -s option to drop space padding in tab-separated tables
+getpix: Add -s option to print x y value lines without punctuation
+imcat: Add back -a option to set a WCS rotation angle
+wcshead: Add option to print rest wavelength limits using VELOCITY
+hget.c: Fix bugs in hgetsc(), hgeti4c(), and hgetr8c()
+wcsinit.c: If no WCS is present for a specified letter, return error.
+wcsinit.c: Save name and letter of WCS in WCS data structure
+tnxpos.c, iget.c, hget.c: Fix bugs dealing with multiple line keywords
+so IRAF TNX projection works again.
+
 Version 3.1.0 (April 12, 2002)
 Implement WCSLIB 2.9
 scat: Add web query sr= option for search radius in degrees

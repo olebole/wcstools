@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * April 8, 2002
+ * June 19, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -94,7 +94,7 @@ char **av;
     fn = *av++;
     if (verbose)
 	printf ("%s:\n", fn);
-    wcs = GetWCSFITS (fn);
+    wcs = GetWCSFITS (fn, verbose);
     if (nowcs (wcs)) {
 	fprintf (stderr, "No WCS in image file %s\n", fn);
 	wcsfree (wcs);
@@ -263,4 +263,5 @@ usage ()
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  *
  * Apr  8 2002	Free wcs structure if no WCS is found in file header
+ * Jun 19 2002	Add verbose argument to GetWCSFITS()
  */

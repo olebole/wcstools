@@ -1,7 +1,30 @@
 /*** File libwcs/hget.c
- *** April 3, 2002
+ *** June 26, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
+ *** Copyright (C) 1994-2002
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+    Correspondence concerning WCSTools should be addressed as follows:
+           Internet email: dmink@cfa.harvard.edu
+           Postal address: Doug Mink
+                           Smithsonian Astrophysical Observatory
+                           60 Garden St.
+                           Cambridge, MA 02138 USA
 
  * Module:	hget.c (Get FITS Header parameter values)
  * Purpose:	Extract values for variables from FITS header string
@@ -30,15 +53,7 @@
  * Subroutine:	hlength (header,lhead) sets length of FITS header for searching
  * Subroutine:  isnum (string) returns 1 if integer, 2 if fp number, else 0
  * Subroutine:  notnum (string) returns 0 if number, else 1
-
- * Copyright:   2001 Smithsonian Astrophysical Observatory
- *              You may do anything you like with this file except remove
- *              this copyright.  The Smithsonian Astrophysical Observatory
- *              makes no representations about the suitability of this
- *              software for any purpose.  It is provided "as is" without
- *              express or implied warranty.
-
-*/
+ */
 
 #include <string.h>		/* NULL, strlen, strstr, strcpy */
 #include <stdio.h>
@@ -59,6 +74,7 @@ static int use_saolib=0;
 char *hgetc ();
 
 static char val[VLENGTH+1];
+static int multiline = 0;
 
 static int lhead0 = 0;	/* Length of header string */
 
@@ -107,7 +123,7 @@ int	*ival;		/* Keyword value returned */
     char keyword1[16];
     int lkey;
 
-    if (wchar > 0)
+    if (wchar < 64)
 	return (hgeti4 (hstring, keyword, ival));
     else {
 	strcpy (keyword1, keyword);
@@ -333,7 +349,7 @@ double	*dval;		/* Keyword value returned */
     char keyword1[16];
     int lkey;
 
-    if (wchar > 0)
+    if (wchar < 64)
 	return (hgetr8 (hstring, keyword, dval));
     else {
 	strcpy (keyword1, keyword);
@@ -632,6 +648,7 @@ char *str;	/* String (returned) */
 	}
 
     /* Loop through sequentially-named keywords */
+    multiline = 1;
     for (ikey = 1; ikey < 20; ikey++) {
 	sprintf (keywordi, keyform, keyword, ikey);
 
@@ -656,6 +673,7 @@ char *str;	/* String (returned) */
 	stri = stri + lval;
 	lstri = lstri - lval;
 	}
+    multiline = 0;
 
     /* Return 1 if any keyword found, else 0 */
     if (ikey > 1)
@@ -684,7 +702,7 @@ char	*str;		/* String (returned) */
     char keyword1[16];
     int lkey;
 
-    if (wchar > 0)
+    if (wchar < 64)
 	return (hgets (hstring, keyword, lstr, str));
     else {
 	strcpy (keyword1, keyword);
@@ -893,19 +911,24 @@ char *keyword0;	/* character string containing the name of the keyword
 	    v2 = line + 79;
 	}
 
-    /* Ignore leading spaces */
-    while (*v1 == ' ' && v1 < v2) {
-	v1++;
+    /* Ignore leading spaces if not multiline */
+    if (!multiline) {
+	while (*v1 == ' ' && v1 < v2) {
+	    v1++;
+	    }
 	}
 
     /* Drop trailing spaces */
     *v2 = '\0';
-    v2--;
-    while ((*v2 == ' ' || *v2 == (char) 13) && v2 > v1) {
-	*v2 = '\0';
+    if (!multiline) {
 	v2--;
+	while ((*v2 == ' ' || *v2 == (char) 13) && v2 > v1) {
+	    *v2 = '\0';
+	    v2--;
+	    }
 	}
 
+    /* Convert -zero to just plain 0 */
     if (!strcmp (v1, "-0"))
 	v1++;
     strcpy (cval,v1);
@@ -1495,4 +1518,6 @@ int set_saolib(hstring)
  * Sep 20 2001	Ignore trailing spaces in isnum()
  *
  * Apr  3 2002	Add hgetr8c(), hgeti4c(), and hgetsc() for multiple WCS handling
+ * Apr 26 2002	Fix bug in hgetsc(), hgeti4c(), and hgetr8c() found by Bill Joye
+ * Jun 26 2002	Do not drop leading or trailing spaces in multi-line values
  */

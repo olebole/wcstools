@@ -1,5 +1,5 @@
 /* File getpix.c
- * January 30, 2001
+ * June 3, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -24,6 +24,7 @@ static char *pform = NULL;	/* Format in which to print pixels */
 static int pixlabel = 0;	/* If 1, label pixels in output */
 static int gtcheck = 0;		/* If 1, list pixels greater than gtval */
 static int ltcheck = 0;		/* If 1, list pixels less than ltval */
+static nopunct=0;		/* If 1, print output with no punctuation */
 static double gtval = 0.0;
 static double ltval = 0.0;
 
@@ -95,6 +96,10 @@ char **av;
 		    pixlabel++;
 		    break;
 
+		case 's':	/* Print x y value without punctuation */
+		    nopunct++;
+		    break;
+
 		default:
 		    usage();
 		    break;
@@ -132,6 +137,7 @@ usage ()
     fprintf(stderr,"  -l: keep pixels with values less than this\n");
     fprintf(stderr,"  -n: number of pixel values printed per page\n");
     fprintf(stderr,"  -p: label pixels\n");
+    fprintf(stderr,"  -s: print x y value with no punctuation\n");
     fprintf(stderr,"  -v: verbose\n");
     fprintf(stderr,"   %%: C format for each pixel value\n");
     exit (1);
@@ -250,12 +256,19 @@ char *rrange;   /* Row range string */
 		for (x = 0; x < nx; x++) {
         	    dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
 		    if (gtcheck && ltcheck) {
-			if (dpix > gtval && dpix < ltval)
-			    printf ("[%d,%d] = %f\n", x+1, y+1, dpix);
+			if (dpix > gtval && dpix < ltval) {
+			    if (nopunct)
+				printf ("%d %d %f\n", x+1, y+1, dpix);
+			    else
+				printf ("[%d,%d] = %f\n", x+1, y+1, dpix);
+			    }
 			}
 		    else if (gtcheck && dpix > gtval ||
 			ltcheck && dpix < ltval) {
-			printf ("[%d,%d] = %f\n", x+1, y+1, dpix);
+			if (nopunct)
+			    printf ("%d %d %f\n", x+1, y+1, dpix);
+			else
+			    printf ("[%d,%d] = %f\n", x+1, y+1, dpix);
 			}
 		    }
 		}
@@ -278,7 +291,10 @@ char *rrange;   /* Row range string */
 		if (gtcheck || ltcheck) {
 		    if (gtcheck && dpix > gtval ||
 			ltcheck && dpix < ltval) {
-			printf ("[%d,%d] = %f\n", x+1, y+1, dpix);
+			if (nopunct)
+			    printf ("%d %d %f\n", x+1, y+1, dpix);
+			else
+			    printf ("[%d,%d] = %f\n", x+1, y+1, dpix);
 			}
 		    continue;
 		    }
@@ -329,7 +345,10 @@ char *rrange;   /* Row range string */
 		if (gtcheck || ltcheck) {
 		    if (gtcheck && dpix > gtval ||
 			ltcheck && dpix < ltval) {
-			printf ("[%d,%d] = %f\n", x+1, y+1, dpix);
+			if (nopunct)
+			    printf ("%d %d %f\n", x+1, y+1, dpix);
+			else
+			    printf ("[%d,%d] = %f\n", x+1, y+1, dpix);
 			}
 		    continue;
 		    }
@@ -422,7 +441,10 @@ char *rrange;   /* Row range string */
 		if (gtcheck || ltcheck) {
 		    if (gtcheck && dpix > gtval ||
 			ltcheck && dpix < ltval) {
-			printf ("[%d,%d] = %f\n", x+1, yi[iy]+1, dpix);
+			if (nopunct)
+			    printf ("%d %d %f\n", x+1, yi[iy]+1, dpix);
+			else
+			    printf ("[%d,%d] = %f\n", x+1, yi[iy]+1, dpix);
 			}
 		    continue;
 		    }
@@ -490,4 +512,6 @@ char *rrange;   /* Row range string */
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  *
  * Jan 30 2001	Fix format specification in help message
+ *
+ * Jun  3 2002	Add -s option to print x y value with no punctuation
  */

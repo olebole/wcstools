@@ -1,7 +1,30 @@
 /*** File libwcs/catutil.c
- *** April 10, 2002
+ *** June 10, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
+ *** Copyright (C) 1998-2002
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+    Correspondence concerning WCSTools should be addressed as follows:
+           Internet email: dmink@cfa.harvard.edu
+           Postal address: Doug Mink
+                           Smithsonian Astrophysical Observatory
+                           60 Garden St.
+                           Cambridge, MA 02138 USA
  */
 
 /* int RefCat (refcatname,title,syscat,eqcat,epcat, catprop, nmag)
@@ -69,8 +92,6 @@
 #include <math.h>
 #include "wcs.h"
 #include "wcscat.h"
-
-static int catprop = 0;		/* 1 if catalog has proper motion, else 0 */
 
 /* Return code for reference catalog or its type */
 
@@ -1306,8 +1327,12 @@ char *string;		/* String which might be a range of numbers */
 {
     int i, lstr;
 
+    /* If string is NULL or empty, return 0 */
+    if (string == NULL || strlen (string) == 0)
+	return (0);
+
     /* If range separators present, check to make sure string is range */
-    if (strchr (string+1, '-') || strchr (string+1, ',')) {
+    else if (strchr (string+1, '-') || strchr (string+1, ',')) {
 	lstr = strlen (string);
 	for (i = 0; i < lstr; i++) {
 	    if (strchr ("0123456789-,.x", (int)string[i]) == NULL)
@@ -1408,14 +1433,13 @@ char	*string;	/* character string to tokenize */
 char	*cwhite;	/* additional whitespace characters
 			 * if = tab, disallow spaces and commas */
 {
-    char squote, dquote, vbar, jch, newline;
+    char squote, dquote, jch, newline;
     char *iq, *stri, *wtype, *str0, *inew;
     int i,j,naddw;
 
     newline = (char) 10;
     squote = (char) 39;
     dquote = (char) 34;
-    vbar = (char) 124;
     if (string == NULL)
 	return (0);
 
@@ -1702,9 +1726,8 @@ int lval;       /* Size of value in characters
 		   If negative, value ends at end of line */
 char *value;      /* String (returned) */
 {
-    char skey[16];
     char keyword[81];
-    char *pval, *str, *pkey;
+    char *pval, *str, *pkey, *pv;
     char squot[2], dquot[2], lbracket[2], rbracket[2], comma[2];
     char *lastval, *rval, *brack1, *brack2, *lastring;
     int ipar, i, lkey;
@@ -1746,22 +1769,26 @@ char *value;      /* String (returned) */
 	/* Must be at start of file or after control character or space */
 	if (pkey != string && *(pkey-1) > 32) {
 	    str = pkey;
-	    pval == NULL;
+	    pval = NULL;
 	    }
 
-	/* Must have "=" or ":" or " =" following */
-	else if ((*(pkey+lkey) != '=' && *(pkey+lkey) != ':') ||
-		(*(pkey+lkey) == ' ' && *(pkey+lkey) != '=')) {
-	    str = pkey;
-	    pval == NULL;
-	    }
-
-	/* If found, bump pointer past keyword */
+	/* Must have "=" or ":" as next nonspace character */
 	else {
-	    pval = pkey + lkey + 1;
-	    if (*pval == '=')
-		pval++;
-	    break;
+	    pv = pkey + lkey;
+	    while (*pv == ' ')
+		pv++;
+	    if (*pv != '=' && *pv != ':') {
+		str = pkey;
+		pval = NULL;
+		}
+
+	    /* If found, bump pointer past keyword, operator, and spaces */
+	    else {
+		pval = pv + 1;
+		while (*pval == '=' || *pval == ' ')
+		    pval++;
+		break;
+		}
 	    }
 	str = str + lkey;
 	if (str > lastring)
@@ -2133,5 +2160,7 @@ FILE	*fd;		/* Output file descriptor; none if NULL */
  * Feb 26 2002	Fix agets() to work with keywords at start of line
  * Feb 26 2002	Add option in agets() to return value to end of line or /
  * Mar 25 2002	Fix bug in agets() to find second occurence of string 
- * Apr 10 2002	Add CatNagNum() to translate single letters to mag sequence number
+ * Apr 10 2002	Add CatMagNum() to translate single letters to mag sequence number
+ * May 13 2002	In agets(), allow arbitrary number of spaces around : or =
+ * Jun 10 2002	In isrange(), return 0 if string is null or empty
  */

@@ -1,6 +1,29 @@
 /*** File libwcs/findstar.c
- *** January 23, 2002
- *** By Elwood Downey, revised by Doug Mink
+ *** May 13, 2002
+ *** By Doug Mink, after Elwood Downey
+ *** Copyright (C) 1996-2002
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+    Correspondence concerning WCSTools should be addressed as follows:
+           Internet email: dmink@cfa.harvard.edu
+           Postal address: Doug Mink
+                           Smithsonian Astrophysical Observatory
+                           60 Garden St.
+                           Cambridge, MA 02138 USA
  */
 
 #include <stdio.h>
@@ -134,7 +157,6 @@ int	zap;		/* If 1, set star to background after reading */
     double xai, yai, bai;
     double minsig, sigma;
     double *svec, *svb, *sv, *sv1, *sv2, *svlim;
-    double background;
     double rmax;
     double bz, bs;		/* Pixel value scaling */
     int *ixa, *iya;
@@ -143,6 +165,7 @@ int	zap;		/* If 1, set star to background after reading */
     int xborder1, xborder2, yborder1, yborder2;
     char trimsec[32];
     int nstarmax = 100;
+    extern void setscale();
 
     hgeti4 (header,"NAXIS1", &w);
     hgeti4 (header,"NAXIS2", &h);
@@ -289,7 +312,7 @@ int	zap;		/* If 1, set star to background after reading */
 	    if (svec[x] > minll) {
 		int sx, sy, r, rf;
 		double b;
-		int i, ix, iy;
+		int i;
 
 		/* Ignore faint stars */
 		if (svec[x] < bmin)
@@ -325,7 +348,7 @@ int	zap;		/* If 1, set star to background after reading */
 
 		/* Keep it if it is within the size range for stars */
 		rmax = maxrad;
-		r = starRadius (image,bitpix,w,h,bz,bs, sx, sy, b, rmax,
+		r = starRadius (image,bitpix,w,h,bz,bs, sx, sy, rmax,
 				minsig, noise);
 		if (r > minrad && r <= maxrad) {
 
@@ -352,7 +375,7 @@ int	zap;		/* If 1, set star to background after reading */
 		    sx = (int) (xai + 0.5);
 		    sy = (int) (yai + 0.5);
 		    rmax = 2.0 * (double) maxrad;
-		    rf = starRadius (image,bitpix,w,h,bz,bs, sx, sy, b, rmax,
+		    rf = starRadius (image,bitpix,w,h,bz,bs, sx, sy, rmax,
 				    minsig, noise);
 
 		/* Find flux from star */
@@ -376,7 +399,7 @@ int	zap;		/* If 1, set star to background after reading */
 	}
 
     /* Turn fluxes into instrument magnitudes */
-    FluxSortStars (*xa, *ya, *ba, *pa, nstars);
+    (void) FluxSortStars (*xa, *ya, *ba, *pa, nstars);
     if (nstars > 0) {
 	double *flux;
 	for (i = 0; i < nstars; i++) {
@@ -455,7 +478,7 @@ double	llimit;
  */
 
 static int
-starRadius (imp, bitpix, w, h, bz, bs, x0, y0, b, rmax, minsig, background)
+starRadius (imp, bitpix, w, h, bz, bs, x0, y0, rmax, minsig, background)
 
 char	*imp;		/* Image array origin pointer */
 int	bitpix;		/* Bits per pixel, negative for floating point or unsigned int */
@@ -464,7 +487,6 @@ int	h;		/* Image height in pixels */
 double	bz;		/* Zero point for pixel scaling */
 double	bs;		/* Scale factor for pixel scaling */
 int	x0, y0;		/* Coordinates of center pixel of star */
-double	b;		/* Value of brightest pixel in star */
 double	rmax;		/* Maximum allowable radius of star */
 double	minsig;		/* Minimum level for signal */
 double	background;	/* Mean background level */
@@ -1011,4 +1033,5 @@ int	h;	/* Original height of image */
  * Jan 23 2002	If zap, set pixels in star to background after adding up flux
  * Jan 23 2002	Skip recomputation of noise if istat is zero
  * Jan 23 2002	Set scale flag if BSCALE and BZERO not used
+ * May 13 2002	Fix bugs found by lint
  */

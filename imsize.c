@@ -1,5 +1,5 @@
 /* File imsize.c
- * April 8, 2002
+ * June 19, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -13,16 +13,17 @@
 #include <math.h>
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcs.h"
+#include "libwcs/wcscat.h"
 
 static void usage();
-static void PrintWCS ();
 extern void setsys();
 extern void setcenter();
 extern void setsecpix();
 extern struct WorldCoor *GetFITSWCS();
 extern char *GetFITShead();
+static int PrintWCS();
 
-static char coorsys[4];
+static char coorsys[8];
 static double size = 0.0;
 static double frac = 0.0;
 
@@ -37,6 +38,8 @@ static int printepoch = 0;
 static int printrange = 0;	/* Flag to print range rather than center */
 static int version = 0;		/* If 1, print only program name and version */
 static int ndec = 3;		/* Number of decimal places in non-angles */
+static char *extensions;	/* Extension number(s) or name to read */
+static char *extension;		/* Extension number or name to read */
 
 main (ac, av)
 int ac;
@@ -50,8 +53,14 @@ char **av;
     char filename[128];
     FILE *flist;
     char *listfile;
+    int nfext, i, j;
+    int nrmax=10;
+    struct Range *erange;
+
 
     coorsys[0] = 0;
+    extension = NULL;
+    extensions = NULL;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -166,6 +175,13 @@ char **av;
 	    printrange++;
 	    break;
 
+	case 'x': /* FITS extension to read */
+	    if (ac < 2)
+		usage();
+	    extensions = *++av;
+	    ac--;
+	    break;
+
 	case 'z':       /* Use AIPS classic WCS */
 	    setdefwcs (WCS_ALT);
 	    break;
@@ -184,6 +200,18 @@ char **av;
 	}
     }
 
+    /* Check extensions for range and set accordingly */
+    if (isrange (extensions)) {
+	erange = RangeInit (extensions, nrmax);
+	nfext = rgetn (erange);
+	extension = calloc (1, 8);
+	}
+    else {
+	extension = extensions;
+	if (extension)
+	    nfext = 1;
+	}
+
     /* Find number of images to search and leave listfile open for reading */
     if (readlist) {
 	if ((flist = fopen (listfile, "r")) == NULL) {
@@ -194,7 +222,17 @@ char **av;
 	while (fgets (filename, 128, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
 	    if (*lastchar < 32) *lastchar = 0;
-	    PrintWCS (filename);
+	    if (nfext > 1) {
+		rstart (erange);
+		for (i = 0; i < nfext; i++) {
+		    j = rgeti4 (erange);
+		    sprintf (extension, "%d", j);
+		    if (PrintWCS (filename))
+			break;
+		    }
+		}
+	    else
+		(void) PrintWCS (filename);
 	    if (verbose)
 		printf ("\n");
 	    }
@@ -207,7 +245,17 @@ char **av;
 
     while (ac-- > 0) {
 	char *fn = *av++;
-	PrintWCS (fn);
+	if (nfext > 1) {
+	    rstart (erange);
+	    for (i = 0; i < nfext; i++) {
+		j = rgeti4 (erange);
+		sprintf (extension, "%d", j);
+		if (PrintWCS (fn))
+		    break;
+		}
+	    }
+	else
+	    (void) PrintWCS (fn);
 	if (verbose)
 	    printf ("\n");
 	}
@@ -231,12 +279,13 @@ usage ()
     fprintf (stderr,"  -p: Initial plate scale in arcsec per pixel (default 0)\n");
     fprintf (stderr,"  -r: Print range in RA and Dec\n");
     fprintf (stderr,"  -v: Verbose\n");
+    fprintf (stderr,"  -x range: Print size for these extensions\n");
     fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     exit (1);
 }
 
 
-static void
+static int
 PrintWCS (name)
 
 char *name;
@@ -245,21 +294,38 @@ char *name;
     char *header;		/* FITS image header */
     int nc;
     char fileroot[64];
-    char *filename, *ext;
-    int nax;
+    char *filename, *ext, *extn;
+    int nax, nch;
     int bp, hp, wp, i, lfroot;
     double cra, cdec, dra, ddec, secpix;
     double xmin, xmax, ymin, ymax, dx, dy;
     struct WorldCoor *wcs;
+    char *namext, cext;
     char *colon;
     char rstr[32], dstr[32], blanks[64];
     char ramin[32], ramax[32], decmin[32], decmax[32];
 
+    /* Add extension number or name to file if not there already */
+    namext = NULL;
+    extn = strchr (name, ',');
+    if (extension && !extn) {
+	nch = strlen (name) + 2 + strlen (extension);
+	namext = (char *) calloc (1, nch);
+	strcpy (namext, name);
+	strcat (namext, ",");
+	strcat (namext, extension);
+	}
+    else {
+	nch = strlen (name) + 1;
+	namext = (char *) calloc (1, nch);
+	strcpy (namext, name);
+	}
+
     /* Find root file name */
-    if (strrchr (name,'/'))
-	filename = strrchr (name,'/') + 1;
+    if (strrchr (namext,'/'))
+	filename = strrchr (namext,'/') + 1;
     else
-	filename = name;
+	filename = namext;
     ext = strsrch (filename, ".imh");
     if (ext == NULL)
 	ext = strsrch (filename,".fit");
@@ -277,30 +343,30 @@ char *name;
 	if (isiraf (name))
 	    fprintf (stderr,"IRAF image file %s\n", name);
 	else
-	    fprintf (stderr,"FITS image file %s\n", name);
+	    fprintf (stderr,"FITS image file %s\n", namext);
 	}
 
-    if ((header = GetFITShead (name)) == NULL)
-	return;
+    if ((header = GetFITShead (namext, verbose)) == NULL)
+	return (-1);
 
     /* Set image dimensions */
     nax = 0;
     if (hgeti4 (header,"NAXIS",&nax) < 1)
-	return;
+	return (-1);
     else {
 	if (hgeti4 (header,"NAXIS1",&wp) < 1)
-	    return;
+	    return (-1);
 	else {
 	    if (hgeti4 (header,"NAXIS2",&hp) < 1)
-		return;
+		return (-1);
 	    }
 	}
     sysim = 0;
     eqim = 0;
 
     /* Read world coordinate system information from the image header */
-    wcs = GetFITSWCS (name, header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-		      &wp, &hp, &sysim, &eqim);
+    wcs = GetFITSWCS (namext, header, verbose, &cra, &cdec, &dra, &ddec,
+		      &secpix, &wp, &hp, &sysim, &eqim);
     if (nowcs (wcs)) {
 	hgeti4 (header,"NAXIS1", &wp);
 	hgeti4 (header,"NAXIS2", &hp);
@@ -308,7 +374,7 @@ char *name;
 	printf ("%s %d x %d,  %d bits/pixel\n", name, wp, hp, bp);
 	wcsfree (wcs);
 	wcs = NULL;
-	return;
+	return (0);
 	}
 
     /* Convert to desired output coordinates */
@@ -384,14 +450,14 @@ char *name;
 	lfroot = strlen (fileroot);
 	blanks[lfroot-1] = 0;
 	if (sysim < 5) {
-	    printf ("%s RA:  %s -  %s %.4f arcsec/pix \n",
-		    filename, ramin, ramax, dx);
+	    printf ("%s%s RA:  %s -  %s %.4f arcsec/pix \n",
+		    filename, ext, ramin, ramax, dx);
 	    printf ("%s Dec: %s - %s %.4f arcsec/pix %s\n",
 		    blanks, decmin, decmax, dy, coorsys);
 	    }
 	else {
-	    printf ("%s X:  %s -  %s %.4f/pix \n",
-		    filename, ramin, ramax, dx);
+	    printf ("%s%s X:  %s -  %s %.4f/pix \n",
+		    filename, ext, ramin, ramax, dx);
 	    printf ("%s Y: %s - %s %.4f/pix %s\n",
 		    blanks, decmin, decmax, dy, coorsys);
 	    }
@@ -407,14 +473,14 @@ char *name;
 	    if (colon)
 		*colon = ' ';
 	    }
-	printf ("%s %s %s ", fileroot, rstr, dstr);
+	printf ("%s%s %s %s ", fileroot, ext, rstr, dstr);
 	if (secpix > 0.0)
 	    printf (" %.3f %.3f\n", dra, ddec);
 	else
 	    printf (" 10.0 10.0\n");
 	}
     else {
-	printf ("%s %s %s %s", fileroot, rstr, dstr, coorsys);
+	printf ("%s%s %s %s %s", fileroot, ext, rstr, dstr, coorsys);
 	if (secpix > 0.0)
 	    if (wcs->sysout != 5)
 		printf (" %.3f\'x%.3f\'", dra*60.0, ddec*60.0);
@@ -441,7 +507,7 @@ char *name;
     wcsfree (wcs);
     wcs = NULL;
     free (header);
-    return;
+    return (0);
 }
 /* Jul  9 1996	New program
  * Jul 18 1996	Update header reading
@@ -494,4 +560,8 @@ char *name;
  *
  * Apr  8 2002	Free wcs structure if no WCS is found in file header
  * Apr  8 2002	Fix bug so list files work
+ * Jun  6 2002	Add -x option to print sizes fore multiple file extensions
+ * Jun 18 2002	Make coorsys 8 instead of 4, fixing bug
+ * Jun 18 2002	Use extn for image extension, ext for filename extension
+ * Jun 19 2002	Add verbose argument to GetFITShead()
  */

@@ -1,5 +1,5 @@
 /* File skycoor.c
- * December 12, 2001
+ * April 23, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -190,15 +190,21 @@ char **av;
 		printf ("ra2, dec2: %s %s\n", rastr0, decstr0);
 	    r = wcsdist (ra, dec, ra1, dec1);
 	    if (degout) {
-		if (verbose)
+		if (verbose) {
 		    printf ("Distance is %.5f degrees\n", r);
+		    printf ("dRA = %.5f deg, dDec = %.5f deg\n",
+			    ra1 - ra, dec1 - dec);
+		    }
 		else
 		    printf ("%.7f degrees\n", r);
 		}
 	    else {
 		r = r * 3600.0;
-		if (verbose)
+		if (verbose) {
 		    printf ("Distance is %.3f arcsec\n", r);
+		    printf ("dRA = %.5f arcsec, dDec = %.5f arcsec\n",
+			    (ra1 - ra) * 3500.0, (dec1 - dec) * 3600.0);
+		    }
 		else
 		    printf ("%.3f\n", r);
 		}
@@ -528,4 +534,6 @@ char *errstring;
  * Oct 19 2001	Allow FITS date or fractional year as epoch
  * Oct 31 2001	Add -o to add offsets in arcseconds to coordinates
  * Dec 12 2001	If not verbose, -r option only prints separation number
+ *
+ * Apr 23 2002	If verbose, print differences in RA and Dec for -r, too.
  */

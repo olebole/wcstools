@@ -1,5 +1,5 @@
 /* File imhead.c
- * October 22, 1999
+ * June 19, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -133,7 +133,7 @@ char *name;
     int nw, nbytes, lhead, nblk;
     char *endhead;
 
-    if ((header = GetFITShead (name)) == NULL)
+    if ((header = GetFITShead (name, verbose)) == NULL)
 	return;
 
     if (verbose)
@@ -225,4 +225,6 @@ char	*header;	/* Image FITS header */
  *
  * Oct 22 1999	Drop unused variables after lint
  * Nov 24 1999	Add options to output entire FITS header and set BITPIX to 0
+ *
+ * Jun 19 2002	Add verbose argument to GetFITShead()
  */

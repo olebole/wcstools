@@ -1,9 +1,35 @@
 /*** File caphot.c
  *** January 30, 2002
  *** By Doug Mink from Fortran code by Sam Conner (MIT, 1984)
+ *** Copyright (C) 2002
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+    Correspondence concerning WCSTools should be addressed as follows:
+           Internet email: dmink@cfa.harvard.edu
+           Postal address: Doug Mink
+                           Smithsonian Astrophysical Observatory
+                           60 Garden St.
+                           Cambridge, MA 02138 USA
  */
 
 #include <math.h>
+#include "fitshead.h"
+#include "imio.h"
+
 static double apint();
 static double imapfr();
 
@@ -22,16 +48,16 @@ double	rad;		/* radius of aperture */
 double	sumw;		/* sum of values of pixel weights (returned) */
 double	wsum;		/* sum of weighted pixel fluxes (returned) */
 {
-    double x1, y1, x2, y2, x, y, factor, flux, bs, bz;
+    double x, y, factor, flux, bs, bz;
     int ix1, ix2, iy1, iy2, ix, iy, bitpix, nx, ny;
 
     sumw = 0.0;
     wsum = 0.0;
-    hgeti4 (header, "BITPIX", bitpix);
-    hgeti4 (header, "NAXIS1", nx);
-    hgeti4 (header, "NAXIS2", ny);
-    hgetr8 (header, "BSCALE", bs);
-    hgeti4 (header, "BZERO", bz);
+    hgeti4 (header, "BITPIX", &bitpix);
+    hgeti4 (header, "NAXIS1", &nx);
+    hgeti4 (header, "NAXIS2", &ny);
+    hgetr8 (header, "BSCALE", &bs);
+    hgeti4 (header, "BZERO", &bz);
 
     /* Find range of ys to check */
     iy1 = (int) (cy - rad);

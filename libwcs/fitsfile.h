@@ -1,6 +1,30 @@
-/* fitsfile.h  FITS and IRAF file access subroutines
- * April 8, 2002
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+/*** File fitsfile.h  FITS and IRAF file access subroutines
+ *** June 18, 2002
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
+ *** Copyright (C) 1996-2002
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+    Correspondence concerning WCSTools should be addressed as follows:
+           Internet email: dmink@cfa.harvard.edu
+           Postal address: Doug Mink
+                           Smithsonian Astrophysical Observatory
+                           60 Garden St.
+                           Cambridge, MA 02138 USA
  */
 
 #ifndef fitsfile_h_
@@ -31,6 +55,7 @@ extern int fitswhdu();
 extern int fitswimage();
 extern int fitscimage();
 extern int isfits();
+extern void fitserr();          /* Print FITS error message to stderr */
 
 /* FITS table file access subroutines in fitsfile.c */
 extern int fitsrtopen();
@@ -227,4 +252,5 @@ int stc2s();	/* Replaces a specified character in a string with spaces */
  *
  * Jan  8 2002	Add sts2c() and stc2s()
  * Apr  8 2002	Change all long declarations to time_t for compatibility
+ * Jun 18 2002	Add fitserr() to print error messages
  */

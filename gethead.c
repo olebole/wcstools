@@ -1,5 +1,5 @@
 /* File gethead.c
- * April 2, 2002
+ * June 20, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -25,9 +25,10 @@ static int maxnfile = MAXFILES;
 #define FILE_ASCII 3
 
 static void usage();
-static void PrintValues();
 static void strclean();
 extern char *GetFITShead();
+static char nextnsp();
+static int PrintValues();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;
@@ -36,8 +37,10 @@ static int maxlfn = 0;
 static int listall = 0;
 static int listpath = 0;
 static int tabout = 0;
+static int tabpad = 1;
 static int logfile = 0;
 static int printhead = 0;
+static int forceascii = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int printfill=0;		/* If 1, print ___ for unfound keyword values */
 static int printfile=1;		/* If 1, print filename first if >1 files */
@@ -51,6 +54,8 @@ static int toeol = 0;		/* If 1, return values from ASCII file to EOL */
 static char **cond;		/* Conditions to check */
 static char **ccond;		/* Condition characters */
 static int nproc = 0;
+static char *extensions;	/* Extension number(s) or name to read */
+static char *extension;		/* Extension number or name to read */
 
 main (ac, av)
 int ac;
@@ -69,15 +74,20 @@ char **av;
     char *listfile;
     char *ilistfile;
     char *klistfile;
-    int ikwd, lkwd, i;
+    int ikwd, lkwd, i, j;
     char *kw, *kwe;
     char string[80];
     int nbytes;
     int filetype;
     int icond;
+    int nfext;
+    int nrmax=10;
+    struct Range *erange;
 
     ilistfile = NULL;
     klistfile = NULL;
+    extension = NULL;
+    extensions = NULL;
     nkwd = 0;
     ncond = 0;
     nfile = 0;
@@ -109,6 +119,10 @@ char **av;
 	
 		case 'b': /* Replace blanks with underscores */
 		    fillblank++;
+		    break;
+	
+		case 'c': /* Force reading as an ASCII file */
+		    forceascii++;
 		    break;
 	
 		case 'd': /* Root directory for input */
@@ -158,6 +172,10 @@ char **av;
 		    listpath++;
 		    break;
 	
+		case 's': /* Do not pad output tab table */
+		    tabpad = 0;
+		    break;
+	
 		case 't': /* Output tab table */
 		    tabout++;
 		    break;
@@ -169,6 +187,19 @@ char **av;
 		case 'v': /* More verbosity */
 		    verbose++;
 		    keyeqvaln++;
+		    break;
+	
+		case 'x': /* FITS extension to read */
+		    if (ac < 2)
+			usage();
+		    if (isnum (*(av+1)))
+			extensions = *++av;
+		    else {
+			extensions = calloc (16, 1);
+			strcpy (extensions, "1-1000");
+			}
+		    listall++;
+		    ac--;
 		    break;
 
 		default:
@@ -222,7 +253,9 @@ char **av;
 		ft = (int *) realloc ((void *)ft, nbytes);
 		}
 	    fn[nfile] = *av;
-	    if (isfits (*av))
+	    if (forceascii)
+		ft[nfile] = FILE_ASCII;
+	    else if (isfits (*av))
 		ft[nfile] = FILE_FITS;
 	    else
 		ft[nfile] = FILE_IRAF;
@@ -307,7 +340,7 @@ char **av;
 	exit (1);
 	}
 
-    if (nkwd > 1)
+    if (nkwd > 1 && tabpad)
 	printfill = 1;
     if (nfile < 2 && !listall)
 	printfile = 0;
@@ -400,20 +433,55 @@ char **av;
 	    }
 	}
 
+    /* Check extensions for range and set accordingly */
+    if (isrange (extensions)) {
+	erange = RangeInit (extensions, nrmax);
+	nfext = rgetn (erange);
+	extension = calloc (1, 8);
+	}
+    else {
+	extension = extensions;
+	if (extension)
+	    nfext = 1;
+	}
+
     /* Read through headers of images */
     for (ifile = 0; ifile < nfile; ifile++) {
 	if (ilistfile != NULL) {
 	    first_token (flist, 254, filename);
-	    if (isiraf (filename))
+	    if (forceascii)
+		filetype = FILE_ASCII;
+	    else if (isiraf (filename))
 		filetype = FILE_IRAF;
 	    else if (isfits (filename))
 		filetype = FILE_FITS;
 	    else
 		filetype = FILE_ASCII;
-	    PrintValues (filename, filetype, nkwd, kwd);
+	    if (nfext > 1) {
+		rstart (erange);
+		for (i = 0; i < nfext; i++) {
+		    j = rgeti4 (erange);
+		    sprintf (extension, "%d", j);
+		    if (PrintValues (filename, filetype, nkwd, kwd))
+			break;
+		    }
+		}
+	    else
+		PrintValues (filename, filetype, nkwd, kwd);
 	    }
-	else
-	    PrintValues (fn[ifile], ft[ifile], nkwd, kwd);
+	else {
+	    if (nfext > 1) {
+		rstart (erange);
+		for (i = 0; i < nfext; i++) {
+		    j = rgeti4 (erange);
+		    sprintf (extension, "%d", j);
+		    if (PrintValues (fn[ifile], ft[ifile], nkwd, kwd))
+			break;
+		    }
+		}
+	    else
+		(void) PrintValues (fn[ifile], ft[ifile], nkwd, kwd);
+	    }
 
 	if (verbose)
 	    printf ("\n");
@@ -442,6 +510,7 @@ usage ()
     fprintf(stderr,"  or : gethead [-abhoptv][-d dir][-f num][-m num][-n num] @filelist @keywordlist\n");
     fprintf(stderr,"  -a: List file even if keywords are not found\n");
     fprintf(stderr,"  -b: Replace blanks in strings with underscores\n");
+    fprintf(stderr,"  -c: Read all files as plain ASCII\n");
     fprintf(stderr,"  -d: Root directory for input files (default is cwd)\n");
     fprintf(stderr,"  -e: Output keyword=value's on one line per file\n");
     fprintf(stderr,"  -f: Never print filenames (default is print if >1)\n");
@@ -450,14 +519,16 @@ usage ()
     fprintf(stderr,"  -n: Number of decimal places in numeric output\n");
     fprintf(stderr,"  -o: OR conditions instead of ANDing them\n");
     fprintf(stderr,"  -p: Print full pathnames of files\n");
+    fprintf(stderr,"  -s: Do not pad tab-separated table with spaces\n");
     fprintf(stderr,"  -t: Output in tab-separated table format\n");
     fprintf(stderr,"  -u: Always print ___ if keyword not found\n");
     fprintf(stderr,"  -v: Verbose\n");
+    fprintf(stderr,"  -x [range]: Read header for these extensions (no arg=all)\n");
     exit (1);
 }
 
 
-static void
+static int
 PrintValues (name, filetype, nkwd, kwd)
 
 char	*name;		/* Name of FITS or IRAF image file */
@@ -475,61 +546,96 @@ char	*kwd[];		/* Names of keywords for which to print values */
     char keyword[16];
     char *filename;
     char outline[1000];
+    char padline[1000];
     char mstring[800];
+    char ctab = (char) 9;
+    char cspace = (char) 32;
+    char pchar;
     char *kw, *kwe, *filepath;
+    char *ext, *namext, cext;
     int ikwd, lkwd, nfound, notfound, nch;
-    int jval, jcond, icond, i, lstr;
+    int jval, jcond, icond, i, j, lout, lstr;
     double dval, dcond, dnum;
     char tcond;
     char cvalue[64], *cval;
     char numstr[32], numstr1[32];
     int pass, iwcs, nwild;
 
+    namext = NULL;
+    ext = strchr (name, ',');
+    if (extension && !ext) {
+	nch = strlen (name) + 2 + strlen (extension);
+	namext = (char *) calloc (1, nch);
+	strcpy (namext, name);
+	strcat (namext, ",");
+	strcat (namext, extension);
+	}
+    else {
+	nch = strlen (name) + 1;
+	namext = (char *) calloc (1, nch);
+	strcpy (namext, name);
+	}
+    ext = strchr (namext, ',');
+
     if (rootdir) {
-	nch = strlen (rootdir) + strlen (name) + 1;
+	nch = strlen (rootdir) + strlen (namext) + 1;
 	filepath = (char *) calloc (1, nch);
 	strcat (filepath, rootdir);
 	strcat (filepath, "/");
-	strcat (filepath, name);
+	strcat (filepath, namext);
 	}
-    else
-	filepath = name;
+    else {
+	nch = strlen (namext) + 1;
+	filepath = (char *) calloc (1, nch);
+	strcpy (filepath, namext);
+	}
 
     /* Read ASCII file into buffer */
     if (filetype == FILE_ASCII) {
 	if ((header = getfilebuff (filepath)) == NULL)
-	    return;
+	    return (-1);
 	}
 
     /* Retrieve FITS header from FITS or IRAF .imh file */
-    else if ((header = GetFITShead (filepath)) == NULL)
-	return;
+    else if ((header = GetFITShead (filepath, verbose)) == NULL)
+	return (-1);
 
     if (verbose) {
 	fprintf (stderr,"Print Header Parameter Values from ");
 	hgeti4 (header, "IMHVER", &iraffile );
 	if (filetype == FILE_ASCII)
-	    fprintf (stderr,"ASCII file %s\n", name);
+	    fprintf (stderr,"ASCII file %s\n", namext);
 	else if (filetype == FILE_IRAF)
-	    fprintf (stderr,"IRAF image file %s\n", name);
+	    fprintf (stderr,"IRAF image file %s\n", namext);
 	else
-	    fprintf (stderr,"FITS image file %s\n", name);
+	    fprintf (stderr,"FITS image file %s\n", namext);
 	}
 
     /* Find file name */
-    if (listpath || (filename = strrchr (name,'/')) == NULL)
-	filename = name;
+    if (listpath || (filename = strrchr (namext,'/')) == NULL)
+	filename = namext;
     else if (rootdir)
-	filename = name;
+	filename = namext;
     else
 	filename = filename + 1;
 
     if (printfile) {
-	if (tabout)
-	    sprintf (fnform, "%%-%ds	", maxlfn);
-	else
-	    sprintf (fnform, "%%-%ds ", maxlfn);
+	if (ext) {
+	    cext = *ext;
+	    *ext = (char) 0;
+	    }
+	sprintf (fnform, "%%-%ds", maxlfn);
 	sprintf (outline, fnform, filename);
+	if (ext) {
+	    *ext = '[';
+	    sprintf (string, "%s]", ext);
+	    strcat (outline, string);
+	    *ext = cext;
+	    }
+	if (tabout)
+	    strcat (outline, "	");
+	else
+	    strcat (outline, " ");
 	}
     else
 	outline[0] = (char) 0;
@@ -602,10 +708,10 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		    pass = 1;
 		}
 	    if (condand && !pass)
-		return;
+		return (0);
 	    }
 	if (!pass)
-	    return;
+	    return (0);
 	}
 
     /* Read keywords from header */
@@ -735,11 +841,52 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		strcat (outline, " ");
 	    }
 	}
-    if (!keyeqvaln && (nfound > 0 || printfill) && (nfile < 2 || nfound > 0 || listall))
+
+    /* Print line of keywords */
+    if (!keyeqvaln && (nfound > 0 || printfill) && (nfile < 2 || nfound > 0 || listall)) {
+
+	/* Remove spaces used to pad tab-separated tables for readability */
+	if (tabout && !tabpad) {
+	    lout = strlen (outline);
+	    strcpy (padline, outline);
+	    for (i = 0; i < 1000; i++)
+		outline[i] = (char) 0;
+	    j = 0;
+	    pchar = ctab;
+	    for (i = 0; i < lout; i++) {
+		if (padline[i] == cspace && pchar == ctab)
+		    continue;
+		if (padline[i] == cspace && nextnsp (padline+i) == ctab)
+		    continue;
+		if (padline[i] == cspace && nextnsp (padline+i) == (char) 0)
+		    continue;
+		outline[j++] = padline[i];
+		pchar = padline[i];
+		}
+	    }
+
 	printf ("%s\n", outline);
+	}
 
     free (header);
-    return;
+    return (0);
+}
+
+
+/* Return next character in string which is not a space */
+static char
+nextnsp (string)
+
+char *string;
+
+{
+    int lstring;
+    char *schar;
+
+    schar = string;
+    while (*schar == ' ')
+	schar++;
+    return (*schar);
 }
 
 
@@ -875,4 +1022,11 @@ char *string;
  * Jan 31 2002	Fix bug to always add underlines if printing tab table headers
  * Feb 26 2002	Return values to end of line if -l option set
  * Apr  2 2002	Add option to log processing to stderr
+ * Apr 24 2002	Add -c option to force files to be read as plain ASCII
+ * May 23 2002	Add -x option to specify extension to read
+ * May 31 2002	Add -s option to drop space-padding for tab table readability
+ * Jun  6 2002	Allow -x to specify range of numbered extensions
+ * Jun 18 2002	List filename(s) if -x used
+ * Jun 19 2002	Add verbose argument to GetFITShead()
+ * Jun 20 2002	If -x and no argument, read all extensions
  */

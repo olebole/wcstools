@@ -12,10 +12,13 @@ BIN = bin
 all:	cphead delwcs delhead edhead fixpix gethead i2f imcat imhead immatch \
 	imrot imsize imstar imwcs scat sethead addpix getpix setpix sky2xy \
 	keyhead skycoor subpix xy2sky wcshead conpix gettab newfits \
-	imstack imextract sumpix remap getcol getdate fileroot filename
+	imstack imextract sumpix remap getcol getdate fileroot filename filext
 
 addpix: addpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/addpix addpix.c $(LIBS)
+
+char2sp: char2sp.c $(LIBWCS) libwcs/fitsfile.h
+	$(CC) $(CFLAGS) -o $(BIN)/char2sp char2sp.c $(LIBWCS)
 
 conpix: conpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/conpix conpix.c $(LIBS)
@@ -40,6 +43,9 @@ filename: filename.c
 
 fileroot: fileroot.c
 	$(CC) $(CFLAGS) -o $(BIN)/fileroot fileroot.c
+
+filext: filext.c
+	$(CC) $(CFLAGS) -o $(BIN)/filext filext.c
 
 fixpix: fixpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/fixpix fixpix.c $(LIBS)
@@ -75,7 +81,7 @@ imrot: imrot.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/imrot imrot.c $(LIBS)
 
 imsize: imsize.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $(BIN)/imsize imsize.c $(LIBS)
+	$(CC) $(CFLAGS) -o $(BIN)/imsize imsize.c $(CATLIBS)
 
 imstack: imstack.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/imstack imstack.c $(LIBS)
@@ -88,6 +94,9 @@ imstar: imstar.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h libwcs/lwcs.h libwcs/w
 
 isnum: isnum.c $(LIBWCS) libwcs/fitshead.h
 	$(CC) $(CFLAGS) -o $(BIN)/isnum isnum.c $(LIBS)
+
+isrange: isrange.c
+	$(CC) $(CFLAGS) -o $(BIN)/isrange isrange.c
 
 imwcs: imwcs.c $(LIBWCS) libwcs/fitsfile.h libwcs/lwcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/imwcs imwcs.c $(CATLIBS)
@@ -121,6 +130,9 @@ sky2xy: sky2xy.c $(LIBWCS) libwcs/wcs.h libwcs/fitsfile.h
 
 skycoor: skycoor.c $(LIBWCS) libwcs/wcs.h libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/skycoor skycoor.c $(CATLIBS)
+
+sp2char: sp2char.c $(LIBWCS) libwcs/fitsfile.h
+	$(CC) $(CFLAGS) -o $(BIN)/sp2char sp2char.c $(LIBWCS)
 
 subpix: subpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/subpix subpix.c $(LIBS)

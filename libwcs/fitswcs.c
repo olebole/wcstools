@@ -1,13 +1,37 @@
 /*** File libwcs/fitswcs.c
- *** July 11, 2001
+ *** JUne 19, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
+ *** Copyright (C) 1996-2002
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+    Correspondence concerning WCSTools should be addressed as follows:
+           Internet email: dmink@cfa.harvard.edu
+           Postal address: Doug Mink
+                           Smithsonian Astrophysical Observatory
+                           60 Garden St.
+                           Cambridge, MA 02138 USA
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
  * Purpose:     Read and delete FITS image world coordinate system keywords
- * Subroutine:  GetWCSFITS (filename)
+ *
+ * Subroutine:  GetWCSFITS (filename, verbose)
  *		Open a FITS or IRAF image file and returns its WCS structure
- * Subroutine:  GetFITShead (filename)
+ * Subroutine:  GetFITShead (filename, verbose)
  *		Open a FITS or IRAF image file and returns a FITS header
  * Subroutine:  DelWCSFITS (filename, verbose)
  *		Delete all standard WCS keywords from a FITS header
@@ -23,11 +47,11 @@
 #include "fitsfile.h"
 #include "wcs.h"
 
-
 struct WorldCoor *
-GetWCSFITS (filename)
+GetWCSFITS (filename, verbose)
 
 char *filename;	/* FITS or IRAF file filename */
+int verbose;	/* Print extra information if nonzero */
 
 {
     char *header;		/* FITS header */
@@ -36,7 +60,7 @@ char *filename;	/* FITS or IRAF file filename */
     char *cwcs;			/* Multiple wcs string (name or character) */
 
     /* Read the FITS or IRAF image file header */
-    header = GetFITShead (filename);
+    header = GetFITShead (filename, verbose);
     if (header == NULL)
 	return (NULL);
 
@@ -55,9 +79,10 @@ char *filename;	/* FITS or IRAF file filename */
 }
 
 char *
-GetFITShead (filename)
+GetFITShead (filename, verbose)
 
 char *filename;	/* FITS or IRAF file filename */
+int verbose;	/* Print error messages if nonzero */
 
 {
     char *header;		/* FITS header */
@@ -69,7 +94,8 @@ char *filename;	/* FITS or IRAF file filename */
     if (isiraf (filename)) {
 	if ((irafheader = irafrhead (filename, &nbiraf)) != NULL) {
 	    if ((header = iraf2fits (filename, irafheader, nbiraf, &lhead)) == NULL) {
-		fprintf (stderr, "Cannot translate IRAF header %s\n",filename);
+		if (verbose)
+		 fprintf (stderr, "Cannot translate IRAF header %s\n",filename);
 		free (irafheader);
 		irafheader = NULL;
 		return (NULL);
@@ -78,7 +104,8 @@ char *filename;	/* FITS or IRAF file filename */
 	    irafheader = NULL;
 	    }
 	else {
-	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
+	    if (verbose)
+		fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
 	    return (NULL);
 	    }
 	}
@@ -86,7 +113,8 @@ char *filename;	/* FITS or IRAF file filename */
     /* Open FITS file if .imh extension is not present */
     else {
 	if ((header = fitsrhead (filename, &lhead, &nbfits)) == NULL) {
-	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
+	    if (verbose)
+		fprintf (stderr, "Cannot read FITS file %s\n", filename);
 	    return (NULL);
 	    }
 	}
@@ -454,10 +482,14 @@ struct WorldCoor *wcs;	/* WCS structure */
 	hputnr8 (header, "CDELT2", 9, wcs->yinc);
 	hputnr8 (header, "CROTA1", 3, wcs->rot);
 	hputnr8 (header, "CROTA2", 3, wcs->rot);
-	hdel (header, "CD1_1");
+	hputnr8 (header, "CD1_1", 9, wcs->cd[0]);
+	hputnr8 (header, "CD1_2", 9, wcs->cd[1]);
+	hputnr8 (header, "CD2_1", 9, wcs->cd[2]);
+	hputnr8 (header, "CD2_2", 9, wcs->cd[3]);
+	/* hdel (header, "CD1_1");
 	hdel (header, "CD1_2");
 	hdel (header, "CD2_1");
-	hdel (header, "CD2_2");
+	hdel (header, "CD2_2"); */
 	}
 
     /* Plate scale at reference pixel */
@@ -543,4 +575,7 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Jan 31 2001	Add code to extract WCS name or character from filename
  * Mar  8 2001	Change WCS character separator from : to % in FITS filenames
  * Jul 11 2001	Add PC matrix to keywords deleted by DelWCS()
+ *
+ * Apr 23 2002	Always write CD matrix in SetFITSWCS()
+ * Jun 19 2002	Add verbose argument to GetWCSFITS() and GetFITShead()
  */

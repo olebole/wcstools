@@ -1,5 +1,5 @@
 /* File cphead.c
- * June 8, 2000
+ * June 19, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -296,7 +296,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	filepath = infile;
 
     /* Retrieve FITS header from FITS or IRAF .imh file */
-    if ((header = GetFITShead (filepath)) == NULL)
+    if ((header = GetFITShead (filepath, verbose)) == NULL)
 	return;
 
     /* Open IRAF image if .imh extension is present */
@@ -593,4 +593,5 @@ char *string;
 /* Feb 24 2000	New program based on sethead and gethead
  * Mar 22 2000	Use lt2fd() instead of getltime()
  * Jun  8 2000	If no files or keywords specified, say so
+ * Jun 19 2002	Add verbose argument to GetFITShead()
  */

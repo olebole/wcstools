@@ -1,7 +1,30 @@
 /*** File wcslib/imio.c
- *** January 23, 2002
+ *** June 4, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
+ *** Copyright (C) 1996-2002
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+    Correspondence concerning WCSTools should be addressed as follows:
+           Internet email: dmink@cfa.harvard.edu
+           Postal address: Doug Mink
+                           Smithsonian Astrophysical Observatory
+                           60 Garden St.
+                           Cambridge, MA 02138 USA
 
  * Module:      imio.c (image pixel manipulation)
  * Purpose:     Read and write pixels from arbitrary data type 2D arrays
@@ -33,13 +56,6 @@
  *		Reverse bytes of Real*8 vector in place
  * Subroutine	imswapped ()
  *		Return 1 if PC/DEC byte order, else 0
-
- * Copyright:   1996-2002 Smithsonian Astrophysical Observatory
- *              You may do anything you like with this file except remove
- *              this copyright.  The Smithsonian Astrophysical Observatory
- *              makes no representations about the suitability of this
- *              software for any purpose.  It is provided "as is" without
- *              express or implied warranty.
  */
 
 #include <stdlib.h>
@@ -602,7 +618,7 @@ int	x2, y2;		/* Row and column for output pixel */
 /* GETVEC -- Get vector from 2D image of any numeric type */
 
 void
-getvec (image, bitpix, bzero, bscale, pix1, npix, dpix)
+getvec (image, bitpix, bzero, bscale, pix1, npix, dvec)
 
 char	*image;		/* Image array from which to extract vector */
 int	bitpix;		/* Number of bits per pixel in image */
@@ -612,7 +628,7 @@ double  bzero;		/* Zero point for pixel scaling */
 double  bscale;		/* Scale factor for pixel scaling */
 int	pix1;		/* Offset of first pixel to extract */
 int	npix;		/* Number of pixels to extract */
-double	*dpix;		/* Vector of pixels (returned) */
+double	*dvec;		/* Vector of pixels (returned) */
 
 {
     short *im2;
@@ -628,44 +644,44 @@ double	*dpix;		/* Vector of pixels (returned) */
 
 	case 8:
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*dpix++ = (double) *(image + ipix);
+		*dvec++ = (double) *(image + ipix);
 	    break;
 
 	case 16:
 	    im2 = (short *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*dpix++ = (double) *(im2 + ipix);
+		*dvec++ = (double) *(im2 + ipix);
 	    break;
 
 	case 32:
 	    im4 = (int *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*dpix++ = bscale * (double) *(im4 + ipix);
+		*dvec++ = bscale * (double) *(im4 + ipix);
 	    break;
 
 	case -16:
 	    imu = (unsigned short *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*dpix++ = (double) *(imu + ipix);
+		*dvec++ = (double) *(imu + ipix);
 	    break;
 
 	case -32:
 	    imr = (float *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*dpix++ = (double) *(imr + ipix);
+		*dvec++ = (double) *(imr + ipix);
 	    break;
 
 	case -64:
 	    imd = (double *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*dpix++ = (double) *(imd + ipix);
+		*dvec++ = (double) *(imd + ipix);
 	    break;
 
 	}
 
     /* Scale data if either BZERO or BSCALE keyword has been set */
     if (scale && (bzero != 0.0 || bscale != 1.0)) {
-	double *dp = dpix;
+	double *dp = dvec;
 	for (ipix = pix1; ipix < pix2; ipix++) {
 	    *dp = (*dp * bscale) + bzero;
 	    dp++;
@@ -679,7 +695,7 @@ double	*dpix;		/* Vector of pixels (returned) */
 /* PUTVEC -- Copy pixel vector into 2D image of any numeric type */
 
 void
-putvec (image, bitpix, bzero, bscale, pix1, npix, dpix)
+putvec (image, bitpix, bzero, bscale, pix1, npix, dvec)
 
 char	*image;		/* Image into which to copy vector */
 int	bitpix;		/* Number of bits per pixel im image */
@@ -689,7 +705,7 @@ double  bzero;		/* Zero point for pixel scaling */
 double  bscale;		/* Scale factor for pixel scaling */
 int	pix1;		/* Offset of first pixel of vector in image */
 int	npix;		/* Number of pixels to copy */
-double	*dpix;		/* Vector of pixels to copy */
+double	*dvec;		/* Vector of pixels to copy */
 
 {
     short *im2;
@@ -698,7 +714,7 @@ double	*dpix;		/* Vector of pixels to copy */
     float *imr;
     double *imd;
     int ipix, pix2;
-    double *dp = dpix;
+    double *dp = dvec;
 
     pix2 = pix1 + npix;
 
@@ -708,7 +724,7 @@ double	*dpix;		/* Vector of pixels to copy */
 	    *dp = (*dp - bzero) / bscale;
 	    dp++;
 	    }
-	dp = dpix;
+	dp = dvec;
 	}
 
     switch (bitpix) {
@@ -941,4 +957,6 @@ imswapped ()
  * Nov 27 2001	In movepix(), add char to char move
  *
  * Jan 23 2002	Add global scale switch to turn off scaling
+ * Jun  4 2002	In getvec() and putvec(), change dpix to dvec
+ * Jun  4 2002	Add addvec() to add to a vector
  */

@@ -1,8 +1,31 @@
 /*** File wcslib/tnxpos.c
- *** April 11, 2002
+ *** JUne 26, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** After IRAF mwcs/wftnx.x and mwcs/wfgsurfit.x
+ *** Copyright (C) 1998-2002
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+    Correspondence concerning WCSTools should be addressed as follows:
+           Internet email: dmink@cfa.harvard.edu
+           Postal address: Doug Mink
+                           Smithsonian Astrophysical Observatory
+                           60 Garden St.
+                           Cambridge, MA 02138 USA
  */
 
 #include <stdio.h>
@@ -16,14 +39,14 @@
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
 
 /* wftnx -- wcs function driver for the gnomonic projection with correction.
- *    tnxinit (wcs, dir)
- *    tnxdestroy (wcs)
- *    tnxfwd (wcs, v1, v2)	Pixels to WCS
- *    tnxrev (wcs, v1, v2)	WCS to pixels
+ *    tnxinit (header, wcs)
+ *    tnxclose (wcs)
+ *    tnxfwd (xpix, ypix, wcs, xpos, ypos)	Pixels to WCS
+ *    tnxrev (xpos, ypos, wcs, xpix, ypix)	WCS to pixels
  */
 
 #define	max_niter	500
-#define	SZ_ATSTRING	500
+#define	SZ_ATSTRING	2000
 static void wf_gsclose();
 static void wf_gsb1pol();
 static void wf_gsb1leg();
@@ -464,10 +487,10 @@ double	*xpix, *ypix;	/*o physical coordinates (x, y) */
 }
 
 
-/* tnxdestroy -- free up the distortion surface pointers */
+/* TNXCLOSE -- free up the distortion surface pointers */
 
 void
-tnxdestroy (wcs)
+tnxclose (wcs)
 
 struct WorldCoor *wcs;		/* pointer to the WCS descriptor */
 
@@ -481,6 +504,7 @@ struct WorldCoor *wcs;		/* pointer to the WCS descriptor */
 
 /* copyright(c) 1986 association of universities for research in astronomy inc.
  * wfgsurfit.x -- surface fitting package used by wcs function drivers.
+ * Translated to C from SPP by Doug Mink, SAO, May 26, 1998
  *
  * the following routines are used by the experimental function drivers tnx
  * and zpx to decode polynomial fits stored in the image header in the form
@@ -1189,4 +1213,6 @@ double	*coeff;
  * Feb 14 2001	Fixed off-by-one bug in legendre evaluation (Mike Jarvis)
  *
  * Apr 11 2002	Fix bug when .-terminated substring in wf_gsopen()
+ * Apr 29 2002	Clean up code
+ * Jun 26 2002	Increase size of WAT strings from 500 to 2000
  */

@@ -1,7 +1,32 @@
 /*** File libwcs/wcsinit.c
- *** April 3, 2002
+ *** May 31, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
+ *** Copyright (C) 1998-2002
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+    Correspondence concerning WCSTools should be addressed as follows:
+           Internet email: dmink@cfa.harvard.edu
+           Postal address: Doug Mink
+                           Smithsonian Astrophysical Observatory
+                           60 Garden St.
+                           Cambridge, MA 02138 USA
+
+
 
  * Module:	wcsinit.c (World Coordinate Systems)
  * Purpose:	Convert FITS WCS to pixels and vice versa:
@@ -14,14 +39,6 @@
  * Subroutine:	wcschar (hstring, name) returns suffix for specifed WCS
  * Subroutine:	wcseq (hstring, wcs) set radecsys and equinox from image header
  * Subroutine:	wcseqm (hstring, wcs, mchar) set radecsys and equinox if multiple
-
- * Copyright:   2002 Smithsonian Astrophysical Observatory
- *              You may do anything you like with this file except remove
- *              this copyright.  The Smithsonian Astrophysical Observatory
- *              makes no representations about the suitability of this
- *              software for any purpose.  It is provided "as is" without
- *              express or implied warranty.
-
  */
 
 #include <string.h>		/* strstr, NULL */
@@ -34,6 +51,7 @@
 
 static void wcseq();
 static void wcseqm();
+static void wcsioset();
 void wcsrotset();
 char wcserrmsg[80];
 char wcschar();
@@ -88,7 +106,7 @@ char	*name;		/* Name of WCS conversion to be matched
 			   (case-independent) */
 {
     char *upname, *uppercase();
-    char cwcs;
+    char cwcs, charwcs;
     int iwcs;
     char keyword[12];
     char *upval, value[72];
@@ -107,6 +125,7 @@ char	*name;		/* Name of WCS conversion to be matched
     /* Try to match input name to available WCSNAME names in header */
     strcpy (keyword, "WCSNAME");
     keyword[8] = (char) 0;
+    charwcs = '_';
     for (iwcs = 0; iwcs < 27; iwcs++) {
 	if (iwcs > 0)
 	    cwcs = (char) (64 + iwcs);
@@ -116,10 +135,12 @@ char	*name;		/* Name of WCS conversion to be matched
 	if (hgets (hstring, keyword, 72, value)) {
 	    upval = uppercase (value);
 	    if (!strcmp (upval, upname))
-		return (cwcs);
+		charwcs = cwcs;
+	    free (upval);
 	    }
 	}
-    return ('_');
+    free (upname);
+    return (charwcs);
 }
 
 
@@ -171,6 +192,8 @@ int	lhstring;	/* Length of FITS header in bytes */
 char	mchar;		/* Suffix character for one of multiple WCS */
 {
     hlength (hstring, lhstring);
+    if (mchar == ' ')
+	mchar = (char) 0;
     return (wcsinitc (hstring, mchar));
 }
 
@@ -204,7 +227,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     char *hcoeff;		/* pointer to first coeff's in header */
     char decsign;
     double rah,ram,ras, dsign,decd,decm,decs;
-    double dec_deg,ra_hours, secpix, ra0, ra1, dec0, dec1;
+    double dec_deg,ra_hours, secpix, ra0, ra1, dec0, dec1, cvel;
     double cdelt1, cdelt2, cd[4], pc[16];
     char keyword[16];
     int ieq, i, naxes, cd11p, cd12p, cd21p, cd22p;
@@ -214,7 +237,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     double dxrefpix, dyrefpix;
     char temp[48];
     */
-    char wcsname[16];	/* Name of WCS depended on by current WCS */
+    char wcsname[64];	/* Name of WCS depended on by current WCS */
     double mjd;
     double rot;
     int twod;
@@ -223,6 +246,16 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     extern int dsspos();
 
     wcs = (struct WorldCoor *) calloc (1, sizeof(struct WorldCoor));
+
+    /* Set WCS character and name in structure */
+    if (mchar == ' ')
+	mchar = (char) 0;
+    wcs->wcschar = mchar;
+    if (hgetsc (hstring, "WCSNAME",mchar, 63, wcsname)) {
+	wcs->wcsname = (char *) calloc (strlen (wcsname)+2, 1);
+	strcpy (wcs->wcsname, wcsname);
+	}
+    
 
     /* Set WCSLIB flags so that structures will be reinitialized */
     wcs->cel.flag = 0;
@@ -246,11 +279,15 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 
     /* Header parameters independent of projection */
     naxes = 0;
-    hgeti4 (hstring, "NAXIS", &naxes);
+    hgeti4c (hstring, "WCSAXES", mchar, &naxes);
+    if (naxes == 0)
+	hgeti4 (hstring, "WCSAXES", &naxes);
+    if (naxes == 0)
+	hgeti4 (hstring, "NAXIS", &naxes);
     if (naxes == 0)
 	hgeti4 (hstring, "WCSDIM", &naxes);
     if (naxes < 1) {
-	setwcserr ("WCSINIT: No NAXIS or WCSDIM keyword");
+	setwcserr ("WCSINIT: No WCSAXES, NAXIS, or WCSDIM keyword");
 	wcsfree (wcs);
 	return (NULL);
 	}
@@ -272,7 +309,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     for (i = 0; i < naxes; i++) wcs->pc[(i*naxes)+i] = 1.0;
 
     /* If the current world coordinate system depends on another, set it now */
-    if (hgetsc (hstring, "WCSDEP",mchar, 16, wcsname)) {
+    if (hgetsc (hstring, "WCSDEP",mchar, 63, wcsname)) {
 	if ((wcs->wcs = wcsinitn (hstring, wcsname)) == NULL) {
 	    setwcserr ("WCSINIT: depended on WCS could not be set");
 	    wcsfree (wcs);
@@ -283,6 +320,17 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	}
     else
 	wcs->wcs = NULL;
+
+    /* Read radial velocity from image header */
+    wcs->radvel = 0.0;
+    wcs->zvel = 0.0;
+    cvel = 299792.5;
+    if (hgetr8c (hstring, "VSOURCE", &wcs->radvel))
+	wcs->zvel = wcs->radvel / cvel;
+    else if (hgetr8c (hstring, "ZSOURCE", &wcs->zvel))
+	wcs->radvel = wcs->zvel * cvel;
+    else if (hgetr8 (hstring, "VELOCITY", &wcs->radvel))
+	wcs->zvel = wcs->radvel / cvel;
 
     /* World coordinate system reference coordinate information */
     if (hgetsc (hstring, "CTYPE1", mchar, 16, ctype1)) {
@@ -381,15 +429,15 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	sprintf (pvkey3, "PV%d_3", ilat);
 
 	/* FITS WCS standard projection constants (projection-dependent) */
-	if (wcs->syswcs == WCS_AZP || wcs->syswcs == WCS_SIN ||
-	    wcs->syswcs == WCS_COP || wcs->syswcs == WCS_COE ||
-	    wcs->syswcs == WCS_COD || wcs->syswcs == WCS_COO) {
+	if (wcs->prjcode == WCS_AZP || wcs->prjcode == WCS_SIN ||
+	    wcs->prjcode == WCS_COP || wcs->prjcode == WCS_COE ||
+	    wcs->prjcode == WCS_COD || wcs->prjcode == WCS_COO) {
 	    wcs->prj.p[0] = 0.0;
 	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
 	    wcs->prj.p[1] = 0.0;
 	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[1]);
 	    }
-	else if (wcs->syswcs == WCS_SZP) {
+	else if (wcs->prjcode == WCS_SZP) {
 	    wcs->prj.p[0] = 0.0;
 	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
 	    wcs->prj.p[1] = 0.0;
@@ -397,31 +445,37 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	    wcs->prj.p[2] = 90.0;
 	    hgetr8c (hstring, pvkey3, mchar, &wcs->prj.p[2]);
 	    }
-	else if (wcs->syswcs == WCS_CEA) {
+	else if (wcs->prjcode == WCS_CEA) {
 	    wcs->prj.p[0] = 1.0;
 	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
 	    }
-	else if (wcs->syswcs == WCS_CYP) {
+	else if (wcs->prjcode == WCS_CYP) {
 	    wcs->prj.p[0] = 1.0;
 	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
 	    wcs->prj.p[1] = 1.0;
 	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[1]);
 	    }
-	else if (wcs->syswcs == WCS_AIR) {
+	else if (wcs->prjcode == WCS_AIR) {
 	    wcs->prj.p[0] = 90.0;
 	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
 	    }
-	else if (wcs->syswcs == WCS_BON) {
+	else if (wcs->prjcode == WCS_BON) {
 	    wcs->prj.p[0] = 0.0;
 	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
 	    }
-	else if (wcs->syswcs == WCS_ZPN) {
-	    for (i = 0; i < 99; i++) {
+	else if (wcs->prjcode == WCS_ZPN) {
+	    for (i = 0; i < 10; i++) {
 		wcs->prj.p[i] = 0.0;
 		sprintf (keyword,"PV%d_%d", ilat, i+1);
 		hgetr8c (hstring, keyword, mchar, &wcs->prj.p[i]);
 		}
 	    }
+
+	/* Coordinate reference frame, equinox, and epoch */
+	if (strncmp (wcs->ptype,"LINEAR",6) &&
+	    strncmp (wcs->ptype,"PIXEL",5))
+	    wcseqm (hstring, wcs, mchar);
+	wcsioset (wcs);
 
 	/* Use polynomial fit instead of projection, if present */
 	wcs->ncoeff1 = 0;
@@ -662,16 +716,20 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 		}
 	    }
 
-	/* Coordinate reference frame, equinox, and epoch */
-	if (strncmp (wcs->ptype,"LINEAR",6) &&
-	    strncmp (wcs->ptype,"PIXEL",5))
-	    wcseqm (hstring,wcs, mchar);
-	else {
+	/* If linear or pixel WCS, print "degrees" */
+	if (!strncmp (wcs->ptype,"LINEAR",6) ||
+	    !strncmp (wcs->ptype,"PIXEL",5)) {
 	    wcs->degout = -1;
 	    wcs->ndec = 5;
 	    }
 
 	wcs->wcson = 1;
+	}
+
+    else if (mchar != (char) 0) {
+	setwcserr ("WCSINITC: No image scale for WCS %c", mchar);
+	wcsfree (wcs);
+	return (NULL);
 	}
 
     /* Plate solution coefficients */
@@ -751,6 +809,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	dsspos (wcs->crpix[0], wcs->crpix[1]+1.0, wcs, &ra1, &dec1);
 	wcs->yinc = dec1 - dec0;
 	wcs->xinc = -wcs->yinc;
+	wcsioset (wcs);
 
 	/* Compute image rotation angle */
 	wcs->wcson = 1;
@@ -770,11 +829,11 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	}
 
     /* Approximate world coordinate system if plate scale is known */
-    else if (ksearch (hstring,"SECPIX") != NULL ||
+    else if ((ksearch (hstring,"SECPIX") != NULL ||
 	     ksearch (hstring,"PIXSCALE") != NULL ||
 	     ksearch (hstring,"PIXSCAL1") != NULL ||
 	     ksearch (hstring,"XPIXSIZE") != NULL ||
-	     ksearch (hstring,"SECPIX1") != NULL) {
+	     ksearch (hstring,"SECPIX1") != NULL)) {
 	secpix = 0.0;
 	hgetr8 (hstring,"SECPIX",&secpix);
 	if (secpix == 0.0)
@@ -888,14 +947,14 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	    hgetr8 (hstring,"LONGPOLE",&wcs->cel.ref[2]);
 	wcs->cel.ref[3] = 999.0;
 	hgetr8 (hstring,"LATPOLE",&wcs->cel.ref[3]);
-	    
-	(void) wcstype (wcs, "RA---TAN", "DEC--TAN");
-	wcs->coorflip = 0;
-	wcs->degout = 0;
-	wcs->ndec = 3;
 
 	/* Coordinate reference frame and equinox */
+	(void) wcstype (wcs, "RA---TAN", "DEC--TAN");
+	wcs->coorflip = 0;
 	wcseq (hstring,wcs);
+	wcsioset (wcs);
+	wcs->degout = 0;
+	wcs->ndec = 3;
 
 	/* Epoch of image (from observation date, if possible) */
 	if (hgetr8 (hstring, "MJD-OBS", &mjd))
@@ -910,10 +969,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	}
 
     else {
-	if (mchar == (char) 0)
-	    setwcserr ("WCSINIT: No image scale");
-	else
-	    setwcserr ("WCSINIT: No image scale for WCS %c", mchar);
+	setwcserr ("WCSINIT: No image scale");
 	wcsfree (wcs);
 	return (NULL);
 	}
@@ -921,6 +977,25 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     wcs->lin.crpix = wcs->crpix;
     wcs->lin.cdelt = wcs->cdelt;
     wcs->lin.pc = wcs->pc;
+
+    wcs->printsys = 1;
+    wcs->tabsys = 0;
+    wcs->linmode = 0;
+
+    /* Initialize special WCS commands */
+    setwcscom (wcs);
+
+    return (wcs);
+}
+
+
+/* Set coordinate system of image, input, and output */
+
+static void
+wcsioset (wcs)
+
+struct WorldCoor *wcs;
+{
     if (strlen (wcs->radecsys) == 0 || wcs->prjcode == WCS_LIN)
 	strcpy (wcs->radecsys, "LINEAR");
     wcs->syswcs = wcscsys (wcs->radecsys);
@@ -936,14 +1011,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     strcpy (wcs->radecin, wcs->radecsys);
     wcs->sysin = wcscsys (wcs->radecin);
     wcs->eqin = wcs->equinox;
-    wcs->printsys = 1;
-    wcs->tabsys = 0;
-    wcs->linmode = 0;
-
-    /* Initialize special WCS commands */
-    setwcscom (wcs);
-
-    return (wcs);
+    return;
 }
 
 
@@ -977,14 +1045,22 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     /* Set equinox from EQUINOX, EPOCH, or RADECSYS; default to 2000 */
     systring[0] = 0;
     eqstring[0] = 0;
-    if (mchar)
+    if (mchar) {
 	sprintf (eqkey, "EQUINOX%c", mchar);
-    else
+	sprintf (radeckey, "RADECSYS%c", mchar);
+	}
+    else {
 	strcpy (eqkey, "EQUINOX");
-    if (!hgets (hstring, eqkey, 16, eqstring))
-	hgets (hstring, "EQUINOX", 16, eqstring);
-    if (!hgetsc (hstring, "RADECSYS", mchar, 16, systring))
-	hgets (hstring, "RADECSYS", 16, systring);
+	sprintf (radeckey, "RADECSYS");
+	}
+    if (!hgets (hstring, eqkey, 31, eqstring)) {
+	if (hgets (hstring, "EQUINOX", 31, eqstring))
+	    strcpy (eqkey, "EQUINOX");
+	}
+    if (!hgets (hstring, radeckey, 31, systring)) {
+	if (hgets (hstring, "RADECSYS", 31, systring))
+	    sprintf (radeckey, "RADECSYS");
+	}
 
     if (eqstring[0] == 'J') {
 	wcs->equinox = atof (eqstring+1);
@@ -1054,7 +1130,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 
     /* Set coordinate system from keyword, if it is present */
     if (systring[0] == (char) 0)
-	 hgets (hstring, radeckey, 16, systring);
+	 hgets (hstring, radeckey, 31, systring);
     if (systring[0] != (char) 0) {
 	strcpy (wcs->radecsys,systring);
 	if (!eqhead) {
@@ -1152,4 +1228,14 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Mar 12 2002	Add LONPOLE as well as LONGPOLE for WCSLIB 2.8
  * Apr  3 2002	Implement hget8c() and hgetsc() to simplify code
  * Apr  3 2002	Add PVj_n projection constants in addition to PROJPn
+ * Apr 19 2002	Increase numeric keyword value length from 16 to 31
+ * Apr 19 2002	Fix bug which didn't set radecsys keyword name
+ * Apr 24 2002	If no WCS present for specified letter, return null
+ * Apr 26 2002	Implement WCSAXESa keyword as first choice for number of axes
+ * Apr 26 2002	Add wcschar and wcsname to WCS structure
+ * May  9 2002	Add radvel and zvel to WCS structure
+ * May 13 2002	Free everything which is allocated
+ * May 28 2002	Read 10 prj.p instead of maximum of 100
+ * May 31 2002	Fix bugs with PV reading
+ * May 31 2002	Initialize syswcs, sysin, sysout in wcsioset()
  */

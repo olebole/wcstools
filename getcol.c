@@ -1,5 +1,5 @@
 /* File getcol.c
- * April 12, 2002
+ * June 19, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -314,7 +314,7 @@ char **av;
 	    }
 
 	/* Operation */
-	else if (iscolop (*av)) {
+	else if (iscolop (*av) && isnum (*av+1)) {
 	    if (nop >= maxnop) {
 		maxnop = maxnop * 2;
 		op = (char **)realloc((void *)op, maxncond*sizeof(void *));
@@ -531,6 +531,8 @@ char	*lfile;		/* Name of file with lines to list */
     if (!strcmp (filename, "stdin"))
 	fd = stdin;
     else if (!(fd = fopen (filename, "r"))) {
+	if (verbose)
+	    fprintf (stderr, "*** Cannot read file %s\n", filename);
         return (-1);
 	}
 
@@ -1454,4 +1456,5 @@ void *pd1, *pd2;
  * Apr 12 2002	Add option to print median of selected columns added in quadrature
  * Apr 12 2002	Fix bug in computing median of filtered file
  * Apr 12 2002	Add -x option to set ignorable value
+ * Jun 19 2002	Fix bug that could read files as letter operations
  */

@@ -1,7 +1,30 @@
 /*** File libwcs/dateutil.c
- *** April 8, 2002
+ *** May 13, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
+ *** Copyright (C) 1999-2002
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+
+    This library is free software; you can redistribute it and/or
+    modify it under the terms of the GNU Lesser General Public
+    License as published by the Free Software Foundation; either
+    version 2 of the License, or (at your option) any later version.
+
+    This library is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+    Lesser General Public License for more details.
+    
+    You should have received a copy of the GNU Lesser General Public
+    License along with this library; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+    Correspondence concerning WCSTools should be addressed as follows:
+           Internet email: dmink@cfa.harvard.edu
+           Postal address: Doug Mink
+                           Smithsonian Astrophysical Observatory
+                           60 Garden St.
+                           Cambridge, MA 02138 USA
  */
 
 /* Date and time conversion routines using the following conventions:
@@ -1110,7 +1133,7 @@ doy2jd (year, doy)
 int	year;	/* Year */
 double	doy;	/* Day of year with fraction */
 {
-    double	dj, dj0;	/* Julian date */
+    double	dj0;	/* Julian date */
     double	date;	/* Date as yyyy.mmdd (returned) */
     double	time;	/* Time as hh.mmssxxxx (returned) */
 
@@ -1129,7 +1152,7 @@ doy2mjd (year, doy)
 int	year;	/* Year */
 double	doy;	/* Day of year with fraction */
 {
-    double	dj, dj0;	/* Julian date */
+    double	dj0;	/* Julian date */
     double	date;	/* Date as yyyy.mmdd (returned) */
     double	time;	/* Time as hh.mmssxxxx (returned) */
 
@@ -1150,7 +1173,7 @@ double	doy;	/* Day of year with fraction */
 {
     double dj;
     dj = doy2jd (year, doy);
-    return (jd2ts (dj));
+    return ((time_t)jd2ts (dj));
 }
 
 
@@ -1164,7 +1187,7 @@ double	doy;	/* Day of year with fraction */
 {
     double dj;
     dj = doy2jd (year, doy);
-    return (jd2tsi (dj));
+    return ((int)jd2tsi (dj));
 }
 
 
@@ -2075,7 +2098,7 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
     if (tstr == NULL)
 	tstr = strchr (string, 'Z');
     if (fstr != NULL && tstr != NULL && fstr > tstr)
-	fstr == NULL;
+	fstr = NULL;
     cstr = strchr (string,':');
 
     /* Original FITS date format: dd/mm/yy */
@@ -2726,4 +2749,5 @@ double	dnum, dm;
  * May 25 2001	Allow fraction of day in FITS date instead of time
  *
  * Apr  8 2002	Change all long declaration to time_t
+ * May 13 2002	Fix bugs found by lint
  */

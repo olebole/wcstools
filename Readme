@@ -14,7 +14,7 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.1.0 of the WCSTools package developed by Doug Mink
+This is version 3.1.1 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 
@@ -26,7 +26,7 @@ John Roll of SAO for (network access).
 
 Bill Joye and Eric Mandel of SAO, Allan Brighton of ESO, and Jean-Baptiste
 Marquette of the Institut d'Astrophysique de Paris helped debug the
-subroutine library.  Norm Grogan, Scott Kenyon, Susan Tokarz, and Dan
+subroutine library.  Norman Grogin, Scott Kenyon, Susan Tokarz, and Dan
 Koranyi of SAO and Andreas Jaunsen helped debug the astrometry programs.
 
 Details of updates are in the Versions file.
@@ -92,9 +92,11 @@ gettab	Extract values from tab table data base files
 i2f	Read two-dimensional IRAF image file and write FITS image file
 
 imcat	List catalog sources which should be found in the area of the sky
-	covered by a specific image.  Special catalogs supported include
-	the HST Guide Star Catalog, the USNO-A2.0 Catalog, the Tycho-2 Catalog,
-        the SAO Catalog, and the PPM Catalog.
+	covered by a specific image.
+	Specific catalogs supported include the GSC II, the 2MASS Point
+	Source Catalog, the HST Guide Star Catalog, the USNO-A2.0 Catalog,
+	the Tycho-2 Catalog, the PPM Catalog, the IRAS Point Source Catalog,
+	and the SAO Catalog.
 
 imextract Extract 1- or 2-dimensional images from 2- or 3-dimensional images
 
@@ -125,9 +127,11 @@ sethead	Set header keyword values in FITS or IRAF images.
 
 setpix	Set specified pixel(s) to specified value(s)
 
-scat	Search a source catalog given a region on the sky.  Special catalogs
-	supported include the HST Guide Star Catalog, the USNO A and ACT
-	Catalogs, the SAO Catalog, and the PPM Catalog.
+scat	Search a source catalog given a region on the sky.
+	Specific catalogs supported include the GSC II, the 2MASS Point
+	Source Catalog, the HST Guide Star Catalog, the USNO-A2.0 Catalog,
+	the Tycho-2 Catalog, the PPM Catalog, the IRAS Point Source Catalog,
+	and the SAO Catalog.
 
 sky2xy	Print image pixel coordinates for given sky coordinates on the
 	command line or in a list file. 
