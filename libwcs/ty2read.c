@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** June 27, 2001
+ *** September 11, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -34,8 +34,8 @@ static int ty2size();
 /* TY2READ -- Read Tycho 2 Star Catalog stars from CDROM */
 
 int
-ty2read (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,nstarmax,
-	 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog)
+ty2read (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,sortmag,
+	 nstarmax,gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
@@ -47,14 +47,14 @@ int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 or 2) */
 int	nstarmax;	/* Maximum number of stars to be returned */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
 double  *gpra;          /* Array of right ascension proper motions (returned) */
 double  *gpdec;         /* Array of declination proper motions (returned) */
-double	*gmag;		/* Array of visual magnitudes (returned) */
-double	*gmagb;		/* Array of blue magnitudes (returned) */
+double	**gmag;		/* Array of b and v magnitudes (returned) */
 int	*gtype;		/* Array of object types (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
@@ -77,11 +77,12 @@ int	nlog;		/* 1 for diagnostics */
     int verbose;
     int wrap;
     int ireg;
+    int magsort;
     int jstar, iw;
     int nrmax = MAXREG;
     int nstar,i, ntot;
     int istar, istar1, istar2, isp;
-    double num, ra, dec, rapm, decpm, mag, magb;
+    double num, ra, dec, rapm, decpm, mag, magb, magv;
     double rra1, rra2, rra2a, rdec1, rdec2;
     char cstr[32];
     char *str;
@@ -96,14 +97,14 @@ int	nlog;		/* 1 for diagnostics */
     if ((str = getenv("TY2_PATH")) != NULL ) {
 	if (!strncmp (str, "http:",5)) {
 	    return (webread (str,"tycho2",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nstarmax,
-			     gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+			     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
+			     gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	    }
 	}
     if (!strncmp (ty2cd, "http:",5)) {
 	return (webread (ty2cd,"tycho2",distsort,cra,cdec,dra,ddec,drad,
-			 sysout,eqout,epout,mag1,mag2,nstarmax,
-			 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
+			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	}
 
     wcscstr (cstr, sysout, eqout, epout);
@@ -123,6 +124,11 @@ int	nlog;		/* 1 for diagnostics */
 	mag2 = mag1;
 	mag1 = mag;
 	}
+
+   if (sortmag > 0 && sortmag < 3)
+	magsort = sortmag - 1;
+    else
+	magsort = 1;
 
     /* Allocate table for distances of stars from search center */
     if (nstarmax > ndist) {
@@ -204,7 +210,7 @@ int	nlog;		/* 1 for diagnostics */
 		 	 &ra, &dec, &rapm, &decpm);
 
 		/* Magnitude */
-		mag = star->xmag[0];
+		magv = star->xmag[0];
 		magb = star->xmag[1];
 
 		/* Spectral Type */
@@ -230,8 +236,8 @@ int	nlog;		/* 1 for diagnostics */
 			gdec[nstar] = dec;
 			gpra[nstar] = rapm;
 			gpdec[nstar] = decpm;
-			gmag[nstar] = mag;
-			gmagb[nstar] = magb;
+			gmag[1][nstar] = magv;
+			gmag[0][nstar] = magb;
 			/* gtype[nstar] = isp; */
 			gdist[nstar] = dist;
 			if (dist > maxdist) {
@@ -253,8 +259,8 @@ int	nlog;		/* 1 for diagnostics */
 			    gdec[farstar] = dec;
 			    gpra[farstar] = rapm;
 			    gpdec[farstar] = decpm;
-			    gmag[farstar] = mag;
-			    gmagb[farstar] = magb;
+			    gmag[0][farstar] = magb;
+			    gmag[1][farstar] = magv;
 			    /* gtype[farstar] = isp; */
 			    gdist[farstar] = dist;
 
@@ -276,16 +282,16 @@ int	nlog;		/* 1 for diagnostics */
 			gdec[faintstar] = dec;
 			gpra[faintstar] = rapm;
 			gpdec[faintstar] = decpm;
-			gmag[faintstar] = mag;
-			gmagb[faintstar] = magb;
+			gmag[1][faintstar] = magv;
+			gmag[0][faintstar] = magb;
 			/* gtype[faintstar] = isp; */
 			gdist[faintstar] = dist;
 			faintmag = 0.0;
 
 			/* Find new faintest star */
 			for (i = 0; i < nstarmax; i++) {
-			    if (gmag[i] > faintmag) {
-				faintmag = gmag[i];
+			    if (gmag[magsort][i] > faintmag) {
+				faintmag = gmag[magsort][i];
 				faintstar = i;
 				}
 			    }
@@ -294,7 +300,7 @@ int	nlog;		/* 1 for diagnostics */
 		    nstar++;
 		    if (nlog == 1)
 			fprintf (stderr,"TY2READ: %11.6f: %9.5f %9.5f %5.2f %5.2f\n",
-				 num,ra,dec,magb,mag);
+				 num,ra,dec,magb,magv);
 
 		    /* End of accepted star processing */
 		    }
@@ -337,7 +343,7 @@ int	nlog;		/* 1 for diagnostics */
 
 int
 ty2rnum (nstars,sysout,eqout,epout,
-	 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog)
+	 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
 int	nstars;		/* Number of stars to find */
 int	sysout;		/* Search coordinate system */
@@ -348,8 +354,7 @@ double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
 double  *gpra;          /* Array of right ascension proper motions (returned) */
 double  *gpdec;         /* Array of declination proper motions (returned) */
-double	*gmag;		/* Array of V magnitudes (returned) */
-double	*gmagb;		/* Array of B magnitudes (returned) */
+double	**gmag;		/* Array of B and V magnitudes (returned) */
 int	*gtype;		/* Array of object types (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
@@ -365,7 +370,7 @@ int	nlog;		/* 1 for diagnostics */
     int rnum;
     int jstar;
     int istar, istar1, istar2, nstar, isp;
-    double num, ra, dec, rapm, decpm, mag, magb;
+    double num, ra, dec, rapm, decpm, mag, magb, magv;
 
     if (nlog == 1)
 	verbose = 1;
@@ -376,12 +381,12 @@ int	nlog;		/* 1 for diagnostics */
     if ((str = getenv("TY2_PATH")) != NULL ) {
 	if (!strncmp (str, "http:",5)) {
 	    return (webrnum (str,"tycho2",nstars,sysout,eqout,epout,
-			     gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+			     gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	    }
 	}
     if (!strncmp (ty2cd, "http:",5)) {
 	return (webrnum (ty2cd,"tycho2",nstars,sysout,eqout,epout,
-			 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	}
 
     /* Allocate catalog entry buffer */
@@ -405,8 +410,8 @@ int	nlog;		/* 1 for diagnostics */
 		    fprintf (stderr,"TY2RNUM: Cannot read star %d\n", istar);
 		    gra[jstar] = 0.0;
 		    gdec[jstar] = 0.0;
-		    gmag[jstar] = 0.0;
-		    gmagb[jstar] = 0.0;
+		    gmag[0][jstar] = 0.0;
+		    gmag[1][jstar] = 0.0;
 		    gtype[jstar] = 0;
 		    }
 		else {
@@ -428,8 +433,8 @@ int	nlog;		/* 1 for diagnostics */
 		fprintf (stderr,"TY2RNUM: Cannot read star %d\n", istar);
 		gra[jstar] = 0.0;
 		gdec[jstar] = 0.0;
-		gmag[jstar] = 0.0;
-		gmagb[jstar] = 0.0;
+		gmag[0][jstar] = 0.0;
+		gmag[1][jstar] = 0.0;
 		gtype[jstar] = 0;
 		continue;
 		}
@@ -450,7 +455,7 @@ int	nlog;		/* 1 for diagnostics */
 		     &ra, &dec, &rapm, &decpm);
 
 	/* Magnitude */
-	mag = star->xmag[0];
+	magv = star->xmag[0];
 	magb = star->xmag[1];
 
 	/* Spectral Type */
@@ -462,8 +467,8 @@ int	nlog;		/* 1 for diagnostics */
 	gdec[jstar] = dec;
 	gpra[jstar] = rapm;
 	gpdec[jstar] = decpm;
-	gmag[jstar] = mag;
-	gmagb[jstar] = magb;
+	gmag[0][jstar] = magb;
+	gmag[1][jstar] = magv;
 	/* gtype[jstar] = isp; */
 	if (nlog == 1)
 	    fprintf (stderr,"TY2RNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %s  \n",
@@ -982,4 +987,6 @@ char	*filename;	/* Name of file for which to find size */
  * Jun 15 2001	In ty2reg(), add 0.1 to tabulated region limits
  * Jun 19 2001	When no region found, print RA and Dec limits used
  * Jun 27 2001	Allocate gdist only if needed
+ * Sep 11 2001	Change to single magnitude argeument
+ * Sep 11 2001	Add sort magnitude argument to uacread()
  */

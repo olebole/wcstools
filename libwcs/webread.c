@@ -1,5 +1,5 @@
 /*** File webread.c
- *** July 12, 2001
+ *** September 14, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -47,8 +47,8 @@ static char newline = 10;
 
 int
 webread (caturl,refcatname,distsort,cra,cdec,dra,ddec,drad,sysout,
-                 eqout,epout,mag1,mag2,nstarmax,
-		 unum,ura,udec,upra,updec,umag,umagb,utype,nlog)
+                 eqout,epout,mag1,mag2,sortmag,nstarmax,
+		 unum,ura,udec,upra,updec,umag,utype,nlog)
 
 char	*caturl;	/* URL of search engine */
 char	*refcatname;	/* Name of catalog (UAC, USAC, UAC2, USAC2) */
@@ -62,16 +62,16 @@ int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
 int	nstarmax;	/* Maximum number of stars to be returned */
 double	*unum;		/* Array of UA numbers (returned) */
 double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
 double	*upra;		/* Array of right ascension proper motions (returned) */
 double	*updec;		/* Array of declination proper motions (returned) */
-double	*umag;		/* Array of red magnitudes (returned) */
-double	*umagb;		/* Array of blue magnitudes (returned) */
+double	**umag;		/* Array of magnitudes (returned) */
 int	*utype;		/* Array of plate numbers (returned) */
-int	nlog;		/* Logging interval */
+int	nlog;		/* Logging interval (-1 to dump returned file) */
 {
     char srchurl[LINE];
     char temp[64];
@@ -90,8 +90,12 @@ int	nlog;		/* Logging interval */
 
     /* Set up query for scat used as server */
     if (!strncmp (caturl+lurl-4,"scat",4)) {
+
+	/* Center coordinates of search */
 	sprintf (srchurl, "?catalog=%s&ra=%.7f&dec=%.7f&system=%s&",
 		 refcatname, cra, cdec, cstr);
+
+	/* Search radius or box size */
 	if (drad != 0.0) {
 	    dtemp = drad * 3600.0;
 	    sprintf (temp, "radius=%.3f&",dtemp);
@@ -105,10 +109,22 @@ int	nlog;		/* Logging interval */
 	    sprintf (temp, "ddec=%.3f&",dtemp);
 	    strcat (srchurl, temp);
 	    }
+
+	/* Sort by magnitude or distance for cutoff */
+	if (sortmag > 0) {
+	    sprintf (temp,"sort=m$d&", sortmag);
+	    strcat (srchurl, temp);
+	    }
+	if (distsort)
+	    strcat (srchurl, "sort=distance&");
+
+	/* Magnitude limits */
 	if (mag1 != mag2) {
 	    sprintf (temp, "mag1=%.2f&mag=%.2f&",mag1,mag2);
 	    strcat (srchurl, temp);
 	    }
+
+	/* Epoch for coordinates */
 	if (epout != 0.0) {
 	    sprintf (temp, "epoch=%.5f&", epout);
 	    strcat (srchurl, temp);
@@ -118,7 +134,7 @@ int	nlog;		/* Logging interval */
 	}
 
     /* Set up query for ESO GSC server */
-    if (!strncmp (caturl+lurl-10,"gsc-server",10)) {
+    else if (!strncmp (caturl+lurl-10,"gsc-server",10)) {
 	ra = cra;
 	dec = cdec;
 	if (sysout != WCS_J2000)
@@ -143,7 +159,7 @@ int	nlog;		/* Logging interval */
 	}
 
     /* Set up query for ESO USNO A server */
-    if (!strncmp (caturl+lurl-12,"usnoa-server",12)) {
+    else if (!strncmp (caturl+lurl-12,"usnoa-server",12)) {
 	ra = cra;
 	dec = cdec;
 	if (sysout != WCS_J2000)
@@ -180,8 +196,14 @@ int	nlog;		/* Logging interval */
     /* Return if no data */
     if (tabtable->tabdata == NULL || strlen (tabtable->tabdata) == 0) {
 	if (nlog > 0)
-	    fprintf (stderr, "WEBRNUM: No data returned\n");
+	    fprintf (stderr, "WEBREAD: No data returned\n");
 	return (0);
+	}
+
+    /* Dump returned file and stop */
+    if (nlog < 0) {
+	fwrite  (tabtable->tabbuff, tabtable->lbuff, 1, stdout);
+	exit (0);
 	}
 
     /* Open returned Starbase table as a catalog */
@@ -193,14 +215,14 @@ int	nlog;		/* Logging interval */
 
     /* Extract desired sources from catalog  and return them */
     return (tabread (caturl,distsort,cra,cdec,dra,ddec,drad,
-	     sysout,eqout,epout,mag1,mag2,nstarmax,&starcat,
-	     unum,ura,udec,upra,updec,umag,umagb,utype,NULL,nlog));
+	     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,&starcat,
+	     unum,ura,udec,upra,updec,umag,utype,NULL,nlog));
 }
 
 
 int
 webrnum (caturl,refcatname,nnum,sysout,eqout,epout,
-	 unum,ura,udec,upra,updec,umag,umagb,utype,nlog)
+	 unum,ura,udec,upra,updec,umag,utype,nlog)
 
 char	*caturl;	/* URL of search engine */
 char	*refcatname;	/* Name of catalog (UAC, USAC, UAC2, USAC2) */
@@ -213,10 +235,9 @@ double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
 double	*upra;		/* Array of right ascensions proper motion (returned) */
 double	*updec;		/* Array of declination proper motions (returned) */
-double	*umag;		/* Array of red magnitudes (returned) */
-double	*umagb;		/* Array of blue magnitudes (returned) */
+double	**umag;		/* Array of magnitudes (returned) */
 int	*utype;		/* Array of spectral types (returned) */
-int	nlog;		/* Logging interval */
+int	nlog;		/* Logging interval (-1 to dump returned file) */
 {
     char srchurl[LINE];
     char numlist[LINE];
@@ -267,6 +288,12 @@ int	nlog;		/* Logging interval */
 	return (0);
 	}
 
+    /* Dump returned file and stop */
+    if (nlog < 0) {
+	fwrite  (tabtable->tabbuff, tabtable->lbuff, 1, stdout);
+	exit (0);
+	}
+
     /* Open returned Starbase table as a catalog */
     if ((starcat = tabcatopen (caturl, tabtable)) == NULL) {
 	if (nlog > 0)
@@ -276,7 +303,7 @@ int	nlog;		/* Logging interval */
 
     /* Extract desired sources from catalog  and return them */
     return (tabrnum (srchurl, nnum, sysout, eqout, epout, &starcat,
-         unum, ura, udec, upra, updec, umag, umagb, utype, NULL, nlog));
+         unum, ura, udec, upra, updec, umag, utype, NULL, nlog));
 }
 
 
@@ -287,12 +314,9 @@ char	*caturl;	/* URL of search engine */
 char	*srchpar;	/* Search engine parameters to append */
 int	nlog;		/* 1 to print diagnostic messages */
 {
-    File sok;
-    char *server;
-    char *buff;
     char *srchurl;
     int lsrch;
-    char *tabbuff, *newbuff;
+    char *tabbuff;
     int	lbuff = 0;
     char *tabnew, *tabline, *lastline;
     int formfeed = (char) 12;
@@ -329,6 +353,7 @@ int	nlog;		/* 1 to print diagnostic messages */
     /* Save pointers to file contents */
     tabtable->tabbuff = tabbuff;
     tabtable->tabheader = tabtable->tabbuff;
+    tabtable->lbuff = lbuff;
 
     /* Allocate space for and save catalog URL as filename */
     lname = strlen (caturl) + 2;
@@ -408,7 +433,6 @@ int	*lbuff;	/* Length of buffer (returned) */
     char *servurl;
     int	status;
     int lserver;
-    int nc;
     int chunked = 0;
     int lread;
     int lchunk, lline;
@@ -430,12 +454,15 @@ int	*lbuff;	/* Length of buffer (returned) */
     server[lserver] = (char) 0;
 
     /* Open port to HTTP server */
-    if ( !(sok = SokOpen(server, 80, XFREAD | XFWRITE)) )
+    if ( !(sok = SokOpen(server, 80, XFREAD | XFWRITE)) ) {
+	free (server);
 	return (NULL);
+	}
 
     /* Send HTTP command */
     fprintf(sok, "GET %s HTTP/1.1\nHost: %s\n\n", urlpath, server);
     fflush(sok);
+    free (server);
 
     fscanf(sok, "%*s %d %*s\n", &status);
 
@@ -465,7 +492,6 @@ int	*lbuff;	/* Length of buffer (returned) */
 
     /* Read table into buffer in memory a chunk at a time */
     tabbuff = NULL;
-    nc = 0;
     if (chunked) {
 	lchunk = 1;
 	lline = 1;
@@ -681,4 +707,8 @@ FileINetParse(file, port, adrinet)
  * Jun 20 2001	Move webopen() declaration to wcscat.h
  * Jun 28 2001	When reading chunked data, loop until nothing is read or [EOD]
  * Jul 12 2001	Break out web access into subroutine webbuff()
+ * Sep  7 2001	Free server in webbuff()
+ * Sep 11 2001	Pass array of magnitude vectors
+ * Sep 14 2001	Pass sort type, if distance or magnitude
+ * Sep 14 2001	Add option to print entire returned file if nlog < 0
  */

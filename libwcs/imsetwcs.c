@@ -1,5 +1,5 @@
 /*** File libwcs/imsetwcs.c
- *** August 2, 2001
+ *** September 13, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (based on UIowa code)
@@ -58,10 +58,7 @@ static int irafout = 0;			/* if 1, write X Y RA Dec out */
 static void PrintRes();
 extern void SetFITSPlate();
 static int magfit = 0;		/* If 1, write magnitude polynomial(s) */
-
-void
-setmagfit ()
-{magfit++; return;}
+static int sortmag = 1;			/* Magnitude by which to sort stars */
 
 /* Set the C* WCS fields in the input image header based on the given limiting
  * reference mag.
@@ -86,8 +83,7 @@ int	verbose;
     double *gdec;	/* Reference star declinations in degrees */
     double *gpra;	/* Reference star right ascension proper motions (deg)*/
     double *gpdec;	/* Reference star declination proper motions (deg) */
-    double *gm;		/* Reference star magnitudes */
-    double *gmb;	/* Reference star blue magnitudes */
+    double **gm;	/* Reference star magnitudes */
     double *gx;		/* Reference star image X-coordinates in pixels */
     double *gy;		/* Reference star image Y-coordinates in pixels */
     int *gc;		/* Reference object types */
@@ -116,6 +112,8 @@ int	verbose;
     int ngmax;
     int nbin, nbytes;
     int iterate, toliterate;
+    int nmagmax = 8;
+    int imag, magsort;
     int niter = 0;
     int recenter = recenter0;
     int ret = 0;
@@ -146,7 +144,6 @@ int	verbose;
     gpra = NULL;
     gpdec = NULL;
     gm = NULL;
-    gmb = NULL;
     gx = NULL;
     gy = NULL;
     gc = NULL;
@@ -190,7 +187,7 @@ int	verbose;
 	    fprintf (stderr, "Could not calloc %d bytes for gy\n",
 		     nbin*sizeof(double));
 	if (!(goff = (int *) calloc (nbin, sizeof(int))))
-	    fprintf (stderr, "Could not calloc %d bytes for gy\n",
+	    fprintf (stderr, "Could not calloc %d bytes for goff\n",
 		     nbin*sizeof(double));
 
 	SetFITSWCS (header, wcs);
@@ -272,20 +269,24 @@ getfield:
     if (!(gpdec = (double *) calloc (ngmax, sizeof(double))))
 	fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
 		 ngmax*sizeof(double));
-    if (!(gm = (double *) calloc (ngmax, sizeof(double))))
+    if (!(gm = (double **) calloc (nmag, sizeof(double *))))
 	fprintf (stderr, "Could not calloc %d bytes for gm\n",
-		 ngmax*sizeof(double));
-    if (!(gmb = (double *) calloc (ngmax, sizeof(double))))
-	fprintf (stderr, "Could not calloc %d bytes for gmb\n",
-		 ngmax*sizeof(double));
+		 nmag*sizeof(double *));
+    else {
+	for (imag = 0; imag < nmag; imag++) {
+	    if (!(gm[imag] = (double *) calloc (ngmax, sizeof(double))))
+		fprintf (stderr, "Could not calloc %d bytes for gm\n",
+		    ngmax*sizeof(double));
+	    }
+	}
     if (!(gc = (int *) calloc (ngmax, sizeof(int))))
 	fprintf (stderr, "Could not calloc %d bytes for gc\n",
 		 ngmax*sizeof(int));
 
     /* Find the nearby reference stars, in ra/dec */
     ng = ctgread (refcatname,refcat,0,cra,cdec,dra,ddec,0.0,refsys,refeq,
-		  refep,mag1,mag2,ngmax,&starcat,
-		  gnum,gra,gdec,gpra,gpdec,gm,gmb,gc,NULL,verbose*100);
+		  refep,mag1,mag2,sortmag,ngmax,&starcat,
+		  gnum,gra,gdec,gpra,gpdec,gm,gc,NULL,verbose*100);
     if (ng > ngmax)
 	nrg = ngmax;
     else
@@ -295,6 +296,11 @@ getfield:
     npfit = NParamFit (100);
     if (npfit < MINSTARS)
 	minstars = 1;
+
+    if (sortmag > 0 && sortmag <= nmag)
+	magsort = sortmag - 1;
+    else
+	magsort = 0;
 
     /* Project the reference stars into pixels on a plane at ra0/dec0 */
     if (!(gx = (double *) calloc (ngmax, sizeof(double))))
@@ -319,13 +325,14 @@ getfield:
 	}
 
     /* Sort reference stars by brightness (magnitude) */
-    MagSortStars (gnum, gra, gdec, gpra, gpdec, gx, gy, gm, gmb, gc, NULL, nrg);
+    MagSortStars (gnum, gra, gdec, gpra, gpdec, gx, gy, gm, gc, NULL, nrg, 
+		  nmag, sortmag);
 
     /* Note how reference stars were selected */
     if (ng > ngmax) {
 	if (verbose)
 	    fprintf (stderr,"Using %d / %d reference stars brighter than %.1f\n",
-		     nrg, ng, gm[nrg-1]);
+		     nrg, ng, gm[magsort][nrg-1]);
 	}
     else {
 	if (verbose) {
@@ -354,7 +361,7 @@ getfield:
 	    dec2str (dstr, 32, gdec[ig], 2);
 	    CatNum (refcat, nnfld, 0, gnum[ig], numstr);
 	    fprintf (stderr,"%s %s %s %5.2f %6.1f %6.1f\r",
-		    numstr,rstr,dstr,gm[ig],gx[ig],gy[ig]);
+		    numstr,rstr,dstr,gm[magsort][ig],gx[ig],gy[ig]);
 	    }
 	fprintf (stderr,"\n");
 	}
@@ -457,7 +464,7 @@ getfield:
 		ra2str (rastr, 32, ra, 3);
 		dec2str (decstr, 32, dec, 2);
 		xmag = -2.5 * log10 (sb[is]);
-		if (!is) mdiff = gm[0] - xmag;
+		if (!is) mdiff = gm[magsort][0] - xmag;
 		xmag = xmag + mdiff;
 		fprintf (stderr,"%4d %s %s %6.2f %6.1f %6.1f %d\r",
 			is+1, rastr, decstr, xmag, sx[is], sy[is], sp[is]);
@@ -585,7 +592,7 @@ match:
 	if (igs > -1) {
 	    gnum1[nmatch] = gnum[igs];
 	    if (gm != NULL)
-		gm1[nmatch] = gm[igs];
+		gm1[nmatch] = gm[magsort][igs];
 	    else
 		gm1[nmatch] = 0.0;
 	    gra1[nmatch] = gra[igs];
@@ -670,8 +677,13 @@ match:
     if (gdec) free ((char *)gdec);
     if (gpra) free ((char *)gpra);
     if (gpdec) free ((char *)gpdec);
-    if (gm) free ((char *)gm);
-    if (gmb) free ((char *)gmb);
+    if (gm) {
+	for (imag = 0; imag < nmag; imag++) {
+	    if (gm[imag])
+		free ((char *)gm[imag]);
+	    }
+	free ((char *)gm);
+	}
     if (gnum) free ((char *)gnum);
     if (gx) free ((char *)gx);
     if (gy) free ((char *)gy);
@@ -864,6 +876,7 @@ int	verbose;	/* True for more information */
 }
 
 /* Subroutines to initialize various parameters */
+
 void
 settolerance (tol)
 double tol;
@@ -956,6 +969,16 @@ setrecenter (recenter)
 int recenter;
 { recenter0 = recenter;
   return; }
+
+void
+setsortmag (imag)
+int imag;
+{ sortmag = imag;
+  return; }
+
+void
+setmagfit ()
+{magfit++; return;}
 
 /* Feb 29 1996	New program
  * Apr 30 1996	Add FOCAS-style catalog matching
@@ -1097,4 +1120,7 @@ int recenter;
  * Jul 24 2001	Add code to fit plate to catalog magnitude polynomial
  * Jul 25 2001	Add headings to residual table
  * Aug  2 2001	If fitting fewer than MINSTARS parameters, allow 1 match
+ * Sep 11 2001	Add magnitude selection
+ * Sep 11 2001	Use single, 2-D magnitude argument to ctgread()
+ * Sep 13 2001	Add reference catalog magnitude selection
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** July 13, 2001
+ *** September 12, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -406,6 +406,11 @@ double *dval;
 		*sstr = '/';
 		nval = sstr + 1;
 		year = (int) atof (nval);
+		if (day > 31) {
+		    yday = year;
+		    year = day;
+		    day = yday;
+		    }
 		if (year >= 0 && year <= 49)
 		    year = year + 2000;
 		else if (year < 100)
@@ -1366,4 +1371,5 @@ int set_saolib(hstring)
  * Jan 19 2000	Return 0 from isnum(), str2ra(), and str2dec() if string is null
  * Mar 30 2001	Fix header length finding algorithm in ksearch()
  * Jul 13 2001	Make val[] static int instead of int; drop unused variables
+ * Sep 12 2001	Read yyyy/mm/dd dates as well as dd/mm/yyyy
  */

@@ -1,5 +1,5 @@
 /* File immatch.c
- * July 25, 2001
+ * September 13, 2001
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -53,6 +53,7 @@ extern void setfitwcs();
 extern void setirafout();
 extern void setmagfit();
 extern void setimfrac();
+extern void setsortmag();
 
 main (ac, av)
 int ac;
@@ -68,7 +69,7 @@ char **av;
     FILE *flist;
     char *listfile;
     double x, y;
-    int i;
+    int i, imag;
     char *refcatn;
     char progpath[128];
     char *progname;		/* Name of program as executed */
@@ -181,6 +182,14 @@ char **av;
 	    ac--;
 	    setcenter (rastr, decstr);
     	    break;
+
+    	case 'k':	/* select magnitude to use from reference catalog */
+    	    if (ac < 2)
+    		usage (progname);
+    	    imag = atoi (*++av);
+	    setsortmag (imag);
+    	    ac--;
+	    break;
 
     	case 'l':	/* Left-right reflection before rotating */
 	    mirror = 1;
@@ -366,6 +375,7 @@ char	*progname;		/* Name of program being executed */
     fprintf(stderr,"  -h: maximum number of reference stars to use (10-200, default 25\n");
     fprintf(stderr,"  -i: minimum peak value for star in image (<0=-sigma)\n");
     fprintf(stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
+    fprintf(stderr,"  -k: magnitude to use (1 to nmag)\n");
     fprintf(stderr,"  -l: reflect left<->right before rotating and fitting\n");
     fprintf(stderr,"  -m: initial reference catalog magnitude limits\n");
     fprintf(stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
@@ -523,4 +533,5 @@ char *
  *
  * May 25 2001	Add GSC-ACT and 2MASS Point Source Catalogs
  * Jul 25 2001	Add -q option to fit image to catalog magnitude polynoimial
+ * Sep 13 2001	Add -k option to select magnitude by which to sort ref. cat.
  */

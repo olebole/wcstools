@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** June 7, 2001
+ *** September 11, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -62,7 +62,7 @@ int	nstarmax;	/* Maximum number of stars to be returned */
 double	*unum;		/* Array of UJ numbers (returned) */
 double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
-double	*umag;		/* Array of magnitudes (returned) */
+double	**umag;		/* Array of magnitudes (returned) */
 int	*uplate;	/* Array of plate numbers (returned) */
 int	verbose;	/* 1 for diagnostics */
 {
@@ -73,6 +73,7 @@ int	verbose;	/* 1 for diagnostics */
     double maxdist=0.0; /* Largest distance */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
+    int magsort=0;
     double *udist;	/* Array of distances to stars */
     int nz;		/* Number of input UJ zone files */
     int zlist[NZONES];	/* List of input UJ zones */
@@ -107,8 +108,8 @@ int	verbose;	/* 1 for diagnostics */
 	/* If pathname is a URL, search and return */
 	if (!strncmp (str, "http:",5)) {
 	    return (webread (str,"ujc",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nstarmax,
-			     unum,ura,udec,NULL,NULL,umag,NULL,uplate,verbose));
+			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
+			     unum,ura,udec,NULL,NULL,umag,uplate,verbose));
 	    }
 	else
 	    strcpy (cdu,str);
@@ -223,7 +224,7 @@ int	verbose;	/* 1 for diagnostics */
 				unum[nstar] = num;
 				ura[nstar] = ra;
 				udec[nstar] = dec;
-				umag[nstar] = mag;
+				umag[0][nstar] = mag;
 				uplate[nstar] = plate;
 				udist[nstar] = dist;
 				if (dist > maxdist) {
@@ -243,7 +244,7 @@ int	verbose;	/* 1 for diagnostics */
 				    unum[farstar] = num;
 				    ura[farstar] = ra;
 				    udec[farstar] = dec;
-				    umag[farstar] = mag;
+				    umag[0][farstar] = mag;
 				    uplate[farstar] = plate;
 				    udist[farstar] = dist;
 
@@ -263,15 +264,15 @@ int	verbose;	/* 1 for diagnostics */
 				unum[faintstar] = num;
 				ura[faintstar] = ra;
 				udec[faintstar] = dec;
-				umag[faintstar] = mag;
+				umag[0][faintstar] = mag;
 				uplate[faintstar] = plate;
 				udist[faintstar] = dist;
 				faintmag = 0.0;
 
 				/* Find new faintest star */
 				for (i = 0; i < nstarmax; i++) {
-				    if (umag[i] > faintmag) {
-					faintmag = umag[i];
+				    if (umag[0][i] > faintmag) {
+					faintmag = umag[0][i];
 					faintstar = i;
 					}
 				    }
@@ -339,7 +340,7 @@ double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	*unum;		/* Array of UA numbers to find */
 double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
-double	*umag;		/* Array of red magnitudes (returned) */
+double	**umag;		/* Array of red magnitudes (returned) */
 int	*uplate;	/* Array of plate numbers (returned) */
 int	nlog;		/* Logging interval */
 {
@@ -367,7 +368,7 @@ int	nlog;		/* Logging interval */
 	/* If pathname is a URL, search and return */
 	if (!strncmp (str, "http:",5)) {
 	    return (webrnum (str,"ujc",nnum,sysout,eqout,epout,
-			     unum,ura,udec,NULL,NULL,umag,NULL,uplate,nlog));
+			     unum,ura,udec,NULL,NULL,umag,uplate,nlog));
 	    }
 	else
 	    strcpy (cdu,str);
@@ -409,7 +410,7 @@ int	nlog;		/* Logging interval */
 		/* Save star position and magnitude in table */
 		ura[nfound] = ra;
 		udec[nfound] = dec;
-		umag[nfound] = mag;
+		umag[0][nfound] = mag;
 		uplate[nfound] = plate;
 
 		nfound++;

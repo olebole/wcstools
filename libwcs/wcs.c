@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** March 22, 2001
+ *** September 12, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -1874,7 +1874,10 @@ int	lstr;		/* Length of world coordinate string (returned) */
 	/* Label galactic coordinates */
 	if (wcs->sysout == WCS_GALACTIC) {
 	    if (lstr > 9 && wcs->printsys)
-		strcat (wcstring," galactic");
+		if (wcs->tabsys)
+		    strcat (wcstring,"	galactic");
+		else
+		    strcat (wcstring," galactic");
 	    }
 
 	/* Label ecliptic coordinates */
@@ -2658,4 +2661,5 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Feb 20 2001	Add recursion to wcs2pix() and pix2wcs() for dependent WCS's
  * Mar 20 2001	Add braces to avoid ambiguity in if/else groupings
  * Mar 22 2001	Free WCS structure in wcsfree even if it is not filled
+ * Sep 12 2001	Fix bug which omitted tab in pix2wcst() galactic coord output
  */

@@ -1,5 +1,5 @@
 /* File imwcs.c
- * May 25, 2001
+ * September 13, 2001
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -64,6 +64,7 @@ extern void setiteratet();
 extern void setrecenter();
 extern void setmatch();
 extern void setimfrac();
+extern void setsortmag();
 
 main (ac, av)
 int ac;
@@ -79,7 +80,7 @@ char **av;
     FILE *flist;
     char *listfile;
     double x, y;
-    int i;
+    int i, imag;
     char *refcatn;		/* Name of reference ctalog used */
     char *progname;		/* Name of program as executed */
 
@@ -193,6 +194,14 @@ char **av;
 	    ac--;
 	    setcenter (rastr, decstr);
     	    break;
+
+    	case 'k':	/* select magnitude to use from reference catalog */
+    	    if (ac < 2)
+    		usage (progname);
+    	    imag = atoi (*++av);
+	    setsortmag (imag);
+    	    ac--;
+	    break;
 
     	case 'l':	/* Left-right reflection before rotating */
 	    mirror = 1;
@@ -488,6 +497,7 @@ char    *progname;
     fprintf(stderr,"  -h: maximum number of reference stars to use (10-200, default %d\n", MAXSTARS);
     fprintf(stderr,"  -i: minimum peak value for star in image (<0=-sigma)\n");
     fprintf(stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
+    fprintf(stderr,"  -k: magnitude to use (1 to nmag)\n");
     fprintf(stderr,"  -l: reflect left<->right before rotating and fitting\n");
     fprintf(stderr,"  -m: reference catalog magnitude limit(s) (default none)\n");
     fprintf(stderr,"  -n: list of parameters to fit (12345678; negate for refinement)\n");

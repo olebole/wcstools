@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** July 12, 2001
+ *** September 7, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -972,8 +972,17 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	    }
 	}
 
+    /* Otherwise set coordinate system from equinox */
+    /* Systemless coordinates cannot be translated using b, j, or g commands */
+    else if (wcs->syswcs != WCS_NPOLE) {
+	if (ieq > 1980)
+	    strcpy (wcs->radecsys,"FK5");
+	else
+	    strcpy (wcs->radecsys,"FK4");
+	}
+
     /* Set galactic coordinates if GLON or GLAT are in C1TYPE */
-    else if (wcs->c1type[0] == 'G')
+    if (wcs->c1type[0] == 'G')
 	strcpy (wcs->radecsys,"GALACTIC");
     else if (wcs->c1type[0] == 'E')
 	strcpy (wcs->radecsys,"ECLIPTIC");
@@ -986,14 +995,6 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     else if (wcs->c1type[0] == 'L')
 	strcpy (wcs->radecsys,"LINEAR");
 
-    /* Otherwise set coordinate system from equinox */
-    /* Systemless coordinates cannot be translated using b, j, or g commands */
-    else if (wcs->syswcs != WCS_NPOLE) {
-	if (ieq > 1980)
-	    strcpy (wcs->radecsys,"FK5");
-	else
-	    strcpy (wcs->radecsys,"FK4");
-	}
     wcs->syswcs = wcscsys (wcs->radecsys);
 
     return;
@@ -1046,4 +1047,5 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Mar 20 2001	Compare mchar to (char)0, not null
  * Mar 21 2001	Move ic declaration into commented out code
  * Jul 12 2001	Read PROJPn constants into proj.p array instead of PVn
+ * Sep  7 2001	Set system to galactic or ecliptic based on CTYPE, not RADECSYS
  */

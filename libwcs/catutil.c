@@ -419,7 +419,7 @@ int	refcat;		/* Catalog code */
     else if (refcat == GSC || refcat == GSCACT)
 	strcpy (catid, "gsc_id    ");
     else if (refcat == GSC2)
-	strcpy (catid, "gsc2_id       ");
+	strcpy (catid, "gsc2_id        ");
     else if (refcat == USAC)
 	strcpy (catid,"usac_id       ");
     else if (refcat == USA1)
@@ -1918,7 +1918,7 @@ FILE	*fd;		/* Output file descriptor; none if NULL */
     if (gobj1 != NULL)
 	strcat (headline,"	object");
     if (printxy)
-	strcat (headline, "	X      	Y      ");
+	strcat (headline, "	x      	y      ");
     if (tabout) {
 	printf ("%s\n", headline);
 	if (fd != NULL)

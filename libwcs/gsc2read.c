@@ -1,5 +1,5 @@
 /*** File libwcs/gsc2read.c
- *** June 29, 2001
+ *** September 14, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -23,8 +23,8 @@ char gsc2url[64]="http://www-gsss.stsci.edu/cgi-bin/gsc22query.exe";
 /* GSC2READ -- Read GSC II catalog stars over the web */
 
 int
-gsc2read (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,nstarmax,
-	 gnum,gra,gdec,gmag,gmagb,gtype,nlog)
+gsc2read (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,
+	 sortmag,nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
@@ -36,13 +36,13 @@ int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
 int	nstarmax;	/* Maximum number of stars to be returned */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
-double	*gmag;		/* Array of F magnitudes (returned) */
-double	*gmagb;		/* Array of J magnitudes (returned) */
-int	*gtype;		/* Array of V and N magnitudes (returned) */
+double	**gmag;		/* 2-D array of magnitudes (returned) */
+int	*gtype;		/* Array (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
     double dist = 0.0;  /* Distance from search center in degrees */
@@ -64,6 +64,7 @@ int	nlog;		/* 1 for diagnostics */
     int verbose;
     int wrap;
     int ireg;
+    int magsort;
     int jstar, iw;
     int nstar,i, ntot;
     int istar, istar1, istar2, isp;
@@ -130,6 +131,12 @@ int	nlog;		/* 1 for diagnostics */
 	return (0);
 	}
 
+    /* Dump returned file and stop */
+    if (nlog < 0) {
+	fwrite  (tabtable->tabbuff, tabtable->lbuff, 1, stdout);
+	exit (0);
+	}
+
     /* Open returned Starbase table as a catalog */
     if ((starcat = tabcatopen (gsc2url, tabtable)) == NULL) {
 	if (nlog > 0)
@@ -146,8 +153,8 @@ int	nlog;		/* 1 for diagnostics */
 
     /* Extract desired sources from catalog  and return them */
     nstar = tabread (gsc2url,distsort,cra,cdec,dra,ddec,drad,
-	     sysout,eqout,epout,mag1,mag2,nstarmax,&starcat,
-	     gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,NULL,nlog);
+	     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,&starcat,
+	     gnum,gra,gdec,gpra,gpdec,gmag,gtype,NULL,nlog);
 
     tabcatclose (*starcat);
     starcat = NULL;
@@ -158,7 +165,7 @@ int	nlog;		/* 1 for diagnostics */
 /* GSC2RNUM -- Read GSC II stars across the web */
 
 int
-gsc2rnum (nstars,sysout,eqout,epout,gnum,gra,gdec,gmag,gmagb,gtype,nlog)
+gsc2rnum (nstars,sysout,eqout,epout,gnum,gra,gdec,gmag,gtype,nlog)
 
 int	nstars;		/* Number of stars to find */
 int	sysout;		/* Search coordinate system */
@@ -167,9 +174,8 @@ double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
-double	*gmag;		/* Array of F magnitudes (returned) */
-double	*gmagb;		/* Array of J magnitudes (returned) */
-int	*gtype;		/* Array of V and N magnitudes (returned) */
+double	**gmag;		/* Array of magnitudes (returned) */
+int	*gtype;		/* Array of codes (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
     char inpath[128];	/* Pathname for input region file */
@@ -197,4 +203,6 @@ int	nlog;		/* 1 for diagnostics */
 /* Jun 22 2001	New program
  * Jun 28 2001	Set proper motion to milliarcseconds/year
  * Jun 29 2001	Always set maximum magnitude to 99.9 to get Tycho-2 stars, too
+ * Sep 13 2001	Pass array of magnitudes, not vector
+ * Sep 14 2001	Add option to print entire returned file if nlog < 0
  */

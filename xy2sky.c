@@ -40,6 +40,7 @@ char **av;
     int degout = 0;
     int ndec = 3;
     int i;
+    int lsys;
     double x, y, mag;
     FILE *fd;
     char *ln, *listname;
@@ -212,24 +213,27 @@ char **av;
     if (tabtable) {
 	wcs->tabsys = 1;
 	if (!append) {
-	    printf ("IMAGE	%s\n", fn);
-	    printf ("RADECSYS	%s\n",wcs->radecout);
-	    printf ("EPOCH	%.4f\n",wcs->epoch);
+	    printf ("image	%s\n", fn);
+	    printf ("radecsys	%s\n",wcs->radecout);
+	    printf ("epoch	%.4f\n",wcs->epoch);
 	    if (wcs->sysout == WCS_B1950 || wcs->sysout == WCS_J2000)
 		printf ("ra         	dec         	");
 	    else if (wcs->sysout == WCS_GALACTIC)
-		printf ("glon        	glat        	");
+		printf ("glon     	glat     	");
 	    else if (wcs->sysout == WCS_ECLIPTIC)
-		printf ("elon        	elat        	");
+		printf ("elon     	elat     	");
 	    if (ncm)
 		printf ("mag   	");
 	    else
-		printf ("sys     ");
+		printf ("sys     	");
 	    printf ("x       	y       	");
 	    if (wcs->naxes > 2)
 		printf ("z    	");
 	    printf ("\n");
-	    printf ("------------	------------	");
+	    if (wcs->degout)
+		printf ("---------	---------	");
+	    else
+		printf ("------------	------------	");
 	    if (ncm)
 		printf ("------	");
 	    else
@@ -349,23 +353,43 @@ char **av;
 	    ac--;
 	    y = atof (*++av);
 	    if (pix2wcst (wcs, x, y, wcstring, lstr)) {
+		printf ("%s", wcstring);
+		lsys = strlen (wcs->radecout);
+		if (lsys < 8) {
+		    for (i = lsys; i < 8; i++)
+			printf (" ");
+		    }
 		if (wcs->sysout == WCS_ECLIPTIC) {
 		    sprintf(temp,"%.5f",wcs->epoch);
-		    strcat (wcstring, " ");
+		    strcat (wcstring, "	");
 		    strcat (wcstring, temp);
 		    }
 		if (tabtable) {
-		    printf ("%.3f	%.3f	", x, y);
+		    if (x >= 1000.0 || x <= -100.0)
+			printf ("	%.3f	", x);
+		    else if (x >= 100.0 || x <= -10.0)
+			printf ("	%.3f 	", x);
+		    else if (x >= 10.0 || x < 0.0)
+			printf ("	%.3f  	", x);
+		    else
+			printf ("	%.3f   	", x);
+		    if (y >= 1000.0 || y <= -100.0)
+			printf ("%.3f	", y);
+		    else if (y >= 100.0 || y <= -10.0)
+			printf ("%.3f 	", y);
+		    else if (y >= 10.0 || y < 0.0)
+			printf ("%.3f  	", y);
+		    else
+			printf ("%.3f   	", y);
 		    if (wcs->naxes > 2)
 			printf ("%2d	", face);
 		    }
 		else {
-		    printf ("%.3f %.3f ", x, y);
+		    printf ("  %.3f %.3f ", x, y);
 		    if (wcs->naxes > 2)
 			printf ("%2d ", face);
-		    printf ("-> ");
 		    }
-		printf ("%s\n", wcstring);
+		printf ("\n");
 		}
 	    av++;
 	    }
@@ -444,4 +468,5 @@ usage ()
  * Jul 19 2001	Add -c to specify column for magnitude coefficients
  * Jul 23 2001	Add code to calibrate magnitudes using polynomial from immatch
  * Jul 25 2001	Ignore lines with # in first column
+ * Sep 12 2001	Fix output to match column headings
  */

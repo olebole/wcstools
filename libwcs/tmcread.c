@@ -1,5 +1,5 @@
 /*** File libwcs/tmcread.c
- *** June 27, 2001
+ *** September 18, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -22,6 +22,7 @@
 char tmccd[64]="/data/mc4/2MASS";
 static double *gdist;	/* Array of distances to stars */
 static int ndist = 0;
+static int linedump = 0;
 
 static int tmcreg();
 static int tmcregn();
@@ -35,8 +36,8 @@ static int tmcsize();
 /* TMCREAD -- Read 2MASS point source catalog stars from CDROM */
 
 int
-tmcread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,nstarmax,
-	 gnum,gra,gdec,gmag,gmagb,gtype,nlog)
+tmcread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,sortmag,
+	 nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
@@ -48,12 +49,12 @@ int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
 int	nstarmax;	/* Maximum number of stars to be returned */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
-double	*gmag;		/* Array of visual magnitudes (returned) */
-double	*gmagb;		/* Array of blue magnitudes (returned) */
+double	**gmag;		/* Array of visual magnitudes (returned) */
 int	*gtype;		/* Array of object types (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
@@ -75,12 +76,14 @@ int	nlog;		/* 1 for diagnostics */
     int verbose;
     int wrap;
     int ireg;
+    int imag;
     int jstar, iw;
     int zone;
+    int magsort;
     int nrmax = MAXREG;
     int nstar,i, ntot;
-    int istar, istar1, istar2, isp;
-    double num, ra, dec, rapm, decpm, mag, magb;
+    int istar, istar1, istar2;
+    double num, ra, dec, rapm, decpm, mag;
     double rra1, rra2, rra2a, rdec1, rdec2;
     char cstr[32], rastr[32], decstr[32], numstr[32];
     char *str;
@@ -88,6 +91,8 @@ int	nlog;		/* 1 for diagnostics */
     ntot = 0;
     if (nlog > 0)
 	verbose = 1;
+    else if (nlog < 0)
+	linedump = 0;
     else
 	verbose = 0;
 
@@ -95,28 +100,28 @@ int	nlog;		/* 1 for diagnostics */
     if ((str = getenv("TMC_PATH")) != NULL ) {
 	if (!strncmp (str, "http:",5)) {
 	    return (webread (str,"tmcsc",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nstarmax,
-			     gnum,gra,gdec,NULL,NULL,gmag,gmagb,gtype,nlog));
+			     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
+			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	    }
 	}
     if (!strncmp (tmccd, "http:",5)) {
 	return (webread (tmccd,"tmcsc",distsort,cra,cdec,dra,ddec,drad,
-			 sysout,eqout,epout,mag1,mag2,nstarmax,
-			 gnum,gra,gdec,NULL,NULL,gmag,gmagb,gtype,nlog));
+			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
+			 gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
 
     wcscstr (cstr, sysout, eqout, epout);
 
     SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
 
-/* If RA range includes zero, split it in two */
+    /* If RA range includes zero, split it in two */
     wrap = 0;
     if (ra1 > ra2)
 	wrap = 1;
     else
 	wrap = 0;
 
-/* make mag1 always the smallest magnitude */
+    /* make mag1 always the smallest magnitude */
     if (mag2 < mag1) {
 	mag = mag2;
 	mag2 = mag1;
@@ -141,6 +146,11 @@ int	nlog;		/* 1 for diagnostics */
 
     nstar = 0;
     jstar = 0;
+
+    if (sortmag > 0 && sortmag < 4)
+	magsort = sortmag - 1;
+    else 
+	magsort = 0;
 
     rra1 = ra1;
     rra2 = ra2;
@@ -172,9 +182,9 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("epoch	%.3f\n", epout);
 	printf ("program	stmc 2.9.4, 26 June 2001, Doug Mink SAO\n");
 	printf ("2mass_id  	ra          	dec         	");
-	printf ("magj 	magh 	magk 	arcmin\n");
+	printf ("magj  	magh  	magk  	arcmin\n");
 	printf ("----------	------------	------------	");
-	printf ("-----	-----	-----	------\n");
+	printf ("------	------	------	------\n");
 	}
 
     /* If searching through RA = 0:00, split search in two */
@@ -225,8 +235,6 @@ int	nlog;		/* 1 for diagnostics */
 
 		/* Magnitude */
 		mag = star->xmag[0];
-		magb = star->xmag[1];
-		isp = (int) ((star->xmag[2] * 1000.0) + 0.5);
 
 		/* Compute distance from search center */
 		if (drad > 0 || distsort)
@@ -248,9 +256,13 @@ int	nlog;		/* 1 for diagnostics */
 			dec2str (decstr, 31, dec, 2);
 			dist = wcsdist (cra,cdec,ra,dec) * 60.0;
                         printf ("%s	%s	%s", numstr,rastr,decstr);
-			printf ("	%.3f	%.3f	%.3f	%.2f\n",
-				star->xmag[0],star->xmag[1],star->xmag[2],
-				dist);
+			for (imag = 0; imag < 3; imag++) {
+			    if (star->xmag[imag] > 100.0)
+				printf ("	%.3fL", star->xmag[imag]-100.0);
+			    else
+				printf ("	%.3f ", star->xmag[imag]);
+			    }
+			printf ("	%.2f\n", dist);
 			}
 
 		    /* Save star position and magnitudes in table */
@@ -258,9 +270,11 @@ int	nlog;		/* 1 for diagnostics */
 			gnum[nstar] = num;
 			gra[nstar] = ra;
 			gdec[nstar] = dec;
-			gmag[nstar] = mag;
-			gmagb[nstar] = magb;
-			gtype[nstar] = isp;
+			for (imag = 0; imag < 3; imag++) {
+			    if (gmag[imag] != NULL)
+				gmag[imag][nstar] = star->xmag[imag];
+			    }
+			gtype[nstar] = 0;
 			gdist[nstar] = dist;
 			if (dist > maxdist) {
 			    maxdist = dist;
@@ -279,9 +293,11 @@ int	nlog;		/* 1 for diagnostics */
 			    gnum[farstar] = num;
 			    gra[farstar] = ra;
 			    gdec[farstar] = dec;
-			    gmag[farstar] = mag;
-			    gmagb[farstar] = magb;
-			    gtype[farstar] = isp;
+			    for (imag = 0; imag < 3; imag++) {
+				if (gmag[imag] != NULL)
+				    gmag[imag][farstar] = star->xmag[imag];
+				}
+			    gtype[farstar] = 0;
 			    gdist[farstar] = dist;
 
 			    /* Find new farthest star */
@@ -300,16 +316,18 @@ int	nlog;		/* 1 for diagnostics */
 			gnum[faintstar] = num;
 			gra[faintstar] = ra;
 			gdec[faintstar] = dec;
-			gmag[faintstar] = mag;
-			gmagb[faintstar] = magb;
-			gtype[faintstar] = isp;
+			for (imag = 0; imag < 3; imag++) {
+			    if (gmag[imag] != NULL)
+				gmag[imag][faintstar] = star->xmag[imag];
+			    }
+			gtype[faintstar] = 0;
 			gdist[faintstar] = dist;
 			faintmag = 0.0;
 
 			/* Find new faintest star */
 			for (i = 0; i < nstarmax; i++) {
-			    if (gmag[i] > faintmag) {
-				faintmag = gmag[i];
+			    if (gmag[magsort][i] > faintmag) {
+				faintmag = gmag[magsort][i];
 				faintstar = i;
 				}
 			    }
@@ -317,8 +335,8 @@ int	nlog;		/* 1 for diagnostics */
 
 		    nstar++;
 		    if (nlog == 1)
-			fprintf (stderr,"TMCREAD: %11.6f: %9.5f %9.5f %5.2f %5.2f\n",
-				 num,ra,dec,magb,mag);
+			fprintf (stderr,"TMCREAD: %11.6f: %9.5f %9.5f %5.2f %5.2f %5.2f\n",
+				 num,ra,dec,star->xmag[0],star->xmag[1],star->xmag[2]);
 
 		    /* End of accepted star processing */
 		    }
@@ -361,7 +379,7 @@ int	nlog;		/* 1 for diagnostics */
 
 int
 tmcrnum (nstars,sysout,eqout,epout,
-	 gnum,gra,gdec,gmag,gmagb,gtype,nlog)
+	 gnum,gra,gdec,gmag,gtype,nlog)
 
 int	nstars;		/* Number of stars to find */
 int	sysout;		/* Search coordinate system */
@@ -370,8 +388,7 @@ double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
-double	*gmag;		/* Array of V magnitudes (returned) */
-double	*gmagb;		/* Array of B magnitudes (returned) */
+double	**gmag;		/* 2-D array of magnitudes (returned) */
 int	*gtype;		/* Array of object types (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
@@ -386,11 +403,13 @@ int	nlog;		/* 1 for diagnostics */
     int verbose;
     int rnum;
     int jstar;
-    int istar, istar1, istar2, nstar, isp;
-    double num, ra, dec, rapm, decpm, mag, magb, dstar;
+    int istar, istar1, istar2, nstar;
+    double num, ra, dec, rapm, decpm, mag, dstar;
 
-    if (nlog == 1)
+    if (nlog > 0)
 	verbose = 1;
+    else if (nlog < 0)
+	linedump = 1;
     else
 	verbose = 0;
 
@@ -398,12 +417,12 @@ int	nlog;		/* 1 for diagnostics */
     if ((str = getenv("TMC_PATH")) != NULL ) {
 	if (!strncmp (str, "http:",5)) {
 	    return (webrnum (str,"tycho2",nstars,sysout,eqout,epout,
-			     gnum,gra,gdec,NULL,NULL,gmag,gmagb,gtype,nlog));
+			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	    }
 	}
     if (!strncmp (tmccd, "http:",5)) {
 	return (webrnum (tmccd,"tycho2",nstars,sysout,eqout,epout,
-			 gnum,gra,gdec,NULL,NULL,gmag,gmagb,gtype,nlog));
+			 gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
 
     /* Allocate catalog entry buffer */
@@ -411,7 +430,7 @@ int	nlog;		/* 1 for diagnostics */
     star->num = 0.0;
     nstar = 0;
 
-/* Loop through star list */
+    /* Loop through star list */
     for (jstar = 0; jstar < nstars; jstar++) {
 	rnum = (int) (gnum[jstar] + 0.0000000001);
 	starcat = tmcopen (rnum);
@@ -425,8 +444,9 @@ int	nlog;		/* 1 for diagnostics */
 	    fprintf (stderr,"TMCRNUM: Cannot read star %d\n", istar);
 	    gra[jstar] = 0.0;
 	    gdec[jstar] = 0.0;
-	    gmag[jstar] = 0.0;
-	    gmagb[jstar] = 0.0;
+	    gmag[0][jstar] = 0.0;
+	    gmag[1][jstar] = 0.0;
+	    gmag[2][jstar] = 0.0;
 	    gtype[jstar] = 0;
 	    continue;
 	    }
@@ -444,21 +464,17 @@ int	nlog;		/* 1 for diagnostics */
 	wcsconp (sysref, sysout, eqref, eqout, epref, epout,
 		     &ra, &dec, &rapm, &decpm);
 
-	/* Magnitude */
-	mag = star->xmag[0];
-	magb = star->xmag[1];
-	isp = (int) ((star->xmag[2] * 1000.0) + 0.5);
-
 	/* Save star position and magnitude in table */
 	gnum[jstar] = num;
 	gra[jstar] = ra;
 	gdec[jstar] = dec;
-	gmag[jstar] = mag;
-	gmagb[jstar] = magb;
-	gtype[jstar] = isp;
+	gmag[0][jstar] = star->xmag[0];
+	gmag[1][jstar] = star->xmag[1];
+	gmag[2][jstar] = star->xmag[2];
+	gtype[jstar] = 0;
 	if (nlog == 1)
-	    fprintf (stderr,"TMCRNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %s  \n",
-		     num, ra, dec, magb, mag, star->isp);
+	    fprintf (stderr,"TMCRNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %5.2f\n",
+		     num, ra, dec, star->xmag[0],star->xmag[1],star->xmag[2]);
 
 	/* End of star loop */
 	}
@@ -771,7 +787,7 @@ int	istar;		/* Star sequence in 2MASS zone file */
 {
     char line[500];
     double regnum, starnum, multnum;
-    int nbskip, nbr;
+    int nbskip, nbr, iflag;
 
     /* Drop out if catalog pointer is not set */
     if (sc == NULL)
@@ -818,6 +834,20 @@ int	istar;		/* Star sequence in 2MASS zone file */
     /* Set K magnitude */
     st->xmag[2] = atof (line+91);
 
+    /* Add 100 to magnitude if it isn't a good one */
+    iflag = ((int) line[110]) - 48;
+    if (iflag < 1 || iflag == 3 || iflag > 4)
+	st->xmag[0] = st->xmag[0] + 100.0;
+    iflag = ((int) line[111]) - 48;
+    if (iflag < 1 || iflag == 3 || iflag > 4)
+	st->xmag[1] = st->xmag[1] + 100.0;
+    iflag = ((int) line[112]) - 48;
+    if (iflag < 1 || iflag == 3 || iflag > 4)
+	st->xmag[2] = st->xmag[2] + 100.0;
+
+    if (linedump)
+	printf ("%s\n",line);
+
     return (0);
 }
 
@@ -855,4 +885,8 @@ char	*filename;	/* Name of file for which to find size */
  * Jun 13 2001	Round star number up to avoid truncation problem
  * Jun 27 2001	Add code to print one entry at time if nstars < 1
  * Jun 27 2001	Allocate gdist only if larger array is needed
+ * Sep 11 2001	Return all three magnitudes
+ * Sep 17 2001	Print line from catalog if nlog is < 0
+ * Sep 17 2001	Flag bad magnitudes by adding 100 to them
+ * Sep 18 2001	Fix bug in magnitudes returned if not distance sorted
  */

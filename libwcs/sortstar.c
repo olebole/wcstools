@@ -1,5 +1,5 @@
 /*** File libwcs/sortstar.c
- *** July 20, 2001
+ *** September 18, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -14,6 +14,8 @@
  * int StarDecSort()		Return star with lowest declination
  * void XSortStars()		Sort stars based on X coordinate in image
  * int StarXSort()		Return star with lowest X coordinate
+ * void YSortStars()		Sort stars based on Y coordinate in image
+ * int StarYSort()		Return star with lowest Y coordinate
  */
 
 #include <stdlib.h>
@@ -29,8 +31,8 @@ typedef struct {
     double dec;		/* Declination */
     double pra;		/* Right Ascension proper motion */
     double pdec;	/* Declination proper motion */
-    double b;		/* First magnitude */
-    double r;		/* Second magnitude */
+    double m[11];	/* Magnitude */
+    double b;		/* flux */
     double x;		/* Image X coordinate */
     double y;		/* Image Y coordinate */
     int    c;		/* Other 4-byte information */
@@ -97,9 +99,9 @@ void *ssp1, *ssp2;
 
 
 /* MagSortStars -- Sort image stars by increasing magnitude */
-
+static int magsort = 0;
 void
-MagSortStars (sn, sra, sdec, spra, spdec, sx, sy, sm, sr, sc, sobj, ns)
+MagSortStars (sn, sra, sdec, spra, spdec, sx, sy, sm, sc, sobj, ns, nm, ms)
 
 double *sn;		/* Identifying number */
 double *sra;		/* Right Ascension */
@@ -108,27 +110,27 @@ double *spra;		/* Right Ascension proper motion */
 double *spdec;		/* Declination proper motion */
 double *sx;		/* Image X coordinate */
 double *sy;		/* Image Y coordinate */
-double *sm;		/* First magnitude */
-double *sr;		/* Second magnitude */
+double **sm;		/* Magnitudes */
 int    *sc;		/* Other 4-byte information */
 char   **sobj;		/* Object name */
 int	ns;		/* Number of stars to sort */
+int	nm;		/* Number of magnitudes per star */
+int	ms;		/* Magnitude by which to sort (1 to nmag) */
 
 {
     StarInfo *stars;
-    int i, hasnum, haspos, hasmagr, hasobj, haspm;
+    int i, j, hasnum, haspos, hasobj, haspm;
     static int StarMagSort ();
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
+
+    if (ms > 0 && ms <= nm)
+	magsort = ms - 1;
 
     if (sn == NULL)
 	hasnum = 0;
     else
 	hasnum = 1;
-    if (sr == NULL)
-	hasmagr = 0;
-    else
-	hasmagr = 1;
     if (sra != NULL && sdec != NULL)
 	haspos = 1;
     else
@@ -155,9 +157,8 @@ int	ns;		/* Number of stars to sort */
 	    }
 	stars[i].x = sx[i];
 	stars[i].y = sy[i];
-	stars[i].b = sm[i];
-	if (hasmagr)
-	    stars[i].r = sr[i];
+	for (j = 0; j < nm; j++)
+	    stars[i].m[j] = sm[j][i];
 	stars[i].c = sc[i];
 	if (hasobj)
 	    stars[i].obj = sobj[i];
@@ -178,9 +179,8 @@ int	ns;		/* Number of stars to sort */
 	    }
 	sx[i] = stars[i].x;
 	sy[i] = stars[i].y;
-	sm[i] = stars[i].b;
-	if (hasmagr)
-	    sr[i] = stars[i].r;
+	for (j = 0; j < nm; j++)
+	    sm[j][i] = stars[i].m[j];
 	sc[i] = stars[i].c;
 	if (hasobj)
 	    sobj[i] = stars[i].obj;
@@ -199,13 +199,32 @@ StarMagSort (ssp1, ssp2)
 void *ssp1, *ssp2;
 
 {
-    double b1 = ((StarInfo *)ssp1)->b;
-    double b2 = ((StarInfo *)ssp2)->b;
+    double b1 = ((StarInfo *)ssp1)->m[magsort];
+    double b2 = ((StarInfo *)ssp2)->m[magsort];
 
+    /* If sort magnitude is not set, check the others until one is found */
+    if (b1 > 100.0)
+	b1 = b1 - 100.0;
     if (b1 == 99.90)
-	b1 = ((StarInfo *)ssp1)->r;
+	b1 = ((StarInfo *)ssp1)->m[0];
+    if (b1 == 99.90)
+	b1 = ((StarInfo *)ssp1)->m[1];
+    if (b1 == 99.90)
+	b1 = ((StarInfo *)ssp1)->m[2];
+    if (b1 == 99.90)
+	b1 = ((StarInfo *)ssp1)->m[3];
+
+    /* If sort magnitude is not set, check the others until one is found */
+    if (b2 > 100.0)
+	b2 = b2 - 100.0;
     if (b2 == 99.90)
-	b2 = ((StarInfo *)ssp2)->r;
+	b2 = ((StarInfo *)ssp2)->m[0];
+    if (b2 == 99.90)
+	b2 = ((StarInfo *)ssp2)->m[1];
+    if (b2 == 99.90)
+	b2 = ((StarInfo *)ssp2)->m[2];
+    if (b2 == 99.90)
+	b2 = ((StarInfo *)ssp2)->m[3];
 
     if (b2 < b1)
 	return (1);
@@ -219,7 +238,7 @@ void *ssp1, *ssp2;
 /* Sort image stars by increasing right ascension */
 
 void
-RASortStars (sn, sra, sdec, spra, spdec, sx, sy, sm, sm1, sc, sobj, ns)
+RASortStars (sn, sra, sdec, spra, spdec, sx, sy, sm, sc, sobj, ns, nm)
 
 double *sn;		/* Identifying number */
 double *sra;		/* Right Ascension */
@@ -228,14 +247,14 @@ double *spra;		/* Right Ascension proper motion */
 double *spdec;		/* Declination proper motion */
 double *sx;		/* Image X coordinate */
 double *sy;		/* Image Y coordinate */
-double *sm;		/* First magnitude */
-double *sm1;		/* Second magnitude */
+double **sm;		/* Magnitudes */
 int    *sc;		/* Other 4-byte information */
 char   **sobj;		/* Object name */
 int	ns;		/* Number of stars to sort */
+int	nm;		/* Number of magnitudes per star */
 {
     StarInfo *stars;
-    int i, hasnum, hasmag1, hasobj, haspm;
+    int i, j, hasnum, hasobj, haspm;
     static int StarRASort ();
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
@@ -248,10 +267,6 @@ int	ns;		/* Number of stars to sort */
 	haspm = 1;
     else
 	haspm = 0;
-    if (sm1 == NULL)
-	hasmag1 = 0;
-    else
-	hasmag1 = 1;
     if (sobj == NULL)
 	hasobj = 0;
     else
@@ -268,9 +283,8 @@ int	ns;		/* Number of stars to sort */
 	    }
 	stars[i].x = sx[i];
 	stars[i].y = sy[i];
-	stars[i].b = sm[i];
-	if (hasmag1)
-	    stars[i].r = sm1[i];
+	for (j = 0; j < nm; j++)
+	    stars[i].m[j] = sm[j][i];
 	stars[i].c = sc[i];
 	if (hasobj)
 	    stars[i].obj = sobj[i];
@@ -289,9 +303,8 @@ int	ns;		/* Number of stars to sort */
 	    }
 	sx[i] = stars[i].x;
 	sy[i] = stars[i].y;
-	sm[i] = stars[i].b;
-	if (hasmag1)
-	    sm1[i] = stars[i].r;
+	for (j = 0; j < nm; j++)
+	    sm[j][i] = stars[i].m[j];
 	sc[i] = stars[i].c;
 	if (hasobj)
 	    sobj[i] = stars[i].obj;
@@ -325,7 +338,7 @@ void *ssp1, *ssp2;
 /* Sort image stars by increasing declination */
 
 void
-DecSortStars (sn, sra, sdec, spra, spdec, sx, sy, sm, sm1, sc, sobj, ns)
+DecSortStars (sn, sra, sdec, spra, spdec, sx, sy, sm, sc, sobj, ns, nm)
 
 double *sn;		/* Identifying number */
 double *sra;		/* Right Ascension */
@@ -334,14 +347,14 @@ double *spra;		/* Right Ascension proper motion */
 double *spdec;		/* Declination proper motion */
 double *sx;		/* Image X coordinate */
 double *sy;		/* Image Y coordinate */
-double *sm;		/* First magnitude */
-double *sm1;		/* Second magnitude */
+double **sm;		/* Magnitudes */
 int    *sc;		/* Other 4-byte information */
 char   **sobj;		/* Object name */
 int	ns;		/* Number of stars to sort */
+int	nm;		/* Number of magnitudes per star */
 {
     StarInfo *stars;
-    int i, hasnum, hasmag1, hasobj, haspm;
+    int i, j, hasnum, hasobj, haspm;
     static int StarDecSort ();
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
@@ -354,10 +367,6 @@ int	ns;		/* Number of stars to sort */
 	haspm = 1;
     else
 	haspm = 0;
-    if (sm1 == NULL)
-	hasmag1 = 0;
-    else
-	hasmag1 = 1;
     if (sobj == NULL)
 	hasobj = 0;
     else
@@ -374,9 +383,8 @@ int	ns;		/* Number of stars to sort */
 	    }
 	stars[i].x = sx[i];
 	stars[i].y = sy[i];
-	stars[i].b = sm[i];
-	if (hasmag1)
-	    stars[i].r = sm1[i];
+	for (j = 0; j < nm; j++)
+	    stars[i].m[j] = sm[j][i];
 	stars[i].c = sc[i];
 	if (hasobj)
 	    stars[i].obj = sobj[i];
@@ -395,9 +403,8 @@ int	ns;		/* Number of stars to sort */
 	    }
 	sx[i] = stars[i].x;
 	sy[i] = stars[i].y;
-	sm[i] = stars[i].b;
-	if (hasmag1)
-	    sm1[i] = stars[i].r;
+	for (j = 0; j < nm; j++)
+	    sm[j][i] = stars[i].m[j];
 	sc[i] = stars[i].c;
 	if (hasobj)
 	    sobj[i] = stars[i].obj;
@@ -431,7 +438,7 @@ void *ssp1, *ssp2;
 /* XSortStars -- Sort image stars by increasing X value */
 
 void
-XSortStars (sn, sra, sdec, spra, spdec, sx, sy, sm, sm1, sc, sobj, ns)
+XSortStars (sn, sra, sdec, spra, spdec, sx, sy, sm, sc, sobj, ns, nm)
 
 double *sn;		/* Identifying number */
 double *sra;		/* Right Ascension */
@@ -440,14 +447,14 @@ double *spra;		/* Right Ascension proper motion */
 double *spdec;		/* Declination proper motion */
 double *sx;		/* Image X coordinate */
 double *sy;		/* Image Y coordinate */
-double *sm;		/* First magnitude */
-double *sm1;		/* Second magnitude */
+double **sm;		/* Magnitudes */
 int    *sc;		/* Other 4-byte information */
 char   **sobj;		/* Object name */
 int	ns;		/* Number of stars to sort */
+int	nm;		/* Number of magnitudes per star */
 {
     StarInfo *stars;
-    int i, hasnum, hasmag1, hasobj, haspm;
+    int i, j, hasnum, hasobj, haspm;
     static int StarXSort ();
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
@@ -459,10 +466,6 @@ int	ns;		/* Number of stars to sort */
 	haspm = 1;
     else
 	haspm = 0;
-    if (sm1 == NULL)
-	hasmag1 = 0;
-    else
-	hasmag1 = 1;
     if (sobj == NULL)
 	hasobj = 0;
     else
@@ -479,9 +482,8 @@ int	ns;		/* Number of stars to sort */
 	    }
 	stars[i].x = sx[i];
 	stars[i].y = sy[i];
-	stars[i].b = sm[i];
-	if (hasmag1)
-	    stars[i].r = sm1[i];
+	for (j = 0; j < nm; j++)
+	    stars[i].m[j] = sm[j][i];
 	stars[i].c = sc[i];
 	if (hasobj)
 	    stars[i].obj = sobj[i];
@@ -500,9 +502,8 @@ int	ns;		/* Number of stars to sort */
 	    }
 	sx[i] = stars[i].x;
 	sy[i] = stars[i].y;
-	sm[i] = stars[i].b;
-	if (hasmag1)
-	    sm1[i] = stars[i].r;
+	for (j = 0; j < nm; j++)
+	    sm[j][i] = stars[i].m[j];
 	sc[i] = stars[i].c;
 	if (hasobj)
 	    sobj[i] = stars[i].obj;
@@ -532,6 +533,105 @@ void *ssp1, *ssp2;
 	return (0);
 }
 
+
+/* YSortStars -- Sort image stars by increasing Y value */
+
+void
+YSortStars (sn, sra, sdec, spra, spdec, sx, sy, sm, sc, sobj, ns, nm)
+
+double *sn;		/* Identifying number */
+double *sra;		/* Right Ascension */
+double *sdec;		/* Declination */
+double *spra;		/* Right Ascension proper motion */
+double *spdec;		/* Declination proper motion */
+double *sx;		/* Image X coordinate */
+double *sy;		/* Image Y coordinate */
+double **sm;		/* Magnitudes */
+int    *sc;		/* Other 4-byte information */
+char   **sobj;		/* Object name */
+int	ns;		/* Number of stars to sort */
+int	nm;		/* Number of magnitudes per star */
+{
+    StarInfo *stars;
+    int i, j, hasnum, hasobj, haspm;
+    static int StarYSort ();
+
+    stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
+    if (sn == NULL)
+	hasnum = 0;
+    else
+	hasnum = 1;
+    if (spra != NULL && spdec != NULL)
+	haspm = 1;
+    else
+	haspm = 0;
+    if (sobj == NULL)
+	hasobj = 0;
+    else
+	hasobj = 1;
+
+    for (i = 0; i < ns; i++) {
+	if (hasnum)
+	    stars[i].n = sn[i];
+	stars[i].ra = sra[i];
+	stars[i].dec = sdec[i];
+	if (haspm) {
+	    stars[i].pra = spra[i];
+	    stars[i].pdec = spdec[i];
+	    }
+	stars[i].x = sx[i];
+	stars[i].y = sy[i];
+	for (j = 0; j < nm; j++)
+	    stars[i].m[j] = sm[j][i];
+	stars[i].c = sc[i];
+	if (hasobj)
+	    stars[i].obj = sobj[i];
+	}
+
+    qsort ((char *)stars, ns, sizeof(StarInfo), StarYSort);
+
+    for (i = 0; i < ns; i++) {
+	if (hasnum)
+	    sn[i] = stars[i].n;
+	sra[i] = stars[i].ra;
+	sdec[i] = stars[i].dec;
+	if (haspm) {
+	    spra[i] = stars[i].pra;
+	    spdec[i] = stars[i].pdec;
+	    }
+	sx[i] = stars[i].x;
+	sy[i] = stars[i].y;
+	for (j = 0; j < nm; j++)
+	    sm[j][i] = stars[i].m[j];
+	sc[i] = stars[i].c;
+	if (hasobj)
+	    sobj[i] = stars[i].obj;
+	}
+
+    free ((char *)stars);
+    return;
+}
+
+
+/* StarYSort -- Order stars in decreasing Y value called by qsort */
+
+static int
+StarYSort (ssp1, ssp2)
+
+void *ssp1, *ssp2;
+
+{
+    double y1 = ((StarInfo *)ssp1)->y;
+    double y2 = ((StarInfo *)ssp2)->y;
+
+    if (y2 < y1)
+	return (1);
+    else if (y2 > y1)
+	return (-1);
+    else
+	return (0);
+}
+
 /* Jun 13 1996	New program
  * Oct 18 1996	Add sorting by X value
  * Nov 13 1996	Add second magnitude
@@ -555,4 +655,7 @@ void *ssp1, *ssp2;
  * May 22 2001	Add sort by declination
  * Jun 28 2001	In MagSort, if b mag is 99.9, try r mag
  * Jul 20 2001	In MagSort, allow for absence of ra and dec
+ * Sep 12 2001	Allow up to 11 magnitudes; add nm and magsort
+ * Sep 13 2001	Add YSortStars() to sort by Y coordinate
+ * Sep 18 2001	Subtract 100 in MagSort if magnitude is greater than 100
  */

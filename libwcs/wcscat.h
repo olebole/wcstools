@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * August 8, 2001
+ * September 14, 2001
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -95,11 +95,12 @@ char *webbuff();	/* Read URL into buffer across the web */
 #define SORT_RA		3	/* Sort output by right ascension */
 #define SORT_DEC	4	/* Sort output by declination */
 #define SORT_X		5	/* Sort output by image X coordinate */
+#define SORT_Y		6	/* Sort output by image Y coordinate */
 void XSortStars();
+void YSortStars();
 void RASortStars();
 void DecSortStars();
 void MagSortStars();
-void XSortStars();
 
 /* Data structure for SAO TDC ASCII and binary star catalog entries */
 struct Star {
@@ -119,6 +120,8 @@ struct Star {
     double parallax;	/* Parallax in arcseconds */
     double pxerror;	/* Parallax error in arcseconds */
     double radvel;	/* Radial velocity in km/sec, positive away */
+    double dist;	/* Distance from search center in arcseconds */
+    char *entry;	/* Line copied from input catalog */
     char objname[32];	/* Object name */
     int peak;		/* Peak flux per pixel in star image */
 };
@@ -238,6 +241,7 @@ struct TabTable {
     char **colname;	/* Column names */
     int *lcol;		/* Lengths of column header names */
     int *lcfld;		/* Number of columns in field (hyphens) */
+    int lbuff;		/* Number of bytes in entire tab table */
 };
 
 /* Subroutines for extracting tab table information */
@@ -393,4 +397,7 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * Jul 23 2001	Add ageti4() and agetr8()
  * Jul 24 2001	Add polfit() and polcomp()
  * Aug  8 2001	Add keyrv and option to set mprop to 2 to include rv/cz
+ * Sep 10 2001	Add entry line and distance from search center to Star
+ * Sep 13 2001	Add YSortStars() and SORT_Y
+ * Sep 14 2001	Add lbuff to TabTable structure
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** June 27, 2001
+ *** September 11, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -64,7 +64,7 @@ int	nstarmax;	/* Maximum number of stars to be returned */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
-double	*gmag;		/* Array of magnitudes (returned) */
+double	**gmag;		/* Array of magnitudes (returned) */
 int	*gtype;		/* Array of object types (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
@@ -75,6 +75,7 @@ int	nlog;		/* 1 for diagnostics */
     double maxdist=0.0; /* Largest distance */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
+    int magsort=0;
     int nreg;		/* Number of input FITS tables files */
     double xnum;		/* Guide Star number */
     int rlist[100];	/* List of input FITS tables files */
@@ -111,26 +112,26 @@ int	nlog;		/* 1 for diagnostics */
     if (refcat == GSC && (str = getenv("GSC_NORTH")) != NULL) {
 	if (!strncmp (str, "http:",5)) {
 	    return (webread (str,"gsc",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nstarmax,gnum,gra,
-			     gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
+			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	    }
 	}
     if (refcat == GSCACT && (str = getenv("GSCACT_NORTH")) != NULL) {
 	if (!strncmp (str, "http:",5)) {
 	    return (webread (str,"gscact",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nstarmax,gnum,gra,
-			     gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
+			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	    }
 	}
     if (!strncmp (cdn, "http:",5)) {
 	if (refcat == GSCACT)
 	    return (webread (cdn,"gscact",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nstarmax,gnum,gra,
-			     gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
+			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	else
 	    return (webread (cdn,"gsc",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nstarmax,gnum,gra,
-			     gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
+			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
 
     if (ltab < 1) {
@@ -244,7 +245,7 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("program        scat 2.9.4, 27 June 2001, Doug Mink SAO\n");
 	CatID (catid, refcat);
 	printf ("%s	ra          	dec         	", catid);
-	printf ("magv 	class	band	n	arcmin\n");
+	printf ("magv 	ulass	band	n	arcmin\n");
 	printf ("---------	------------	------------    ");
 	printf ("-----	-----	----	-	------\n");
 	}
@@ -343,7 +344,7 @@ int	nlog;		/* 1 for diagnostics */
 			dist = wcsdist (cra,cdec,ra,dec) * 60.0;
 			printf ("%s	%s	%s", numstr,rastr,decstr);
 			printf ("	%.2f	%d	%d	%d	%.2f\n",
-				mag, class, band, npos, dist);
+				mag, class-(band*100)-(npos*10000), band, npos, dist);
 			}
 
 		/* Save star position in table */
@@ -351,7 +352,7 @@ int	nlog;		/* 1 for diagnostics */
 			gnum[nstar] = xnum;
 			gra[nstar] = ra;
 			gdec[nstar] = dec;
-			gmag[nstar] = mag;
+			gmag[0][nstar] = mag;
 			gtype[nstar] = class;
 			gdist[nstar] = dist;
 			if (dist > maxdist) {
@@ -371,7 +372,7 @@ int	nlog;		/* 1 for diagnostics */
 			    gnum[farstar] = xnum;
 			    gra[farstar] = ra;
 			    gdec[farstar] = dec;
-			    gmag[farstar] = mag;
+			    gmag[0][farstar] = mag;
 			    gtype[farstar] = class;
 			    gdist[farstar] = dist;
 			    maxdist = 0.0;
@@ -391,15 +392,15 @@ int	nlog;		/* 1 for diagnostics */
 			gnum[faintstar] = xnum;
 			gra[faintstar] = ra;
 			gdec[faintstar] = dec;
-			gmag[faintstar] = mag;
+			gmag[0][faintstar] = mag;
 			gtype[faintstar] = class;
 			gdist[faintstar] = dist;
 			faintmag = 0.0;
 
 		    /* Find new faintest star */
 			for (i = 0; i < nstarmax; i++) {
-			    if (gmag[i] > faintmag) {
-				faintmag = gmag[i];
+			    if (gmag[0][i] > faintmag) {
+				faintmag = gmag[0][i];
 				faintstar = i;
 				}
 			    }
@@ -484,7 +485,7 @@ double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
-double	*gmag;		/* Array of magnitudes (returned) */
+double	**gmag;		/* Array of magnitudes (returned) */
 int	*gtype;		/* Array of object types (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
@@ -513,22 +514,22 @@ int	nlog;		/* 1 for diagnostics */
     if (refcat == GSC && (str = getenv("GSC_NORTH")) != NULL) {
 	if (!strncmp (str, "http:",5)) {
 	    return (webrnum (str,"gsc",nstars,sysout,eqout,epout,
-			     gnum,gra,gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	    }
 	}
     if (refcat == GSCACT && (str = getenv("GSCACT_NORTH")) != NULL) {
 	if (!strncmp (str, "http:",5)) {
 	    return (webrnum (str,"gscact",nstars,sysout,eqout,epout,
-			     gnum,gra,gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	    }
 	}
     if (!strncmp (cdn, "http:",5)) {
 	if (refcat == GSCACT)
 	    return (webrnum (cdn,"gscact",nstars,sysout,eqout,epout,
-			     gnum,gra,gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	else
 	    return (webrnum (cdn,"gsc",nstars,sysout,eqout,epout,
-			     gnum,gra,gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
 
     if (ltab < 1) {
@@ -643,7 +644,7 @@ int	nlog;		/* 1 for diagnostics */
 		/* Save star position in table */
 		gra[nstar] = ra;
 		gdec[nstar] = dec;
-		gmag[nstar] = mag;
+		gmag[0][nstar] = mag;
 		gtype[nstar] = class;
 
 		nstar++;
@@ -1113,4 +1114,5 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Jun 27 2001  Print stars as found in gscread() if nstarmax < 1
  * Jun 27 2001	Allocate distance array only if larger one is needed
  * Jun 27 2001	Add gscfree() to free table buffer and distance array
+ * Sep 11 2001	Use single magnitude argument to gscread() and webread()
  */

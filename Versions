@@ -1,3 +1,15 @@
+Version 3.0.4 (September 19, 2001)
+imwcs, imcat, scat, immatch: rewritten to deal with arbitrary numbers of mags
+imcat, scat: -k command added to select magnitude by which to sort
+imcat: -s command now allows sorting by RA, Dec, and Mag, X, and Y
+imwcs, immatch: -k command selects magnitude for reference star selection
+hget.c: Decode yyyy/mm/dd as a date string in hgetdate()
+webread.c: free all memory which is allocated
+tmcread.c: flag magnitudes with rd_flag indicating high uncertainty
+sortstar.c: modified to handle arbitrary numbers of magnitudes and specified
+            sort magnitude
+*read.c: arguments include single 2-D magnitude array and sort magnitude
+
 Version 3.0.3 (August 24, 2001
 sethead: Fix bug which failed to assign FITS or IRAF filenames to keywords
 scat: Pass on velocities from TDC ASCII and Starbase catalogs

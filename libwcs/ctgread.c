@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** August 24, 2001
+ *** September 11, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -40,8 +40,8 @@ static char newline = 10;
 
 int
 ctgread (catfile, refcat, distsort, cra, cdec, dra, ddec, drad,
-	 sysout, eqout, epout, mag1, mag2, nsmax, starcat,
-	 tnum, tra, tdec, tpra, tpdec, tmag, tmagb, tc, tobj, nlog)
+	 sysout, eqout, epout, mag1, mag2, sortmag, nsmax, starcat,
+	 tnum, tra, tdec, tpra, tpdec, tmag, tc, tobj, nlog)
 
 char	*catfile;	/* Name of reference star catalog file */
 int	refcat;		/* Catalog code from wcctg.h */
@@ -62,8 +62,7 @@ double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
 double	*tpra;		/* Array of right ascension proper motions (returned) */
 double	*tpdec;		/* Array of declination proper motions (returned) */
-double	*tmag;		/* Array of magnitudes (returned) */
-double	*tmagb;		/* Array of second magnitudes (returned) */
+double	**tmag;		/* 2-D array of magnitudes (returned) */
 int	*tc;		/* Array of fluxes (returned) */
 char	**tobj;		/* Array of object names (returned) */
 int	nlog;
@@ -86,10 +85,12 @@ int	nlog;
     int nameobj;	/* Save object name if 1, else do not */
     int lname;
     int wrap;
+    int imag;
     int jstar;
     int nstar;
+    int magsort;
     double ra,dec,rapm,decpm;
-    double mag, magb;
+    double mag;
     double num;
     int peak, i;
     int istar;
@@ -106,61 +107,61 @@ int	nlog;
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == GSC2)
             nstar = gsc2read (cra,cdec,dra,ddec,drad,distsort,
-			     sysout,eqout,epout,mag1,mag2,nsmax,
-			     tnum,tra,tdec,tmag,tmagb,tc,nlog);
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
+			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
                  refcat == UAC  || refcat == UA1  || refcat == UA2)
             nstar = uacread (catfile,distsort,
                           cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
-                          mag2,nsmax,tnum,tra,tdec,tmag,tmagb,tc,nlog);
+                          mag2,sortmag,nsmax,tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == UJC || refcat == USNO)
             nstar = ujcread (catfile,cra,cdec,dra,ddec,drad,distsort,
 			     sysout,eqout,epout,mag1,mag2,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == TMPSC)
             nstar = tmcread (cra,cdec,dra,ddec,drad,distsort,
-			     sysout,eqout,epout,mag1, mag2,nsmax,
-			     tnum,tra,tdec,tmag,tmagb,tc,nlog);
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
+			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == ACT)
             nstar = actread (cra,cdec,dra,ddec,drad,distsort,
-			     sysout,eqout,epout,mag1, mag2,nsmax,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,nlog);
+			     sysout,eqout,epout,mag1, mag2,sortmag,nsmax,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == TYCHO2)
             nstar = ty2read (cra,cdec,dra,ddec,drad,distsort,
-			     sysout,eqout,epout,mag1,mag2,nsmax,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,nlog);
+			     sysout,eqout,epout,mag1,mag2,nsmax,sortmag,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == SAO)
             nstar = binread ("SAOra", distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == PPM)
             nstar = binread ("PPMra",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == IRAS)
             nstar = binread ("IRAS", distsort, cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == TYCHO)
             nstar = binread ("tychora", distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == HIP)
             nstar = binread ("hipparcosra", distsort, cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == BSC)
             nstar = binread ("BSC5ra", distsort, cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == BINCAT)
             nstar = binread (catfile, distsort, cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,tobj,nlog);
         else if (refcat == TABCAT || refcat == WEBCAT)
             nstar = tabread (catfile, distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,tobj,nlog);
 	return (nstar);
 	}
 
@@ -174,9 +175,9 @@ int	nlog;
 
     wcscstr (cstr, sysout, eqout, epout);
 
-    SearchLim (cra, cdec, dra, ddec, sysout, &ra1, &ra2, &dec1, &dec2, verbose);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
 
-/* If RA range includes zero, split it in two */
+    /* If RA range includes zero, split it in two */
     wrap = 0;
     if (ra1 > ra2)
 	wrap = 1;
@@ -201,7 +202,7 @@ int	nlog;
 	wrap = 0;
 	}
 
-/* mag1 is always the smallest magnitude */
+    /* mag1 is always the smallest magnitude */
     if (mag2 < mag1) {
 	mag = mag2;
 	mag2 = mag1;
@@ -212,7 +213,7 @@ int	nlog;
     star = (struct Star *) calloc (1, sizeof (struct Star));
     star->num = 0.0;
 
-/* Logging interval */
+    /* Logging interval */
     tdist = (double *) malloc (nsmax * sizeof (double));
 
     /* Open catalog file */
@@ -265,15 +266,7 @@ int	nlog;
 		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 	    }
 
-	mag = star->xmag[0];
-	if (sc->nmag > 1)
-	    magb = star->xmag[1];
-	if (sc->entrv > 0) {
-	    if (sc->nmag > 1)
-		magb = star->radvel;
-	    else
-		mag = star->radvel;
-	    }
+	mag = star->xmag[magsort];
 
 	peak = 0;
 	if (drad > 0 || distsort) {
@@ -305,9 +298,10 @@ int	nlog;
 		tnum[nstar] = num;
 		tra[nstar] = ra;
 		tdec[nstar] = dec;
-		tmag[nstar] = mag;
-		if (sc->nmag > 1)
-		    tmagb[nstar] = magb;
+		for (imag = 0; imag < sc->nmag; imag++) {
+		    if (tmag[imag] != NULL)
+			tmag[imag][nstar] = star->xmag[imag];
+		    }
 		if (sc->sptype)
 		    tc[nstar] = isp;
 		tdist[nstar] = dist;
@@ -333,9 +327,10 @@ int	nlog;
 		    tnum[farstar] = num;
 		    tra[farstar] = ra;
 		    tdec[farstar] = dec;
-		    tmag[farstar] = mag;
-		    if (sc->nmag > 1)
-			tmagb[farstar] = magb;
+		    for (imag = 0; imag < sc->nmag; imag++) {
+			if (tmag[imag] != NULL)
+			    tmag[imag][farstar] = star->xmag[imag];
+			}
 		    if (sc->sptype)
 			tc[farstar] = isp;
 		    tdist[farstar] = dist;
@@ -363,9 +358,10 @@ int	nlog;
 		tnum[faintstar] = num;
 		tra[faintstar] = ra;
 		tdec[faintstar] = dec;
-		tmag[faintstar] = mag;
-		if (sc->nmag > 1)
-		    tmagb[faintstar] = magb;
+		for (imag = 0; imag < sc->nmag; imag++) {
+		    if (tmag[imag] != NULL)
+			tmag[imag][faintstar] = star->xmag[imag];
+		    }
 		if (sc->sptype)
 		    tc[faintstar] = isp;
 		tdist[faintstar] = dist;
@@ -380,8 +376,8 @@ int	nlog;
 
 		/* Find new faintest star */
 		for (i = 0; i < nsmax; i++) {
-		    if (tmag[i] > faintmag) {
-			faintmag = tmag[i];
+		    if (tmag[magsort][i] > faintmag) {
+			faintmag = tmag[magsort][i];
 			faintstar = i;
 			}
 		    }
@@ -423,7 +419,7 @@ int	nlog;
 
 int
 ctgrnum (catfile,refcat, nnum,sysout,eqout,epout,match,starcat,
-	 tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog)
+	 tnum,tra,tdec,tpra,tpdec,tmag,tc,tobj,nlog)
 
 char	*catfile;	/* Name of reference star catalog file */
 int	refcat;		/* Catalog code from wcctg.h */
@@ -438,8 +434,7 @@ double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
 double	*tpra;		/* Array of right ascension proper motions (returned) */
 double	*tpdec;		/* Array of declination proper motions (returned) */
-double	*tmag;		/* Array of magnitudes (returned) */
-double	*tmagb;		/* Array of second magnitudes (returned) */
+double	**tmag;		/* 2-D Array of magnitudes (returned) */
 int	*tc;		/* Array of fluxes (returned) */
 char	**tobj;		/* Array of object names (returned) */
 int	nlog;
@@ -457,6 +452,7 @@ int	nlog;
     struct StarCat *sc;
     struct Star *star;
     char *objname;
+    int imag;
     int lname;
     int starfound;
     int nameobj;
@@ -470,47 +466,47 @@ int	nlog;
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == GSC2)
 	    nstar = gsc2rnum (nnum,sysout,eqout,epout,
-			      tnum,tra,tdec,tmag,tmagb,tc,nlog);
+			      tnum,tra,tdec,tmag,tc,nlog);
 	else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 	         refcat == UAC  || refcat == UA1  || refcat == UA2)
 	    nstar = uacrnum (catfile,nnum,sysout,eqout,epout,
-			     tnum,tra,tdec,tmag,tmagb,tc,nlog);
+			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == UJC || refcat == USNO)
 	    nstar = ujcrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
 	else if (refcat == TMPSC)
 	    nstar = tmcrnum (nnum,sysout,eqout,epout,
-			     tnum,tra,tdec,tmag,tmagb,tc,nlog);
+			     tnum,tra,tdec,tmag,tc,nlog);
 	else if (refcat == SAO)
 	    nstar = binrnum ("SAO",nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
 	else if (refcat == PPM)
 	    nstar = binrnum ("PPM",nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
 	else if (refcat == IRAS)
 	    nstar = binrnum ("IRAS",nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
 	else if (refcat == TYCHO)
 	    nstar = binrnum ("tycho",nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
 	else if (refcat == HIP)
 	    nstar = binrnum ("hipparcos",nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
 	else if (refcat == BSC)
 	    nstar = binrnum ("BSC5",nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
 	else if (refcat == ACT)
 	    nstar = actrnum (nnum,sysout,eqout,epout,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
 	else if (refcat == TYCHO2)
 	    nstar = ty2rnum (nnum,sysout,eqout,epout,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
 	else if (refcat == TABCAT || refcat == WEBCAT)
 	    nstar = tabrnum (catfile,nnum,sysout,eqout,epout,starcat,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,tobj,nlog);
 	else if (refcat == BINCAT)
 	    nstar = binrnum (catfile,nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,tobj,nlog);
 	return (nstar);
 	}
 
@@ -594,14 +590,9 @@ int	nlog;
 	    tnum[jnum] = star->num;
 	    tra[jnum] = ra;
 	    tdec[jnum] = dec;
-	    tmag[jnum] = star->xmag[0];
-	    if (sc->nmag > 1)
-		tmagb[jnum] = star->xmag[1];
-	    if (sc->entrv > 0) {
-		if (sc->nmag > 1)
-		    tmagb[jnum] = star->radvel;
-		else
-		    tmag[jnum] = star->radvel;
+	    for (imag = 0; imag < sc->nmag; imag++) {
+		if (tmag[imag] != NULL)
+		    tmag[imag][nstar] = star->xmag[imag];
 		}
 
 	    /* Spectral type */
@@ -1217,6 +1208,7 @@ struct Star *st; /* Star data structure, updated on return */
 	    st->radvel = atof (token);
 	else
 	    st->radvel = 0.0;
+	st->xmag[sc->nmag] = st->radvel;
 	}
 
     /* Proper motion, if present */
@@ -1458,4 +1450,6 @@ char	*in;	/* Character string */
  * Aug  8 2001	Add /v option to return radial velocity
  * Aug  8 2001	Add /f option for hhmmss.s ddmmss.s coordinates
  * Aug 24 2001	Use STNUM < 0 instead of STNUM ==5 for object name not number
+ * Sep 11 2001	Allow an arbitrary number of magnitudes
+ * Sep 11 2001	Add sort magnitude as argument to *read() subroutines
  */

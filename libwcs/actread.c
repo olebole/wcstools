@@ -1,6 +1,6 @@
 /*** File libwcs/actread.c
- *** June 27, 2001
- *** By Doug Mink, dmink@cfa.harvard.edh
+ *** September 11, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -29,8 +29,8 @@ static int actsra();
 /* ACTREAD -- Read USNO ACT Star Catalog stars from CDROM */
 
 int
-actread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,nstarmax,
-	 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog)
+actread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,sortmag,
+	 nstarmax,gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
@@ -42,14 +42,14 @@ int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
 int	nstarmax;	/* Maximum number of stars to be returned */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
 double  *gpra;          /* Array of right ascension proper motions (returned) */
 double  *gpdec;         /* Array of declination proper motions (returned) */
-double	*gmag;		/* Array of visual magnitudes (returned) */
-double	*gmagb;		/* Array of blue magnitudes (returned) */
+double	**gmag;		/* Array of visual magnitudes (returned) */
 int	*gtype;		/* Array of object types (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
@@ -69,11 +69,12 @@ int	nlog;		/* 1 for diagnostics */
     struct Star *star;
     int verbose;
     int wrap;
+    int magsort;
     int rnum, ireg;
     int jstar, iw;
     int nrmax,nstar,i, ntot;
     int istar, istar1, istar2, isp;
-    double num, ra, dec, rapm, decpm, mag, magb;
+    double num, ra, dec, rapm, decpm, mag, magb, magv;
     double rra1, rra2, rra2a, rdec1, rdec2;
     char *str;
     char cstr[32];
@@ -91,15 +92,20 @@ int	nlog;		/* 1 for diagnostics */
 	/* If pathname is a URL, search and return */
 	if (!strncmp (str, "http:",5)) {
 	    return (webread (str,"act",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nstarmax,
-			     gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+			     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
+			     gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	    }
 	}
     if (!strncmp (actcd, "http:",5)) {
 	return (webread (actcd,"act",distsort,cra,cdec,dra,ddec,drad,
-			 sysout,eqout,epout,mag1,mag2,nstarmax,
-			 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
+			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	}
+
+    if (sortmag > 0 && sortmag < 3)
+	magsort = sortmag - 1;
+    else 
+	magsort = 1;
 
     wcscstr (cstr, sysout, eqout, epout);
 
@@ -200,7 +206,7 @@ int	nlog;		/* 1 for diagnostics */
 		 	 &ra, &dec, &rapm, &decpm);
 
 		/* Magnitude */
-		mag = star->xmag[0];
+		magv = star->xmag[0];
 		magb = star->xmag[1];
 
 		/* Spectral Type */
@@ -226,8 +232,8 @@ int	nlog;		/* 1 for diagnostics */
 			gdec[nstar] = dec;
 			gpra[nstar] = rapm;
 			gpdec[nstar] = decpm;
-			gmag[nstar] = mag;
-			gmagb[nstar] = magb;
+			gmag[0][nstar] = magb;
+			gmag[1][nstar] = magv;
 			/* gtype[nstar] = isp; */
 			gdist[nstar] = dist;
 			if (dist > maxdist) {
@@ -249,8 +255,8 @@ int	nlog;		/* 1 for diagnostics */
 			    gdec[farstar] = dec;
 			    gpra[farstar] = rapm;
 			    gpdec[farstar] = decpm;
-			    gmag[farstar] = mag;
-			    gmagb[farstar] = magb;
+			    gmag[0][farstar] = magb;
+			    gmag[1][farstar] = magv;
 			    /* gtype[farstar] = isp; */
 			    gdist[farstar] = dist;
 
@@ -272,16 +278,16 @@ int	nlog;		/* 1 for diagnostics */
 			gdec[faintstar] = dec;
 			gpra[farstar] = rapm;
 			gpdec[farstar] = decpm;
-			gmag[faintstar] = mag;
-			gmagb[faintstar] = magb;
+			gmag[0][faintstar] = magb;
+			gmag[1][faintstar] = magv;
 			/* gtype[faintstar] = isp; */
 			gdist[faintstar] = dist;
 			faintmag = 0.0;
 
 			/* Find new faintest star */
 			for (i = 0; i < nstarmax; i++) {
-			    if (gmag[i] > faintmag) {
-				faintmag = gmag[i];
+			    if (gmag[magsort][i] > faintmag) {
+				faintmag = gmag[magsort][i];
 				faintstar = i;
 				}
 			    }
@@ -853,4 +859,6 @@ char	*filename;	/* Name of file for which to find size */
  *
  * Jan 11 2001	All printing is to stderr
  * Jun 14 2001	Drop spectral type approximation
+ * Sep 11 2001	Change to single magnitude argeument
+ * Sep 11 2001	Add sort magnitude argument to actread()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** August 8, 2001
+ *** September 18, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -45,7 +45,7 @@ static void moveb();
 
 int
 binread (bincat,distsort,cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-	 nstarmax,starcat,tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,tobj,nlog)
+	 sortmag,nstarmax,starcat,tnum,tra,tdec,tpra,tpdec,tmag,tpeak,tobj,nlog)
 
 char	*bincat;	/* Name of reference star catalog file */
 int	distsort;	/* 1 to sort stars by distance from center */
@@ -58,6 +58,7 @@ int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
 int	nstarmax;	/* Maximum number of sources to be returned */
 struct StarCat **starcat; /* Star catalog data structure */
 double	*tnum;		/* Array of catalog numbers (returned) */
@@ -65,8 +66,7 @@ double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
 double  *tpra;		/* Array of right ascension proper motions (returned) */
 double  *tpdec;		/* Array of declination proper motions (returned) */
-double	*tmag;		/* Array of V magnitudes (returned) */
-double	*tmagb;		/* Array of B magnitudes (returned) */
+double	**tmag;		/* 2-D Array of magnitudes (returned) */
 int	*tpeak;		/* Array of encoded spectral types (returned) */
 char	**tobj;		/* Array of object names (returned) */
 int	nlog;
@@ -89,13 +89,15 @@ int	nlog;
     struct Star *star;
     int rwrap, wrap, iwrap, istar1,istar2;
     int binset;
+    int imag;
     char *objname;
     int lname;
     int jstar;
     int nstar;
-    double mag, magb;
+    double mag;
     double num;
     int i;
+    int magsort;
     int istar;
     int isp;
     int verbose;
@@ -123,7 +125,7 @@ int	nlog;
 	free (sc);
 	return (webread (str,bincat,distsort,cra,cdec,dra,ddec,drad,
 		sysout,eqout,epout,mag1,mag2,nstarmax,
-		tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
+		tnum,tra,tdec,tpra,tpdec,tmag,tpeak,nlog));
 	}
 
     if (sc->nstars <= 0) {
@@ -138,6 +140,11 @@ int	nlog;
 	mag2 = mag1;
 	mag1 = mag;
 	}
+
+    if (sortmag > 0 && sortmag <= sc->nmag)
+	magsort = sortmag - 1;
+    else 
+	magsort = 0;
 
     /* Logging interval */
     nstar = 0;
@@ -272,28 +279,15 @@ int	nlog;
 	    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
 		     &ra, &dec, &rapm, &decpm);
 
-	    /* Magnitude */
-	    mag = 0.01 * (double) star->mag[0];
-	    if (sc->nmag > 1) {
-		magb = mag;
-		mag = 0.01 * (double) star->mag[1];
-		}
-	    else
-		magb = 20.0;
-	    if (sc->entrv > 0) {
-		if (sc->nmag == 1)
-		    mag = star->radvel;
-		else
-		    magb = star->radvel;
-		}
+	    /* Radial velocity */
+	    if (sc->entrv > 0)
+		star->xmag[sc->nmag-1] = star->radvel;
 
-	    /* If there are four magnitudes, save them in place of type */
-	    if (sc->nmag > 3)
-		isp = 100000 * star->mag[2] + star->mag[3];
+	    /* Magnitude */
+	    mag = star->xmag[magsort];
 
 	    /* Spectral Type */
-	    else
-		isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+	    isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 
 	    /* Compute distance from search center */
 	    if (drad > 0 || distsort)
@@ -317,8 +311,10 @@ int	nlog;
 			tpra[nstar] = rapm;
 			tpdec[nstar] = decpm;
 			}
-		    tmag[nstar] = mag;
-		    tmagb[nstar] = magb;
+		    for (imag = 0; imag < sc->nmag; imag++) {
+			if (tmag[imag] != NULL)
+			    tmag[imag][nstar] = star->xmag[imag];
+			}
 		    tpeak[nstar] = isp;
 		    tdist[nstar] = dist;
 		    if (tobj != NULL) {
@@ -348,8 +344,10 @@ int	nlog;
 			    tpra[farstar] = rapm;
 			    tpdec[farstar] = decpm;
 			    }
-			tmag[farstar] = mag;
-			tmagb[farstar] = magb;
+			for (imag = 0; imag < sc->nmag; imag++) {
+			    if (tmag[imag] != NULL)
+				tmag[imag][farstar] = star->xmag[imag];
+			    }
 			tpeak[farstar] = isp;
 			tdist[farstar] = dist;
 			if (tobj != NULL) {
@@ -380,8 +378,10 @@ int	nlog;
 			tpra[faintstar] = rapm;
 			tpdec[faintstar] = decpm;
 			}
-		    tmag[faintstar] = mag;
-		    tmagb[faintstar] = magb;
+		    for (imag = 0; imag < sc->nmag; imag++) {
+			if (tmag[imag] != NULL)
+			    tmag[imag][faintstar] = star->xmag[imag];
+			}
 		    tpeak[faintstar] = isp;
 		    tdist[faintstar] = dist;
 		    if (tobj != NULL) {
@@ -395,8 +395,8 @@ int	nlog;
 
 		    /* Find new faintest star */
 		    for (i = 0; i < nstarmax; i++) {
-			if (tmag[i] > faintmag) {
-			    faintmag = tmag[i];
+			if (tmag[magsort][i] > faintmag) {
+			    faintmag = tmag[magsort][i];
 			    faintstar = i;
 			    }
 			}
@@ -405,8 +405,8 @@ int	nlog;
 		nstar++;
 		jstar++;
 		if (nlog == 1)
-		    fprintf (stderr,"BINREAD: %11.6f: %9.5f %9.5f %5.2f %5.2f\n",
-			   num,ra,dec,magb,mag);
+		    fprintf (stderr,"BINREAD: %11.6f: %9.5f %9.5f %5.2f\n",
+			   num,ra,dec,mag);
 
 	    /* End of accepted star processing */
 		}
@@ -443,7 +443,7 @@ int	nlog;
 
 int
 binrnum (bincat, nnum, sysout, eqout, epout, match,
-	 tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,tobj,nlog)
+	 tnum,tra,tdec,tpra,tpdec,tmag,tpeak,tobj,nlog)
 
 char	*bincat;	/* Name of reference star catalog file */
 int	nnum;		/* Number of stars to look for */
@@ -456,8 +456,7 @@ double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
 double  *tpra;		/* Array of right ascension proper motions (returned) */
 double  *tpdec;		/* Array of declination proper motions (returned) */
-double	*tmag;		/* Array of V magnitudes (returned) */
-double	*tmagb;		/* Array of B magnitudes (returned) */
+double	**tmag;		/* 2-D Array of magnitudes (returned) */
 int	*tpeak;		/* Array of peak counts (returned) */
 char	**tobj;		/* Array of object names (returned) */
 int	nlog;
@@ -468,10 +467,10 @@ int	nlog;
     int jnum;
     int nstar;
     double ra, dec, rapm, decpm;
-    double mag, magb;
     double num;
     int istar;
     int isp;
+    int imag;
     int lname;
     char *objname;
     struct StarCat *starcat;
@@ -484,13 +483,12 @@ int	nlog;
     if (starcat == NULL)
 	return (0);
 
-
     /* If pathname is a URL, search and return */
     if (starcat->caturl != NULL) {
 	strcpy (str, starcat->caturl);
 	free (starcat);
 	return (webrnum (str,bincat,nnum,sysout,eqout,epout,
-		tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
+		tnum,tra,tdec,tpra,tpdec,tmag,tpeak,nlog));
 	}
 
     /* If no stars in catalog, print error message and return */
@@ -528,8 +526,8 @@ int	nlog;
 		    tdec[jnum] = 0.0;
 		    tpra[jnum] = 0.0;
 		    tpdec[jnum] = 0.0;
-		    tmag[jnum] = 0.0;
-		    tmagb[jnum] = 0.0;
+		    for (imag = 0; imag < starcat->nmag; imag++)
+			tmag[imag][jnum] = 0.0;
 		    tpeak[jnum] = 0;
 		    continue;
 		    }
@@ -547,8 +545,8 @@ int	nlog;
 	    tdec[jnum] = 0.0;
 	    tpra[jnum] = 0.0;
 	    tpdec[jnum] = 0.0;
-	    tmag[jnum] = 0.0;
-	    tmagb[jnum] = 0.0;
+	    for (imag = 0; imag < starcat->nmag; imag++)
+		tmag[imag][jnum] = 0.0;
 	    tpeak[jnum] = 0;
 	    continue;
 	    }
@@ -566,22 +564,8 @@ int	nlog;
 	wcsconp (sysref, sysout, eqref, eqout, epref, epout,
 		     &ra, &dec, &rapm, &decpm);
 
-	/* Magnitude */
-	mag = 0.01 * (double) star->mag[0];
-	if (starcat->nmag > 1) {
-	    magb = mag;
-	    mag = 0.01 * (double) star->mag[1];
-	    }
-	else
-	    magb = 20.0;
-
-	/* If there are four magnitudes, save them in place of type */
-	if (starcat->nmag > 3)
-	    isp = 100000 * star->mag[2] + star->mag[3];
-
 	/* Spectral Type */
-	else
-	    isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+	isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 
 	/* Save star position and magnitude in table */
 	tnum[jnum] = num;
@@ -591,15 +575,17 @@ int	nlog;
 	    tpra[jnum] = rapm;
 	    tpdec[jnum] = decpm;
 	    }
-	tmag[jnum] = mag;
-	if (starcat->nmag > 1)
-	    tmagb[jnum] = magb;
-	if (starcat->entrv > 0) {
-	    if (starcat->nmag == 1)
-		tmag[jnum] = star->radvel;
-	    else
-		tmagb[jnum] = star->radvel;
+
+	/* Radial velocity, if present */
+	if (starcat->entrv > 0)
+	    star->xmag[starcat->nmag - 1] = star->radvel;
+
+	/* Magnitudes */
+	for (imag = 0; imag < starcat->nmag; imag++) {
+	    if (tmag[imag] != NULL)
+		tmag[imag][nstar] = star->xmag[imag];
 	    }
+
 	tpeak[jnum] = isp;
 	if (tobj != NULL) {
 	    lname = strlen (star->objname) + 1;
@@ -608,9 +594,12 @@ int	nlog;
 	    tobj[nstar] = objname;
 	    }
 	nstar++;
-	if (nlog == 1)
-	    fprintf (stderr,"BINRNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %s  \n",
-		     num, ra, dec, magb, mag, star->isp);
+	if (nlog == 1) {
+	    fprintf (stderr,"BINRNUM: %11.6f: %9.5f %9.5f", num, ra, dec);
+	    for (imag = 0; imag < starcat->nmag; imag++)
+		fprintf (stderr," %5.2f",tmag[imag][nstar]);
+	    fprintf (stderr," %s  \n", star->isp);
+	    }
 
 	/* End of star loop */
 	}
@@ -1058,12 +1047,12 @@ int istar;	/* Star sequence number in binary catalog */
     /* Spectral type */
     moveb (sc->catline, (char *) st->isp, 2, sc->entpeak, 0);
 
-    /* Magnitudes (*100) */
+    /* Magnitudes */
     for (i = 0; i < nmag; i++) {
 	moveb (sc->catline, (char *) st->mag, 2, sc->entmag1+(i*2), i*2);
-	
 	if (sc->byteswapped)
 	    binswap2 (&st->mag[i], 2);
+	st->xmag[i] = 0.01 * (double) st->mag[i];
 	}
     return (0);
 }
@@ -1267,4 +1256,7 @@ char *from, *last, *to;
  * Jul  6 2001	Fix bug in dealing with proper motions of excess stars
  * Jul 17 2001	Fix bug which prevented use of full catalog pathname on CL
  * Aug  8 2001	Add radial velocity if mprop is 2; return as magnitude
+ * Sep 11 2001	Pass array of magnitude vectors to avoid kludges
+ * Sep 11 2001	Add sort magnitude argument
+ * Sep 18 2001	Fix magnitude number in binrnum()
  */

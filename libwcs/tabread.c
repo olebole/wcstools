@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** August 21, 2001
+ *** September 11, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -63,8 +63,8 @@ char *keyword0;
 
 int
 tabread (tabcatname,distsort,cra,cdec,dra,ddec,drad,
-	 sysout,eqout,epout,mag1,mag2,nstarmax,starcat,
-	 tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,tkey,nlog)
+	 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,starcat,
+	 tnum,tra,tdec,tpra,tpdec,tmag,tpeak,tkey,nlog)
 
 char	*tabcatname;	/* Name of reference star catalog file */
 int	distsort;	/* 1 to sort stars by distance from center */
@@ -77,6 +77,7 @@ int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
 int	nstarmax;	/* Maximum number of stars to be returned */
 struct StarCat **starcat; /* Star catalog data structure */
 double	*tnum;		/* Array of UJ numbers (returned) */
@@ -84,8 +85,7 @@ double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
 double	*tpra;		/* Array of right ascension proper motions (returned) */
 double	*tpdec;		/* Array of declination proper motions (returned) */
-double	*tmag;		/* Array of magnitudes (returned) */
-double	*tmagb;		/* Array of second magnitudes (returned) */
+double	**tmag;		/* 2-D Array of magnitudes (returned) */
 int	*tpeak;		/* Array of peak counts (returned) */
 char	**tkey;		/* Array of additional keyword values */
 int	nlog;
@@ -108,11 +108,13 @@ int	nlog;
 
     int wrap;
     int jstar;
+    int magsort;
     int nstar;
     char *objname;
     int lname;
+    int imag;
     double ra,dec, rapm, decpm;
-    double mag, magb, parallax, rv;
+    double mag, parallax, rv;
     double num;
     int peak, i;
     int istar, nstars, lstar;
@@ -134,7 +136,7 @@ int	nlog;
     else
 	wrap = 0;
 
-    /* mag1 is always the smallest magnitude */
+    /* mag1 is always the smallest magnitude limit */
     if (mag2 < mag1) {
 	mag = mag2;
 	mag2 = mag1;
@@ -161,6 +163,11 @@ int	nlog;
 
     nstars = sc->nstars;
     jstar = 0;
+
+    if (sortmag > 0 && sortmag <= sc->nmag)
+	magsort = sortmag - 1;
+    else 
+	magsort = 0;
 
     /* Set catalog coordinate system */
     if (sc->equinox != 0.0)
@@ -208,14 +215,7 @@ int	nlog;
 		     &ra, &dec, &rapm, &decpm);
 	else
 	    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
-	mag = star->xmag[0];
-	magb = star->xmag[1];
-	if (sc->nmag > 3)
-	    peak = (int) ((star->xmag[3] * 100.0) + 0.5) +
-		   10000 * (int) ((star->xmag[2] * 100.0) + 0.5);
-	else if (sc->nmag > 2)
-	    peak = (int) ((star->xmag[2] * 1000.0) + 0.5);
-	else if (sc->sptype)
+	if (sc->sptype)
 	    peak = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 	else
 	    peak = star->peak;
@@ -226,14 +226,20 @@ int	nlog;
 	    dist = 0.0;
 
 	/* Set magnitude for faint star rejection */
-	magt = mag;
-	if (mag == 99.90 && sc->nmag > 1)
-	    magt = magb;
+	magt = star->xmag[magsort];
+	if (magt == 99.90 && sc->nmag > 1)
+	    magt = star->xmag[0];
+	if (magt == 99.90 && sc->nmag > 1)
+	    magt = star->xmag[1];
+	if (magt == 99.90 && sc->nmag > 2)
+	    magt = star->xmag[2];
+	if (magt == 99.90 && sc->nmag > 3)
+	    magt = star->xmag[3];
 	if (magt > 100.0)
 	    magt = magt - 100.0;
 
 	/* Check magnitude and position limits */
-	if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
+	if ((mag1 == mag2 || (magt >= mag1 && magt <= mag2)) &&
 	    ((wrap && (ra >= ra1 || ra <= ra2)) ||
 	    (!wrap && (ra >= ra1 && ra <= ra2))) &&
 	    ((drad > 0.0 && dist < drad) ||
@@ -248,10 +254,12 @@ int	nlog;
 		    tpra[nstar] = rapm;
 		    tpdec[nstar] = decpm;
 		    }
-		tmag[nstar] = mag;
-		if (tmagb != NULL)
-		    tmagb[nstar] = magb;
-		tpeak[nstar] = peak;
+		for (imag = 0; imag < sc->nmag; imag++) {
+		    if (tmag[imag] != NULL)
+			tmag[imag][nstar] = star->xmag[imag];
+		    }
+		if (tpeak)
+		    tpeak[nstar] = peak;
 		tdist[nstar] = dist;
 		lname = strlen (star->objname);
 		if (lname > 0) {
@@ -279,9 +287,10 @@ int	nlog;
 			tpra[farstar] = rapm;
 			tpdec[farstar] = decpm;
 			}
-		    tmag[farstar] = mag;
-		    if (tmagb != NULL)
-			tmagb[farstar] = magb;
+		    for (imag = 0; imag < sc->nmag; imag++) {
+			if (tmag[imag] != NULL)
+			    tmag[imag][farstar] = star->xmag[imag];
+			}
 		    tpeak[farstar] = peak;
 		    tdist[farstar] = dist;
 		    lname = strlen (star->objname);
@@ -311,9 +320,10 @@ int	nlog;
 		    tpra[faintstar] = rapm;
 		    tpdec[faintstar] = decpm;
 		    }
-		tmag[faintstar] = mag;
-		if (tmagb != NULL)
-		    tmagb[faintstar] = magb;
+		for (imag = 0; imag < sc->nmag; imag++) {
+		    if (tmag[imag] != NULL)
+			tmag[imag][faintstar] = star->xmag[imag];
+		    }
 		tpeak[faintstar] = peak;
 		tdist[faintstar] = dist;
 		lname = strlen (star->objname);
@@ -326,9 +336,16 @@ int	nlog;
 
 		/* Find new faintest star */
 		for (i = 0; i < nstarmax; i++) {
-		    magt = tmag[i];
+		    magt = tmag[magsort][i];
+		    magt = tmag[magsort][i];
 		    if (magt == 99.90 && sc->nmag > 1)
-			magt = tmagb[i];
+			magt = tmag[0][i];
+		    if (magt == 99.90 && sc->nmag > 1)
+			magt = tmag[0][i];
+		    if (magt == 99.90 && sc->nmag > 2)
+			magt = tmag[2][i];
+		    if (magt == 99.90 && sc->nmag > 3)
+			magt = tmag[3][i];
 		    if (magt > 100.0)
 			magt = magt - 100.0;
 		    if (magt > faintmag) {
@@ -341,8 +358,8 @@ int	nlog;
 	    nstar++;
 	    jstar++;
 	    if (nlog == 1)
-		fprintf (stderr,"TABREAD: %11.6f: %9.5f %9.5f %s %5.2f %5.2f %d    \n",
-			 num,ra,dec,cstr,mag,magb,peak);
+		fprintf (stderr,"TABREAD: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
+			 num,ra,dec,cstr,magt,peak);
 
 	    /* End of accepted star processing */
 	    }
@@ -373,7 +390,7 @@ int	nlog;
 
 int
 tabrnum (tabcatname, nnum, sysout, eqout, epout, starcat,
-	 tnum, tra, tdec, tpra, tpdec, tmag, tmagb, tpeak, tkey, nlog)
+	 tnum,tra,tdec,tpra,tpdec,tmag,tpeak,tkey,nlog)
 
 char	*tabcatname;	/* Name of reference star catalog file */
 int	nnum;		/* Number of stars to look for */
@@ -386,8 +403,7 @@ double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
 double	*tpra;		/* Array of right ascension proper motions (returned) */
 double	*tpdec;		/* Array of declination proper motions (returned) */
-double	*tmag;		/* Array of magnitudes (returned) */
-double	*tmagb;		/* Array of second magnitudes (returned) */
+double	**tmag;		/* 2-D array of magnitudes (returned) */
 int	*tpeak;		/* Array of peak counts (returned) */
 char	**tkey;		/* Array of additional keyword values */
 int	nlog;
@@ -395,10 +411,11 @@ int	nlog;
     int jnum;
     int nstar;
     double ra,dec, rapm, decpm;
-    double mag, magb, parallax, rv;
+    double mag, parallax, rv;
     double num;
     int peak;
     int istar, nstars;
+    int imag;
     char *line;
     int sysref;		/* Catalog coordinate system */
     double eqref;	/* Catalog equinox */
@@ -505,13 +522,7 @@ int	nlog;
 		else
 		    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 		mag = star->xmag[0];
-		magb = star->xmag[1];
-		if (sc->nmag > 3)
-		    peak = (int) ((star->xmag[3] * 100.0) + 0.5) +
-			   10000 * (int) ((star->xmag[2] * 100.0) + 0.5);
-		else if (sc->nmag > 2)
-		    peak = (int) ((star->xmag[2] * 1000.0) + 0.5);
-		else if (sc->sptype)
+		if (sc->sptype)
 		    peak = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 		else
 		    peak = star->peak;
@@ -524,9 +535,10 @@ int	nlog;
 		    tpra[jnum] = rapm;
 		    tpdec[jnum] = decpm;
 		    }
-		tmag[jnum] = mag;
-		if (tmagb != NULL)
-		    tmagb[jnum] = magb;
+		for (imag = 0; imag < sc->nmag; imag++) {
+		    if (tmag[imag] != NULL)
+			tmag[imag][nstar] = star->xmag[imag];
+		    }
 		tpeak[jnum] = peak;
 		lname = strlen (star->objname);
 		if (lname > 0) {
@@ -536,8 +548,8 @@ int	nlog;
 		    }
 		nstar++;
 		if (nlog == 1)
-		    fprintf (stderr,"TABRNUM: %11.6f: %9.5f %9.5f %s %5.2f %5.2f %d    \n",
-			     num,ra,dec,cstr,mag,magb,peak);
+		    fprintf (stderr,"TABRNUM: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
+			     num,ra,dec,cstr,mag,peak);
 		/* End of accepted star processing */
 		}
 	    }
@@ -2167,4 +2179,6 @@ char    *filename;      /* Name of file to check */
  * Aug 21 2001	Check numbers using isnum() in tabgetr8() and tabgeti4()
  * Aug 21 2001	Add starcat to tabrkey() argument list
  * Aug 21 2001	Read object name into tkey if it is present
+ * Sep 11 2001	Allow an arbitrary number of magnitudes
+ * Sep 11 2001  Add sort magnitude argument to tabread()
  */
