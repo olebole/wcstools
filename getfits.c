@@ -1,5 +1,5 @@
 /* File getfits.c
- * December 6, 2002
+ * December 16, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,6 +17,9 @@
 #define MAXRANGE 20
 #define MAXFILES 2000
 static int maxnfile = MAXFILES;
+
+#define MAXKWD 500
+static int maxnkwd = MAXKWD;
 
 /* Structure for dealing with ranges */
 struct Range {
@@ -66,7 +69,7 @@ static double eqcoor = 0.0;	/* Input search coordinate system */
 main (ac, av)
 int ac;
 char **av;
-{
+{			
     char *str;
     char *listfile;
     char **fn;
@@ -76,6 +79,13 @@ char **av;
     FILE *flist;
     char *nextarg;
     char rastr[32], decstr[32];
+    int nkwd = 0;		/* Number of keywords to delete */
+    int nkwd1 = 0;		/* Number of keywords in delete file */
+    char **kwd;			/* List of keywords to be deleted */
+    char **kwdnew;
+    int ikwd;
+    FILE *fdk;
+    char *klistfile;
 
     crange = NULL;
     rrange = NULL;
@@ -83,6 +93,7 @@ char **av;
     outdir[0] = 0;
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
+    klistfile = NULL;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -127,9 +138,11 @@ char **av;
 	    char c;
 	    while (c = *++str) {
 		switch (c) {
+
 		case 'v':	/* more verbosity */
 		    verbose++;
 		    break;
+
 		case 'c':	/* center coordinates for extraction */
 		    if (ac < 3)
 			usage ("-c needs two arguments");
@@ -138,27 +151,61 @@ char **av;
 		    ycpix = atoi (*++av);
 		    ac--;
 		    break;
+
 		case 'd':	/* output directory */
 		    if (ac < 2)
-			usage ("-d needs an argument");
+			usage ("-d needs a directory");
 		    strcpy (outdir, *++av);
 		    ac--;
 		    break;
+
+		case 'k':	/* Read keywords to delete from this file */
+		    if (ac < 2)
+			usage ("-k needs a file of keywords");
+		    klistfile = *av++;
+		    nkwd1 = getfilelines (klistfile);
+		    if (nkwd1 + nkwd > maxnkwd) {
+			maxnkwd = maxnkwd + nkwd1;
+			kwdnew = (char **)calloc (maxnkwd, sizeof(char *));
+			if (nkwd > 0) {
+			    for (ikwd = 0; ikwd < nkwd; ikwd++)
+				kwdnew[ikwd] = kwd[ikwd];
+			    free (kwd);
+			    }
+			kwd = kwdnew;
+			}
+		    if ((fdk = fopen (klistfile, "r")) == NULL) {
+			fprintf (stderr,"GETFITS: File %s cannot be read\n",
+				 klistfile);
+			}
+		    else {
+			for (ikwd = nkwd; ikwd < nkwd+nkwd1; ikwd++) {
+			    kwd[ikwd] = (char *) calloc (32, 1);
+			    first_token (fdk, 31, kwd[ikwd]);
+			    }
+			fclose (fdk);
+			}
+		    ac--;
+		    break;
+
 		case 'i':	/* logging interval */
 		    if (ac < 2)
 			usage ("-i needs an argument");
 		    nlog = atoi (*++av);
 		    ac--;
 		    break;
+
 		case 'o':	/* output file name */
 		    if (ac < 2)
 			usage ("-o needs an argument");
 		    strcpy (outname, *++av);
 		    ac--;
 		    break;
+
 		case 's':	/* output to stdout */
 		    strcpy (outname, "stdout");
 		    break;
+
 		case 'x':	/* width and height for extraction */
 		    if (ac < 2)
 			usage ("-x needs at least one argument");
@@ -177,6 +224,7 @@ char **av;
 		    else
 			ydpix = xdpix;
 		    break;
+
 	        default:
 		    sprintf (temp, "Illegal argument '%c'", c);
 		    usage(temp);
@@ -278,6 +326,7 @@ char *errmsg;	/* Error message */
     fprintf(stderr,"         (Height is same as width if omitted)\n");
     fprintf(stderr,"  -d dir: write FITS file(s) to this directory\n");
     fprintf(stderr,"  -i num: log rows as they are copied at this interval\n");
+    fprintf(stderr,"  -k file: file of keyword names to delete from output header\n");
     fprintf(stderr,"  -o name: output name for one file\n");
     fprintf(stderr,"  -s: write output to standard output\n");
     fprintf(stderr,"  -v: verbose\n");
@@ -285,9 +334,11 @@ char *errmsg;	/* Error message */
 }
 
 static int
-ExtractFITS (name)
+ExtractFITS (name, kwd, nkwd)
 
-char *name;
+char	*name;
+char	**kwd;
+int	nkwd;
 {
     char *header;	/* FITS header */
     int lhead;		/* Maximum number of bytes in FITS header */
@@ -321,9 +372,11 @@ char *name;
     int nbfile;         /* Number of bytes in file */
     int nbread;         /* Number of bytes actually read from file */
     char *ext;		/* Pointer to start of extension */
+    int ikwd;
     char *endchar;
     char *ltime;
     char *newimage;
+    char *kw, *kwl;
     int nc, ier, bitpix;
     int tpix, bytepix, nprow;
     int nbrow, nblock, nbleft, sampix, nbout;
@@ -350,6 +403,22 @@ char *name;
 	fprintf (stderr, "Cannot read FITS file %s\n", name);
 	return (-1);
 	}
+
+    /* If requested, delete keywords one at a time */
+    for (ikwd = 0; ikwd < nkwd; ikwd++) {
+
+	/* Make keyword all upper case */
+	kwl = kwd[ikwd] + strlen (kwd[ikwd]);
+	for (kw = kwd[ikwd]; kw < kwl; kw++) {
+	    if (*kw > 96 && *kw < 123)
+		*kw = *kw - 32;
+	    }
+
+	/* Delete keyword */
+	if (hdel (header, kwd[ikwd]) && verbose)
+	    printf ("%s: %s deleted\n", filename, kwd[ikwd]);
+	}
+
 
     if (verbose && first) {
 	fprintf (stderr, "Extract from FITS image file %s\n", name);
@@ -827,4 +896,5 @@ char *newname;
 
 /* Oct 22 2002	New program based on t2f
  * Dec  6 2002	Initialize bytepix, which wasn't
+ * Dec 16 2002	Add -k option to delete FITS keywords when copying
  */

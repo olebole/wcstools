@@ -1,3 +1,7 @@
+Version 3.2.1 (January 3, 2003)
+delhead: Fix bug so arbitrary number of keywords can be deleted
+wcsinit.c: Read PVi_0 for ZPN projection; initialize PVi_j only once
+
 Version 3.2.0 (December 6, 2002)
 getfits: New program to extract part of a FITS image preserving WCS
 getdate: Add sidereal time conversion; fix bug in -now option

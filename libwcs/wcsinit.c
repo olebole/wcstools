@@ -1,8 +1,8 @@
 /*** File libwcs/wcsinit.c
- *** December 6, 2002
+ *** January 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2002
+ *** Copyright (C) 1998-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -25,8 +25,6 @@
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
-
-
 
  * Module:	wcsinit.c (World Coordinate Systems)
  * Purpose:	Convert FITS WCS to pixels and vice versa:
@@ -417,10 +415,9 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	hgetr8c (hstring, "PROJR0", mchar, &wcs->prj.r0);
 
 	/* FITS WCS interim proposal projection constants */
-	for (i = 1; i < 10; i++) {
+	for (i = 0; i < 10; i++) {
 	    wcs->prj.p[i] = 0.0;
-	    sprintf (keyword,"PROJP%d",i);
-	    wcs->prj.p[i] = 0.0;
+	    sprintf (keyword,"PROJP%d",i+1);
 	    hgetr8c (hstring, keyword, mchar, &wcs->prj.p[i]);
 	    }
 
@@ -465,8 +462,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	    }
 	else if (wcs->prjcode == WCS_ZPN) {
 	    for (i = 0; i < 10; i++) {
-		wcs->prj.p[i] = 0.0;
-		sprintf (keyword,"PV%d_%d", ilat, i+1);
+		sprintf (keyword,"PV%d_%d", ilat, i);
 		hgetr8c (hstring, keyword, mchar, &wcs->prj.p[i]);
 		}
 	    }
@@ -1240,4 +1236,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * May 31 2002	Initialize syswcs, sysin, sysout in wcsioset()
  * Sep 25 2002	Fix subroutine calls for radvel and latpole
  * Dec  6 2002	Correctly compute pixel at center of image for default CRPIX
+ *
+ * Jan  2 2002	Do not reinitialize projection vector for PV input
+ * Jan  3 2002	For ZPN, read PVi_0 to PVi_9, not PVi_1 to PVi_10
  */

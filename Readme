@@ -14,7 +14,7 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.2.0 of the WCSTools package developed by Doug Mink
+This is version 3.2.1 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 
@@ -28,6 +28,7 @@ Bill Joye and Eric Mandel of SAO, Allan Brighton of ESO, and Jean-Baptiste
 Marquette of the Institut d'Astrophysique de Paris helped debug the
 subroutine library.  Norman Grogin, Scott Kenyon, Susan Tokarz, and Dan
 Koranyi of SAO and Andreas Jaunsen helped debug the astrometry programs.
+Steve Willner of SAO helped debug the FITS utilities.
 
 Details of updates are in the Versions file.
 
@@ -40,7 +41,9 @@ References
 
 If the WCSTools package has proven useful in your work, please reference
 at least one of the following papers. If you want to find out which is
-most applicable, the full texts are available on the WCSTools web site.
+most applicable, the full texts are available on the WCSTools web site at
+
+        http://tdc-www.harvard.edu/software/wcstools/publications/
 
 The paper presented at ADASS in 1996 is the best published description
 of the IMWCS world coordinate system fitting program: 
@@ -57,12 +60,12 @@ in the WCSTools package, including SAOimage when used for WCS work:
      Ray Plante, Doug Roberts, eds., pp.  498-501. 
 
 A paper presented at the 2001 ADASS conference describes how the
-WCSTools package uses the web, among other new features.
+WCSTools package uses the web, among other new features:
      "WCSTools 3.0: More Tools for Image Astrometry and Catalog Searching",
      Douglas J. Mink, 2001, to be published in Astronomical Data Analysis
      Software and Systems XI, whenever it comes out.
 
-and a paper presented at the 2002 ADASS conference describes interesting
+This paper presented at the 2002 ADASS conference describes interesting
 ways to use the SCAT program:
      "Federating Catalogs and Interfacing Them with Archives: A VO Prototype",
      Douglas J. Mink and Michael J. Kurtz, 2002, to be published in
@@ -154,4 +157,4 @@ wcshead	Print basic world coordinate system information on one line per image
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
 
--Doug Mink, SAO, 2002-12-06
+-Doug Mink, SAO, 2003-01-03

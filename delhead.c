@@ -1,5 +1,5 @@
 /* File delhead.c
- * June 8, 2000
+ * December 16, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -40,6 +40,8 @@ char **av;
     char *listfile;
     char *ilistfile;
     char *klistfile;
+    char **kwdnew;
+    int nkwd1 = 0;
     int ikwd;
 
     ilistfile = NULL;
@@ -88,19 +90,22 @@ char **av;
 		}
 	    else {
 		klistfile = listfile;
-		nkwd = getfilelines (klistfile);
-		if (nkwd > 0) {
-		    if (nkwd > maxnkwd) {
-			kwd = (char **) realloc ((void *)kwd, nkwd);
-			maxnkwd = nkwd;
+		nkwd1 = getfilelines (klistfile);
+		if (nkwd1 > 0) {
+		    if (nkwd1 + nkwd > maxnkwd) {
+			maxnkwd = maxnkwd + nkwd1;
+			kwdnew = (char **)calloc (maxnkwd, sizeof(char *));
+			for (ikwd = 0; ikwd < nkwd; ikwd++)
+			    kwdnew[ikwd] = kwd[ikwd];
+			free (kwd);
+			kwd = kwdnew;
 			}
 		    if ((fdk = fopen (klistfile, "r")) == NULL) {
 			fprintf (stderr,"DELHEAD: File %s cannot be read\n",
 				 klistfile);
-			nkwd = 0;
 			}
 		    else {
-			for (ikwd = 0; ikwd < nkwd; ikwd++) {
+			for (ikwd = nkwd; ikwd < nkwd+nkwd1; ikwd++) {
 			    kwd[ikwd] = (char *) calloc (32, 1);
 			    first_token (fdk, 31, kwd[ikwd]);
 			    }
@@ -381,4 +386,6 @@ char	*kwd[];		/* Names of those keywords */
  * Nov 30 1999	Cast realloc's
  *
  * Jun  8 2000	If no files or keywords specified, say so
+ *
+ * Dec 16 2002	Fix bug so arbitrary number of keywords can be deleted
  */
