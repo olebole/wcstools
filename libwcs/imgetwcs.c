@@ -1,5 +1,5 @@
 /* File libwcs/imgetwcs.c
- * June 25, 1998
+ * October 28, 1998
  * By Doug Mink, remotely based on UIowa code
  */
 
@@ -11,8 +11,6 @@
 #include "fitshead.h"
 #include "wcs.h"
 #include "lwcs.h"
-
-extern void fk425e(), fk524e(), fk425(), fk524(), fk5prec(), fk4prec();
 
 /* Get the C* WCS fields in  a FITS header based on a reference catalog
  * do it by finding stars in the image and in the reference catalog and
@@ -42,7 +40,7 @@ static char ctypes[28][4];		/* 3-letter codes for projections */
  */
 
 struct WorldCoor *
-GetFITSWCS (header, verbose, cra, cdec, dra, ddec, secpix, wp, hp, eq2)
+GetFITSWCS (header, verbose, cra, cdec, dra, ddec, secpix,wp,hp,sysout,eqout)
 
 char	*header;	/* Image FITS header */
 int	verbose;	/* Extra printing if =1 */
@@ -53,13 +51,12 @@ double	*ddec;		/* Declination half-width in degrees (returned) */
 double	*secpix;	/* Arcseconds per pixel (returned) */
 int	*wp;		/* Image width in pixels (returned) */
 int	*hp;		/* Image height in pixels (returned) */
-double	eq2;		/* Equinox to return (0=keep equinox) */
+int	*sysout;	/* Coordinate system to return (0=image, returned) */
+double	*eqout;		/* Equinox to return (0=image, returned) */
 {
     int nax;
     int equinox, eqcoor;
     double eq1, epoch, xref, yref, degpix, ra1, dec1;
-    double ra2 = -999.0;
-    double dec2 = -999.0;
     struct WorldCoor *wcs;
     int eqref;
     char rstr[32],dstr[32], temp[16];
@@ -176,11 +173,13 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 	}
 
     /* Set flag to get appropriate equinox for catalog search */
+    if (!*sysout)
+	*sysout = wcs->syswcs;
     equinox = (int) wcs->equinox;
+    if (*eqout == 0.0)
+	*eqout = wcs->equinox;
+    eqref = (int) *eqout;
     eq1 = wcs->equinox;
-    if (eq2 == 0.0)
-	eq2 = wcs->equinox;
-    eqref = (int) eq2;
     if (wcs->coorflip) {
 	ra1 = wcs->crval[1];
 	dec1 = wcs->crval[0];
@@ -189,39 +188,15 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 	ra1 = wcs->crval[0];
 	dec1 = wcs->crval[1];
 	}
-    ra2 = ra1;
-    dec2 = dec1;
-    if (eqref == 2000) {
-	if (equinox == 1950) {
-	    fk425e (&ra1, &dec1, wcs->epoch);
-	    wcs->equinox = 2000.0;
-	    wcs->syswcs = WCS_J2000;
-	    strcpy (wcs->radecsys, "FK5");
-	    wcsoutinit (wcs->radecsys);
-	    }
-	else if (equinox != 2000) {
-	    fk5prec (eq1, eq2, &ra1, &dec1);
-	    wcs->equinox = 2000.0;
-	    wcs->syswcs = WCS_J2000;
-	    strcpy (wcs->radecsys, "FK5");
-	    wcsoutinit (wcs->radecsys);
-	    }
-	}
-    else if (eqref == 1950) {
-	if (equinox == 2000) {
-	    fk524e (&ra1, &dec1, wcs->epoch);
-	    wcs->equinox = 1950.0;
-	    wcs->syswcs = WCS_B1950;
-	    strcpy (wcs->radecsys, "FK4");
-	    wcsoutinit (wcs->radecsys);
-	    }
-	else if (equinox != 1950) {
-	    fk4prec (eq1, eq2, &ra1, &dec1);
-	    wcs->equinox = 1950.0;
-	    wcs->syswcs = WCS_B1950;
-	    strcpy (wcs->radecsys, "FK4");
-	    wcsoutinit (wcs->radecsys);
-	    }
+
+    /* Print reference pixel position and value */
+    if (verbose && (eq1 != *eqout || wcs->syswcs != *sysout)) {
+	char cstr[16];
+	ra2str (rstr, 32, ra1, 3);
+        dec2str (dstr, 32, dec1, 2);
+	wcscstr (cstr, wcs->syswcs, wcs->equinox, wcs->epoch);
+	printf ("Reference pixel (%.2f,%.2f) %s %s %s\n",
+		 wcs->xrefpix, wcs->yrefpix, rstr, dstr, cstr);
 	}
     if (wcs->coorflip) {
 	wcs->crval[1] = ra1;
@@ -257,27 +232,34 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 
     /* Print reference pixel position and value */
     if (verbose) {
-	if (eq1 != eq2) {
-	    ra2str (rstr, 32, ra1, 3);
-            dec2str (dstr, 32, dec1, 2);
-	    printf ("Reference pixel (%.2f,%.2f) %s %s %.2f\n",
-		    wcs->xrefpix, wcs->yrefpix, rstr, dstr, eq1);
-	    }
+	char cstr[16];
 	ra2str (rstr, 32, ra1, 3);
         dec2str (dstr, 32, dec1, 2);
-	printf ("Reference pixel (%.2f,%.2f) %s %s %.2f\n",
-		wcs->xrefpix, wcs->yrefpix, rstr, dstr, eq2);
+	wcscstr (cstr,*sysout,*eqout,wcs->epoch);
+	printf ("Reference pixel (%.2f,%.2f) %s %s %s\n",
+		wcs->xrefpix, wcs->yrefpix, rstr, dstr, cstr);
 	}
+
+    /* Convert center to desired output coordinate system */
+    wcscon (wcs->syswcs, *sysout, wcs->equinox, *eqout, cra, cdec, wcs->epoch);
+    wcs->xref = *cra;
+    wcs->yref = *cdec;
+    wcs->crval[0] = *cra;
+    wcs->crval[1] = *cdec;
+    wcs->equinox = *eqout;
+    wcs->syswcs = *sysout;
+    wcs->sysout = *sysout;
+    wcs->eqout = *eqout;
+    wcs->sysin = *sysout;
+    wcs->eqin = *eqout;
 
     /* Image size for catalog search */
     if (verbose) {
-	char rstr[64], dstr[64];
+	char rstr[64], dstr[64], cstr[16];
 	ra2str (rstr, 32, *cra, 3);
 	dec2str (dstr, 32, *cdec, 2);
-	if (eqref == 2000)
-	    printf ("Search at %s %s J2000", rstr, dstr);
-	else
-	    printf ("Search at %s %s B1950", rstr, dstr);
+	wcscstr (cstr, *sysout, *eqout, wcs->epoch);
+	printf ("Search at %s %s %s", rstr, dstr, cstr);
 	ra2str (rstr, 32, *dra, 3);
 	dec2str (dstr, 32, *ddec, 2);
 	printf (" +- %s %s\n", rstr, dstr);
@@ -404,7 +386,7 @@ char*	ptype;
  * Nov 15 1996	Drop GetLimits(); code moved to individual catalog routines
  * Dec 10 1996	Fix precession and make equinox double
 
- * Feb 19 1997	If eq2 is 0, use equinox of image
+ * Feb 19 1997	If eqout is 0, use equinox of image
  * Feb 24 1997	Always convert center to output equinox (bug fix)
  * Mar 20 1997	Declare EQ2 double instead of int, fixing a bug
  * Jul 11 1997	Allow external (command line) setting of reference pixel coords
@@ -427,4 +409,7 @@ char*	ptype;
  * Jun  1 1998	Print error message if WCS cannot be initialized
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  * Jun 25 1998	Leave use of AIPS wcs to wcs.c file
+ * Sep 17 1998	Add sysout to argument list and use scscon() for conversion
+ * Sep 25 1998	Make sysout==0 indicate output in image coordinate system
+ * Oct 28 1998	Set coordinate system properly to sysout/eqout in GetFITSWCS()
  */

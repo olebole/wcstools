@@ -1,10 +1,11 @@
 /*** File libwcs/tabcread.c
- *** June 24, 1998
+ *** December 8, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
 /* int tabread()	Read tab table stars in specified region
  * int tabrnum()	Read tab table stars with specified numbers
+ * int tabrkey()	Read single keyword from tab table stars with specified numbers
  * int tabopen()	Open tab table catalog, returning number of entries
  * char *tabstar()	Get tab table catalog entry for one star
  * double tabgetra()	Return double right ascension in degrees
@@ -17,6 +18,8 @@
  * int tabhgeti4()	Return 4-byte integer from tab table header
  * int tabparse()	Make a table of column headings
  * int tabcol()		Search a table of column headings for a particlar entry
+ * int tabsize()	Return length of file in bytes
+ * int istab()		Return 1 if first line of file contains a tab, else 0
  */
 
 #include <unistd.h>
@@ -24,7 +27,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
-#include <sys/stat.h>
 #include "fitshead.h"
 #include "wcs.h"
 
@@ -52,7 +54,7 @@ static char *tabdata;
 /* TABREAD -- Read tab table stars in specified region */
 
 int
-tabread (tabcat,cra,cdec,dra,ddec,drad,mag1,mag2,nstarmax,
+tabread (tabcat,cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,nstarmax,
 	 tnum,tra,tdec,tmag,tpeak,nlog)
 
 char	*tabcat;	/* Name of reference star catalog file */
@@ -61,6 +63,9 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+int	sysout;		/* Search coordinate system */
+double	eqout;		/* Search coordinate equinox */
+double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	nstarmax;	/* Maximum number of stars to be returned */
 double	*tnum;		/* Array of UJ numbers (returned) */
@@ -78,6 +83,10 @@ int	nlog;
     int faintstar=0;    /* Faintest star */
     int farstar=0;      /* Most distant star */
     double *tdist;      /* Array of distances to stars */
+    int sysref=WCS_J2000;	/* Catalog coordinate system */
+    double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
+    char cstr[32];
 
     int wrap;
     int jstar;
@@ -95,6 +104,7 @@ int	nlog;
 	verbose = 1;
     else
 	verbose = 0;
+    wcscstr (cstr, sysout, eqout, epout);
 
     /* Set right ascension limits for search */
     ra1 = cra - dra;
@@ -174,6 +184,7 @@ int	nlog;
 		num = (double)istar;
 	    ra = tabgetra (line, entra);	/* Right ascension in degrees */
 	    dec = tabgetdec (line, entdec);	/* Declination in degrees */
+	    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 	    mag = tabgetr8 (line, entmag);	/* Magnitude */
 	    peak = tabgeti4 (line, entpeak);	/* Peak counts */
 	    if (drad > 0)
@@ -185,8 +196,8 @@ int	nlog;
 	    if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
 		((wrap && (ra <= ra1 || ra >= ra2)) ||
 		(!wrap && (ra >= ra1 && ra <= ra2))) &&
-		(drad == 0.0 || dist < drad) &&
-     		(dec >= dec1 && dec <= dec2)) {
+		((drad > 0.0 && dist < drad) ||
+     		(drad == 0.0 && dec >= dec1 && dec <= dec2))) {
 
 	    /* Save star position and magnitude in table */
 		if (nstar < nstarmax) {
@@ -209,6 +220,7 @@ int	nlog;
 		/* If too many stars and radial search,
 		   replace furthest star */
 		else if (drad > 0 && dist < maxdist) {
+		    tnum[farstar] = num;
 		    tra[farstar] = ra;
 		    tdec[farstar] = dec;
 		    tmag[farstar] = mag;
@@ -227,6 +239,7 @@ int	nlog;
 
 		/* If too many stars, replace faintest star */
 		else if (mag < faintmag) {
+		    tnum[faintstar] = num;
 		    tra[faintstar] = ra;
 		    tdec[faintstar] = dec;
 		    tmag[faintstar] = mag;
@@ -246,8 +259,8 @@ int	nlog;
 		nstar++;
 		jstar++;
 		if (nlog == 1)
-		    fprintf (stderr,"TABREAD: %11.6f: %9.5f %9.5f %5.2f %d    \n",
-			   num,ra,dec,mag,peak);
+		    fprintf (stderr,"TABREAD: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
+			   num,ra,dec,cstr,mag,peak);
 
 	    /* End of accepted star processing */
 		}
@@ -283,10 +296,13 @@ int	nlog;
 /* TABRNUM -- Read tab table stars with specified numbers */
 
 int
-tabrnum (tabcat, nnum, tnum,tra,tdec,tmag,tpeak,nlog)
+tabrnum (tabcat, nnum, sysout, eqout, epout, tnum,tra,tdec,tmag,tpeak,nlog)
 
 char	*tabcat;	/* Name of reference star catalog file */
 int	nnum;		/* Number of stars to look for */
+int	sysout;		/* Search coordinate system */
+double	eqout;		/* Search coordinate equinox */
+double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	*tnum;		/* Array of star numbers to look for */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
@@ -302,8 +318,100 @@ int	nlog;
     int peak;
     int istar;
     char *line;
+    int sysref=WCS_J2000;	/* Catalog coordinate system */
+    double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
+    char cstr[32];
 
     line = 0;
+
+    nstar = 0;
+    if ((nstars = tabopen (tabcat)) <= 0) {
+	fprintf (stderr,"TABRNUM: Cannot read catalog %s\n", tabcat);
+	return (0);
+	}
+
+    wcscstr (cstr, sysout, eqout, epout);
+
+    /* Loop through star list */
+    for (jnum = 0; jnum < nnum; jnum++) {
+	line = tabdata;
+
+	/* Loop through catalog to star */
+	for (istar = 1; istar <= nstars; istar++) {
+	    line = tabstar (istar, line);
+	    if (line == NULL) {
+		fprintf (stderr,"TABRNUM: Cannot read star %d\n", istar);
+		break;
+		}
+	    num = tabgetr8 (line, entid);	/* ID number */
+	    if (num == 0.0)
+		num = (double) istar;
+	    if (num == tnum[jnum])
+		break;
+	    }
+
+	/* If star has been found in table */
+	if (num == tnum[jnum]) {
+
+	    /* Extract selected fields  */
+	    ra = tabgetra (line, entra);	/* Right ascension in degrees */
+	    dec = tabgetdec (line, entdec);	/* Declination in degrees */
+	    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+	    mag = tabgetr8 (line, entmag);	/* Magnitude */
+	    peak = tabgeti4 (line, entpeak);	/* Peak counts */
+
+	    /* Save star position and magnitude in table */
+	    tra[jnum] = ra;
+	    tdec[jnum] = dec;
+	    tmag[jnum] = mag;
+	    tpeak[jnum] = peak;
+	    nstar++;
+	    if (nlog == 1)
+		fprintf (stderr,"TABRNUM: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
+			 num,ra,dec,cstr,mag,peak);
+
+	    /* End of accepted star processing */
+	    }
+
+	/* Log operation */
+	if (nlog > 0 && jnum%nlog == 0)
+	    fprintf (stderr,"TABRNUM: %5d / %5d / %5d sources catalog %s\r",
+		     nstar,jnum,nstars,tabcat);
+
+	/* End of star loop */
+	}
+
+/* Summarize search */
+    if (nlog > 0)
+	fprintf (stderr,"TABRNUM: Catalog %s : %d / %d found\n",
+		 tabcat,nstar,nstars);
+
+    tabclose();
+    return (nstars);
+}
+
+
+#define TABMAX 64
+
+/* TABRKEY -- Read single keyword from tab table stars with specified numbers */
+
+int
+tabrkey (tabcat, nnum, tnum, keyword, tval)
+
+char	*tabcat;	/* Name of reference star catalog file */
+int	nnum;		/* Number of stars to look for */
+double	*tnum;		/* Array of star numbers to look for */
+char	*keyword;	/* Keyword for which to return values */
+char	**tval;		/* Returned values for specified keyword */
+{
+    int jnum, lval;
+    int nstar;
+    int istar;
+    double num;
+    char *line;
+    char *tvalue;
+    char value[TABMAX];
 
     nstar = 0;
     if ((nstars = tabopen (tabcat)) <= 0) {
@@ -331,43 +439,24 @@ int	nlog;
 
 	/* If star has been found in table */
 	if (num == tnum[jnum]) {
-
-	    /* Extract selected fields  */
-	    ra = tabgetra (line, entra);	/* Right ascension in degrees */
-	    dec = tabgetdec (line, entdec);	/* Declination in degrees */
-	    mag = tabgetr8 (line, entmag);	/* Magnitude */
-	    peak = tabgeti4 (line, entpeak);	/* Peak counts */
-
-	    /* Save star position and magnitude in table */
-	    tra[jnum] = ra;
-	    tdec[jnum] = dec;
-	    tmag[jnum] = mag;
-	    tpeak[jnum] = peak;
 	    nstar++;
-	    if (nlog == 1)
-		fprintf (stderr,"TABRNUM: %11.6f: %9.5f %9.5f %5.2f %d    \n",
-			 num,ra,dec,mag,peak);
 
-	    /* End of accepted star processing */
+	    /* Extract selected field */
+	    (void) tabgetk (line, keyword, value, TABMAX);
+	    lval = strlen (value);
+	    if (lval > 0) {
+		tvalue = (char *) calloc (1, lval+1);
+		strcpy (tvalue, value);
+		}
+	    else
+		tvalue = NULL;
+	    tval[jnum] = tvalue;
 	    }
-
-	/* Log operation */
-	if (nlog > 0 && jnum%nlog == 0)
-	    fprintf (stderr,"TABRNUM: %5d / %5d / %5d sources catalog %s\r",
-		     nstar,jnum,nstars,tabcat);
-
-	/* End of star loop */
 	}
-
-/* Summarize search */
-    if (nlog > 0)
-	fprintf (stderr,"TABRNUM: Catalog %s : %d / %d found\n",
-		 tabcat,nstar,nstars);
 
     tabclose();
     return (nstars);
 }
-
 
 static char newline = 10;
 static char tab = 9;
@@ -383,7 +472,6 @@ tabopen (tabfile)
 
 char *tabfile;	/* Tab table catalog file name */
 {
-    struct stat statbuff;
     FILE *fcat;
     char *headbuff;
     int nr, lfile, ientry;
@@ -393,12 +481,11 @@ char *tabfile;	/* Tab table catalog file name */
     nentry = 0;
     
 /* Find length of tab table catalog */
-    if (stat (tabfile, &statbuff)) {
+    lfile = tabsize (tabfile);
+    if (lfile < 1) {
 	fprintf (stderr,"TABOPEN: Tab table catalog %s has no entries\n",tabfile);
 	return (0);
 	}
-    else
-	lfile = (int) statbuff.st_size;
 
 /* Open tab table catalog */
     if (!(fcat = fopen (tabfile, "r"))) {
@@ -755,6 +842,75 @@ char	*keyword;	/* Column heading to find */
     return (0);
 }
 
+
+/* TABSIZE -- return size of file in bytes */
+
+int
+tabsize (filename)
+
+char	*filename;	/* Name of file for which to find size */
+{
+    FILE *diskfile;
+    long filesize;
+    long position;
+
+    /* Open file */
+    if ((diskfile = fopen (filename, "r")) == NULL)
+	return (-1);
+
+    /* Move to end of the file */
+    if (fseek (diskfile, 0, 2) == 0)
+
+ 	/* Position is the size of the file */
+	filesize = ftell (diskfile);
+
+    else
+	filesize = -1;
+
+    fclose (diskfile);
+
+    return (filesize);
+}
+
+
+/* ISTAB -- Return 1 if tab table file, else 0 */
+
+int
+istab (filename)
+
+char    *filename;      /* Name of file to check */
+{
+    FILE *diskfile;
+    char line[81];
+    char *endline;
+    int nbr;
+
+    /* First check file extension */
+    if (strsrch (filename, ".tab"))
+	return (1);
+
+    /* If no .tab file extension, try opening the file */
+    else {
+	if ((diskfile = fopen (filename, "r")) == NULL)
+	    return (0);
+	else {
+	    nbr = fread (line, 1, 80, diskfile);
+	    if (nbr < 8)
+		return (0);
+	    line[nbr] = (char) 0;
+	    if ((endline = strchr (line, newline)) == NULL)
+		return (0);
+	    else
+		*endline = (char) 0 ;
+	    fclose (diskfile);
+	    if (strchr (line, tab))
+		return (1);
+	    else
+		return (0);
+	    }
+	}
+}
+
 /* Jul 18 1996	New subroutines
  * Aug  6 1996	Remove unused variables after lint
  * Aug  8 1996	Fix bugs in entry reading and logging
@@ -775,4 +931,11 @@ char	*keyword;	/* Column heading to find */
  *
  * Jun  2 1998	Fix bug parsing last column of header
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
+ * Sep 16 1998	Use limiting radius correctly
+ * Sep 22 1998	Convert to output coordinate system
+ * Oct 15 1998	Add tabsize() and istab()
+ * Oct 21 1998	Add tabrkey() to read values of keyword for list of stars
+ * Oct 29 1998	Correctly assign numbers when too many stars are found
+ * Oct 30 1998	Fix istab() to check only first line of file
+ * Dec  8 1998	Do not declare tabsize() static
  */

@@ -3,6 +3,7 @@
 *   WCSLIB - an implementation of the FITS WCS proposal.
 *   Copyright (C) 1995,1996 Mark Calabretta
 *   wcstrig function names changed by Doug Mink, SAO, April 15, 1998
+*   proj.h include file added to wcslib.h by Doug Mink, SAO, September 28, 1998
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -194,7 +195,7 @@
 *   $Id: proj.c,v 2.5 1996/09/10 06:33:59 mcalabre Exp $
 *===========================================================================*/
 
-#include "proj.h"
+#include "wcslib.h"
 
 /* Map error number to error message for each function. */
 const char *prjset_errmsg[] = {
@@ -3434,4 +3435,5 @@ double *phi, *theta;
    return 0;
 }
 /* Apr 30 1998	Define copysign only if it is not defined
+ * Sep 28 1998	Include wcslib.h instead of proj.h
  */

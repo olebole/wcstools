@@ -1,5 +1,5 @@
 /* File libwcs/fitswcs.c
- * August 6, 1998
+ * October 28, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
@@ -59,7 +59,7 @@ char *filename;	/* FITS or IRAF file filename */
     int nbiraf, nbfits;
 
     /* Open IRAF image if .imh extension is present */
-    if (strsrch (filename,".imh") != NULL) {
+    if (isiraf (filename)) {
 	if ((irafheader = irafrhead (filename, &nbiraf)) != NULL) {
 	    if ((header = iraf2fits (filename, irafheader, nbiraf, &lhead)) == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
@@ -135,19 +135,41 @@ int verbose;
 
     if (ksearch (header,"WRA")) {
 	hdel (header, "RA");
+	n++;
 	hchange (header, "WRA","RA");
 	if (ksearch (header,"WDEC")) {
 	    hdel (header, "DEC");
+	    n++;
 	    hchange (header, "WDEC", "DEC");
 	    }
 	if (ksearch (header,"WEPOCH")) {
 	    hdel (header, "EPOCH");
+	    n++;
 	    hchange (header, "WEPOCH", "EPOCH");
 	    }
 	if (ksearch (header,"WEQUINOX")) {
 	    hdel (header, "EQUINOX");
+	    n++;
 	    hchange (header, "WEQUINOX", "EQUINOX");
 	    }
+	if (ksearch (header, "EPOCH")) {
+	    hdel (header, "EQUINOX");
+	    n++;
+	    if (verbose)
+		printf ("EQUINOX deleted\n");
+	    }
+	hdel (header, "RADECSYS");
+	n++;
+	if (verbose)
+	    printf ("RADECSYS deleted\n");
+	hdel (header, "SECPIX1");
+	n++;
+	if (verbose)
+	    printf ("SECPIX1 deleted\n");
+	hdel (header, "SECPIX2");
+	n++;
+	if (verbose)
+	    printf ("SECPIX2 deleted\n");
 	if (verbose) {
 	    hgets (header,"RA", 16, rastr);
 	    hgets (header,"DEC", 16, decstr);
@@ -175,12 +197,20 @@ int verbose;
 	for (i = 1; i < 13; i++) {
 	    sprintf (keyword,"CO1_%d", i);
 	    hdel (header, keyword);
+	    if (verbose)
+		printf ("%s deleted\n", keyword);
+	    n++;
 	    }
 	for (i = 1; i < 13; i++) {
 	    sprintf (keyword,"CO2_%d", i);
 	    hdel (header, keyword);
+	    if (verbose)
+		printf ("%s deleted\n", keyword);
+	    n++;
 	    }
 	}
+    if (n > 0 && verbose)
+	printf ("%d keywords deleted\n", n);
 
     return (n);
 }
@@ -423,4 +453,6 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Jul 24 1998	Make irafheader char instead of int
  * Jul 27 1998	Set irafheader pointer to NULL after use
  * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Oct  5 1998	Use isiraf() to determine file type
+ * Oct 28 1998	Delete EQUINOX, RADECSYS, SECPIX1, SECPIX2 from imwcs
  */

@@ -1,5 +1,5 @@
 /* File sethead.c
- * September 1, 1998
+ * November 30, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -27,6 +27,8 @@ static int keyset = 0;
 static int histset = 0;
 static int krename = 0;
 static char prefix[2];
+static int version = 0;		/* If 1, print only program name and version */
+
 
 main (ac, av)
 int ac;
@@ -45,14 +47,21 @@ char **av;
     FILE *flist;
     char *listfile;
 
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
+
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
 	char c;
 	while (c = *++str)
 	switch (c) {
-	case 'v':	/* more verbosity */
-	    verbose++;
-	    break;
+
 	case 'r':	/* set flag to krename keywords with replaced values */
 	    krename++;
 	    if (ac > 1) {
@@ -63,15 +72,23 @@ char **av;
 		prefix[0] = 'X';
 	    prefix[1] = (char) 0;
 	    break;
+
 	case 'h':	/* set HISTORY */
 	    histset++;
 	    break;
+
 	case 'k':	/* set SETHEAD keyword */
 	    keyset++;
 	    break;
+
 	case 'n':	/* write new file */
 	    newimage0++;
 	    break;
+
+	case 'v':	/* more verbosity */
+	    verbose++;
+	    break;
+
 	default:
 	    usage();
 	    break;
@@ -85,11 +102,16 @@ char **av;
     nkwd = 0;
     nfile = 0;
     while (ac-- > 0  && nfile < MAXFILES && nkwd < MAXKWD) {
-	if (strsrch (*av,".fit") != NULL ||
-	    strsrch (*av,".fts") != NULL ||
-	    strsrch (*av,".FIT") != NULL ||
-	    strsrch (*av,".FTS") != NULL ||
-	    strsrch (*av,".imh") != NULL) {
+	if (strsrch (*av,"=") != NULL) {
+	    kwd[nkwd] = *av;
+	    nkwd++;
+	    }
+	else if (strsrch (*av,"@") != NULL) {
+	    readlist++;
+	    listfile = *av + 1;
+	    nfile = 2;
+	    }
+	else {
 	    fn[nfile] = *av;
 
 	    if (listpath || (name = strrchr (fn[nfile],'/')) == NULL)
@@ -100,15 +122,6 @@ char **av;
 	    if (lfn > maxlfn)
 		maxlfn = lfn;
 	    nfile++;
-	    }
-	else if (strsrch (*av,"@") != NULL) {
-	    readlist++;
-	    listfile = *av + 1;
-	    nfile = 2;
-	    }
-	else {
-	    kwd[nkwd] = *av;
-	    nkwd++;
 	    }
 	av++;
 	}
@@ -145,6 +158,8 @@ char **av;
 static void
 usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Set FITS or IRAF header keyword values\n");
     fprintf(stderr,"Usage: [-nhkv] file1.fits [... filen.fits] kw1=val1 [ ... kwn=valuen]\n");
     fprintf(stderr,"Usage: [-nhkv] @listfile kw1=val1 [ ... kwn=valuen]\n");
@@ -192,7 +207,7 @@ char	*kwd[];		/* Names and values of those keywords */
     newimage = newimage0;
 
     /* Open IRAF image if .imh extension is present */
-    if (strsrch (filename,".imh") != NULL) {
+    if (isiraf (filename)) {
 	iraffile = 1;
 	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
 	    if ((header = iraf2fits (filename, irafheader, lhead, &nbhead)) == NULL) {
@@ -214,9 +229,8 @@ char	*kwd[];		/* Names and values of those keywords */
 	    hgeti4 (header,"NAXIS",&naxis);
 	    if (naxis > 0) {
 		if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
-		    fprintf (stderr, "Cannot read FITS image %s\n", filename);
-		    free (header);
-		    return;
+		    if (verbose)
+			fprintf (stderr, "No FITS image in %s\n", filename);
 		    }
 		}
 	    else {
@@ -368,7 +382,7 @@ char	*kwd[];		/* Names and values of those keywords */
 
     /* Add history to header */
     if (keyset || histset) {
-	if (hgets (header, "GETHEAD", 72, history))
+	if (hgets (header, "SETHEAD", 72, history))
 	    hputc (header, "HISTORY", history);
 	endchar = strchr (history, ',');
 	*endchar = (char) 0;
@@ -412,7 +426,7 @@ char	*kwd[];		/* Names and values of those keywords */
 	    }
 	strcat (history, " updated");
 	if (keyset)
-	    hputs (header, "GETHEAD", history);
+	    hputs (header, "SETHEAD", history);
 	if (histset)
 	    hputc (header, "HISTORY", history);
 	}
@@ -469,4 +483,9 @@ char	*kwd[];		/* Names and values of those keywords */
  * Aug 14 1998	If changing primary header, write out entire input file
  * Aug 31 1998	Add options to add HISTORY and/or SETHEAD keyword
  * Sep  1 1998	Add option to keep changed keywords with new names
+ * Oct  5 1998	Allow header changes even if no data is present
+ * Oct  5 1998	Determine assignment arguments by presence of equal sign
+ * Oct  5 1998	Use isiraf() to determine if file is IRAF or FITS
+ * Oct 29 1998	Fix history setting
+ * Nov 30 1998	Add version and help commands for consistency
  */

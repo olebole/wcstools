@@ -1,5 +1,5 @@
 /* File skydiff.c
- * August 6, 1998
+ * November 30, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -20,12 +20,13 @@ static int verbose = 0;		/* verbose/debugging flag */
 static double epoch = 0.0;
 static double eqout = 0.0;
 static double eqin = 0.0;
+static int version = 0;		/* If 1, print only program name and version */
+
 
 main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
     FILE *fd;
     char *ln, *listname;
@@ -51,7 +52,16 @@ char **av;
 
     /* There are ac arguments starting at av[0] */
     if (ac == 1)
-	usage (progname);
+	usage ();
+
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
 
     /* Decode arguments */
     for (av++; --ac > 0 && (*(str = *av) == '-'); av++) {
@@ -113,7 +123,7 @@ char **av;
 
     	default:
 	    if (notnum (str))
-    		usage(progname);
+    		usage();
     	    break;
     	}
     }
@@ -290,6 +300,8 @@ int	ndec;		/* Number of decimal places in output RA seconds */
 static void
 usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Find distance between coordinates\n");
     fprintf (stderr,"Usage [-bdegjv] [-y epoch] [-q system] [-n ndec] ra1 dec1 [sys1] ra2 dec2 [sys2]\n");
     fprintf (stderr,"Usage: [-vbejg] [-y epoch] [-q system] [-n ndec] @listfile\n");
@@ -306,4 +318,5 @@ usage ()
     exit (1);
 }
 /* Aug  6 1996	New program
+ * Nov 30 1998	Add version and help commands for consistency
  */

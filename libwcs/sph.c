@@ -3,6 +3,7 @@
 *   WCSLIB - an implementation of the FITS WCS proposal.
 *   Copyright (C) 1995, Mark Calabretta
 *   wcstrig function names changed by Doug Mink, SAO, April 15, 1998
+*   wcstrig.h include file added to wcslib.h by Doug Mink, SAO, September 28, 1998
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -90,7 +91,7 @@
 *   $Id: sph.c,v 2.1 1995/11/09 03:17:43 mcalabre Exp $
 *===========================================================================*/
 
-#include "wcstrig.h"
+#include "wcslib.h"
 
 #ifndef __STDC__
 #ifndef const
@@ -222,4 +223,5 @@ double *lng, *lat;
    return 0;
 }
 /* Apr 30 1998	Define copysign only if it is not already defined
+ * Sep 28 1998	Include wcslib.h instead of wcstrig.h
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/hput.c
- *** June 25, 1998
+ *** October 1, 1998
  *** By Doug Mink
 
  * Module:	hput.c (Put FITS Header parameter values)
@@ -476,6 +476,7 @@ hputcom (hstring,keyword,comment)
 
 	/* otherwise, extract entry for this variable from the header */
 	    strncpy (line, v1, 80);
+	    line[80] = '\0'; /* Null-terminate linebefore strchr call */
 
 	/* check for quoted value */
 	    q1 = strchr (line,squot);
@@ -1001,7 +1002,7 @@ getltime ()
  *
  */
 {
-    int clock;
+    time_t clock;
     /* char *tstr, *ctime(); */
     int i;
     struct tm *localtime();
@@ -1100,4 +1101,6 @@ getutime ()
  * Jun 24 1998	Add string length to ra2str(), dec2str(), and deg2str()
  * Jun 25 1998	Make string converstion subroutines more robust
  * Aug 31 1998	Add getltime() and getutime()
+ * Sep 28 1998	Null-terminate comment in HPUTCOM (Allan Brighton)
+ * Oct  1 1998	Change clock declaration in getltime() from int (Allan Brighton)
  */

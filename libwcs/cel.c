@@ -3,6 +3,7 @@
 *   WCSLIB - an implementation of the FITS WCS proposal.
 *   Copyright (C) 1995,1996 Mark Calabretta
 *   wcstrig function names changed by Doug Mink, SAO, April 15, 1998
+*   cel.h include file added to wcslib.h by Doug Mink, SAO, September 28, 1998
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -236,7 +237,7 @@
 *===========================================================================*/
 
 #include <string.h>
-#include "cel.h"
+#include "wcslib.h"
 
 int  npcode = 25;
 char pcodes[25][4] =
@@ -567,3 +568,6 @@ double *lng, *lat;
 
    return 0;
 }
+
+/* Sep 28 1998	cel.h is now part of wcslib.h
+ */

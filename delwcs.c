@@ -1,5 +1,5 @@
 /* File delwcs.c
- * August 6, 1998
+ * November 30, 1998
  * By Doug Mink, after University of Iowa code
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -19,14 +19,24 @@ static void usage();
 static void DelWCS ();
 extern int DelWCSFITS ();
 
-static int verbose = 0;		/* verbose/debugging flag */
+static int verbose = 0;		/* Verbose/debugging flag */
+static int newimage = 0;	/* New image flag */
+static int version = 0;		/* If 1, print only program name and version */
 
 main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
+
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
@@ -36,15 +46,18 @@ char **av;
 	case 'v':	/* more verbosity */
 	    verbose++;
 	    break;
+	case 'n':	/* New image for output */
+	    newimage++;
+	    break;
 	default:
-	    usage(progname);
+	    usage();
 	    break;
 	}
     }
 
     /* now there are ac remaining file names starting at av[0] */
     if (ac == 0)
-	usage (progname);
+	usage ();
 
     while (ac-- > 0) {
 	char *fn = *av++;
@@ -57,21 +70,22 @@ char **av;
 }
 
 static void
-usage (progname)
-char *progname;
+usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Delete WCS in FITS and IRAF image files\n");
-    fprintf (stderr, "By D. Mink, SAO, after E. Downey, UIowa\n");
-    fprintf(stderr,"%s: usage: [-v] file.fts ...\n", progname);
+    fprintf(stderr,"usage: delwcs [-nv] file.fits ...\n");
+    fprintf(stderr,"  -n: write new file, else overwrite \n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
 }
 
 
 static void
-DelWCS (name)
+DelWCS (filename)
 
-char *name;
+char *filename;
 
 {
     char *header;	/* FITS image header */
@@ -81,13 +95,17 @@ char *name;
     int iraffile;	/* 1 if IRAF image */
     char *irafheader;	/* IRAF image header */
     char pixname[128];	/* IRAF pixel file name */
+    char newname[128];
+    int lname, lext, lroot;
+    char *ext, *fname, *imext, *imext1;
+    char echar;
 
-    /* Open IRAF image if .imh extension is present */
-    if (strsrch (name,".imh") != NULL) {
+    /* Open image if IRAF .imh image */
+    if (isiraf (filename)) {
 	iraffile = 1;
-	if ((irafheader = irafrhead (name, &lhead)) != NULL) {
-	    if ((header = iraf2fits (name, irafheader, lhead, &nbhead))==NULL) {
-		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
+	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
+	    if ((header = iraf2fits (filename, irafheader, lhead, &nbhead))==NULL) {
+		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
 		free (irafheader);
 		return;
 		}
@@ -100,53 +118,109 @@ char *name;
 		}
 	    }
 	else {
-	    fprintf (stderr, "Cannot read IRAF header file %s\n", name);
+	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
 	    return;
 	    }
 	}
 
-    /* Open FITS file if .imh extension is not present */
+    /* Open FITS file if not an IRAF .imh image */
     else {
 	iraffile = 0;
-	if ((header = fitsrhead (name, &lhead, &nbhead)) != NULL) {
-	    if ((image = fitsrimage (name, nbhead, header)) == NULL) {
-		fprintf (stderr, "Cannot read FITS image %s\n", name);
+	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
+	    if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
+		fprintf (stderr, "Cannot read FITS image %s\n", filename);
 		free (header);
 		return;
 		}
 	    }
 	else {
-	    fprintf (stderr, "Cannot read FITS file %s\n", name);
+	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
 	    return;
 	    }
 	}
+
+    /* Make up name for new FITS or IRAF output file */
+    if (newimage) {
+
+    /* Remove directory path and extension from file name */
+	fname = strrchr (filename, '/');
+	if (fname)
+	    fname = fname + 1;
+	else
+	    fname = filename;
+	ext = strrchr (fname, '.');
+	if (ext != NULL) {
+	    lext = (fname + strlen (fname)) - ext;
+	    lroot = ext - fname;
+	    strncpy (newname, fname, lroot);
+	    *(newname + lroot) = 0;
+	    }
+	else {
+	    lext = 0;
+	    lroot = strlen (fname);
+	    strcpy (newname, fname);
+	    }
+	imext = strchr (fname, ',');
+	imext1 = NULL;
+	if (imext == NULL) {
+	    imext = strchr (fname, '[');
+	    if (imext != NULL) {
+		imext1 = strchr (fname, ']');
+		*imext1 = (char) 0;
+		}
+	    }
+	if (imext != NULL) {
+	    strcat (newname, "_");
+	    strcat (newname, imext+1);
+	    }
+	if (fname)
+	    fname = fname + 1;
+	else
+	    fname = filename;
+	strcat (newname, "e");
+	if (lext > 0) {
+	    if (imext != NULL) {
+		echar = *imext;
+		*imext = (char) 0;
+		strcat (newname, ext);
+		*imext = echar;
+		if (imext1 != NULL)
+		    *imext1 = ']';
+		}
+	    else
+		strcat (newname, ext);
+	    }
+	}
+    else
+	strcpy (newname, filename);
+
     if (verbose) {
 	fprintf (stderr,"Remove World Coordinate System from ");
 	if (iraffile)
-	    fprintf (stderr,"IRAF image file %s\n", name);
+	    fprintf (stderr,"IRAF image file %s\n", filename);
 	else
-	    fprintf (stderr,"FITS image file %s\n", name);
+	    fprintf (stderr,"FITS image file %s\n", filename);
 	}
 
     if (DelWCSFITS (header, verbose) < 1) {
 	if (verbose)
-	    printf ("%s: no WCS fields found -- file unchanged\n", name);
+	    printf ("%s: no WCS fields found -- file unchanged\n", filename);
 	}
     else  {
 	if (iraffile) {
-	    if (irafwhead (name, lhead, irafheader, header) < 1)
-		fprintf (stderr, "%s: Could not write FITS file\n", name);
+	    if (irafwhead (newname, lhead, irafheader, header) < 1)
+		fprintf (stderr, "%s: Could not write FITS file\n", newname);
 	    else {
 		if (verbose)
-		    printf ("%s: rewritten successfully without WCS.\n", name);
+		    printf ("%s: rewritten successfully without WCS.\n", newname);
 		}
 	    }
 	else {
-	    if (fitswimage (name, header, image) < 1)
-		fprintf (stderr, "%s: Could not write FITS file\n", name);
+	    if (fitswimage (newname, header, image) < 1)
+		fprintf (stderr, "%s: Could not write FITS file\n", newname);
 	    else {
 		if (verbose)
-		    printf ("%s: rewritten successfully without WCS.\n", name);
+		    printf ("%s: rewritten successfully without WCS.\n", newname);
 		}
 	    }
 	}
@@ -170,4 +244,6 @@ char *name;
  * May 27 1998	Include fitsio.h instead of fitshead.h
  * Jul 24 1998	Make irafheader char instead of int
  * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Oct 28 1998	Add option to write a new file
+ * Nov 30 1998	Add version and help commands for consistency
  */

@@ -1,6 +1,6 @@
 WCSTools
 
-This is version 2.4 of the WCSTools package developed by Doug Mink
+This is version 2.5 of the WCSTools package developed by Doug Mink
 at the Smithsonian Astrophysical Observatory, with significant code from
 
 Bill Cotton of NRAO (projection),
@@ -9,14 +9,17 @@ Pat Wallace of Cambridge University (coordinate conversion), and
 Elwood Downey of the University of Iowa (WCS fitting procedure).
 
 Bill Joye and Eric Mandel of SAO and Allan Brighton of ESO helped
-debug the subroutine library.  Norm Grogan, Scott Kenyon, and Susan
-Tokarz of SAO and Andreas Jaunsen for helping debug the programs.
+debug the subroutine library.  Norm Grogan, Scott Kenyon, Susan
+Tokarz, and Dan Koranyi of SAO and Andreas Jaunsen helped debug
+the astrometry programs.
 
 WCSTools is a set of software utilities, written in C, which create,
 display and manipulate the world coordinate system of a FITS or IRAF
 image, using specific keywords in the image header which relate pixel
 position within the image to position on the sky.  Auxillary programs
-search star catalogs and manipulate images.  
+search star catalogs and manipulate images.
+
+Details of updates are in the Versions file.
 
 Documentation, with examples, is on the World Wide Web at
 
@@ -27,11 +30,11 @@ of this software is in the Versions file.
 
 The complete source code is in
 
-	ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-2.4.tar.gz
+	ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-2.5.tar.gz
 
 To install the code, create a directory for it, download it, and run
 
-	gzcat wcstools-2.4.tar.gz | tar xvf -
+	gzcat wcstools-2.5.tar.gz | tar xvf -
 
 The main directory will contain the source code for the programs, and
 a subdirectory, libwcs, will contain the source code for the subroutines
@@ -51,16 +54,16 @@ are mounted.
 compiles the subroutine library and all of the documented programs.
 The resulting executable binaries will be in the bin/ subdirectory.
 scat and imcat search specific catalogs if invoked with specific commands.
-Execute Linkbin to make these links in the bin/ directory.
+Execute Linkbin to make these links in the bin/ directory.  Either put
+this bin directory in your search path, or transfer its contents to the
+desired location.  Make sure that the scan and imcat links for the catalogs
+you wish to use are transferred, too.
 
-Man pages for most, but not all, of the programs are in the Man/
-subdirectory.
+Man pages for most, but not all, of the programs are in the Man/ subdirectory.
 
-To use the catalog search routine without having to type the catalog
-name as an argument, run Linkbins to add symbolic links from sgsc,
-suac, sujc, and susac to scat and imgsc, imuac, imujc, and imusac
-to imcat.
-
+To use the catalog search routine without having to type the catalog name
+as an argument, run Linkbins to add symbolic links from sgsc, suac, sujc,
+and susac to scat and imgsc, imuac, imujc, and imusac to imcat.
 
 SAOimage is available via FTP from
 
@@ -70,7 +73,7 @@ and uses the same WCS subroutines as WCSTools.  If you want to include the
 same WCS access in your own code, the subset of the WCSTools library
 which is used in SAOimage is available at
 
-	ftp://cfa-ftp.harvard.edu/pub/gsc/SAOimage/wcssubs-2.4.tar.gz
+	ftp://cfa-ftp.harvard.edu/pub/gsc/SAOimage/wcssubs-2.5.tar.gz
 
 -Doug Mink  (dmink@cfa.harvard.edu)
  Telescope Data Center

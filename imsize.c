@@ -1,5 +1,5 @@
 /* File imsize.c
- * August 6, 1998
+ * November 30, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -29,10 +29,11 @@ static double frac = 0.0;
 static int verbose = 0;		/* verbose/debugging flag */
 static int dss = 0;		/* Flag to drop extra stuff for DSS */
 static int dssc = 0;		/* Flag to drop extra stuff for DSS */
-static int ieq = 0;
 static double equinox = 0.0;
+static int eqsys = -1;
 static int printepoch = 0;
 static int printrange = 0;	/* Flag to print range rather than center */
+static int version = 0;		/* If 1, print only program name and version */
 
 main (ac, av)
 int ac;
@@ -49,6 +50,15 @@ char **av;
 
     coorsys[0] = 0;
 
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
+
     /* crack arguments */
     for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
 	char c;
@@ -62,8 +72,8 @@ char **av;
 	    break;
 
 	case 'b':	/* ouput B1950 (B1950) coordinates */
-	    ieq = 1950;
 	    equinox = 1950.0;
+	    eqsys = WCS_B1950;
 	    str1 = *(av+1);
 	    if (*(str+1) || !strchr (str1,':')) {
 		setsys (WCS_B1950);
@@ -84,6 +94,9 @@ char **av;
 
 	case 'c':	/* Change output for DSS */
 	    strcpy (coorsys, "J2000");
+	    equinox = 2000.0;
+	    eqsys = WCS_J2000;
+	    setsys (WCS_J2000);
 	    dssc++;
 	    str1 = *(av+1);
 	    if (!*(str+1) && (strchr (str1,'-') || strchr (str1,'+')) ) {
@@ -98,6 +111,9 @@ char **av;
 
 	case 'd':	/* Change output for DSS */
 	    strcpy (coorsys, "J2000");
+	    equinox = 2000.0;
+	    eqsys = WCS_J2000;
+	    setsys (WCS_J2000);
 	    dss++;
 	    str1 = *(av+1);
 	    if (!*(str+1) && (strchr (str1,'-') || strchr (str1,'+')) ) {
@@ -116,8 +132,8 @@ char **av;
 
 	case 'j':	/* ouput J2000 (J2000) coordinates */
 	    str1 = *(av+1);
-	    ieq = 2000;
 	    equinox = 2000.0;
+	    eqsys = WCS_J2000;
 	    if (*(str+1) || !strchr (str1,':')) {
 		setsys (WCS_J2000);
 		strcpy (coorsys, "J2000");
@@ -197,6 +213,8 @@ char **av;
 static void
 usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Print size of image in WCS and pixels\n");
     fprintf (stderr,"Usage: [-vcd] [-p scale] [-b ra dec] [-j ra dec] FITS or IRAF file(s)\n");
     fprintf (stderr,"  -b: Output B1950 (B1950) coordinates (optional center)\n");
@@ -252,7 +270,7 @@ char *name;
 
     if (verbose) {
 	fprintf (stderr,"Print World Coordinate System from ");
-	if (strsrch (name,".imh") != NULL)
+	if (isiraf (name))
 	    fprintf (stderr,"IRAF image file %s\n", name);
 	else
 	    fprintf (stderr,"FITS image file %s\n", name);
@@ -276,7 +294,7 @@ char *name;
 
     /* Read world coordinate system information from the image header */
     wcs = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-                &wp, &hp, equinox);
+                &wp, &hp, &eqsys, &equinox);
     if (nowcs (wcs)) {
 	printf ("%s: No WCS for file, cannot compute image size\n", name);
 	return;
@@ -290,39 +308,8 @@ char *name;
     dra = 2.0 * dra * 60.0 * cos (degrad(cdec));
     ddec = 2.0 * ddec * 60.0;
 
-    if (coorsys[0] == 0) {
-	ieq = -1;
-	if (iswcs (wcs)) {
-	    if (wcs->equinox == 1950.0)
-		strcpy (coorsys, "B1950");
-	    else if (wcs->equinox == 2000.0)
-		strcpy (coorsys, "J2000");
-	    else
-		sprintf (coorsys,"%6.1f",wcs->equinox);
-	    }
-	else if (hgetr8 (header,"EQUINOX",&equinox)) {
-	    if (equinox == 0)
-		equinox = 1950.0;
-	    if (equinox == 1950.0)
-		strcpy (coorsys, "B1950");
-	    else if (ieq == 2000)
-		strcpy (coorsys, "J2000");
-	    else
-		sprintf (coorsys,"%6.1f",equinox);
-	    }
-	else if (hgetr8 (header,"EPOCH",&equinox)) {
-	    if (equinox == 0)
-		equinox = 1950.0;
-	    if (equinox == 1950.0)
-		strcpy (coorsys, "B1950");
-	    else if (equinox == 2000.0)
-		strcpy (coorsys, "J2000");
-	    else
-		sprintf (coorsys,"%6.1f",equinox);
-	    }
-	else
-	    strcpy (coorsys, "J2000");
-	}
+    if (coorsys[0] == 0)
+	wcscstr (coorsys, wcs->syswcs, wcs->equinox, 0.0);
 
     /* Print information */
     if (frac > 0.0) {
@@ -455,4 +442,9 @@ char *name;
  * Jun 25 1998	Set WCS subroutine choice with SETDEFWCS()
  * Jul 24 1998	Drop unused variable irafheader
  * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Sep 17 1998	Add coordinate system to GetFITSWCS()
+ * Sep 17 1998	Set coordinate system string using wcscstr()
+ * Sep 29 1998	Change call to GetFITSWCS()
+ * Oct 14 1998	Use isiraf() to determine file type
+ * Nov 30 1998	Add version and help commands for consistency
  */

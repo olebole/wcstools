@@ -1,5 +1,5 @@
 /* File imstar.c
- * August 6, 1998
+ * November 30, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -13,10 +13,12 @@
 #include <math.h>
 #include "fitsfile.h"
 #include "wcs.h"
+#include "wcscat.h"
 
 static void usage();
 static int verbose = 0;		/* verbose flag */
 static int debug = 0;		/* debugging flag */
+static int version = 0;		/* If 1, print only program name and version */
 
 static void ListStars ();
 extern void RASortStars ();
@@ -37,24 +39,36 @@ static int nstar = 0;
 static double cra0 = 0.0;
 static double cdec0 = 0.0;
 static double eqout = 0.0;
+static int sysout = -1;
 static int daofile = 0;
 static int ascfile = 0;
 static int setuns = 0;	/* Change to unsigned integer flag */
+static int region_char;
+static int region_radius;
 
 main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
     double bmin;
     char rastr[32], decstr[32];
     int readlist = 0;
     char *lastchar;
+    char *cstr;
     char filename[128];
     FILE *flist;
     char *listfile;
     int maxrad;
+
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
 
     /* crack arguments */
     for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
@@ -76,11 +90,12 @@ char **av;
 
 	case 'b':	/* ouput FK4 (B1950) coordinates */
 	    eqout = 1950.0;
+	    sysout = WCS_B1950;
 	    break;
 
 	case 'c':	/* Set center RA and Dec */
 	    if (ac < 3)
-		usage (progname);
+		usage();
 	    strcpy (rastr, *++av);
 	    ac--;
 	    strcpy (decstr, *++av);
@@ -97,7 +112,7 @@ char **av;
 
 	case 'e':	/* Number of pixels to ignore around image edge */
 	    if (ac < 2)
-		usage (progname);
+		usage();
 	    setborder (atof (*++av));
 	    ac--;
 	    break;
@@ -113,7 +128,7 @@ char **av;
 
 	case 'i':	/* Image star minimum peak value (or minimum sigma */
 	    if (ac < 2)
-		usage (progname);
+		usage();
 	    bmin = atof (*++av);
 	    if (bmin < 0)
 		setstarsig (-bmin);
@@ -124,6 +139,7 @@ char **av;
 
 	case 'j':	/* ouput FK5 (J2000) coordinates */
 	    eqout = 2000.0;
+	    sysout = WCS_J2000;
 	    break;
 
 	case 'k':	/* Print each star as it is found */
@@ -132,14 +148,14 @@ char **av;
 
 	case 'm':	/* Magnitude offset */
 	    if (ac < 2)
-		usage (progname);
+		usage();
 	    magoff = atof (*++av);
 	    ac--;
 	    break;
 
 	case 'n':	/* Number of brightest stars to read */
 	    if (ac < 2)
-		usage (progname);
+		usage();
 	    nstar = atoi (*++av);
 	    ac--;
 	    break;
@@ -151,10 +167,46 @@ char **av;
     	    ac--;
     	    break;
 
+	case 'q':	/* Output region file shape for SAOimage */
+    	    if (ac < 2)
+    		usage();
+	    cstr = *++av;
+	    switch (cstr[0]){
+		case 'c':
+		    if (cstr[1] == 'i')
+			region_char = WCS_CIRCLE;
+		    else
+			region_char = WCS_CROSS;
+		    break;
+		case 'd':
+		    region_char = WCS_DIAMOND;
+		    break;
+		case 's':
+		    region_char = WCS_SQUARE;
+		    break;
+		case 'x':
+		    region_char = WCS_EX;
+		    break;
+		case 'v':
+		    region_char = WCS_VAR;
+		    break;
+		case '+':
+		    region_char = WCS_CROSS;
+		    break;
+		case 'o':
+		default:
+		    region_char = WCS_CIRCLE;
+		}
+	    if (region_radius == 0)
+		region_radius = 10;
+    	    ac--;
+	    break;
+
 	case 'r':	/* Maximum acceptable radius for a star */
 	    if (ac < 2)
-		usage (progname);
+		usage();
 	    maxrad = (int) atof (*++av);
+	    region_radius = maxrad;
 	    setmaxrad (maxrad);
 	    ac--;
 	    break;
@@ -196,7 +248,7 @@ char **av;
 	    ac--;
 
 	default:
-	    usage (progname);
+	    usage();
 	    break;
 	}
     }
@@ -206,7 +258,7 @@ char **av;
 	if ((flist = fopen (listfile, "r")) == NULL) {
 	    fprintf (stderr,"IMSTAR: List file %s cannot be read\n",
 		     listfile);
-	    usage (progname);
+	    usage();
 	    }
 	while (fgets (filename, 128, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
@@ -218,7 +270,7 @@ char **av;
 
     /* If no arguments left, print usage */
     if (ac == 0)
-	usage (progname);
+	usage();
 
     /* now there are ac remaining file names starting at av[0] */
     while (ac-- > 0) {
@@ -232,12 +284,12 @@ char **av;
 }
 
 static void
-usage (progname)
-char *progname;
+usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Find stars in FITS and IRAF image files\n");
-    fprintf(stderr,"%s: usage: [-vbsjt] [-m mag_off] [-n num] [-c ra dec]file.fts ...\n",
-	    progname);
+    fprintf(stderr,"usage: imstar [-vbsjt] [-m mag_off] [-n num] [-c ra dec]file.fits ...\n");
     fprintf(stderr,"  -a: initial rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: Output B1950 (FK4) coordinates \n");
     fprintf(stderr,"  -c: Use following RA and Dec as center \n");
@@ -296,8 +348,8 @@ char	*filename;	/* FITS or IRAF file filename */
     FILE *fd;
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    /* Open IRAF header if .imh extension is present */
-    if (strsrch (filename,".imh") != NULL) {
+    /* Open IRAF header */
+    if (isiraf (filename)) {
 	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
 	    if ((header = iraf2fits (filename,irafheader,lhead,&nbhead)) == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
@@ -319,7 +371,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	}
 
-    /* Read FITS image header if .imh extension is not present */
+    /* Read FITS image header */
     else {
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
 	    if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
@@ -348,7 +400,7 @@ char	*filename;	/* FITS or IRAF file filename */
  */
 
     wcs = GetFITSWCS (header,verbose, &cra, &cdec, &dra, &ddec, &secpix,
-	  &wp, &hp, eqout);
+	  &wp, &hp, &sysout, &eqout);
 
     /* Discover star-like things in the image, in pixels */
     ns = FindStars (header, image, &sx, &sy, &sb, &sp, debug);
@@ -397,7 +449,9 @@ char	*filename;	/* FITS or IRAF file filename */
 	strcpy (outfile,filename);
 	(void) hgets (header,"OBJECT",64,outfile);
 	}
-    if (daofile || nowcs (wcs))
+    if (region_char)
+	strcat (outfile, ".reg");
+    else if (daofile || nowcs (wcs))
 	strcat (outfile,".dao");
     else
 	strcat (outfile,".stars");
@@ -409,6 +463,38 @@ char	*filename;	/* FITS or IRAF file filename */
 	fprintf (stderr, "IMSTAR:  cannot write file %s\n", outfile);
         return;
         }
+
+    /* Write file of positions for SAOimage regions */
+    if (region_char) {
+	int radius, ix, iy;
+	char snum[32], rstr[16];
+	fprintf (fd, "# stars in %s\n", filename);
+	switch (region_char) {
+	    case WCS_SQUARE:
+		strcpy (rstr, "SQUARE");
+		break;
+	    case WCS_DIAMOND:
+		strcpy (rstr, "DIAMOND");
+		break;
+	    case WCS_CROSS:
+		strcpy (rstr, "CROSS");
+		break;
+	    case WCS_EX:
+		strcpy (rstr, "EX");
+		break;
+	    case WCS_CIRCLE:
+	    default:
+		strcpy (rstr, "CIRCLE");
+	    }
+	radius = region_radius;
+	for (i = 0; i < ns; i++) {
+	    ix = (int)(sx[i] + 0.5);
+	    iy = (int)(sy[i] + 0.5);
+	    fprintf (fd, "%s(%d,%d,%d) # %s %d\n",
+		     rstr, ix, iy, radius, filename, i);
+	    }
+	}
+    else {
 
     /* Write header */
     if (tabfile)
@@ -488,6 +574,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	if (verbose)
 	    printf ("%s\n", headline);
 	}
+	}
 
     fclose (fd);
     if (sx) free ((char *)sx);
@@ -497,7 +584,6 @@ char	*filename;	/* FITS or IRAF file filename */
     if (sdec) free ((char *)sdec);
     if (smag) free ((char *)smag);
     free ((char *)wcs);
-
     free (header);
     free (image);
     return;
@@ -545,4 +631,9 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jul 24 1998	Make irafheader char instead of int
  * Jul 27 1998	Fix bug in ra2str() and dec2str() arguments
  * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Sep 17 1998	Add coordinate system to GetFITSWCS() argument list
+ * Sep 29 1998	Changesystem and equinox arguments to GetFITSWCS()
+ * Oct 14 1998	Use isiraf() to determine file type
+ * Oct 27 1998	Add option to write region file to plot results over image
+ * Nov 30 1998	Add version and help commands for consistency
  */

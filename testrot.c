@@ -1,5 +1,5 @@
-/* File wcshead.c
- * November 30, 1998
+/* File testrot.c
+ * September 2, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -41,7 +41,7 @@ char **av;
 
     /* Check for help or version command first */
     str = *(av+1);
-    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+    if (!strcmp (str, "help") || !strcmp (str, "-help"))
 	usage();
     if (!strcmp (str, "version") || !strcmp (str, "-version")) {
 	version = 1;
@@ -92,9 +92,9 @@ char **av;
     /* Find number of images to search and leave listfile open for reading */
     if (readlist) {
 	if ((flist = fopen (listfile, "r")) == NULL) {
-	    fprintf (stderr,"IMHEAD: List file %s cannot be read\n",
+	    fprintf (stderr,"TESTROT: List file %s cannot be read\n",
 		     listfile);
-	    usage();
+	    usage ();
 	    }
 	while (fgets (filename, 128, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
@@ -108,7 +108,7 @@ char **av;
 
     /* If no arguments left, print usage */
     if (ac == 0)
-	usage();
+	usage ();
 
     if (verbose)
 
@@ -129,7 +129,7 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Print WCS part of FITS or IRAF image header\n");
-    fprintf (stderr,"usage: wcshead [-htv] file.fit ...\n");
+    fprintf (stderr,"usage: testrot [-htv] file.fit ...\n");
     fprintf (stderr,"  -h: print CRVALs as hh:mm:ss dd:mm:ss\n");
     fprintf (stderr,"  -t: print tab table output\n");
     fprintf (stderr,"  -v: verbose\n");
@@ -145,13 +145,13 @@ char	*filename;	/* FITS or IRAF image file name */
 
 {
     struct WorldCoor *wcs, *GetWCSFITS();
-    void TabWCS();
+    void TabRot();
 
     wcs = GetWCSFITS (filename);
     if (nowcs (wcs))
 	return;
 
-    TabWCS (filename, wcs);
+    TabRot (filename, wcs);
 
     free (wcs);
     return;
@@ -159,35 +159,34 @@ char	*filename;	/* FITS or IRAF image file name */
 
 
 void
-TabWCS (filename, wcs)
+TabRot (filename, wcs)
 
 char	*filename;	/* FITS or IRAF image file name */
 
 struct WorldCoor *wcs;
 
 {
-    int i;
+    int i, off;
     char rastr[32], decstr[32], fform[8];
+    double xc, yc, cra, cdec, xe, ye, xn, yn, pa_north, pa_east;
 
     if (wcs->ctype[0][0] == (char) 0)
 	return;
     if (tabout && nf == 1) {
-	printf ("filename");
-	for (i = 1; i < nchar - 8; i++) printf (" ");
-	printf ("	naxis1	naxis2");
-	printf ("	ctype1  	ctype2  ");
-	printf ("	crval1	crval2	radecsys");
-	printf ("	crpix1	crpix2");
+	printf ("filename   ");
+	for (i = 1; i < nchar - 5; i++) printf (" ");
+	printf ("	flip	cd  ");
+	printf ("	cd1_1	cd1_2	cd2_1	cd2_2");
 	printf ("	cdelt1	cdelt2");
-	printf ("	crota2\n");
-	printf ("--------");
+	printf ("	crota2  	north   	east     ");
+	printf ("	imrot   	imflip\n");
+	printf ("------------");
 	for (i = 1; i < nchar - 8; i++) printf ("-");
 	printf ("	------	------");
-	printf ("	------	------	--------");
-	printf ("	-------	-------");
+	printf ("	------	------	------	------");
 	printf ("	------	------");
-	printf ("	------	------");
-	printf ("	--------\n");
+	printf ("	---------	---------	---------");
+	printf ("	---------	-------\n");
 	}
 
     sprintf (fform,"%%%d.%ds",nchar);
@@ -195,68 +194,50 @@ struct WorldCoor *wcs;
 	printf (fform, filename);
     else
 	printf (fform, filename);
-    if (tabout)
-	printf ("	%.0f	%.0f", wcs->nxpix, wcs->nypix);
-    else
-	printf (" %4.0f %4.0f", wcs->nxpix, wcs->nypix);
 
     if (tabout)
-	printf ("	%s	%s", wcs->ctype[0], wcs->ctype[1]);
+	printf ("	%d	%d", wcs->coorflip, wcs->rotmat);
     else
-	printf (" %s %s", wcs->ctype[0], wcs->ctype[1]);
+	printf (" %d %d", wcs->coorflip, wcs->rotmat);
 
-    if (tabout) {
-	if (hms) {
-	    if (wcs->coorflip) {
-		ra2str (rastr, 32, wcs->yref, ndec);
-		dec2str (decstr, 32, wcs->xref, ndec-1);
-		}
-	    else {
-		ra2str (rastr, 32, wcs->xref, ndec);
-		dec2str (decstr, 32, wcs->yref, ndec-1);
-		}
-	    printf (" %s %s %s", rastr, decstr, wcs->radecsys);
-	    }
-	else
-	    printf ("	%7.2f	%7.2f	%s", wcs->xref, wcs->yref, wcs->radecsys);
+    if (tabout)
+	printf ("	%7.4f	%7.4f	%7.4f	%7.4f",
+		3600.0*wcs->cd[0], 3600.0*wcs->cd[1],
+		3600.0*wcs->cd[2], 3600.0*wcs->cd[3]);
+    else
+	printf (" %7.4f %7.4f %7.4f %7.4f",
+		3600.0*wcs->cd[0], 3600.0*wcs->cd[1],
+		3600.0*wcs->cd[2], 3600.0*wcs->cd[3]);
+
+    if (tabout)
+	printf ("	%7.4f	%7.4f	%9.4f",
+		3600.0*wcs->xinc, 3600.0*wcs->yinc, wcs->rot);
+    else
+	printf (" %7.4f %7.4f %9.4f",
+		3600.0*wcs->xinc, 3600.0*wcs->yinc, wcs->rot);
+
+    xc = wcs->crpix[0];
+    yc = wcs->crpix[1];
+    pix2wcs (wcs, xc, yc, &cra, &cdec);
+    if (wcs->coorflip) {
+	wcs2pix (wcs, cra+fabs(wcs->cdelt[1]), cdec, &xe, &ye, &off);
+	wcs2pix (wcs, cra, cdec+fabs(wcs->cdelt[0]), &xn, &yn, &off);
 	}
     else {
-	if (hms) {
-	    if (wcs->coorflip) {
-		ra2str (rastr, 32, wcs->yref, ndec);
-		dec2str (decstr, 32, wcs->xref, ndec-1);
-		}
-	    else {
-		ra2str (rastr, 32, wcs->xref, ndec);
-		dec2str (decstr, 32, wcs->yref, ndec-1);
-		}
-	    printf (" %s %s %s", rastr, decstr, wcs->radecsys);
-	    }
-	else
-	    printf (" %7.2f %7.2f %s", wcs->xref, wcs->yref, wcs->radecsys);
+	wcs2pix (wcs, cra+fabs(wcs->cdelt[0]), cdec, &xe, &ye, &off);
+	wcs2pix (wcs, cra, cdec+fabs(wcs->cdelt[1]), &xn, &yn, &off);
 	}
-
+    pa_north = raddeg (atan2 (yn-yc, xn-xc));
+    pa_east = raddeg (atan2 (ye-yc, xe-xc));
     if (tabout)
-	printf ("	%7.2f	%7.2f", wcs->xrefpix, wcs->yrefpix);
+	printf ("	%9.4f	%9.4f	%9.4f	%d\n",
+		pa_north, pa_east, wcs->imrot, wcs->imflip);
     else
-	printf (" %7.2f %7.2f", wcs->xrefpix, wcs->yrefpix);
-
-    if (tabout)
-	printf ("	%7.4f	%7.4f", 3600.0*wcs->xinc, 3600.0*wcs->yinc);
-    else
-	printf (" %7.4f %7.4f", 3600.0*wcs->xinc, 3600.0*wcs->yinc);
-
-    if (tabout)
-	printf ("	%7.4f\n", wcs->rot);
-    else
-	printf (" %7.4f\n", wcs->rot);
+	printf (" %9.4f %9.4f %9.4f %d\n",
+		pa_north, pa_east, wcs->imrot, wcs->imflip);
 
     return;
 }
-/* Feb 18 1998	New program
- * May 27 1998	Include fitsio.h instead of fitshead.h
- * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
- * Jul 10 1998	Add option to use AIPS classic WCS subroutines
- * Aug  6 1998	Change fitsio.h to fitsfile.h
+/* Sep  2 1998	New program
  * Nov 30 1998	Add version and help commands for consistency
  */

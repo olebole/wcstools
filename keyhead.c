@@ -1,5 +1,5 @@
 /* File keyhead.c
- * August 14, 1998
+ * November 30, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -20,9 +20,13 @@ static void usage();
 static void ChangeKeyNames ();
 
 static int verbose = 0;		/* verbose/debugging flag */
-static int newimage = 0;
+static int newimage = 0;	/* write new image with modified header */
+static int replace = 0;		/* replace value of first keyword with second */
 static int nfile = 0;
 static int maxlfn = 0;
+static int keyset = 0;
+static int histset = 0;
+static int version = 0;		/* If 1, print only program name and version */
 
 
 main (ac, av)
@@ -41,18 +45,39 @@ char **av;
     FILE *flist;
     char *listfile;
 
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
+
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
 	char c;
 	while (c = *++str)
 	switch (c) {
 
-	case 'v':	/* more verbosity */
-	    verbose++;
+	case 'h':	/* set HISTORY */
+	    histset++;
+	    break;
+
+	case 'k':	/* set SETHEAD keyword */
+	    keyset++;
 	    break;
 
 	case 'n':	/* write to new file */
 	    newimage = 1;
+	    break;
+
+	case 'r':	/* write to new file */
+	    replace = 1;
+	    break;
+
+	case 'v':	/* more verbosity */
+	    verbose++;
 	    break;
 
 	case '@':	/* List of files to be read */
@@ -76,20 +101,16 @@ char **av;
     nkwd = 0;
     nfile = 0;
     while (ac-- > 0  && nfile < MAXFILES && nkwd < MAXKWD) {
-	if (strsrch (*av,".fit") != NULL ||
-	    strsrch (*av,".fts") != NULL ||
-	    strsrch (*av,".FIT") != NULL ||
-	    strsrch (*av,".FTS") != NULL ||
-	    strsrch (*av,".imh") != NULL) {
+	if (strsrch (*av,"=") != NULL) {
+	    kwd[nkwd] = *av;
+	    nkwd++;
+	    }
+	else {
 	    fn[nfile] = *av;
 	    lfn = strlen (fn[nfile]);
 	    if (lfn > maxlfn)
 		maxlfn = lfn;
 	    nfile++;
-	    }
-	else {
-	    kwd[nkwd] = *av;
-	    nkwd++;
 	    }
 	av++;
 	}
@@ -126,11 +147,14 @@ char **av;
 static void
 usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Change FITS or IRAF header keyword names\n");
     fprintf(stderr,"Usage: [-vn] file.fit [file.fits...] kw1=kw1a ... kwn=kwna\n");
-    fprintf(stderr,"Usage: [-vn] @filelist kw1=kw1a kw2=kw2a ... kwn=kwna\n");
-    fprintf(stderr,"  -v: verbose\n");
+    fprintf(stderr,"Usage: [-nrv] @filelist kw1=kw1a kw2=kw2a ... kwn=kwna\n");
     fprintf(stderr,"  -n: write new file\n");
+    fprintf(stderr,"  -r: replace value of 1st keyword with value of 2nd keyword\n");
+    fprintf(stderr,"  -v: verbose\n");
     exit (1);
 }
 
@@ -148,20 +172,25 @@ char	*kwd[];		/* Names and values of those keywords */
     int nbhead;		/* Actual number of bytes in FITS header */
     char *irafheader;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
-    int i, lname, lext, lroot;
+    int i, lname, lext, lroot, lhist;
     char *image, *imext, *imext1;
     char newname[128];
+    char newkey[16];
     char *ext, *fname;
     char *kw, *kwv, *kwl, *kwn;
+    char *value, *q, *line;
     char echar;
     int ikwd, lkwd, lkwn;
     int squote = 39;
     int dquote = 34;
     char cval[24];
-    int fdr, fdw, ipos, nbr, nbw, naxis;
+    int fdr, fdw, ipos, nbr, nbw, naxis, nchange;
+    char history[72];
+    char *endchar;
+    char *ltime;
 
     /* Open IRAF image if .imh extension is present */
-    if (strsrch (filename,".imh") != NULL) {
+    if (isiraf (filename)) {
 	iraffile = 1;
 	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
 	    if ((header = iraf2fits (filename, irafheader, lhead, &nbhead)) == NULL) {
@@ -183,9 +212,8 @@ char	*kwd[];		/* Names and values of those keywords */
 	    hgeti4 (header,"NAXIS",&naxis);
 	    if (naxis > 0) {
 		if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
-		    fprintf (stderr, "Cannot read FITS image %s\n", filename);
-		    free (header);
-		    return;
+		    if (verbose)
+			fprintf (stderr,"Cannot read FITS image %s\n",filename);
 		    }
 		}
 	    else {
@@ -211,6 +239,7 @@ char	*kwd[];		/* Names and values of those keywords */
 	return;
 
     /* Change keywords one at a time */
+    nchange = 0;
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
         strcpy (cval,"                    ");
 	kwv = strchr (kwd[ikwd],'=');
@@ -231,12 +260,38 @@ char	*kwd[];		/* Names and values of those keywords */
 		*kw = *kw - 32;
 	    }
 
+	/* Change keyword value */
+	if (replace) {
+	    if ((line = ksearch (header, kwn)) == NULL)
+		continue;
+	    q = strchr (line, squote);
+	    value = hgetc (header, kwn);
+	    if (q != NULL && q < line+80) {
+		hputs (header, kwd[ikwd], value);
+		if (verbose)
+		    printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, value);
+		}
+	    else {
+		hputc (header, kwd[ikwd], value);
+		if (verbose)
+		    printf ("%s = %s = %s\n", kwd[ikwd], kwn, value);
+		}
+	    }
+
 	/* Change keyword name */
-	hchange (header, kwd[ikwd], kwn);
-	if (verbose)
-	    printf ("%s => %s\n", kwd[ikwd], kwn);
+	else {
+	    if ((line = ksearch (header, kwd[ikwd])) == NULL)
+		continue;
+	    hchange (header, kwd[ikwd], kwn);
+	    if (verbose)
+		printf ("%s => %s\n", kwd[ikwd], kwn);
+	    }
 	*kwv = '=';
+	nchange++;
 	}
+
+    if (!nchange)
+	return;
 
     /* Make up name for new FITS or IRAF output file */
     if (newimage) {
@@ -293,6 +348,51 @@ char	*kwd[];		/* Names and values of those keywords */
     else
 	strcpy (newname, filename);
 
+    /* Add history to header */
+    if (keyset || histset) {
+	if (hgets (header, "KEYHEAD", 72, history))
+	    hputc (header, "HISTORY", history);
+	endchar = strchr (history, ',');
+	*endchar = (char) 0;
+	strcat (history, " ");
+	ltime = getltime ();
+	strcat (history, ltime);
+	endchar = strrchr (history,':');
+	*endchar = (char) 0;
+	strcat (history, " ");
+	for (ikwd = 0; ikwd < nkwd; ikwd++) {
+	    lhist = strlen (history);
+	    lkwd = strlen (kwd[ikwd]);
+
+	    /* If too may keywords, start a second history line */
+	    if (lhist + lkwd > 71) {
+		if (histset) {
+		    strcat (history, " updated");
+		    hputc (header, "HISTORY", history);
+		    endchar = strchr (history, ',');
+		    *endchar = (char) 0;
+		    strcat (history, " ");
+		    ltime = getltime ();
+		    strcat (history, ltime);
+		    endchar = strrchr (history,':');
+		    *endchar = (char) 0;
+		    strcat (history, " ");
+		    }
+		else
+		    break;
+		}
+	    strcat (history, kwd[ikwd]);
+	    if (nkwd == 2 && ikwd < nkwd-1)
+		strcat (history, " and ");
+	    else if (ikwd < nkwd-1)
+		strcat (history, ", ");
+	    }
+	if (keyset)
+	    hputs (header, "KEYHEAD", history);
+	if (histset)
+	    hputc (header, "HISTORY", history);
+	}
+
     /* Write fixed header to output file */
     if (iraffile) {
 	if (irafwhead (newname, lhead, irafheader, header) > 0 && verbose)
@@ -336,4 +436,10 @@ char	*kwd[];		/* Names and values of those keywords */
  * Aug  6 1998	Change fitsio.h to fitsfile.h
  * Aug 14 1998	Preserve extension when creating new file name
  * Aug 14 1998	If changing primary header, write out entire input file
+ * Oct  5 1998	Allow header changes even if no data is present
+ * Oct  5 1998	Determine assignment arguments by presence of equal sign
+ * Oct  5 1998	Use isiraf() to check for file type
+ * Oct 28 1998	Add option to replace keyword value with that of other keyword
+ * Nov 25 1998	Fix bug in keyword name change code
+ * Nov 30 1998	Add version and help commands for consistency
  */

@@ -1,4 +1,4 @@
-WCSTools Programs
+WCSTools Program Files
 
 addpix.c
   Add a constant value(s) to specified pixel(s)
@@ -18,10 +18,9 @@ i2f.c
   Read two-dimensional IRAF image file and write FITS image file
 imcat.c
   List catalog sources which should be found in the area of the sky
-  covered by a specific image.
-imgsc.c
-  List Guide Star Catalog sources which should be found in the area of
-  the sky covered by a specific image using its WCS.
+  covered by a specific image.  Special catalogs supported include
+  the HST Guide Star Catalog, the USNO A 1.0 Catalog, the SAO Catalog,
+  and the PPM Catalog.
 imhead.c
   Print FITS or IRAF header
 immatch.c
@@ -33,12 +32,6 @@ imsize.c
 imstar.c
   Find and list the n brightest stars in an IRAF or FITS image, with their
   sky coordinates if there is WCS information in the image header. 
-imuac.c
-  List USNO A Catalog sources which should be found in the area of
-  the sky covered by a specific image using its WCS.
-imujc.c
-  List USNO UJ Catalog sources which should be found in the area of
-  the sky covered by a specific image using its WCS.
 imtab.c
   List sources from a tab-table catalog which should be found in the area of
   the sky covered by a specific image using its WCS.
@@ -52,14 +45,10 @@ sethead.c
   Set header keyword values in FITS or IRAF images.
 setpix.c
   Set specified pixel(s) to specified value(s)
-sgsc.c
-  Search the HST Guide Star Catalog given a region on the sky.
-suac.c
-  Search the USNO A Catalog given a region on the sky.
-sujc.c
-  Search the USNO UJ Catalog given a region on the sky.
 scat.c
-  Search the HST GSC, USNO UJC, or a local catalog given a region on the sky.
+  Search a source catalog given a region on the sky.  Special catalogs
+  supported include the HST Guide Star Catalog, the USNO A 1.0 Catalog,
+  the SAO Catalog, and the PPM Catalog.
 sky2xy.c
   Print image pixel coordinates for given sky coordinates on the command line
   or in a list file. 

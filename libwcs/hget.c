@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** July 21, 1998
+ *** September 29, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -399,6 +399,14 @@ double *dval;
 			*tstr = '\0';
 		    day = (int) atof (nval);
 		    }
+
+		/* If year is < 32, it is really day of month in old format */
+		if (year < 32) {
+		    i = year;
+		    year = day + 1900;
+		    day = i;
+		    }
+		    
 		if ((year % 4) == 0)
 		    mday[1] = 29;
 		else
@@ -817,14 +825,18 @@ char *keyword;	/* character string containing the name of the variable
     if (pval == NULL)
 	return (pval);
 
-    /* Find last nonblank line before requested keyword */
+    /* Return NULL if keyword is found at start of FITS header string */
+    if (pval == hstring)
+	return (NULL);
+
+    /* Find last nonblank in FITS header string line before requested keyword */
     bval = pval - 80;
-    while (!strncmp (bval,"        ",8))
+    while (!strncmp (bval,"        ",8) && bval >= hstring)
 	bval = bval - 80;
     bval = bval + 80;
 
     /* Return pointer to calling program if blank lines found */
-    if (bval < pval)
+    if (bval < pval && bval >= hstring)
 	return (bval);
     else
 	return (NULL);
@@ -1170,4 +1182,6 @@ int set_saolib(hstring)
  * Jun  1 1998	Add VMS patch from Harry Payne at StSci
  * Jun 18 1998	Fix code which extracts tokens from string values
  * Jul 21 1998	Drop minus sign for values of -0
+ * Sep 29 1998	Treat hyphen-separated date as old format if 2-digit year
+ * Oct  7 1998	Clean up search for last blank line
  */

@@ -1,5 +1,5 @@
 /* File libwcs/matchstar.c
- * June 24, 1998
+ * October 8, 1998
  * By Doug Mink, Smithsonian Astrophyscial Observatory
  */
 
@@ -104,6 +104,8 @@ int	debug;
 	dxpeaks[i] = 0;
 	dypeaks[i] = 0;
 	}
+    bestdx = 0;
+    bestdy = 0;
     maxnbin = ns;
     if (ng > ns)
 	maxnbin = ng;
@@ -420,7 +422,7 @@ static double wcs_chisqr ();
 
 /* From Numerical Recipes */
 void amoeba();
-double amotry();
+static double amotry();
 
 
 /* Set up the necessary temp arrays and call the amoeba() multivariate solver */
@@ -1004,4 +1006,6 @@ int nfit;
  * Apr 27 1998	Fix bug handling nfit=8
  * Jun 24 1998	Fix bug summing unitialized values for mean after fit
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
+ * Oct  8 1998	Initialize bestdx and bestdy to zero
+ * Dec  8 1998	Fix declaration of amotry()
  */ 

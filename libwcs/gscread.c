@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** August 6, 1998
+ *** October 29, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -18,7 +18,7 @@ static int gscreg();
 /* GSCREAD -- Read HST Guide Star Catalog stars from CDROM */
 
 int
-gscread (cra,cdec,dra,ddec,drad,mag1,mag2,classd,nstarmax,
+gscread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,classd,nstarmax,
 	 gnum,gra,gdec,gmag,gtype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -26,6 +26,9 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+int	sysout;		/* Search coordinate system */
+double	eqout;		/* Search coordinate equinox */
+double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	classd;		/* Desired object class (-1=all, 0=stars, 3=nonstars) */
 int	nstarmax;	/* Maximum number of stars to be returned */
@@ -46,10 +49,14 @@ int	nlog;		/* 1 for diagnostics */
     double *gdist;	/* Array of distances to stars */
     char *table;	/* FITS table */
     int nreg;		/* Number of input FITS tables files */
+    double xnum;		/* Guide Star number */
     int rlist[100];	/* List of input FITS tables files */
     char inpath[64];	/* Pathname for input FITS table file */
     char entry[100];	/* Buffer for FITS table row */
     int class, class0;	/* Object class (0>star, 3>other) */
+    int sysref=WCS_J2000;	/* Catalog coordinate system */
+    double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
     struct Keyword kw[8];	/* Keyword structure */
     struct Keyword *kwn;
 
@@ -62,7 +69,9 @@ int	nlog;		/* 1 for diagnostics */
     int ift;
     double ra,ra0,rasum,dec,dec0,decsum,perr,perr0,perr2,perrsum,msum;
     double mag,mag0,merr,merr0,merr2,merrsum;
+    double rra1, rra2, rdec1, rdec2;
     char *str;
+    char cstr[32];
 
     itot = 0;
     if (nlog == 1)
@@ -79,6 +88,8 @@ int	nlog;		/* 1 for diagnostics */
 	strcpy (cdn,str);
     if ((str = getenv("GSC_SOUTH")) != NULL )
 	strcpy (cds,str);
+
+    wcscstr (cstr, sysout, eqout, epout);
 
     /* Set right ascension limits for search */
     ra1 = cra - dra;
@@ -138,7 +149,13 @@ int	nlog;		/* 1 for diagnostics */
 
 /* Find Guide Star Catalog regions in which to search */
     nrmax = 100;
-    nreg = gscreg (ra1,ra2,dec1,dec2,ltab,table,nrmax,rlist,verbose);
+    rra1 = ra1;
+    rra2 = ra2;
+    rdec1 = dec1;
+    rdec2 = dec2;
+    wcscon (sysout, sysref, eqout, eqref, &rra1, &rdec1, epout);
+    wcscon (sysout, sysref, eqout, eqref, &rra2, &rdec2, epout);
+    nreg = gscreg (rra1,rra2,rdec1,rdec2,ltab,table,nrmax,rlist,verbose);
     if (nreg <= 0) {
 	fprintf (stderr,"GSCREAD:  no Guide Star regions found\n");
 	free (table);
@@ -229,6 +246,7 @@ int	nlog;		/* 1 for diagnostics */
 	    if (num != num0 && itable > 0 && npos > 0) {
 		ra = rasum / perrsum;
 		dec = decsum / perrsum;
+		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 		mag = msum / merrsum;
 		if (drad > 0)
 		    dist = wcsdist (cra,cdec,ra,dec);
@@ -240,12 +258,14 @@ int	nlog;		/* 1 for diagnostics */
 		    (mag1 == mag2)) &&
 		    ((wrap && (ra <= ra1 || ra >= ra2)) ||
 		    (!wrap && (ra >= ra1 && ra <= ra2))) &&
-		    (drad == 0.0 || dist < drad) &&
-     		    (dec >= dec1 && dec <= dec2)) {
+		    ((drad > 0.0 && dist < drad) ||
+     		    (drad == 0.0 && dec >= dec1 && dec <= dec2))) {
+
+		    xnum = (double)rnum + (0.0001 * (double) num);
 
 	/* Save star position in table */
 		    if (nstar < nstarmax) {
-			gnum[nstar] = (double)rnum + (0.0001 * (double) num);
+			gnum[nstar] = xnum;
 			gra[nstar] = ra;
 			gdec[nstar] = dec;
 			gmag[nstar] = mag;
@@ -264,6 +284,7 @@ int	nlog;		/* 1 for diagnostics */
 		/* If too many stars and radial search,
 		   replace furthest star */
 		    else if (drad > 0 && dist < maxdist) {
+			gnum[farstar] = xnum;
 			gra[farstar] = ra;
 			gdec[farstar] = dec;
 			gmag[farstar] = mag;
@@ -282,6 +303,7 @@ int	nlog;		/* 1 for diagnostics */
 
 		/* If too many stars, replace faintest star */
 		    else if (mag < faintmag) {
+			gnum[faintstar] = xnum;
 			gra[faintstar] = ra;
 			gdec[faintstar] = dec;
 			gmag[faintstar] = mag;
@@ -300,8 +322,8 @@ int	nlog;		/* 1 for diagnostics */
 		    nstar++;
 		    jstar++;
 		    if (nlog == 1)
-			fprintf (stderr,"GSCREAD: %04d.%04d: %9.5f %9.5f %5.2f %d %d\n",
-				rnum,num,ra,dec,mag,class,npos);
+			fprintf (stderr,"GSCREAD: %04d.%04d: %9.5f %9.5f %s %5.2f %d %d\n",
+				rnum,num,ra,dec,cstr,mag,class,npos);
 		    }
 
 	/* Reset star position for averaging */
@@ -372,9 +394,12 @@ int	nlog;		/* 1 for diagnostics */
 /* GSCRNUM -- Read HST Guide Star Catalog stars from CDROM */
 
 int
-gscrnum (nstars, gnum,gra,gdec,gmag,gtype,nlog)
+gscrnum (nstars, sysout, eqout, epout, gnum,gra,gdec,gmag,gtype,nlog)
 
 int	nstars;		/* Number of stars to find */
+int	sysout;		/* Search coordinate system */
+double	eqout;		/* Search coordinate equinox */
+double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
@@ -386,6 +411,9 @@ int	nlog;		/* 1 for diagnostics */
     char inpath[64];	/* Pathname for input FITS table file */
     char entry[100];	/* Buffer for FITS table row */
     int class, class0;	/* Object class (0>star, 3>other) */
+    int sysref=WCS_J2000;	/* Catalog coordinate system */
+    double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
     struct Keyword kw[8];	/* Keyword structure */
     struct Keyword *kwn;
 
@@ -499,6 +527,7 @@ int	nlog;		/* 1 for diagnostics */
 	    if (num != num0 && itable > 0 && npos > 0) {
 		ra = rasum / perrsum;
 		dec = decsum / perrsum;
+		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 		mag = msum / merrsum;
 
 		/* Save star position in table */
@@ -931,4 +960,8 @@ char *path;	/* Pathname of GSC region FITS file */
  * May 27 1998	Include fitsio.h instead of fitshead.h
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Sep 16 1998	Use limiting radius, if present
+ * Sep 22 1998	Convert to desired output coordinate system
+ * Oct 26 1998	Fix bug in region selection
+ * Oct 29 1998	Correctly assign numbers when too many stars are found
  */

@@ -1,5 +1,5 @@
 /* File gethead.c
- * September 1, 1998
+ * November 30, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -29,12 +29,12 @@ static int listall = 0;
 static int listpath = 0;
 static int tabout = 0;
 static int printhead = 0;
+static int version = 0;		/* If 1, print only program name and version */
 
 main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
     char *kwd[MAXKWD];
     int ifile;
@@ -50,6 +50,15 @@ char **av;
     int ikwd, lkwd, i;
     char *kw, *kwe;
     char string[80];
+
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
 
     /* crack arguments */
     for (av++; --ac > 0 && (*(str = *av)=='-'); av++) {
@@ -85,23 +94,24 @@ char **av;
 	    break;
 
 	default:
-	    usage(progname);
+	    usage();
 	    break;
 	}
     }
 
     /* If no arguments left, print usage */
     if (ac == 0)
-	usage (progname);
+	usage();
 
     nkwd = 0;
     nfile = 0;
     while (ac-- > 0  && nfile < MAXFILES && nkwd < MAXKWD) {
-	if (strsrch (*av,".fit") != NULL ||
-	    strsrch (*av,".fts") != NULL ||
-	    strsrch (*av,".FIT") != NULL ||
-	    strsrch (*av,".FTS") != NULL ||
-	    strsrch (*av,".imh") != NULL) {
+	if (*av[0] == '@') {
+	    readlist++;
+	    listfile = *av + 1;
+	    nfile = 2;
+	    }
+	else if (isfits (*av) || isiraf (*av)) {
 	    fn[nfile] = *av;
 
 	    if (listpath || (name = strrchr (fn[nfile],'/')) == NULL)
@@ -112,11 +122,6 @@ char **av;
 	    if (lfn > maxlfn)
 		maxlfn = lfn;
 	    nfile++;
-	    }
-	else if (strsrch (*av,"@") != NULL) {
-	    readlist++;
-	    listfile = *av + 1;
-	    nfile = 2;
 	    }
 	else {
 	    kwd[nkwd] = *av;
@@ -214,12 +219,13 @@ char **av;
 }
 
 static void
-usage (progname)
-char *progname;
+usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Print FITS or IRAF header keyword values\n");
-    fprintf(stderr,"usage: [-ahtv][-n num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
-    fprintf(stderr,"usage: [-ahptv][-n num] @filelist kw1 kw2 ... kwn\n");
+    fprintf(stderr,"usage: gethead [-ahtv][-n num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
+    fprintf(stderr,"       gethead [-ahptv][-n num] @filelist kw1 kw2 ... kwn\n");
     fprintf(stderr,"  -a: List file even if keywords are not found\n");
     fprintf(stderr,"  -h: Print column headings\n");
     fprintf(stderr,"  -n: Number of decimal places in numeric output\n");
@@ -396,5 +402,7 @@ char *string;
  * Jun  3 1998	Add -p option
  * Jun 18 1998	Print tab table heading only if -h option used
  * Aug  6 1998	Change fitsio.h to fitsfile.h
- * Sep  1 1998	Allow number of decimal places in floating output to be set with -n
+ * Sep  1 1998	Set number of decimal places in floating output with -n
+ * Oct  5 1998	Check more carefully for FITS and IRAF files on command line
+ * Nov 30 1998	Add version and help commands for consistency
  */

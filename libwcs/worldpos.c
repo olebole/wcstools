@@ -1,5 +1,5 @@
 /*  worldpos.c -- WCS Algorithms from Classic AIPS.
- *  August 5, 1998
+ *  September 30, 1998
  *  Copyright (C) 1994
  *  Associated Universities, Inc. Washington DC, USA.
  *  With code added by Doug Mink, Smithsonian Astrophysical Observatory
@@ -107,7 +107,7 @@ double	*ypos;		/* y (dec) coordinate (deg) */
 {
   double cosr, sinr, dx, dy, dz, tx;
   double sins, coss, dect, rat, dt, l, m, mg, da, dd, cos0, sin0;
-  double mt, a, y0, td, r2, xincr;  /* allan: for COE */
+  double mt, a, y0, td, r2;  /* allan: for COE */
   double dec0, ra0, decout, raout;
   double geo1, geo2, geo3;
   double cond2r=1.745329252e-2;
@@ -124,7 +124,7 @@ double	*ypos;		/* y (dec) coordinate (deg) */
   double rot;		/* Optical axis rotation (deg)  (N through E) */
   int itype = wcs->prjcode;
 
-/* Set local projection parameters */
+  /* Set local projection parameters */
   xref = wcs->xref;
   yref = wcs->yref;
   xrefpix = wcs->xrefpix;
@@ -135,30 +135,32 @@ double	*ypos;		/* y (dec) coordinate (deg) */
   cosr = cos (rot);
   sinr = sin (rot);
 
-/* Offset from ref pixel */
+  /* Offset from ref pixel */
   dx = xpix - xrefpix;
   dy = ypix - yrefpix;
 
-/* Scale and rotate using CD matrix */
+  /* Scale and rotate using CD matrix */
   if (wcs->rotmat) {
     tx = dx * wcs->cd[0] + dy * wcs->cd[1];
     dy = dx * wcs->cd[2] + dy * wcs->cd[3];
     dx = tx;
     }
+
+  /* Scale and rotate using CDELTn and CROTA2 */
   else {
 
-/* Check axis increments - bail out if either 0 */
+    /* Check axis increments - bail out if either 0 */
     if ((xinc==0.0) || (yinc==0.0)) {
       *xpos=0.0;
       *ypos=0.0;
       return 2;
       }
 
-/* Scale using CDELT */
+    /* Scale using CDELT */
     dx = dx * xinc;
     dy = dy * yinc;
 
-/* Take out rotation from CROTA */
+    /* Take out rotation from CROTA */
     if (rot != 0.0) {
       tx = dx * cosr - dy * sinr;
       dy = dx * sinr + dy * cosr;
@@ -173,13 +175,13 @@ double	*ypos;		/* y (dec) coordinate (deg) */
     dy = tx;
     }
 
-/* Default, linear result for error or pixel return  */
+  /* Default, linear result for error or pixel return  */
   *xpos = xref + dx;
   *ypos = yref + dy;
   if (itype <= 0)
     return 0;
 
-/* Convert to radians  */
+  /* Convert to radians  */
   if (wcs->coorflip) {
     dec0 = degrad (xref);
     ra0 = degrad (yref);
@@ -196,7 +198,7 @@ double	*ypos;		/* y (dec) coordinate (deg) */
   cos0 = cos (dec0);
   sin0 = sin (dec0);
 
-/* process by case  */
+  /* Process by case  */
   switch (itype) {
 
     case WCS_CAR:   /* -CAR Cartesian (was WCS_PIX pixel and WCS_LIN linear) */
@@ -331,34 +333,28 @@ double	*ypos;		/* y (dec) coordinate (deg) */
       rat = ra0 + rat;
       break;
 
-    case WCS_COE:    /* Allan Brighton: -COE projection added, AW, ESO */
-      xincr=degrad(xinc);
-      td = tan(dec0);
-      y0 = 1./td;
-      if (dec0 < 0.) {
-	mt = y0 - m;
-	a = atan2(l,-mt);
-	rat = ra0-a/sin0;
-	r2 =  l*l+mt*mt;
-	dect = asin(1./(sin0 * 2.)*(1.+sin0*sin0 * (1.-r2)));
-	}
-      else {
-	mt = y0 - m;
-	a = atan2(l,mt);
-	rat = ra0-a/sin0;
-	r2 =  l*l+mt*mt;
-	dect = asin(1./(sin0 * 2.)*(1.+sin0*sin0 * (1.-r2)));
-	}
+    case WCS_COE:    /* COE projection code from Andreas Wicenic, ESO */
+      td = tan (dec0);
+      y0 = 1.0 / td;
+      mt = y0 - m;
+      if (dec0 < 0.)
+	a = atan2 (l,-mt);
+      else
+	a = atan2 (l, mt);
+      rat = ra0 - (a / sin0);
+      r2 = (l * l) + (mt * mt);
+      dect = asin (1.0 / (sin0 * 2.0) * (1.0 + sin0*sin0 * (1.0 - r2)));
       break;
   }
-/*  return ra in range  */
+
+  /* Return RA in range  */
   raout = rat;
   decout = dect;
   if (raout-ra0>twopi/2.0) raout = raout - twopi;
   if (raout-ra0<-twopi/2.0) raout = raout + twopi;
   if (raout < 0.0) raout += twopi; /* added by DCW 10/12/94 */
 
-/*  correct units back to degrees  */
+  /* Convert units back to degrees  */
   *xpos = raddeg (raout);
   *ypos = raddeg (decout);
 
@@ -387,7 +383,7 @@ double	*xpix;		/* x pixel number  (RA or long without rotation) */
 double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 {
   double dx, dy, ra0, dec0, ra, dec, coss, sins, dt, da, dd, sint;
-  double l, m, geo1, geo2, geo3, sinr, cosr, tx, x, y;
+  double l, m, geo1, geo2, geo3, sinr, cosr, tx, x, y, a2, a3, a4;
   double rthea,gamby2,a,b,c,phi,an,rap,v,tthea,co1,co2,co3,co4,ansq; /* COE */
   double cond2r=1.745329252e-2, deps=1.0e-5, twopi=6.28318530717959;
 
@@ -401,7 +397,7 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
   double rot;		/* Optical axis rotation (deg)  (from N through E) */
   int itype;
 
-/* Set local projection parameters */
+  /* Set local projection parameters */
   xref = wcs->xref;
   yref = wcs->yref;
   xrefpix = wcs->xrefpix;
@@ -412,10 +408,10 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
   cosr = cos (rot);
   sinr = sin (rot);
 
-/* Projection type */
+  /* Projection type */
   itype = wcs->prjcode;
 
-/* Nonlinear position */
+  /* Nonlinear position */
   if (itype > 0) {
     if (wcs->coorflip) {
       dec0 = degrad (xref);
@@ -436,14 +432,14 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
     ra = degrad (xpos);
     dec = degrad (ypos);
 
-/* Compute direction cosine */
+    /* Compute direction cosine */
     coss = cos (dec);
     sins = sin (dec);
     l = sin(ra-ra0) * coss;
     sint = sins * sin(dec0) + coss * cos(dec0) * cos(ra-ra0);
     }
 
-/* Process by case  */
+  /* Process by case  */
   switch (itype) {
 
     case WCS_CAR:   /* -CAR Cartesian */
@@ -553,28 +549,34 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 	a = -2. * tthea;
 	b = tthea * tthea;
 	c = tthea / 3.;
+	a2 = a * a;
+	a3 = a2 * a;
+	a4 = a2 * a2;
 	co1 = a/2.;
-	co2 = -1./8. * a*a + b/2.;
-	co3 = -1./4. * a*b + 1./16. * a*a*a + c/2.;
-	co4 = -1./8. * b*b - 1./4. * a*c + 3./16. * b*a*a - 5./128.* a*a*a*a;
+	co2 = -0.125 * a2 + b/2.;
+	co3 = -0.25 * a*b + 0.0625 * a3 + c/2.0;
+	co4 = -0.125 * b*b - 0.25 * a*c + 0.1875 * b*a2 - (5.0/128.0)*a4;
 	phi = ra0 - ra;
 	an = phi * gamby2;
 	v = dec - dec0;
-	rap = rthea * (1. + v * (co1+v * (co2+v * (co3+v * co4))));
+	rap = rthea * (1.0 + v * (co1+v * (co2+v * (co3+v * co4))));
 	ansq = an * an;
-	l = (rap * an * (1. - ansq/6.))*xinc/fabs(xinc);
-	m = (rthea-rap * (1. - ansq/2.));
+	if (wcs->rotmat)
+	    l = rap * an * (1.0 - ansq/6.0) * (wcs->cd[0] / fabs(wcs->cd[0]));
+	else
+	    l = rap * an * (1.0 - ansq/6.0) * (xinc / fabs(xinc));
+	m = rthea - (rap * (1.0 - ansq/2.0));
 	break;
 
     }  /* end of itype switch */
 
-/* Back to degrees  */
+  /* Convert back to degrees  */
   if (itype > 0) {
     dx = raddeg (l);
     dy = raddeg (m);
     }
 
-/* For linear or pixel projection */
+  /* For linear or pixel projection */
   else {
     dx = xpos - xref;
     dy = ypos - yref;
@@ -586,29 +588,31 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
     dy = tx;
     }
 
-/* Scale and rotate using CD matrix */
+  /* Scale and rotate using CD matrix */
   if (wcs->rotmat) {
     tx = dx * wcs->dc[0] + dy * wcs->dc[1];
     dy = dx * wcs->dc[2] + dy * wcs->dc[3];
     dx = tx;
     }
+
+  /* Scale and rotate using CDELTn and CROTA2 */
   else {
 
-/* Correct for rotation */
+    /* Correct for rotation */
     if (rot!=0.0) {
       tx = dx*cosr + dy*sinr;
       dy = dy*cosr - dx*sinr;
       dx = tx;
       }
 
-/* Scale using CDELT */
+    /* Scale using CDELT */
     if (xinc != 0.)
       dx = dx / xinc;
     if (yinc != 0.)
       dy = dy / yinc;
     }
 
-/* Convert to pixels  */
+  /* Convert to pixels  */
   *xpix = dx + xrefpix;
   if (itype == WCS_CAR) {
     if (*xpix > wcs->nxpix) {
@@ -644,4 +648,5 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
  * May 27 1998	Skip limit checking for linear projection
  * Jun 25 1998	Fix inverse for CAR projection
  * Aug  5 1998	Allan Brighton: Added COE projection (code from A. Wicenec, ESO)
+ * Sep 30 1998	Fix bug in COE inverse code to get sign correct
  */

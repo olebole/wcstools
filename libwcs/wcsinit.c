@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** September 4, 1998
+ *** December 2, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcsinit.c (World Coordinate Systems)
@@ -53,6 +53,7 @@ char *hstring;	/* character string containing FITS header information
 {
     struct WorldCoor *wcs;
     char wcstemp[32];
+    char envar[16];
     char ctype1[32], ctype2[32];
     char *hcoeff;		/* pointer to first coeff's in header */
     char decsign;
@@ -156,6 +157,10 @@ char *hstring;	/* character string containing FITS header information
 	hgetr8 (hstring,"CRVAL1",&wcs->crval[0]);
 	wcs->crval[1] = 0.0;
 	hgetr8 (hstring,"CRVAL2",&wcs->crval[1]);
+	if (wcs->syswcs == WCS_NPOLE)
+	    wcs->crval[1] = 90.0 - wcs->crval[1];
+	if (wcs->syswcs == WCS_SPA)
+	    wcs->crval[1] = wcs->crval[1] - 90.0;
 	wcs->xref = wcs->crval[0];
 	wcs->yref = wcs->crval[1];
 	if (wcs->coorflip) {
@@ -175,6 +180,13 @@ char *hstring;	/* character string containing FITS header information
 	wcs->lin.crpix = wcs->crpix;
 	wcs->lin.cdelt = wcs->cdelt;
 	wcs->lin.pc = wcs->pc;
+
+	/* Projection constants */
+	for (i = 1; i < 10; i++) {
+	    wcs->prj.p[i] = 0.0;
+	    sprintf (keyword,"PROJP%d",i);
+	    hgetr8 (hstring, keyword, &wcs->prj.p[i]);
+	    }
 
 	/* Use polynomial fit instead of projection, if present */
 	wcs->ncoeff1 = 0;
@@ -378,7 +390,6 @@ char *hstring;	/* character string containing FITS header information
 	    hgetr8 (hcoeff, keyword, &wcs->y_coeff[i]);
 	    }
 	wcs->wcson = 1;
-	wcs->wcson = 1;
 	(void)strcpy (wcs->c1type, "RA");
 	(void)strcpy (wcs->c2type, "DEC");
 	(void)strcpy (wcs->ptype, "DSS");
@@ -538,8 +549,9 @@ char *hstring;	/* character string containing FITS header information
 	if (hgetr8 (hstring, "MJD-OBS", &mjd))
 	    wcs->epoch = 1950.0 + (mjd / 365.22);
 	else if (!hgetdate (hstring,"DATE-OBS",&wcs->epoch)) {
-	    if (!hgetr8 (hstring,"EPOCH",&wcs->epoch)) {
-		wcs->epoch = wcs->equinox;
+	    if (!hgetdate (hstring,"DATE",&wcs->epoch)) {
+		if (!hgetr8 (hstring,"EPOCH",&wcs->epoch))
+		    wcs->epoch = wcs->equinox;
 		}
 	    }
 	wcs->wcson = 1;
@@ -571,10 +583,10 @@ char *hstring;	/* character string containing FITS header information
     wcs->printsys = 1;
     wcs->tabsys = 0;
     wcs->linmode = 0;
-    if ((str = getenv("WCS_COMMAND")) != NULL)
-	wcscominit (wcs, 0, str);
-    else
-	wcscominit (wcs, 0, "rgsc %s");
+
+    /* Initialize special WCS commands */
+    setwcscom (wcs);
+
     return (wcs);
 }
 
@@ -587,18 +599,21 @@ struct WorldCoor *wcs;
 {
     int ieq = 0;
     int eqhead = 0;
-    char wcstemp[32];
+    char systring[32], eqstring[32];
 
     /* Set equinox from EQUINOX, EPOCH, or RADECSYS; default to 2000 */
-    wcstemp[0] = 0;
-    hgets (hstring,"EQUINOX",16,wcstemp);
-    if (wcstemp[0] == 'J') {
-	wcs->equinox = atof (wcstemp+1);
-	ieq = atoi (wcstemp+1);
+    systring[0] = 0;
+    eqstring[0] = 0;
+    hgets (hstring,"EQUINOX",16,eqstring);
+    if (eqstring[0] == 'J') {
+	wcs->equinox = atof (eqstring+1);
+	ieq = atoi (eqstring+1);
+	strcpy (systring, "FK5");
 	}
-    else if (wcstemp[0] == 'B') {
-	wcs->equinox = atof (wcstemp+1);
-	ieq = atoi (wcstemp+1);
+    else if (eqstring[0] == 'B') {
+	wcs->equinox = atof (eqstring+1);
+	ieq = atoi (eqstring+1);
+	strcpy (systring, "FK4");
 	}
     else if (hgeti4 (hstring,"EQUINOX",&ieq)) {
 	hgetr8 (hstring,"EQUINOX",&wcs->equinox);
@@ -616,24 +631,24 @@ struct WorldCoor *wcs;
 	    }
 	}
 
-    else if (hgets (hstring,"RADECSYS", 16, wcstemp)) {
-	if (!strncmp (wcstemp,"FK4",3)) {
+    else if (hgets (hstring,"RADECSYS", 16, systring)) {
+	if (!strncmp (systring,"FK4",3)) {
 	    wcs->equinox = 1950.0;
 	    ieq = 1950;
 	    }
-	else if (!strncmp (wcstemp,"ICRS",4)) {
+	else if (!strncmp (systring,"ICRS",4)) {
 	    wcs->equinox = 2000.0;
 	    ieq = 2000;
 	    }
-	else if (!strncmp (wcstemp,"FK5",3)) {
+	else if (!strncmp (systring,"FK5",3)) {
 	    wcs->equinox = 2000.0;
 	    ieq = 2000;
 	    }
-	else if (!strncmp (wcstemp,"GAL",3)) {
+	else if (!strncmp (systring,"GAL",3)) {
 	    wcs->equinox = 2000.0;
 	    ieq = 2000;
 	    }
-	else if (!strncmp (wcstemp,"ECL",3)) {
+	else if (!strncmp (systring,"ECL",3)) {
 	    wcs->equinox = 2000.0;
 	    ieq = 2000;
 	    }
@@ -642,20 +657,24 @@ struct WorldCoor *wcs;
     if (ieq == 0) {
 	wcs->equinox = 2000.0;
 	ieq = 2000;
+	strcpy (systring,"FK5");
 	}
 
     /* Epoch of image (from observation date, if possible) */
     if (!hgetdate (hstring,"DATE-OBS",&wcs->epoch)) {
-	if (!hgetr8 (hstring,"EPOCH",&wcs->epoch)) {
-	    wcs->epoch = wcs->equinox;
+	if (!hgetdate (hstring,"DATE",&wcs->epoch)) {
+	    if (!hgetr8 (hstring,"EPOCH",&wcs->epoch))
+		wcs->epoch = wcs->equinox;
 	    }
 	}
     if (wcs->epoch == 0.0)
 	wcs->epoch = wcs->equinox;
 
     /* Set coordinate system from keyword, if it is present */
-    if (hgets (hstring,"RADECSYS", 16, wcstemp)) {
-	strcpy (wcs->radecsys,wcstemp);
+    if (systring[0] == (char) 0)
+	 hgets (hstring,"RADECSYS", 16, systring);
+    if (systring[0] != (char) 0) {
+	strcpy (wcs->radecsys,systring);
 	if (!eqhead) {
 	    if (!strncmp (wcs->radecsys,"FK4",3))
 		wcs->equinox = 1950.0;
@@ -684,7 +703,7 @@ struct WorldCoor *wcs;
 
     /* Otherwise set coordinate system from equinox */
     /* Systemless coordinates cannot be translated using b, j, or g commands */
-    else {
+    else if (wcs->syswcs != WCS_NPOLE) {
 	if (ieq > 1980)
 	    strcpy (wcs->radecsys,"FK5");
 	else
@@ -705,5 +724,10 @@ struct WorldCoor *wcs;
  * Jul  9 1998	Initialize rotation matrices correctly
  * Jul 13 1998	Initialize rotation, scale for polynomial and DSS projections
  * Aug  6 1998	Fix CROTA computation for DSS projection
- * Sep  4 1998	Fix CROTA and CDELT computation for DSS and polynomial projections
+ * Sep  4 1998	Fix CROTA, CDELT computation for DSS and polynomial projections
+ * Sep 14 1998	If DATE-OBS not found, check for DATE
+ * Sep 14 1998	If B or J present in EQUINOX, use that info to set system
+ * Sep 29 1998  Initialize additional WCS commands from the environment
+ * Sep 29 1998	Fix bug which read DATE as number rather than formatted date
+ * Dec  2 1998	Read projection constants from header (bug fix)
  */

@@ -1,5 +1,5 @@
 /* File imhead.c
- * August 6, 1998
+ * November 30, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -21,18 +21,27 @@ extern char *GetFITShead();
 static int nskip = 0;		/* Number of bytes to skip */
 static int nfiles = 0;		/* Nuber of files for headers */
 static int verbose = 0;		/* verbose/debugging flag */
+static int version = 0;		/* If 1, print only program name and version */
 
 main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
     int readlist = 0;
     char *lastchar;
     char filename[128];
     FILE *flist;
     char *listfile;
+
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
 
     /* crack arguments */
     for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
@@ -54,7 +63,7 @@ char **av;
 	    ac--;
 
 	default:
-	    usage(progname);
+	    usage();
 	    break;
 	}
     }
@@ -64,7 +73,7 @@ char **av;
 	if ((flist = fopen (listfile, "r")) == NULL) {
 	    fprintf (stderr,"IMHEAD: List file %s cannot be read\n",
 		     listfile);
-	    usage (progname);
+	    usage();
 	    }
 	while (fgets (filename, 128, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
@@ -78,7 +87,7 @@ char **av;
 
     /* If no arguments left, print usage */
     if (ac == 0)
-	usage (progname);
+	usage();
 
     nfiles = ac;
     while (ac-- > 0) {
@@ -92,11 +101,12 @@ char **av;
 }
 
 static void
-usage (progname)
-char *progname;
+usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Print FITS or IRAF image header\n");
-    fprintf(stderr,"%s: usage: [-v] file.fit ...\n", progname);
+    fprintf(stderr,"usage: imhead [-v] file.fit ...\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
 }
@@ -116,7 +126,7 @@ char *name;
     if (verbose)
 
     if (verbose || nfiles > 1) {
-	if (strsrch (name,".imh") != NULL)
+	if (isiraf (name))
 	    printf ("%s IRAF file header:\n", name);
 	else
 	    printf ("%s FITS file header:\n", name);
@@ -185,4 +195,6 @@ char	*header;	/* Image FITS header */
  * May 27 1998	Include fitsio.h instead of fitshead.h
  * Jun  2 1998	Fix bug in hput()
  * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Oct 14 1998	Use isiraf() to determine file type
+ * Nov 30 1998	Add version and help commands for consistency
  */

@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
-   August 14, 1998
+   December 2, 1998
    By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 #ifndef _wcs_h_
@@ -50,6 +50,7 @@ struct WorldCoor {
   double	pa_east;	/* Position angle of east (0=horizontal) */
   int		imflip;		/* If not 0, image is reflected around axis */
   int		prjcode;	/* projection code (-1-32) */
+  int		latbase;	/* Latitude base 90 (NPA), 0 (LAT), -90 (SPA) */
   int		ncoeff1;	/* Number of x-axis plate fit coefficients */
   int		ncoeff2;	/* Number of y-axis plate fit coefficients */
   int		changesys;	/* 1 for FK4->FK5, 2 for FK5->FK4 */
@@ -133,12 +134,15 @@ struct WorldCoor {
 #define WCS_TNX 29	/* Gnomonic = Tangent Plane (NOAO with corrections) */
 
 /* Coordinate systems */
-#define WCS_J2000	0
-#define WCS_B1950	1
-#define WCS_GALACTIC	2
-#define WCS_ECLIPTIC	3
-#define WCS_ALTAZ	4
-#define WCS_LINEAR	5
+#define WCS_J2000	1	/* J2000(FK5) right ascension and declination */
+#define WCS_B1950	2	/* B1950(FK4) right ascension and declination */
+#define WCS_GALACTIC	3	/* Galactic longitude and latitude */
+#define WCS_ECLIPTIC	4	/* Ecliptic longitude and latitude */
+#define WCS_ALTAZ	5	/* Azimuth and altitude/elevation */
+#define WCS_LINEAR	6	/* Linear with optional units */
+#define WCS_NPOLE	7	/* Longitude and north polar angle */
+#define WCS_SPA		8	/* Longitude and south polar angle */
+#define WCS_PLANET	9	/* Longitude and latitude on planet */
 
 #ifndef PI
 #define PI	3.141592653589793238462643
@@ -152,10 +156,7 @@ struct WorldCoor {
 #define hrrad(x)	degrad(hrdeg(x))
 #define radhr(x)	deghr(raddeg(x))
 
-/* surface fitting structure and flags */
-
-/* define the surface descriptor */
-
+/* TNX surface fitting structure and flags */
 struct IRAFsurface {
   double xrange;	/* 2. / (xmax - xmin), polynomials */
   double xmaxmin;	/* - (xmax + xmin) / 2., polynomials */
@@ -171,16 +172,15 @@ struct IRAFsurface {
   double *ybasis;	/* pointer to basis functions (all y) */
 };
 
-/* define the permitted types of surfaces */
+/* TNX permitted types of surfaces */
 #define  TNX_CHEBYSHEV    1
 #define  TNX_LEGENDRE     2
 #define  TNX_POLYNOMIAL   3
 
-/* define the cross-terms flags */
+/* TNX cross-terms flags */
 #define	TNX_XNONE	0	/* no x-terms (old no) */
 #define	TNX_XFULL	1	/* full x-terms (new yes) */
 #define	TNX_XHALF	2	/* half x-terms (new) */
-
 
 #ifdef __cplusplus /* allan: 28.4.98: added C++ prototypes */
 extern "C" {
@@ -318,7 +318,7 @@ extern "C" {
     int wcszin(
 	int izpix);		/* Set coordinate in third dimension (face) */
 
-    int wcsout (		/* Return coordinate in third dimension */
+    int wcszout (		/* Return coordinate in third dimension */
         struct WorldCoor *wcs);	/* World coordinate system structure */
 
     void savewcscoor(		/* Save output coordinate system */
@@ -330,6 +330,21 @@ extern "C" {
 
 
     /* Coordinate conversion subroutines in wcscon.c */
+    void wcsconp(	/* Convert between coordinate systems and equinoxes */
+	int sys1,	/* Input coordinate system (J2000, B1950, ECLIPTIC, GALACTIC */
+	int sys2,	/* Output coordinate system (J2000, B1950, ECLIPTIC, G ALACTIC */
+	double eq1,	/* Input equinox (default of sys1 if 0.0) */
+	double eq2,	/* Output equinox (default of sys2 if 0.0) */
+	double ep1,	/* Input Besselian epoch in years */
+	double ep2,	/* Output Besselian epoch in years */
+	double *dtheta,	/* Longitude or right ascension in degrees
+			   Input in sys1, returned in sys2 */
+	double *dphi,	/* Latitude or declination in degrees
+			   Input in sys1, returned in sys2 */
+	double *ptheta,	/* Longitude or right ascension proper motion in degrees/year
+			   Input in sys1, returned in sys2 */
+	double *pphi);	/* Latitude or declination proper motion in degrees/year
+			   Input in sys1, returned in sys2 */
     void wcscon(	/* Convert between coordinate systems and equinoxes */
 	int sys1,	/* Input coordinate system (J2000, B1950, ECLIPTIC, GALACTIC */
 	int sys2,	/* Output coordinate system (J2000, B1950, ECLIPTIC, G ALACTIC */
@@ -346,6 +361,14 @@ extern "C" {
 
     double wcsceq (	/* Set equinox from string (return 0.0 if not obvious) */
 	char *wcstring);  /* Coordinate system (B1950, J2000, etc) */
+
+    void wcscstr (	/* Set coordinate system type string from system and equinox */
+	char   *cstr,	 /* Coordinate system string (returned) */
+	int    syswcs,	/* Coordinate system code */
+	double equinox,	/* Equinox of coordinate system */
+	double epoch);	/* Epoch of coordinate system */
+
+
 };
 #else /* __cplusplus */
 
@@ -376,6 +399,7 @@ int setwcsdeg();	/* Set WCS output in degrees (1) or hh:mm:ss dd:mm:ss (0) */
 int wcsndec();		/* Set or get number of output decimal places */
 int wcsreset();		/* Change WCS using arguments */
 void wcseqset();	/* Change equinox of reference pixel coordinates in WCS */
+void wcscstr();		/* Set coordinate system string from system and equinox */
 void setwcslin();	/* Set output string mode for LINEAR coordinates */
 int pix2wcst();		/* Convert pixel coordinates to World Coordinate string */
 void pix2wcs();		/* Convert pixel coordinates to World Coordinates */
@@ -384,7 +408,7 @@ void wcs2pix();		/* Convert World Coordinates to pixel coordinates */
 void setdefwcs();	/* Call to use AIPS classic WCS (also not PLT or TNX */
 int getdefwcs();	/* Call to get flag for AIPS classic WCS */
 int wcszin();		/* Set coordinate in third dimension (face) */
-int wcsout();		/* Return coordinate in third dimension */
+int wcszout();		/* Return coordinate in third dimension */
 void wcserr();		/* Print WCS error message to stderr */
 void setwcserr();	/* Set WCS error message for later printing */
 void savewcscoor();	/* Save output coordinate system */
@@ -396,8 +420,10 @@ void freewcscom();	/* Free memory used to store WCS shell commands */
 
 /* Coordinate conversion subroutines in wcscon.c */
 void wcscon();		/* Convert between coordinate systems and equinoxes */
+void wcsconp();		/* Convert between coordinate systems and equinoxes */
 int wcscsys();		/* Set coordinate system from string */
 double wcsceq();		/* Set equinox from string (return 0.0 if not obvious) */
+void wcscstr();		/* Return system string from system code, equinox, epoch */
 #endif
 #endif
 
@@ -467,4 +493,9 @@ double wcsceq();		/* Set equinox from string (return 0.0 if not obvious) */
  * Jul 17 1998	Add savewcscoor(), getwcscoor(), savewcscom(), and getwcscom()
  * Aug 14 1998	Add freewcscom(), setwcscom(), and multiple WCS commands
  * Sep  3 1998	Add pa_north, pa_east, imrot and imflip to wcs structure
+ * Sep 14 1998	Add latbase for AXAF North Polar angle (NPOL not LAT-)
+ * Sep 16 1998	Make WCS_system start at 1; add NPOLE
+ * Sep 17 1998	Add wcscstr()
+ * Sep 21 1998	Add wcsconp() to convert proper motions, too.
+ * Dec  2 1998	Add WCS type for planet surface
  */

@@ -1,5 +1,5 @@
 /* fitsfile.h  FITS and IRAF file access subroutines
- * August 18, 1998
+ * October 7, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -20,13 +20,14 @@ struct Keyword {
 
 /* Subroutines in fitsfile.c */
 
-/* FITS file access subroutines */
+/* FITS file access subroutines in fitsfile.c */
 extern int fitsropen();
 extern char *fitsrhead();
 extern char *fitsrimage();
 extern int fitswimage();
+extern int isfits();
 
-/* FITS table file access subroutines */
+/* FITS table file access subroutines in fitsfile.c */
 extern int fitsrtopen();
 extern int fitsrthead();
 extern void fitsrtlset();
@@ -37,11 +38,12 @@ extern float ftgetr4();
 extern double ftgetr8();
 extern int ftgetc();
 
-/* IRAF file access subroutines in imhio.c */
+/* IRAF file access subroutines in imhfile.c */
 extern char *irafrhead();
 extern char *irafrimage();
 extern int irafwhead();
 extern int irafwimage();
+extern int isiraf();
 extern char *iraf2fits();
 extern char *fits2iraf();
 
@@ -71,4 +73,6 @@ extern int imswapped();
  * Jun  4 1998	Change fits2iraf from int to int *
  * Jul 24 1998	Make IRAF header char instead of int
  * Aug 18 1998	Change name to fitsfile.h from fitsio.h
+ * Oct  5 1998	Add isiraf() and isfits()
+ * Oct  7 1998	Note separation of imhfile.c into two files
  */

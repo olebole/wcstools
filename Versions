@@ -1,3 +1,34 @@
+Version 2.5 (December 8, 1998)
+edhead.c: make temporary file in /tmp and delete it when done
+imcat.c, scat.c imwcs.c, immatch.c: Add code to read TDC ASCII, USNO-A2.0,
+ and USNO-SA2.0 catalogs
+imcat.c, imstar.c: add output options to create SAOimage region file of stars
+imwcs.c:  add access to TDC binary catalogs such as SAO, PPM, and Tycho
+imwcs.c:  fix bugs in coordinate system handling
+keyhead.c: add option to transfer keyword values within a header
+gscread.c, uacread.c, ujcread.c, tabread.c, binread.c: An egregious error
+which failed to reassign numbers when dropping faint or far stars when
+there were too many for the desired return was fixed 
+catread.c: new subroutines to read TDC ASCII catalogs
+wcs.c:  fix bug when dealing with rotation of mirrored (right-handed) systems
+wcsinit.c: Read projection constants neaded for some WCSLIB projections
+fitsfile.c: add isfits() subroutine so unsuffixed files can be identified
+imhfile.c: Use file pointer to get file length; add isiraf() subroutine
+uacread.c: Add support for USNO A-2.0 catalog and USNO SA-2.0 catalog
+wcslib.h: combine lin.h, cel,h, proj,h, and wcstrig.h into wcslib.h
+fitsfile.c: fix bug to deal correctly with very large headers
+
+Version 2.4.1 (September 15, 1998)
+scat.c, imcat.c: Add code to read TDC binary catalogs
+binread.c: new subroutines to read TDC binary catalogs
+star.h: new data structure for TDC binary catalogs
+uacread.c: bug fix for reading USNO A 1.0 CDROMs
+dsspos.c, tnxpos.c: minor bug fixes
+ssao,sppm,siras: new links to scat to search SAO, PPM, and IRAS Point Source
+                 Catalogs
+imsao,imppm,imiras: new links to imcat to search SAO, PPM, and IRAS Point
+                    Source Catalogs
+
 Version 2.4 (September 4, 1998)
 sethead.c: new arguments to add history to header
 sethead.c delhead.c keyhead.c: Write whole file if modifying primary header
@@ -9,7 +40,7 @@ wcs.h: Added pa_north, pa_east, imrot, and imflip to show image orientation
 
 Version 2.3.4 (July 28, 1998)
 delwcs.c: New program to delete keyword entries from image headers
-setwcs.c: Updated to allow multiple files to be changed
+sethead.c: Updated to allow multiple files to be changed
 imhio.c: Properly sets modification date; memory management bugs fixed
 
 Version 2.3.3 (July 24, 1998)

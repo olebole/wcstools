@@ -3,6 +3,7 @@
 *   WCSLIB - an implementation of the FITS WCS proposal.
 *   Copyright (C) 1995,1996 Mark Calabretta
 *   Function names changed by Doug Mink, SAO, April 15, 1998
+*   wcstrig.h include file added to wcslib.h by Doug Mink, SAO, September 28, 1998
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -34,7 +35,7 @@
 *   $Id: wcstrig.c,v 2.1 1996/05/07 20:05:10 mcalabre Exp $
 *---------------------------------------------------------------------------*/
 
-#include "wcstrig.h"
+#include "wcslib.h"
 
 #ifndef PI	/* often defined in math.h */
 #define PI 3.141592653589793238462643
@@ -187,4 +188,5 @@ const double x, y;
 }
 /* Apr 30 1998	Define PI only if not defined already
  * Jul 30 1998	Make r2d and d2r static to avoid conflicts - Allan Brighton
+ * Sep 28 1998	wcstrig.h now part of wcslib.h
  */

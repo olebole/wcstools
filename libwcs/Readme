@@ -11,9 +11,6 @@ A self-contained subset of these programs which deal with image world
 coordinate systems is separately available and is used by the SAOimage,
 SAOtng, Skycat, and DS9 image display programs:
 
-  cel.c cel.h dsspos.c fitshead.h fitsfile.c hget.c hput.c iget.c imhfile.c
-  imio.c *iraf2fits.c lin.c lin.h platepos.c proj.c proj.h slasubs.c sph.c
-  tnxpos.c wcs.c wcs.h wcscon.c wcslib.c wcslib.h wcstrig.c wcstrig.h
-  worldpos.c
-
-(iraf2fits.c is in imhfile.c)
+  cel.c dsspos.c fitshead.h fitsfile.c fitsfile.h hget.c hput.c iget.c
+  imhfile.c imio.c lin.c platepos.c proj.c slasubs.c sph.c tnxpos.c
+  wcs.c wcs.h wcscon.c wcslib.c wcslib.h wcstrig.c worldpos.c

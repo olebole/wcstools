@@ -1,5 +1,5 @@
 /* File delhead.c
- * August 14, 1998
+ * November 30, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -24,6 +24,7 @@ static int verbose = 0;		/* verbose/debugging flag */
 static int newimage = 0;
 static int listpath = 0;
 static int maxlfn = 0;
+static int version = 0;		/* If 1, print only program name and version */
 
 main (ac, av)
 int ac;
@@ -41,6 +42,15 @@ char **av;
     char *name;
     FILE *flist;
     char *listfile;
+
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage ();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage ();
+	}
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
@@ -66,11 +76,7 @@ char **av;
     nkwd = 0;
     nfile = 0;
     while (ac-- > 0  && nfile < MAXFILES && nkwd < MAXKWD) {
-	if (strsrch (*av,".fit") != NULL ||
-	    strsrch (*av,".fts") != NULL ||
-	    strsrch (*av,".FIT") != NULL ||
-	    strsrch (*av,".FTS") != NULL ||
-	    strsrch (*av,".imh") != NULL) {
+	if (isiraf (*av) || isfits (*av)) {
 	    fn[nfile] = *av;
 
 	    if (listpath || (name = strrchr (fn[nfile],'/')) == NULL)
@@ -82,7 +88,7 @@ char **av;
 		maxlfn = lfn;
 	    nfile++;
 	    }
-	else if (strsrch (*av,"@") != NULL) {
+	else if (*av[0] == '@') {
 	    readlist++;
 	    listfile = *av + 1;
 	    nfile = 2;
@@ -127,6 +133,8 @@ char **av;
 static void
 usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Delete FITS or IRAF header keyword entries\n");
     fprintf(stderr,"Usage: [-nv] file1.fits [ ... filen.fits] kw1 [... kwn]\n");
     fprintf(stderr,"Usage: [-nv] @listfile kw1 [... kwn]\n");
@@ -159,7 +167,7 @@ char	*kwd[];		/* Names of those keywords */
     int fdr, fdw, ipos, nbr, nbw;
 
     /* Open IRAF image if .imh extension is present */
-    if (strsrch (filename,".imh") != NULL) {
+    if (isiraf (filename)) {
 	iraffile = 1;
 	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
 	    if ((header = iraf2fits (filename, irafheader, lhead, &nbhead)) == NULL) {
@@ -181,9 +189,8 @@ char	*kwd[];		/* Names of those keywords */
 	    hgeti4 (header,"NAXIS",&naxis);
 	    if (naxis > 0) {
 		if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
-		    fprintf (stderr, "Cannot read FITS image %s\n", filename);
-		    free (header);
-		    return;
+		    if (verbose)
+			fprintf (stderr,"Cannot read FITS image %s\n",filename);
 		    }
 		}
 	    else {
@@ -318,4 +325,7 @@ char	*kwd[];		/* Names of those keywords */
 /* Jul 27 1998	New program
  * Aug  6 1998	Change fitsio.h to fitsfile.h
  * Aug 14 1998	If changing primary header, write out entire input file
+ * Oct  5 1998	Allow header changes even if no data is present
+ * Oct  5 1998	Use isiraf() and isfits() to check for data file
+ * Nov 30 1998	Add version and help commands for consistency
  */

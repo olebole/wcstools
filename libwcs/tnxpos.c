@@ -1,5 +1,5 @@
 /* File wcslib/tnxpos.c
- * September 4, 1998
+ * September 10, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * After IRAF mwcs/wftnx.x and mwcs/wfgsurfit.x
  */
@@ -283,7 +283,7 @@ double	*xpix, *ypix;	/*o physical coordinates (x, y) */
 {
     int	ira, idec, niter;
     double ra, dec, cosdec, sindec, cosra, sinra, x, y, phi, theta;
-    double s, r, dphi, z, dpi, dhalfpi, twopi;
+    double s, r, dphi, z, dpi, dhalfpi, twopi, tx;
     double xm, ym, f, fx, fy, g, gx, gy, denom, dx, dy;
     double colatp, coslatp, sinlatp, longp, sphtol;
     double w[2];	/*i input world (ra, dec) coordinates */
@@ -420,13 +420,11 @@ double	*xpix, *ypix;	/*o physical coordinates (x, y) */
 		niter = niter + 1;
 		}
 
+	    /* Reverse x and y if axes flipped */
 	    if (wcs->coorflip) {
-		*ypix = x;
-		*xpix = y;
-		}
-	    else {
-		*xpix = x;
-		*ypix = y;
+		tx = x;
+		x = y;
+		y = tx;
 		}
 	    }
 	}
@@ -443,8 +441,12 @@ double	*xpix, *ypix;	/*o physical coordinates (x, y) */
 	if (wcs->rot!=0.0) {
 	    double cosr = cos (degrad (wcs->rot));
 	    double sinr = sin (degrad (wcs->rot));
-	    *xpix = x * cosr + dy * sinr;
-	    *ypix = dy * cosr - dx * sinr;
+	    *xpix = x * cosr + y * sinr;
+	    *ypix = y * cosr - x * sinr;
+	    }
+	else {
+	    *xpix = x;
+	    *ypix = y;
 	    }
 
 	/* Scale using CDELT */
@@ -1168,5 +1170,7 @@ double	*coeff;
 /* Mar 26 1998	New subroutines, translated from SPP
  * Apr 28 1998  Change all local flags to TNX_* and projection flag to WCS_TNX
  * May 11 1998	Fix use of pole longitude default
- * Sep  4 1998	Fix possible missed assignment in tnxpos from Allen Harris, SAO
+ * Sep  4 1998	Fix missed assignment in tnxpos from Allen Harris, SAO
+ * Sep 10 1998	Fix bugs in tnxpix()
+ * Sep 10 1998	Fix missed assignment in tnxpix from Allen Harris, SAO
  */

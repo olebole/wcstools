@@ -1,6 +1,6 @@
 /*** File wcslib/imio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** June 17, 1998
+ *** December 2, 1998
 
  * Module:      imio.c (image pixel manipulation)
  * Purpose:     Read and write pixels from arbitrary data type 2D arrays
@@ -8,9 +8,9 @@
  *		Get pixel from 2D image of any numeric type
  * Subroutine:	putpix (image, bitpix, w, h, x, y, dpix)
  *		Copy pixel into 2D image of any numeric type
- * Subroutine:	getvec (image, bitpix, pix1, pixoff, dpix)
+ * Subroutine:	getvec (image, bitpix, pix1, npix, dpix)
  *		Get vector from 2D image of any numeric type
- * Subroutine:	putvec (image, bitpix, pix1, pixoff, dpix)
+ * Subroutine:	putvec (image, bitpix, pix1, npix, dpix)
  *		Copy pixel vector into 2D image of any numeric type
  * Subroutine:	movepix (image1, bitpix, w1, x1, y1, image2, w2, x2, y2)
  *		Copy pixel from one image location to another
@@ -391,15 +391,15 @@ int	x2, y2;		/* Row and column for output pixel */
 /* GETVEC -- Get vector from 2D image of any numeric type */
 
 void
-getvec (image, bitpix, pix1, pixoff, dpix)
+getvec (image, bitpix, pix1, npix, dpix)
 
-char	*image;
-int	bitpix;		/* Number of bits per pixel */
+char	*image;		/* Image array from which to extract vector */
+int	bitpix;		/* Number of bits per pixel in image */
 			/*  16 = short, -16 = unsigned short, 32 = int */
 			/* -32 = float, -64 = double */
-int	pix1;
-int	pixoff;
-double	*dpix;
+int	pix1;		/* Offset of first pixel to extract */
+int	npix;		/* Number of pixels to extract */
+double	*dpix;		/* Vector of pixels (returned) */
 
 {
     short *im2;
@@ -409,7 +409,7 @@ double	*dpix;
     double *imd;
     int ipix, pix2;
 
-    pix2 = pix1 + pixoff;
+    pix2 = pix1 + npix;
 
     switch (bitpix) {
 
@@ -456,15 +456,15 @@ double	*dpix;
 /* PUTVEC -- Copy pixel vector into 2D image of any numeric type */
 
 void
-putvec (image, bitpix, pix1, pixoff, dpix)
+putvec (image, bitpix, pix1, npix, dpix)
 
-char	*image;
-int	bitpix;		/* Number of bits per pixel */
+char	*image;		/* Image into which to copy vector */
+int	bitpix;		/* Number of bits per pixel im image */
 			/*  16 = short, -16 = unsigned short, 32 = int */
 			/* -32 = float, -64 = double */
-int	pix1;
-int	pixoff;
-double	*dpix;
+int	pix1;		/* Offset of first pixel of vector in image */
+int	npix;		/* Number of pixels to copy */
+double	*dpix;		/* Vector of pixels to copy */
 
 {
     short *im2;
@@ -475,7 +475,7 @@ double	*dpix;
     int ipix, pix2;
     double *dp = dpix;
 
-    pix2 = pix1 + pixoff;
+    pix2 = pix1 + npix;
 
     switch (bitpix) {
 

@@ -1,5 +1,5 @@
 /* File remap.c
- * August 6, 1998
+ * November 30, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -26,12 +26,14 @@ static int RemapImage();
 extern struct WorldCoor *GetFITSWCS();
 static struct WorldCoor *wcsout = NULL;
 static char outheader[14400];
+static int eqsys = -1;
+static double equinox = 0.0;
+static int version = 0;		/* If 1, print only program name and version */
 
 main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
     char rastr[16];
     char decstr[16];
@@ -42,6 +44,15 @@ char **av;
     FILE *flist;
     int ifile, nblocks, nbytes, i, nbw, nx, ny;
     char *blanks;
+
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
 
     setrot (0.0);
 
@@ -149,7 +160,7 @@ char **av;
 	    break;
 
 	default:
-	    usage (progname);
+	    usage();
 	    break;
 	}
     }
@@ -159,7 +170,7 @@ char **av;
 	if ((flist = fopen (listfile, "r")) == NULL) {
 	    fprintf (stderr,"IMSTACK: List file %s cannot be read\n",
 		     listfile);
-	    usage (progname);
+	    usage();
 	    }
 	while (fgets (filename, 128, flist) != NULL)
 	    nfiles++;
@@ -171,7 +182,7 @@ char **av;
 
     /* If no arguments left, print usage */
     else if (ac == 0)
-	usage (progname);
+	usage();
 
     /* Read ac remaining file names starting at av[0] */
     else {
@@ -224,12 +235,13 @@ char **av;
 }
 
 static void
-usage (progname)
-char *progname;
+usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Remap FITS or IRAF images into single FITS image using WCS\n");
-    fprintf(stderr,"%s: usage: [-vf] file1.fit file2.fit ... filen.fit\n", progname);
-    fprintf(stderr,"%s: usage: [-vf] @filelist\n", progname);
+    fprintf(stderr,"usage: remap [-vf] file1.fit file2.fit ... filen.fit\n", progname);
+    fprintf(stderr,"       remap [-vf] @filelist\n", progname);
     fprintf(stderr,"Usage: [-vodfl] [-m mag] [-n frac] [-s mode] [-g class] [-h maxref] [-i peak]\n");
     fprintf(stderr,"       [-c catalog] [-p scale] [-b ra dec] [-j ra dec] [-r deg] [-t tol] [-x x y] [-y frac]\n");
     fprintf(stderr,"       FITS or IRAF file(s)\n");
@@ -265,8 +277,8 @@ char	*filename;	/* FITS or IRAF file filename */
     char pixname[128];
     struct WorldCoor *wcsin;
 
-    /* Open IRAF header if .imh extension is present */
-    if (strsrch (filename,".imh") != NULL) {
+    /* Read IRAF header and image */
+    if (isiraf (filename)) {
 	iraffile = 1;
 	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
 	    nbhead = 0;
@@ -290,7 +302,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	}
 
-    /* Read FITS image header if .imh extension is not present */
+    /* Read FITS image */
     else {
 	iraffile = 0;
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
@@ -310,7 +322,7 @@ char	*filename;	/* FITS or IRAF file filename */
     /* Set output world coordinate system from command line and first image header */
     if (wcsout == NULL) {
 	wcsout = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-			     &wpout, &hpout, equinox);
+			     &wpout, &hpout, &eqsys, &equinox);
 
     /* Set output header from command line and first image header */
 	strcpy (headout, header);
@@ -411,4 +423,8 @@ char	*filename;	/* FITS or IRAF file filename */
  * May 28 1998	Include fitsio.h instead of fitshead.h
  * Jul 24 1998	Make irafheader char instead of int
  * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Sep 17 1998	Add coordinate system to GetFITSWCS() argument list
+ * Sep 29 1998	Change arguments to GetFITSWCS()
+ * Oct 14 1998	Use isiraf() to determine file type
+ * Nov 30 1998	Add version and help commands for consistency
  */

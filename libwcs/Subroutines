@@ -1,5 +1,9 @@
 WCSTools libwcs Subroutines
 
+binread.c
+  Return stars from catalog files in the TDC binary catalog format
+catread.c
+  Return stars from catalog files in the TDC ASCII catalog format
 cel.c
   WCSLIB spherical coordinate transformation drivers
 dsspos.c
@@ -85,8 +89,8 @@ tnxpos.c
   projection is a tangent plane with corrections between the rotation and
   scaling and the actual projection.
 uacread.c
-  Return USNO A Catalog stars from its standard CDROM format files for
-  a given RA, Dec, and magnitude range.
+  Return USNO A and SA Catalog stars from their standard CDROM format
+  files for a given RA, Dec, and magnitude range.
 ujcread.c
   Return USNO UJ Catalog stars from its standard CDROM format files for
   a given RA, Dec, and magnitude range.
@@ -107,36 +111,33 @@ worldpos.c
   to compute image pixel X and Y given sky coordinates for the same images.
   Mostly from NRAO.
 
-cel.h
-  Declarations for WCSLIB spherical coordinate transformation drivers
 fitshead.h
   Declarations of FITS header access subroutines
 fitsfile.h
   Declarations of image access subroutines and FITS table data structure.
 imio.h
   Declarations of subroutines to convert binary formats of numbers
-lin.h
-  Declarations for WCSLIB linear transformation subroutines
 lwcs.h
   Constants used by star-finding and WCS-setting subroutines
-proj.h
-  Declarations for WCSLIB spherical map projection subroutines
+wcscat.h
+  Declarations for star catalog data structures
 wcs.h
   Declaration of WCS data structure and useful conversions.
 wcslib.h
-  Declarations for WCSLIB high level driver subroutines
-wcstrig.h
-  Declarations for WCSLIB trig and inverse trig functions
+  Declarations for WCSLIB high level driver subroutines, trig and inverse
+  trig functions, spherical map projection subroutines, spherical coordinate
+  transformation drivers, and linear transformation subroutines
 
 * Notes:
   slasubs.c contains unmodified subroutines from Pat Wallace's Starlink
             astrometry library and may be omitted if that library is
             being linked.
   WCSLIB subroutines were written by Mark Calabretta of CSIRO and have
-         been modified in three ways:
+         been modified in several ways:
          1) His distributed wcs.h has been changed to wcslib.h, and
          2) wcstrig.c subroutine names have been changed from <function>d()
             to <function>deg() to avoid name conflicts on some operating
             systems.
          3) ifndef's at start of headers files have been named to reflect
             the names of the header files, i.e. wcslib_h_ in wcslib.h.
+         4) All header files have been combined into wcslib.h

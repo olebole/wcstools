@@ -3,6 +3,8 @@
 *   WCSLIB - an implementation of the FITS WCS proposal.
 *   Copyright (C) 1995,1996 Mark Calabretta
 *
+*   lin.h include file added to wcslib.h by Doug Mink, SAO, September 28, 1998
+*
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
 *   by the Free Software Foundation; either version 2 of the License, or (at
@@ -142,7 +144,7 @@
 *===========================================================================*/
 
 #include <math.h>
-#include "lin.h"
+#include "wcslib.h"
 
 /* Map error number to error message for each function. */
 const char *linset_errmsg[] = {
@@ -425,3 +427,6 @@ double inv[];
 
    return 0;
 }
+
+/* Sep 28 1998	Include wcslib.h instead of lin.h
+ */

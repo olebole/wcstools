@@ -1,6 +1,6 @@
 /*** File libwcs/fitsfile.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** August 6, 1998
+ *** December 8, 1998
 
  * Module:      fitsfile.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -30,8 +30,10 @@
  *		Write FITS header and image
  * Subroutine:	fitswhead (filename, header)
  *		Write FITS header and keep file open for further writing 
+ * Subroutine:	isfits (filename)
+ *		Return 1 if file is a FITS file, else 0
 
- * Copyright:   1997 Smithsonian Astrophysical Observatory
+ * Copyright:   1998 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -85,9 +87,9 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     header = NULL;
 
     /* Open the image file and read the header */
-    if (strcmp (filename,"stdin")) {
+    if (strcmp (filename,"stdin") && strcmp (filename,"STDIN") ) {
 
-    /* Check for FITS extension and ignore for file opening */
+	/* Check for FITS extension and ignore for file opening */
 	ext = strchr (filename, ',');
 	if (ext != NULL)
 	    ext = ext + 1;
@@ -133,7 +135,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     nrec = 1;
     hdu = 0;
 
-/* Read FITS header from input file one FITS block at a time */
+    /* Read FITS header from input file one FITS block at a time */
     irec = 0;
     while (irec < 100) {
 	nbytes = FITSBLOCK;
@@ -141,7 +143,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    for (i = 0; i < 2884; i++) fitsbuf[i] = 0;
 	    nbr = read (fd, fitsbuf, nbytes);
 
-/* Short records are allowed only if they contain the last header line */
+	    /* Short records allowed only if they have the last header line */
 	    if (nbr < nbytes) {
 		headend = ksearch (fitsbuf,"END");
 		if (headend == NULL) {
@@ -170,7 +172,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		break;
 	    }
 
-/* Move current FITS record into header string */
+	/* Move current FITS record into header string */
 	for (i = 0; i < 2880; i++)
 	    if (fitsbuf[i] < 32) fitsbuf[i] = 32;
 	strncpy (headnext, fitsbuf, nbr);
@@ -178,12 +180,13 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	nrec = nrec + 1;
 	*(headnext+nbr) = 0;
 
-/* Check to see if this is the final record in this header */
+	/* Check to see if this is the final record in this header */
 	headend = ksearch (fitsbuf,"END");
 	if (headend == NULL) {
 	    if (nrec * FITSBLOCK > nbh) {
 		nbh = (nrec + 4) * FITSBLOCK + 4;
 		header = (char *) realloc (header,(unsigned int) nbh);
+		headnext = header + *nbhead - FITSBLOCK;
 		}
 	    headnext = headnext + FITSBLOCK;
 	    }
@@ -192,7 +195,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    naxis = 0;
 	    hgeti4 (header,"NAXIS",&naxis);
 
-	/* If header has no data, save it for appending to desired header */
+	    /* If header has no data, save it for appending to desired header */
 	    if (naxis < 1) {
 		nbprim = nrec * FITSBLOCK;
 		headend = ksearch (header,"END");
@@ -202,7 +205,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		pheader[lprim] = 0;
 		}
 
-	/* If header has no data, start with the next record */
+	    /* If header has no data, start with the next record */
 	    if (naxis < 1 && extnum == -1) {
 		extend = 0;
 		hgetl (header,"EXTEND",&extend);
@@ -210,14 +213,14 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		    headnext = header;
 		    *headend = ' ';
 		    headend = NULL;
-		    nrec = 1;
+		    /* nrec = 1; */
 		    hdu = hdu + 1;
 		    }
 		else
 		    break;
 		}
 
-	/* If this is the desired header data unit, keep it */
+	    /* If this is the desired header data unit, keep it */
 	    else if (ext != NULL) {
 		if (extnum > -1 && hdu == extnum)
 		    break;
@@ -228,7 +231,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 			break;
 		    }
 
-	/* If this is not the desired header data unit, skip over data */
+		/* If this is not desired header data unit, skip over data */
 		hdu = hdu + 1;
 		if (naxis > 0) {
 		    ibpix = 0;
@@ -257,7 +260,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		    nblock = 0;
 		*nbhead = *nbhead + (nblock * 2880);
 
-	/* Set file pointer to beginning of next header/data unit */
+		/* Set file pointer to beginning of next header/data unit */
 		if (nblock > 0) {
 #ifndef VMS
 		    if (fd != STDIN_FILENO) {
@@ -347,7 +350,7 @@ char	*header;	/* FITS header for image (previously read) */
     char *image;
 
     /* Open the image file and read the header */
-    if (strcmp (filename,"stdin")) {
+    if (strcmp (filename,"stdin") && strcmp (filename,"STDIN") ) {
 	fd = -1;
 	fd = fitsropen (filename);
 	if (fd < 0) {
@@ -938,6 +941,45 @@ char	*header;	/* FITS image header */
     return (fd);
 }
 
+
+/* ISFITS -- Return 1 if FITS file, else 0 */
+int
+isfits (filename)
+
+char    *filename;      /* Name of file for which to find size */
+{
+    FILE *diskfile;
+    char keyword[16];
+    int nbr;
+
+    /* First check file extension */
+    if (strsrch (filename, ".fit") ||
+	strsrch (filename, ".fits") ||
+	strsrch (filename, ".fts"))
+	return (1);
+
+    /* Check for stdin (input from pipe) */
+    else if (!strcmp (filename,"stdin") || !strcmp (filename,"STDIN"))
+	return (1);
+
+    /* If no FITS file extension, try opening the file */
+    else {
+	if ((diskfile = fopen (filename, "r")) == NULL)
+	    return (0);
+	else {
+	    nbr = fread (keyword, 1, 8, diskfile);
+	    fclose (diskfile);
+	    if (nbr < 8)
+		return (0);
+	    else if (!strncmp (keyword, "SIMPLE", 6))
+		return (1);
+	    else
+		return (0);
+	    }
+	}
+}
+
+
 /*
  * Feb  8 1996	New subroutines
  * Apr 10 1996	Add subroutine list at start of file
@@ -974,4 +1016,9 @@ char	*header;	/* FITS image header */
  * Jul 13 1998	Clarify argument definitions
  * Aug  6 1998	Rename fitsio.c to fitsfile.c to avoid conflict with CFITSIO
  * Aug 13 1998	Add FITSWHEAD to write only header
+ * Sep 25 1998	Allow STDIN or stdin for standard input reading
+ * Oct  5 1998	Add isfits() to decide whether a file is FITS
+ * Oct  9 1998	Assume stdin and STDIN to be FITS files in isfits()
+ * Nov 30 1998	Fix bug found by Andreas Wicenec when reading large headers
+ * Dec  8 1998	Fix bug introduced by previous bug fix
  */

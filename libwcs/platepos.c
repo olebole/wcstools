@@ -1,5 +1,5 @@
 /* File saoimage/wcslib/platepos.c
- * April 28, 1998
+ * September 10, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	platepos.c (Plate solution WCS conversion
@@ -145,8 +145,14 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
     eta = raddeg (etar);
 
     /* Set initial value for x,y */
-    x = (xi - wcs->x_coeff[0]) / wcs->x_coeff[1];
-    y = (eta - wcs->y_coeff[0]) / wcs->y_coeff[2];
+    if (wcs->x_coeff[1] == 0.0)
+	x = xi - wcs->x_coeff[0];
+    else
+	x = (xi - wcs->x_coeff[0]) / wcs->x_coeff[1];
+    if (wcs->y_coeff[2] == 0.0)
+	y = eta - wcs->y_coeff[0];
+    else
+	y = (eta - wcs->y_coeff[0]) / wcs->y_coeff[2];
 
     /* Iterate by Newton's method */
     for (i = 0; i < max_iterations; i++) {
@@ -350,4 +356,5 @@ struct WorldCoor *wcs;  /* WCS structure */
  * Apr 10 1998	Allow different numbers of coefficients for x and y
  * Apr 16 1998	Drom NCOEFF header parameter
  * Apr 28 1998  Change projection flags to WCS_*
+ * Sep 10 1998	Check for xc1 and yc2 divide by zero after Allen Harris, SAO
  */

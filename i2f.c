@@ -1,5 +1,5 @@
 /* File i2f.c
- * August 17, 1998
+ * November 30, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -18,13 +18,22 @@ static void usage();
 static void IRAFtoFITS ();
 
 static int verbose = 0;		/* verbose/debugging flag */
+static int version = 0;		/* If 1, print only program name and version */
 
 main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
+
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
@@ -35,7 +44,7 @@ char **av;
 		    verbose++;
 		    break;
 	        default:
-		    usage(progname);
+		    usage();
 		    break;
 		}
     	    }
@@ -43,7 +52,7 @@ char **av;
 
     /* now there are ac remaining file names starting at av[0] */
     if (ac == 0)
-	usage (progname);
+	usage ();
 
     else {
 	while (ac-- > 0) {
@@ -60,11 +69,12 @@ char **av;
 }
 
 static void
-usage (progname)
-char *progname;
+usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Write FITS files from IRAF image files\n");
-    fprintf(stderr,"%s: usage: [-v] file.imh ...\n", progname);
+    fprintf(stderr,"usage: i2f [-v] file.imh ...\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
 }
@@ -192,4 +202,5 @@ char *name;
  * Aug  6 1998	Change fitsio.h to fitsfile.h
  * Aug 14 1998	Write file.fits instead of file.fit
  * Aug 17 1998	Add HISTORY to header
+ * Nov 30 1998	Add version and help commands for consistency
  */

@@ -1,5 +1,5 @@
 /* fitshead.h  FITS header access subroutines
- * June 25, 1998
+ * October 28, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -216,6 +216,7 @@ extern int hgetdec();	/* Declination in degrees from string */
 extern int hgetdate(); /* Date in years from FITS date string */
 extern int hgetl();	/* T->1, F->0 from FITS logical entry */
 extern int hgets();	/* Previously allocated string */
+extern char *hgetc();	/* Return pointer to string */
 extern int hgetndec();	/* Number of decimal places in keyword value */
 
 /* Subroutines to convert strings to RA and Dec in degrees */
@@ -305,4 +306,5 @@ extern char *getutime(); /* Return current UT as an ISO-format string */
  * Jun 24 1998	Add string lengths to ra2str(), dec2str, and deg2str() calls
  * Jun 25 1998	Fix other C++ declarations with added string lengths
  * Aug 31 1998	Add current date subroutines getltime() and getutime()
+ * Oct 28 1998	Add missing hgetc() to non c++ declarations
  */

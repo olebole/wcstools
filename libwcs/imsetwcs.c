@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * June 24, 1998
+ * December 1, 1998
  * By Doug Mink, based on UIowa code
  */
 
@@ -11,29 +11,16 @@
 #include "fitshead.h"
 #include "wcs.h"
 #include "lwcs.h"
-
-#define GSC		1	/* refcat value for HST Guide Star Catalog */
-#define UJC		2	/* refcat value for USNO UJ Star Catalog */
-#define UAC		3	/* refcat value for USNO A Star Catalog */
-#define USAC		4	/* refcat value for USNO SA Star Catalog */
+#include "wcscat.h"
 
 extern int FindStars();
 extern int TriMatch();
 extern int FocasMatch();
 extern int StarMatch();
-extern int findStars();
 extern int FitPlate();
-extern int gscread();
-extern int uacread();
-extern int usaread();
-extern int ujcread();
-extern int tabread();
-extern void MagSortStars ();
-extern void FluxSortStars ();
 extern struct WorldCoor *GetFITSWCS ();
 extern char *getimcat();
 extern void SetFITSWCS();
-
 extern void fk524e();
 
 
@@ -75,11 +62,12 @@ extern void SetFITSPlate();
  */
 
 int
-SetWCSFITS (filename, header, image, verbose)
+SetWCSFITS (filename, header, image, refcatname, verbose)
 
 char	*filename;	/* image file name */
 char	*header;	/* FITS header */
 char	*image;		/* Image pixels */
+char	*refcatname;	/* Name of reference catalog */
 int	verbose;
 
 {
@@ -104,6 +92,7 @@ int	verbose;
     double dra, ddec;	/* Image half-widths in degrees */
     double secpix;	/* Pixel size in arcseconds */
     int imw, imh;	/* Image size, pixels */
+    int imsearch = 1;	/* Flag set if image should be searched for sources */
     double mag1,mag2;
     double dxys;
     int minstars;
@@ -114,14 +103,23 @@ int	verbose;
     int ret = 0;
     int is, ig, igs;
     char rstr[32], dstr[32];
+    double refeq, refep;
+    int refsys;
+    char refcoor[8];
+    char title[80];
     char *imcatname;	/* file name for image star catalog, if used */
     struct WorldCoor *wcs=0;	/* WCS structure */
     double *sx1, *sy1, *gra1, *gdec1, *gnum1, *gm1;
     double imfrac = imfrac0;
 
+    /* Set reference catalog coordinate system and epoch */
+    refcat = RefCat (refcatname, title, &refsys, &refeq, &refep);
+    wcscstr (refcoor, refsys, refeq, refep);
+
     /* get nominal position and scale */
 getfield:
-    wcs = GetFITSWCS (header,verbose,&cra,&cdec,&dra,&ddec,&secpix,&imw,&imh,2000.0);
+    wcs = GetFITSWCS (header,verbose,&cra,&cdec,&dra,&ddec,&secpix,&imw,&imh,
+		      &refsys, &refeq);
     if (nowcs (wcs)) {
 	ret = 0;
 	goto out;
@@ -132,8 +130,9 @@ getfield:
 	ret = 1;
 	goto out;
 	}
+    wcs->prjcode = WCS_TAN;
 
-    wcseqset (wcs, 2000.0);
+    wcseqset (wcs, refeq);
 
     if (imfrac > 0.0) {
 	dra = dra * imfrac;
@@ -162,21 +161,37 @@ getfield:
     gc = (int *) malloc (nbytes);
 
     /* Find the nearby reference stars, in ra/dec */
-    if (refcat == UJC)
-	ng = ujcread (cra,cdec,dra,ddec,0.0,mag1,mag2,uplate,ngmax,
-		      gnum,gra,gdec,gm,gc,verbose);
-    else if (refcat == UAC)
-	ng = uacread (cra,cdec,dra,ddec,0.0,mag1,mag2,uplate,ngmax,
-		      gnum,gra,gdec,gm,gmb,gc,verbose*1000);
-    else if (refcat == USAC)
-	ng = usaread (cra,cdec,dra,ddec,0.0,mag1,mag2,uplate,ngmax,
-		      gnum,gra,gdec,gm,gmb,gc,verbose*100);
+    if (refcat == UAC || refcat == UA1 || refcat == UA2 ||
+	refcat == USAC || refcat == USA1 || refcat == USA2)
+	ng = uacread (refcatname,cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
+		      mag1,mag2,uplate,ngmax,gnum,gra,gdec,gm,gmb,gc,verbose*1000);
+    else if (refcat == UJC)
+	ng = ujcread (cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
+		      mag1,mag2,uplate,ngmax,gnum,gra,gdec,gm,gc,verbose);
     else if (refcat == GSC)
-	ng = gscread (cra,cdec,dra,ddec,0.0,mag1,mag2,classd,ngmax,
-		      gnum,gra,gdec,gm,gc,verbose*100);
-    else if (refcatname[0] > 0)
-	ng = tabread (refcatname,cra,cdec,dra,ddec,0.0,mag1,mag2,ngmax,
-		      gnum,gra,gdec,gm,gc,verbose);
+	ng = gscread (cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,mag1,mag2,
+		      classd,ngmax,gnum,gra,gdec,gm,gc,verbose*100);
+    else if (refcat == SAO)
+	ng = binread ("SAOra",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
+    else if (refcat == PPM)
+	ng = binread ("PPMra",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
+    else if (refcat == IRAS)
+	ng = binread ("IRAS",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
+    else if (refcat == TYCHO)
+	ng = binread ("tychora",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
+    else if (refcat == BINCAT)
+	ng = binread (refcatname,cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
+    else if (refcat == TABCAT)
+	ng = tabread (refcatname,cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gc,verbose);
+    else if (refcat == TXTCAT)
+	ng = catread (refcatname,cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,verbose);
     else {
 	fprintf (stderr,"No reference star catalog specified\n");
 	ret = 0;
@@ -204,7 +219,7 @@ getfield:
 	}
 
     /* Sort reference stars by brightness (magnitude) */
-    MagSortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, ng);
+    MagSortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, NULL, ng);
 
     /* Note how reference stars were selected */
     nbg = ngmax;
@@ -232,12 +247,13 @@ getfield:
 	for (ig = 0; ig < ng; ig++) {
 	    ra2str (rstr, 32, gra[ig], 3);
 	    dec2str (dstr, 32, gdec[ig], 2);
-	    if (refcat == GSC)
-		printf (" %9.4f",gnum[ig]);
-	    else if (refcat == UAC || refcat == USAC)
+	    if (refcat == UAC || refcat == UA1 || refcat == UA2 ||
+		refcat == USAC || refcat == USA1 || refcat == USA2)
 		printf (" %13.8f",gnum[ig]);
 	    else if (refcat == UJC)
 		printf (" %12.7f",gnum[ig]);
+	    else if (refcat == GSC)
+		printf (" %9.4f",gnum[ig]);
 	    else
 		printf (" %9.4f",gnum[ig]);
 	    printf (" %s %s %5.2f %6.1f %6.1f\n",
@@ -260,19 +276,24 @@ getfield:
 	}
 
     /* Discover star-like things in the image, in pixels */
-    ns = FindStars (header, image, &sx, &sy, &sb, &sp, verbose);
-    if (ns < minstars) {
-	if (ns < 0)
-	    fprintf (stderr, "Error getting image stars: %d\n", ns);
-	else if (ns == 0)
-	    fprintf (stderr,"No stars found in image\n");
-	else if (fitwcs)
-	    fprintf (stderr, "Need at least %d image stars but only found %d\n",
-			     minstars, ns);
-	if (ns <= 0 || fitwcs) {
-	    ret = 0;
-	    goto out;
+    if (imsearch) {
+	ns = FindStars (header, image, &sx, &sy, &sb, &sp, verbose);
+	if (ns < minstars) {
+	    if (ns < 0)
+		fprintf (stderr, "Error getting image stars: %d\n", ns);
+	    else if (ns == 0)
+		fprintf (stderr,"No stars found in image\n");
+	    else if (fitwcs)
+		fprintf (stderr, "Need at least %d image stars but only found %d\n",
+			 minstars, ns);
+	    if (ns <= 0 || fitwcs) {
+		ret = 0;
+		iterate = 0;
+		recenter = 0;
+		goto out;
+		}
 	    }
+	imsearch = 0;
 	}
 
     /* Fit a world coordinate system if requested */
@@ -372,15 +393,24 @@ getfield:
 		    3600.0*wcs->xinc, 3600.0*wcs->yinc, wcs->rot);
 	ra2str (rstr, 32, wcs->xref, 3);
 	dec2str (dstr, 32, wcs->yref, 2);
-	printf ("# Optical axis: %s  %s J2000 at (%.2f,%.2f)\n",
-		rstr,dstr, wcs->xrefpix, wcs->yrefpix);
+	printf ("# Optical axis: %s  %s %s at (%.2f,%.2f)\n",
+		rstr,dstr, refcoor, wcs->xrefpix, wcs->yrefpix);
 	ra = wcs->xref;
 	dec = wcs->yref;
-	(void)fk524e (&ra, &dec, wcs->epoch);
-	ra2str (rstr, 32, ra, 3);
-	dec2str (dstr, 32, dec, 2);
-	printf ("# Optical axis: %s  %s B1950 at (%.2f,%.2f)\n",
-		rstr,dstr, wcs->xrefpix, wcs->yrefpix);
+	if (refsys == WCS_J2000) {
+	    (void)fk524e (&ra, &dec, wcs->epoch);
+	    ra2str (rstr, 32, ra, 3);
+	    dec2str (dstr, 32, dec, 2);
+	    printf ("# Optical axis: %s  %s B1950 at (%.2f,%.2f)\n",
+		    rstr,dstr, wcs->xrefpix, wcs->yrefpix);
+	    }
+	else {
+	    (void)fk425e (&ra, &dec, wcs->epoch);
+	    ra2str (rstr, 32, ra, 3);
+	    dec2str (dstr, 32, dec, 2);
+	    printf ("# Optical axis: %s  %s J2000 at (%.2f,%.2f)\n",
+		    rstr,dstr, wcs->xrefpix, wcs->yrefpix);
+	    }
 
 	/* Find star matches for this offset and print them */
 	tol2 = tolerance * tolerance;
@@ -477,6 +507,8 @@ getfield:
     ret = 1;
 
     out:
+
+    /* Free catalog source arrays */
     if (gra) free ((char *)gra);
     if (gdec) free ((char *)gdec);
     if (gm) free ((char *)gm);
@@ -486,10 +518,6 @@ getfield:
     if (gy) free ((char *)gy);
     if (gc) free ((char *)gc);
 
-    if (sx) free ((char *)sx);
-    if (sy) free ((char *)sy);
-    if (sb) free ((char *)sb);
-    if (sp) free ((char *)sp);
     if (wcs) free (wcs);
     if (iterate) {
 	setdcenter (wcs->xref, wcs->yref);
@@ -515,6 +543,12 @@ getfield:
 	imfrac = 0.0;
 	goto getfield;
 	}
+
+    /* Free image source arrays */
+    if (sx) free ((char *)sx);
+    if (sy) free ((char *)sy);
+    if (sb) free ((char *)sb);
+    if (sp) free ((char *)sp);
 
     return (ret);
 }
@@ -573,12 +607,13 @@ int	refcat;		/* Reference catalog code */
 	dsep2sum = dsep2sum + dsep2;
 	ra2str (rstr, 32, gra1[i], 3);
 	dec2str (dstr, 32, gdec1[i], 2);
-	if (refcat == GSC)
-	    printf (" %9.4f",gnum1[i]);
-	else if (refcat == UAC || refcat == USAC)
+	if (refcat == UAC || refcat == UA1 || refcat == UA2 ||
+	    refcat == USAC || refcat == USA1 || refcat == USA2)
 	    printf (" %13.8f",gnum1[i]);
 	else if (refcat == UJC)
 	    printf (" %12.7f",gnum1[i]);
+	else if (refcat == GSC)
+	    printf (" %9.4f",gnum1[i]);
 	else
 	    printf (" %9.4f",gnum1[i]);
 	printf (" %s %s %5.2f", rstr, dstr, gm1[i]);
@@ -622,16 +657,7 @@ char *cat;
 void
 setrefcat (cat)
 char *cat;
-{  if (strcmp(cat,"gsc")==0 || strcmp(cat,"GSC")==0)
-	refcat = GSC;
-   else if (strcmp(cat,"ujc")==0 || strcmp(cat,"UJC")==0)
-	refcat = UJC;
-   else if (strcmp(cat,"uac")==0 || strcmp(cat,"UAC")==0)
-	refcat = UAC;
-   else if (strcmp(cat,"usac")==0 || strcmp(cat,"USAC")==0)
-	refcat = USAC;
-    else
-	refcat = 0;
+{  RefCat (cat);
     strcpy (refcatname, cat); return; }
 
 void
@@ -780,4 +806,16 @@ int recenter;
  * Apr  8 1998	Reset equinox to that of reference catalog
  * Apr 30 1998	Handle prematched star/pixel file
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
+ * Sep 17 1998	Allow use of catalogs with other than J2000 coordinates
+ * Sep 17 1998	Add coordinate system argument to GetFITSWCS()
+ * Sep 28 1998	Add SAO binary format catalogs (SAO, PPM, IRAS, Tycho)
+ * Sep 28 1998	Pass system, equinox, and epoch to all catalog search programs
+ * Oct  2 1998	Fix arguments in call to GetFITSWCS
+ * Oct  7 1998	Set projection to TAN before fitting
+ * Oct 16 1998	Add option to read from TDC ASCII format catalog
+ * Oct 26 1998	Use passed refcatname and new RefCat subroutine and wcscat.h
+ * Oct 26 1998	Add TDC binary catalog option
+ * Oct 28 1998	Only search for sources in image once
+ * Nov 19 1998	Add catalog name to uacread() call
+ * Dec  1 1998	Add version 2.0 of USNO A and SA catalogs
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** September 4, 1998
+ *** December 2, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -95,6 +95,7 @@ char	*proj;	/* Projection */
     struct WorldCoor *wcs;
     double cdelt1, cdelt2;
     char *str;
+    char envar[16];
 
     wcs = (struct WorldCoor *) calloc (1, sizeof(struct WorldCoor));
 
@@ -167,10 +168,10 @@ char	*proj;	/* Projection */
     wcs->eqout = 0.0;
     wcs->printsys = 1;
     wcs->tabsys = 0;
-    if ((str = getenv("WCS_COMMAND")) != NULL )
-	wcscominit (wcs, 0, str);
-    else
-	wcscominit (wcs, 0, "rgsc %s");
+
+    /* Initialize special WCS commands */
+    setwcscom (wcs);
+
     return (wcs);
 }
 
@@ -196,6 +197,7 @@ double	epoch;	/* Epoch of coordinates, used for FK4/FK5 conversion
 {
     struct WorldCoor *wcs;
     char *str;
+    char envar[16];
 
     wcs = (struct WorldCoor *) calloc (1, sizeof(struct WorldCoor));
 
@@ -218,18 +220,27 @@ double	epoch;	/* Epoch of coordinates, used for FK4/FK5 conversion
     wcs->yrefpix = wcs->crpix[1];
     wcs->lin.crpix = wcs->crpix;
 
+    if (wcstype (wcs, ctype1, ctype2)) {
+	free (wcs);
+	return (NULL);
+	}
+    if (wcs->latbase == 90)
+	crval2 = 90.0 - crval2;
+    else if (wcs->latbase == -90)
+	crval2 = crval2 - 90.0;
+
     wcs->crval[0] = crval1;
-    wcs->crval[1] = crval2;
+    if (wcs->syswcs == WCS_NPOLE)
+	wcs->crval[1] = 90.0 - crval2;
+    else if (wcs->syswcs == WCS_SPA)
+	wcs->crval[1] = crval2 - 90.0;
+    else
+	wcs->crval[1] = crval2;
     wcs->xref = wcs->crval[0];
     wcs->yref = wcs->crval[1];
     wcs->cel.ref[0] = wcs->crval[0];
     wcs->cel.ref[1] = wcs->crval[1];
     wcs->cel.ref[2] = 999.0;
-
-    if (wcstype (wcs, ctype1, ctype2)) {
-	free (wcs);
-	return (NULL);
-	}
 
     if (cd != NULL)
 	wcscdset (wcs, cd);
@@ -263,10 +274,10 @@ double	epoch;	/* Epoch of coordinates, used for FK4/FK5 conversion
     wcs->eqout = 0.0;
     wcs->printsys = 1;
     wcs->tabsys = 0;
-    if ((str = getenv("WCS_COMMAND")) != NULL)
-	wcscominit (wcs, 0, str);
-    else
-	wcscominit (wcs, 0, "rgsc %s");
+
+    /* Initialize special WCS commands */
+    setwcscom (wcs);
+
     return (wcs);
 }
 
@@ -315,6 +326,9 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
     strcpy (ctypes[27], "DSS");
     strcpy (ctypes[28], "PLT");
     strcpy (ctypes[29], "TNX");
+
+    if (!strncmp (ctype1, "LONG",4))
+	strncpy (ctype1, "XLON",4);
 
     strcpy (wcs->ctype[0], ctype1);
     strcpy (wcs->c1type, ctype1);
@@ -403,6 +417,22 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	}
 
     /* Second coordinate type */
+    if (!strncmp (ctype2, "NPOL",4)) {
+	ctype2[0] = ctype1[0];
+	strncpy (ctype2+1, "LAT",3);
+	wcs->latbase = 90;
+	strcpy (wcs->radecsys,"NPOLE");
+	wcs->syswcs = WCS_NPOLE;
+	}
+    else if (!strncmp (ctype2, "SPA-",4)) {
+	ctype2[0] = ctype1[0];
+	strncpy (ctype2+1, "LAT",3);
+	wcs->latbase = -90;
+	strcpy (wcs->radecsys,"SPA");
+	wcs->syswcs = WCS_SPA;
+	}
+    else
+	wcs->latbase = 0;
     strcpy (wcs->ctype[1], ctype2);
     strcpy (wcs->c2type, ctype2);
 
@@ -443,8 +473,8 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	wcs->ptype[2] = ctype2[iproj+2];
 	wcs->ptype[3] = 0;
 
-	if (!strncmp (wcs->c1type, "DEC", 3) ||
-	    !strncmp (wcs->c1type, "GLAT", 4))
+	if (!strncmp (ctype1, "DEC", 3) ||
+	    !strncmp (ctype1+1, "LAT", 3))
 	    wcs->coorflip = 1;
 	else
 	    wcs->coorflip = 0;
@@ -679,11 +709,16 @@ double crota;		/* Rotation counterclockwise in degrees */
 	    }
 	}
     wcs->rotmat = 0;
+
+    /* If image is reversed, value of CROTA is flipped, too */
     wcs->rot = crota;
+    crot = cos (degrad(wcs->rot));
+    if (cdelt1 * cdelt2 > 0)
+	srot = sin (-degrad(wcs->rot));
+    else
+	srot = sin (degrad(wcs->rot));
 
     /* Set CD matrix */
-    crot = cos (degrad(wcs->rot));
-    srot = sin (degrad(wcs->rot));
     wcs->cd[0] = wcs->cdelt[0] * crot;
     if (wcs->cdelt[0] < 0)
 	wcs->cd[1] = -fabs (wcs->cdelt[1]) * srot;
@@ -1114,9 +1149,9 @@ struct WorldCoor *wcs;		/* World coordinate system structure */
 	    if (secpix < 100.0)
 		(void) fprintf (stderr, "  %.3f arcsec/pixel\n",secpix);
 	    else if (secpix < 3600.0)
-		(void) fprintf (stderr, "  %.3f arcmin/pixel\n",secpix*60.0);
+		(void) fprintf (stderr, "  %.3f arcmin/pixel\n",secpix/60.0);
 	    else
-		(void) fprintf (stderr, "  %.3f degrees/pixel\n",secpix*3600.0);
+		(void) fprintf (stderr, "  %.3f degrees/pixel\n",secpix/3600.0);
 	    }
 	}
     return;
@@ -1139,7 +1174,7 @@ double	*ddec;		/* Half-width in declination (deg) (returned) */
     /* Find right ascension and declination of coordinates */
     if (iswcs(wcs)) {
 	wcsfull (wcs, cra, cdec, &width, &height);
-	*dra = 0.5 * width;
+	*dra = 0.5 * width / cos (degrad (*cdec));
 	*ddec = 0.5 * height;
 	}
     else {
@@ -1307,7 +1342,7 @@ double	xfile,yfile;		/* Image pixel coordinates for WCS command */
     if (wcs->command_format[i] != NULL)
 	strcpy (comform, wcs->command_format[i]);
     else
-	strcpy (comform, "rgsc %s");
+	strcpy (comform, "sgsc -ah %s");
 
     if (nowcs (wcs))
 	(void)fprintf(stderr,"WCSCOM: no WCS\n");
@@ -1454,11 +1489,16 @@ char	*coorsys;	/* Input world coordinate system:
     if (wcs->wcson) {
 
 	/* Set output in degrees flag and number of decimal places */
-	if (wcs->sysout == WCS_GALACTIC || wcs->sysout == WCS_ECLIPTIC) {
+	if (wcs->sysout == WCS_GALACTIC || wcs->sysout == WCS_ECLIPTIC ||
+	    wcs->sysout == WCS_PLANET) {
 	    wcs->degout = 1;
 	    wcs->ndec = 5;
 	    }
 	else if (wcs->sysout == WCS_ALTAZ) {
+	    wcs->degout = 1;
+	    wcs->ndec = 5;
+	    }
+	else if (wcs->sysout == WCS_NPOLE || wcs->sysout == WCS_SPA) {
 	    wcs->degout = 1;
 	    wcs->ndec = 5;
 	    }
@@ -1717,6 +1757,15 @@ int	lstr;		/* Length of world coordinate string (returned) */
 		    strcat (wcstring," ecliptic");
 	    }
 
+	/* Label planet coordinates */
+	else if (wcs->sysout == WCS_PLANET) {
+	    if (lstr > 9 && wcs->printsys)
+		if (wcs->tabsys)
+		    strcat (wcstring,"	planet");
+		else
+		    strcat (wcstring," planet");
+	    }
+
 	/* Label alt-az coordinates */
 	else if (wcs->sysout == WCS_ALTAZ) {
 	    if (lstr > 7 && wcs->printsys)
@@ -1724,6 +1773,24 @@ int	lstr;		/* Length of world coordinate string (returned) */
 		    strcat (wcstring,"	alt-az");
 		else
 		    strcat (wcstring," alt-az");
+	    }
+
+	/* Label north pole angle coordinates */
+	else if (wcs->sysout == WCS_NPOLE) {
+	    if (lstr > 7 && wcs->printsys)
+		if (wcs->tabsys)
+		    strcat (wcstring,"	long-npa");
+		else
+		    strcat (wcstring," long-npa");
+	    }
+
+	/* Label south pole angle coordinates */
+	else if (wcs->sysout == WCS_SPA) {
+	    if (lstr > 7 && wcs->printsys)
+		if (wcs->tabsys)
+		    strcat (wcstring,"	long-spa");
+		else
+		    strcat (wcstring," long-spa");
 	    }
 
 	/* Label equatorial coordinates */
@@ -1855,6 +1922,10 @@ double	*xpos,*ypos;	/* RA and Dec in degrees (returned) */
 	    eqout = wcs->eqout;
 	    wcscon (wcs->syswcs,wcs->sysout,eqin,eqout,&xp,&yp,wcs->epoch);
 	    }
+	if (wcs->latbase == 90)
+	    yp = 90.0 - yp;
+	else if (wcs->latbase == -90)
+	    yp = yp - 90.0;
 	wcs->xpos = xp;
 	wcs->ypos = yp;
 	*xpos = xp;
@@ -1911,6 +1982,10 @@ int	*offscl;	/* 0 if within bounds, else off scale */
     *offscl = 0;
     xp = xpos;
     yp = ypos;
+    if (wcs->latbase == 90)
+	yp = 90.0 - yp;
+    else if (wcs->latbase == -90)
+	yp = yp - 90.0;
     sysin = wcscsys (coorsys);
     eqin = wcsceq (coorsys);
     wcs->zpix = 1.0;
@@ -2122,17 +2197,30 @@ void
 setwcscom (wcs)
 struct WorldCoor *wcs;  /* WCS parameter structure */
 {
-    char envvar[16];
+    char envar[16];
     int lcom, i;
     char *str;
     if (nowcs(wcs))
 	return;
     for (i = 0; i < 10; i++) {
-	sprintf (envvar, "F%d_COMMAND", i);
+	if (i == 0)
+	    strcpy (envar, "WCS_COMMAND");
+	else
+	    sprintf (envar, "WCS_COMMAND%d", i);
 	if (wcscom0[i] != NULL)
 	    wcscominit (wcs, i, wcscom0[i]);
-	else if ((str = getenv (envvar)) != NULL)
+	else if ((str = getenv (envar)) != NULL)
 	    wcscominit (wcs, i, str);
+	else if (i == 1)
+	    wcscominit (wcs, i, "suac -ah %s");
+	else if (i == 2)
+	    wcscominit (wcs, i, "sgsc -ah %s");
+	else if (i == 3)
+	    wcscominit (wcs, i, "stycho -ah %s");
+	else if (i == 4)
+	    wcscominit (wcs, i, "sppm -ah %s");
+	else if (i == 5)
+	    wcscominit (wcs, i, "ssao -ah %s");
 	else
 	    wcs->command_format[i] = NULL;
 	}
@@ -2335,4 +2423,10 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Aug 14 1998	Add multiple command options to wcscom*()
  * Aug 31 1998	Declare undeclared arguments to wcspcset()
  * Sep  3 1998	Set CD rotation and cdelts from sky axis position angles
+ * Sep 16 1998	Add option to use North Polar Angle instead of Latitude
+ * Sep 29 1998	Initialize additional WCS commands from the environment
+ * Oct 14 1998	Fix bug in wcssize() which didn't divide dra by cos(dec)
+ * Nov 12 1998	Fix sign of CROTA when either axis is reflected
+ * Dec  2 1998	Fix non-arcsecond scale factors in wcscent()
+ * Dec  2 1998	Add PLANET coordinate system to pix2wcst()
  */

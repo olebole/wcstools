@@ -1,5 +1,5 @@
 /* File skycoor.c
- * August 6, 1998
+ * November 30, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -20,18 +20,20 @@ static int verbose = 0;		/* verbose/debugging flag */
 static double epoch = 0.0;
 static double eqout = 0.0;
 static double eqin = 0.0;
+static int version = 0;		/* If 1, print only program name and version */
+
 
 main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
     FILE *fd;
     char *ln, *listname;
     char line[80];
     char rastr0[32], decstr0[32];
     char rastr1[32], decstr1[32];
+    char csys0[32], csys1[32];
     char csys[32];
     int sys0;
     int sys1 = -1;
@@ -39,18 +41,23 @@ char **av;
     int degout = 0;
     int ndec = 3;		/* Number of decimal places in RA seconds */
     int ndecset = 0;
-    char coorsys[4][12];
     char coorout[16];
-    strcpy (coorsys[0], "J2000");
-    strcpy (coorsys[1], "B1950");
-    strcpy (coorsys[2], "galactic");
-    strcpy (coorsys[3], "ecliptic");
 
     listname = NULL;
+    coorout[0] = (char) 0;
 
     /* There are ac arguments starting at av[0] */
     if (ac == 1)
-	usage (progname);
+	usage();
+
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
 
     /* Decode arguments */
     for (av++; --ac > 0 && (*(str = *av) == '-'); av++) {
@@ -112,7 +119,7 @@ char **av;
 
     	default:
 	    if (notnum (str))
-    		usage(progname);
+    		usage();
     	    break;
     	}
     }
@@ -144,12 +151,14 @@ char **av;
 			    sys1 = WCS_J2000;
 			}
 		    skycons (rastr0,decstr0,sys0,rastr1,decstr1,sys1,32,ndec);
+		    wcscstr (csys0, sys0, 0.0, 0.0);
+		    wcscstr (csys1, sys1, 0.0, 0.0);
 		    if (verbose)
 			printf ("%s %s %s -> %s %s %s\n",
-			    rastr0, decstr0, coorsys[sys0],
-			    rastr1, decstr1, coorsys[sys1]);
+			    rastr0, decstr0, csys0,
+			    rastr1, decstr1, csys1);
 		    else
-			printf ("%s %s %s\n", rastr1, decstr1, coorsys[sys1]);
+			printf ("%s %s %s\n", rastr1, decstr1, csys1);
 		    }
 		}
 	    else
@@ -182,7 +191,7 @@ char **av;
 		    sys1 = WCS_J2000;
 		}
 	    if (strlen (coorout) == 0)
-		strcpy (coorout, coorsys[sys1]);
+		wcscstr (coorout, sys1, 0.0, 0.0);
 	    eqout = wcsceq (coorout);
 	    skycons (rastr0, decstr0, sys0, rastr1, decstr1, sys1, 32, ndec);
 	    if (degout) {
@@ -191,10 +200,12 @@ char **av;
 		deg2str (rastr1, 32, ra, 5);
 		deg2str (decstr1, 32, dec, 5);
 		}
-	    if (verbose)
+	    if (verbose) {
+		wcscstr (csys0, sys0, 0.0, 0.0);
 		printf ("%s %s %s -> %s %s %s\n",
-		        rastr0, decstr0, coorsys[sys0],
+		        rastr0, decstr0, csys0,
 			rastr1, decstr1, coorout);
+		}
 	    else
 		printf ("%s %s %s\n", rastr1, decstr1, coorout);
 	    }
@@ -252,6 +263,8 @@ int	ndec;		/* Number of decimal places in output RA seconds */
 static void
 usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Convert coordinates\n");
     fprintf (stderr,"Usage [-bdegjv] [-y epoch] [-q system] [-n ndec] ra1 dec1 sys1 ... ran decn sysn\n");
     fprintf (stderr,"Usage: [-vbejg] [-y epoch] [-q system] [-n ndec] @listfile\n");
@@ -277,4 +290,5 @@ usage ()
  * May 13 1998	Add q command for output equinox; allow input equinox, too
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  * Aug  6 1998	Do not include fitshead.h; it is in wcs.h
+ * Nov 30 1998	Add version and help commands for consistency
  */

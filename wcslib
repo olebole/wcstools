@@ -1,5 +1,5 @@
 /* File libwcs/sortstar.c
- * November 20, 1998
+ * October 29, 1998
  * By Doug Mink
  */
 
@@ -391,39 +391,19 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	}
     else if (strncmp(refcatname,"us",2)==0 ||
 	strncmp(refcatname,"US",2)==0) {
+	strcpy (title, "USNO SA Catalog Stars");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
-	if (index (refcatname, '1') != NULL) {
-	    strcpy (title, "USNO SA-1.0 Catalog Stars");
-	    return (USA1);
-	    }
-	else if (index (refcatname, '2') != NULL) {
-	    strcpy (title, "USNO SA-2.0 Catalog Stars");
-	    return (USA2);
-	    }
-	else {
-	    strcpy (title, "USNO SA Catalog Stars");
-	    return (USAC);
-	    }
+	return (USAC);
 	}
     else if (strncmp(refcatname,"ua",2)==0 ||
 	strncmp(refcatname,"UA",2)==0) {
+	strcpy (title, "USNO A Catalog Stars");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
-	if (index (refcatname, '1') != NULL) {
-	    strcpy (title, "USNO A-1.0 Catalog Stars");
-	    return (UA1);
-	    }
-	else if (index (refcatname, '2') != NULL) {
-	    strcpy (title, "USNO A-2.0 Catalog Stars");
-	    return (UA2);
-	    }
-	else {
-	    strcpy (title, "USNO A Catalog Stars");
-	    return (UAC);
-	    }
+	return (UAC);
 	}
     else if (strncmp(refcatname,"uj",2)==0 ||
 	strncmp(refcatname,"UJ",2)==0) {
@@ -518,5 +498,4 @@ double	*epcat;		/* Epoch of catalog (returned) */
  * Oct 21 1998	Add RefCat() to set reference catalog code
  * Oct 26 1998	Include object names in star catalog entry structure
  * Oct 29 1998	Return coordinate system and title from RefCat
- * Nov 20 1998	Add USNO A-2.0 catalog and return different code
  */

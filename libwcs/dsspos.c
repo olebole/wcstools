@@ -1,5 +1,5 @@
 /* File saoimage/wcslib/dsspos.c
- * September 4, 1998
+ * September 10, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	dsspos.c (Plate solution WCS conversion)
@@ -135,20 +135,31 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
   double xr, yr; 	/* position in radians */
   double cond2r = 1.745329252e-2;
 
+  *xpix = 0.0;
+  *ypix = 0.0;
+
 /* Convert RA and Dec in radians to standard coordinates on a plate */
-  xr = xpos * cond2r;
-  yr = ypos * cond2r;
+  xr = degrad (xpos);
+  yr = degrad (ypos);
   sypos = sin (yr);
   cypos = cos (yr);
+  if (wcs->plate_dec == 0.0)
+    wcs->plate_dec = degrad (wcs->yref);
   syplate = sin (wcs->plate_dec);
   cyplate = cos (wcs->plate_dec);
+  if (wcs->plate_ra == 0.0)
+    wcs->plate_ra = degrad (wcs->yref);
   sxdiff = sin (xr - wcs->plate_ra);
   cxdiff = cos (xr - wcs->plate_ra);
   div = (sypos * syplate) + (cypos * cyplate * cxdiff);
+  if (div == 0.0)
+    return (1);
   xi = cypos * sxdiff * conr2s / div;
   eta = ((sypos * cyplate) - (cypos * syplate * cxdiff)) * conr2s / div;
 
 /* Set initial value for x,y */
+  if (wcs->plate_scale == 0.0)
+    return (1);
   xmm = xi / wcs->plate_scale;
   ymm = eta / wcs->plate_scale;
 
@@ -250,6 +261,8 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
     }
 
 /* Convert mm from plate center to plate pixels */
+  if (wcs->x_pixel_size == 0.0 || wcs->y_pixel_size == 0.0)
+    return (1);
   x = (wcs->ppo_coeff[2] - xmm*1000.0) / wcs->x_pixel_size;
   y = (wcs->ppo_coeff[5] + ymm*1000.0) / wcs->y_pixel_size;
 
@@ -276,4 +289,5 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
  * Mar 23 1998	Change names from plate*() to dss*()
  * Apr  7 1998	Change amd_i_coeff to i_coeff
  * Sep  4 1998	Fix possible divide by zero in dsspos() from Allen Harris, SAO
+ * Sep 10 1998	Fix possible divide by zero in dsspix() from Allen Harris, SAO
  */

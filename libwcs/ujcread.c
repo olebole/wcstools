@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** June 24, 1998
+ *** October 29, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -39,14 +39,17 @@ static void ujcswap();
 /* UJCREAD -- Read USNO J Catalog stars from CDROM */
 
 int
-ujcread (cra,cdec,dra,ddec,drad,mag1,mag2,xplate,nstarmax,unum,ura,udec,umag,
-	 uplate,verbose)
+ujcread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,xplate,nstarmax,
+	 unum,ura,udec,umag,uplate,verbose)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+int	sysout;		/* Search coordinate system */
+double	eqout;		/* Search coordinate equinox */
+double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	xplate;		/* If nonzero, use objects only from this plate */
 int	nstarmax;	/* Maximum number of stars to be returned */
@@ -68,7 +71,13 @@ int	verbose;	/* 1 for diagnostics */
     int nz;		/* Number of input UJ zone files */
     int zlist[NZONES];	/* List of input UJ zones */
     UJCstar star;	/* UJ catalog entry for one star */
+    int sysref=WCS_J2000;	/* Catalog coordinate system */
+    double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
+    char cstr[32];
+    double num;		/* UJ number */
 
+    double rra1, rra2, rdec1, rdec2;
     int wrap, iwrap;
     int znum, itot,iz;
     int nlog,itable,jstar;
@@ -80,8 +89,9 @@ int	verbose;	/* 1 for diagnostics */
     char *str;
 
     itot = 0;
+    wcscstr (cstr, sysout, eqout, epout);
 
-    /* Set path to USNO A Catalog */
+    /* Set path to USNO J Catalog */
     if ((str = getenv("UJ_PATH")) != NULL )
 	strcpy (cdu,str);
 
@@ -127,13 +137,6 @@ int	verbose;	/* 1 for diagnostics */
 		 rstr1,rstr2,dstr1,dstr2);
 	}
 
-/* If RA range includes zero, split it in two */
-    wrap = 0;
-    if (ra1 > ra2)
-	wrap = 1;
-    else
-	wrap = 0;
-
 /* mag1 is always the smallest magnitude */
     if (mag2 < mag1) {
 	mag = mag2;
@@ -142,11 +145,24 @@ int	verbose;	/* 1 for diagnostics */
 	}
 
 /* Find UJ Star Catalog regions in which to search */
-    nz = ujczones (ra1, ra2, dec1, dec2, nzmax, zlist, verbose);
+    rra1 = ra1;
+    rra2 = ra2;
+    rdec1 = dec1;
+    rdec2 = dec2;
+    wcscon (sysout, sysref, eqout, eqref, &rra1, &rdec1, epout);
+    wcscon (sysout, sysref, eqout, eqref, &rra2, &rdec2, epout);
+    nz = ujczones (rra1, rra2, rdec1, rdec2, nzmax, zlist, verbose);
     if (nz <= 0) {
 	fprintf (stderr,"UJCREAD:  no UJ zones found\n");
 	return (0);
 	}
+
+/* If RA range includes zero, set a flag */
+    wrap = 0;
+    if (ra1 > ra2)
+	wrap = 1;
+    else
+	wrap = 0;
 
     udist = (double *) malloc (nstarmax * sizeof (double));
 
@@ -167,13 +183,13 @@ int	verbose;	/* 1 for diagnostics */
 
 	    /* Find first star based on RA */
 		if (iwrap == 0 || wrap == 0)
-		    istar1 = ujcsra (ra1);
+		    istar1 = ujcsra (rra1);
 		else
 		    istar1 = 1;
 
 	    /* Find last star based on RA */
 		if (iwrap == 1 || wrap == 0)
-		    istar2 = ujcsra (ra2);
+		    istar2 = ujcsra (rra2);
 		else
 		    istar2 = nstars;
 
@@ -193,6 +209,7 @@ int	verbose;	/* 1 for diagnostics */
 		    else if (star.magetc > 0) {
 			ra = ujcra (star.rasec); /* Right ascension in degrees */
 			dec = ujcdec (star.decsec); /* Declination in degrees */
+			wcscon (sysref,sysout,eqref,eqout,&ra,&dec,epout);
 			mag = ujcmag (star.magetc);	/* Magnitude */
 			plate = ujcplate (star.magetc);	/* Plate number */
 			if (drad > 0)
@@ -208,10 +225,11 @@ int	verbose;	/* 1 for diagnostics */
 			    (drad == 0.0 || dist < drad) &&
 			    (xplate == 0 || plate == xplate)) {
 
+			    num = (double) znum + (0.0000001 * (double)istar);
+
 			/* Save star position and magnitude in table */
 			    if (nstar <= nstarmax) {
-				unum[nstar] = (double) znum +
-					      (0.0000001 * (double)istar);
+				unum[nstar] = num;
 				ura[nstar] = ra;
 				udec[nstar] = dec;
 				umag[nstar] = mag;
@@ -230,6 +248,7 @@ int	verbose;	/* 1 for diagnostics */
 			/* If too many stars and radial search,
 			   replace furthest star */
 			    else if (drad > 0 && dist < maxdist) {
+				unum[farstar] = num;
 				ura[farstar] = ra;
 				udec[farstar] = dec;
 				umag[farstar] = mag;
@@ -248,6 +267,7 @@ int	verbose;	/* 1 for diagnostics */
 
 			/* If too many stars, replace faintest star */
 			    else if (mag < faintmag) {
+				unum[faintstar] = num;
 				ura[faintstar] = ra;
 				udec[faintstar] = dec;
 				umag[faintstar] = mag;
@@ -266,8 +286,8 @@ int	verbose;	/* 1 for diagnostics */
 			    nstar++;
 			    jstar++;
 			    if (nlog == 1)
-				fprintf (stderr,"UJCREAD: %04d.%04d: %9.5f %9.5f %5.2f\n",
-				    znum,istar,ra,dec,mag);
+				fprintf (stderr,"UJCREAD: %04d.%04d: %9.5f %9.5f %s %5.2f\n",
+				    znum,istar,ra,dec,cstr,mag);
 
 			/* End of accepted star processing */
 			    }
@@ -317,9 +337,12 @@ int	verbose;	/* 1 for diagnostics */
 
 
 int
-ujcrnum (nnum,unum,ura,udec,umag,uplate,nlog)
+ujcrnum (nnum,sysout,eqout,epout,unum,ura,udec,umag,uplate,nlog)
 
 int	nnum;		/* Number of stars to find */
+int	sysout;		/* Search coordinate system */
+double	eqout;		/* Search coordinate equinox */
+double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	*unum;		/* Array of UA numbers to find */
 double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
@@ -328,6 +351,9 @@ int	*uplate;	/* Array of plate numbers (returned) */
 int	nlog;		/* Logging interval */
 {
     UJCstar star;	/* UJ catalog entry for one star */
+    int sysref=WCS_J2000;	/* Catalog coordinate system */
+    double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
 
     int znum;
     int jnum;
@@ -368,6 +394,7 @@ int	nlog;		/* Logging interval */
 	    else if (star.magetc > 0) {
 		ra = ujcra (star.rasec); /* Right ascension in degrees */
 		dec = ujcdec (star.decsec); /* Declination in degrees */
+		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 		mag = ujcmag (star.magetc); /* Magnitude */
 		plate = ujcplate (star.magetc);	/* Plate number */
 
@@ -729,4 +756,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  *
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  * Jun 24 1998	Initialize byte-swapping flag in UJCOPEN()
+ * Sep 22 1998	Convert to desired output coordinate system
+ * Oct 29 1998	Correctly assign numbers when too many stars are found
  */

@@ -1,5 +1,5 @@
 /* File edhead.c
- * August 6, 1998
+ * December 2, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,16 +17,27 @@
 #include "wcs.h"
 
 static void usage();
+static void EditHead();
+
 static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
-static void EditHead();
+static int version = 0;		/* If 1, print only program name and version */
+
 
 main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
+
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
@@ -40,14 +51,14 @@ char **av;
 	    newimage++;
 	    break;
 	default:
-	    usage (progname);
+	    usage();
 	    break;
 	}
     }
 
     /* now there are ac remaining file names starting at av[0] */
     if (ac == 0)
-	usage (progname);
+	usage();
 
     while (ac-- > 0) {
 	char *fn = *av++;
@@ -60,12 +71,12 @@ char **av;
 }
 
 static void
-usage (progname)
-char *progname;
+usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Edit header of FITS or IRAF image file\n");
-    fprintf(stderr,"%s: usage: [-nv] file.fits file.imh...\n",
-	    progname);
+    fprintf(stderr,"usage: edhead [-nv] file.fits file.imh...\n");
     fprintf(stderr,"  -n: write new file, else overwrite \n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
@@ -88,7 +99,7 @@ char	*filename;	/* FITS or IRAF file filename */
     char *head, *headend, *hlast;
     char headline[160];
     char newname[128];
-    char tempname[128];
+    char *temphead;
     FILE *fd;
     char *ext, *fname, *imext, *imext1;
     char *editcom;
@@ -96,10 +107,9 @@ char	*filename;	/* FITS or IRAF file filename */
     char echar;
 
     newline[0] = 10;
-    strcpy (tempname, "fitshead.temp");
 
     /* Open IRAF image and header if .imh extension is present */
-    if (strsrch (filename,".imh") != NULL) {
+    if (isiraf (filename)) {
 	iraffile = 1;
 	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
 	    if ((header = iraf2fits (filename, irafheader, lhead, &nbhead)) == NULL) {;
@@ -134,7 +144,8 @@ char	*filename;	/* FITS or IRAF file filename */
     if (verbose)
 
     /* Write current header to temporary file */
-    if ((fd = fopen (tempname, "w"))) {
+    temphead = tempnam ("/tmp","edhead");
+    if ((fd = fopen (temphead, "w"))) {
 	headend = ksearch (header, "END") + 80;
 	for (head = header; head < headend; head = head + 80) {
 	    for (i = 0; i< 80; i++)
@@ -154,7 +165,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	free (header);
 	}
     else {
-	fprintf (stderr, "Cannot write temporary header file\n");
+	fprintf (stderr, "Cannot write temporary header file %s\n", temphead);
 	free (header);
 	if (iraffile)
 	    free (irafheader);
@@ -168,20 +179,22 @@ char	*filename;	/* FITS or IRAF file filename */
 	strcpy (editcom,"vi");
 	}
     strcat (editcom," ");
-    strcat (editcom,tempname);
-    printf ("Edit command is '%s'\n",editcom);
+    strcat (editcom,temphead);
+    if (verbose)
+	printf ("Edit command is '%s'\n",editcom);
     if (system (editcom)) {
 	free (header);
 	if (iraffile)
 	    free (irafheader);
 	free (image);
+	unlink (temphead);
 	return;
 	}
 
     /* Read the new header from the temporary file */
-    if ((fd = fopen (tempname, "r")) != NULL) {
+    if ((fd = fopen (temphead, "r")) != NULL) {
 	struct stat buff;
-	if (stat (tempname, &buff))
+	if (stat (temphead, &buff))
             nbytes = -errno;
 	else
             nbytes = ((((int) buff.st_size * 4) / 2880) + 1) * 2880;
@@ -209,7 +222,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	fclose (fd);
 	}
     else {
-	fprintf (stderr, "Cannot read temporary header file %s\n", tempname);
+	fprintf (stderr, "Cannot read temporary header file %s\n", temphead);
 	free (header);
 	if (iraffile)
 	    free (irafheader);
@@ -289,6 +302,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	}
 
     free (header);
+    unlink (temphead);
     return;
 }
 
@@ -307,4 +321,7 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jun  2 1998  Fix bug in hput()
  * Jun 24 1998	Preserve file extension
  * Jul 24 1998	Make irafheader char instead of int
+ * Oct 14 1998	Use isiraf() to determine file type
+ * Nov 30 1998	Add version and help commands for consistency
+ * Dec  2 1998	Create and delete temporary file for header being edited
  */

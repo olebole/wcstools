@@ -1,5 +1,5 @@
 /* File immwcs.c
- * August 6, 1998
+ * November 30, 1998
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -27,6 +27,7 @@ static int mirror = 0;		/* Set to 1 to flip image right to left */
 static int bitpix = 0;		/* Bits per pixel for output image, if different */
 static int fitsout = 0;		/* Output FITS file from IRAF input if 1 */
 static int imsearch = 1;	/* set to 0 if image catalog provided */
+static int version = 0;		/* If 1, print only program name and version */
 char outname[128];		/* Name for output image */
 
 extern int RotFITS ();
@@ -46,7 +47,6 @@ extern void setmatch();
 extern void setstarsig();
 extern void setclass();
 extern void setplate();
-extern void setrefcat();
 extern void setimcat();
 extern void setbmin();
 extern void setrefpix();
@@ -72,6 +72,15 @@ char **av;
     double x, y;
 
     outname[0] = 0;
+
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
 
     /* Decode arguments */
     for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
@@ -283,7 +292,8 @@ char **av;
 static void
 usage ()
 {
-    fprintf (stderr,"\n");
+    if (version)
+	exit (-1);
     fprintf (stderr,"Set WCS in FITS and IRAF image files from star/image match file\n");
     fprintf(stderr,"Usage: [-vwdfl] [-o filename] [-m mag] [-n frac] [-s mode] [-g class]\n");
     fprintf(stderr,"       [-h maxref] [-i peak] [-c catalog] [-p scale] [-b ra dec] [-j ra dec]\n");
@@ -331,8 +341,8 @@ char *name;
 
     image = NULL;
 
-    /* Open IRAF image if .imh extension is present */
-    if (strsrch (name,".imh") != NULL) {
+    /* Open IRAF image */
+    if (isiraf (name)) {
 	iraffile = 1;
 	if ((irafheader = irafrhead (name, &lhead)) != NULL) {
 	    header = iraf2fits (name, irafheader, lhead, &nbhead);
@@ -357,7 +367,7 @@ char *name;
 	    }
 	}
 
-    /* Open FITS file if .imh extension is not present */
+    /* Open FITS file */
     else {
 	iraffile = 0;
 	fitsout = 1;
@@ -535,4 +545,6 @@ char *
  * Jun 25 1998	Set WCS subroutine choice with SETDEFWCS()
  * Jul 24 1998	Make irafheader char instead of int
  * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Oct 14 1998	Use isiraf() to determine file type
+ * Nov 30 1998	Add version and help commands for consistency
  */

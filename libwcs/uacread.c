@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** June 24, 1998
+ *** November 24, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -14,26 +14,35 @@
 
 #define	USNOA10		0	/* USNO A-1.0 Catalog */
 #define	USNOSA10	1	/* USNO SA-1.0 Catalog */
+#define	USNOA20		2	/* USNO A-2.0 Catalog */
+#define	USNOSA20	3	/* USNO SA-2.0 Catalog */
 static int ucat=USNOA10;
 
 /* Pathname of USNO SA-1.0 directory; replaced by USA_PATH environment variable */
-static char usapath[64]="/data/usnosa10";
+static char usa1path[64]="/data/usnosa10";
+static char usa2path[64]="/data/usnosa20";
+static char *usapath;
 
 /* Pathname of USNO A-1.0 directory; replaced by UA_PATH environment variable */
 /* Use this if CDROMs have been transferred to a single hard disk */
 /* Otherwise set to null string ("") and use cdroot */
-static char uapath[64]="/data/ua";
+static char ua1path[64]="/data/ua";
+static char ua2path[64]="/data/ua2";
+static char *uapath;
 
 /* Root directory for CDROMs; replaced by UA_ROOT environment variable */
 /* Ignored if uapath or UA_PATH are set */
 static char cdroot[32]="/cdrom";
 
-/* Names of CDROM's for USNO A-1.0 Catalog */
-static char cdname[10][8]={"ua001","ua002","ua003","ua004","ua005","ua006",
-			"ua007","ua008","ua009","ua010"};
+/* Names of CDROM's for USNO A Catalogs */
+static char cdname[11][8]={"ua001","ua002","ua003","ua004","ua005","ua006",
+			"ua007","ua008","ua009","ua010","ua011"};
 
 /* Disks for 24 zones of USNO A-1.0 Catalog */
-static int zdisk[24]={1,1,6,5,3,2,1,4,6,5,7,10,8,7,8,9,9,4,10,3,2,6,2,3};
+static int zdisk1[24]={1,1,6,5,3,2,1,4,6,5,7,10,8,7,8,9,9,4,10,3,2,6,2,3};
+
+/* Disks for 24 zones of USNO A-2.0 Catalog */
+static int zdisk2[24]={1,1,9,7,5,4,3,2,1,6,7,10,9,8,8,11,10,11,6,4,2,3,3,2};
 
 typedef struct {
     int rasec, decsec, magetc;
@@ -64,7 +73,7 @@ static void uacswap();
 /* USACREAD -- Read USNO SA-1.0 Catalog stars from CDROM */
 
 int
-usaread (cra,cdec,dra,ddec,drad,mag1,mag2,xplate,nstarmax,
+usaread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,xplate,nstarmax,
 	 unum,ura,udec,umag,umagb,uplate,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -72,6 +81,9 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+int	sysout;		/* Search coordinate system */
+double	eqout;		/* Search coordinate equinox */
+double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	xplate;		/* If nonzero, use objects only from this plate */
 int	nstarmax;	/* Maximum number of stars to be returned */
@@ -87,23 +99,27 @@ int	nlog;		/* Logging interval */
     int uacread();
 
     ucat = USNOSA10;
-    i = uacread (cra,cdec,dra,ddec,drad,mag1,mag2,xplate,nstarmax,
-		 unum,ura,udec,umag,umagb,uplate,nlog);
+    i = uacread ("usac",cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
+		 xplate,nstarmax,unum,ura,udec,umag,umagb,uplate,nlog);
     ucat = USNOA10;
     return (i);
 }
 
-/* UACREAD -- Read USNO A-1.0 Catalog stars from CDROM */
+/* UACREAD -- Read USNO A or SA Catalog stars from CDROM */
 
 int
-uacread (cra,cdec,dra,ddec,drad,mag1,mag2,xplate,nstarmax,
-	 unum,ura,udec,umag,umagb,uplate,nlog)
+uacread (refcatname,cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
+	 xplate,nstarmax,unum,ura,udec,umag,umagb,uplate,nlog)
 
+char	*refcatname;	/* Name of catalog (UAC, USAC, UAC2, USAC2) */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+int	sysout;		/* Search coordinate system */
+double	eqout;		/* Search coordinate equinox */
+double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	xplate;		/* If nonzero, use objects only from this plate */
 int	nstarmax;	/* Maximum number of stars to be returned */
@@ -126,7 +142,12 @@ int	nlog;		/* Logging interval */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
     double *udist;	/* Array of distances to stars */
+    int sysref=WCS_J2000;	/* Catalog coordinate system */
+    double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
 
+    double rra1, rra2, rdec1, rdec2;
+    double num;		/* UA numbers */
     int wrap, iwrap;
     int verbose;
     int znum, itot,iz, i;
@@ -138,6 +159,7 @@ int	nlog;		/* Logging interval */
     int istar, istar1, istar2, plate;
     int nzmax = NZONES;	/* Maximum number of declination zones */
     char *str;
+    char cstr[32];
 
     itot = 0;
     if (nlog > 0)
@@ -145,19 +167,51 @@ int	nlog;		/* Logging interval */
     else
 	verbose = 0;
 
-    /* Set path to catalog */
-    if (ucat == USNOSA10) {
-	if ((str = getenv("USA_PATH")) != NULL)
-	    strcpy (usapath,str);
-	}
-    else {
-	if ((str = getenv("UA_PATH")) != NULL)
-	    strcpy (uapath,str);
-	else if ((str = getenv("UA_ROOT")) != NULL) {
-	    uapath[0] = 0;
-	    strcpy (cdroot,str);
+    /* Set catalog code and path to catalog */
+    if (strncmp (refcatname,"us",2)==0 ||
+        strncmp (refcatname,"US",2)==0) {
+	if (index (refcatname, '2') != NULL) {
+	    if ((str = getenv("USA2_PATH")) != NULL)
+		strcpy (usa2path,str);
+	    ucat = USNOSA20;
+	    usapath = usa2path;
+	    }
+	else {
+	    if ((str = getenv("USA1_PATH")) != NULL)
+		strcpy (usa1path,str);
+	    ucat = USNOSA10;
+	    usapath = usa1path;
 	    }
 	}
+    else if (strncmp (refcatname,"ua",2)==0 ||
+        strncmp (refcatname,"UA",2)==0) {
+	if (index (refcatname, '2') != NULL) {
+	    if ((str = getenv("UA2_PATH")) != NULL)
+		strcpy (ua2path,str);
+	    else if ((str = getenv("UA2_ROOT")) != NULL) {
+		ua2path[0] = 0;
+		strcpy (cdroot,str);
+		}
+	    ucat = USNOA20;
+	    uapath = ua2path;
+	    }
+	else {
+	    if ((str = getenv("UA1_PATH")) != NULL)
+		strcpy (ua1path,str);
+	    else if ((str = getenv("UA1_ROOT")) != NULL) {
+		ua1path[0] = 0;
+		strcpy (cdroot,str);
+		}
+	    ucat = USNOA10;
+	    uapath = ua1path;
+	    }
+	}
+    else {
+	fprintf (stderr, "UACREAD:  %s not a USNO catalog\n", refcatname);
+	return (0);
+	}
+
+    wcscstr (cstr, sysout, eqout, epout);
 
     /* Set right ascension limits for search */
     ra1 = cra - dra;
@@ -197,16 +251,9 @@ int	nlog;		/* Logging interval */
         dec2str (dstr1, 16, dec1, 2);
 	ra2str (rstr2, 16, ra2, 3);
         dec2str (dstr2, 16, dec2, 2);
-	fprintf (stderr,"UACREAD: RA: %s - %s  Dec: %s - %s\n",
-		 rstr1,rstr2,dstr1,dstr2);
+	fprintf (stderr,"UACREAD: RA: %s-%s  Dec: %s-%s %s\n",
+		 rstr1,rstr2,dstr1,dstr2, cstr);
 	}
-
-/* If RA range includes zero, split it in two */
-    wrap = 0;
-    if (ra1 > ra2)
-	wrap = 1;
-    else
-	wrap = 0;
 
 /* mag1 is always the smallest magnitude */
     if (mag2 < mag1) {
@@ -216,16 +263,29 @@ int	nlog;		/* Logging interval */
 	}
 
 /* Find UA Star Catalog regions in which to search */
-    nz = uaczones (ra1, ra2, dec1, dec2, nzmax, zlist, verbose);
+    rra1 = ra1;
+    rra2 = ra2;
+    rdec1 = dec1;
+    rdec2 = dec2;
+    wcscon (sysout, sysref, eqout, eqref, &rra1, &rdec1, epout);
+    wcscon (sysout, sysref, eqout, eqref, &rra2, &rdec2, epout);
+    nz = uaczones (rra1, rra2, rdec1, rdec2, nzmax, zlist, verbose);
     if (nz <= 0) {
-	fprintf (stderr, "UACREAD:  no UJ zones found\n");
+	fprintf (stderr, "UACREAD:  no USNO A zones found\n");
 	return (0);
 	}
 
-    uara1 = (int) (ra1 * 360000.0 + 0.5);
-    uara2 = (int) (ra2 * 360000.0 + 0.5);
-    uadec1 = (int) ((dec1 * 360000.0) + 32400000.5);
-    uadec2 = (int) ((dec2 * 360000.0) + 32400000.5);
+/* If RA range includes zero, set a flat */
+    wrap = 0;
+    if (rra1 > rra2)
+	wrap = 1;
+    else
+	wrap = 0;
+
+    uara1 = (int) (rra1 * 360000.0 + 0.5);
+    uara2 = (int) (rra2 * 360000.0 + 0.5);
+    uadec1 = (int) ((rdec1 * 360000.0) + 32400000.5);
+    uadec2 = (int) ((rdec2 * 360000.0) + 32400000.5);
     
     udist = (double *) malloc (nstarmax * sizeof (double));
 
@@ -243,13 +303,13 @@ int	nlog;		/* Logging interval */
 
 	    /* Find first star based on RA */
 		if (iwrap == 0 || wrap == 0)
-		    istar1 = uacsra (ra1);
+		    istar1 = uacsra (rra1);
 		else
 		    istar1 = 1;
 
 	    /* Find last star based on RA */
 		if (iwrap == 1 || wrap == 0)
-		    istar2 = uacsra (ra2);
+		    istar2 = uacsra (rra2);
 		else
 		    istar2 = nstars;
 
@@ -274,34 +334,31 @@ int	nlog;		/* Logging interval */
 
 		    /* Check position limits */
      			if ((star.decsec >= uadec1 && star.decsec <= uadec2) &&
-			    ((wrap && (star.rasec<=uara1 || star.rasec>=ra2)) ||
+			    ((wrap && (star.rasec<=uara1 || star.rasec>=uara2)) ||
 			     (!wrap && (star.rasec>=uara1 && star.rasec<=uara2))
 			    )){
 
 			/* Check magnitude, distance, and plate number */
 			    mag = uacmagr (star.magetc); /* Red magnitude */
 			    plate = uacplate (star.magetc);
-			    if (drad > 0) {
-				ra = uacra (star.rasec);
-				dec = uacdec (star.decsec);
+			    ra = uacra (star.rasec);
+			    dec = uacdec (star.decsec);
+			    wcscon (sysref,sysout,eqref,eqout,&ra,&dec,epout);
+			    if (drad > 0)
 				dist = wcsdist (cra,cdec,ra,dec);
-				}
 			    else
 				dist = 0.0;
 			    if ((mag1==mag2 || (mag>=mag1 && mag<=mag2)) &&
 				(drad == 0.0 || dist < drad) &&
 				(xplate == 0 || plate == xplate)) {
 
-				if (drad <= 0) {
-				    ra = uacra (star.rasec);
-				    dec = uacdec (star.decsec);
-				    }
 				magb = uacmagb (star.magetc);
+				num = (double) znum +
+				      (0.00000001 * (double)istar);
 
 			    /* Save star position and magnitude in table */
 				if (nstar < nstarmax) {
-				    unum[nstar] = (double) znum +
-						(0.00000001 * (double)istar);
+				    unum[nstar] = num;
 				    ura[nstar] = ra;
 				    udec[nstar] = dec;
 				    umag[nstar] = mag;
@@ -321,6 +378,7 @@ int	nlog;		/* Logging interval */
 			    /* If too many stars and radial search,
 				replace furthest star */
 				else if (drad > 0 && dist < maxdist) {
+				    unum[farstar] = num;
 				    ura[farstar] = ra;
 				    udec[farstar] = dec;
 				    umag[farstar] = mag;
@@ -340,6 +398,7 @@ int	nlog;		/* Logging interval */
 
 			    /* If too many stars, replace faintest star */
 				else if (mag < faintmag) {
+				    unum[faintstar] = num;
 				    ura[faintstar] = ra;
 				    udec[faintstar] = dec;
 				    umag[faintstar] = mag;
@@ -359,8 +418,8 @@ int	nlog;		/* Logging interval */
 				nstar++;
 				jstar++;
 				if (nlog == 1)
-				    fprintf (stderr,"UACREAD: %04d.%08d: %9.5f %9.5f %5.2f\n",
-					znum,istar,ra,dec,mag);
+				    fprintf (stderr,"UACREAD: %04d.%08d: %9.5f %9.5f %s %5.2f\n",
+					znum,istar,ra,dec,cstr,mag);
 
 			    /* End of accepted star processing */
 				}
@@ -412,9 +471,12 @@ int	nlog;		/* Logging interval */
 
 
 int
-usarnum (nnum,unum,ura,udec,umag,umagb,uplate,nlog)
+usarnum (nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,uplate,nlog)
 
 int	nnum;		/* Number of stars to find */
+int	sysout;		/* Search coordinate system */
+double	eqout;		/* Search coordinate equinox */
+double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	*unum;		/* Array of UA numbers to find */
 double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
@@ -427,16 +489,22 @@ int	nlog;		/* Logging interval */
     int uacrnum();
 
     ucat = USNOSA10;
-    i = uacrnum (nnum,unum,ura,udec,umag,umagb,uplate,nlog);
+    i = uacrnum ("USAC",nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,uplate,
+		 nlog);
     ucat = USNOA10;
     return (i);
 }
 
 
 int
-uacrnum (nnum,unum,ura,udec,umag,umagb,uplate,nlog)
+uacrnum (refcatname,nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,uplate,
+	 nlog)
 
+char	*refcatname;	/* Name of catalog (UAC, USAC, UAC2, USAC2) */
 int	nnum;		/* Number of stars to find */
+int	sysout;		/* Search coordinate system */
+double	eqout;		/* Search coordinate equinox */
+double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	*unum;		/* Array of UA numbers to find */
 double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
@@ -446,6 +514,9 @@ int	*uplate;	/* Array of plate numbers (returned) */
 int	nlog;		/* Logging interval */
 {
     UACstar star;	/* UA catalog entry for one star */
+    int sysref=WCS_J2000;	/* Catalog coordinate system */
+    double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
 
     int znum;
     int jnum;
@@ -456,18 +527,48 @@ int	nlog;		/* Logging interval */
     int istar, plate;
     char *str;
 
-    /* Set path to catalog */
-    if (ucat == USNOSA10) {
-	if ((str = getenv("USA_PATH")) != NULL)
-	    strcpy (usapath,str);
+    /* Set catalog code and path to catalog */
+    if (strncmp (refcatname,"us",2)==0 ||
+        strncmp (refcatname,"US",2)==0) {
+	if (index (refcatname, '2') != NULL) {
+	    if ((str = getenv("USA2_PATH")) != NULL)
+		strcpy (usa2path,str);
+	    ucat = USNOSA20;
+	    usapath = usa2path;
+	    }
+	else {
+	    if ((str = getenv("USA1_PATH")) != NULL)
+		strcpy (usa1path,str);
+	    ucat = USNOSA10;
+	    usapath = usa1path;
+	    }
+	}
+    else if (strncmp (refcatname,"ua",2)==0 ||
+        strncmp (refcatname,"UA",2)==0) {
+	if (index (refcatname, '2') != NULL) {
+	    if ((str = getenv("UA2_PATH")) != NULL)
+		strcpy (ua2path,str);
+	    else if ((str = getenv("UA2_ROOT")) != NULL) {
+		ua2path[0] = 0;
+		strcpy (cdroot,str);
+		}
+	    ucat = USNOA20;
+	    uapath = ua2path;
+	    }
+	else {
+	    if ((str = getenv("UA1_PATH")) != NULL)
+		strcpy (ua1path,str);
+	    else if ((str = getenv("UA1_ROOT")) != NULL) {
+		ua1path[0] = 0;
+		strcpy (cdroot,str);
+		}
+	    ucat = USNOA10;
+	    uapath = ua1path;
+	    }
 	}
     else {
-	if ((str = getenv("UA_PATH")) != NULL)
-	    strcpy (uapath,str);
-	else if ((str = getenv("UA_ROOT")) != NULL) {
-	    uapath[0] = 0;
-	    strcpy (cdroot,str);
-	    }
+	fprintf (stderr, "UACREAD:  %s not a USNO catalog\n", refcatname);
+	return (0);
 	}
 
 /* Loop through star list */
@@ -497,6 +598,7 @@ int	nlog;		/* Logging interval */
 		magb = uacmagb (star.magetc); /* Blue magnitude */
 		mag = uacmagr (star.magetc); /* Red magnitude */
 		plate = uacplate (star.magetc);	/* Plate number */
+		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 
 		/* Save star position and magnitude in table */
 		ura[nfound] = ra;
@@ -698,7 +800,7 @@ double dec;	/* declination in degrees */
 static int
 uacsra (rax0)
 
-double	rax0;		/* Right ascension for which to search */
+double	rax0;		/* Right ascension in degrees for which to search */
 {
     int istar, istar1, istar2, nrep;
     double rax, ra1, ra, rdiff, rdiff1, rdiff2, sdiff;
@@ -707,7 +809,8 @@ double	rax0;		/* Right ascension for which to search */
     int debug = 0;
 
     rax = rax0;
-    ra2str (rastrx, 16, rax, 3);
+    if (debug)
+	ra2str (rastrx, 16, rax, 3);
     istar1 = 1;
     if (uacstar (istar1, &star))
 	return (0);
@@ -800,8 +903,8 @@ int znum;	/* UA Catalog zone */
     else {
 	if (star.rasec > 100000 || star.rasec < 0) {
 	    cswap = 1;
-	    fprintf (stderr,"UACOPEN: swapping bytes in UA zone catalog %s\n",
-		     zonepath);
+	    /* fprintf (stderr,"UACOPEN: swapping bytes in UA zone catalog %s\n",
+		     zonepath); */
 	    }
 	else
 	    cswap = 0;
@@ -830,19 +933,22 @@ char *path;	/* Pathname of UA zone file */
 	return (-1);
 	}
 
-    /* Set path for USNO SA-1.0 zone catalog */
-    if (ucat == USNOSA10)
+    /* Set path for USNO SA zone catalog */
+    if (ucat == USNOSA10 || ucat == USNOSA20)
 	sprintf (path,"%s/zone%04d.cat", usapath, zn);
 
-    /* If all USNO A-1.0 zones are in a single directory, set zone catalog path */
+    /* Set zone catalog path when USNO A is in a single directory */
     else if (strlen (uapath) > 0)
 	sprintf (path,"%s/zone%04d.cat", uapath, zn);
 
-    /* If USNO A-1.0 zones are split between 10 CDROMs, set the path accordinagly */
+    /* Set zone catalog path when USNO A is read from CDROMs */
     else {
 	iz = zn / 75;
-	icd = zdisk[iz];
-	sprintf (path,"%s/%s/zone%04d.cat", cdroot, cdname[icd], zn);
+	if (ucat == USNOA10)
+	    icd = zdisk1[iz];
+	else
+	    icd = zdisk2[iz];
+	sprintf (path,"%s/%s/zone%04d.cat", cdroot, cdname[icd-1], zn);
 	}
 
     return (0);
@@ -921,4 +1027,11 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Apr 20 1998	Fix bug so stars within radius can be found
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  * Jun 24 1998	Initialize byte-swapping flag in UACOPEN()
+ * Sep 15 1998	Fix bug setting A 1.0 region path on CDROM found by Naoki Yasuda
+ * Sep 22 1998	Convert coordinates in these subroutines
+ * Oct  8 1998	Fix bug in uacread call in usaread() and uacrnum call in usarnum()
+ * Oct 26 1998	Fix bug in search algorith for non-J2000 searches
+ * Oct 29 1998	Correctly assign numbers when too many stars are found
+ * Nov 20 1998	Add support for USNO A-2.0 and SA-2.0 catalogs
+ * Nov 24 1998	Fix bug reading SA-2.0 catalog
  */

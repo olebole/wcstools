@@ -1,5 +1,5 @@
 /* File imrot.c
- * August 6, 1998
+ * November 30, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -24,6 +24,7 @@ static int rotate = 0;	/* rotation in degrees, degrees counter-clockwise */
 static int bitpix = 0;	/* number of bits per pixel (FITS code) */
 static int fitsout = 0;	/* Output FITS file from IRAF input if 1 */
 static int overwrite = 0;	/* allow overwriting of input image file */
+static int version = 0;		/* If 1, print only program name and version */
 
 main (ac, av)
 int ac;
@@ -35,6 +36,15 @@ char **av;
     char filename[128];
     FILE *flist;
     char *listfile;
+
+    /* Check for help or version command first */
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	usage();
+    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	version = 1;
+	usage();
+	}
 
     /* crack arguments */
     for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
@@ -86,7 +96,7 @@ char **av;
     	}
     }
 
-    /* Find number of images to search and leave listfile open for reading */
+    /* Process files in file of filenames */
     if (readlist) {
 	if ((flist = fopen (listfile, "r")) == NULL) {
 	    fprintf (stderr,"IMROT: List file %s cannot be read\n",
@@ -107,6 +117,7 @@ char **av;
     if (ac == 0)
 	usage ();
 
+    /* Process files on command line */
     else {
 	while (ac-- > 0) {
     	    char *fn = *av++;
@@ -124,6 +135,8 @@ char **av;
 static void
 usage ()
 {
+    if (version)
+	exit (-1);
     fprintf (stderr,"Rotate and/or Reflect FITS and IRAF image files\n");
     fprintf(stderr,"Usage: [-vm [-r rot] file.fts ...\n");
     fprintf(stderr,"  -f: write FITS image from IRAF input\n");
@@ -220,8 +233,8 @@ char *name;
     else
 	strcpy (newname, name);
 
-    /* Open IRAF image if .imh extension is present */
-    if (strsrch (name,".imh") != NULL) {
+    /* Open IRAF image */
+    if (isiraf (name)) {
 	iraffile = 1;
 	if ((irafheader = irafrhead (name, &lhead)) != NULL) {
 	    if ((header = iraf2fits (name, irafheader, lhead, &nbhead)) == NULL) {
@@ -243,7 +256,7 @@ char *name;
 	    }
 	}
 
-    /* Open FITS file if .imh extension is not present */
+    /* Open FITS file */
     else {
 	iraffile = 0;
 	if ((header = fitsrhead (name, &lhead, &nbhead)) != NULL) {
@@ -320,4 +333,6 @@ char *name;
  * May 27 1998	Include fitsio.h instead of fitshead.h
  * Jul 24 1998	Make irafheader char instead of int
  * Aug  6 1998	Change fitsio.h to fitsfile.h
+ * Oct 14 1998	Use isiraf() to determine file type
+ * Nov 30 1998	Add version and help commands for consistency
  */
