@@ -1,0 +1,65 @@
+findcoor.c
+  findCoords() takes a list of reference star positions and a list
+  of object coordinates from an image and finds the image pixels which
+  correspond to each of the reference stars using  matching triangles
+  algorithm.  It then *should* produce a WCS, including center shift,
+  rotation, and plate scale.  It includes all
+  of the subroutines which are needed, including several from Numerical
+  Recipes.
+findreg.c
+  findRegistration() takes a list of reference star positions and a list
+  of object coordinates from an image and finds the image pixels
+  which correspond to each of the reference stars.  It then uses these
+  matches to get an image center shift and rotation.  It includes all
+  of the subroutines which are needed, including several from Numerical
+  Recipes.
+findstar.c
+  findStars() gets the location and brightest pixel of stars in the given image.
+  Included are subroutines to find and reject bright pixels and compute
+  a star centroid.
+fitsio.c
+  FITS header and image reading and writing subroutines, including FITS
+  table support.
+getwcs.c
+  getWCS() returns a WCS structure used by wcs.c subroutines from a FITS
+  or IRAF .imh image, reading only the header.
+gscread.c
+  Return HST Guide Stars from standard CDROM format FITS table files for
+  a given RA, Dec, and magnitude range.
+hget.c
+  Subroutines to extract values from FITS headers by keyword.
+  Subroutines for parsing RA and Dec strings are included.
+hput.c
+  Subroutines to implant values into FITS headers by keyword (and to
+  delete headers).
+imsetwcs.c
+  setWCSFITS() uses findStars to find the stars in an image, gscread to
+  find the Guide Stars in the nominal image region, and findRegisration or
+  findCoords to fit plate-tangent WCS to the image.
+irafio.c
+  IRAF header and image reading and writing subroutines.  IRAF headers
+  are converted to FITS headers for use by other programs and can be
+  derived from FITS headers for writing.
+platepos.c
+  platepos() uses the WCS structure to compute sky coordinates given
+  image pixel X and Y for images with Digitized Sky Survey plate solutions
+  in their headers.  platepix() uses the WCS structure to compute image
+  pixel X and Y given sky coordinates for DSS images.  Algorithms from
+  StSCI CASB.
+wcs.c
+  Subroutines for using FITS or IRAF header spatial world coordinate
+  system information.
+wcscon.c
+  Subroutines for converting between B1950, J2000, and galactic
+  coordinates, based on Starlink SLA_LIB subroutines.
+worldpos.c
+  worldpos() uses the WCS structure to compute sky coordinates given
+  image pixel X and Y for images with header information for any of 8
+  standard world coordinate systems.  worldpix() uses the WCS structure
+  to compute image pixel X and Y given sky coordinates for the same images.
+  Mostly from NRAO.
+fitshead.h
+  Declarations of FITS header and image access subroutines and FITS
+  table data structure.
+wcs.h
+  Declaration of WCS data structure and useful conversions.

@@ -1,0 +1,613 @@
+/*** File hput.c
+ *** February 21, 1996
+ *** By Doug Mink
+
+ * Module:	hput.c (Put FITS Header parameter values)
+ * Purpose:	Implant values for parameters into FITS header string
+ * Subroutine:	hputi2 (hstring,vname,ival) sets integer*2 ival
+ * Subroutine:	hputi4 (hstring,vname,ival) sets int ival
+ * Subroutine:	hputr4 (hstring,vname,rval) sets real*4 rval
+ * Subroutine:	hputr8 (hstring,vname,dval) sets real*8 dval
+ * Subroutine:	hputl  (hstring,vname,lval) sets logical lval
+ * Subroutine:	hputs  (hstring,vname,cval) sets character string cval adding ''
+ * Subroutine:	hputc  (hstring,vname,cval) sets character string cval
+ * Subroutine:	hdel   (hstring,vname) deletes entry for keyword vname
+ * Subroutine:	hputcom (hstring,vname,comment) sets comment for parameter vname
+ * Subroutine:	ra2str (out, ra, ndec) converts RA from degrees to string
+ * Subroutine:	dec2str (out, dec, ndec) converts Dec from degrees to string
+
+ * Copyright:   1995, 1996 Smithsonian Astrophysical Observatory
+ *              You may do anything you like with this file except remove
+ *              this copyright.  The Smithsonian Astrophysical Observatory
+ *              makes no representations about the suitability of this
+ *              software for any purpose.  It is provided "as is" without
+ *              express or implied warranty.
+ */
+#include <string.h>             /* NULL, strlen, strstr, strcpy */
+#include <stdio.h>
+#include <stdlib.h>
+#include "fitshead.h"
+
+static int verbose=0;	/* Set to 1 to print error messages and other info */
+
+
+/*  HPUTI4 - Set int vname = ival in FITS header string */
+
+hputi4 (hstring,vname,ival)
+
+  char *hstring;	/* character string containing FITS-style header
+			   information in the format
+			   <vname>= <value> {/ <comment>}
+			   each entry is padded with spaces to 80 characters */
+
+  char *vname;		/* character string containing the name of the variable
+			   to be returned.  hput searches for a line beginning
+			   with this string, and if there isn't one, creates one.
+		   	   The first 8 characters of vname must be unique. */
+  int ival;		/* int number */
+{
+	char value[30];
+
+/*  translate value from binary to ascii */
+	sprintf (value,"%d",ival);
+
+/*  put value into header string */
+	hputc (hstring,vname,value);
+
+/*  return to calling program */
+	return;
+}
+
+
+/*  HPUTI2 - Set short vname = ival in FITS header string */
+
+hputi2 (hstring,vname,ival)
+
+  char *hstring;
+  char *vname;
+  short ival;	/* short number */
+
+{
+	char value[30];
+
+/*  translate value from binary to ascii */
+	sprintf (value,"%d",ival);
+
+/*  put value into header string */
+	hputc (hstring,vname,value);
+
+/*  return to calling program */
+	return;
+}
+
+
+/*  HPUTR4 - Set float vname = rval in FITS header string */
+
+hputr4 (hstring,vname,rval)
+
+  char *hstring;
+  char *vname;
+  float rval;	/* float number */
+{
+	char value[30];
+
+/*  translate value from binary to ascii */
+	sprintf (value,"%f",rval);
+
+/*  put value into header string */
+	hputc (hstring,vname,value);
+
+/*  return to calling program */
+	return;
+}
+
+
+/*  HPUTR8 - Set double vname = dval in FITS header string */
+
+hputr8 (hstring,vname,dval)
+
+  char *hstring;
+  char *vname;
+  double dval;	/* double number */
+{
+	char value[30];
+
+/*  translate value from binary to ascii */
+	sprintf (value,"%f",dval);
+
+/*  put value into header string */
+	hputc (hstring,vname,value);
+
+/*  return to calling program */
+	return;
+}
+
+
+/*  HPUTL - Set vname = F if lval=0, else T, in FITS header string */
+
+hputl (hstring,vname,lval)
+
+  char *hstring;
+  char *vname;
+  int lval;	/* logical variable (0=false, else true */
+{
+	char value[8];
+
+/*  translate value from binary to ascii */
+	if (lval)
+	    strcpy (value, "T");
+	else
+	    strcpy (value, "F");
+
+/*  put value into header string */
+	hputc (hstring,vname,value);
+
+/*  return to calling program */
+	return;
+}
+
+
+/*  HPUTS - Set character string vname = 'cval' in FITS header string */
+
+hputs (hstring,vname,cval)
+
+  char *hstring;
+  char *vname;
+  char *cval;	/* character string containing the value for variable
+		   vname.  trailing and leading blanks are removed.  */
+{
+	char squot = 39;
+	char value[70];
+	int lcval;
+
+/*  find length of variable string */
+
+	lcval = strlen (cval);
+	if (lcval > 67)
+	    lcval = 67;
+
+/*  put quotes around string */
+	value[0] = squot;
+	strncpy (&value[1],cval,lcval);
+	value[lcval+1] = squot;
+	value[lcval+2] = 0;
+
+/*  put value into header string */
+	hputc (hstring,vname,value);
+
+/*  return to calling program */
+	return;
+}
+
+
+/*  HPUTC - Set character string vname = value in FITS header string */
+
+hputc (hstring,vname,value)
+
+  char *hstring;
+  char *vname;
+  char *value;	/* character string containing the value for variable
+		   vname.  trailing and leading blanks are removed.  */
+{
+	char squot = 39;
+	char line[100];
+	char newcom[50];
+	char *v, *vp, *v1, *v2, *q1, *q2, *c1, *ve;
+	char *ksearch();
+	int lvname, lcom, lval, lc;
+
+/*  find length of keyword and value */
+	lvname = strlen (vname);
+	lval = strlen (value);
+
+/*  If COMMENT or HISTORY, always add it just before the END */
+	if (lvname == 7 && (strncmp (vname,"COMMENT",7) == 0 ||
+	    strncmp (vname,"HISTORY",7) == 0)) {
+
+	/* Find end of header */
+	    v1 = ksearch (hstring,"END");
+	    v2 = v1 + 80;
+
+	/* Move END down one line */
+	    strncpy (v2, v1, 80);
+
+	/* Insert keyword */
+	    strncpy (v1,vname,7);
+
+	/* Pad with spaces */
+	    for (vp = v1+lvname; vp < v2; vp++)
+		*vp = ' ';
+
+	/* Insert comment */
+	    strncpy (v1+9,value,lval);
+	    return;
+	    }
+
+/* Otherwise search for keyword */
+	else
+	    v1 = ksearch (hstring,vname);
+
+/*  Find end of header */
+	ve = ksearch (hstring,"END");
+
+/*  If parameter is not found, create a space for it */
+	if (v1 == NULL) {
+	    v1 = ve;
+	    v2 = v1 + 80;
+	    strncpy (v2, ve, 80);
+	    lcom = 0;
+	    newcom[0] = 0;
+	    }
+
+/*  Otherwise, extract the entry for this keyword from the header */
+	else {
+	    strncpy (line, v1, 80);
+	    line[80] = 0;
+	    v2 = v1 + 80;
+
+/*  check for quoted value */
+	    q1 = strchr (line, squot);
+	    if (q1 != NULL)
+		q2 = strchr (q1+1,squot);
+	    else
+		q2 = line;
+
+/*  extract comment and remove trailing spaces */
+
+	    c1 = strchr (q2,'/');
+	    if (c1 != NULL) {
+		lcom = 80 - (c1 -line);
+		strncpy (newcom, c1+1, lcom);
+		vp = newcom + lcom - 1;
+		while (vp-- > newcom && *vp == ' ')
+		    *vp = 0;
+		lcom = strlen (newcom);
+		}
+	    else {
+		newcom[0] = 0;
+		lcom = 0;
+		}
+	    }
+
+/* Fill new entry with spaces */
+	for (vp = v1; vp < v2; vp++)
+	    *vp = ' ';
+
+/*  Copy keyword to new entry */
+	strncpy (v1, vname, lvname);
+
+/*  Add parameter value in the appropriate place */
+	vp = v1 + 8;
+	*vp = '=';
+	vp = v1 + 9;
+	*vp = ' ';
+	vp = vp + 1;
+	if (*value == squot) {
+	    strncpy (vp, value, lval);
+	    if (lval+12 > 31)
+		lc = lval + 12;
+	    else
+		lc = 30;
+	    }
+	else {
+	    vp = v1 + 30 - lval;
+	    strncpy (vp, value, lval);
+	    lc = 30;
+	    }
+
+/* Add comment in the appropriate place */
+	if (lcom > 0) {
+	    if (lc+2+lcom > 80)
+		lcom = 78 - lc;
+	    vp = v1 + lc * 2;
+	    strncpy (vp, "/ ", 2);
+	    vp = vp + 2;
+	    strncpy (vp, newcom, lcom);
+	    for (v = vp + lcom; v < v2; v++)
+		*v = ' ';
+	    }
+
+	if (verbose) {
+	    if (lcom > 0)
+		printf ("HPUT: %s  = %s  / %s\n",vname, value, newcom);
+	    else
+		printf ("HPUT: %s  = %s\n",vname, value);
+	    }
+
+	return;
+}
+
+
+/*  HPUTCOM - Set comment for keyword or on line in FITS header string */
+
+hputcom (hstring,vname,comment)
+
+  char *hstring;
+  char *vname;
+  char *comment;
+{
+	char squot;
+	char line[100];
+	int lvname, lcom;
+	char *vp, *v1, *v2, *c0, *c1, *q1, *q2;
+	char *ksearch();
+
+	squot = 39;
+
+/*  Find length of variable name */
+	lvname = strlen (vname);
+
+/*  If COMMENT or HISTORY, always add it just before the END */
+	if (lvname == 7 && (strncmp (vname,"COMMENT",7) == 0 ||
+	    strncmp (vname,"HISTORY",7) == 0)) {
+
+	/* Find end of header */
+	    v1 = ksearch (hstring,"END");
+	    v2 = v1 + 80;
+	    strncpy (v2, v1, 80);
+
+	/*  blank out new line and insert keyword */
+	    for (vp = v1; vp < v2; vp++)
+		*vp = ' ';
+	    strncpy (v1, vname, lvname);
+	    }
+
+/* search header string for variable name */
+	else {
+	    v1 = ksearch (hstring,vname);
+
+	/* if parameter is not found, return without doing anything */
+	    if (v1 == NULL) {
+		if (verbose)
+		    printf ("HPUTCOM: %s not found\n",vname);
+		return;
+		}
+
+	/* otherwise, extract entry for this variable from the header */
+	    strncpy (line, v1, 80);
+
+	/* check for quoted value */
+	    q1 = strchr (line,squot);
+	    if (q1 != NULL)
+		q2 = strchr (q1+1,squot);
+	    else
+		q2 = NULL;
+
+	    if (q2-line < 31)
+		c0 = v1 + 39;
+	    else
+		c0 = q2 + 2;
+
+	    strncpy (c0, "/ ",2);
+	    }
+
+/* create new entry */
+	lcom = strlen (comment);
+
+	if (lcom > 0) {
+	    c1 = c0 + 2;
+	    if (c1+lcom > v2)
+		lcom = v2 - c1;
+	    strncpy (c1, comment, lcom);
+	    }
+
+	if (verbose) {
+	    printf ("HPUTCOM: %s / %s\n",vname,comment);
+	    }
+}
+
+
+/*  HDEL - Set character string vname = value in FITS header string
+ *	   Returns 1 if entry deleted, else 0
+ */
+
+int
+hdel (hstring,vname)
+
+  char *hstring;
+  char *vname;
+{
+	char *v, *v1, *v2, *ve;
+	char *ksearch();
+
+/* Search for keyword */
+	v1 = ksearch (hstring,vname);
+
+/*  If keyword is not found, return header unchanged */
+	if (v1 == NULL) {
+	    return (0);
+	    }
+
+/*  Find end of header */
+	ve = ksearch (hstring,"END");
+
+/* Shift rest of header up one line */
+	for (v = v1; v < ve; v = v + 80) {
+	    v2 = v + 80;
+	    strncpy (v, v2, 80);
+	    }
+
+/* Cover former last line with spaces */
+	v2 = ve + 80;
+	for (v = ve; v < v2; v++)
+	    *v = ' ';
+
+	return (1);
+}
+
+
+/* sprint the right ascension ra in sexagesimal format into out[] */
+
+void
+ra2str (out, ra, ndec)
+
+char	*out;	/* Character string (returned) */
+double	ra;	/* Right ascension in degrees */
+int	ndec;	/* Number of decimal places in seconds */
+
+{
+    double a,b;
+    double seconds;
+    int hours;
+    int minutes;
+    int isec;
+
+    a = ra / 15.0;
+
+    /* Convert to hours */
+    hours = (int) a;
+
+    /* Compute minutes */
+    b =  (a - (double)hours) * 60.0;
+    minutes = (int) b;
+
+    /* Compute seconds */
+    seconds = (b - (double)minutes) * 60.0;
+    isec = (int)(seconds + 0.5);
+
+    if (ndec > 2) {
+	if (seconds > 59.999) {
+	    seconds = 0.0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    hours = hours + 1;
+	    }
+	if (hours > 23)
+	    hours = hours - 24;
+	(void) sprintf (out,"%2d:%02d:%06.3f",hours,minutes,seconds);
+	}
+    else if (ndec > 1) {
+	if (seconds > 59.99) {
+	    seconds = 0.0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    hours = hours + 1;
+	    }
+	if (hours > 23)
+	    hours = hours - 24;
+	(void) sprintf (out,"%2d:%02d:%05.2f",hours,minutes,seconds);
+	}
+    else if (ndec > 0) {
+	if (seconds > 59.9) {
+	    seconds = 0.0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    hours = hours + 1;
+	    }
+	if (hours > 23)
+	    hours = hours - 24;
+	(void) sprintf (out,"%2d:%02d:%04.1f",hours,minutes,seconds);
+	}
+    else if (ndec > -1) {
+	if (isec > 59) {
+	    isec = 0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    hours = hours + 1;
+	    }
+	if (hours > 23)
+	    hours = hours - 24;
+	(void) sprintf (out,"%2d:%02d:%04.1f",hours,minutes,seconds);
+	}
+    return;
+}
+
+
+/* sprint the variable a in sexagesimal format into out[]. */
+
+void
+dec2str (out, dec, ndec)
+
+char	*out;	/* Character string (returned) */
+double	dec;	/* Declination in degrees */
+int	ndec;	/* Number of decimal places in arcseconds */
+
+{
+    double a,b;
+    double seconds;
+    char sign;
+    int degrees;
+    int minutes;
+    int isec;
+
+    a = dec;
+
+    /* Set sign and do all the rest with a positive */
+    if (a < 0) {
+	sign = '-';
+	a = -a;
+	}
+    else
+	sign = '+';
+
+    /* Convert to degrees */
+    degrees = (int) a;
+
+    /* Compute minutes */
+    b =  (a - (double)degrees) * 60.0;
+    minutes = (int) b;
+
+    /* Compute seconds */
+    seconds = (b - (double)minutes) * 60.0;
+    isec = (int)(seconds + 0.5);
+
+    if (ndec > 2) {
+	if (seconds > 59.999) {
+	    seconds = 0.0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    degrees = degrees + 1;
+	    }
+	(void) sprintf (out,"%c%02d:%02d:%06.3f",sign,degrees,minutes,seconds);
+	}
+    else if (ndec > 1) {
+	if (seconds > 59.99) {
+	    seconds = 0.0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    degrees = degrees + 1;
+	    }
+	(void) sprintf (out,"%c%02d:%02d:%05.2f",sign,degrees,minutes,seconds);
+	}
+    else if (ndec > 0) {
+	if (seconds > 59.9) {
+	    seconds = 0.0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    degrees = degrees + 1;
+	    }
+	(void) sprintf (out,"%c%02d:%02d:%04.1f",sign,degrees,minutes,seconds);
+	}
+    else if (ndec > -1) {
+	if (isec > 59) {
+	    isec = 0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    degrees = degrees + 1;
+	    }
+	(void) sprintf (out,"%c%02d:%02d:%04.1f",sign,degrees,minutes,seconds);
+	}
+    return;
+}
+/* Dec 14 1995	Original subroutines
+
+ * Feb  5 1996	Added HDEL to delete keyword entry from FITS header
+ * Feb  7 1996	Add EOS to LINE in HPUTC
+ * Feb 21 1996	Add RA and Dec to string routines
+ */

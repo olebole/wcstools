@@ -1,0 +1,23 @@
+CLDFLAGS= -ffast-math
+CFLAGS= $(CLDFLAGS) -O2
+LDFLAGS= $(CLDFLAGS) 
+
+OBJS =	setwcsft.o findreg.o findcoor.c findstar.o wcscon.o \
+	wcs.o gscread.o fitsio.o irafio.o hget.o hput.o worldpos.o platepos.o
+
+../lib/libwcs.a:	$(OBJS)
+	ar rv $@ $?
+	ranlib $@
+
+findcoor.o:	wcs.h
+findreg.o:	wcs.h
+findstar.o:	fitshead.h
+fitsio.o:	fitshead.h
+irafio.o:	fitshead.h
+gscread.o:	fitshead.h
+hget.o:		fitshead.h
+hput.o:		fitshead.h
+setwcsft.o:	fitshead.h wcs.h
+wcs.o:		fitshead.h wcs.h
+worldpos.o:	wcs.h
+platepos.o:	wcs.h
