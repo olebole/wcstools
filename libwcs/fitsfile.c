@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** April 2, 2003
+ *** July 11, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -451,7 +451,7 @@ int	nlog;		/* Note progress mod this rows */
     hgeti4 (header,"BITPIX",&bitpix);
     if (bitpix == 0) {
 	/* snprintf (fitserrmsg,79, "FITSRSECT:  BITPIX is 0; image not read\n"); */
-	close (fd);
+	(void)close (fd);
 	return (NULL);
 	}
     bytepix = bitpix / 8;
@@ -582,7 +582,7 @@ char	*header;	/* FITS header for image (previously read) */
     hgeti4 (header,"BITPIX",&bitpix);
     if (bitpix == 0) {
 	/* snprintf (fitserrmsg,79, "FITSRIMAGE:  BITPIX is 0; image not read\n"); */
-	close (fd);
+	(void)close (fd);
 	return (NULL);
 	}
     bytepix = bitpix / 8;
@@ -1061,7 +1061,7 @@ extern int errno;
 int
 fitswimage (filename, header, image)
 
-char	*filename;	/* Name of IFTS image file */
+char	*filename;	/* Name of FITS image file */
 char	*header;	/* FITS image header */
 char	*image;		/* FITS image pixels */
 
@@ -1069,7 +1069,7 @@ char	*image;		/* FITS image pixels */
     int fd;
 
     /* Open the output file */
-    if (strcmp (filename,"stdout") && strcmp (filename,"STDOUT") ) {
+    if (strcasecmp (filename,"stdout") ) {
 
 	if (!access (filename, 0)) {
 	    fd = open (filename, O_WRONLY);
@@ -1108,7 +1108,7 @@ char	*image;		/* FITS image pixels */
     int fd;
 
     /* Open the output file */
-    if (strcmp (filename,"stdout") && strcmp (filename,"STDOUT") ) {
+    if (strcasecmp (filename,"stdout") ) {
 
 	if (!access (filename, 0)) {
 	    fd = open (filename, O_WRONLY);
@@ -1179,13 +1179,13 @@ char	*image;		/* FITS image pixels */
     if (nbw < nbhead) {
 	snprintf (fitserrmsg,79, "FITSWHDU:  wrote %d / %d bytes of header to file %s\n",
 		 nbw, nbytes, filename);
-	close (fd);
+	(void)close (fd);
 	return (0);
 	}
 
     /* Return if file has no data */
     if (bitpix == 0) {
-	close (fd);
+	(void)close (fd);
 	return (nbytes);
 	}
 
@@ -1198,7 +1198,7 @@ char	*image;		/* FITS image pixels */
     hgeti4 (header,"NAXIS2",&naxis2);
     if (bitpix == 0) {
 	/* snprintf (fitserrmsg,79, "FITSWHDU:  BITPIX is 0; image not written\n"); */
-	close (fd);
+	(void)close (fd);
 	return (0);
 	}
     bytepix = bitpix / 8;
@@ -1225,14 +1225,14 @@ char	*image;		/* FITS image pixels */
     /* Write image to file */
     nbw = write (fd, image, nbimage);
 
-    /* Write extra to make integral number of 2880-byte blocks */
+    /* Write extra zeroes to make an integral number of 2880-byte blocks */
     nbpad = nbytes - nbimage;
-    padding = (char *)calloc (1,nbpad);
+    padding = (char *)calloc (1, nbpad);
     nbwp = write (fd, padding, nbpad);
     nbw = nbw + nbwp;
     free (padding);
 
-    close (fd);
+    (void)close (fd);
 
     /* Byte-reverse image after writing, if necessary */
     if (imswapped ())
@@ -1326,7 +1326,7 @@ char	*filename0;	/* Name of input FITS image file */
     free (oldhead);
 
     /* Open the input file and skip over the header */
-    if (strncasecmp (filename0,"stdin", 5)) {
+    if (strcasecmp (filename0,"stdin")) {
 	fdin = -1;
 	fdin = fitsropen (filename0);
 	if (fdin < 0) {
@@ -1374,15 +1374,15 @@ char	*filename0;	/* Name of input FITS image file */
     if (nbw < nbhead) {
 	snprintf (fitserrmsg, 79,"FITSCIMAGE:  wrote %d / %d bytes of header to file %s\n",
 		 nbw, nbytes, filename);
-	close (fdout);
-	close (fdin);
+	(void)close (fdout);
+	(void)close (fdin);
 	return (0);
 	}
 
     /* Return if no data */
     if (bitpix == 0) {
-	close (fdout);
-	close (fdin);
+	(void)close (fdout);
+	(void)close (fdin);
 	return (nbhead);
 	}
 
@@ -1406,8 +1406,8 @@ char	*filename0;	/* Name of input FITS image file */
     nbw = nbdata + nbwp;
     free (padding);
 
-    close (fdout);
-    close (fdin);
+    (void)close (fdout);
+    (void)close (fdin);
 
     if (nbw < nbimage) {
 	snprintf (fitserrmsg, 79, "FITSWIMAGE:  wrote %d / %d bytes of image to file %s\n",
@@ -1466,7 +1466,7 @@ char	*header;	/* FITS image header */
     if (nbw < nbhead) {
 	fprintf (stderr, "FITSWHEAD:  wrote %d / %d bytes of header to file %s\n",
 		 nbw, nbytes, filename);
-	close (fd);
+	(void)close (fd);
 	return (0);
 	}
     return (fd);
@@ -1494,7 +1494,7 @@ char    *filename;      /* Name of file for which to find size */
 	return (1);
 
     /* Check for stdin (input from pipe) */
-    else if (!strncasecmp (filename,"stdin", 5))
+    else if (!strcasecmp (filename,"stdin"))
 	return (1);
 
     /* If no FITS file extension, try opening the file */
@@ -1619,6 +1619,8 @@ fitserr ()
  * Jan 28 2002	In fitsrhead(), allow stdin to include extension and/or WCS selection
  * Jun 18 2002	Save error messages as fitserrmsg and use fitserr() to print them
  * Oct 21 2002	Add fitsrsect() to read a section of an image
+ *
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  * Apr  2 2003	Drop unused variable in fitsrsect()
+ * Jul 11 2003	Use strcasecmp() to check for stdout and stdin
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/ucacread.c
- *** May 30, 2003
+ *** June 2, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2003
@@ -251,8 +251,8 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("ra	%s\n", rastr);
 	dec2str (decstr, 31, cdec, 2);
 	printf ("dec	%s\n", decstr);
-	printf ("rpmunit	tsec/century\n");
-	printf ("dpmunit	arcsec/century\n");
+	printf ("rpmunit	mas/year\n");
+	printf ("dpmunit	mas/year\n");
 	if (drad != 0.0)
 	    printf ("radmin	%.1f\n", drad*60.0);
 	else {
@@ -373,9 +373,9 @@ int	nlog;		/* 1 for diagnostics */
 				printf ("	%5.2f	%5.2f	%5.2f	%5.2f",
 					star->xmag[0], star->xmag[1],
 					star->xmag[2], star->xmag[3]);
-			    printf ("	%5.2f	%6.3f	%6.2f	%.2f\n",
-				mag, rapm*240000.0, decpm*3600000.0,
-				dist / 60.0);
+			    printf ("	%5.2f	%6.1f	%6.1f	%.2f\n",
+				mag, rapm * 3600000.0 * cosdeg(dec),
+				decpm * 3600000.0, dist / 60.0);
 			    }
 
 			/* Save star position and magnitude in table */
@@ -1023,4 +1023,5 @@ char *string;	/* Address of Integer*4 or Real*4 vector */
 
 /* Apr 24 2003	New subroutines, based on ty2read.c and uacread.c
  * May 30 2003	Add UCAC2, compute file size rather than reading it from file
+ * Jun  2 2003	Print proper motions as mas/year
  */

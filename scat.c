@@ -1,5 +1,5 @@
 /* File scat.c
- * June 4, 2003
+ * June 13, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -506,7 +506,7 @@ char **av;
     		if (ac < 2)
     		    PrintUsage (str);
 		cs1 = *(str+1);
-		if (cs1 != NULL)
+		if (cs1 != (char) 0)
 		    ++str;
 		av++;
 		if ((dstr = strchr (*av, ',')) != NULL) {
@@ -2062,9 +2062,9 @@ double	eqout;		/* Equinox for output coordinates */
 			}
 		    if (mprop == 1) {
 			if (tabout)
-			    printf ("	%7.3f	%6.2f", pra, pdec);
+			    printf ("	%6.1f	%6.1f", pra, pdec);
 			else
-			    printf (" %7.3f %6.2f", pra, pdec);
+			    printf (" %6.1f %6.1f", pra, pdec);
 			}
 		    if (refcat == UB1) {
 			if (tabout)
@@ -4039,4 +4039,6 @@ PrintGSClass ()
  * Jun  2 2003	Print proper motions as mas/year to make them more useful
  * June 4 2003	Fix bug so filed input numbers are matched to catalog numbers
  * June 4 2003	Fix bug so -rr command works
+ * Jun 11 2003	Always print proper motion as f6.1
+ * Jun 13 2003	Fix comparison of character to pointer
  */

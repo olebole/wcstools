@@ -1,5 +1,5 @@
 /*** File libwcs/tmcread.c
- *** May 28, 2003
+ *** July 2, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2003
@@ -754,7 +754,7 @@ int	zone;	/* RA zone (hours) to read */
 	sc->entmag[0] = 39;
 	sc->entmag[1] = 46;
 	sc->entmag[2] = 53;
-	sc->entadd = 60;
+	sc->entadd = 61;
 	sc->nbent = 69;
 	}
     else {
@@ -1065,4 +1065,5 @@ int	istar;		/* Star sequence in 2MASS zone file */
  * May 21 2003	Add catfile argument to read both IDR2 and All-Sky releases
  * May 27 2003	Allow IDR2 and Allsky release to be set by catalog name
  * May 28 2003	Star ID numbers from All-Sky release have 6 decimal places
+ * Jul  2 2003	Fix limiting magnitude for All-Sky Release
  */

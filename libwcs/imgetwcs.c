@@ -1,5 +1,5 @@
 /*** File libwcs/imgetwcs.c
- *** April 3, 2003
+ *** July 21, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -324,9 +324,13 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     /* wcssize (wcs, cra, cdec, dra, ddec); */
 
     /* Set reference pixel to center of image if it has not been set */
-    if (wcs->xref == 0.0 && wcs->yref == 0.0) {
+    if (wcs->xref == -999.0 && wcs->yref == -999.0) {
 	wcs->xref = *cra;
+	wcs->cel.ref[0] = *cra;
+	wcs->crval[0] = *cra;
 	wcs->yref = *cdec;
+	wcs->cel.ref[1] = *cdec;
+	wcs->crval[1] = *cdec;
 	ra1 = *cra;
 	dec1 = *cdec;
 	if (wcs->xrefpix == 0.0 && wcs->yrefpix == 0.0) {
@@ -356,7 +360,7 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     if (secpix0 <= 0.0) {
 	pix2wcs (wcs, wcs->xrefpix-0.5, wcs->yrefpix, &ra1, &dec1);
 	pix2wcs (wcs, wcs->xrefpix+0.5, wcs->yrefpix, &ra2, &dec2);
-	*secpix = 3600.0 * wcsdist (ra1, ra2, dec1, dec2);
+	*secpix = 3600.0 * wcsdist (ra1, dec1, ra2, dec2);
 	}
 
     wcs->crval[0] = wcs->xref;
@@ -637,4 +641,7 @@ char *dateobs;
  * Mar 25 2003	Write out CTYPEn with quotes
  * Mar 27 2003	Fix half-pixel bug in computation of image center
  * Apr  3 2003	Drop unused variables after lint
+ * Jun  6 2003	Set xref and yref to center if -999, not 0
+ * Jul 21 2003	Fix bug setting secpix if it was not set on the command line
+ *		(found by Takehiko Wada, ISAS)
  */

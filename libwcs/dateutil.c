@@ -1,5 +1,5 @@
 /*** File libwcs/dateutil.c
- *** May 20, 2003
+ *** July 18, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1999-2003
@@ -2634,24 +2634,45 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
     if (sstr > string) {
 	*sstr = '\0';
 	*iday = (int) atof (string);
-	*sstr = '/';
-	nval = sstr + 1;
-	sstr = strchr (nval,'/');
-	if (sstr == NULL)
-	    sstr = strchr (nval,'-');
-	if (sstr > string) {
-	    *sstr = '\0';
-	    *imon = (int) atof (nval);
-	    *sstr = '/';
-	    nval = sstr + 1;
-	    *iyr = (int) atof (nval);
+	if (*iday > 31) {
+	    *iyr = *iday;
 	    if (*iyr >= 0 && *iyr <= 49)
 		*iyr = *iyr + 2000;
 	    else if (*iyr < 1000)
 		*iyr = *iyr + 1900;
+	    *sstr = '/';
+	    nval = sstr + 1;
+	    sstr = strchr (nval,'/');
+	    if (sstr > string) {
+		*sstr = '\0';
+		*imon = (int) atof (nval);
+		*sstr = '/';
+		nval = sstr + 1;
+		*iday = (int) atof (nval);
+		}
+	    else
+		return;
 	    }
-	else
-	    return;
+	else {
+	    *sstr = '/';
+	    nval = sstr + 1;
+	    sstr = strchr (nval,'/');
+	    if (sstr == NULL)
+		sstr = strchr (nval,'-');
+	    if (sstr > string) {
+		*sstr = '\0';
+		*imon = (int) atof (nval);
+		*sstr = '/';
+		nval = sstr + 1;
+		*iyr = (int) atof (nval);
+		if (*iyr >= 0 && *iyr <= 49)
+		    *iyr = *iyr + 2000;
+		else if (*iyr < 1000)
+		    *iyr = *iyr + 1900;
+		}
+	    else
+		return;
+	    }
 	}
 
     /* New FITS date format: yyyy-mm-ddThh:mm:ss[.sss] */
@@ -3976,4 +3997,5 @@ double	dnum, dm;
  * Jan 30 2003	Fix typo in ts2gst()
  * Mar  7 2003	Add conversions for heliocentric julian dates
  * May 20 2003	Declare nd in setdatedec()
+ * Jul 18 2003	Add code to parse Las Campanas dates
  */

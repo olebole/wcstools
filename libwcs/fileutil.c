@@ -1,5 +1,5 @@
 /*** File libwcs/fileutil.c
- *** May 27, 2003
+ *** July 17, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1999-2003
@@ -38,7 +38,7 @@
  *		Return 1 if file is list of FITS or IRAF image files, else 0
  * Subroutine:	isimlistd (filename, rootdir)
  *		Return 1 if file is list of FITS or IRAF image files, else 0
- * Subroutine:	isfilelist (filename)
+ * Subroutine:	isfilelist (filename, rootdir)
  *		Return 1 if file is list of readable files, else 0
  * Subroutine:	isfile (filename)
  *		Return 1 if file is a readable file, else 0
@@ -271,12 +271,14 @@ char    *rootdir;	/* Name of root directory for files in list */
 
 /* ISFILELIST -- Return 1 if list of readable files, else 0 */
 int
-isfilelist (filename)
+isfilelist (filename, rootdir)
 
 char    *filename;      /* Name of possible list file */
+char    *rootdir;	/* Name of root directory for files in list */
 {
     FILE *diskfile;
     char token[256];
+    char filepath[256];
     int ncmax = 254;
 
     if ((diskfile = fopen (filename, "r")) == NULL)
@@ -284,7 +286,14 @@ char    *filename;      /* Name of possible list file */
     else {
 	first_token (diskfile, ncmax, token);
 	fclose (diskfile);
-	if (isfile (token))
+	if (rootdir != NULL) {
+	    strcpy (filepath, rootdir);
+	    strcat (filepath, "/");
+	    strcat (filepath, token);
+	    }
+	else
+	    strcpy (filepath, token);
+	if (isfile (filepath))
 	    return (1);
 	else
 	    return (0);
@@ -412,4 +421,5 @@ char	*string;
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  * Mar  5 2003	Add isimlistd() to check image lists with root directory
  * May 27 2003	Use file stat call in getfilesize() instead of opening file
+ * Jul 17 2003	Add root directory argument to isfilelist()
  */

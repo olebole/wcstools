@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** May 28, 2003
+ *** June 26, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -1025,13 +1025,13 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	wcs->xrefpix = wcs->crpix[0];
 	wcs->yrefpix = wcs->crpix[1];
 
-	wcs->crval[0] = 0.0;
+	wcs->crval[0] = -999.0;
 	if (!hgetra (hstring,"RA",&wcs->crval[0])) {
 	    setwcserr ("WCSINIT: No RA with SECPIX, no WCS");
 	    wcsfree (wcs);
 	    return (NULL);
 	    }
-	wcs->crval[1] = 0.0;
+	wcs->crval[1] = -999.0;
 	if (!hgetdec (hstring,"DEC",&wcs->crval[1])) {
 	    setwcserr ("WCSINIT No DEC with SECPIX, no WCS");
 	    wcsfree (wcs);
@@ -1349,4 +1349,5 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * May  8 2003	Change PROJP reading to start with 0 instead of 1
  * May 22 2003	Add ZPX approximation, reading projpn from WATi
  * May 28 2003	Avoid reinitializing coefficients set by PROJP
+ * Jun 26 2003	Initialize xref and yref to -999.0
  */

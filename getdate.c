@@ -1,5 +1,5 @@
 /* File getdate.c
- * March 6, 2003
+ * July 28, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -278,12 +278,19 @@ char **av;
 		
 	else if (datestring == NULL) {
 	    datestring = *av;
+	    if (ac > 1) {
+		timestring = *(av+1);
+		if (strchr (timestring, ':')) {
+		    av++;
+		    ac--;
+		    }
+		}
 	    if ((intype != DTVIG && intype != DTDOY) || ac == 1) {
 		ConvertDate (intype, outtype, datestring, timestring);
 		datestring = NULL;
+		timestring = NULL;
 		}
 	    }
-	/* else if (intype == DTVIG || intype == DTDOY) { */
 	else if (timestring == NULL) {
 	    timestring = *av;
 	    ConvertDate (intype, outtype, datestring, timestring);
@@ -1464,4 +1471,5 @@ char	*timestring;	/* Input time string */
  * Sep 10 2002	Add conversion of UT to sidereal time
  *
  * Mar  6 2003	Add conversions to and from HJD and MHJD
+ * Jul 28 2003	Correctly convert FITS date AND time correctly
  */

@@ -1,3 +1,13 @@
+Version 3.4.1 (July 28, 2003)
+gethead: Allow root directory for text as well as image files in list file
+getdate: Fix bugs so FITS date conversions read both date and time
+imextract: Fix extraction of 2-D images from 3-D images
+sky2xy: Initialize both sysout and eqout to 0 so defaults work (Takehiko Wada)
+skycoor: Fix bug in verbose mode of -r and give RA diff in sky arcsec
+tmcread.c: Fix limiting magnitude flag; it wasn't working
+dateutil.c: Add code to convert FITS dates as yyyy/mm/dd as well as yyyy-mm-dd
+imgetwcs.c: Fix bug setting secpix if not on command line (Takehiko Wada)
+
 Version 3.4.0 (June 9, 2003)
 scat, imcat: Print both RA and Dec proper motion as mas/year
 scat, imcat: Add support for 2MASS All-Sky release as well as IDR2

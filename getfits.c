@@ -318,8 +318,8 @@ char *errmsg;	/* Error message */
     if (*errmsg)
 	fprintf (stderr, "*** %s ***\n", errmsg);
     fprintf (stderr,"Extract FITS files from FITS image files\n");
-    fprintf(stderr,"Usage: newfits -sv [-i num] [-o name] [-d dir] file.fits [xrange yrange] [x y dx [dy]] ...\n");
-    fprintf(stderr,"  or : newfits [-sv1][-i num][-o name] [-d path] @fitslist [xrange yrange] [x y dx [dy]]\n");
+    fprintf(stderr,"Usage: getfits -sv [-i num] [-o name] [-d dir] file.fits [xrange yrange] [x y dx [dy]] ...\n");
+    fprintf(stderr,"  or : getfits [-sv1][-i num][-o name] [-d path] @fitslist [xrange yrange] [x y dx [dy]]\n");
     fprintf(stderr,"  xrange: Columns to extract in format x1-x2\n");
     fprintf(stderr,"  yrange: Rows to extract in format y1-y2\n");
     fprintf(stderr,"  x y: Center pixel (column row) of region to extract\n");

@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * April 24, 2003
+ * July 22, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,21 +17,14 @@
 static void PrintUsage();
 extern struct WorldCoor *GetFITSWCS ();	/* Read WCS from FITS or IRAF header */
 extern char *GetFITShead();
-
-static int verbose = 0;		/* verbose/debugging flag */
-
-static char coorsys[16];
-static double eqin = 0.0;
-static double eqout = 0.0;
 static int version = 0;		/* If 1, print only program name and version */
-static int ndec = 3;		/* Number of decimal places in output coords */
-static char printonly = 'b';
 
 
 main (ac, av)
 int ac;
 char **av;
 {
+    int verbose = 0;		/* verbose/debugging flag */
     char *str;
     double x, y, ra, dec, ra0, dec0;
     FILE *fd;
@@ -49,8 +42,15 @@ char **av;
     int nx, ny, lhead, i, nf;
     int bitpix = 0;
     char *header;
-    double cra, cdec, dra, ddec, secpix, eqout, drot;
-    int wp, hp, sysout;
+    double cra, cdec, dra, ddec, secpix, drot;
+    double eqout = 0.0;
+    double eqin = 0.0;
+    int sysout = 0;
+    int wp, hp;
+    char coorsys[16];
+    int ndec = 3;		/* Number of decimal places in output coords */
+    char printonly = 'b';
+
     wcs = NULL;
 
     /* Check for help or version command first */
@@ -433,4 +433,6 @@ char	*command;
  * Apr  4 2003	Add command line WCS setting and number of decimal places
  * Apr  7 2003	Add -o option to print only x or y coordinate
  * Apr 24 2003	Initialize FITS header completely if needed
+ * Jul 22 2003	Initialize sysout; move most static variables into main()
+ *		(bug found and fix suggested by Takehiko Wada, ISAS)
  */

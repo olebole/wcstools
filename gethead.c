@@ -1,5 +1,5 @@
 /* File gethead.c
- * March 25, 2003
+ * July 17, 2003
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -216,7 +216,7 @@ char **av;
 		ilistfile = listfile;
 		nfile = getfilelines (ilistfile);
 		}
-	    else if (isfilelist (listfile)) {
+	    else if (isfilelist (listfile, rootdir)) {
 		ilistfile = listfile;
 		nfile = getfilelines (ilistfile);
 		}
@@ -1041,4 +1041,5 @@ char *string;
  *
  * Feb  5 2003	Set nfext tp zero if no extensions
  * Mar 25 2003	If null keyword value and padding on, print ___
+ * Jul 17 2003	Add root directory argumeht to isfilelist()
  */

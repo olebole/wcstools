@@ -1,5 +1,5 @@
 /* File getcol.c
- * July 19, 2002
+ * June 10, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,6 +17,7 @@
 #define	MAX_LTOK	256
 #define	MAX_NTOK	256
 #define MAXFILES	2000
+#define MAXLINES	100000
 
 
 static void usage();
@@ -412,7 +413,7 @@ usage ()
     fprintf(stderr,"  -k: Print number of columns on first line\n");
     fprintf(stderr,"  -l num: Number of lines to add to each line\n");
     fprintf(stderr,"  -m: Print means of selected numeric column(s)\n");
-    fprintf(stderr,"  -n num: Number of lines to read, if not all\n");
+    fprintf(stderr,"  -n num: Number of lines to read (default %d)\n", MAXLINES);
     fprintf(stderr,"  -o: OR conditions insted of ANDing them\n");
     fprintf(stderr,"  -p: Print only sum or mean, not individual values\n");
     fprintf(stderr,"  -q: Compute mean of selected columns added in quadrature\n");
@@ -497,7 +498,7 @@ char	*lfile;		/* Name of file with lines to list */
     else
 	nlog = 0;
     if (nread < 1)
-	nread = 100000;
+	nread = MAXLINES;
 
     /* Make list of line numbers to read from list or range on command line */
     if (lranges != NULL) {
@@ -1540,4 +1541,6 @@ void *pd1, *pd2;
  * Jun 19 2002	Fix bug that could read files as letter operations
  * Jul 18 2002	Read multiple files; add option to print pathname
  * Jul 19 2002	Ignore commented lines completely if -z
+ *
+ * Jun 10 2003	Print default number of lines in command list
  */

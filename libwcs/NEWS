@@ -1,6 +1,9 @@
 WCSTools subroutine release history
 
-May 30, 2003 - Release 3.4.0 (Doug Mink, SAO
+July 11, 2003 - Release 3.4.1 (Doug Mink, SAO)
+Use strncmp to check for both stdin and stdout in fitsfile.c
+
+May 30, 2003 - Release 3.4.0 (Doug Mink, SAO)
 Add partial support for ZPX projection
 Fix bug reading COE and other projections when PROJPn coefficients
 were accidently reinitialized

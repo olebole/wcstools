@@ -1,5 +1,5 @@
 /* File skycoor.c
- * November 15, 2002
+ * July 24, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -204,7 +204,8 @@ char **av;
 		if (verbose) {
 		    printf ("Distance is %.3f arcsec\n", r);
 		    printf ("dRA = %.5f arcsec, dDec = %.5f arcsec\n",
-			    (ra1 - ra) * 3500.0, (dec1 - dec) * 3600.0);
+			    (ra1 - ra) * 3600.0 * cosdeg (0.5 * (dec + dec1)),
+			    (dec1 - dec) * 3600.0);
 		    }
 		else
 		    printf ("%.3f\n", r);
@@ -310,8 +311,8 @@ char **av;
 			else
 			    ra = 99.0 * 15.0;
 			dec = str2dec (decstr1);
-			deg2str (rastr1, 32, ra, 5);
-			deg2str (decstr1, 32, dec, 5);
+			deg2str (rastr1, 32, ra, ndec);
+			deg2str (decstr1, 32, dec, ndec);
 			}
 		    if (verbose)
 			printf ("%s %s %s -> %s %s %s\n",
@@ -377,8 +378,8 @@ char **av;
 	    if (degout) {
 		ra = str2ra (rastr1);
 		dec = str2dec (decstr1);
-		deg2str (rastr1, 32, ra, 5);
-		deg2str (decstr1, 32, dec, 5);
+		deg2str (rastr1, 32, ra, ndec);
+		deg2str (decstr1, 32, dec, ndec);
 		}
 	    if (keyeqval) {
 		if (sys1 == WCS_B1950)
@@ -552,4 +553,7 @@ char *errstring;
  * Apr 23 2002	If verbose, print differences in RA and Dec for -r, too.
  * Aug  7 2002	If no i/o coordinate system set, assume in and out J2000
  * Nov 15 2002	If ra is 99 in list file, pass it through unchanged
+ *
+ * Jul 23 2003	Fix bug in verbose mode of -r found by Cees Bassa
+ * Jul 24 2003	Fix bug so number of decimal places can be set for degrees out
  */

@@ -1,5 +1,5 @@
 /* File imextract.c
- * April 9, 2002
+ * July 11, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -27,6 +27,7 @@ static char prefix[2];
 static int nfiles = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int fitsout = 0;		/* If 1, write FITS output for IRAF input */
+static int ahistory = 0;	/* If 1, add history line to output file */
 static int nameout = 0;		/* If 1, write output file name */
 static char *suffix = NULL;	/* Suffix if set on command line */
 static char *outfile = NULL;	/* Output file name if set on command line */
@@ -82,41 +83,22 @@ char **av;
 	    }
 
 	/* Number argument is either specific image number or range */
-	else if (isnum(*av)) {
+	else if (isrange (*av) || isnum (*av)) {
 
 	    /* Set range and make a list of extraction numbers from it */
-	    if (strchr(*av + 1,'-') || strchr(*av + 1,',')) {
-		if (ranges) {
-		    temp = ranges;
-		    ranges = (char *) calloc (strlen(ranges) + strlen(*av) + 2, 1);
-		    strcpy (ranges, temp);
-		    strcat (ranges, ",");
-		    strcat (ranges, *av);
-		    free (temp);
-		    }
-		else {
-		    ranges = (char *) calloc (strlen(*av) + 1, 1);
-		    strcpy (ranges, *av);
-		    }
-		continue;
+	    if (ranges) {
+		temp = ranges;
+		ranges = (char *) calloc (strlen(ranges) + strlen(*av) + 2, 1);
+		strcpy (ranges, temp);
+		strcat (ranges, ",");
+		strcat (ranges, *av);
+		free (temp);
 		}
-
-	    /* If numeric argument, set image to be extracted */
 	    else {
-		if (ranges) {
-		    temp = ranges;
-		    ranges = (char *)calloc (strlen(ranges)+strlen(*av)+2, 1);
-		    strcpy (ranges, temp);
-		    strcat (ranges, ",");
-		    strcat (ranges, *av);
-		    free (temp);
-		    }
-		else {
-		    ranges = (char *) calloc (strlen(*av) + 1, 1);
-		    strcpy (ranges, *av);
-		    }
-		continue;
+		ranges = (char *) calloc (strlen(*av) + 1, 1);
+		strcpy (ranges, *av);
 		}
+	    continue;
 	    }
 
 	/* If equal sign in argument, it is a header keyword assignment */
@@ -145,6 +127,9 @@ char **av;
 		    break;
 		case 'f':	/* FITS output for IRAF input */
 		    fitsout++;
+		    break;
+		case 'h':	/* Add HISTORY line to input */
+		    ahistory++;
 		    break;
 		case 'n':	/* Echo output file name */
 		    nameout++;
@@ -221,6 +206,7 @@ usage ()
     fprintf(stderr,"  or : imextract [-vf] [kwn=valn] n @filelist\n");
     fprintf(stderr,"  range: images to extract (by sequence number)\n");
     fprintf(stderr,"  -f: Write FITS out for IRAF input\n");
+    fprintf(stderr,"  -h: Add line to header of each output file with source\n");
     fprintf(stderr,"  -n: Write out name of output file\n");
     fprintf(stderr,"  -o: Specify output file name (without extension) \n");
     fprintf(stderr,"  -v: Verbose\n");
@@ -241,11 +227,12 @@ char	*kwd[];		/* Names and values of those keywords */
 {
     char *image;		/* FITS image */
     char *header;		/* FITS header */
+    char *outheader;		/* Output file FITS header */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     char *irafheader=NULL;	/* IRAF image header */
     char *outimage;
-    int naxis, naxis1, naxis2, naxis3, bytepix;
+    int naxis0, naxis, naxis1, naxis2, naxis3, bytepix;
     int bitpix;
     int iraffile;
     int i, lext, lroot, nbskip;
@@ -263,44 +250,30 @@ char	*kwd[];		/* Names and values of those keywords */
     char cval[24];
     int squote = 39;
     int dquote = 34;
-    int nimages, nimage;
+    int nimages, nimage, nbheadi, nbimage;
     int nidef = 1;
 
     /* Open IRAF header */
     if (isiraf (filename)) {
 	iraffile = 1;
-	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
+	if ((irafheader = irafrhead (filename, &lhead)) == NULL) {
+	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
+	    return (1);
+	    }
+	else {
 	    nbhead = 0;
 	    if ((header = iraf2fits (filename,irafheader,lhead, &nbhead)) == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
 		free (irafheader);
 		return (1);
 		}
-	    if ((image = irafrimage (header)) == NULL) {
-		hgetm (header,"PIXFIL", 255, pixname);
-		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
-		free (irafheader);
-		free (header);
-		return (1);
-		}
-	    }
-	else {
-	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
-	    return (1);
 	    }
 	}
 
     /* Read FITS image header */
     else {
 	iraffile = 0;
-	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
-	    if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
-		fprintf (stderr, "Cannot read FITS image %s\n", filename);
-		free (header);
-		return (1);
-		}
-	    }
-	else {
+	if ((header = fitsrhead (filename, &lhead, &nbhead)) == NULL) {
 	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
 	    return (1);
 	    }
@@ -308,8 +281,8 @@ char	*kwd[];		/* Names and values of those keywords */
     if (verbose && !ifile)
 
     /* Compute size of input image in bytes from header parameters */
-    hgeti4 (header,"NAXIS",&naxis);
-    if (naxis == 1) {
+    hgeti4 (header,"NAXIS",&naxis0);
+    if (naxis0 == 1) {
 	printf ("IMEXTRACT: Image %s has only one dimension\n", filename);
 	return (1);
 	}
@@ -326,6 +299,7 @@ char	*kwd[];		/* Names and values of those keywords */
     hgeti4 (header,"BITPIX",&bitpix);
     bytepix = bitpix / 8;
     if (bytepix < 0) bytepix = -bytepix;
+    nbimage = naxis1 * naxis2 * bytepix;
 
     /* Remove directory path and extension from file name */
     fname = strrchr (filename, '/');
@@ -375,6 +349,34 @@ char	*kwd[];		/* Names and values of those keywords */
     for (i = 0; i < nimages; i++) {
 	nimage = rgeti4 (range);
 
+    /* Copy the original image header into one which can be edited */
+	outheader = (char *) calloc ((unsigned int) nbhead, 1);
+	strcpy (outheader, header);
+
+    /* Get correct part of image */
+	if (i == 0 || (naxis0 > 2 && (naxis2 ==1 || naxis3 == 1))) {
+	    if (i > 0) 
+		nbheadi = nbhead + ((nimage - 1) * nbimage);
+	    else
+		nbheadi = nbhead;
+	    if (iraffile) {
+		if ((image = irafrimage (header)) == NULL) {
+		    hgetm (header,"PIXFIL", 255, pixname);
+		    fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
+		    free (irafheader);
+		    free (header);
+		    return (1);
+		    }
+		}
+	    else {
+		if ((image = fitsrimage (filename, nbheadi, header)) == NULL) {
+		    fprintf (stderr, "Cannot read FITS image %s\n", filename);
+		    free (header);
+		    return (1);
+		    }
+		}
+	    }
+
     /* Set output directory path if given on command line */
     if (outdir != NULL) {
 	strcpy (newname, outdir);
@@ -396,28 +398,27 @@ char	*kwd[];		/* Names and values of those keywords */
 	outimage = image;
 
     /* If only 2 axes, drop 2nd from output file header */
-    else if (naxis < 3) {
+    else if (naxis0 < 3) {
 	nbskip = (nimage - 1) * (naxis1 * bytepix);
 	outimage = image + nbskip;
-	hputi4 (header, "NAXIS", 1);
-	hdel (header,"NAXIS2");
+	hputi4 (outheader, "NAXIS", 1);
+	hdel (outheader,"NAXIS2");
 	}
 
     /* If only 2 populated axes, drop 2nd and 3rd from output file header */
     else if (naxis2 ==1 || naxis3 == 1) {
 	nbskip = (nimage - 1) * (naxis1 * bytepix);
 	outimage = image + nbskip;
-	hputi4 (header, "NAXIS", 1);
-	hdel (header,"NAXIS2");
-	hdel (header,"NAXIS3");
+	hputi4 (outheader, "NAXIS", 1);
+	hdel (outheader,"NAXIS2");
+	hdel (outheader,"NAXIS3");
 	}
 
     /* If 3 populated axes, drop 3rd from output file header */
     else {
-	nbskip = (nimage - 1) * (naxis1 * naxis2 * bytepix);
-	outimage = image + nbskip;
-	hputi4 (header, "NAXIS", 2);
-	hdel (header,"NAXIS3");
+	outimage = image;
+	hputi4 (outheader, "NAXIS", 2);
+	hdel (outheader,"NAXIS3");
 	}
 
     /* Set keywords one at a time */
@@ -437,12 +438,12 @@ char	*kwd[];		/* Names and values of those keywords */
 	    }
 
 	/* If keyword is already in header, krename it if requested */
-	if (krename && ksearch (header, kwd[ikwd])) {
+	if (krename && ksearch (outheader, kwd[ikwd])) {
 	    strcpy (newkey, prefix);
 	    strcat (newkey, kwd[ikwd]);
 	    if (strlen (newkey) > 8)
 		newkey[8] = (char) 0;
-	    hchange (header, kwd[ikwd], newkey);
+	    hchange (outheader, kwd[ikwd], newkey);
 	    }
 
 	/* Write value to keyword */
@@ -452,10 +453,10 @@ char	*kwd[];		/* Names and values of those keywords */
 	    if (vq0 && vq1) {
 		kwv = vq0;
 		*vq1 = 0;
-		hputs (header, kwd[ikwd], kwv);
+		hputs (outheader, kwd[ikwd], kwv);
 		}
 	    else
-		hputs (header, kwd[ikwd], kwv);
+		hputs (outheader, kwd[ikwd], kwv);
 	    }
 	else if ((vq0 = strchr (kwv,squote))) {
 	    vq0 = vq0 + 1;
@@ -463,35 +464,35 @@ char	*kwd[];		/* Names and values of those keywords */
 	    if (vq0 && vq1) {
 		kwv = vq0;
 		*vq1 = 0;
-		hputs (header, kwd[ikwd], kwv);
+		hputs (outheader, kwd[ikwd], kwv);
 		}
 	    else
-		hputs (header, kwd[ikwd], kwv);
+		hputs (outheader, kwd[ikwd], kwv);
 	    }
 	else if (isnum (kwv)) {
 	    i = 21 - lkwv;
 	    for (v = kwv; v < kwv+lkwv; v++)
 		cval[i++] = *v;
 	    cval[21] = 0;
-	    hputc (header, kwd[ikwd], cval);
+	    hputc (outheader, kwd[ikwd], cval);
 	    }
 	else if (!strcmp (kwv,"T") || !strcmp (kwv,"t"))
-	    hputl (header, kwd[ikwd], 1);
+	    hputl (outheader, kwd[ikwd], 1);
 	else if (!strcmp (kwv,"YES") || !strcmp (kwv,"yes"))
-	    hputl (header, kwd[ikwd], 1);
+	    hputl (outheader, kwd[ikwd], 1);
 	else if (!strcmp (kwv,"F") || !strcmp (kwv,"f"))
-	    hputl (header, kwd[ikwd], 0);
+	    hputl (outheader, kwd[ikwd], 0);
 	else if (!strcmp (kwv,"NO") || !strcmp (kwv,"no"))
-	    hputl (header, kwd[ikwd], 0);
+	    hputl (outheader, kwd[ikwd], 0);
 	else
-	    hputs (header, kwd[ikwd], kwv);
+	    hputs (outheader, kwd[ikwd], kwv);
 	if (verbose)
 	    printf ("%s = %s\n", kwd[ikwd], kwv);
 	*kwv0 = '=';
 	}
 
     /* Drop multispec suffix if output is 1-D file */
-    hgeti4 (header, "NAXIS", &naxis);
+    hgeti4 (outheader, "NAXIS", &naxis);
     if (naxis == 1) {
 	if ((imext1 = strstr (newname, ".ms")) != NULL) {
 	    *imext1 = (char) 0;
@@ -524,11 +525,20 @@ char	*kwd[];		/* Names and values of those keywords */
     if (outfile != NULL)
 	strcpy (newname, outfile);
 
+    /* Add history line if requested */
+    if (ahistory) {
+	if (naxis == 1)
+	    sprintf (comment, "Row %d from image file %s", nimage, filename);
+	else
+	    sprintf (comment, "Image %d from image file %s", nimage, filename);
+	hputc (outheader, "HISTORY", comment);
+	}
+
     /* Create output IRAF file if input was an IRAF file */
     if (iraffile && !fitsout) {
 	strcpy (pixname, newname);
 	strcat (pixname, ".pix");
-	hputm (header, "PIXFIL", pixname);
+	hputm (outheader, "PIXFIL", pixname);
 	strcat (newname, ".imh");
 	}
     else if (lext > 0) {
@@ -551,19 +561,21 @@ char	*kwd[];		/* Names and values of those keywords */
 
     /* Write new IRAF or FITS file */
     if (iraffile && !fitsout) {
-	if (!irafwimage (newname, lhead, irafheader, header, outimage ))
+	if (!irafwimage (newname, lhead, irafheader, outheader, outimage ))
 	    printf ("IRAF file %s not written\n", newname);
 	else if (verbose)
 	    printf ("IRAF file %s written from %s\n", newname, filename);
 	}
     else {
-	if (!fitswimage (newname, header, outimage))
+	if (!fitswimage (newname, outheader, outimage))
 	    printf ("FITS file %s not written\n", newname);
 	else if (verbose)
 	    printf ("FITS file %s written from %s\n", newname, filename);
 	}
     if (nameout)
 	printf ("%s\n", newname);
+
+    free (outheader);
 
     }
 
@@ -582,7 +594,7 @@ char	*kwd[];		/* Names and values of those keywords */
  * Mar  9 1999	Add option to write to a specific directory
  * May 18 1999	If suffix is null string, do not add _
  * Sep 30 1999	Refine range test to avoid getting signed header parameters
- * Oct 15 1999	Always return erro code from ExtractImage()
+ * Oct 15 1999	Always return error code from ExtractImage()
  * Oct 22 1999	Drop unused variables after lint
  *
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
@@ -593,4 +605,7 @@ char	*kwd[];		/* Names and values of those keywords */
  * Jan 30 2002	If extracting a single image extension, put SIMPLE=T on line 1
  * Apr  9 2002	Do not free unallocated header
  * Apr  9 2002	Fix bugs dealing with single input image
+ *
+ * Jul 11 2003	Deal with range of images/spectra to extract
+ * Jul 11 2003	Create a new header for each output file
  */
