@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * March 1, 2001
+ * March 22, 2001
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -81,8 +81,7 @@ void XSortStars();
 void RASortStars();
 void MagSortStars();
 
-/* Data structures for SAO TDC ASCII and binary star catalogs */
-
+/* Data structure for SAO TDC ASCII and binary star catalog entries */
 struct Star {
     float rdum;
     float xno;		/* Catalog number */
@@ -113,6 +112,7 @@ struct Star {
 #define PM_TSECCEN		7	/* seconds of time (RA) per century */
 #define PM_MTSYR		8	/* milliseconds of time (RA) per year */
 
+/* Data structure for SAO TDC ASCII and binary star catalogs */
 struct StarCat {
     int star0;		/* Subtract from star number for file sequence number */
     int star1;		/* First star number in file */
@@ -171,6 +171,7 @@ struct StarCat {
     int enttype;	/* Entry number for spectral type */
     int rpmunit;	/* Units for RA proper motion (PM_x) */
     int dpmunit;	/* Units for DEC proper motion (PM_x) */
+    char *caturl;	/* set if web search, else NULL */
     char keyid[16];	/* Entry name for ID */
     char keyra[16];	/* Entry name for right ascension */
     char keydec[16];	/* Entry name for declination */
@@ -335,4 +336,6 @@ int getoken();		/* Get specified token from tokenized string */
  * Dec 13 2000	Add StrNdec() to get number of decimal places in number strings
  * Dec 15 2000	Add CatNdec() to get number of decimal places in source numbers
  * Dec 18 2000	Drop PropCat(), a cludgy proper motion flag
+ *
+ * Mar 22 2001	Add web search flag in catalog data structure
  */

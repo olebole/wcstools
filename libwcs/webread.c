@@ -1,5 +1,5 @@
 /*** File webread.c
- *** January 3, 2001
+ *** March 23, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -29,7 +29,8 @@
 #include <netinet/in.h>
 #include <netdb.h>
 
-static int FileINetParse(char *file, int port, struct sockaddr_in *adrinet);
+/* static int FileINetParse (char *file,int port,struct sockaddr_in *adrinet);*/
+static int FileINetParse();
 
 static FILE *SokOpen();
 #define XFREAD  1
@@ -222,7 +223,7 @@ int	nlog;		/* Logging interval */
     char numstr[32];
     char csys[32];
     struct TabTable *tabtable;
-    int i, refcat;
+    int i, refcat, nfld;
     char title[64];	/* Description of catalog (returned) */
     int syscat;		/* Catalog coordinate system (returned) */
     double eqcat;	/* Equinox of catalog (returned) */
@@ -234,7 +235,8 @@ int	nlog;		/* Logging interval */
     /* Make list of catalog numbers */
     for (i = 0; i < nnum; i++) {
 	refcat = RefCat (refcatname, title, &syscat, &eqcat, &epcat);
-	CatNum (refcat, 0, 0, unum[i], numstr);
+	nfld = CatNumLen (refcatname, unum[i], 0);
+	CatNum (refcat, -nfld, 0, unum[i], numstr);
 	if (i > 0) {
 	    strcat (numlist, ",");
 	    strcat (numlist, numstr);
@@ -245,7 +247,7 @@ int	nlog;		/* Logging interval */
 
     /* Set up search query */
     wcscstr (cstr, sysout, eqout, epout);
-    sprintf (srchurl, "?catalog=%s&num=%soutsys=%s&",refcatname,numlist,csys);
+    sprintf (srchurl, "?catalog=%s&num=%s&outsys=%s&",refcatname,numlist,csys);
     if (epout != 0.0) {
 	sprintf (temp, "epoch=%.5f&", epout);
 	strcat (srchurl, temp);
@@ -610,4 +612,6 @@ FileINetParse(file, port, adrinet)
  *
  * Jan  2 2001	Set MAXHOSTNAMELENGTH to 256, bypassing system constant
  * Jan  3 2001	Include string.h, not strings.h
+ * Mar 19 2001	Drop argument types from declaration
+ * Mar 23 2001	Put number into argument list correctly in webrnum()
  */

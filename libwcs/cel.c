@@ -532,7 +532,7 @@ double *x, *y;
    sphfwd(lng, lat, cel->euler, phi, theta);
 
    /* Apply forward projection. */
-   if (err = cel->prjfwd(*phi, *theta, prj, x, y)) {
+   if ((err = cel->prjfwd(*phi, *theta, prj, x, y))) {
       return err == 1 ? 2 : 3;
    }
 
@@ -558,7 +558,7 @@ double *lng, *lat;
    }
 
    /* Apply reverse projection. */
-   if (err = cel->prjrev(x, y, prj, phi, theta)) {
+   if ((err = cel->prjrev(x, y, prj, phi, theta))) {
       return err == 1 ? 2 : 3;
    }
 
@@ -570,4 +570,6 @@ double *lng, *lat;
 /* Dec 20 1999	Doug Mink -Change cosd() and sind() to cosdeg() and sindeg()
  * Dec 20 1999	Doug Mink -Include wcslib.h, which includes wcsmath.h and cel.h
  * Dec 18 2000	Doug Mink - Include string.h for strcmp()
+ *
+ * Mar 20 2001	Doug Mink - Add () around err assignments in if statements
  */

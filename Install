@@ -30,11 +30,11 @@ of this software is in the Versions file.
 
 The complete source code is in
 
-	ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-2.8.6.tar.gz
+	ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-2.9.3.tar.gz
 
 To install the code, create a directory for it, download it, and run
 
-	gzcat wcstools-2.8.6.tar.gz | tar xvf -
+	gzcat wcstools-2.9.3.tar.gz | tar xvf -
 
 The main directory will contain the source code for the programs, and
 a subdirectory, libwcs, will contain the source code for the subroutines
@@ -52,6 +52,13 @@ are mounted.
 	make all
 
 compiles the subroutine library and all of the documented programs.
+
+Because network libraries are not automatically included in Solaris, type
+
+        make -f Makefile.solaris all
+
+on Sun workstations running Solaris.
+
 The resulting executable binaries will be in the bin/ subdirectory.
 scat and imcat search specific catalogs if invoked with specific commands.
 Execute Linkbin to make these links in the bin/ directory.  Either put
@@ -73,7 +80,7 @@ and uses the same WCS subroutines as WCSTools.  If you want to include the
 same WCS access in your own code, the subset of the WCSTools library
 which is used in SAOimage is available at
 
-	ftp://cfa-ftp.harvard.edu/pub/gsc/SAOimage/wcssubs-2.8.6.tar.gz
+	ftp://cfa-ftp.harvard.edu/pub/gsc/SAOimage/wcssubs-2.9.2.tar.gz
 
 -Doug Mink  (dmink@cfa.harvard.edu)
  Telescope Data Center

@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** February 14, 2001
+ *** March 23, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -12,7 +12,8 @@
  */
 
 /* default pathname for catalog,  used if catalog file not found in current
-   working directory, but overridden by WCS_BINDIR environment variable */
+   working directory, but overridden by the WCS_BINDIR, SAO_PATH (if bincat
+   is SAO), or PPM_PATH (if bincat is PPM) environment variable */
 char bindir[64]="/data/stars";
 
 #include <unistd.h>
@@ -83,6 +84,7 @@ int	nlog;
     struct Star *star;
     struct StarCat *sc;	/* Star catalog data structure */
     int rwrap, wrap, iwrap, istar1,istar2;
+    int binset;
     char *objname;
     int lname;
     int jstar;
@@ -94,7 +96,7 @@ int	nlog;
     int isp;
     int verbose;
     char cstr[16];
-    char *str;
+    char str[128];
 
     star = NULL;
     sc = *starcat;
@@ -104,37 +106,27 @@ int	nlog;
     else
 	verbose = 0;
 
+    /* Open catalog */
+    if (sc == NULL)
+	sc = binopen (bincat);
+    *starcat = sc;
+    if (sc == NULL)
+	return (0);
+
     /* If pathname is a URL, search and return */
-    if (!strncmp (bincat,"PPM",3) || !strncmp (bincat,"ppm",3)) {
-	if ((str = getenv("PPM_PATH")) != NULL ) {
-	    if (!strncmp (str, "http:",5)) {
-		return (webread (str,bincat,distsort,cra,cdec,dra,ddec,drad,
-			sysout,eqout,epout,mag1,mag2,nstarmax,
-			tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
-		}
-	    else if (strlen (str) < 64)
-		strcpy (bindir, str);
-            }
+    if (sc->caturl != NULL) {
+	*starcat = NULL;
+	strcpy (str, sc->caturl);
+	free (sc);
+	return (webread (str,bincat,distsort,cra,cdec,dra,ddec,drad,
+		sysout,eqout,epout,mag1,mag2,nstarmax,
+		tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
 	}
-    if (!strncmp (bincat,"SAO",3) || !strncmp (bincat,"sao",3)) {
-	if ((str = getenv("SAO_PATH")) != NULL ) {
-	    if (!strncmp (str, "http:",5)) {
-		return (webread (str,bincat,distsort,cra,cdec,dra,ddec,drad,
-			sysout,eqout,epout,mag1,mag2,nstarmax,
-			tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
-		}
-	    else if (strlen (str) < 64)
-		strcpy (bindir, str);
-            }
-	}
-    if ((str = getenv("WCS_BINDIR")) != NULL ) {
-	if (!strncmp (str, "http:",5)) {
-	    return (webread (str,bincat,distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nstarmax,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
-            }
-	else if (strlen (str) < 64)
-	    strcpy (bindir, str);
+
+    if (sc->nstars <= 0) {
+	binclose (sc);
+	sc = NULL;
+	return (0);
 	}
 
     /* Keep mag1 the smallest magnitude */
@@ -146,18 +138,6 @@ int	nlog;
 
     /* Logging interval */
     nstar = 0;
-
-    /* Open catalog file */
-    if (sc == NULL)
-	sc = binopen (bincat);
-    *starcat = sc;
-    if (sc == NULL)
-	return (0);
-    if (sc->nstars <= 0) {
-	binclose (sc);
-	sc = NULL;
-	return (0);
-	}
 
     /* Allocate space for distances from search center */
     if (nstarmax > 10)
@@ -469,46 +449,24 @@ int	nlog;
     char *objname;
     struct StarCat *starcat;
     struct Star *star;
-    char *str;
+    char str[128];
     int binset;
-
-    /* If pathname is a URL, search and return */
-    binset = 0;
-    if (!strncmp (bincat,"PPM",3) || !strncmp (bincat,"ppm",3)) {
-	if ((str = getenv("PPM_PATH")) != NULL ) {
-	    if (!strncmp (str, "http:",5)) {
-		return (webrnum (str,bincat,nnum,sysout,eqout,epout,
-			tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
-		}
-	    else if (strlen (str) < 64) {
-		strcpy (bindir, str);
-		binset = 1;
-		}
-            }
-	}
-    if (!strncmp (bincat,"SAO",3) || !strncmp (bincat,"sao",3)) {
-	if ((str = getenv("SAO_PATH")) != NULL ) {
-	    if (!strncmp (str, "http:",5)) {
-		return (webrnum (str,bincat,nnum,sysout,eqout,epout,
-			tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
-		}
-	    else if (strlen (str) < 64) {
-		strcpy (bindir, str);
-		binset = 1;
-		}
-            }
-	}
-    if (!binset && (str = getenv("WCS_BINDIR")) != NULL ) {
-	if (!strncmp (str, "http:",5)) {
-	    return (webrnum (str,bincat,nnum,sysout,eqout,epout,
-		    tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
-            }
-	}
 
     nstar = 0;
     starcat = binopen (bincat);
     if (starcat == NULL)
 	return (0);
+
+
+    /* If pathname is a URL, search and return */
+    if (starcat->caturl != NULL) {
+	strcpy (str, starcat->caturl);
+	free (starcat);
+	return (webrnum (str,bincat,nnum,sysout,eqout,epout,
+		tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,nlog));
+	}
+
+    /* If no stars in catalog, print error message and return */
     if (starcat->nstars <= 0) {
 	free ((void *)starcat);
 	fprintf (stderr,"BINRNUM: Cannot read catalog %s\n", bincat);
@@ -640,15 +598,61 @@ char *bincat;	/* Binary catalog file name */
     int nr, lfile;
     char *binfile;
     char binpath[128];	/* Full pathname for catalog file */
-    int lf, nb;
+    int lf, nb, binset;
+    char *str;
 
-    /* Find length of binary catalog */
-    lfile = binsize (bincat);
+    sc = (struct StarCat *) calloc (1, sizeof (struct StarCat));
 
-    /* Check for existence of catalog */
+    /* Find length of binary catalog, if in working directory */
+    lfile = binsize (binpath);
+
+    /* Set catalog directory; if pathname is a URL, return */
+    binset = 0;
+    if (!strncmp (bincat,"PPM",3) || !strncmp (bincat,"ppm",3)) {
+	if ((str = getenv("PPM_PATH")) != NULL ) {
+	    if (!strncmp (str, "http:",5)) {
+		sc->caturl = str;
+		}
+	    else if (strlen (str) < 64) {
+		strcpy (bindir, str);
+		binset = 1;
+		}
+            }
+	}
+    if (!strncmp (bincat,"SAO",3) || !strncmp (bincat,"sao",3)) {
+	if ((str = getenv("SAO_PATH")) != NULL ) {
+	    if (!strncmp (str, "http:",5)) {
+		sc->caturl = str;
+		}
+	    else if (strlen (str) < 64) {
+		strcpy (bindir, str);
+		binset = 1;
+		}
+            }
+	}
+    if (!binset && (str = getenv("WCS_BINDIR")) != NULL ) {
+	if (!strncmp (str, "http:",5)) {
+	    sc->caturl = str;
+            }
+	else if (strlen (str) < 64)
+	    strcpy (bindir, str);
+	}
+
+    /* Set up catalog information and return if over web */
+    if (sc->caturl != NULL) {
+	sc->coorsys = 0;
+	sc->epoch = 0.0;
+	sc->equinox = 0.0;
+	if (!strncmp (bincat, "SAO", 3) || !strncmp (bincat, "PPM", 3))
+	   sc->mprop = 1;
+	else
+	   sc->mprop = 0;
+	return (sc);
+	}
+
+    /* Prepend directory name file not in working directory */
     if (lfile < 2) {
 
-	/* Prepend directory name file not in working directory */
 	strcpy (binpath, bindir);
 	strcat (binpath, "/");
 	strcat (binpath, bincat);
@@ -664,11 +668,11 @@ char *bincat;	/* Binary catalog file name */
     /* Open binary catalog */
     if ((fcat = open (binpath, O_RDONLY)) < 3) {
 	fprintf (stderr,"BINOPEN: Binary catalog %s cannot be read\n",binpath);
+	free (sc);
 	return (NULL);
 	}
 
     /* Read binary catalog header information */
-    sc = (struct StarCat *) calloc (1, sizeof (struct StarCat));
     nr = (int) read (fcat, sc, 28);
     if (nr < 28) {
 	fprintf (stderr,"BINOPEN: read only %d / %d bytes of file %s\n",
@@ -1178,4 +1182,7 @@ char *from, *last, *to;
  *
  * Jan 11 2001	Print all messages to stderr
  * Feb 14 2001	Correctly full-circle limits at poles
+ * Mar 19 2001	Check WCS_BINDIR if PPM_PATH or SAO_PATH not set in binread()
+ * Mar 22 2001	Move path environment variable reading to binopen()
+ * Mar 23 2001	Set system, equinox, and epoch to 0 in binopen if using Web
  */

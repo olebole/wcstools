@@ -1,3 +1,15 @@
+Version 2.9.3 (March 23, 2000)
+This is a bug-fix release which fixes compilation problems on HP-UX and Linux
+and problems with access to the SAO and PPM catalogs under certain conditions.
+binread.c: fixed use of PPM_PATH, SAO_PATH, and WCS_BINDIR in binread()
+catutil.c: Fixed PPMra definition in RefCat()
+getcol.c: dropped declared arguments from one subroutine declaration
+webread.c: dropped declared arguments from one subroutine declaration
+           fixed webrnum() so it works
+scat.c: fixed handling of epoch when not specified
+wcs.h, wcs.c, wcsinit.c, wcslib.c, cel.c:  Fixed minor bugs which caused
+Linux compilation errors.
+
 Version 2.9.2 (March 12, 2001)
 fitsfile.c, fitswcs.c: Change WCS selection character from : to %
 fitsfile.c: Fix bug which caused crash on reading multi-extension FITS files

@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** March 9, 2001
+ *** March 20, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -1096,6 +1096,7 @@ char	*filename0;	/* Name of input FITS image file */
     int nbhead0;	/* Length of input file image header */
     int lhead0;
     int nbbuff, nbuff, ibuff, nbr, nbdata;
+    int fitsheadsize();
 
     /* Compute size of image in bytes using relevant header parameters */
     naxis = 1;
@@ -1429,4 +1430,5 @@ char	*header;	/* FITS header */
  * Mar  8 2001	Use % instead of : for WCS specification in file name
  * Mar  9 2001	Fix bug so primary header is always appended to secondary header
  * Mar  9 2001	Change NEXTEND to NUMEXT in appended primary header
+ * Mar 20 2001	Declare fitsheadsize() in fitschead()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** March 1, 2001
+ *** March 19, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -164,7 +164,7 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	strcpy (title, "PPM Catalog Stars");
 	starcat = binopen ("PPM");
 	if (starcat == NULL)
-	    starcat = binopen ("SAOra");
+	    starcat = binopen ("PPMra");
 	if (starcat) {
 	    *syscat = starcat->coorsys;
 	    *eqcat = starcat->equinox;
@@ -1531,4 +1531,5 @@ char	*isp;	/* Spectral type */
  * Jan 17 2001	Add vertical bar (|) as column separator
  * Feb 28 2001	Separate .usno stars from usa stars
  * Mar  1 2001	Add CatName()
+ * Mar 19 2001	Fix setting of ra-sorted PPM catalog in RefCat()
  */

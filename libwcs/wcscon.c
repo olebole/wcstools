@@ -1,5 +1,5 @@
 /*** File wcscon.c
- *** January 11, 2001
+ *** March 21, 2001
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Some subroutines are based on Starlink subroutines by Patrick Wallace
 
@@ -1365,8 +1365,8 @@ int	idg=0;
  */
 
 static
-double bgal[3][3] = {
-	-0.066988739415,-0.872755765852,-0.483538914632,
+double bgal[3][3] =
+	{-0.066988739415,-0.872755765852,-0.483538914632,
 	 0.492728466075,-0.450346958020, 0.744584633283,
 	-0.867600811151,-0.188374601723, 0.460199784784};
 
@@ -1500,8 +1500,8 @@ double *dphi;	/* Galactic latitude (b2) in degrees
 	+cp.sq              +sp.sq              +cq		*/
 
 static
-double jgal[3][3] = {
-	-0.054875539726,-0.873437108010,-0.483834985808,
+double jgal[3][3] =
+	{-0.054875539726,-0.873437108010,-0.483834985808,
 	 0.494109453312,-0.444829589425, 0.746982251810,
 	-0.867666135858,-0.198076386122, 0.455983795705};
 
@@ -2092,4 +2092,5 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
  * Nov  6 2000	Update fk425 and fk524 algorithms to include parallax and rv
  *
  * Jan 11 2001	Print all messages to stderr
+ * Mar 21 2001	Move braces around bgal[] and jgal[] matrix initialization
  */

@@ -378,6 +378,7 @@
 *   $Id: wcs.c,v 2.14 1999/12/14 01:09:28 mcalabre Exp $
 *===========================================================================*/
 
+#include <stdio.h>
 #include <math.h>
 #include <string.h>
 #include "wcslib.h"
@@ -557,8 +558,8 @@ double pixcrd[];
          prj->flag = 0;
       }
 
-      if (err = celfwd(wcs->pcode, world[wcs->lng], world[wcs->lat], cel,
-                   phi, theta, prj, &imgcrd[wcs->lng], &imgcrd[wcs->lat])) {
+      if ((err = celfwd(wcs->pcode, world[wcs->lng], world[wcs->lat], cel,
+                   phi, theta, prj, &imgcrd[wcs->lng], &imgcrd[wcs->lat]))) {
          return err;
       }
 
@@ -691,8 +692,8 @@ double world[];
          prj->flag = 0;
       }
 
-      if (err = celrev(wcs->pcode, imgcrd[wcs->lng], imgcrd[wcs->lat], prj,
-                   phi, theta, cel, &world[wcs->lng], &world[wcs->lat])) {
+      if ((err = celrev(wcs->pcode, imgcrd[wcs->lng], imgcrd[wcs->lat], prj,
+                   phi, theta, cel, &world[wcs->lng], &world[wcs->lat]))) {
          return err;
       }
    }
@@ -772,8 +773,8 @@ double pixcrd[];
          /* Check whether the solution interval is a crossing interval. */
          lat0 = span[0];
          world[wcs->lat] = lat0;
-         if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta, prj,
-                          imgcrd, lin, pixcrd)) {
+         if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta, prj,
+                          imgcrd, lin, pixcrd))) {
             return err;
          }
          d0 = pixcrd[mixpix] - pixmix;
@@ -783,8 +784,8 @@ double pixcrd[];
 
          lat1 = span[1];
          world[wcs->lat] = lat1;
-         if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta, prj,
-                          imgcrd, lin, pixcrd)) {
+         if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta, prj,
+                          imgcrd, lin, pixcrd))) {
             return err;
          }
          d1 = pixcrd[mixpix] - pixmix;
@@ -810,8 +811,8 @@ double pixcrd[];
                lat0 -= step;
                if (lat0 < span[0]) lat0 = span[0];
                world[wcs->lat] = lat0;
-               if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
-                                prj, imgcrd, lin, pixcrd)) {
+               if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
+                                prj, imgcrd, lin, pixcrd))) {
                   return err;
                }
                d0 = pixcrd[mixpix] - pixmix;
@@ -851,8 +852,8 @@ double pixcrd[];
 
                   lat = lat0 + lambda*(lat1 - lat0);
                   world[wcs->lat] = lat;
-                  if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
-                                   prj, imgcrd, lin, pixcrd)) {
+                  if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
+                                   prj, imgcrd, lin, pixcrd))) {
                      return err;
                   }
                   d = pixcrd[mixpix] - pixmix;
@@ -894,8 +895,8 @@ double pixcrd[];
                if (lat1 > span[1]) lat1 = span[1];
 
                world[wcs->lat] = lat0;
-               if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
-                                prj, imgcrd, lin, pixcrd)) {
+               if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
+                                prj, imgcrd, lin, pixcrd))) {
                   return err;
                }
                d0 = fabs(pixcrd[mixpix] - pixmix);
@@ -903,8 +904,8 @@ double pixcrd[];
                d  = dmin;
 
                world[wcs->lat] = lat1;
-               if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
-                                prj, imgcrd, lin, pixcrd)) {
+               if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
+                                prj, imgcrd, lin, pixcrd))) {
                   return err;
                }
                d1 = fabs(pixcrd[mixpix] - pixmix);
@@ -912,8 +913,8 @@ double pixcrd[];
                for (iter = 0; iter < niter; iter++) {
                   lat0m = (lat0 + lat)/2.0;
                   world[wcs->lat] = lat0m;
-                  if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
-                                   prj, imgcrd, lin, pixcrd)) {
+                  if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
+                                   prj, imgcrd, lin, pixcrd))) {
                      return err;
                   }
                   d0m = fabs(pixcrd[mixpix] - pixmix);
@@ -922,8 +923,8 @@ double pixcrd[];
 
                   lat1m = (lat1 + lat)/2.0;
                   world[wcs->lat] = lat1m;
-                  if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
-                                   prj, imgcrd, lin, pixcrd)) {
+                  if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
+                                   prj, imgcrd, lin, pixcrd))) {
                      return err;
                   }
                   d1m = fabs(pixcrd[mixpix] - pixmix);
@@ -956,8 +957,8 @@ double pixcrd[];
          /* Check whether the solution interval is a crossing interval. */
          lng0 = span[0];
          world[wcs->lng] = lng0;
-         if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta, prj,
-                          imgcrd, lin, pixcrd)) {
+         if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta, prj,
+                          imgcrd, lin, pixcrd))) {
             return err;
          }
          d0 = pixcrd[mixpix] - pixmix;
@@ -967,8 +968,8 @@ double pixcrd[];
 
          lng1 = span[1];
          world[wcs->lng] = lng1;
-         if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta, prj,
-                          imgcrd, lin, pixcrd)) {
+         if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta, prj,
+                          imgcrd, lin, pixcrd))) {
             return err;
          }
          d1 = pixcrd[mixpix] - pixmix;
@@ -993,8 +994,8 @@ double pixcrd[];
                lng0 -= step;
                if (lng0 < span[0]) lng0 = span[0];
                world[wcs->lng] = lng0;
-               if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
-                          prj, imgcrd, lin, pixcrd)) {
+               if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
+                          prj, imgcrd, lin, pixcrd))) {
                   return err;
                }
                d0 = pixcrd[mixpix] - pixmix;
@@ -1034,8 +1035,8 @@ double pixcrd[];
 
                   lng = lng0 + lambda*(lng1 - lng0);
                   world[wcs->lng] = lng;
-                  if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
-                                   prj, imgcrd, lin, pixcrd)) {
+                  if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
+                                   prj, imgcrd, lin, pixcrd))) {
                      return err;
                   }
                   d = pixcrd[mixpix] - pixmix;
@@ -1077,8 +1078,8 @@ double pixcrd[];
                if (lng1 > span[1]) lng1 = span[1];
 
                world[wcs->lng] = lng0;
-               if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
-                                prj, imgcrd, lin, pixcrd)) {
+               if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
+                                prj, imgcrd, lin, pixcrd))) {
                   return err;
                }
                d0 = fabs(pixcrd[mixpix] - pixmix);
@@ -1086,8 +1087,8 @@ double pixcrd[];
                d  = dmin;
 
                world[wcs->lng] = lng1;
-               if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
-                                prj, imgcrd, lin, pixcrd)) {
+               if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
+                                prj, imgcrd, lin, pixcrd))) {
                   return err;
                }
                d1 = fabs(pixcrd[mixpix] - pixmix);
@@ -1095,8 +1096,8 @@ double pixcrd[];
                for (iter = 0; iter < niter; iter++) {
                   lng0m = (lng0 + lng)/2.0;
                   world[wcs->lng] = lng0m;
-                  if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
-                                   prj, imgcrd, lin, pixcrd)) {
+                  if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
+                                   prj, imgcrd, lin, pixcrd))) {
                      return err;
                   }
                   d0m = fabs(pixcrd[mixpix] - pixmix);
@@ -1105,8 +1106,8 @@ double pixcrd[];
 
                   lng1m = (lng1 + lng)/2.0;
                   world[wcs->lng] = lng1m;
-                  if (err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
-                                   prj, imgcrd, lin, pixcrd)) {
+                  if ((err = wcsfwd(ctype, wcs, world, crval, cel, phi, theta,
+                                   prj, imgcrd, lin, pixcrd))) {
                      return err;
                   }
                   d1m = fabs(pixcrd[mixpix] - pixmix);
@@ -1178,8 +1179,8 @@ double pixcrd[];
       /* Feed native coordinates to wcsfwd() with cel0 set to unity. */
       world[wcs->lng] = -180.0;
       world[wcs->lat] = *theta;
-      if (err = wcsfwd(ctype, wcs, world, crval, &cel0, phi, theta, prj,
-                       imgcrd, lin, pixcrd)) {
+      if ((err = wcsfwd(ctype, wcs, world, crval, &cel0, phi, theta, prj,
+                       imgcrd, lin, pixcrd))) {
          return err;
       }
       d0 = pixcrd[mixpix] - pixmix;
@@ -1197,8 +1198,8 @@ double pixcrd[];
       for (k = -179; k <= 180; k++) {
          phi1 = (float) k;
          world[wcs->lng] = phi1;
-         if (err = wcsfwd(ctype, wcs, world, crval, &cel0, phi, theta, prj,
-                          imgcrd, lin, pixcrd)) {
+         if ((err = wcsfwd(ctype, wcs, world, crval, &cel0, phi, theta, prj,
+                          imgcrd, lin, pixcrd))) {
             return err;
          }
          d1 = pixcrd[mixpix] - pixmix;
@@ -1229,8 +1230,8 @@ double pixcrd[];
          }
  
          world[wcs->lng] = phi0 + lambda*(phi1 - phi0);
-         if (err = wcsfwd(ctype, wcs, world, crval, &cel0, phi, theta, prj,
-                          imgcrd, lin, pixcrd)) {
+         if ((err = wcsfwd(ctype, wcs, world, crval, &cel0, phi, theta, prj,
+                          imgcrd, lin, pixcrd))) {
             return err;
          }
          d = pixcrd[mixpix] - pixmix;
@@ -1261,4 +1262,7 @@ double pixcrd[];
 }
 /* Dec 20 1999	Doug Mink - Change signbit() to signb() and always define it
  * Dec 20 1999	Doug Mink - Include wcslib.h, which includes wcs.h, wcstrig.h
+ *
+ * Mar 20 2001	Doug Mink - Include stdio.h for sprintf()
+ * Mar 20 2001	Doug Mink - Add () around err assignments in if statements
  */

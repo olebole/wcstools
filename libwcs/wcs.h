@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
- * March 9, 2001
+ * March 20, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 #ifndef _wcs_h_
@@ -388,9 +388,9 @@ extern "C" {
 			   Input in sys1, returned in sys2 */
 	double *dphi,	/* Latitude or declination in degrees
 			   Input in sys1, returned in sys2 */
-	double *ptheta,	/* Longitude or right ascension proper motion in degrees/year
+	double *ptheta,	/* Longitude or right ascension proper motion in deg/year
 			   Input in sys1, returned in sys2 */
-	double *pphi,	/* Latitude or declination proper motion in degrees/year
+	double *pphi,	/* Latitude or declination proper motion in deg/year */
 	double *px,	/* Parallax in arcseconds */
 	double *rv);	/* Radial velocity in km/sec */
     void wcsconp(	/* Convert between coordinate systems and equinoxes */
@@ -582,4 +582,5 @@ void wcscstr();		/* Return system string from system code, equinox, epoch */
  * Jan 17 2001	Add idpix and ndpix for trim section, ltm for readout rotation
  * Jan 31 2001	Add wcsinitn(), wcsninitn(), wcsinitc(), and wcsninitc()
  * Feb 20 2001	Add wcs->wcs to main data structure
+ * Mar 20 2001	Close unclosed comment in wcsconv() argument list
  */

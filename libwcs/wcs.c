@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** February 20, 2001
+ *** March 22, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -84,8 +84,14 @@ void
 wcsfree (wcs)
 struct WorldCoor *wcs;	/* WCS structure */
 {
-    if (nowcs (wcs))
+    if (nowcs (wcs)) {
+
+	/* Free WCS structure if allocated but not filled */
+	if (wcs)
+	    free (wcs);
+
 	return;
+	}
 
     freewcscom (wcs);
     if (wcs->lin.imgpix != NULL)
@@ -1873,47 +1879,52 @@ int	lstr;		/* Length of world coordinate string (returned) */
 
 	/* Label ecliptic coordinates */
 	else if (wcs->sysout == WCS_ECLIPTIC) {
-	    if (lstr > 9 && wcs->printsys)
+	    if (lstr > 9 && wcs->printsys) {
 		if (wcs->tabsys)
 		    strcat (wcstring,"	ecliptic");
 		else
 		    strcat (wcstring," ecliptic");
+		}
 	    }
 
 	/* Label planet coordinates */
 	else if (wcs->sysout == WCS_PLANET) {
-	    if (lstr > 9 && wcs->printsys)
+	    if (lstr > 9 && wcs->printsys) {
 		if (wcs->tabsys)
 		    strcat (wcstring,"	planet");
 		else
 		    strcat (wcstring," planet");
+		}
 	    }
 
 	/* Label alt-az coordinates */
 	else if (wcs->sysout == WCS_ALTAZ) {
-	    if (lstr > 7 && wcs->printsys)
+	    if (lstr > 7 && wcs->printsys) {
 		if (wcs->tabsys)
 		    strcat (wcstring,"	alt-az");
 		else
 		    strcat (wcstring," alt-az");
+		}
 	    }
 
 	/* Label north pole angle coordinates */
 	else if (wcs->sysout == WCS_NPOLE) {
-	    if (lstr > 7 && wcs->printsys)
+	    if (lstr > 7 && wcs->printsys) {
 		if (wcs->tabsys)
 		    strcat (wcstring,"	long-npa");
 		else
 		    strcat (wcstring," long-npa");
+		}
 	    }
 
 	/* Label south pole angle coordinates */
 	else if (wcs->sysout == WCS_SPA) {
-	    if (lstr > 7 && wcs->printsys)
+	    if (lstr > 7 && wcs->printsys) {
 		if (wcs->tabsys)
 		    strcat (wcstring,"	long-spa");
 		else
 		    strcat (wcstring," long-spa");
+		}
 	    }
 
 	/* Label equatorial coordinates */
@@ -2645,4 +2656,6 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Jul  3 2000	Initialize wcscrd[] to zero in wcspix()
  *
  * Feb 20 2001	Add recursion to wcs2pix() and pix2wcs() for dependent WCS's
+ * Mar 20 2001	Add braces to avoid ambiguity in if/else groupings
+ * Mar 22 2001	Free WCS structure in wcsfree even if it is not filled
  */

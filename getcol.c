@@ -1,5 +1,5 @@
 /* File getcol.c
- * January 17, 2001
+ * March 19, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -898,7 +898,9 @@ char	*lfile;		/* Name of file with lines to list */
 }
 
 static int
-intcompare (int *i, int *j)
+intcompare (i, j)
+
+int *i, *j;
 {
     if (*i > *j)
 	return (1);
@@ -1005,4 +1007,5 @@ char *string;
  *
  * Jan 17 2001	Add -d option to set number of output decimal places
  * Jan 17 2001	Add a, s, m, d for add, subtract, multiply, divide const or col
+ * Mar 19 2001	Drop type declarations from intcompare argument list
  */

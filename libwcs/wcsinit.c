@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinitm.c
- *** February 28, 2001
+ *** March 21, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -214,7 +214,6 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     char temp[48];
     */
     char wcsname[16];	/* Name of WCS depended on by current WCS */
-    char *ic;
     double mjd;
     double rot;
     int twod;
@@ -727,6 +726,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	/* Use center of detector array as reference pixel
 	else if (ksearch (hstring,"DETSIZE") != NULL ||
 		 ksearch (hstring,"DETSEC") != NULL) {
+	    char *ic;
 	    hgets (hstring, "DETSIZE", 32, temp);
 	    ic = strchr (temp, ':');
 	    if (ic != NULL)
@@ -807,7 +807,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	}
 
     else {
-	if (mchar == NULL)
+	if (mchar == (char) 0)
 	    setwcserr ("WCSINIT: No image scale");
 	else
 	    setwcserr ("WCSINIT: No image scale for WCS %c", mchar);
@@ -1041,4 +1041,6 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Feb 20 2001	Implement WCSDEPx nested WCS's
  * Feb 23 2001	Initialize all 4 terms of CD matrix
  * Feb 28 2001	Fix bug which read CRPIX1 into CRPIX2
+ * Mar 20 2001	Compare mchar to (char)0, not null
+ * Mar 21 2001	Move ic declaration into commented out code
  */

@@ -1,5 +1,5 @@
 /* File scat.c
- * March 1, 2001
+ * March 23, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -620,6 +620,22 @@ char **av;
 	    }
 	}
     else
+	if (sysout0 && !syscoor)
+	    syscoor = sysout0;
+	if (syscoor) {
+	    if (epoch0 == 0.0) {
+		if (syscoor == WCS_B1950)
+		    epoch0 = 1950.0;
+		else
+		    epoch0 = 2000.0;
+		}
+	    if (eqout == 0.0) {
+		if (syscoor == WCS_B1950)
+		    eqout = 1950.0;
+		else
+		    eqout = 2000.0;
+		}
+	    }
 	ListCat (ranges, eqout);
 
     for (i = 0; i < ncat; i++) {
@@ -986,9 +1002,15 @@ double	eqout;		/* Equinox for output coordinates */
 	/* Set output coordinate system from searched catalog if not set yet */
 	if (!sysout)
 	    sysout = sysref;
-	if (!eqout)
+	if (!sysout)
+	    sysout = WCS_J2000;
+	if (eqout == 0.0)
 	    eqout = eqref;
-	if (!epout)
+	if (eqout == 0.0)
+	    eqout = 2000.0;
+	if (epout == 0.0)
+	    epout = eqout;
+	if (epout == 0.0)
 	    epout = eqout;
 
 	/* Set degree flag for output */
@@ -2695,4 +2717,6 @@ char *parstring;
  * Mar  1 2001	If printing x and y, add .match extension to output file
  * Mar  1 2001	Print output file as tab/Starbase only if -t
  * Mar  1 2001	Add -z option to append to output file
+ * Mar 23 2001	If catalog system, equinox, and epoch not set, set to J2000
+ * Mar 23 2001	Set epoch and equinox to match search coords if not set
  */
