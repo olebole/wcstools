@@ -1,3 +1,10 @@
+Version 2.8.4 (September 6, 2000)
+imstack: Add -o option to set output filename
+scat: Print leading zeroes in ID numbers for -f option search centers
+i2f: If pixel file not found, look in same directory as header file
+catutil.c Add option in CatNum to print leading zeroes if nnfld > 0
+imhfile.c: Use header directory if pixel file not found at its pathname
+
 Version 2.8.3 (August 3, 2000)
 setpix:  Add -a, -s, -m, and -d options to operate on existing pixel values
 in an image sections with a constant.

@@ -1,5 +1,5 @@
 /* File libwcs/catutil.c
- * July 26, 2000
+ * September 1, 2000
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -384,29 +384,51 @@ char	*numstr;	/* Formatted number (returned) */
 
     /* USNO A1.0, A2.0, SA1.0, or SA2.0 Catalogs */
     if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
-	refcat == UAC  || refcat == UA1  || refcat == UA2)
-	sprintf (numstr, "%13.8f", dnum);
+	refcat == UAC  || refcat == UA1  || refcat == UA2) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%013.8f", dnum);
+	else
+	    sprintf (numstr, "%13.8f", dnum);
+	}
 
     /* USNO UJ 1.0 Catalog */
-    else if (refcat == UJC)
-	sprintf (numstr, "%12.7f", dnum);
+    else if (refcat == UJC) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%012.7f", dnum);
+	else
+	    sprintf (numstr, "%12.7f", dnum);
+	}
 
     /* HST Guide Star Catalog */
-    else if (refcat == GSC)
-	sprintf (numstr, "%9.4f", dnum);
+    else if (refcat == GSC) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%09.4f", dnum);
+	else
+	    sprintf (numstr, "%9.4f", dnum);
+	}
 
     /* SAO, PPM, or IRAS Point Source Catalogs (TDC binary format) */
-    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC)
-	sprintf (numstr, "%6d", (int)(dnum+0.5));
+    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%06d", (int)(dnum+0.5));
+	else
+	    sprintf (numstr, "%6d", (int)(dnum+0.5));
+	}
 
     /* Tycho, Hipparcos, or ACT catalogs */
-    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT)
-	sprintf (numstr, "%10.5f", dnum);
+    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%010.5f", dnum);
+	else
+	    sprintf (numstr, "%10.5f", dnum);
+	}
 
     /* Starbase tab-separated, TDC binary, or TDC ASCII catalogs */
     else if (nndec > 0) {
 	if (nnfld > 0)
 	    sprintf (nform,"%%%d.%df", nnfld, nndec);
+	else if (nnfld < 0)
+	    sprintf (nform,"%%0%d.%df", -nnfld, nndec);
 	else
 	    sprintf (nform,"%%%d.%df", nndec+5, nndec);
 	sprintf (numstr, nform, dnum);
@@ -417,6 +439,10 @@ char	*numstr;	/* Formatted number (returned) */
 	}
     else if (nnfld > 0) {
 	sprintf (nform,"%%%dd", nnfld);
+	sprintf (numstr, nform, (int)(dnum+0.49));
+	}
+    else if (nnfld < 0) {
+	sprintf (nform,"%%0%dd", -nnfld);
 	sprintf (numstr, nform, (int)(dnum+0.49));
 	}
     else
@@ -1314,4 +1340,5 @@ char	*isp;	/* Spectral type */
  * Jun 26 2000	Add XY image coordinate system
  * Jul 26 2000	Include math.h to get strtod() on SunOS machines
  * Aug  2 2000	Allow up to 14 digits in catalog IDs
+ * Sep  1 2000	Add option in CatNum to print leading zeroes if nnfld > 0
  */

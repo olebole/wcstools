@@ -1,8 +1,8 @@
 /* File imhfile.c
- * June 12, 2000
+ * September 6, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
- * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
+ * Module:      imhfile.c (IRAF .imh image file reading and writing)
  * Purpose:     Read and write IRAF image files (and translate headers)
  * Subroutine:  check_immagic (irafheader, teststring )
  *		Verify that file is valid IRAF imhdr or impix
@@ -241,28 +241,35 @@ char	*fitsheader;	/* FITS image header (filled) */
     char *image;
     int nbr, nbimage;
     char *pixheader;
-    int imhver, lpixhead;
+    int imhver, lpixhead, len;
     char pixname[SZ_IM2PIXFILE+1];
+    char newpixname[SZ_IM2HDRFILE+1];
 
     /* Convert pixel file name to character string */
     hgetm (fitsheader, "PIXFIL", SZ_IM2PIXFILE, pixname);
     hgeti4 (fitsheader, "PIXOFF", &lpixhead);
 
-    if ((bang = strchr (pixname, '!')) != NULL ) {
+    /* Open pixel file, ignoring machine name if present */
+    if ((bang = strchr (pixname, '!')) != NULL )
 	fd = fopen (bang + 1, "r");
-	if (!fd) {
-	    (void)fprintf(stderr,
-		  "IRAFRIMAGE: Cannot open IRAF pixel file %s\n", pixname);
-	    return (NULL);
-	    }
-	}
-    else {
+    else
 	fd = fopen (pixname, "r");
-	if (!fd) {
-	    (void)fprintf(stderr,
-		  "IRAFRIMAGE: Cannot open IRAF pixel file %s\n", pixname);
-	    return (NULL);
-	    }
+
+    /* If not at pathname in header, try same directory as header file */
+    if (!fd) {
+	hgetm (fitsheader, "IMHFIL", SZ_IM2HDRFILE, newpixname);
+	len = strlen (newpixname);
+	newpixname[len-3] = 'p';
+	newpixname[len-2] = 'i';
+	newpixname[len-1] = 'x';
+	fd = fopen (newpixname, "r");
+	}
+
+    /* Print error message and exit if pixel file is not found */
+    if (!fd) {
+	(void)fprintf(stderr,
+	     "IRAFRIMAGE: Cannot open IRAF pixel file %s\n", pixname);
+	return (NULL);
 	}
 
     /* Read pixel header */
@@ -982,7 +989,7 @@ char	*hdrname;	/* IRAF image header file pathname */
 	}
 
     /* Pixel file has same name as header file, but with .pix extension */
-    else if (strncmp (pixname, "HDR", 3) == 0 ) {
+    else if (strncmp (pixname, "HDR", 3) == 0) {
 
 	/* load entire header name string into name buffer */
 	(void)strncpy (newpixname, hdrname, SZ_IM2PIXFILE);
@@ -1817,4 +1824,5 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * May  1 2000	Fix code for updating pixel file name with HDR$ in fits2iraf()
  * Jun  2 2000	Drop unused variables in fits2iraf() after lint
  * Jun 12 2000	If pixel filename has no / or $, use same path as header file
+ * Sep  6 2000	Use header directory if pixel file not found at its pathname
  */

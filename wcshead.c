@@ -1,5 +1,5 @@
 /* File wcshead.c
- * June 21, 2000
+ * August 4, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -84,6 +84,7 @@ char **av;
 	    str = str + strlen (str) - 1;
 	    av++;
 	    ac--;
+	    break;
 
 	default:
 	    usage();
@@ -131,9 +132,10 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Print WCS part of FITS or IRAF image header\n");
     fprintf (stderr,"usage: wcshead [-htv] file.fit ...\n");
-    fprintf (stderr,"  -h: print CRVALs as hh:mm:ss dd:mm:ss\n");
-    fprintf (stderr,"  -t: print tab table output\n");
-    fprintf (stderr,"  -v: verbose\n");
+    fprintf (stderr,"  -h: Print CRVALs as hh:mm:ss dd:mm:ss\n");
+    fprintf (stderr,"  -t: Print tab table output\n");
+    fprintf (stderr,"  -v: Verbose\n");
+    fprintf (stderr, " -w: Print only first dimension, first and last values\n");
     fprintf (stderr,"  -z: Use AIPS classic WCS subroutines\n");
     exit (1);
 }
@@ -282,5 +284,6 @@ char	*filename;	/* FITS or IRAF image file name */
  * Nov 30 1999	Fix declaration of ListWCS()
  *
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
- * Jun 21 2000	Add option to print limits for 1-d WCS
+ * Jun 21 2000	Add -w option to print limits for 1-d WCS
+ * Aug  4 2000	Add -w option to printed option list
  */

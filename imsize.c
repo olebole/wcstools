@@ -1,5 +1,5 @@
 /* File imsize.c
- * February 15, 2000
+ * August 14, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -36,6 +36,7 @@ static int sysim = 0;
 static int printepoch = 0;
 static int printrange = 0;	/* Flag to print range rather than center */
 static int version = 0;		/* If 1, print only program name and version */
+static int ndec = 3;		/* Number of decimal places in non-angles */
 
 main (ac, av)
 int ac;
@@ -147,6 +148,13 @@ char **av;
 		}
 	    break;
 
+    	case 'n':	/* Number of decimal places in coordinates */
+    	    if (ac < 2)
+    		usage();
+    	    ndec = atoi (*++av);
+    	    ac--;
+    	    break;
+
     	case 'p':	/* Initial plate scale in arcseconds per pixel */
     	    if (ac < 2)
     		usage();
@@ -218,6 +226,7 @@ usage ()
     fprintf (stderr,"  -d: Format output as input to DSS getimage (optional size change)\n");
     fprintf (stderr,"  -e: Add epoch of image to output line\n");
     fprintf (stderr,"  -j: Output J2000 (J2000) coordinates (optional center)\n");
+    fprintf (stderr,"  -n: Number of decimal places in output (default 3)\n");
     fprintf (stderr,"  -p: Initial plate scale in arcsec per pixel (default 0)\n");
     fprintf (stderr,"  -r: Print range in RA and Dec\n");
     fprintf (stderr,"  -v: Verbose\n");
@@ -298,15 +307,28 @@ char *name;
 	}
 
     /* Convert to desired output coordinates */
-    wcscon (sysim, sysout, eqim, eqout, &cra, &cdec, wcs->epoch);
+    if (sysim < 5)
+	wcscon (sysim, sysout, eqim, eqout, &cra, &cdec, wcs->epoch);
 
     /* Image center */
-    ra2str (rstr, 16, cra, 3);
-    dec2str (dstr, 16, cdec, 2);
+    if (sysim < 5) {
+	ra2str (rstr, 16, cra, ndec);
+	dec2str (dstr, 16, cdec, ndec-1);
+	}
+    else {
+	num2str (rstr, cra, 0, ndec);
+	num2str (dstr, cdec, 0, ndec);
+	}
 
     /* Image size in arcminutes */
-    dra = 2.0 * dra * 60.0 * cos (degrad(cdec));
-    ddec = 2.0 * ddec * 60.0;
+    if (sysim > 4) {
+	dra = 2.0 * dra * 60.0 * cos (degrad(cdec));
+	ddec = 2.0 * ddec * 60.0;
+	}
+    else {
+	dra = 2.0 * dra * cos (degrad(cdec));
+	ddec = 2.0 * ddec;
+	}
 
     if (coorsys[0] == 0)
 	wcscstr (coorsys, wcs->syswcs, wcs->equinox, 0.0);
@@ -314,7 +336,11 @@ char *name;
 	wcsoutinit (wcs, coorsys);
 
     /* Print information */
-    if (frac > 0.0) {
+    if (sysim > 4) {
+	dra = dra * 3600.0;
+	ddec = ddec * 3600.0;
+	}
+    else if (frac > 0.0) {
 	dra = dra * frac;
 	ddec = ddec * frac;
 	}
@@ -326,19 +352,37 @@ char *name;
     /* Print coverage of image in right ascension and declination */
     if (printrange) {
 	wcsrange (wcs, &xmin, &xmax, &ymin, &ymax);
-	ra2str (ramin, 32, xmin, 3);
-	ra2str (ramax, 32, xmax, 3);
-	dec2str (decmin, 32, ymin, 3);
-	dec2str (decmax, 32, ymax, 3);
-	dx = wcs->xinc * 3600.0;
-	dy = wcs->yinc * 3600.0;
+	if (sysim < 5) {
+	    ra2str (ramin, 32, xmin, ndec);
+	    ra2str (ramax, 32, xmax, ndec);
+	    dec2str (decmin, 32, ymin, ndec-1);
+	    dec2str (decmax, 32, ymax, ndec-1);
+	    dx = wcs->xinc * 3600.0;
+	    dy = wcs->yinc * 3600.0;
+	    }
+	else {
+	    num2str (ramin, xmin, 0, ndec);
+	    num2str (ramax, xmax, 0, ndec);
+	    num2str (decmin, ymin, 0, ndec);
+	    num2str (decmax, ymax, 0, ndec);
+	    dx = wcs->xinc;
+	    dy = wcs->yinc;
+	    }
 	strcpy (blanks, "                                       ");
 	lfroot = strlen (fileroot);
 	blanks[lfroot-1] = 0;
-	printf ("%s RA:  %s -  %s %.4f arcsec/pix \n",
-		fileroot, ramin, ramax, dy);
-	printf ("%s Dec: %s - %s %.4f arcsec/pix %s\n",
-		blanks, decmin, decmax, dy, coorsys);
+	if (sysim < 5) {
+	    printf ("%s RA:  %s -  %s %.4f arcsec/pix \n",
+		    filename, ramin, ramax, dx);
+	    printf ("%s Dec: %s - %s %.4f arcsec/pix %s\n",
+		    blanks, decmin, decmax, dy, coorsys);
+	    }
+	else {
+	    printf ("%s X:  %s -  %s %.4f/pix \n",
+		    filename, ramin, ramax, dx);
+	    printf ("%s Y: %s - %s %.4f/pix %s\n",
+		    blanks, decmin, decmax, dy, coorsys);
+	    }
 	}
 
     /* Input for DSS GETIMAGE program */
@@ -428,4 +472,6 @@ char *name;
  *
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  * Feb 15 2000	Print size of image if no WCS
+ * Aug 14 2000	Reformat for LINEAR and other non-angular coordinates
+ * Aug 15 2000	Add -n option to set number of decimal places
  */

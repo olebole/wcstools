@@ -1,5 +1,5 @@
 /* File getcol.c
- * July 21, 2000
+ * August 8, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -42,6 +42,7 @@ static int nop=0;		/* Number of keyword values to operate on */
 static char **op;		/* Operations to check */
 static char **cop;		/* Operation characters */
 static void strclean();
+static int napp=0;		/* Number of lines to append */
 
 main (ac, av)
 int ac;
@@ -181,6 +182,13 @@ char **av;
 		counttok++;
 		break;
 
+	    case 'l':	/* Number of lines to append */
+		if (ac < 2)
+		    usage ();
+		napp = atoi (*++av);
+		ac--;
+		break;
+
 	    case 'm':	/* Compute mean of each numeric column */
 		meancol++;
 		break;
@@ -247,11 +255,12 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Extract specified columns from an ASCII table file\n");
-    fprintf (stderr,"Usage: [-amv][-n num][-r lines][-s num] filename [column number range]\n");
+    fprintf (stderr,"Usage: [-amv][-l num][-n num][-r lines][-s num] filename [column number range]\n");
     fprintf(stderr,"  -a: Sum numeric colmuns\n");
     fprintf(stderr,"  -c: Add count of number of lines in each column at end\n");
     fprintf(stderr,"  -h: Print Starbase tab table header\n");
     fprintf(stderr,"  -k: Print number of columns on first line\n");
+    fprintf(stderr,"  -l: Number of lines to add to each line\n");
     fprintf(stderr,"  -m: Compute mean of numeric columns\n");
     fprintf(stderr,"  -n: Number of lines to read, if not all\n");
     fprintf(stderr,"  -o: OR conditions insted of ANDing them\n");
@@ -298,6 +307,7 @@ char	*lfile;		/* Name of file with lines to list */
     char numstr[32], numstr1[32];
     double dcond, dval;
     int pass;
+    int iapp;
     int jcond, jval;
     char *cwhite;
     char token[80];
@@ -413,6 +423,7 @@ char	*lfile;		/* Name of file with lines to list */
     if (ranges == NULL) {
 	iln = 0;
 	il = 0;
+	iapp = 0;
 	nextline = line;
 	for (ir = 0; ir < nread; ir++) {
 	    if (fgets (nextline, 1024, fd) == NULL)
@@ -428,8 +439,15 @@ char	*lfile;		/* Name of file with lines to list */
 		nextline = lastchar;
 		continue;
 		}
-	    else
+	    else if (iapp++ < napp) {
+		*lastchar = ' ';
+		nextline = lastchar + 1;
+		continue;
+		}
+	    else {
+		iapp = 0;
 		nextline = line;
+		}
 
 	    il++;
 
@@ -563,6 +581,7 @@ char	*lfile;		/* Name of file with lines to list */
 	    }
 	wfile = 0;
 	iln = 0;
+	iapp = 0;
 	nextline = line;
 	for (il = 0; il < nread; il++) {
 	    if (fgets (nextline, 1024, fd) == NULL)
@@ -579,8 +598,14 @@ char	*lfile;		/* Name of file with lines to list */
 		nextline = lastchar;
 		continue;
 		}
+	    else if (iapp++ < napp) {
+		*++lastchar = ' ';
+		nextline = lastchar + 1;
+		continue;
+		}
 	    else
 		nextline = line;
+		iapp = 0;
 
 	    /* Skip if line is not on list, if there is one */
 	    if (iline != NULL) {
@@ -920,4 +945,5 @@ char *string;
  * Apr  4 2000	Add option to operate on keyword values
  * Apr  5 2000	Simply echo lines starting with #
  * Jul 21 2000	Link lines with escaped linefeeds at end to next line
+ * Aug  8 2000	Add -l option to append lines without backslashes
  */

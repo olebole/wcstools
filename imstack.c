@@ -1,5 +1,5 @@
 /* File imstack.c
- * March 23, 2000
+ * September 8, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -19,11 +19,12 @@ static int StackImage();
 
 static int verbose = 0;		/* verbose flag */
 static int wfits = 1;		/* if 1, write FITS header before data */
-static char *newname = "imstack.fits";
+static char *newname = NULL;
 static int nfiles = 0;
 static int nbstack = 0;
 static FILE *fstack = NULL;
 static int version = 0;		/* If 1, print only program name and version */
+static char *outfile = NULL;	/* If not null, output filename */
 
 main (ac, av)
 int ac;
@@ -34,7 +35,7 @@ char **av;
     char *listfile;
     char *str;
     int readlist = 0;
-    int ntimes = 0;
+    int ntimes = 1;
     FILE *flist;
     int ifile, nblocks, nbytes, i;
     char *blanks;
@@ -61,13 +62,25 @@ char **av;
 
 	case 'i':	/* Write only image data to output file */
 	    wfits = 0;
-	    strcpy (newname,"imstack.out");
+	    if (newname == NULL) {
+		newname = calloc (16, 1);
+		strcpy (newname,"imstack.out");
+		}
 	    break;
 
 	case 'n':	/* Use each input file this many times */
 	    if (ac < 2)
                 usage ();
 	    ntimes = (int) atof (*++av);
+	    ac--;
+	    break;
+
+	case 'o':	/* Set output file name */
+	    if (ac < 2)
+                usage ();
+	    if (newname != NULL)
+		free (newname);
+	    newname = *++av;
 	    ac--;
 	    break;
 
@@ -84,6 +97,12 @@ char **av;
 	    break;
 	}
     }
+
+    /* If output file name has not yet been set, set it */
+    if (newname == NULL) {
+	newname = calloc (16, 1);
+	strcpy (newname,"imstack.fits");
+	}
 
     /* Find number of images to stack  and leave listfile open for reading */
     if (readlist) {
@@ -161,10 +180,11 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Stack FITS or IRAF images into single FITS image\n");
-    fprintf(stderr,"usage: imstack [-vi][-n num] file1.fit file2.fit ... filen.fit\n");
+    fprintf(stderr,"usage: imstack [-vi][-o filename][-n num] file1.fits file2.fits ... filen.fits\n");
     fprintf(stderr,"       imstack [-vi][-n num] @filelist\n");
     fprintf(stderr,"  -i: Do not put FITS header in output file\n");
     fprintf(stderr,"  -n: Use each file this many times\n");
+    fprintf(stderr,"  -o: Output filename\n");
     fprintf(stderr,"  -v: Verbose\n");
     exit (1);
 }
@@ -349,4 +369,6 @@ char	*filename;	/* FITS or IRAF file filename */
  *
  * Feb  7 2000	Add option to repeat files in stack
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
+ * Sep  6 2000	Add -o option to set output filename
+ * Sep  8 2000	Default ntimes to 1 so program works
  */

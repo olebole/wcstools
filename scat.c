@@ -1,5 +1,5 @@
 /* File scat.c
- * July 13, 2000
+ * September 1, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -951,7 +951,7 @@ double	eqout;		/* Equinox for output coordinates */
 			printf ("%s %s %s %s\n",
 				gobj[i], rastr, decstr, cstr);
 		    else {
-			CatNum (refcat, nnfld, nndec, gnum[i], numstr);
+			CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
 			printf ("%s_%s %s %s %s\n",
 				refcatname[icat],numstr,rastr,decstr,cstr);
 			}
@@ -2217,4 +2217,5 @@ int	ndec;	/* Number of decimal places in output */
  * Jul 13 2000	Add star catalog data structure to ctgread() argument list
  * Jul 13 2000	Precess search catalog sources to specified system and epoch
  * Jul 25 2000	Pass address of star catalog data structure address
+ * Sep  1 2000	Call CatNum with -nnfld to print leading zeroes on search ctrs
  */
