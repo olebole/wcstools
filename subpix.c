@@ -1,5 +1,5 @@
 /* File subpix.c
- * December 6, 1996
+ * January 15, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -104,7 +104,7 @@ char	**value;	/* value to insert into pixel */
     char *ext, *fname;
     char *editcom;
     char newline[1];
-    double dpix, dpix0;
+    double dpix, dpix0, dpix1;
     int bitpix,xdim,ydim;
 
     newline[0] = 10;
@@ -164,8 +164,8 @@ char	**value;	/* value to insert into pixel */
 	else
 	    dpix = atof (value[i]);
 	dpix0 = getpix (image, bitpix, xdim, ydim, x[i]-1, y[i]-1);
-	dpix = dpix0 - dpix;
-	putpix (image, bitpix, xdim, ydim, x[i]-1, y[i]-1, dpix);
+	dpix1 = dpix0 - dpix;
+	putpix (image, bitpix, xdim, ydim, x[i]-1, y[i]-1, dpix1);
 
 	/* Note addition as history line in header */
 	if (bitpix > 0) {
@@ -233,4 +233,5 @@ char	**value;	/* value to insert into pixel */
 }
 
 /* Dec  6 1996	New program
+ * Jan 15 1997	Print subtracted value rather than result in verbose mode
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** December 12, 1996
+ *** January 27, 1997
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -35,6 +35,11 @@
 #include <stdio.h>
 #include "fitshead.h"	/* FITS header extraction subroutines */
 #include <stdlib.h>
+#include <values.h>
+
+#ifdef USE_SAOLIB
+static int use_saolib=0;
+#endif
 
 char *hgetc ();
 
@@ -71,14 +76,25 @@ char *keyword;	/* character string containing the name of the variable
 int *ival;
 {
 char *value;
+double dval;
+int minint;
 
 /* Get value and comment from header string */
 	value = hgetc (hstring,keyword);
 
 /* Translate value from ASCII to binary */
 	if (value != NULL) {
+	    minint = -MAXINT - 1;
 	    strcpy (val, value);
-	    *ival = (int) atol (val);
+	    dval = atof (val);
+	    if (dval+0.001 > MAXINT)
+		*ival = MAXINT;
+	    else if (dval >= 0)
+		*ival = (int) (dval + 0.001);
+	    else if (dval-0.001 < minint)
+		*ival = minint;
+	    else
+		*ival = (int) (dval - 0.001);
 	    return (1);
 	    }
 	else {
@@ -102,6 +118,8 @@ char *keyword;	/* character string containing the name of the variable
 short *ival;
 {
 char *value;
+double dval;
+int minshort;
 
 /* Get value and comment from header string */
 	value = hgetc (hstring,keyword);
@@ -109,7 +127,16 @@ char *value;
 /* Translate value from ASCII to binary */
 	if (value != NULL) {
 	    strcpy (val, value);
-	    *ival = (short) atoi (val);
+	    dval = atof (val);
+	    minshort = -MAXSHORT - 1;
+	    if (dval+0.001 > MAXSHORT)
+		*ival = MAXSHORT;
+	    else if (dval >= 0)
+		*ival = (short) (dval + 0.001);
+	    else if (dval-0.001 < minshort)
+		*ival = minshort;
+	    else
+		*ival = (short) (dval - 0.001);
 	    return (1);
 	    }
 	else {
@@ -403,6 +430,13 @@ char *keyword0;
 	char *q1, *q2, *v1, *v2, *c1, *brack1, *brack2;
 	int ipar, i;
 
+#ifdef USE_SAOLIB
+	int iel=1, ip=1, nel, np, ier;
+	char *get_fits_head_str();
+
+	if( !use_saolib ){
+#endif
+
 	squot[0] = 39;
 	squot[1] = 0;
 	dquot[0] = 34;
@@ -516,6 +550,11 @@ char *keyword0;
 	    }
 
 	return (value);
+#ifdef USE_SAOLIB
+	} else {
+	    return(get_fits_head_str(keyword0, iel, ip, &nel, &np, &ier, hstring));
+	}
+#endif
 }
 
 
@@ -540,6 +579,13 @@ char *keyword;	/* character string containing the name of the variable
 {
     char *loc, *headnext, *headlast, *pval, *lc, *line;
     int icol, nextchar, lkey, nleft, lhstr;
+
+#ifdef USE_SAOLIB
+	int iel=1, ip=1, nel, np, ier;
+	char *get_fits_head_str();
+
+	if( !use_saolib ){
+#endif
 
     pval = 0;
 
@@ -593,6 +639,16 @@ char *keyword;	/* character string containing the name of the variable
 
 /* Return pointer to calling program */
 	return (pval);
+
+#ifdef USE_SAOLIB
+	}
+	else {
+	    if (get_fits_head_str(keyword,iel,ip,&nel,&np,&ier,hstring) != NULL)
+		return(hstring);
+	    else
+		return(NULL);
+	    }
+#endif
 }
 
 
@@ -769,6 +825,19 @@ char *string;	/* Character string */
 	return (0);
 }
 
+
+#ifdef USE_SAOLIB
+int set_saolib(hstring)
+    void *hstring;
+{
+    if( *((int *)hstring) == 142857 )
+	use_saolib = 1;
+    else
+	use_saolib = 0;
+}
+
+#endif
+
 /* Oct 28 1994	New program
  *
  * Mar  1 1995	Search for / after second quote, not first one
@@ -800,4 +869,7 @@ char *string;	/* Character string */
  * Nov 13 1996	Handle integer degrees correctly in STR2DEC
  * Nov 21 1996	Make changes for Linux thanks to Sidik Isani
  * Dec 12 1996	Add ISNUM to check to see whether strings are numbers
+ *
+ * Jan 22 1997	Add ifdefs for Eric Mandel (SAOtng)
+ * Jan 27 1997	Convert to integer through ATOF so exponents are recognized
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** December 13, 1996
+ *** January 22, 1997
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -73,6 +73,10 @@ char *hstring;	/* character string containing FITS header information
 	int ieq, i;
 	char ctypes[8][5];
 	char *str;
+
+#ifdef USE_SAOLIB
+	set_saolib((void *)hstring);
+#endif
 
 	strcpy (ctypes[0],"-SIN");
 	strcpy (ctypes[1],"-TAN");
@@ -1250,7 +1254,7 @@ wcserr ()
 /* Oct 28 1994	new program
  * Dec 21 1994	Implement CD rotation matrix
  * Dec 22 1994	Allow RA and DEC to be either x,y or y,x
-
+ *
  * Mar  6 1995	Add Digital Sky Survey plate fit
  * May  2 1995	Add prototype of PIX2WCST to WCSCOM
  * May 25 1995	Print leading zero for hours and degrees
@@ -1270,7 +1274,7 @@ wcserr ()
  * Dec 19 1995	Explicitly initialize rotation matrix and yinc
  * Dec 22 1995	If SECPIX is set, use approximate WCS
  * Dec 22 1995	Always print coordinate system
-
+ *
  * Jan 12 1996	Use plane-tangent, not linear, projection if SECPIX is set
  * Jan 12 1996  Add WCSSET to set WCS without an image
  * Feb 15 1996	Replace all calls to HGETC with HGETS
@@ -1309,4 +1313,6 @@ wcserr ()
  * Nov  5 1996	Set wcs->crot to 1 if rotation matrix is used
  * Dec  2 1996	Add altitide/azimuth coordinates
  * Dec 13 1996	Fix search format setting from environment
+ *
+ * Jan 22 1997	Add ifdef for Eric Mandel (SAOtng)
  */
