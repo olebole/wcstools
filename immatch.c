@@ -1,5 +1,5 @@
 /* File immatch.c
- * March 23, 2000
+ * May 25, 2000
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -315,6 +315,11 @@ char	*progname;		/* Name of program being executed */
 	exit (-1);
     if (strsrch (progname,"gsc") != NULL)
 	fprintf (stderr,"Match HST Guide Star Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"gsca") != NULL)
+	fprintf (stderr,"Match GSC-ACT Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"tmc") != NULL ||
+	     strsrch (progname,"2mp") != NULL)
+	fprintf (stderr,"Match 2MASS Point Sources to image stars from WCS in image file\n");
     else if (strsrch (progname,"ujc") != NULL)
 	fprintf (stderr,"Match USNO J Catalog to image stars from WCS in image file\n");
     else if (strsrch (progname,"uac") != NULL)
@@ -509,4 +514,5 @@ char *
  *
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  * Mar  8 2000	Move catalog selection from executable name to subroutine
+ * May 25 2001	Add GSC-ACT and 2MASS Point Source Catalogs
  */

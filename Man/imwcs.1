@@ -1,4 +1,4 @@
-.TH imwcs(1) WCS "14 April 1998"
+.TH imwcs(1) WCSTools "6 July 2001"
 .SH Name
 imwcs \- Set WCS in FITS and IRAF image files
 .SH Synopsis
@@ -39,6 +39,9 @@ Use this DAOFIND output catalog of X, Y, and magnitude instead of searching
 for stars in the image.  The format is simply white-space-separated X, Y,
 and magnitue on a line, with # at the beginning of comment lines.
 .TP
+.B \-e
+Erase image WCS keywords, getting initial WCS from command line
+.TP
 .B \-f
 Write FITS output no matter what input
 .TP
@@ -47,8 +50,6 @@ Guide Star Catalog class (-1=all,0,3) (default -1)
 .TP
 .B \-h <number>
 Change the maximum number of reference stars to match from 25 to
-.B <number>
-
 .TP
 .B \-i <counts>
 Minimum peak value for star in image.  If negative, use -<counts> standard
@@ -62,7 +63,6 @@ Reflect left<->right before rotating and fitting
 .TP
 .B \-m [<bright magnitude>] <faint magnitude>
 Limiting catalog magnitude(s) (default none, bright -2 if only faint is given)
-.TP
 .TP
 .B \-n <number>
 Number of parameters to fit (1-8, or digit string). The default is 2 (RA+Dec)
@@ -80,6 +80,10 @@ option to write the file.
 .TP
 .B \-p <scale>
 Initial plate scale in arcsec per pixel (default 0)
+.TP
+.B \-q <option list>
+<i>terate, <r>ecenter, <s>igma clip, <p>olynomial, <t>olerance reduce (half for each
+iteration).  A number following an option repeats the option that many times.
 .TP
 .B \-r <angle>
 Rotation angle in degrees before fitting (0, 90, 180, 270) (default 0)
@@ -105,5 +109,9 @@ multiply image dimensions by this for search (default is 1)
 .B \-z
 Use AIPS classic projections instead of WCSLIB; use CD matrix or CDELT
 instead of polynomial solution.
+
+.SH Web Page
+http://tdc-www.harvard.edu/software/wcstools/imwcs/
+
 .SH Author
 Doug Mink, SAO (dmink@cfa.harvard.edu)

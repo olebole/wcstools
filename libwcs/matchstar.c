@@ -1,5 +1,5 @@
 /*** File libwcs/matchstar.c
- *** February 28, 2001
+ *** June 18, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -531,20 +531,20 @@ int	debug;		/* Printed debugging information if not zero */
 
 	    /* Image X coordinate or RA */
 	    itok = 1;
-	    if (getoken(&tokens, itok, token)) {
+	    if (getoken(&tokens, itok, token, 256)) {
 
 		/* Read RA, Dec, X, Y if first token has : in it */
 		if (strchr (token, ':') != NULL) {
 		    ra = str2ra (token);
 		    iytok = 4;
-		    if (getoken(&tokens, 2, token))
+		    if (getoken(&tokens, 2, token, 256))
 			dec = str2dec (token);
-		    if (getoken(&tokens, 3, token)) {
+		    if (getoken(&tokens, 3, token, 256)) {
 			if (isnum (token))
 			    x = atof (token);
 			else {
 			    iytok = 5;
-			    if (getoken(&tokens, 4, token)) {
+			    if (getoken(&tokens, 4, token, 256)) {
 				if (isnum (token))
 				    x = atof (token);
 				else
@@ -552,7 +552,7 @@ int	debug;		/* Printed debugging information if not zero */
 				}
 			    }
 			}
-		    if (getoken(&tokens, iytok, token)) {
+		    if (getoken(&tokens, iytok, token, 256)) {
 			if (isnum (token))
 			    y = atof (token);
 			else
@@ -575,7 +575,7 @@ int	debug;		/* Printed debugging information if not zero */
 
 	    /* Image Y coordinate */
 	    itok++;
-	    if (getoken(&tokens, itok, token)) {
+	    if (getoken(&tokens, itok, token, 256)) {
 		if (isnum (token))
 		    y = atof (token);
 		else
@@ -586,17 +586,17 @@ int	debug;		/* Printed debugging information if not zero */
 
 	    /* Right ascension */
 	    itok++;
-	    if (getoken(&tokens, itok, token)) {
+	    if (getoken(&tokens, itok, token, 256)) {
 		if (isnum (token) == 1) {
 		    ra = atof (token);
 		    itok++;
-		    if (getoken(&tokens, itok, token)) {
+		    if (getoken(&tokens, itok, token, 256)) {
 			if (isnum (token) == 2)
 			    ra = ra + (atof (token) / 60.0);
 			else if (isnum (token) == 1) {
 			    ra = ra + (atof (token) / 60.0);
 			    itok++;
-			    if (getoken(&tokens, itok, token)) {
+			    if (getoken(&tokens, itok, token, 256)) {
 				if (isnum (token))
 				    ra = ra + (atof (token) / 3600.0);
 				}
@@ -612,7 +612,7 @@ int	debug;		/* Printed debugging information if not zero */
 
 	    /* Declination */
 	    itok++;
-	    if (getoken(&tokens, itok, token)) {
+	    if (getoken(&tokens, itok, token, 256)) {
 		if (isnum (token) == 1) {
 		    dec = atof (token);
 		    itok++;
@@ -620,7 +620,7 @@ int	debug;		/* Printed debugging information if not zero */
 			ndec = 1;
 		    else
 			ndec = 0;
-		    if (getoken(&tokens, itok, token)) {
+		    if (getoken(&tokens, itok, token, 256)) {
 			if (isnum (token) == 2) {
 			    if (ndec)
 				dec = dec - (atof (token) / 60.0);
@@ -633,7 +633,7 @@ int	debug;		/* Printed debugging information if not zero */
 			    else
 				dec = dec + (atof (token) / 60.0);
 			    itok++;
-			    if (getoken(&tokens, itok, token)) {
+			    if (getoken(&tokens, itok, token, 256)) {
 				if (isnum (token)) {
 				    if (ndec)
 					dec = dec - (atof (token) / 3600.0);
@@ -1566,4 +1566,5 @@ iscdfit ()
  * Jan  9 2001	Work on FitMatch()
  * Jan 11 2001	All diagnostic printing goes to stderr
  * Feb 28 2001	Ignore coordinate system if present after match file coordinates
+ * Jun 18 2001	Add maximum length of returned string to getoken()
  */ 

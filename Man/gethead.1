@@ -1,4 +1,4 @@
-.TH gethead(1) WCS "15 July 1999"
+.TH gethead(1) WCSTools "6 July 2001"
 .SH Name
 gethead \- Print FITS or IRAF header keyword values
 .SH Synopsis
@@ -23,14 +23,23 @@ List file name even if keywords are not found
 .B \-d
 Root directory for input files (default is cwd)
 .TP
+.B \-e
+Output keyword=value's on one line per file
+.TP
 .B \-f
 Never print filenames (default is to print them if more than one)
+.TP
+.B \-g
+Output keyword=value's on one line per keyword
 .TP
 .B \-h
 flag causes the keyword names to be printed at top of columns.
 .TP
 .B \-n
 Number of decimal places in numeric output
+.TP
+.B \-o
+OR conditions instead of ANDing them
 .TP
 .B \-p
 Print full pathnames of files
@@ -44,7 +53,9 @@ Always print ___ if keyword not found, event if only one keyword in search
 .TP
 .B \-v
 Print output as <keyword>=<value>, one per line
+
 .SH Web Page
 http://tdc-www.harvard.edu/software/wcstools/gethead.html
+
 .SH Author
 Doug Mink, SAO (dmink@cfa.harvard.edu)

@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** January 11, 2001
+ *** June 7, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -87,7 +87,7 @@ int	verbose;	/* 1 for diagnostics */
     double rra1, rra2, rdec1, rdec2;
     int wrap, iwrap;
     int znum, itot,iz;
-    int nlog,itable,jstar;
+    int nlog,itable,jstar, mprop, nmag;
     int nstar, i;
     double ra,dec;
     double mag;
@@ -101,7 +101,7 @@ int	verbose;	/* 1 for diagnostics */
 
     /* Set catalog code and path to catalog */
     catname = refcatname;
-    refcat = RefCat (refcatname, title, &sysref, &eqref, &epref);
+    refcat = RefCat (refcatname,title,&sysref,&eqref,&epref,&mprop,&nmag);
     if (refcat == UJC && (str = getenv("UJ_PATH")) != NULL ) {
 
 	/* If pathname is a URL, search and return */
@@ -354,13 +354,13 @@ int	nlog;		/* Logging interval */
     int nfound = 0;
     double ra,dec;
     double mag;
-    int istar, plate;
+    int istar, plate, mprop, nmag;
     char *str;
     char title[128];
 
     /* Set catalog code and path to catalog */
     catname = refcatname;
-    refcat = RefCat (refcatname, title, &sysref, &eqref, &epref);
+    refcat = RefCat (refcatname,title,&sysref,&eqref,&epref,&mprop,&nmag);
 
     if (refcat == UJC && (str = getenv("UJ_PATH")) != NULL ) {
 
@@ -787,4 +787,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Nov 29 2000	Add option to read UJ catalog using HTTP
  *
  * Jan 11 2001	All printing is to stderr
+ * Jun  7 2001	Add proper motion flag and number of magnitudes to RefCat()
  */

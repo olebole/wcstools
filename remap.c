@@ -1,5 +1,5 @@
 /* File remap.c
- * March 23, 2000
+ * July 10, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,6 +14,9 @@
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcs.h"
 
+#define REMAP_CLOSEST	1
+#define REMAP_FLUX	2
+
 extern void setcenter();
 extern void setsys();
 extern void setrot();
@@ -27,20 +30,28 @@ static void usage();
 static int verbose = 0;		/* verbose flag */
 static char *outname0 = "remap.fits";
 static char *outname;
+static char *wcsproj;           /* WCS projection name */
 
 static int nfiles = 0;
 static int nbstack = 0;
 static int fitsout = 0;
 static double secpix = 0;
+static double secpix2 = 0;
 static int bitpix0 = 0; /* Output BITPIX, =input if 0 */
 static FILE *fstack = NULL;
 static int RemapImage();
 extern struct WorldCoor *GetFITSWCS();
 static struct WorldCoor *wcsout = NULL;
+static char *headout;		/* FITS output header */
+static char *imout;		/* FITS output image */
 static int eqsys = 0;
 static double equinox = 0.0;
+static outsys = 0;
 static int version = 0;		/* If 1, print only program name and version */
+static int mode = REMAP_CLOSEST;
 static int remappix=0;		/* Number of samples of input pixels */
+static double xrpix = 0.0;
+static double yrpix = 0.0;
 static int nx = 0;
 static int ny = 0;
 static int nlog = 0;
@@ -59,10 +70,13 @@ char **av;
     FILE *flist;
     int ifile, nblocks, nbytes, i;
     char *blanks;
-    double x, y;
+    double x = 0.0;
+    double y = 0.0;
+    int lwcs;
 
     for (i = 0; i < 100; i++)
 	filelist[i] = NULL;
+    wcsproj = NULL;
 
     outname = outname0;
 
@@ -95,6 +109,7 @@ char **av;
     	    if (ac < 3)
     		usage();
 	    setsys (WCS_B1950);
+	    outsys = WCS_B1950;
 	    strcpy (rastr, *++av);
 	    ac--;
 	    strcpy (decstr, *++av);
@@ -110,6 +125,7 @@ char **av;
     	    if (ac < 3)
     		usage();
 	    setsys (WCS_GALACTIC);
+	    outsys = WCS_GALACTIC;
 	    strcpy (rastr, *++av);
 	    ac--;
 	    strcpy (decstr, *++av);
@@ -128,6 +144,7 @@ char **av;
     	    if (ac < 3)
     		usage();
 	    setsys (WCS_J2000);
+	    outsys = WCS_J2000;
 	    strcpy (rastr, *++av);
 	    ac--;
 	    strcpy (decstr, *++av);
@@ -142,12 +159,12 @@ char **av;
     	    ac--;
     	    break;
 
-	case 'n':	/* Number of samples per linear input pixel */
+	/* case 'n':	 Number of samples per linear input pixel
     	    if (ac < 2)
     		usage();
     	    remappix = atoi (*++av);
     	    ac--;
-    	    break;
+    	    break; */
 
     	case 'o':	/* Specifiy output image filename */
     	    if (ac < 2)
@@ -163,7 +180,8 @@ char **av;
     	    setsecpix (secpix);
     	    ac--;
 	    if (ac > 1 && isnum (*(av+1))) {
-		setsecpix2 (atof (*++av));
+		secpix2 = atof (*++av);
+		setsecpix2 (secpix2);
 		ac--;
 		}
     	    break;
@@ -175,18 +193,23 @@ char **av;
 	case 'w':	/* Set WCS projection */
 	    if (ac < 2)
 		usage();
-	    setwcsproj (*++av);
+	    wcsproj = *++av;
+	    lwcs = strlen (wcsproj);
+	    for (i =0; i < lwcs; i++) {
+		if (wcsproj[i] > 96)
+		    wcsproj[i] = wcsproj[i] - 64;
+		}
 	    ac--;
 	    break;
 
 	case 'x':	/* X and Y coordinates of output image reference pixel */
 	    if (ac < 3)
 		usage();
-	    x = atof (*++av);
+	    xrpix = atof (*++av);
 	    ac--;
-	    y = atof (*++av);
+	    yrpix = atof (*++av);
 	    ac--;
-    	    setrefpix (x, y);
+    	    setrefpix (xrpix, yrpix);
     	    break;
 
 	case 'y':	/* Dimensions of output image in pixels */
@@ -283,6 +306,9 @@ char **av;
 
     if (fstack != NULL)
 	fclose (fstack);
+    free (headout);
+    wcsfree (wcsout);
+    free (imout);
     return (0);
 }
 
@@ -295,19 +321,20 @@ usage ()
     fprintf(stderr,"Usage: remap [-vf][-a rot][[-b][-j] ra dec][-i bits][-l num] file1.fit file2.fit ... filen.fit\n");
     fprintf(stderr,"  or : remap [-vf][-a rot][[-b][-j] ra dec][-i bits][-l num] @filelist\n");
     fprintf(stderr,"  -a: Output rotation angle in degrees (default 0)\n");
-    fprintf(stderr,"  -b: Output center in B1950 (FK4) RA and Dec\n");
+    fprintf(stderr,"  -b ra dec: Output center in B1950 (FK4) RA and Dec\n");
     fprintf(stderr,"  -f: Force FITS output\n");
-    fprintf(stderr,"  -g: Output center in galactic longitude and latitude\n");
-    fprintf(stderr,"  -i: Number of bits per output pixel (default is input)\n");
-    fprintf(stderr,"  -j: Output center in J2000 (FK5) RA and Dec\n");
-    fprintf(stderr,"  -l: Log every num rows of input image\n");
-    fprintf(stderr,"  -n: Number of samples per linear input pixel\n");
-    fprintf(stderr,"  -o: Name for output image\n");
-    fprintf(stderr,"  -p: Output plate scale in arcsec/pixel (default =input)\n");
+    fprintf(stderr,"  -g long lat: Output center in galactic longitude and latitude\n");
+    fprintf(stderr,"  -i num: Number of bits per output pixel (default is input)\n");
+    fprintf(stderr,"  -j ra dec: center in J2000 (FK5) RA and Dec\n");
+    fprintf(stderr,"  -l num: Log every num rows of output image\n");
+    fprintf(stderr,"  -m mode: c closest pixel (more to come)\n");
+    /* fprintf(stderr,"  -n: Number of samples per linear input pixel\n"); */
+    fprintf(stderr,"  -o name: Name for output image\n");
+    fprintf(stderr,"  -p secpix: Output plate scale in arcsec/pixel (default =input)\n");
     fprintf(stderr,"  -v: Verbose\n");
-    fprintf(stderr,"  -w: Output WCS type (TAN default)\n");
-    fprintf(stderr,"  -x: Output image reference X and Y coordinates (default is center)\n");
-    fprintf(stderr,"  -y: Output image dimensions (default is first input image)\n");
+    fprintf(stderr,"  -w type: Output WCS type (input is default)\n");
+    fprintf(stderr,"  -x x y: Output image reference X and Y coordinates (default is center)\n");
+    fprintf(stderr,"  -y nx ny: Output image dimensions (default is first input image)\n");
     exit (1);
 }
 
@@ -320,23 +347,26 @@ char	*filename;	/* FITS or IRAF file filename */
 
 {
     char *image;		/* FITS input image */
-    char *imout;		/* FITS output image */
     char *header;		/* FITS header */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     char *irafheader;		/* IRAF image header */
     int bitpix, bitpixout;
     double cra, cdec, dra, ddec;
-    char *headout;
     int iraffile;
     int i, j, ii, jj, hpin, wpin, hpout, wpout, nbout, ix, iy, npout;
+    int iin, iout, jin, jout;
+    int iout1, iout2, jout1, jout2;
     int offscl, lblock;
     char pixname[256];
     struct WorldCoor *wcsin;
     double bzin, bsin, bzout, bsout;
-    double dx, dy, dx0, dy0, pfrac, secpix0, secpix1;
+    double dx, dy, dx0, dy0, secpixin1, secpixin2, secpix1;
     double xout, yout, xin, yin, xpos, ypos, dpixi;
-    double pixratio, xrpix, yrpix;
+    double xmin, xmax, ymin, ymax;
+    double pixratio;
+    char history[80];
+    char wcstemp[16];
 
     /* Read IRAF header and image */
     if (isiraf (filename)) {
@@ -383,147 +413,209 @@ char	*filename;	/* FITS or IRAF file filename */
     /* Set input world coordinate system from first image header */
     wcsin = wcsinit (header);
 
-    /* Change output plate scale to match output dimensions */
-    secpix0 = wcsin->cdelt[1] * 3600.0;
-    if (secpix0 < 0) secpix0 = -secpix0;
-    if (secpix == 0)
-	if (nx > 0 && ny > 0) {
-	    secpix = secpix0 * (wcsin->nxpix / nx);
-    	    setsecpix (secpix);
+    if (!outsys)
+	outsys = wcsin->syswcs;
+
+    if (ifile < 1) {
+
+	/* Set output plate scale */
+	secpixin1 = wcsin->cdelt[1] * 3600.0;
+	secpixin2 = wcsin->cdelt[2] * 3600.0;
+	if (secpixin1 < 0)
+	    secpixin1 = -secpixin1;
+	if (secpix == 0)
+	    secpix = secpixin1;
+	if (secpix2 == 0)
+	    secpix2 = secpix;
+
+	/* Change output dimensions to match output plate scale */
+	pixratio = secpixin1 / secpix;
+	if (nx == 0 && ny == 0) {
+	    if (secpix > 0) {
+		nx = wcsin->nxpix * pixratio;
+		ny = wcsin->nypix * pixratio;
+    		setnpix (nx, ny);
+		}
+	    else {
+		nx = wcsin->nxpix;
+		ny = wcsin->nypix;
+		}
+	    }
+
+	/* Set reference pixel to default of new image center */
+	if (nx != 0 && xrpix == 0.0 && yrpix == 0.0) {
+	    xrpix = 0.5 * (double) nx;
+	    yrpix = 0.5 * (double) ny;
+	    setrefpix (xrpix, yrpix);
+	    }
+
+	/* Set output header from command line and first image header */
+	lhead = strlen (header);
+	lblock = lhead / 2880;
+	if (lblock * 2880  < lhead)
+	    lhead = (lblock+2) * 2880;
+	else
+	    lhead = (lblock+1) * 2880;
+	headout = (char *) calloc (lhead, sizeof (char));
+	strcpy (headout, header);
+
+	hputi4 (headout, "NAXIS1", nx);
+	hputi4 (headout, "NAXIS2", ny);
+
+	if (wcsproj != NULL || outsys != wcsin->syswcs) {
+	    if (wcsproj == NULL)
+		wcsproj = wcsin->ctype[0]+4;
+	    if (outsys == WCS_GALACTIC)
+		strcpy (wcstemp, "GLON-");
+	    else if (outsys == WCS_ECLIPTIC)
+		strcpy (wcstemp, "ELON-");
+	    else
+		strcpy (wcstemp, "RA---");
+	    strcat (wcstemp, wcsproj);
+	    hputs  (headout, "CTYPE1", wcstemp);
+
+	    if (outsys == WCS_GALACTIC)
+		strcpy (wcstemp, "GLAT-");
+	    else if (outsys == WCS_ECLIPTIC)
+		strcpy (wcstemp, "ELAT-");
+	    else
+		strcpy (wcstemp, "DEC--");
+	    strcat (wcstemp, wcsproj);
+	    hputs  (headout, "CTYPE2", wcstemp);
+	    }
+	hputr8 (headout, "CRPIX1", xrpix);
+	hputr8 (headout, "CRPIX2", yrpix);
+	hputr8 (headout, "CDELT1", -secpix/3600.0);
+	hputr8 (headout, "CDELT2", secpix2/3600.0);
+	if (hgetr8 (headout, "SECPIX1", &secpix1)) {
+	    hputr8 (headout, "SECPIX1", secpix);
+	    hputr8 (headout, "SECPIX2", secpix2);
+	    }
+	else if (hgetr8 (headout, "SECPIX", &secpix1)) {
+	    if (secpix == secpix2)
+		hputr8 (headout, "SECPIX", secpix);
+	    else {
+		hputr8 (headout, "SECPIX1", secpix);
+		hputr8 (headout, "SECPIX2", secpix2);
+		}
+	    }
+
+	hgeti4 (header, "BITPIX", &bitpix);
+	if (bitpix0 != 0) {
+	    hputi4 (headout, "BITPIX", bitpix0);
+	    bitpixout = bitpix0;
 	    }
 	else
-	    secpix = secpix0;
+	    bitpixout = bitpix;
 
-    /* Change output dimensions to match output plate scale */
-    pixratio = secpix0 / secpix;
-    if (nx == 0 && ny == 0) {
-	if (secpix > 0) {
-	    nx = wcsin->nxpix * pixratio;
-	    ny = wcsin->nypix * pixratio;
-    	    setnpix (nx, ny);
-	    }
-	else {
-	    nx = wcsin->nxpix;
-	    ny = wcsin->nypix;
-	    }
-	}
-    xrpix = wcsin->xrefpix * pixratio;
-    yrpix = wcsin->yrefpix * pixratio;
-    setrefpix (xrpix, yrpix);
-
-    /* Set output header from command line and first image header */
-    lhead = strlen (header);
-    lblock = lhead / 2880;
-    if (lblock * 2880  < lhead)
-	lhead = (lblock+2) * 2880;
-    else
-	lhead = (lblock+1) * 2880;
-    headout = (char *) calloc (lhead, sizeof (char));
-    strcpy (headout, header);
-
-    hputi4 (headout, "NAXIS1", nx);
-    hputi4 (headout, "NAXIS2", ny);
-    hputr8 (headout, "CRPIX1", xrpix);
-    hputr8 (headout, "CRPIX2", yrpix);
-    hputr8 (headout, "CDELT1", secpix/3600.0);
-    hputr8 (headout, "CDELT2", secpix/3600.0);
-    if (hgetr8 (headout, "SECPIX1", &secpix1)) {
-	hputr8 (headout, "SECPIX1", secpix);
-	hputr8 (headout, "SECPIX2", secpix);
-	}
-    else if (hgetr8 (headout, "SECPIX", &secpix1))
-	hputr8 (headout, "SECPIX", secpix);
-
-    hgeti4 (header, "BITPIX", &bitpix);
-    if (bitpix0 != 0) {
-	hputi4 (headout, "BITPIX", bitpix0);
-	bitpixout = bitpix0;
-	}
-    else
-	bitpixout = bitpix;
-
-    /* Set output WCS from command line and first image header */
-    wcsout = GetFITSWCS (filename, headout, verbose, &cra, &cdec, &dra,
+	/* Set output WCS from command line and first image header */
+	wcsout = GetFITSWCS (filename, headout, verbose, &cra, &cdec, &dra,
 			 &ddec, &secpix, &wpout, &hpout, &eqsys, &equinox);
 
-    /* Warn if remapping is not acceptable */
-    pixratio = wcsin->xinc / wcsout->xinc;
-    if (remappix == 0)
-	remappix = pixratio + 2;
-    else if (pixratio > remappix) {
-	fprintf (stderr, "REMAP: remapping %.1f pixels from 1; %d too small\n",
+	/* Warn if remapping is not acceptable */
+	pixratio = wcsin->xinc / wcsout->xinc;
+	if (remappix == 0)
+	    remappix = 1;
+	else if (pixratio > remappix) {
+	    fprintf (stderr, "REMAP: remapping %.1f pixels from 1; %d too small\n",
 		 pixratio, remappix);
+	    }
+
+	/* Allocate space for output image */
+	npout = hpout * wpout;
+	nbout = npout * bitpixout / 8;
+	if (nbout < 0) nbout = -nbout;
+	    imout = (char * ) calloc (nbout, 1);
+
+	/* Fill output image */
+	bsin = 1.0;
+	hgetr8 (header, "BSCALE", &bsin);
+	bzin = 0.0;
+	hgetr8 (header, "BZERO", &bzin);
+	bsout = 1.0;
+	hgetr8 (header, "BSCALE", &bsout);
+	bzout = 0.0;
+	hgetr8 (header, "BZERO", &bzout);
 	}
 
-    /* Set output coordinate system from input WCS to output coordinate system*/
+    /* Set input WCS output coordinate system to output coordinate system*/
     wcsin->sysout = wcsout->syswcs;
     strcpy (wcsin->radecout, wcsout->radecsys);
-
-    /* Allocate space for output image */
-    npout = hpout * wpout;
-    nbout = npout * bitpixout / 8;
-    if (nbout < 0) nbout = -nbout;
-    imout = (char * ) calloc (nbout, 1);
-
-    /* Fill output image */
-    bsin = 1.0;
-    hgetr8 (header, "BSCALE", &bsin);
-    bzin = 0.0;
-    hgetr8 (header, "BZERO", &bzin);
-    bsout = 1.0;
-    hgetr8 (header, "BSCALE", &bsout);
-    bzout = 0.0;
-    hgetr8 (header, "BZERO", &bzout);
     wpin = wcsin->nxpix;
     hpin = wcsin->nypix;
 
-    /* Redistribute flux proportionally from input image */
-    pfrac = 1.0 / (float)(remappix * remappix);
-    dx = 1.0 / remappix;
-    dy = 1.0 / remappix;
-    dx0 = 0.5 + (0.5 / remappix);
-    dy0 = 0.5 + (0.5 / remappix);
+    /* Set output WCS output coordinate system to input coordinate system*/
+    wcsout->sysout = wcsin->syswcs;
 
-    /* Loop through vertical pixels (image lines) */
-    for (i = 1; i <= hpin; i++) {
+    sprintf (history, "REMAP input file %s", filename);
+    hputc (headout, "HISTORY", history);
 
-	/* Loop through horizontal pixels */
-	for (j = 1; j <= wpin; j++) {
-	    dpixi = pfrac * getpix1 (image,bitpix,wpin,hpin,bzin,bsin,j,i);
-	    yin = (double) i - dy0;
+    /* Find limiting edges of input image in output image */
+    pix2wcs (wcsin, 1.0, 1.0, &xpos, &ypos);
+    wcs2pix (wcsout, xpos, ypos, &xout, &yout, &offscl);
+    xmin = xout;
+    xmax = xout;
+    ymin = yout;
+    ymax = yout;
+    pix2wcs (wcsin, 1.0, (double)hpin, &xpos, &ypos);
+    wcs2pix (wcsout, xpos, ypos, &xout, &yout, &offscl);
+    if (xout < xmin) xmin = xout;
+    if (xout > xmax) xmax = xout;
+    if (yout < ymin) ymin = yout;
+    if (yout > ymax) ymax = yout;
+    pix2wcs (wcsin, (double)wpin, 1.0, &xpos, &ypos);
+    wcs2pix (wcsout, xpos, ypos, &xout, &yout, &offscl);
+    if (xout < xmin) xmin = xout;
+    if (xout > xmax) xmax = xout;
+    if (yout < ymin) ymin = yout;
+    if (yout > ymax) ymax = yout;
+    pix2wcs (wcsin, (double)wpin, (double)hpin, &xpos, &ypos);
+    wcs2pix (wcsout, xpos, ypos, &xout, &yout, &offscl);
+    if (xout < xmin) xmin = xout;
+    if (xout > xmax) xmax = xout;
+    if (yout < ymin) ymin = yout;
+    if (yout > ymax) ymax = yout;
+    iout1 = (int) (ymin + 0.5);
+    if (iout1 < 1) iout1 = 1;
+    iout2 = (int) (ymax + 0.5);
+    if (iout2 > hpout) iout2 = hpout;
+    jout1 = (int) (xmin + 0.5);
+    if (jout1 < 1) jout1 = 1;
+    jout2 = (int) (xmax + 0.5);
+    if (jout2 > wpout) jout2 = wpout;
 
-	    /* Break up each input pixel vertically */
-	    for (ii = 0; ii < remappix; ii++) {
-		yin = yin + dy;
-		xin = (double) j - dx0;
+    if (verbose)
+	printf ("REMAP: Output x: %d-%d, y: %d-%d\n",
+		jout1,jout2,iout1,iout2);
 
-		/* Break up each input pixel horizontally */
-		for (jj = 0; jj < remappix; jj++) {
-		    xin = xin + dx;
+    /* Loop through vertical pixels (output image lines) */
+    for (iout = iout1; iout <= iout2; iout++) {
+	yout = (double) iout;
 
-		    /* Get WCS coordinates of this subpixel in input image */
-		    pix2wcs (wcsin, xin, yin, &xpos, &ypos);
-		    if (!wcsin->offscl) {
+	/* Loop through horizontal pixels (output image columns) */
+	for (jout = jout1; jout <= jout2; jout++) {
+	    xout = (double) jout;
 
-			/* Get pixel coordinates in output image */
-			xout = 0.0;
-			yout = 0.0;
-			wcs2pix (wcsout, xpos, ypos, &xout, &yout, &offscl);
-			if (!offscl) {
+	    /* Get WCS coordinates of this pixel in output image */
+	    pix2wcs (wcsout, xout, yout, &xpos, &ypos);
 
-			    /* Add fraction of input image pixel to output image */
-			    ix = (int)(xout + 0.5);
-			    iy = (int)(yout + 0.5);
-			    addpix1 (imout,bitpixout,wpout,hpout,bzout,bsout,
-				    ix, iy, dpixi);
-			    }
-			}
-		    }
+	    /* Get image coordinates of this subpixel in input image */
+	    wcs2pix (wcsin, xpos, ypos, &xin, &yin, &offscl);
+	    if (!offscl) {
+		iin = (int) (yin + 0.5);
+		jin = (int) (xin + 0.5);
+
+		/* Read pixel from input file */
+		dpixi = getpix1 (image,bitpix,wpin,hpin,bzin,bsin,jin,iin);
+
+		/* Write pixel to output file */
+		addpix1 (imout,bitpixout,wpout,hpout,bzout,bsout,jout,iout,dpixi);
 		}
 	    }
-	if (nlog > 0 && i%nlog == 0)
-	    fprintf (stderr,"REMAP: Input image line %04d / %04d rebinned to %d / %d.\r",
-		     i, hpin, iy, hpout);
+
+	if (nlog > 0 && iout%nlog == 0)
+	    fprintf (stderr,"REMAP: Output image line %04d / %04d filled from %d / %d.\r",
+		     iout, iout2, iin, hpin);
 	}
     if (nlog > 0)
 	printf ("\n");
@@ -541,9 +633,6 @@ char	*filename;	/* FITS or IRAF file filename */
     free (header);
     free (image);
     wcsfree (wcsin);
-    free (headout);
-    wcsfree (wcsout);
-    free (imout);
     return (0);
 }
 
@@ -555,4 +644,11 @@ char	*filename;	/* FITS or IRAF file filename */
  *
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
+ *
+ * Apr 13 2001	Set default center to center of output image, not input
+ * Jul  2 2001	Fix recentering bug
+ * Jul  5 2001	Simplify output by just grabbing the closest input pixel
+ * Jul  9 2001	Write projection type into CRVALn of output file
+ * Jul 10 2001	Fix -w help message so it correctly notes input proj is default
+ * Jul 10 2001	Set CTYPEn correctly for ecliptic or galactic output
  */

@@ -1,4 +1,4 @@
-.TH setpix(1) WCS "14 September 1999"
+.TH setpix(1) WCSTools "6 July 2001"
 .SH Name
 setpix \- Set FITS or IRAF image values
 .SH Synopsis
@@ -34,13 +34,28 @@ column specified by the other non-zero range will be set to the indicated
 value. If both ranges are zero, the entire image will be set to the
 specified value. Ranges new in version 2.6.4. 
 .TP
-.B \-v 
-Print more information about the process 
+.B \-a <number>
+Add constant to pixels
+.TP
+.B \-d <number>
+Divide pixels by constant
+.TP
+.B \-i
+List each line which is dropped 
+.TP
+.B \-m <number>
+Multiply pixels by constant
 .TP
 .B \-n 
 Write the output to a new file which is named by inserting an e before
 the file extension. The new file is always written to the current working
 directory. 
+.TP
+.B \-s <number>
+Subtract constant from pixels
+.TP
+.B \-v 
+Print more information about the process 
 
 .SH Author
 Doug Mink, SAO (dmink@cfa.harvard.edu)

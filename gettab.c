@@ -1,5 +1,5 @@
 /* File gettab.c
- * May 31, 2000
+ * June 29, 2001
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -40,6 +40,7 @@ static int ncond=0;             /* Number of keyword conditions to check */
 static int condand=1;           /* If 1, AND comparisons, else OR */
 static char **cond;             /* Conditions to check */
 static char **ccond;            /* Condition characters */
+struct TabTable *tabtable;
 
 main (ac, av)
 int ac;
@@ -65,7 +66,6 @@ char **av;
     char string[80];
     int icond,ncond;
     char *vali, *calias, *valeq, *valgt, *vallt;
-    struct TabTable *tabtable;
     char *ranges = NULL;
     char *temp;
     int nldef = 1;
@@ -276,7 +276,7 @@ char **av;
 	if (printhead || tabout) {
 
 	    /* Open the input tab table */
-	    if ((tabtable = tabopen (name)) == NULL) {
+	    if ((tabtable = tabopen (name, 0)) == NULL) {
 		fprintf (stderr,"%s\n", gettaberr());
 		return (1);
 		}
@@ -366,8 +366,6 @@ char **av;
 			}
 		    }
 		}
-
-	    tabclose (tabtable);
 	    }
 
     /* Get table values one at a time */
@@ -400,9 +398,11 @@ char **av;
 	if (printhead || tabout) {
 
 	    /* Open the input tab table */
-	    if ((tabtable = tabopen (name)) == NULL) {
-		fprintf (stderr,"%s\n", gettaberr());
-		return (1);
+	    if (strcasecmp (name, "stdin")) {
+		if ((tabtable = tabopen (name, 0)) == NULL) {
+		    fprintf (stderr,"%s\n", gettaberr());
+		    return (1);
+		    }
 		}
 
 	    /* Print the name of the table, if it has one */
@@ -513,15 +513,18 @@ char	*alias[]; /* Output names of keywords if different from input */
     int ikwd, nfound;
     int iline, keep;
     double xnum;
-    struct TabTable *tabtable;
+    struct Tokens tokens;
     int *col;
     int *ccol;
+    int ntok;
 
     /* Figure out conditions first, separating out keywords to check */
 
     /* Read tab table and set up data structure */
-    if ((tabtable = tabopen (name)) == NULL)
-	return;
+    if (tabtable == NULL) {
+	if ((tabtable = tabopen (name, 0)) == NULL)
+	    return;
+	}
 
     if (verbose) {
 	fprintf (stderr,"Print table Values from tab table file %s\n", name);
@@ -540,6 +543,7 @@ char	*alias[]; /* Output names of keywords if different from input */
 	    sprintf (fnform, "%%-%ds ", maxlfn);
 	sprintf (outline, fnform, filename);
 	}
+
     nfound = 0;
     line = tabtable->tabdata;
     last = line + strlen (tabtable->tabdata);
@@ -583,6 +587,7 @@ char	*alias[]; /* Output names of keywords if different from input */
 		}
 
 	    /* Check conditions */
+	    ntok = setoken (&tokens, line, "tab");
 	    pass = 0;
 	    if (ncond > 0) {
 		for (icond = 0; icond < ncond; icond++) {
@@ -601,7 +606,7 @@ char	*alias[]; /* Output names of keywords if different from input */
 		strclean (cstr);
 
 		/* Read comparison value from tab table */
-		if (tabgetc (tabtable, line, ccol[icond], cvalue, 64))
+		if (tabgetc (&tokens, ccol[icond], cvalue, 64))
 		    continue;
 		cval = cvalue;
 		if (strchr (cval, ':')) {
@@ -668,8 +673,9 @@ char	*alias[]; /* Output names of keywords if different from input */
 		}
 	    }
 	else {
+	    ntok = setoken (&tokens, line, "tab");
 	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
-		if (!tabgetc (tabtable, line, col[ikwd], string, 80)) {
+		if (!tabgetc (&tokens, col[ikwd], string, 80)) {
 		    str = strclean (string);
 		    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 			num2str (str, atof(str), 0, ndec);
@@ -721,6 +727,7 @@ char	*alias[]; /* Output names of keywords if different from input */
 	}
 
     tabclose (tabtable);
+    tabtable = NULL;
     return;
 }
 
@@ -802,4 +809,8 @@ char *string;
  * Feb 16 2000	Always open tab table if printing headers OR putting out tab
  * May 26 2000	Handle multiple tables in a single file
  * May 26 2000	Print full header if all columns asked for
+ *
+ * Jun 11 2001	Add buffer size argument to tabopen()
+ * Jun 18 2001	Use token parsing to speed column extraction
+ * Jun 29 2001	Open stdin only once
  */

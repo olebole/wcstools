@@ -1,0 +1,2 @@
+#!/bin/sh
+saoimage -reg `imgsca -r 15 $1` -wcscom sgsca_-ha_%s $*

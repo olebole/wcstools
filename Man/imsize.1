@@ -1,4 +1,4 @@
-.TH imsize(1) WCS "12 December 1996"
+.TH imsize(1) WCSTools "6 July 2001"
 .SH Name
 imsize \- Print size of image in WCS and pixels
 .SH Synopsis
@@ -21,13 +21,26 @@ Format output without pixel dimensions (optional size change)
 .B \-d
 Format output as input to DSS getimage (optional size change)
 .TP
+.B \-e
+Add epoch of image to output line
+.TP
 .B \-j [<RA> <Dec>]
 Output J2000 (J2000) coordinates (optional center)
+.TP
+.B \-n <number>
+Number of decimal places in output (default 3)
 .TP
 .B \-p <scale>
 Initial plate scale in arcsec per pixel (default 0)
 .TP
+.B \-r
+Print range in RA and Dec
+.TP
 .B \-v
 Print more intermediate information for debugging
+.TP
+.B \-z
+Use AIPS classic projections instead of WCSLIB
+
 .SH Author
 Doug Mink, SAO (dmink@cfa.harvard.edu)

@@ -1,13 +1,15 @@
 /*** File libwcs/catutil.c
- *** March 19, 2001
+ *** June 27, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
 
-/* int RefCat (refcatname,title,syscat,eqcat,epcat)
- *	Return catalog type code, title, coord. system
- * char *CatName (refcat)
+/* int RefCat (refcatname,title,syscat,eqcat,epcat, catprop, nmag)
+ *	Return catalog type code, title, coord. system, proper motion, num mags
+ * char *CatName (refcat, refcatname)
  *	Return catalog name given catalog type code
+ * void CatID (catid, refcat)
+ *	Return ID column heading for given catalog
  * char *ProgCat (progname)
  *	Return catalog name from program name, NULL if none there
  * char *ProgName (progpath0)
@@ -40,9 +42,9 @@
  *	Return next number from range structure as 8-byte floating point number
  * int setoken (tokens, string, cwhite)
  *	Tokenize a string for easy decoding
- * int nextoken (tokens, token)
+ * int nextoken (tokens, token, maxchars)
  *	Get next token from tokenized string
- * int getoken (tokens, itok, token)
+ * int getoken (tokens, itok, token, maxchars)
  *	Get specified token from tokenized string
  * int isfile (filename)
  *	Return 1 if file is a readable file, else 0
@@ -67,34 +69,58 @@ static int catprop = 0;		/* 1 if catalog has proper motion, else 0 */
 /* Return code for reference catalog or its type */
 
 int
-RefCat (refcatname, title, syscat, eqcat, epcat)
+RefCat (refcatname, title, syscat, eqcat, epcat, catprop, nmag)
 
 char	*refcatname;	/* Name of reference catalog */
 char	*title;		/* Description of catalog (returned) */
 int	*syscat;	/* Catalog coordinate system (returned) */
 double	*eqcat;		/* Equinox of catalog (returned) */
 double	*epcat;		/* Epoch of catalog (returned) */
+int	*catprop;	/* 1 if proper motion in catalog (returned) */
+int	*nmag;		/* Number of magnitudes in catalog (returned) */
 {
     struct StarCat *starcat;
-    int refcat;
+    int refcat, nbuff;
 
-    catprop = 0;
+    *catprop = 0;
 
-    if (strncmp(refcatname,"gs",2)==0 ||
-	strncmp (refcatname,"GS",2)== 0) {
+    if (strncasecmp(refcatname,"gsca",4)==0 &&
+	strsrch(refcatname, ".tab") == NULL) {
+	strcpy (title, "HST Guide Stars/ACT");
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	*nmag = 1;
+	*catprop = 0;
+	refcat = GSCACT;
+	}
+    else if (strncasecmp(refcatname,"gsc2",4)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
+	strcpy (title, "GSC 2.2");
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	*catprop = 0;
+	*nmag = 4;
+	refcat = GSC2;
+	}
+    else if (strncasecmp(refcatname,"gs",2)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
 	strcpy (title, "HST Guide Stars");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
-	catprop = 0;
+	*catprop = 0;
+	*nmag = 1;
 	refcat = GSC;
 	}
-    else if (strncmp(refcatname,"usa",3)==0 ||
-	strncmp(refcatname,"USA",3)==0) {
+    else if (strncasecmp(refcatname,"usa",3)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
-	catprop = 0;
+	*nmag = 2;
+	*catprop = 0;
 	if (strchr (refcatname, '1') != NULL) {
 	    strcpy (title, "USNO SA-1.0 Catalog Stars");
 	    refcat = USA1;
@@ -112,16 +138,18 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
-	catprop = 0;
+	*catprop = 0;
+	*nmag = 1;
 	sprintf (title, "USNO %s Stars", refcatname);
 	refcat = USNO;
 	}
-    else if (strncmp(refcatname,"ua",2)==0 ||
-	strncmp(refcatname,"UA",2)==0) {
+    else if (strncasecmp(refcatname,"ua",2)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
-	catprop = 0;
+	*catprop = 0;
+	*nmag = 2;
 	if (strchr (refcatname, '1') != NULL) {
 	    strcpy (title, "USNO A-1.0 Catalog Stars");
 	    refcat = UA1;
@@ -135,17 +163,18 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	    refcat = UAC;
 	    }
 	}
-    else if (strncmp(refcatname,"uj",2)==0 ||
-	strncmp(refcatname,"UJ",2)==0) {
+    else if (strncasecmp(refcatname,"uj",2)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
 	strcpy (title, "USNO J Catalog Stars");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
-	catprop = 0;
+	*catprop = 0;
+	*nmag = 1;
 	refcat = UJC;
 	}
-    else if (strncmp(refcatname,"sao",3)==0 ||
-	strncmp(refcatname,"SAO",3)==0) {
+    else if (strncasecmp(refcatname,"sao",3)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
 	strcpy (title, "SAO Catalog Stars");
 	starcat = binopen ("SAO");
 	if (starcat == NULL)
@@ -154,13 +183,14 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	    *syscat = starcat->coorsys;
 	    *eqcat = starcat->equinox;
 	    *epcat = starcat->epoch;
-	    catprop = starcat->mprop;
+	    *catprop = starcat->mprop;
+	    *nmag = 1;
 	    binclose (starcat);
 	    refcat = SAO;
 	    }
 	}
-    else if (strncmp(refcatname,"ppm",3)==0 ||
-	strncmp(refcatname,"PPM",3)==0) {
+    else if (strncasecmp(refcatname,"ppm",3)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
 	strcpy (title, "PPM Catalog Stars");
 	starcat = binopen ("PPM");
 	if (starcat == NULL)
@@ -169,31 +199,34 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	    *syscat = starcat->coorsys;
 	    *eqcat = starcat->equinox;
 	    *epcat = starcat->epoch;
-	    catprop = starcat->mprop;
+	    *catprop = starcat->mprop;
+	    *nmag = 1;
 	    binclose (starcat);
 	    refcat = PPM;
 	    }
 	}
-    else if (strncmp(refcatname,"iras",4)==0 ||
-	strncmp(refcatname,"IRAS",4)==0) {
+    else if (strncasecmp(refcatname,"iras",4)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
 	strcpy (title, "IRAS Point Sources");
 	if ((starcat = binopen ("IRAS"))) {
 	    *syscat = starcat->coorsys;
 	    *eqcat = starcat->equinox;
 	    *epcat = starcat->epoch;
-	    catprop = starcat->mprop;
+	    *nmag = 1;
+	    *catprop = starcat->mprop;
 	    binclose (starcat);
 	    refcat = IRAS;
 	    }
 	}
-    else if (strncmp(refcatname,"ty",2)==0 ||
-	strncmp(refcatname,"TY",2)==0) {
+    else if (strncasecmp(refcatname,"ty",2)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
 	if (strsrch (refcatname, "2") != NULL) {
 	    strcpy (title, "Tycho 2 Catalog Stars");
 	    *syscat = WCS_J2000;
 	    *eqcat = 2000.0;
 	    *epcat = 2000.0;
-	    catprop = 1;
+	    *catprop = 1;
+	    *nmag = 2;
 	    refcat = TYCHO2;
 	    }
 	else {
@@ -202,50 +235,66 @@ double	*epcat;		/* Epoch of catalog (returned) */
 		*syscat = starcat->coorsys;
 		*eqcat = starcat->equinox;
 		*epcat = starcat->epoch;
-		catprop = 1;
+		*catprop = 1;
+		*nmag = 2;
 		binclose (starcat);
 		refcat = TYCHO;
 		}
 	    }
 	}
-    else if (strncmp(refcatname,"hip",3)==0 ||
-	strncmp(refcatname,"HIP",3)==0) {
+    else if (strncasecmp(refcatname,"hip",3)==0 &&
+	      strsrch(refcatname, ".tab") == NULL) {
 	strcpy (title, "Hipparcos Catalog Stars");
 	if ((starcat = binopen ("hipparcos"))) {
 	    *syscat = starcat->coorsys;
 	    *eqcat = starcat->equinox;
 	    *epcat = starcat->epoch;
-	    catprop = starcat->mprop;
+	    *catprop = starcat->mprop;
+	    *nmag = 1;
 	    binclose (starcat);
 	    refcat = HIP;
 	    }
 	}
-    else if (strncmp(refcatname,"act",3)==0 ||
-	strncmp(refcatname,"ACT",3)==0) {
+    else if (strncasecmp(refcatname,"act",3)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
 	strcpy (title, "ACT Catalog Stars");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
-	catprop = 1;
+	*catprop = 1;
+	*nmag = 2;
 	refcat = ACT;
 	}
-    else if (strncmp(refcatname,"bsc",3)==0 ||
-	strncmp(refcatname,"BSC",3)==0) {
+    else if (strncasecmp(refcatname,"bsc",3)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
 	strcpy (title, "Bright Star Catalog Stars");
 	if ((starcat = binopen ("BSC5"))) {
 	    *syscat = starcat->coorsys;
 	    *eqcat = starcat->equinox;
 	    *epcat = starcat->epoch;
-	    catprop = starcat->mprop;
+	    *catprop = starcat->mprop;
+	    *nmag = 1;
 	    binclose (starcat);
 	    refcat = BSC;
 	    }
+	}
+    else if ((strncasecmp(refcatname,"2mp",3)==0 ||
+	     strncasecmp(refcatname,"tmc",3)==0) &&
+	     strsrch(refcatname, ".tab") == NULL) {
+	strcpy (title, "2MASS Point Sources");
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	*catprop = 0;
+	*nmag = 3;
+	refcat = TMPSC;
 	}
     else if (strsrch (refcatname, ".usno")) {
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
-	catprop = 0;
+	*catprop = 0;
+	*nmag = 1;
 	sprintf (title, "USNO %s Stars", refcatname);
 	refcat = USNO;
 	}
@@ -256,7 +305,8 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	    *syscat = starcat->coorsys;
 	    *eqcat = starcat->equinox;
 	    *epcat = starcat->epoch;
-	    catprop = starcat->mprop;
+	    *catprop = starcat->mprop;
+	    *nmag = starcat->nmag;
 	    binclose (starcat);
 	    refcat = BINCAT;
 	    }
@@ -264,11 +314,16 @@ double	*epcat;		/* Epoch of catalog (returned) */
     else if (istab (refcatname)) {
 	strcpy (title, refcatname);
 	strcat (title, " Catalog Sources");
-	if ((starcat = ctgopen (refcatname, TABCAT))) {
+	if (strchr (refcatname, ','))
+	    nbuff = 0;
+	else
+	    nbuff = 1000;
+	if ((starcat = tabcatopen (refcatname, NULL, nbuff))) {
 	    *syscat = starcat->coorsys;
 	    *eqcat = starcat->equinox;
 	    *epcat = starcat->epoch;
-	    catprop = starcat->mprop;
+	    *catprop = starcat->mprop;
+	    *nmag = starcat->nmag;
 	    ctgclose (starcat);
 	    refcat = TABCAT;
 	    }
@@ -280,7 +335,8 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	    *syscat = starcat->coorsys;
 	    *eqcat = starcat->equinox;
 	    *epcat = starcat->epoch;
-	    catprop = starcat->mprop;
+	    *catprop = starcat->mprop;
+	    *nmag = starcat->nmag;
 	    ctgclose (starcat);
 	    refcat = TXTCAT;
 	    }
@@ -289,50 +345,107 @@ double	*epcat;		/* Epoch of catalog (returned) */
 }
 
 char *
-CatName (refcat)
+CatName (refcat, refcatname)
 
-int refcat;		/* Catalog code */
+int	refcat;		/* Catalog code */
+char	*refcatname;	/* Catalog file name */
 {
     char *catname;
 
-    if (refcat > 0 && refcat < 17)
-	catname = (char *)calloc (16, 1);
-    else
-	return (NULL);
+    if (refcat < 1 || refcat > NUMCAT)
+	return (refcatname);
+
+    /* Allocate string in which to return a catalog name */
+    catname = (char *)calloc (16, 1);
 
     if (refcat ==  GSC)		/* HST Guide Star Catalog */
 	strcpy (catname, "GSC");
+    else if (refcat ==  GSCACT)	/* HST GSC revised with ACT */
+	strcpy (catname, "GSC-ACT");
+    else if (refcat ==  GSC2)	/* GSC II */
+	strcpy (catname, "GSC II");
     else if (refcat ==  UJC)	/* USNO UJ Star Catalog */
 	strcpy (catname, "UJC");
     else if (refcat ==  UAC)	/* USNO A Star Catalog */
-	strcpy (catname, "UA2");
+	strcpy (catname, "USNO-A2.0");
     else if (refcat ==  USAC)	/* USNO SA Star Catalog */
-	strcpy (catname, "USA2");
+	strcpy (catname, "USNO-SA2.0");
     else if (refcat ==  SAO)	/* SAO Star Catalog */
 	strcpy (catname, "SAO");
     else if (refcat ==  IRAS)	/* IRAS Point Source Catalog */
-	strcpy (catname, "IRAS");
+	strcpy (catname, "IRAS PSC");
     else if (refcat ==  PPM)	/* PPM Star Catalog */
 	strcpy (catname, "PPM");
     else if (refcat ==  TYCHO)	/* Tycho Star Catalog */
 	strcpy (catname, "TYCHO");
     else if (refcat ==  UA1)	/* USNO A-1.0 Star Catalog */
-	strcpy (catname, "UA1");
+	strcpy (catname, "USNO-A1.0");
     else if (refcat ==  UA2)	/* USNO A-2.0 Star Catalog */
-	strcpy (catname, "UA2");
+	strcpy (catname, "USNO-A2.0");
     else if (refcat ==  USA1)	/* USNO SA-1.0 Star Catalog */
-	strcpy (catname, "USA1");
+	strcpy (catname, "USNO-SA1.0");
     else if (refcat ==  USA2)	/* USNO SA-2.0 Star Catalog */
-	strcpy (catname, "USA2");
+	strcpy (catname, "USNO-SA2.0");
     else if (refcat ==  HIP)	/* Hipparcos Star Catalog */
-	strcpy (catname, "HIP");
+	strcpy (catname, "Hipparcos");
     else if (refcat ==  ACT)	/* USNO ACT Star Catalog */
 	strcpy (catname, "ACT");
     else if (refcat ==  BSC)	/* Yale Bright Star Catalog */
 	strcpy (catname, "BSC");
     else if (refcat ==  TYCHO2)	/* Tycho-2 Star Catalog */
-	strcpy (catname, "TY2");
+	strcpy (catname, "TYCHO-2");
+    else if (refcat ==  TMPSC)	/* 2MASS Point Source Catalog */
+	strcpy (catname, "2MASS PSC");
     return (catname);
+}
+
+
+void
+CatID (catid, refcat)
+
+char	*catid;		/* Catalog ID (returned) */
+int	refcat;		/* Catalog code */
+{
+    if (refcat == ACT)
+	strcpy (catid, "act_id       ");
+    else if (refcat == BSC)
+	strcpy (catid, "bsc_id       ");
+    else if (refcat == GSC || refcat == GSCACT)
+	strcpy (catid, "gsc_id       ");
+    else if (refcat == GSC2)
+	strcpy (catid, "gsc2_id       ");
+    else if (refcat == USAC)
+	strcpy (catid,"usac_id       ");
+    else if (refcat == USA1)
+	strcpy (catid,"usa1_id       ");
+    else if (refcat == USA2)
+	strcpy (catid,"usa2_id       ");
+    else if (refcat == UAC)
+	strcpy (catid,"usnoa_id      ");
+    else if (refcat == UA1)
+	strcpy (catid,"usnoa1_id     ");
+    else if (refcat == UA2)
+	strcpy (catid,"usnoa2_id     ");
+    else if (refcat == UJC)
+	strcpy (catid,"usnoj_id      ");
+    else if (refcat == TMPSC)
+	strcpy (catid,"2mass_id      ");
+    else if (refcat == SAO)
+	strcpy (catid,"sao_id        ");
+    else if (refcat == PPM)
+	strcpy (catid,"ppm_id        ");
+    else if (refcat == IRAS)
+	strcpy (catid,"iras_id       ");
+    else if (refcat == TYCHO)
+	strcpy (catid,"tycho_id      ");
+    else if (refcat == TYCHO2)
+	strcpy (catid,"tycho2_id     ");
+    else if (refcat == HIP)
+	strcpy (catid,"hip_id        ");
+    else
+	strcpy (catid,"id            ");
+
+    return;
 }
 
 
@@ -369,7 +482,15 @@ char *progname;	/* Program name which might contain catalog code */
     char *refcatname;
     refcatname = NULL;
 
-    if (strsrch (progname,"gsc") != NULL) {
+    if (strsrch (progname,"gsca") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "gscact");
+	}
+    else if (strsrch (progname,"gsc2") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "gsc2");
+	}
+    else if (strsrch (progname,"gsc") != NULL) {
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "gsc");
 	}
@@ -432,6 +553,11 @@ char *progname;	/* Program name which might contain catalog code */
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "bsc");
 	}
+    else if (strsrch (progname,"2mp") != NULL ||
+	strsrch (progname,"tmc") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "tmc");
+	}
 
     return (refcatname);
 }
@@ -442,12 +568,15 @@ CatNum (refcat, nnfld, nndec, dnum, numstr)
 
 int	refcat;		/* Catalog code */
 int	nnfld;		/* Number of characters in number (from CatNumLen) */
+			/* Print leading zeroes if negative */
 int	nndec;		/* Number of decimal places ( >= 0) */
+			/* Omit leading spaces if negative */
 double	dnum;		/* Catalog number of source */
 char	*numstr;	/* Formatted number (returned) */
 
 {
     char nform[16];	/* Format for star number */
+    int lnum, i;
 
     /* USNO A1.0, A2.0, SA1.0, or SA2.0 Catalogs */
     if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
@@ -456,6 +585,35 @@ char	*numstr;	/* Formatted number (returned) */
 	    sprintf (numstr, "%013.8f", dnum);
 	else
 	    sprintf (numstr, "%13.8f", dnum);
+	}
+
+    /* GSC II */
+    else if (refcat == GSC2) {
+	if (nnfld < 0) {
+	    if (dnum > 0)
+		sprintf (numstr, "N%.0f", (dnum+0.01));
+	    else
+		sprintf (numstr, "S%.0f", (-dnum + 0.01));
+	    lnum = strlen (numstr);
+	    if (lnum < -nnfld) {
+		for ( i = lnum; i < -nnfld; i++)
+		    strcat (numstr, " ");
+		}
+	    }
+	else {
+	    if (dnum > 0)
+		sprintf (numstr, "N%.0f", (dnum+0.5));
+	    else
+		sprintf (numstr, "S%.0f", (-dnum + 0.5));
+	    }
+	}
+
+    /* 2MASS Point Source Catalogs */
+    else if (refcat == TMPSC) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%010.7f", dnum);
+	else
+	    sprintf (numstr, "%10.7f", dnum);
 	}
 
     /* USNO Plate Catalog */
@@ -475,7 +633,7 @@ char	*numstr;	/* Formatted number (returned) */
 	}
 
     /* HST Guide Star Catalog */
-    else if (refcat == GSC) {
+    else if (refcat == GSC || refcat == GSCACT) {
 	if (nnfld < 0)
 	    sprintf (numstr, "%09.4f", dnum);
 	else
@@ -483,15 +641,16 @@ char	*numstr;	/* Formatted number (returned) */
 	}
 
     /* SAO, PPM, or IRAS Point Source Catalogs (TDC binary format) */
-    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC) {
+    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC ||
+	     refcat==HIP) {
 	if (nnfld < 0)
 	    sprintf (numstr, "%06d", (int)(dnum+0.5));
 	else
 	    sprintf (numstr, "%6d", (int)(dnum+0.5));
 	}
 
-    /* Tycho, Hipparcos, or ACT catalogs */
-    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT) {
+    /* Tycho or ACT catalogs */
+    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT) {
 	if (nnfld < 0)
 	    sprintf (numstr, "%010.5f", dnum);
 	else
@@ -520,6 +679,8 @@ char	*numstr;	/* Formatted number (returned) */
 	sprintf (nform,"%%0%dd", -nnfld);
 	sprintf (numstr, nform, (int)(dnum+0.49));
 	}
+    else if (nndec < 0)
+	sprintf (numstr, "%d", (int)(dnum+0.49));
     else
 	sprintf (numstr, "%6d", (int)(dnum+0.49));
 
@@ -543,6 +704,14 @@ int	nndec;		/* Number of decimal places ( >= 0) */
 	refcat == UAC  || refcat == UA1  || refcat == UA2)
 	return (13);
 
+    /* GSC II */
+    else if (refcat == GSC2)
+	return (13);
+
+    /* 2MASS Point Source Catalog */
+    else if (refcat == TMPSC)
+	return (10);
+
     /* USNO Plate Catalogs */
     else if (refcat == USNO)
 	return (7);
@@ -552,15 +721,16 @@ int	nndec;		/* Number of decimal places ( >= 0) */
 	return (12);
 
     /* HST Guide Star Catalog */
-    else if (refcat == GSC)
+    else if (refcat == GSC || refcat == GSCACT)
 	return (9);
 
-    /* SAO, PPM, or IRAS Point Source Catalogs (TDC binary format) */
-    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC)
+    /* SAO, PPM, Hipparcos, or IRAS Point Source Catalogs (TDC binary format) */
+    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC ||
+	     refcat==HIP)
 	return (6);
 
-    /* Tycho, Tycho2, Hipparcos, or ACT catalogs */
-    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT)
+    /* Tycho, Tycho2, or ACT catalogs */
+    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
 	return (10);
 
     /* Starbase tab-separated, TDC binary, or TDC ASCII catalogs */
@@ -613,6 +783,14 @@ int	refcat;		/* Catalog code */
 	refcat == UAC  || refcat == UA1  || refcat == UA2)
 	return (8);
 
+    /* GSC II */
+    else if (refcat == GSC2)
+	return (0);
+
+    /* 2MASS Point Source Catalog */
+    else if (refcat == TMPSC)
+	return (7);
+
     /* USNO Plate Catalogs */
     else if (refcat == USNO)
 	return (0);
@@ -622,15 +800,16 @@ int	refcat;		/* Catalog code */
 	return (7);
 
     /* HST Guide Star Catalog */
-    else if (refcat == GSC)
+    else if (refcat == GSC || refcat == GSCACT)
 	return (4);
 
-    /* SAO, PPM, or IRAS Point Source Catalogs (TDC binary format) */
-    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC)
+    /* SAO, PPM, Hipparcos, or IRAS Point Source Catalogs (TDC binary format) */
+    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC ||
+	     refcat==HIP)
 	return (0);
 
-    /* Tycho, Tycho2, Hipparcos, or ACT catalogs */
-    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT)
+    /* Tycho, Tycho2, or ACT catalogs */
+    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
 	return (5);
 
     /* Starbase tab-separated, TDC binary, or TDC ASCII catalogs */
@@ -1009,7 +1188,7 @@ struct Range *range;	/* Range structure */
 	}
     else {
 	range->value = range->value + range->step;
-	if (range->value > range->last) {
+	if (range->value > (range->last + (range->step * 0.5))) {
 	    range->irange++;
 	    if (range->irange < range->nranges) {
 		i = range->irange * 3;
@@ -1085,6 +1264,13 @@ char	*cwhite;	/* additional whitespace characters
 	tokens->nwhite = 2;
 	}
 
+    /* if character is bar, allow only bars and nulls as separators */
+    else if (naddw > 0 && !strncmp (cwhite, "bar", 3)) {
+	tokens->white[0] = '|';		/* Bar */
+	tokens->white[1] = (char) 0;	/* NULL (end of string) */
+	tokens->nwhite = 2;
+	}
+
     /* otherwise, allow spaces, tabs, commas, nulls, and cwhite */
     else {
 	tokens->nwhite = 4 + naddw;;
@@ -1132,7 +1318,7 @@ char	*cwhite;	/* additional whitespace characters
 	    iq = stri;
 	if (iq > stri) {
 	    tokens->ntok = tokens->ntok + 1;
-	    if (tokens->ntok < MAXTOKENS) return (MAXTOKENS);
+	    if (tokens->ntok > MAXTOKENS) return (MAXTOKENS);
 	    tokens->tok1[tokens->ntok] = stri + 1;
 	    tokens->ltok[tokens->ntok] = (iq - stri) - 1;
 	    stri = iq + 1;
@@ -1157,7 +1343,7 @@ char	*cwhite;	/* additional whitespace characters
 
 	    /* Make whitespace character next token; start new one */
 	    tokens->ntok = tokens->ntok + 1;
-	    if (tokens->ntok < MAXTOKENS) return (MAXTOKENS);
+	    if (tokens->ntok > MAXTOKENS) return (MAXTOKENS);
 	    tokens->tok1[tokens->ntok] = stri;
 	    tokens->ltok[tokens->ntok] = 1;
 	    stri++;
@@ -1207,12 +1393,15 @@ char	*cwhite;	/* additional whitespace characters
 /* NEXTOKEN -- get next token from tokenized string */
 
 int
-nextoken (tokens, token)
+nextoken (tokens, token, maxchars)
  
 struct Tokens *tokens;	/* Token structure returned */
 char	*token;		/* token (returned) */
+int	maxchars;	/* Maximum length of token */
 {
-    int it, ltok;
+    int ltok;		/* length of token string (returned) */
+    int it, i;
+    int maxc = maxchars - 1;
 
     tokens->itok = tokens->itok + 1;
     it = tokens->itok;
@@ -1221,8 +1410,11 @@ char	*token;		/* token (returned) */
     else if (it < 1)
 	it = 1;
     ltok = tokens->ltok[it];
+    if (ltok > maxc)
+	ltok = maxc;
     strncpy (token, tokens->tok1[it], ltok);
-    token[ltok] = (char) 0;
+    for (i = ltok; i < maxc; i++)
+	token[i] = (char) 0;
     return (ltok);
 }
 
@@ -1230,35 +1422,44 @@ char	*token;		/* token (returned) */
 /* GETOKEN -- get specified token from tokenized string */
 
 int
-getoken (tokens, itok, token)
+getoken (tokens, itok, token, maxchars)
 
 struct Tokens *tokens;	/* Token structure returned */
-int itok;		/* token sequence number of token
+int	itok;		/* token sequence number of token
 			 * if <0, get whole string after token -itok
 			 * if =0, get whole string */
-char *token;		/* token (returned) */
+char	*token;		/* token (returned) */
+int	maxchars;	/* Maximum length of token */
 {
     int ltok;		/* length of token string (returned) */
-    int it;
+    int it, i;
+    int maxc = maxchars - 1;
 
     it = itok;
     if (it > 0 ) {
 	if (it > tokens->ntok)
 	    it = tokens->ntok;
 	ltok = tokens->ltok[it];
+	if (ltok > maxc)
+	    ltok = maxc;
 	strncpy (token, tokens->tok1[it], ltok);
 	}
     else if (it < 0) {
 	if (it < -tokens->ntok)
 	    it  = -tokens->ntok;
 	ltok = tokens->line + tokens->lline - tokens->tok1[-it];
+	if (ltok > maxc)
+	    ltok = maxc;
 	strncpy (token, tokens->tok1[-it], ltok);
 	}
     else {
 	ltok = tokens->lline;
+	if (ltok > maxc)
+	    ltok = maxc;
 	strncpy (token, tokens->tok1[1], ltok);
 	}
-    token[ltok] = (char) 0;
+    for (i = ltok; i < maxc; i++)
+	token[i] = (char) 0;
 
     return (ltok);
 }
@@ -1474,6 +1675,157 @@ char	*isp;	/* Spectral type */
     return;
 }
 
+
+void
+CatTabHead (refcat,sysout,nnfld,mprop,nmag,ranges,keyword,gcset,tabout,
+	    classd,printxy,gobj1,fd)
+
+int	refcat;		/* Catalog being searched */
+int	sysout;		/* Output coordinate system */
+int	nnfld;		/* Number of characters in ID column */
+int	mprop;		/* 1 if proper motion in catalog */
+int	nmag;		/* Number of magnitudes */
+char	*ranges;	/* Catalog numbers to print */
+char	*keyword;	/* Column to add to tab table output */
+int	gcset;		/* 1 if there are any values in gc[] */
+int	tabout;		/* 1 if output is tab-delimited */
+int	classd; 	/* GSC object class to accept (-1=all) */
+int	printxy;	/* 1 if X and Y included in output */
+char	**gobj1;	/* Pointer to array of object names; NULL if none */
+FILE	*fd;		/* Output file descriptor; none if NULL */
+
+{
+    int typecol;
+    char headline[160];
+
+    /* Set flag for plate, class, type, or 3rd magnitude column */
+    if (refcat == BINCAT || refcat == SAO  || refcat == PPM ||
+	refcat == ACT  || refcat == TYCHO2 || refcat == BSC)
+	typecol = 1;
+    else if ((refcat == GSC || refcat == GSCACT) && classd < -1)
+	typecol = 3;
+    else if (refcat == TMPSC)
+	typecol = 4;
+    else if (refcat == GSC || refcat == GSCACT ||
+	refcat == UJC || refcat == IRAS ||
+	refcat == USAC || refcat == USA1   || refcat == USA2 ||
+	refcat == UAC  || refcat == UA1    || refcat == UA2 ||
+	refcat == BSC  || (refcat == TABCAT&&gcset))
+	typecol = 2;
+    else
+	typecol = 0;
+
+
+    /* Print column headings */
+    if (refcat == ACT)
+	strcpy (headline, "act_id       ");
+    else if (refcat == BSC)
+	strcpy (headline, "bsc_id       ");
+    else if (refcat == GSC || refcat == GSCACT)
+	strcpy (headline, "gsc_id       ");
+    else if (refcat == USAC)
+	strcpy (headline,"usac_id       ");
+    else if (refcat == USA1)
+	strcpy (headline,"usa1_id       ");
+    else if (refcat == USA2)
+	strcpy (headline,"usa2_id       ");
+    else if (refcat == UAC)
+	strcpy (headline,"usnoa_id      ");
+    else if (refcat == UA1)
+	strcpy (headline,"usnoa1_id     ");
+    else if (refcat == UA2)
+	strcpy (headline,"usnoa2_id     ");
+    else if (refcat == UJC)
+	strcpy (headline,"usnoj_id      ");
+    else if (refcat == TMPSC)
+	strcpy (headline,"2mass_id      ");
+    else if (refcat == SAO)
+	strcpy (headline,"sao_id        ");
+    else if (refcat == PPM)
+	strcpy (headline,"ppm_id        ");
+    else if (refcat == IRAS)
+	strcpy (headline,"iras_id       ");
+    else if (refcat == TYCHO)
+	strcpy (headline,"tycho_id      ");
+    else if (refcat == TYCHO2)
+	strcpy (headline,"tycho2_id     ");
+    else if (refcat == HIP)
+	strcpy (headline,"hip_id        ");
+    else
+	strcpy (headline,"id            ");
+    headline[nnfld] = (char) 0;
+
+    if (sysout == WCS_GALACTIC)
+	strcat (headline,"	long_gal   	lat_gal  ");
+    else if (sysout == WCS_ECLIPTIC)
+	strcat (headline,"	long_ecl   	lat_ecl  ");
+    else if (sysout == WCS_B1950)
+	strcat (headline,"	ra1950      	dec1950  ");
+    else
+	strcat (headline,"	ra      	dec      ");
+    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
+	refcat == UAC  || refcat == UA1  || refcat == UA2)
+	strcat (headline,"	magb	magr	plate");
+    if (refcat == TMPSC)
+	strcat (headline,"	magj	magh	magk");
+    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT)
+	strcat (headline,"	magb	magv");
+    else if (refcat == GSC || refcat == GSCACT)
+	strcat (headline,"	mag	class	band	N");
+    else if (refcat == UJC)
+	strcat (headline,"	mag	plate");
+    else
+	strcat (headline,"	mag");
+    if (typecol == 1)
+	strcat (headline,"	type");
+    if (mprop)
+	strcat (headline,"	Ura    	Udec  ");
+    if (ranges == NULL)
+	strcat (headline,"	arcsec");
+    if (refcat == TABCAT && keyword != NULL) {
+	strcat (headline,"	");
+	strcat (headline, keyword);
+	}
+    if (gobj1 != NULL)
+	strcat (headline,"	object");
+    if (printxy)
+	strcat (headline, "	X      	Y      ");
+    if (tabout) {
+	printf ("%s\n", headline);
+	if (fd != NULL)
+	    fprintf (fd, "%s\n", headline);
+	}
+
+    strcpy (headline, "---------------------");
+    headline[nnfld] = (char) 0;
+    strcat (headline,"	------------	------------");
+    if (nmag == 2)
+	strcat (headline,"	-----	-----");
+    else
+	strcat (headline,"	-----");
+    if (refcat == GSC || refcat == GSCACT)
+	strcat (headline,"	-----	----	-");
+    else if (typecol == 1)
+	strcat (headline,"	----");
+    else if (typecol == 2)
+	strcat (headline,"	-----");
+    else if (typecol == 4)
+	strcat (headline,"	-----");
+    if (mprop)
+	strcat (headline,"	-------	------");
+    if (ranges == NULL)
+	strcat (headline, "	------");
+    if (refcat == TABCAT && keyword != NULL)
+	strcat (headline,"	------");
+    if (printxy)
+	strcat (headline, "	-------	-------");
+    if (tabout) {
+	printf ("%s\n", headline);
+	if (fd != NULL)
+	    fprintf (fd, "%s\n", headline);
+	}
+    }
+
 /* Mar  2 1998	Make number and second magnitude optional
  * Oct 21 1998	Add RefCat() to set reference catalog code
  * Oct 26 1998	Include object names in star catalog entry structure
@@ -1532,4 +1884,21 @@ char	*isp;	/* Spectral type */
  * Feb 28 2001	Separate .usno stars from usa stars
  * Mar  1 2001	Add CatName()
  * Mar 19 2001	Fix setting of ra-sorted PPM catalog in RefCat()
+ * Mar 27 2001	Add option to omit leading spaces in CatNum()
+ * May  8 2001	Fix bug in setokens() which failed to deal with quoted tokens
+ * May 18 2001	Fix bug in setokens() which returned on ntok < maxtok
+ * May 22 2001	Add GSC-ACT catalog
+ * May 24 2001	Add 2MASS Point Source Catalog
+ * Jun  7 2001	Return proper motion flag and number of magnitudes from RefCat()
+ * Jun 13 2001	Fix rounding problem in rgetr8()
+ * Jun 13 2001	Use strncasecmp() instead of two calls to strncmp() in RefCat()
+ * Jun 15 2001	Add CatName() and CatID()
+ * Jun 18 2001	Add maximum length of returned string to getoken(), nextoken()
+ * Jun 18 2001	Pad returned string in getoken(), nextoken()
+ * Jun 19 2001	Treat "bar" like "tab" as special single character terminator
+ * Jun 19 2001	Allow tab table options for named catalogs in RefCat()
+ * Jun 19 2001	Change number format to integer for Hipparcos catalog
+ * Jun 19 2001	Add refcatname as argument to CatName()
+ * Jun 20 2001	Add GSC II
+ * Jun 25 2001	Fix GSC II number padding
  */

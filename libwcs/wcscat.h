@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * March 22, 2001
+ * July 12, 2001
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -23,16 +23,22 @@
 #define BSC		15	/* Yale Bright Star Catalog */
 #define TYCHO2		16	/* Tycho-2 Star Catalog */
 #define USNO		17	/* USNO-format plate catalog */
+#define TMPSC		18	/* 2MASS Point Source Catalog */
+#define GSCACT		19	/* GSC-ACT revised Guide Star Catalog */
+#define GSC2		20	/* GSC II version 2.2 */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */
 #define WEBCAT		-4	/* Tab catalog via the web */
+#define NUMCAT		19	/* Number of predefined catalogs */
 
 /* Subroutines for dealing with catalogs */
 int RefCat();		/* Return catalog type code, title, coord. system */
 char *CatName();	/* Return catalog name given catalog type code */
 char *ProgCat();	/* Return catalog name given program name used */
 char *ProgName();	/* Return program name given program path used */
+char *CatName();	/* Return catalog name given catalog type code */
+void CatID();		/* Return catalog ID keyword given catalog type code */
 void CatNum();		/* Return formatted source number */
 int CatNumLen();	/* Return length of source numbers */
 int CatNdec();		/* Return number of decimal places in source numbers */
@@ -47,6 +53,7 @@ void bv2sp();		/* Approximate main sequence spectral type from B - V */
 
 /* Subroutines for extracting sources from catalogs by sky region */
 int gscread();		/* Read sources from HST Guide Star Catalog */
+int tmcread();		/* Read sources from 2MASS Point Source Catalog */
 int uacread();		/* Read sources from USNO A or SA Catalog */
 int ujcread();		/* Read sources from USNO J Catalog */
 int tabread();		/* Read sources from tab table catalog */
@@ -59,6 +66,7 @@ int webread();		/* Read sources from catalog on the World Wide Web */
 
 /* Subroutines for extracting sources from catalogs by ID number */
 int gscrnum();		/* Read sources from HST Guide Star Catalog */
+int tmcrnum();		/* Read sources from 2MASS Point Source Catalog */
 int uacrnum();		/* Read sources from USNO A or SA Catalog */
 int ujcrnum();		/* Read sources from USNO J Catalog */
 int tabrnum();		/* Read sources from tab table catalog */
@@ -75,11 +83,21 @@ void settabkey();	/* Set tab table keyword to read for object */
 int ctgstar();		/* Read one star entry from ASCII catalog, 0 if OK */
 int binstar();		/* Read one star entry from binary catalog, 0 if OK */
 int tabstar();		/* Read one star entry from tab table catalog, 0 if OK */
+struct TabTable *webopen();	/* Open tab table across the web */
+char *webbuff();	/* Read URL into buffer across the web */
 
 /* Subroutines for sorting tables of star positions and magnitudes */
+#define NOSORT		0	/* Do not sort catalog output */
+#define SORT_MAG	1	/* Sort output by magnitude */
+#define SORT_DIST	2	/* Sort output by distance from center */
+#define SORT_RA		3	/* Sort output by right ascension */
+#define SORT_DEC	4	/* Sort output by declination */
+#define SORT_X		5	/* Sort output by image X coordinate */
 void XSortStars();
 void RASortStars();
+void DecSortStars();
 void MagSortStars();
+void XSortStars();
 
 /* Data structure for SAO TDC ASCII and binary star catalog entries */
 struct Star {
@@ -87,7 +105,7 @@ struct Star {
     float xno;		/* Catalog number */
     double ra;		/* Right Ascension (degrees) */
     double dec;		/* Declination (degrees) */
-    char isp[4];	/* Spectral type or other 2-char identifier */
+    char isp[24];	/* Spectral type or other 2-char identifier */
     short mag[11];	/* Up to 10 Magnitudes * 100 */
     double rapm;	/* RA proper motion (degrees per year) */
     double decpm;	/* Dec proper motion (degrees per year) */
@@ -97,6 +115,7 @@ struct Star {
     double equinox;	/* Equinox of coordinate system as fractional year */
     double epoch;	/* Epoch of position as fractional year */
     double parallax;	/* Parallax in arcseconds */
+    double pxerror;	/* Parallax error in arcseconds */
     double radvel;	/* Radial velocity in km/sec, positive away */
     char objname[32];	/* Object name */
     int peak;		/* Peak flux per pixel in star image */
@@ -145,6 +164,7 @@ struct StarCat {
     char incdir[128];	/* Catalog directory pathname */
     char incfile[32];	/* Catalog file name */
     int ncobj;		/* Length of object name in binary star entry */
+    int nnfld;		/* Length of star number  */
     int nndec;		/* Number of decimal places in star number */
     int nepoch;		/* 1 if epoch of coordinates is present */
     int sptype;		/* 1 if spectral type is present in catalog */
@@ -160,6 +180,8 @@ struct StarCat {
     int entdec;		/* Entry number for declination */
     int entmag1;	/* Entry number for first or only magnitude */
     int entmag2;	/* Entry number for second magnitude, if present */
+    int entmag3;	/* Entry number for third magnitude, if present */
+    int entmag4;	/* Entry number for fourth magnitude, if present */
     int entpeak;	/* Entry number for peak counts */
     int entepoch;	/* Entry number for epoch of observation */
     int entname;	/* Entry number for object name */
@@ -167,6 +189,7 @@ struct StarCat {
     int entrpm;		/* Entry number for proper motion in right ascension */
     int entdpm;		/* Entry number for proper motion in declination */
     int entpx;		/* Entry number for parallax */
+    int entpxe;		/* Entry number for parallax error */
     int entrv;		/* Entry number for radial velocity */
     int enttype;	/* Entry number for spectral type */
     int rpmunit;	/* Units for RA proper motion (PM_x) */
@@ -177,6 +200,8 @@ struct StarCat {
     char keydec[16];	/* Entry name for declination */
     char keymag1[16];	/* Entry name for first or only magnitude */
     char keymag2[16];	/* Entry name for second magnitude, if present */
+    char keymag3[16];	/* Entry name for third magnitude, if present */
+    char keymag4[16];	/* Entry name for fourth magnitude, if present */
     char keyrpm[16];	/* Entry name for right ascension proper motion */
     char keydpm[16];	/* Entry name for declination proper motion */
     char keypeak[16];	/* Entry name for integer code */
@@ -200,8 +225,11 @@ struct TabTable {
     char *tabheader;	/* Pointer to start of line containing table header */
     char *tabhead;	/* Pointer to start of line containing column heading */
     char *tabdata;	/* Pointer to start of first line of table data */
+    int lhead;		/* Number of bytes before first data line */
     int iline;		/* Number of current line (1=first) */
+    int lline;		/* Length in bytes of line buffer */
     char *tabline;	/* Pointer to start of current line */
+    FILE *tcat;		/* File descriptor for tab table file */
     int ncols;		/* Number of columns per table entry */
     char **colname;	/* Column names */
     int *lcol;		/* Lengths of column header names */
@@ -213,7 +241,7 @@ struct TabTable *tabopen();	/* Open tab table file */
 struct StarCat *tabcatopen();	/* Open tab table catalog */
 void tabcatclose();	/* Close tab table catalog */
 int tabxyread();	/* Read x, y, and magnitude from tab table star list */
-char *tabline();	/* Find a specified line in a tab table */
+char *gettabline();	/* Find a specified line in a tab table */
 int tabrkey();		/* Keyword values from tab table catalogs */
 int tabcol();		/* Find column for name */
 int tabgetk();		/* Get tab table entries for named column */
@@ -252,12 +280,18 @@ double rgetr8();	/* Return next number in range as double */
 void rstart();		/* Restart range */
 
 /* Shapes for SAOimage region file output */
-#define WCS_CIRCLE 1	/* shape for SAOimage plotting */
-#define WCS_SQUARE 2	/* shape for SAOimage plotting */
-#define WCS_DIAMOND 3	/* shape for SAOimage plotting */
-#define WCS_CROSS 4	/* shape for SAOimage plotting */
-#define WCS_EX 5	/* shape for SAOimage plotting */
-#define WCS_VAR 6	/* shape for HST GSC SAOimage plotting (+ and x)*/
+#define WCS_CIRCLE 1	/* circle shape for SAOimage plotting */
+#define WCS_SQUARE 2	/* square shape for SAOimage plotting */
+#define WCS_DIAMOND 3	/* diamond shape for SAOimage plotting */
+#define WCS_CROSS 4	/* cross shape for SAOimage plotting */
+#define WCS_EX 5	/* x shape for SAOimage plotting */
+#define WCS_VAR 6	/* variable (+ and x) shape for HSTGSC plotting */
+#define WCS_PCIRCLE 11	/* pixel circle shape for SAOimage plotting */
+#define WCS_PSQUARE 12	/* pixel square shape for SAOimage plotting */
+#define WCS_PDIAMOND 13	/* pixel diamond shape for SAOimage plotting */
+#define WCS_PCROSS 14	/* pixel cross shape for SAOimage plotting */
+#define WCS_PEX 15	/* pixel ex shape for SAOimage plotting */
+#define WCS_PVAR 16	/* pixel variable (+ and x) shape for HSTGSC plotting */
 
 /* Structire and subroutines for access to tokens within a string */
 #define MAXTOKENS 100    /* Maximum number of tokens to parse */
@@ -338,4 +372,14 @@ int getoken();		/* Get specified token from tokenized string */
  * Dec 18 2000	Drop PropCat(), a cludgy proper motion flag
  *
  * Mar 22 2001	Add web search flag in catalog data structure
+ * Mar 27 2001	Add shapes in pixels to SAOimage region options
+ * May 14 2001	Add 2MASS Point Source Catalog flags
+ * May 22 2001	Add declination sorting
+ * May 24 2001	Add 2MASS Point Source Catalog subroutines
+ * May 29 2001	Add length of star number to catalog structure
+ * May 30 2001	Add third magnitude for tab tables to catalog structure
+ * Jun 15 2001	Add CatName() and CatID()
+ * Jun 19 2001	Add parallax error to catalog and star structures
+ * Jun 20 2001	Add webopen(), GSC2, fourth magnitude to star and starcat
+ * Jul 12 2001	Add separate web access subroutine, webbuff()
  */

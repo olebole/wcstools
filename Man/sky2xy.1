@@ -1,4 +1,4 @@
-.TH sky2xy(1) WCS "14 April 1998"
+.TH sky2xy(1) WCSTools "6 July 2001"
 .SH Name
 sky2xy \- Compute X Y from RA Dec using WCS in FITS and IRAF image files
 .SH Synopsis
@@ -24,6 +24,12 @@ Starbase format will eventually be allowed.
 .B \-b
 B1950 (FK4) input
 .TP
+.B \-e
+Ecliptic longitude and latitude input
+.TP
+.B \-g
+Galactic longitude and latitude input
+.TP
 .B \-j
 J2000 (FK5) input
 .TP
@@ -32,7 +38,12 @@ Galactic longitude and latitude input
 .TP
 .B \-v
 More descriptive output
+.TP
+.B \-z
+Use AIPS classic projections instead of WCSLIB
+
 .SH See Also
 xy2sky()
+
 .SH Author
 Doug Mink, SAO (dmink@cfa.harvard.edu)

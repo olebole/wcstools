@@ -1,5 +1,5 @@
 /*** File libwcs/fitswcs.c
- *** March 8, 2001
+ *** July 11, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -137,6 +137,29 @@ int verbose;
 		fprintf (stderr,"%s: deleted\n", flds[i]);
 	    }
 	}
+
+    /* Delete rotation matrix, if present */
+    if (hdel (header,"PC001001")) {
+	n++;
+	if (verbose)
+	    fprintf (stderr,"PC001001: deleted\n");
+	}
+    if (hdel (header,"PC001002")) {
+	n++;
+	if (verbose)
+	    fprintf (stderr,"PC001002: deleted\n");
+	}
+    if (hdel (header,"PC002001")) {
+	n++;
+	if (verbose)
+	    fprintf (stderr,"PC002001: deleted\n");
+	}
+    if (hdel (header,"PC002002")) {
+	n++;
+	if (verbose)
+	    fprintf (stderr,"PC002002: deleted\n");
+	}
+
     if (verbose && n == 0)
 	fprintf (stderr,"DelWCSFITS: No WCS in header\n");
 
@@ -519,4 +542,5 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Jan 11 2001	Print all messages to stderr
  * Jan 31 2001	Add code to extract WCS name or character from filename
  * Mar  8 2001	Change WCS character separator from : to % in FITS filenames
+ * Jul 11 2001	Add PC matrix to keywords deleted by DelWCS()
  */

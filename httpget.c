@@ -1,5 +1,5 @@
 /* File httpget.c
- * December 4, 2000
+ * July 12, 2001
  * By Doug Mink and John Roll
 
  * Test http access to scat
@@ -56,18 +56,21 @@ char	*url;
     File sok;
 
     char hosturl[LINE];
-    char linebuf[LINE];
+    char linebuf[CHUNK];
     char page[LINE];
-    char buffer[CHUNK];
+    char *buffer;
     char *fpage;
     char *port;
-    char *nexttok;
+    char *cbcont;
     int  nport = 80;
     int  chunked = 0;
     int  lchunk;
     int  status;
     int  red;
-    int  diag;
+    int  diag = 1;
+    int  nbcont = 0;
+    int  nbr;
+    int  i;
 
     port = NULL;
     strcpy (hosturl, url);
@@ -75,23 +78,20 @@ char	*url;
     if ( !strncmp(hosturl, "http://", 7) ) {
 	strcpy(hosturl, url+7);
 	}
-    if ( port = strchr(hosturl, ':') ) {
-	*port = '\0';
-	port++;
-	nexttok = port;
-	}
-    else
-	nexttok = hosturl;
-    if (( fpage = strchr (nexttok, '/')) != NULL ) {
+    fpage = strchr (hosturl, '/');
+    if (fpage != NULL) {
 	strcpy (page, fpage);
-	*fpage = '\0';
-        }
+	*fpage = (char) 0;
+	if (port = strchr (hosturl, ':') ) {
+	    *port = '\0';
+	    port++;
+	    nport = atoi (port);
+	    }
+	}
     else {
 	page[0] = '/';
 	page[1] = '\0';
 	}
-    if (port != NULL)
-	nport = atoi (port);
 
     if ( !(sok = SokOpen (hosturl, nport, XFREAD | XFWRITE)) ) {
 	if (port != NULL)
@@ -108,23 +108,34 @@ char	*url;
 
     if ( status != 200 ) return NULL;
 
+    nbcont = 0;
     while ( fgets(linebuf, LINE, sok) ) {
-	printf ("%s", linebuf);
+	fprintf (stderr, "%s", linebuf);
 	if (strsrch (linebuf, "chunked") != NULL)
 	    chunked = 1;
+	if (strsrch (linebuf, "Content-length") != NULL) {
+	    if ((cbcont = strchr (linebuf, ':')) != NULL)
+		nbcont = atoi (cbcont+1);
+	    }
 	if ( *linebuf == '\n' ) break;
 	if ( *linebuf == '\r' ) break;
 	}
 
+    if (nbcont == 0) {
+	fgets (linebuf, LINE, sok);
+	if (diag)
+	    fprintf (stderr, "%s", linebuf);
+	}
+
     /* Print result a chunk at a time */
-    fgets (linebuf, LINE, sok);
-    if (diag)
-	fprintf (stderr, "%s", linebuf);
-    lchunk = (int) strtol (linebuf, NULL, 16);
     if (chunked) {
+	lchunk = (int) strtol (linebuf, NULL, 16);
+	buffer = (char *) calloc (1, CHUNK);
 	while (lchunk > 0) {
-	    fread (buffer, 1, lchunk, sok);
-	    fprintf (stdout, "%s\n", buffer);
+	    for (i = 0; i < CHUNK; i++)
+		buffer[i] = (char) 0;
+	    nbr = fread (buffer, 1, lchunk, sok);
+	    fprintf (stdout, "%s", buffer);
 	    fgets (linebuf, LINE, sok);
 	    if (diag)
 		fprintf (stderr, "%s", linebuf);
@@ -137,6 +148,13 @@ char	*url;
 	    if (lchunk < 1)
 		break;
 	    }
+	}
+
+    /* Print result all at once */
+    else if (nbcont > 0) {
+	buffer = (char *) calloc (1, nbcont);
+	if ((red = fread (buffer, 1, nbcont, sok)) > 0)
+	    fwrite (buffer, 1, red, stdout);
 	}
 
     /* Print result a line at at time */
@@ -308,3 +326,10 @@ static char *iaddrstr(addr, addrlen)
 
     return name;
 }
+
+/* Dec  4 2000	New program
+ *
+ * Mar 27 2001	Fix so colons can be in query part of URL for coordinates
+ * Mar 27 2001	Add option to read entire contents at once
+ * Jul 12 2001	Make line buffer large enough to read a chunk of data
+ */

@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** December 29, 2000
+ *** July 2, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -45,6 +45,7 @@ static int tabcont();
 static int tabsize();
 static int nndec = 0;
 static char *taberr;
+static struct Tokens startok;
 
 char *gettaberr ()
 { return (taberr); }
@@ -100,6 +101,7 @@ int	nlog;
     int sysref;		/* Catalog coordinate system */
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
+    double magt;
     char cstr[32];
     struct Star *star;
     struct StarCat *sc;	/* Star catalog data structure */
@@ -146,7 +148,7 @@ int	nlog;
     lstar = sizeof (struct Star);
     star = (struct Star *) calloc (1, lstar);
     if (sc == NULL)
-	sc = tabcatopen (tabcatname, NULL);
+	sc = tabcatopen (tabcatname, NULL, 0);
     *starcat = sc;
     if (sc == NULL || sc->nstars <= 0) {
 	if (taberr != NULL)
@@ -179,8 +181,9 @@ int	nlog;
     for (istar = 1; istar <= nstars; istar++) {
 
 	/* Read position of next star */
-	if (tabstar (istar, sc, star)) {
-	    fprintf (stderr,"TABREAD: Cannot read star %d\n", istar);
+	if (tabstar (istar, sc, star, verbose)) {
+	    if (verbose)
+		fprintf (stderr,"TABREAD: Cannot read star %d\n", istar);
 	    break;
 	    }
 
@@ -207,7 +210,12 @@ int	nlog;
 	    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 	mag = star->xmag[0];
 	magb = star->xmag[1];
-	if (sc->sptype)
+	if (sc->nmag > 3)
+	    peak = (int) ((star->xmag[3] * 100.0) + 0.5) +
+		   10000 * (int) ((star->xmag[2] * 100.0) + 0.5);
+	else if (sc->nmag > 2)
+	    peak = (int) ((star->xmag[2] * 1000.0) + 0.5);
+	else if (sc->sptype)
 	    peak = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 	else
 	    peak = star->peak;
@@ -216,6 +224,13 @@ int	nlog;
 	    dist = wcsdist (cra,cdec,ra,dec);
 	else
 	    dist = 0.0;
+
+	/* Set magnitude for faint star rejection */
+	magt = mag;
+	if (mag == 99.90 && sc->nmag > 1)
+	    magt = magb;
+	if (magt > 100.0)
+	    magt = magt - 100.0;
 
 	/* Check magnitude and position limits */
 	if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
@@ -248,8 +263,8 @@ int	nlog;
 		    maxdist = dist;
 		    farstar = nstar;
 		    }
-		if (mag > faintmag) {
-		    faintmag = mag;
+		if (magt > faintmag) {
+		    faintmag = magt;
 		    faintstar = nstar;
 		    }
 		}
@@ -288,7 +303,7 @@ int	nlog;
 		}
 
 	    /* Otherwise if too many stars, replace faintest star */
-	    else if (mag < faintmag) {
+	    else if (magt < faintmag) {
 		tnum[faintstar] = num;
 		tra[faintstar] = ra;
 		tdec[faintstar] = dec;
@@ -311,8 +326,13 @@ int	nlog;
 
 		/* Find new faintest star */
 		for (i = 0; i < nstarmax; i++) {
-		    if (tmag[i] > faintmag) {
-			faintmag = tmag[i];
+		    magt = tmag[i];
+		    if (magt == 99.90 && sc->nmag > 1)
+			magt = tmagb[i];
+		    if (magt > 100.0)
+			magt = magt - 100.0;
+		    if (magt > faintmag) {
+			faintmag = magt;
 			faintstar = i;
 			}
 		    }
@@ -402,7 +422,7 @@ int	nlog;
     /* Open star catalog */
     sc = *starcat;
     if (sc == NULL)
-	sc = tabcatopen (tabcatname, NULL);
+	sc = tabcatopen (tabcatname, NULL, 0);
     *starcat = sc;
     if (sc == NULL || sc->nstars <= 0) {
 	if (taberr != NULL)
@@ -437,13 +457,15 @@ int	nlog;
 
 	/* Loop through catalog to star */
 	for (istar = 1; istar <= nstars; istar++) {
-	    if ((line = tabline (startab, istar)) == NULL) {
-		fprintf (stderr,"TABRNUM: Cannot read star %d\n", istar);
+	    if ((line = gettabline (startab, istar)) == NULL) {
+		if (nlog)
+		    fprintf (stderr,"TABRNUM: Cannot read star %d\n", istar);
 		break;
 		}
 
 	    /* Check ID number first */
-	    if ((num = tabgetr8 (startab,line,sc->entid)) == 0.0)
+	    (void) setoken (&startok, line, "tab");
+	    if ((num = tabgetr8 (&startok,sc->entid)) == 0.0)
 		num = (double) istar;
 	    if (num == tnum[jnum])
 		break;
@@ -452,7 +474,7 @@ int	nlog;
 	/* If star has been found in table, read rest of entry */
 	if (num == tnum[jnum]) {
 	    sc->istar = startab->iline;
-	    if (tabstar (istar, sc, star))
+	    if (tabstar (istar, sc, star, nlog))
 		fprintf (stderr,"TABRNUM: Cannot read star %d\n", istar);
 
 	    /* If star entry has been read successfully */
@@ -480,7 +502,12 @@ int	nlog;
 		    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 		mag = star->xmag[0];
 		magb = star->xmag[1];
-		if (sc->sptype)
+		if (sc->nmag > 3)
+		    peak = (int) ((star->xmag[3] * 100.0) + 0.5) +
+			   10000 * (int) ((star->xmag[2] * 100.0) + 0.5);
+		else if (sc->nmag > 2)
+		    peak = (int) ((star->xmag[2] * 1000.0) + 0.5);
+		else if (sc->sptype)
 		    peak = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 		else
 		    peak = star->peak;
@@ -549,7 +576,7 @@ int	nlog;
 
     /* Open tab table file */
     nndec = 0;
-    startab = tabopen (tabcatname);
+    startab = tabopen (tabcatname, 0);
     if (startab == NULL || startab->nlines <= 0) {
 	fprintf (stderr,"TABXYREAD: Cannot read catalog %s\n", tabcatname);
 	return (0);
@@ -590,15 +617,16 @@ int	nlog;
     for (istar = 0; istar < nstars; istar++) {
 
 	/* Read line for next star */
-	if ((line = tabline (startab, istar)) == NULL) {
+	if ((line = gettabline (startab, istar)) == NULL) {
 	    fprintf (stderr,"TABXYREAD: Cannot read star %d\n", istar);
 	    break;
 	    }
 
 	/* Extract x, y, and magnitude */
-	xi = tabgetr8 (startab, line, entx);
-	yi = tabgetr8 (startab, line, enty);
-	magi = tabgetr8 (startab, line, entmag);
+	(void) setoken (&startok, line, "tab");
+	xi = tabgetr8 (startok, entx);
+	yi = tabgetr8 (startok, enty);
+	magi = tabgetr8 (startok, entmag);
 
 	(*xa)[istar] = xi;
 	(*ya)[istar] = yi;
@@ -612,8 +640,8 @@ int	nlog;
 
 	/* Log operation */
 	if (nlog > 1 && istar%nlog == 0)
-		fprintf (stderr,"TABXYREAD: %5d / %5d sources catalog %s\r",
-			istar,nstars,tabcatname);
+	    fprintf (stderr,"TABXYREAD: %5d / %5d sources catalog %s\r",
+		     istar,nstars,tabcatname);
 
 	/* End of star loop */
 	}
@@ -656,7 +684,7 @@ char	**tval;		/* Returned values for specified keyword */
     struct StarCat *starcat;
 
     nstar = 0;
-    starcat = tabcatopen (tabcatname, NULL);
+    starcat = tabcatopen (tabcatname, NULL), 0;
     if (starcat == NULL) {
 	if (taberr != NULL)
 	    fprintf (stderr,"%s\n", taberr);
@@ -675,7 +703,7 @@ char	**tval;		/* Returned values for specified keyword */
 
 	/* Loop through catalog to star */
 	for (istar = 1; istar <= nstars; istar++) {
-	    if ((line = tabline (startab, istar)) == NULL) {
+	    if ((line = gettabline (startab, istar)) == NULL) {
 		fprintf (stderr,"TABRKEY: Cannot read star %d\n", istar);
 		num = 0.0;
 		break;
@@ -716,10 +744,11 @@ static char tab = 9;
 /* TABCATOPEN -- Open tab table catalog, returning number of entries */
 
 struct StarCat *
-tabcatopen (tabpath, tabtable)
+tabcatopen (tabpath, tabtable, nbbuff)
 
 char *tabpath;		/* Tab table catalog file pathname */
 struct TabTable *tabtable;
+int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 {
     char cstr[32];
     char *tabname;
@@ -732,7 +761,7 @@ struct TabTable *tabtable;
     /* Open the tab table file */
     if (tabtable != NULL)
 	startab = tabtable;
-    else if ((startab = tabopen (tabpath)) == NULL)
+    else if ((startab = tabopen (tabpath, nbbuff)) == NULL)
 	return (NULL);
 
     /* Allocate catalog data structure */
@@ -806,13 +835,17 @@ struct TabTable *tabtable;
     sc->entmag1 = -1;
     sc->keymag1[0] = (char) 0;
     if ((sc->entmag1 = tabcol (startab, "MAG")))
-	strcpy (sc->keymag1, "MAG");
+	strcpy (sc->keymag1, "mag");
     else if ((sc->entmag1 = tabcol (startab, "mag")))
-	strcpy (sc->keymag1, "MAG");
+	strcpy (sc->keymag1, "mag");
     else if ((sc->entmag1 = tabcol (startab, "magv")))
-	strcpy (sc->keymag1, "MAG");
+	strcpy (sc->keymag1, "magv");
     else if ((sc->entmag1 = tabcol (startab, "magr")))
 	strcpy (sc->keymag1, "magr");
+    else if ((sc->entmag1 = tabcol (startab, "magj")))
+	strcpy (sc->keymag1, "magj");
+    else if ((sc->entmag1 = tabcol (startab, "Fmag")))
+	strcpy (sc->keymag1, "Fmag");
     else if ((sc->entmag1 = tabcont (startab, "mag"))) {
 	i = sc->entmag1 - 1;
 	strncpy (sc->keymag1, startab->colname[i], startab->lcol[i]);
@@ -825,30 +858,56 @@ struct TabTable *tabtable;
 	strcpy (sc->keymag2, "magb");
     else if ((sc->entmag2 = tabcol (startab, "magr")))
 	strcpy (sc->keymag2, "magr");
+    else if ((sc->entmag2 = tabcol (startab, "magh")))
+	strcpy (sc->keymag2, "magh");
+    else if ((sc->entmag2 = tabcol (startab, "Jmag")))
+	strcpy (sc->keymag2, "Jmag");
+
+    /* Find column and name of object third magnitude */
+    sc->entmag3 = -1;
+    sc->keymag3[0] = (char) 0;
+    if ((sc->entmag3 = tabcol (startab, "magk")))
+	strcpy (sc->keymag3, "magk");
+    else if ((sc->entmag3 = tabcol (startab, "Vmag")))
+	strcpy (sc->keymag3, "Vmag");
+
+    /* Find column and name of object third magnitude */
+    sc->entmag4 = -1;
+    sc->keymag4[0] = (char) 0;
+    if ((sc->entmag4 = tabcol (startab, "Nmag")))
+	strcpy (sc->keymag4, "Nmag");
+
+    /* Set number of magnitudes */
+    if (sc->entmag1 && sc->entmag2 && sc->entmag3 && sc->entmag4)
+	sc->nmag = 4;
+    else if (sc->entmag1 && sc->entmag2 && sc->entmag3)
+	sc->nmag = 3;
+    else if (sc->entmag1 && sc->entmag2)
+	sc->nmag = 2;
+    else if (sc->entmag1)
+	sc->nmag = 1;
+    else
+	sc->nmag = 0;
 
     /* Find column and name of object right ascension proper motion */
     sc->entrpm = -1;
     sc->keyrpm[0] = (char) 0;
-    if ((sc->entrpm = tabcol (startab, "URA")))
-	strcpy (sc->keyrpm, "URA");
-    else if ((sc->entrpm = tabcol (startab, "ura")))
+    if ((sc->entrpm = tabcol (startab, "ura")))
 	strcpy (sc->keyrpm, "ura");
-    else if ((sc->entrpm = tabcol (startab, "Ura")))
-	strcpy (sc->keyrpm, "Ura");
-    else if ((sc->entrpm = tabcol (startab, "Ux")))
-	strcpy (sc->keyrpm, "Ux");
+    else if ((sc->entrpm = tabcol (startab, "rapm")))
+	strcpy (sc->keyrpm, "rapm");
+    else if ((sc->entrpm = tabcol (startab, "ux")))
+	strcpy (sc->keyrpm, "ux");
 
     /* Find column and name of object declination proper motion */
     sc->entdpm = -1;
     sc->keydpm[0] = (char) 0;
-    if ((sc->entdpm = tabcol (startab, "UDEC")))
-	strcpy (sc->keydpm, "UDEC");
-    else if ((sc->entdpm = tabcol (startab, "udec")))
+    if ((sc->entdpm = tabcol (startab, "udec")))
 	strcpy (sc->keydpm, "udec");
-    else if ((sc->entdpm = tabcol (startab, "Udec")))
-	strcpy (sc->keydpm, "Udec");
-    else if ((sc->entdpm = tabcol (startab, "Uy")))
-	strcpy (sc->keydpm, "Uy");
+    else if ((sc->entdpm = tabcol (startab, "decpm")))
+	strcpy (sc->keydpm, "decpm");
+    else if ((sc->entdpm = tabcol (startab, "uy")))
+	strcpy (sc->keydpm, "uy");
 
     /* Find units for RA proper motion */
     sc->mprop = 0;
@@ -915,6 +974,10 @@ struct TabTable *tabtable;
     sc->entpx = 0;
     sc->entpx = tabcol (startab, "px");
 
+    /* Find column for parallax error */
+    sc->entpxe = 0;
+    sc->entpxe = tabcol (startab, "pxerr");
+
     /* Find column for radial velocity */
     sc->entrv = 0;
     sc->entrv = tabcol (startab, "rv");
@@ -942,6 +1005,10 @@ struct TabTable *tabtable;
 	strcpy (sc->keytype, "TYPE");
     else if ((sc->enttype = tabcol (startab, "type")))
 	strcpy (sc->keytype, "type");
+    else if ((sc->enttype = tabcol (startab, "SpT")))
+	strcpy (sc->keytype, "spt");
+    else if ((sc->enttype = tabcol (startab, "spt")))
+	strcpy (sc->keytype, "spt");
     else if ((sc->enttype = tabcont (startab, "typ"))) {
 	i = sc->enttype - 1;
 	strncpy (sc->keytype, startab->colname[i], startab->lcol[i]);
@@ -1006,12 +1073,6 @@ struct TabTable *tabtable;
     /* Set other stuff */
     sc->rasorted = 0;
     sc->nstars = startab->nlines;
-    if (sc->entmag1 && sc->entmag2)
-	sc->nmag = 2;
-    else if (sc->entmag1)
-	sc->nmag = 1;
-    else
-	sc->nmag = 0;
     if (sc->entid)
 	sc->stnum = 1;
     else
@@ -1021,12 +1082,20 @@ struct TabTable *tabtable;
     if (sc->entid) {
 
 	istar = 1;
-	if ((line = tabline (startab, istar)) == NULL) {
+	if ((line = gettabline (startab, istar)) == NULL) {
 	    fprintf (stderr,"TABCATOPEN: Cannot read first star\n");
 	    tabcatclose (sc);
 	    return (NULL);
 	    }
-	tabgetc (startab, line, sc->entid, cstr, 32);
+	if (setoken (&startok, line, "tab") < 2) {
+	    fprintf (stderr,"TABCATOPEN: First star has too few columns\n");
+	    tabcatclose (sc);
+	    return (NULL);
+	    }
+	tabgetc (&startok, sc->entid, cstr, 32);
+
+	/* Find length of identifier */
+	sc->nnfld = strlen (cstr);
 
 	/* Find number of decimal places in identifier */
 	if (tabhgeti4 (startab, "ndec", &nndec)) {
@@ -1035,7 +1104,7 @@ struct TabTable *tabtable;
 		sc->stnum = 5;
 	    }
 	else if (isnum (cstr)) {
-	    dnum = tabgetr8 (startab,line,sc->entid);
+	    dnum = tabgetr8 (&startok,sc->entid);
 	    sprintf (cstr,"%.0f", (dnum * 100000000.0) + 0.1);
 	    lnum = strlen (cstr);
 	    for (i = 0; i < 8; i++) {
@@ -1077,11 +1146,12 @@ tabcatclose (sc)
    return 0 if successful, else -1 */
 
 int
-tabstar (istar, sc, st)
+tabstar (istar, sc, st, verbose)
 
-int istar;      /* Star sequence number in tab table catalog */
-struct StarCat *sc; /* Star catalog data structure */
-struct Star *st; /* Star data structure, updated on return */
+int	istar;		/* Star sequence number in tab table catalog */
+struct StarCat *sc;	/* Star catalog data structure */
+struct Star *st;	/* Star data structure, updated on return */
+int	verbose;	/* 1 to print error messages */
 {
     struct TabTable *startab = sc->startab;
     char *line;
@@ -1089,19 +1159,33 @@ struct Star *st; /* Star data structure, updated on return */
     int ndec, i;
     int lnum;
 
-    if ((line = tabline (startab, istar)) == NULL) {
-	fprintf (stderr,"TABSTAR: Cannot read star %d\n", istar);
+    if ((line = gettabline (startab, istar)) == NULL) {
+	if (verbose)
+	    fprintf (stderr,"TABSTAR: Cannot read star %d\n", istar);
 	return (-1);
 	}
 
-    /* Extract selected fields  */
+    /* Parse line for rapid field extraction */
+    if (setoken (&startok, line, "tab") < 2) {
+	fprintf (stderr,"TABSTAR: Star %d entry too short\n", istar);
+	return (-1);
+	}
+
+    /* Extract ID  */
     if (sc->entid) {
-	tabgetc (startab, line, sc->entid, cnum, 32);
+	tabgetc (startok, sc->entid, cnum, 32);
 	if (isnum (cnum) || isnum (cnum+1)) {
 	    if (isnum(cnum))
 		st->num = atof (cnum);
-	    else
-		st->num = atof (cnum+1);
+	    else {
+		if (cnum[0] == 'S')
+		    st->num = -atof (cnum+1);
+		else
+		    st->num = atof (cnum+1);
+		}
+
+	    /* Find field length of identifier */
+	    sc->nnfld = strlen (cnum);
 
 	    /* Find number of decimal places in identifier */
 	    if (strchr (cnum,'.') == NULL) {
@@ -1135,20 +1219,28 @@ struct Star *st; /* Star data structure, updated on return */
 	}
 
     /* Right ascension */
-    st->ra = tabgetra (startab, line, sc->entra);
+    st->ra = tabgetra (&startok, sc->entra);
 
     /* Declination */
-    st->dec = tabgetdec (startab, line, sc->entdec);
+    st->dec = tabgetdec (&startok, sc->entdec);
 
     /* Magnitudes */
-    st->xmag[0] = tabgetr8 (startab, line, sc->entmag1);
+    st->xmag[0] = tabgetr8 (&startok, sc->entmag1);
     if (sc->entmag2)
-	st->xmag[1] = tabgetr8 (startab, line, sc->entmag2);
+	st->xmag[1] = tabgetr8 (&startok, sc->entmag2);
     else
 	st->xmag[1] = 0.0;
+    if (sc->entmag3)
+	st->xmag[2] = tabgetr8 (&startok, sc->entmag3);
+    else
+	st->xmag[2] = 0.0;
+    if (sc->entmag4)
+	st->xmag[3] = tabgetr8 (&startok, sc->entmag4);
+    else
+	st->xmag[3] = 0.0;
 
     /* Right ascension proper motion */
-    st->rapm = tabgetpm (startab, line, sc->entrpm);
+    st->rapm = tabgetpm (&startok, sc->entrpm);
     if (sc->rpmunit == PM_MASYR)
 	st->rapm = st->rapm / 3600000.0;
     else if (sc->rpmunit == PM_MTSYR)
@@ -1163,9 +1255,11 @@ struct Star *st; /* Star data structure, updated on return */
 	st->rapm = st->rapm / 24000.0;
     else if (sc->rpmunit == PM_RADYR)
 	st->rapm = raddeg (st->rapm);
+    else
+	st->rapm = 0.0;
 
     /* Declination proper motion */
-    st->decpm = tabgetpm (startab, line, sc->entdpm);
+    st->decpm = tabgetpm (&startok, sc->entdpm);
     if (sc->dpmunit == PM_MASYR)
 	st->decpm = st->decpm / 3600000.0;
     else if (sc->dpmunit == PM_ARCSECYR)
@@ -1174,32 +1268,34 @@ struct Star *st; /* Star data structure, updated on return */
 	st->decpm = st->decpm / 360000.0;
     else if (sc->dpmunit == PM_RADYR)
 	st->decpm = raddeg (st->decpm);
+    else
+	st->decpm = 0.0;
 
     /* Parallax */
     if (sc->entpx)
-	st->parallax = tabgetr8 (startab, line, sc->entpx);
+	st->parallax = tabgetr8 (&startok, sc->entpx);
     else
 	st->parallax = 0.0;
 
     /* Radial velocity */
     if (sc->entpx)
-	st->radvel = tabgetr8 (startab, line, sc->entrv);
+	st->radvel = tabgetr8 (&startok, sc->entrv);
     else
 	st->radvel = 0.0;
 
     /* Peak counts */
     if (sc->entpeak > 0)
-	st->peak = tabgeti4 (startab, line, sc->entpeak);
+	st->peak = tabgeti4 (&startok, sc->entpeak);
     else
 	st->peak = 0;
 
     /* Spectral type */
     if (sc->enttype > 0)
-	tabgetc (startab, line, sc->enttype, st->isp, 3);
+	tabgetc (&startok, sc->enttype, st->isp, 24);
 
     /* Extract selected field */
     if (kwo != NULL)
-	(void) tabgetk (startab, line, kwo, st->objname, 32);
+	(void) tabgetk (startab, &startok, kwo, st->objname, 32);
     else
 	st->objname[0] = (char) 0;
 
@@ -1213,14 +1309,15 @@ struct Star *st; /* Star data structure, updated on return */
 /* TABOPEN -- Open tab table file, returning number of entries */
 
 struct TabTable *
-tabopen (tabfile)
+tabopen (tabfile, nbbuff)
 
-char *tabfile;	/* Tab table catalog file name */
+char	*tabfile;	/* Tab table catalog file name */
+int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 {
     FILE *fcat;
-    int nr, lfile, lfname, lfa, lname;
+    int nr, lfile, lfname, lfa, lname, lline;
     char *tabnew, *tabline, *lastline;
-    char *tabcomma;
+    char *tabcomma, *nextline;
     char *thisname, *tabname;
     int thistab, itab, nchar, nbtab;
     int formfeed = (char) 12;
@@ -1248,6 +1345,10 @@ char *tabfile;	/* Tab table catalog file name */
 
 	/* Find length of tab table catalog */
 	lfile = tabsize (tabfile);
+	if (nbbuff > 1 && nbbuff < lfile)
+	    lfile = nbbuff;
+	else if (nbbuff == 1 && lfile > 10000)
+	    lfile = 10000;
 	if (lfile < 1) {
 	    taberr = (char *) calloc (64 + strlen (tabfile), 1);
 	    sprintf (taberr,"TABOPEN: Tab table file %s has no entries",
@@ -1291,7 +1392,7 @@ char *tabfile;	/* Tab table catalog file name */
 	}
     strcpy (tabtable->filename, tabfile);
 
-    /* Allocate buffer to hold entire catalog and read it */
+    /* Allocate buffer to hold entire catalog (or buffer length) and read it */
     if ((tabtable->tabbuff = (char *) calloc (1, lfile+2)) == NULL) {
 	taberr = (char *) calloc (64 + strlen (tabfile), 1);
 	sprintf (taberr,"TABOPEN: cannot allocate buffer for tab table %s",
@@ -1311,6 +1412,7 @@ char *tabfile;	/* Tab table catalog file name */
 	    if (tabcomma != NULL) *tabcomma = ',';
 	    return (NULL);
 	    }
+	tabtable->tabbuff[lfile] = (char) 0;
 
 	/* Check for named table within a file */
 	if (tabname != NULL) {
@@ -1368,11 +1470,14 @@ char *tabfile;	/* Tab table catalog file name */
 
 	tabline = tabtable->tabheader;
 	lastline = NULL;
-	while (*tabline != '-' && tabline < tabtable->tabbuff+lfile) {
+	while (*tabline!='-' && tabline!=NULL && tabline < tabtable->tabbuff+lfile) {
 	    lastline = tabline;
-	    tabline = strchr (tabline,newline) + 1;
+	    if ((tabline = strchr (lastline,newline)) != NULL)
+		tabline++;
+	    else
+		break;
 	    }
-	if (*tabline != '-') {
+	if (tabline == NULL || *tabline != '-') {
 	    taberr = (char *) calloc (64 + strlen (tabfile), 1);
 	    sprintf (taberr,"TABOPEN: No - line in tab table %s",tabfile);
 	    (void) fclose (fcat);
@@ -1393,17 +1498,42 @@ char *tabfile;	/* Tab table catalog file name */
 	    }
 
     /* Enumerate entries in tab table catalog by counting newlines */
-	tabnew = tabtable->tabdata;
-	tabtable->nlines = 0;
-	while ((tabnew = strchr (tabnew, newline)) != NULL) {
-	    tabnew = tabnew + 1;
-	    tabtable->nlines = tabtable->nlines + 1;
-	    if (*tabnew == formfeed)
-		break;
+	if (nbbuff > 0)
+	    tabtable->nlines = 10000000;
+	else {
+	    tabnew = tabtable->tabdata;
+	    tabtable->nlines = 0;
+	    while ((tabnew = strchr (tabnew, newline)) != NULL) {
+		tabnew = tabnew + 1;
+		tabtable->nlines = tabtable->nlines + 1;
+		if (*tabnew == formfeed)
+		    break;
+		}
 	    }
 	}
 
-    (void) fclose (fcat);
+    /* Set up line buffer, and put first line in it */
+    if (nbbuff > 0) {
+	tabtable->lhead = tabtable->tabdata - tabtable->tabheader;
+	tabtable->tcat = fcat;
+	nextline = strchr (tabtable->tabdata, newline) + 1;
+	tabtable->lline = (nextline - tabtable->tabdata) * 2;
+	tabtable->tabline = (char *) calloc (tabtable->lline, 1);
+	fseek (tabtable->tcat, (long) tabtable->lhead, SEEK_SET);
+	fgets (tabtable->tabline, tabtable->lline, tabtable->tcat);
+	lline = strlen (tabtable->tabline);
+	if (tabtable->tabline[lline-1] < 32)
+	     tabtable->tabline[lline-1] = (char) 0;
+	tabtable->tabdata = tabtable->tabline;
+	}
+
+    /* Close catalog file if not reading one line at a time */
+    else {
+	tabtable->lhead = 0;
+	(void) fclose (fcat);
+	tabtable->tcat = NULL;
+	}
+
     tabtable->tabline = tabtable->tabdata;
     tabtable->iline = 1;
     if (tabcomma != NULL) *tabcomma = ',';
@@ -1423,6 +1553,7 @@ tabclose (tabtable)
 	if (tabtable->colname != NULL) free (tabtable->colname);
 	if (tabtable->lcol != NULL) free (tabtable->lcol);
 	if (tabtable->lcfld != NULL) free (tabtable->lcfld);
+	if (tabtable->tcat != NULL) fclose (tabtable->tcat);
 	free (tabtable);
 	}
     return;
@@ -1433,16 +1564,53 @@ tabclose (tabtable)
 	      return NULL if unsuccessful */
 
 char *
-tabline (tabtable, iline)
+gettabline (tabtable, iline)
 
 struct TabTable *tabtable;	/* Tab table structure */
 int iline;	/* Line sequence number in tab table */
 {
     char *nextline = tabtable->tabline;
+    char *next;
+    int lline, i;
 
     /* Return NULL if tab table has not been opened */
     if (tabtable == NULL)
 	return (NULL);
+
+    /* Read one line at a time if file is still open */
+    if (tabtable->tcat != NULL) {
+
+	/* Return current line from buffer */
+	if (iline == tabtable->iline)
+	    return (tabtable->tabline);
+
+	/* Read next line from file */
+	if (iline < 1 || iline > tabtable->iline) {
+	    for (i = tabtable->iline; i < iline; i++) {
+		next = fgets (tabtable->tabline, tabtable->lline, tabtable->tcat);
+		if (next == NULL || *next == EOF)
+		    return (NULL);
+		tabtable->iline++;
+		}
+	    lline = strlen (tabtable->tabline);
+	    if (lline < 2)
+		return (NULL);
+	    if (tabtable->tabline[lline-1] < 32)
+		tabtable->tabline[lline-1] = (char) 0;
+	    }
+	else if (iline < tabtable->iline) {
+	    fseek (tabtable->tcat, (long) tabtable->lhead, SEEK_SET);
+	    tabtable->iline = 0;
+	    for (i = tabtable->iline; i < iline; i++) {
+		fgets (tabtable->tabline, tabtable->lline, tabtable->tcat);
+		tabtable->iline++;
+		}
+	    lline = strlen (tabtable->tabline);
+	    if (tabtable->tabline[lline-1] < 32)
+		tabtable->tabline[lline-1] = (char) 0;
+	    }
+	return (tabtable->tabline);
+	}
 
     /* Return NULL if trying to read past last line */
     if (iline > tabtable->nlines) {
@@ -1484,15 +1652,14 @@ int iline;	/* Line sequence number in tab table */
 /* TABGETRA -- returns double right ascension in degrees */
 
 double
-tabgetra (startab, line, ientry)
+tabgetra (tabtok, ientry)
 
-struct TabTable *startab;	/* Tab table structure */
-char	*line;	/* tab table line */
+struct Tokens *tabtok;	/* Line token structure */
 int	ientry;	/* sequence of entry on line */
 {
     char str[24];
 
-    if (tabgetc (startab, line, ientry, str, 24))
+    if (tabgetc (tabtok, ientry, str, 24))
 	return (0.0);
     else
 	return (str2ra (str));
@@ -1502,15 +1669,14 @@ int	ientry;	/* sequence of entry on line */
 /* TABGETDEC -- returns double declination in degrees */
 
 double
-tabgetdec (startab, line, ientry)
+tabgetdec (tabtok, ientry)
 
-struct TabTable *startab;	/* Tab table structure */
-char	*line;			/* tab table line */
-int	ientry;			/* sequence of entry on line */
+struct Tokens *tabtok;	/* Line token structure */
+int	ientry;		/* sequence of entry on line */
 {
     char str[24];
 
-    if (tabgetc (startab, line, ientry, str, 24))
+    if (tabgetc (tabtok, ientry, str, 24))
 	return (0.0);
     else
 	return (str2dec (str));
@@ -1519,15 +1685,14 @@ int	ientry;			/* sequence of entry on line */
 /* TABGETPM -- returns double RA or Dec proper motion in degrees/year */
 
 double
-tabgetpm (startab, line, ientry)
+tabgetpm (tabtok, ientry)
 
-struct TabTable *startab;	/* Tab table structure */
-char	*line;			/* tab table line */
-int	ientry;			/* sequence of entry on line */
+struct Tokens *tabtok;	/* Line token structure */
+int	ientry;		/* sequence of entry on line */
 {
     char str[24];
 
-    if (tabgetc (startab, line, ientry, str, 24))
+    if (tabgetc (tabtok, ientry, str, 24))
 	return (0.0);
     else
 	return (atof (str));
@@ -1536,15 +1701,14 @@ int	ientry;			/* sequence of entry on line */
 /* TABGETR8 -- returns 8-byte floating point number from tab table line */
 
 double
-tabgetr8 (tabtable, line, ientry)
+tabgetr8 (tabtok, ientry)
 
-struct TabTable *tabtable;	/* Tab table structure */
-char	*line;	/* tab table line */
-int	ientry;	/* sequence of entry on line */
+struct Tokens *tabtok;	/* Line token structure */
+int	ientry;		/* sequence of entry on line */
 {
     char str[24];
 
-    if (tabgetc (tabtable, line, ientry, str, 24))
+    if (tabgetc (tabtok, ientry, str, 24))
 	return (0.0);
     else
         return (atof (str));
@@ -1554,15 +1718,14 @@ int	ientry;	/* sequence of entry on line */
 /* TABGETI4 -- returns a 4-byte integer from tab table line */
 
 int
-tabgeti4 (tabtable, line, ientry)
+tabgeti4 (tabtok, ientry)
 
-struct TabTable *tabtable;	/* Tab table structure */
-char	*line;	/* tab table line */
-int	ientry;	/* sequence of entry on line */
+struct Tokens *tabtok;	/* Line token structure */
+int	ientry;		/* sequence of entry on line */
 {
     char str[24];
 
-    if (tabgetc (tabtable, line, ientry, str, 24))
+    if (tabgetc (tabtok, ientry, str, 24))
 	return (0);
     else
         return ((int) atof (str));
@@ -1572,60 +1735,37 @@ int	ientry;	/* sequence of entry on line */
 /* TABGETK -- returns a character entry from tab table line for named column */
 
 int
-tabgetk (tabtable, line, keyword, string, maxchar)
+tabgetk (tabtable, tabtok, line, keyword, string, maxchar)
 
 struct TabTable *tabtable;	/* Tab table structure */
+struct Tokens *tabtok;		/* Line token structure */
 char	*line;			/* tab table line */
 char	*keyword;		/* column header of desired value */
 char	*string;		/* character string (returned) */
 int	maxchar;	/* Maximum number of characters in returned string */
 {
+    int ntok;
     int ientry = tabcol (tabtable, keyword);
 
-    return (tabgetc (tabtable, line, ientry, string, maxchar));
+    return (tabgetc (tabtok, ientry, string, maxchar));
 }
 
 
 /* TABGETC -- returns n'th entry from tab table line as character string */
 
 int
-tabgetc (tabtable, line, ientry, string, maxchar)
+tabgetc (tabtok, ientry, string, maxchar)
 
-struct TabTable *tabtable;	/* Tab table structure */
-char	*line;			/* tab table line */
-int	ientry;			/* sequence of entry on line */
-char	*string;		/* character string (returned) */
+struct Tokens *tabtok;	/* Line token structure */
+int	ientry;		/* Sequence of entry on line (1-ncol) */
+char	*string;	/* Character string (returned) */
 int	maxchar;	/* Maximum number of characters in returned string */
 {
-    char *entry, *nextab;
-    int ient, ncstr;
 
-    ient = 1;
-    entry = line;
-    if (ientry > tabtable->ncols || ientry < 1)
+    if (getoken (tabtok, ientry, string, maxchar))
+	return (0);
+    else
 	return (-1);
-    for (ient  = 1; ient <= ientry; ient ++) {
-
-    /* End ient'th entry with tab, newline, or end of string */
-	if (ient < tabtable->ncols) 
-	    nextab = strchr (entry, tab);
-	else {
-	    nextab = strchr (entry, newline);
-	    if (!nextab)
-		nextab = strchr (entry, 0);
-	    }
-	if (!nextab)
-	    return (-1);
-	if (ient < ientry)
-	    entry = nextab + 1;
-	}
-    ncstr = nextab - entry;
-    if (ncstr > maxchar - 1)
-	ncstr = maxchar - 1;
-    strncpy (string, entry, ncstr);
-    string[ncstr] = 0;
-
-    return (0);
 }
 
 
@@ -1812,10 +1952,13 @@ struct TabTable *tabtable;	/* Tab table structure */
 char	*keyword;		/* Column heading to find */
 
 {
-    int i;
+    int i, lkey, lcol;
+    lkey = strlen (keyword);
 
     for (i = 0; i < tabtable->ncols; i++) {
-	if (!strncmp (keyword, tabtable->colname[i], tabtable->lcol[i])) {
+	lcol = tabtable->lcol[i];
+	if (lcol == lkey &&
+	    !strncasecmp (keyword, tabtable->colname[i], lcol)) {
 	    return (i + 1);
 	    }
 	}
@@ -1887,7 +2030,7 @@ char    *filename;      /* Name of file to check */
 
     /* If no .tab file extension, try opening the file */
     else {
-	if ((tabtable = tabopen (filename)) != NULL) {
+	if ((tabtable = tabopen (filename, 1000)) != NULL) {
 	    tabclose (tabtable);
 	    return (1);
 	    }
@@ -1980,4 +2123,19 @@ char    *filename;      /* Name of file to check */
  * Dec  1 2000	Add field as synonym for plate
  * Dec 18 2000	Clean up after lint
  * Dec 29 2000	Clean up after lint
+ *
+ * May 29 2001	Save length of identifier in catalog structure
+ * May 30 2001	Rewrite to deal with up to 3 magnitudes
+ * Jun 11 2001	Add one-line-at-a-time catalog reading from tabcatopen()
+ * Jun 14 2001	In tabopen(), use actual file size if less than buffer size
+ * Jun 14 2001	In tabcol() make sure lengths are equal, too
+ * Jun 18 2001	Fix bug finding of length of token string extracted
+ * Jun 19 2001	Use setoken() to parse each catalog line
+ * Jun 20 2001	Add fourth magnitude for GSC II
+ * Jun 25 2001	Check fgets() return in gettabline()
+ * Jun 25 2001	Print star read errors only in verbose mode
+ * Jun 28 2001	If no proper motion unit is set, set proper motion to 0.0
+ * Jun 28 2001	If first magnitude is 99.90, sort by second magnitude
+ * Jun 28 2001	Up default line limit from 1 million to 10 million
+ * Jul  2 2001	Fix order of 3rd and 4th magnitudes
  */

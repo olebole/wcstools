@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** March 20, 2001
+ *** June 27, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -546,8 +546,9 @@ char	*inpath;	/* Pathname for FITS tables file to read */
 static int offset1=0;
 static int offset2=0;
 
-/* FITSRTOPEN -- Open FITS table file and return header and pointers to
- *		 selected keywords, as well as file descriptor
+/* FITSRTOPEN -- Open FITS table file and fill structure with
+ *		 pointers to selected keywords
+ *		 Return file descriptor (-1 if unsuccessful)
  */
 
 int
@@ -578,6 +579,7 @@ int	*nbhead;	/* Number of characters before table starts */
     (void) hgets (header,"XTENSION",16,temp);
     if (strncmp (temp, "TABLE", 5)) {
 	fprintf (stderr, "FITSRTOPEN:  %s is not a FITS table file\n",inpath);
+	free ((void *) header);
 	return (0);
 	}
 
@@ -585,17 +587,22 @@ int	*nbhead;	/* Number of characters before table starts */
     else {
 	if (fitsrthead (header, nk, kw, nrows, nchar)) {
 	    fprintf (stderr, "FITSRTOPEN: Cannot read FITS table from %s\n",inpath);
+	    free ((void *) header);
 	    return (-1);
 	    }
 	else {
 	    fd = fitsropen (inpath);
 	    offset1 = 0;
 	    offset2 = 0;
+	    free ((void *) header);
 	    return (fd);
 	    }
 	}
 }
 
+static struct Keyword *pw;	/* Structure for all entries */
+static int *lpnam;		/* length of name for each field */
+static int bfields = 0;
 
 /* FITSRTHEAD -- From FITS table header, read pointers to selected keywords */
 
@@ -609,9 +616,7 @@ int	*nrows;		/* Number of rows in table (returned) */
 int	*nchar;		/* Number of characters in one table row (returned) */
 
 {
-    struct Keyword *pw;	/* Structure for all entries */
     struct Keyword *rw;	/* Structure for desired entries */
-    int *lpnam;		/* length of name for each field */
     int nfields;
     int ifield,ik,ln, i;
     char *h0, *h1, *tf1, *tf2;
@@ -647,12 +652,24 @@ int	*nchar;		/* Number of characters in one table row (returned) */
     hgeti4 (header,"TFIELDS",&nfields);
     if (verbose)
 	fprintf (stderr, "FITSRTHEAD: %d fields per table entry\n", nfields);
-    pw = (struct Keyword *) calloc (nfields, sizeof(struct Keyword));
-    if (!pw) {
-	fprintf (stderr,"FITSRTHEAD: cannot allocate table structure\n");
-	return (-1);
+    if (nfields > bfields) {
+	if (bfields > 0)
+	    free ((void *)pw);
+	pw = (struct Keyword *) calloc (nfields, sizeof(struct Keyword));
+	if (pw == NULL) {
+	    fprintf (stderr,"FITSRTHEAD: cannot allocate table structure\n");
+	    return (-1);
+	    }
+	if (bfields > 0)
+	    free ((void *)lpnam);
+	lpnam = (int *) calloc (nfields, sizeof(int));
+	if (lpnam == NULL) {
+	    fprintf (stderr,"FITSRTHEAD: cannot allocate length structure\n");
+	    return (-1);
+	    }
+	bfields = nfields;
 	}
-    lpnam = (int *) calloc (nfields, sizeof(int));
+
     tverb = verbose;
     verbose = 0;
 
@@ -695,7 +712,6 @@ int	*nchar;		/* Number of characters in one table row (returned) */
     if (*nk <= 0) {
 	*kw = pw;
 	*nk = nfields;
-	free (lpnam);
 	return (0);
 	}
     else
@@ -706,6 +722,8 @@ int	*nchar;		/* Number of characters in one table row (returned) */
 	if (rw[ik].kn <= 0) {
 	    for (ifield = 0; ifield < nfields; ifield++) {
 		ln = lpnam[ifield];
+		if (rw[ik].lname > ln)
+		    ln = rw[ik].lname;
 		if (strncmp (pw[ifield].kname, rw[ik].kname, ln) == 0) {
 		    break;
 		    }
@@ -721,8 +739,6 @@ int	*nchar;		/* Number of characters in one table row (returned) */
 	strcpy (rw[ik].kname, pw[ifield].kname);
 	}
 
-    free (lpnam);
-    free (pw);
     return (0);
 }
 
@@ -1431,4 +1447,6 @@ char	*header;	/* FITS header */
  * Mar  9 2001	Fix bug so primary header is always appended to secondary header
  * Mar  9 2001	Change NEXTEND to NUMEXT in appended primary header
  * Mar 20 2001	Declare fitsheadsize() in fitschead()
+ * Apr 24 2001	When matching column names, use longest length
+ * Jun 27 2001	In fitsrthead(), allocate pw and lpnam only if more space needed
  */

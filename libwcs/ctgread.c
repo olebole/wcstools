@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** February 16, 2001
+ *** June 20, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -25,6 +25,8 @@
 /* default pathname for catalog,  used if catalog file not found in current
    working directory, but overridden by WCS_CATDIR environment variable */
 char catdir[64]="/data/catalogs";
+
+#define MAX_LTOK	80
 
 static double ctg2ra();
 static double ctg2dec();
@@ -98,10 +100,14 @@ int	nlog;
 
     /* Call the appropriate search program if not TDC ASCII catalog */
     if (refcat != TXTCAT) {
-        if (refcat == GSC)
-            nstar = gscread (cra,cdec,dra,ddec,drad,distsort,
+        if (refcat == GSC || refcat == GSCACT)
+            nstar = gscread (refcat,cra,cdec,dra,ddec,drad,distsort,
 			     sysout,eqout,epout,mag1,mag2,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
+        else if (refcat == GSC2)
+            nstar = gsc2read (cra,cdec,dra,ddec,drad,distsort,
+			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     tnum,tra,tdec,tmag,tmagb,tc,nlog);
         else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
                  refcat == UAC  || refcat == UA1  || refcat == UA2)
             nstar = uacread (catfile,distsort,
@@ -111,6 +117,10 @@ int	nlog;
             nstar = ujcread (catfile,cra,cdec,dra,ddec,drad,distsort,
 			     sysout,eqout,epout,mag1,mag2,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
+        else if (refcat == TMPSC)
+            nstar = tmcread (cra,cdec,dra,ddec,drad,distsort,
+			     sysout,eqout,epout,mag1, mag2,nsmax,
+			     tnum,tra,tdec,tmag,tmagb,tc,nlog);
         else if (refcat == ACT)
             nstar = actread (cra,cdec,dra,ddec,drad,distsort,
 			     sysout,eqout,epout,mag1, mag2,nsmax,
@@ -447,9 +457,12 @@ int	nlog;
 
     /* Call the appropriate search program if not TDC ASCII catalog */
     if (refcat != TXTCAT) {
-	if (refcat == GSC)
-	    nstar = gscrnum (nnum,sysout,eqout,epout,
+        if (refcat == GSC || refcat == GSCACT)
+	    nstar = gscrnum (refcat,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
+        else if (refcat == GSC2)
+	    nstar = gsc2rnum (nnum,sysout,eqout,epout,
+			      tnum,tra,tdec,tmag,tmagb,tc,nlog);
 	else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 	         refcat == UAC  || refcat == UA1  || refcat == UA2)
 	    nstar = uacrnum (catfile,nnum,sysout,eqout,epout,
@@ -457,6 +470,9 @@ int	nlog;
         else if (refcat == UJC || refcat == USNO)
 	    nstar = ujcrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
+	else if (refcat == TMPSC)
+	    nstar = tmcrnum (nnum,sysout,eqout,epout,
+			     tnum,tra,tdec,tmag,tmagb,tc,nlog);
 	else if (refcat == SAO)
 	    nstar = binrnum ("SAO",nnum,sysout,eqout,epout,match,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
@@ -627,7 +643,7 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     int nr, lfile, lhead, ldesc;
     char *catnew, *catdesc;
     char ctemp, *line, *linend, *cdot;
-    char token[80];
+    char token[MAX_LTOK];
     int ntok;
     int ltok;
 
@@ -635,7 +651,7 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	if (refcat == BINCAT)
 	    sc = binopen (catfile);
 	else if (refcat == TABCAT)
-	    sc = tabcatopen (catfile, NULL);
+	    sc = tabcatopen (catfile, NULL, 0);
 	else
 	    sc = NULL;
 	return (sc);
@@ -874,7 +890,8 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 
 	/* Extract information from line of catalog */
 	ntok = setoken (&tokens, line, NULL);
-	ltok = nextoken (&tokens, token);
+	ltok = nextoken (&tokens, token, MAX_LTOK);
+	sc->nnfld = ltok;
 	if (ltok > 0) {
 	    sc->nndec = 0;
 	    if ((cdot = strchr (token,'.')) != NULL) {
@@ -1001,7 +1018,7 @@ struct Star *st; /* Star data structure, updated on return */
 
     /* Source number */
     if (sc->stnum > 0 && sc->stnum < 5) {
-	ltok = nextoken (&tokens, token);
+	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok > 0) {
 	    st->num = atof (token);
 	    if (st->num - ((double) ((int) st->num)) < 0.000001)
@@ -1015,7 +1032,7 @@ struct Star *st; /* Star data structure, updated on return */
 
     /* Object name, if at start of line */
     if (sc->stnum == 5) {
-	ltok = nextoken (&tokens, token);
+	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok > 31) {
 	    strncpy (st->objname, token, 31);
 	    st->objname[31] = 0;
@@ -1025,7 +1042,7 @@ struct Star *st; /* Star data structure, updated on return */
 	}
 
     /* Right ascension or longitude */
-    ltok = nextoken (&tokens, token);
+    ltok = nextoken (&tokens, token, MAX_LTOK);
     if (ltok < 1)
 	return (-1);
 
@@ -1035,11 +1052,11 @@ struct Star *st; /* Star data structure, updated on return */
 	double sec;
 
 	hr = (int) (atof (token) + 0.5);
-	ltok = nextoken (&tokens, token);
+	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok < 1)
 	    return (-1);
 	mn = (int) (atof (token) + 0.5);
-	ltok = nextoken (&tokens, token);
+	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok < 1)
 	    return (-1);
 	sec = atof (token);
@@ -1059,7 +1076,7 @@ struct Star *st; /* Star data structure, updated on return */
 	st->ra = ctg2ra (token);
 
     /* Declination or latitude */
-    ltok = nextoken (&tokens, token);
+    ltok = nextoken (&tokens, token, MAX_LTOK);
     if (ltok < 1)
 	return (-1);
 
@@ -1072,11 +1089,11 @@ struct Star *st; /* Star data structure, updated on return */
 	deg = (int) (atof (token) + 0.5);
 	if (strchr (token, '-') != NULL)
 	    decsgn = 1;
-	ltok = nextoken (&tokens, token);
+	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok < 1)
 	    return (-1);
 	min = (int) (atof (token) + 0.5);
-	ltok = nextoken (&tokens, token);
+	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok < 1)
 	    return (-1);
 	sec = atof (token);
@@ -1099,7 +1116,7 @@ struct Star *st; /* Star data structure, updated on return */
 
     /* Equinox, if not set by header flag */
     if (sc->coorsys == 0) {
-	ltok = nextoken (&tokens, token);
+	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok < 1)
 	    return (-1);
 	st->coorsys = wcscsys (token);
@@ -1118,7 +1135,7 @@ struct Star *st; /* Star data structure, updated on return */
     /* Magnitude, if present */
     if (sc->nmag > 0) {
 	for (imag = 0; imag < sc->nmag; imag++) {
-	    ltok = nextoken (&tokens, token);
+	    ltok = nextoken (&tokens, token, MAX_LTOK);
 	    if (ltok > 0)
 		st->xmag[imag] = atof (token);
 	    }
@@ -1126,7 +1143,7 @@ struct Star *st; /* Star data structure, updated on return */
 
     /* Spectral type, if present */
     if (sc->sptype > 0) {
-	ltok = nextoken (&tokens, token);
+	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok > 0) {
 	    if (token[0] == ' ' && token[1] == ' ') {
 		st->isp[0] = '_';
@@ -1141,17 +1158,17 @@ struct Star *st; /* Star data structure, updated on return */
 
     /* Proper motion, if present */
     if (sc->mprop) {
-	ltok = nextoken (&tokens, token);
+	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok > 1)
 	    st->rapm = atof (token) / 3600.0;
-	ltok = nextoken (&tokens, token);
+	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok > 1)
 	    st->decpm = atof (token) / 3600.0;
 	}
 
     /* Epoch, if present */
     if (sc->nepoch) {
-	ltok = nextoken (&tokens, token);
+	ltok = nextoken (&tokens, token, MAX_LTOK);
 	ydate = atof (token);
 	st->epoch = dt2ep (ydate, 12.0);
 	}
@@ -1160,7 +1177,7 @@ struct Star *st; /* Star data structure, updated on return */
     itok = tokens.itok;
     if (sc->stnum < 5 && itok < ntok && !sc->ignore) {
 	itok = -(itok+1);
-	ltok = getoken (&tokens, itok, token);
+	ltok = getoken (&tokens, itok, token, MAX_LTOK);
 	if (ltok > 31) {
 	    strncpy (st->objname, token, 31);
 	    st->objname[31] = 0;
@@ -1370,4 +1387,9 @@ char	*in;	/* Character string */
  *
  * Feb 14 2001	Search all around RA if either pole is included
  * Feb 16 2001	Update comments
+ * May 22 2001	Add GSC-ACT catalog; pass refcat to gscread() and gscrnum()
+ * May 23 2001	Add 2MASS Point Source Catalog
+ * May 29 2001	Save length of star i.d. number in ctgopen()
+ * Jun 18 2001	Add maximum length of returned string to getoken(), nextoken()
+ * Jun 20 2001	Add GSC II to ctgread() and ctgrnum()
  */

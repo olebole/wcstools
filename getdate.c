@@ -1,5 +1,5 @@
 /* File getdate.c
- * May 31, 2000
+ * May 25, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -30,6 +30,7 @@
 #define DTUT	13	/* Current Universal Time */
 #define DTIRAF	14	/* IRAF seconds since 1980-01-01 0:00 */
 #define DTUNIX	15	/* Unix seconds since 1970-01-01 0:00 */
+#define DTDOY	16	/* Year and day of year (including fraction) */
 
 static void usage();
 static int ConvertDate();
@@ -58,7 +59,6 @@ int ac;
 char **av;
 {
     char *str;
-    char *temp;
     char *datestring;
     char *timestring;
     int intype = 0;		/* Input date type */
@@ -109,6 +109,8 @@ char **av;
 	    intype = DTLT;
 	else if (!strncmp (*av, "ut2", 3))
 	    intype = DTUT;
+	else if (!strncmp (*av, "doy", 3))
+	    intype = DTDOY;
 
 	/* Set output date format */
 	if (strsrch (*av, "2dt"))
@@ -137,6 +139,8 @@ char **av;
 	    outtype = DTUNIX;
 	else if (strsrch (*av, "2ts"))
 	    outtype = DT1950;
+	else if (strsrch (*av, "2doy"))
+	    outtype = DTDOY;
 
 	if (typeset == 0 && (intype > 0 || outtype > 0))
 	    typeset = 1;
@@ -175,12 +179,12 @@ char **av;
 	    }
 	else if (datestring == NULL) {
 	    datestring = *av;
-	    if (intype != DTVIG || ac == 1) {
+	    if ((intype != DTVIG && intype != DTDOY) || ac == 1) {
 		ConvertDate (intype, outtype, datestring, timestring);
 		datestring = NULL;
 		}
 	    }
-	else if (intype == DTVIG) {
+	else if (intype == DTVIG || intype == DTDOY) {
 	    timestring = *av;
 	    ConvertDate (intype, outtype, datestring, timestring);
 	    timestring = NULL;
@@ -222,8 +226,11 @@ char	*timestring;	/* Input time string */
 
 {
     double vdate, vtime, epoch, jd, ts, time1, jd1, ts1, epoch1;
+    double doy, vdoy;
+    int year, vyear;
     int lfd, oldfits;
     char *fitsdate, *newfdate;
+    char temp[64];
     char ts0[8];
     char *tchar;
     time_t ut0, utc;	/* UTC seconds since 1970-01-01T0:00 */
@@ -318,6 +325,11 @@ char	*timestring;	/* Input time string */
 		    case DTUNIX:
 			lts = dt2tsu (vdate, vtime);
 			printf (outform, lts);
+			break;
+		    case DTDOY:
+			dt2doy (vdate, vtime, &year, &doy);
+			sprintf (temp, outform, doy);
+			printf ("%04d %s\n", year, temp);
 			break;
 		    default:
 			printf ("*** Unknown output type %d\n", outtype);
@@ -461,6 +473,89 @@ char	*timestring;	/* Input time string */
 			    }
 			printf (outform, lts);
 			break;
+		    case DTDOY:
+			fd2doy (fitsdate, &year, &doy);
+			if (oldfits && timestring) {
+			    ts1 = (int) fd2ts (timestring);
+			    doy = doy + (ts1 / 86400.0);
+			    }
+			sprintf (temp, outform, doy);
+			printf ("%04d %s\n", year, temp);
+			break;
+		    default:
+			printf ("*** Unknown output type %d\n", outtype);
+		    }
+		}
+	    break;
+	case DTDOY:
+	    if (datestring != NULL) {
+		if (strcmp (datestring, "now")) {
+		    vyear = atoi (datestring);
+		    if (timestring != NULL) 
+			vdoy = atof (timestring);
+		    else
+			vdoy = 1.0;
+		    }
+		if (verbose) {
+		    sprintf (temp, outform, vdoy);
+		    printf ("%04d %s -> ", vyear, temp);
+		    }
+
+		switch (outtype) {
+		    case DTEP:
+			epoch = doy2ep (vyear, vdoy);
+			printf (outform, epoch);
+			break;
+		    case DTEPB:
+			epoch = doy2epb (vyear, vdoy);
+			printf (outform, epoch);
+			break;
+		    case DTEPJ:
+			epoch = doy2epj (vyear, vdoy);
+			printf (outform, epoch);
+			break;
+		    case DTFITS:
+			fitsdate = doy2fd (vyear, vdoy);
+			if (dateonly) {
+			    tchar = strchr (fitsdate, 'T');
+			    if (tchar != NULL)
+				*tchar = (char) 0;
+			    }
+			printf ("%s\n", fitsdate);
+			break;
+		    case DTJD:
+			jd = doy2jd (vyear, vdoy);
+			printf (outform, jd);
+			break;
+		    case DTMJD:
+			jd = doy2mjd (vyear, vdoy);
+			printf (outform, jd);
+			break;
+		    case DT1950:
+			ts = doy2ts (vyear, vdoy);
+			printf (outform, ts);
+			break;
+		    case DTIRAF:
+			its = doy2tsi (vyear, vdoy);
+			printf (outform, its);
+			break;
+		    case DTUNIX:
+			lts = doy2tsu (vyear, vdoy);
+			printf (outform, lts);
+			break;
+		    case DTVIG:
+			doy2dt (vyear, vdoy, &vdate, &vtime);
+			if (oldfits) {
+			    if (timestring == NULL)
+				vtime = 0.0;
+			    else
+				vtime = time1;
+			    }
+			if (dateonly)
+			    printf ("%9.4f\n", vdate);
+			else
+			    printf ("%9.4f %10.7f\n", vdate, vtime);
+			break;
 		    default:
 			printf ("*** Unknown output type %d\n", outtype);
 		    }
@@ -512,6 +607,19 @@ char	*timestring;	/* Input time string */
 			ts = jd2ts (jd);
 			printf (outform, ts);
 			break;
+		    case DTIRAF:
+			its = jd2tsi (jd);
+			printf (outform, its);
+			break;
+		    case DTUNIX:
+			lts = jd2tsu (jd);
+			printf (outform, lts);
+			break;
+		    case DTDOY:
+			jd2doy (jd, &year, &doy);
+			sprintf (temp, outform, doy);
+			printf ("%04d %s\n", year, temp);
+			break;
 		    default:
 			printf ("*** Unknown output type %d\n", outtype);
 		    }
@@ -562,6 +670,11 @@ char	*timestring;	/* Input time string */
 		    case DT1950:
 			ts = mjd2ts (jd);
 			printf (outform, ts);
+			break;
+		    case DTDOY:
+			mjd2doy (jd, &year, &doy);
+			sprintf (temp, outform, doy);
+			printf ("%04d %s\n", year, temp);
 			break;
 		    default:
 			printf ("*** Unknown output type %d\n", outtype);
@@ -878,6 +991,11 @@ char	*timestring;	/* Input time string */
 		    lts = ut2tsu ();
 		    printf (outform, lts);
 		    break;
+		case DTDOY:
+		    ut2doy (&year, &doy);
+		    sprintf (temp, outform, doy);
+		    printf ("%04d %s\n", year, temp);
+		    break;
 		default:
 		    printf ("*** Unknown output type %d\n", outtype);
 		}
@@ -934,4 +1052,6 @@ char	*timestring;	/* Input time string */
  * Mar 14 2000	Allow multiple conversions on one command line
  * Mar 24 2000	Add current local time, current UT, and IRAF and Unix seconds
  * May 31 2000	Fix bug which failed to convert to Julian or Bessellian epochs
+ *
+ * May 25 2001	Add year,day-of-year conversions
  */

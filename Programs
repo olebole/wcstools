@@ -6,6 +6,8 @@ conpix.c
   Operate on all of the pixels of an image
 cphead.c
   Copy keyword values between FITS or IRAF images
+crlf.c
+  Change carriage returns in text stream to line feeds to make imwcs logs readable
 delhead.c
   Delete specified keywords from FITS or IRAF image file headers
 delwcs.c
@@ -14,6 +16,8 @@ delwcs.c
 edhead.c
   Edit the header of a FITS file or the user parameters of an IRAF image file
   using a the text editor specified by the EDITOR environment variable.
+filename.c
+  Remove file directory path from complete file pathname leaving file name
 fileroot.c
   Remove file extension and return the root, including character replacement
 getcol.c

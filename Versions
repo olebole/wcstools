@@ -1,4 +1,35 @@
-Version 2.9.3 (March 23, 2000)
+Version 3.0 (July 12, 2001)
+scat, imcat, imwcs, immatch: Add support for GSC II, GSC-ACT and 2MASS Point
+ Source Catalogs
+scat, imcat:  Add parallax to Hipparcos catalog output and 4 fluxes to
+ IRAS Point Source output
+scat: Add help to web interface
+delwcs.c: Add PC matrix to keywords deleted
+getcol.c: Add -b to read vertical-bar-separated columns to include spaces
+ and -i to read tab-separated tables correctly
+gethead.c: Add -g for keyword=val<lf> and print same way if -v
+gettab.c: Create output tab tables from stdin without crashing
+imcat.c: Add option to set regions in pixels as well as arcseconds
+remap.c: Set default center to center of output image, not input; deal with
+ projection changes correctly
+scat.c: Rewrite sort options, adding sort by declination and no sort at all
+scat.c and imcat.c: Clean up heading alignments; add band and n to GSC output
+skycoor.c: Add -i option to specify radian input
+binread.c: If 4 magnitudes, stash last two in integer*4 type
+catutil.c: Fix bug which caused parsing failure on quoted tokens
+catutil.c: Add GSC-ACT, 2MASS PSC, and GSC II catalogs
+dateutil.c: Add options to convert to and from year,day-of-year
+dateutil.c: Add fractional day on ISO FITS string as well as UT time.
+gsc2read.c: New subroutines to read GSC 2.2 catalog over the web
+hget.c: Fix possible problems in header length setting
+gscread.c: Add support for GSC-ACT with separate file path from GSC
+tmcread.c: New subroutines to read ASCII version of 2MASS Point Source Catalog
+ty2read.c: Extend search limits so searches do not slip between region limits
+ and fix bug which caused last region on index list not to be checked.
+wcsinit.c: Read PROJPn projection constants, not PVn
+webread.c: Make a separate subroutine, webbuff(), to get data given a URL
+
+Version 2.9.3 (March 23, 2001)
 This is a bug-fix release which fixes compilation problems on HP-UX and Linux
 and problems with access to the SAO and PPM catalogs under certain conditions.
 binread.c: fixed use of PPM_PATH, SAO_PATH, and WCS_BINDIR in binread()

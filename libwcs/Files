@@ -41,7 +41,10 @@ fortwcs.c
   Fortran wrapper subroutines for all useful subroutines in wcs.c and wcsinit.c
 gscread.c
   Return HST Guide Stars from standard CDROM format FITS table files for
-  a given RA, Dec, and magnitude range.
+  a given RA, Dec, and magnitude range or list of star numbers.
+gsc2read.c
+  Return GSC II Stars using an HTTP query over the web for
+  a given RA, Dec, and magnitude range or list of star numbers.
 hget.c
   Subroutines to extract values from FITS headers by keyword.
   Subroutines for parsing RA and Dec strings are included.
@@ -93,7 +96,12 @@ sph.c
   WCSLIB spherical coordinate transformation subroutines
 tabread.c
   Return stars from a tab table format catalog file for a given RA, Dec,
-  and magnitude range.  Based on John Roll's Starbase format.
+  and magnitude range or list of star numbers.  Based on John Roll's
+  Starbase format.
+tmcread.c
+  Return 2MASS Point Source Catalog stars from the catalog as ungzipped from
+  the DVD into (or linked from) a common root directory for a given RA, Dec,
+  and magnitude range or list of star numbers.
 tnxpos.c
   tnxpos() uses the WCS keywords set up for IRAF's TNX projection to compute
   sky coordinates given image pixel X and Y.  tnxpix() uses the WCS structure
@@ -102,10 +110,10 @@ tnxpos.c
   scaling and the actual projection.
 uacread.c
   Return USNO A and SA Catalog stars from their standard CDROM format
-  files for a given RA, Dec, and magnitude range.
+  files for a given RA, Dec, and magnitude range or list of star numbers.
 ujcread.c
   Return USNO UJ Catalog stars from its standard CDROM format files for
-  a given RA, Dec, and magnitude range.
+  a given RA, Dec, and magnitude range or list of star numbers.
 wcs.c
   Subroutines for using FITS or IRAF header spatial world coordinate
   system information.

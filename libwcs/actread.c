@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** January 11, 2001
+ *** June 27, 2001
  *** By Doug Mink, dmink@cfa.harvard.edh
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -15,6 +15,9 @@
 
 /* pathname of ACT CDROM or catalog search engine URL */
 char actcd[64]="/data/act";
+
+static double *gdist;	/* Array of distances to stars */
+static int ndist = 0;
 
 static int actreg();
 struct StarCat *actopen();
@@ -57,7 +60,6 @@ int	nlog;		/* 1 for diagnostics */
     double maxdist=0.0; /* Largest distance */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
-    double *gdist;	/* Array of distances to stars */
     int nreg;		/* Number of ACT regions in search */
     int rlist[100];	/* List of input region files */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
@@ -78,7 +80,6 @@ int	nlog;		/* 1 for diagnostics */
     int nbytes;
 
     ntot = 0;
-    gdist = NULL;
     if (nlog == 1)
 	verbose = 1;
     else
@@ -123,7 +124,17 @@ int	nlog;		/* 1 for diagnostics */
 	nbytes = nstarmax * sizeof (double);
     else
 	nbytes = 10 * sizeof (double);
-    gdist = (double *) malloc (nbytes);
+    
+    if (nstarmax > ndist) {
+	if (ndist > 0)
+	    free ((void *) gdist);
+	gdist = (double *) malloc (nstarmax * sizeof (double));
+	if (gdist == NULL) {
+	    fprintf (stderr,"ACTREAD:  cannot allocate separation array\n");
+	    return (0);
+	    }
+	ndist = nstarmax;
+	}
 
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
@@ -152,7 +163,6 @@ int	nlog;		/* 1 for diagnostics */
 	nreg = actreg (rra1,rra2,rdec1,rdec2,nrmax,rlist,verbose);
 	if (nreg <= 0) {
 	    fprintf (stderr,"ACTREAD:  no ACT regions found\n");
-	    free ((void *)gdist);
 	    free ((void *)star);
 	    return (0);
 	    }
@@ -218,7 +228,7 @@ int	nlog;		/* 1 for diagnostics */
 			gpdec[nstar] = decpm;
 			gmag[nstar] = mag;
 			gmagb[nstar] = magb;
-			gtype[nstar] = isp;
+			/* gtype[nstar] = isp; */
 			gdist[nstar] = dist;
 			if (dist > maxdist) {
 			    maxdist = dist;
@@ -241,7 +251,7 @@ int	nlog;		/* 1 for diagnostics */
 			    gpdec[farstar] = decpm;
 			    gmag[farstar] = mag;
 			    gmagb[farstar] = magb;
-			    gtype[farstar] = isp;
+			    /* gtype[farstar] = isp; */
 			    gdist[farstar] = dist;
 
 			    /* Find new farthest star */
@@ -264,7 +274,7 @@ int	nlog;		/* 1 for diagnostics */
 			gpdec[farstar] = decpm;
 			gmag[faintstar] = mag;
 			gmagb[faintstar] = magb;
-			gtype[faintstar] = isp;
+			/* gtype[faintstar] = isp; */
 			gdist[faintstar] = dist;
 			faintmag = 0.0;
 
@@ -317,7 +327,6 @@ int	nlog;		/* 1 for diagnostics */
 		     nstar,nstarmax);
 	}
     free ((void *)star);
-    free ((void *)gdist);
     return (nstar);
 }
 
@@ -428,7 +437,7 @@ int	nlog;		/* 1 for diagnostics */
 	gpdec[nstar] = decpm;
 	gmag[nstar] = mag;
 	gmagb[nstar] = magb;
-	gtype[nstar] = isp;
+	/* gtype[nstar] = isp; */
 	nstar++;
 	if (nlog == 1)
 	    fprintf (stderr,"ACTRNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %s  \n",
@@ -782,10 +791,12 @@ int istar;	/* Star sequence number in ACT catalog region file */
     st->xmag[0] = atof (line+75);
     st->xmag[1] = atof (line+68);
     st->xmag[2] = atof (line+82);
+    st->isp[0] = (char) 0;
+    st->isp[1] = (char) 0;
 
-    /* Set main sequence spectral type */
+    /* Set main sequence spectral type
     bvmag = st->xmag[2];
-    bv2sp (&bvmag, 0.0, 0.0, st->isp);
+    bv2sp (&bvmag, 0.0, 0.0, st->isp); */
 
     return (0);
 }
@@ -841,4 +852,5 @@ char	*filename;	/* Name of file for which to find size */
  * Dec 11 2000	Allow catalog search engine URL in actcd[]
  *
  * Jan 11 2001	All printing is to stderr
+ * Jun 14 2001	Drop spectral type approximation
  */

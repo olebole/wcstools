@@ -1,4 +1,4 @@
-.TH xy2sky(1) WCS "7 July 1998"
+.TH xy2sky(1) WCSTools "6 July 2001"
 .SH Name
 xy2sky \- Compute RA Dec from X Y using WCS in FITS and IRAF image files
 .SH Synopsis
@@ -39,6 +39,9 @@ Set third dimension for 3-D projections such as CSC
 .B \-g
 Galactic longitude and latitude output
 .TP
+.B \-i
+First column is star id; 2nd, 3rd are x,y position
+.TP
 .B \-j
 J2000 (FK5) output
 .TP
@@ -58,6 +61,9 @@ Output as tab-separated table
 .TP
 .B \-v
 More descriptive output
+.B \-z
+Use AIPS classic projections instead of WCSLIB
+
 .SH See Also
 sky2xy(1)
 .SH Author

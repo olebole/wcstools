@@ -1,10 +1,12 @@
 /*** File libwcs/dateutil.c
- *** August 1, 2000
+ *** May 25, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
 
 /* Date and time conversion routines using the following conventions:
+  doy = 2 floating point numbers: year and day, including fraction, of year
+	*** First day of year is 1, not zero.
    dt = 2 floating point numbers: yyyy.mmdd, hh.mmssssss
    ep = fractional year, often epoch of a position including proper motion
   epb = Besselian epoch = 365.242198781-day years based on 1900.0
@@ -16,15 +18,25 @@
 	yyyy-mm-dd (FITS standard after 1999)
 	yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999)
    jd = Julian Date
+   lt = Local time
   mjd = modified Julian Date = Julian date - 2400000.5
   ofd = FITS date string (dd/mm/yy before 2000, else no return)
  time = use fd2* with no date to convert time as hh:mm:ss.ss to sec, day, year
    ts = UT seconds since 1950-01-01T00:00 (used for ephemeris computations)
   tsi = local seconds since 1980-01-01T00:00 (used by IRAF as a time tag)
   tsu = UT seconds since 1970-01-01T00:00 (used as Unix system time)
-   lt = Local time
    ut = Universal Time (UTC)
 
+ * doy2dt (year, doy, date, time)
+ *	Convert year and day of year to date as yyyy.ddmm and time as hh.mmsss
+ * doy2ep, doy2epb, doy2epj (date, time)
+ *	Convert year and day of year to fractional year
+ * doy2fd (year, doy)
+ *	Convert year and day of year to FITS date string
+ * doy2mjd (year, doy)
+ *	Convert year and day of year to modified Julian date
+ * dt2doy (date, time, year, doy)
+ *	Convert date as yyyy.ddmm and time as hh.mmsss to year and day of year
  * dt2ep, dt2epb, dt2epj (date, time)
  *	Convert date as yyyy.ddmm and time as hh.mmsss to fractional year
  * dt2fd (date, time)
@@ -56,6 +68,8 @@
  * fd2ep, fd2epb, fd2epj (string)
  *	Convert FITS date string to fractional year
  *	Convert time alone to fraction of Besselian year
+ * fd2doy (string, year, doy)
+ *	Convert FITS standard date string to year and day of year
  * fd2dt (string, date, time)
  *	Convert FITS date string to date as yyyy.ddmm and time as hh.mmsss
  *	Convert time alone to hh.mmssss with date set to 0.0
@@ -78,6 +92,8 @@
  *	Convert FITS standard date string to old-format FITS date string
  * fd2oft (string)
  *	Convert time part of FITS standard date string to FITS date string
+ * jd2doy (dj, year, doy)
+ *	Convert Julian date to year and day of year
  * jd2dt (dj,date,time)
  *	Convert Julian date to date as yyyy.mmdd and time as hh.mmssss
  * jd2ep, jd2epb, jd2epj (dj)
@@ -100,6 +116,8 @@
  *	Return local time as Unix seconds since 1970-01-01 00:00
  * lt2ts()
  *	Return local time as Unix seconds since 1950-01-01 00:00
+ * mjd2doy (dj,year,doy)
+ *	Convert modified Julian date to date as year and day of year
  * mjd2dt (dj,date,time)
  *	Convert modified Julian date to date as yyyy.mmdd and time as hh.mmssss
  * mjd2ep, mjd2epb, mjd2epj (dj)
@@ -134,7 +152,9 @@
  *	Convert UT seconds since 1970-01-01 to local seconds since 1980-01-01
  * tsu2dt (tsec,date,time)
  *	Convert seconds since 1970-01-01 to date as yyyy.ddmm, time as hh.mmsss
- * ut2dt(date, time)
+ * ut2dt (year, doy)
+ *	Current Universal Time to year and day of year
+ * ut2dt (date, time)
  *	Current Universal Time to date (yyyy.mmdd) and time (hh.mmsss)
  * ut2ep(), ut2epb(), ut2epj()
  *	Current Universal Time to fractional year, Besselian, Julian epoch
@@ -540,6 +560,21 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 }
 
 
+/* MJD2DOY-- convert Modified Julian Date to Year,Day-of-Year */
+
+double
+mjd2doy (dj, year, doy)
+
+double	dj;	/* Modified Julian Date */
+int	*year;	/* Year (returned) */
+double	*doy;	/* Day of year with fraction (returned) */
+
+{
+    jd2doy (dj + 2400000.5, year, doy);
+    return;
+}
+
+
 /* MJD2JD-- convert Modified Julian Date to Julian Date */
 
 double
@@ -938,6 +973,257 @@ jd2ts (dj)
 double	dj;	/* Julian date */
 {
     return ((dj - 2433282.5) * 86400.0);
+}
+
+
+/* JD2TSI-- convert Julian date to IRAF seconds since 1980-01-01T0:00 */
+
+double
+jd2tsi (dj)
+
+double	dj;	/* Julian date */
+{
+    return ((dj - 2444239.5) * 86400.0);
+}
+
+
+/* JD2TSU-- convert Julian date to Unix seconds since 1970-01-01T0:00 */
+
+double
+jd2tsu (dj)
+
+double	dj;	/* Julian date */
+{
+    return ((dj - 2440587.5) * 86400.0);
+}
+
+
+/* DT2DOY-- convert yyyy.mmdd hh.mmss to year and day of year */
+
+void
+dt2doy (date, time, year, doy)
+
+double	date;	/* Date as yyyy.mmdd */
+double	time;	/* Time as hh.mmssxxxx */
+int	*year;	/* Year (returned) */
+double	*doy;	/* Day of year with fraction (returned) */
+{
+    double	dj;	/* Julian date */
+    double	dj0;	/* Julian date on January 1 0:00 */
+    double	date0;	/* January first of date's year */
+    double	dyear;
+
+    dyear = floor (date);
+    date0 = dyear + 0.0101;
+    dj0 = dt2jd (date0, 0.0);
+    dj = dt2jd (date, time);
+    *year = (int) (dyear + 0.00000001);
+    *doy = dj - dj0 + 1.0;
+    return;
+}
+
+
+/* DOY2DT-- convert year and day of year to yyyy.mmdd hh.mmss */
+
+void
+doy2dt (year, doy, date, time)
+
+int	year;	/* Year */
+double	doy;	/* Day of year with fraction */
+double	*date;	/* Date as yyyy.mmdd (returned) */
+double	*time;	/* Time as hh.mmssxxxx (returned) */
+{
+    double	dj;	/* Julian date */
+    double	dj0;	/* Julian date on January 1 0:00 */
+    double	date0;	/* January first of date's year */
+
+    date0 = year + 0.0101;
+    dj0 = dt2jd (date0, 0.0);
+    dj = dj0 + doy - 1.0;
+    jd2dt (dj, date, time);
+    return;
+}
+
+
+/* DOY2EP-- convert year and day of year to fractional year as used in epoch */
+
+double
+doy2ep (year, doy)
+
+int	year;	/* Year */
+double	doy;	/* Day of year with fraction */
+{
+    double date, time;
+    doy2dt (year, doy, &date, &time);
+    return (dt2ep (date, time));
+}
+
+
+/* DOY2EPB-- convert year and day of year to Besellian epoch */
+
+double
+doy2epb (year, doy)
+
+int	year;	/* Year */
+double	doy;	/* Day of year with fraction */
+{
+    double dj;
+    dj = doy2jd (year, doy);
+    return (jd2epb (dj));
+}
+
+
+/* DOY2EPJ-- convert year and day of year to Julian epoch */
+
+double
+doy2epj (year, doy)
+
+int	year;	/* Year */
+double	doy;	/* Day of year with fraction */
+{
+    double dj;
+    dj = doy2jd (year, doy);
+    return (jd2epj (dj));
+}
+
+
+/* DOY2FD-- convert year and day of year to FITS date */
+
+char *
+doy2fd (year, doy)
+
+double	year;	/* Year */
+double	doy;	/* Day of year with fraction */
+{
+    double dj;	/* Julian date  */
+
+    dj = doy2jd (year, doy);
+    return (jd2fd (dj));
+}
+
+
+/* DOY2JD-- convert year and day of year to Julian date */
+
+double
+doy2jd (year, doy)
+
+int	year;	/* Year */
+double	doy;	/* Day of year with fraction */
+{
+    double	dj, dj0;	/* Julian date */
+    double	date;	/* Date as yyyy.mmdd (returned) */
+    double	time;	/* Time as hh.mmssxxxx (returned) */
+
+    date = (double) year + 0.0101;
+    time = 0.0;
+    dj0 = dt2jd (date, time);
+    return (dj0 + doy - 1.0);
+}
+
+
+/* DOY2MJD-- convert year and day of year to Julian date */
+
+double
+doy2mjd (year, doy)
+
+int	year;	/* Year */
+double	doy;	/* Day of year with fraction */
+{
+    double	dj, dj0;	/* Julian date */
+    double	date;	/* Date as yyyy.mmdd (returned) */
+    double	time;	/* Time as hh.mmssxxxx (returned) */
+
+    date = (double) year + 0.0101;
+    time = 0.0;
+    dj0 = dt2jd (date, time);
+    return (dj0 + doy - 1.0 - 2400000.5);
+}
+
+
+/* DOY2TSU-- convert from FITS date to Unix seconds since 1970-01-01T0:00 */
+
+long
+doy2tsu (year, doy)
+
+int	year;	/* Year */
+double	doy;	/* Day of year with fraction */
+{
+    double dj;
+    dj = doy2jd (year, doy);
+    return (jd2ts (dj));
+}
+
+
+/* DOY2TSI-- convert from FITS date to IRAF seconds since 1980-01-01T0:00 */
+
+int
+doy2tsi (year, doy)
+
+int	year;	/* Year */
+double	doy;	/* Day of year with fraction */
+{
+    double dj;
+    dj = doy2jd (year, doy);
+    return (jd2tsi (dj));
+}
+
+
+/* DOY2TS-- convert year, day of year to seconds since 1950 */
+
+double
+doy2ts (year, doy)
+
+int	year;	/* Year */
+double	doy;	/* Day of year with fraction */
+{
+    double dj;
+    dj = doy2jd (year, doy);
+    return (jd2tsu (dj));
+}
+
+
+/* FD2DOY-- convert FITS date to year and day of year */
+
+void
+fd2doy (string, year, doy)
+
+char	*string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+int	*year;	/* Year (returned) */
+double	*doy;	/* Day of year with fraction (returned) */
+{
+    double dj;	/* Julian date */
+
+    dj = fd2jd (string);
+    jd2doy (dj, year, doy);
+    return;
+}
+
+
+/* JD2DOY-- convert Julian date to year and day of year */
+
+void
+jd2doy (dj, year, doy)
+
+double	dj;	/* Julian date */
+int	*year;	/* Year (returned) */
+double	*doy;	/* Day of year with fraction (returned) */
+{
+    double date;	/* Date as yyyy.mmdd (returned) */
+    double time;	/* Time as hh.mmssxxxx (returned) */
+    double dj0;		/* Julian date at 0:00 on 1/1 */
+    double dyear;
+
+    jd2dt (dj, &date, &time);
+    *year = (int) date;
+    dyear = (double) *year;
+    dj0 = dt2jd (dyear+0.0101, 0.0);
+    *doy = dj - dj0 + 1.0;
+    return;
 }
 
 
@@ -1765,9 +2051,9 @@ double	*sec;	/* seconds (returned) */
 int	ndsec;	/* Number of decimal places in seconds (0=int) */
 
 {
-    double tsec;
+    double tsec, fday, hr, mn;
     int i;
-    char *sstr, *dstr, *tstr, *cstr, *nval;
+    char *sstr, *dstr, *tstr, *cstr, *nval, *fstr;
 
     /* Initialize all returned data to zero */
     *iyr = 0;
@@ -1784,7 +2070,12 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
     /* Check for various non-numeric characters */
     sstr = strchr (string,'/');
     dstr = strchr (string,'-');
+    fstr = strchr (string, '.');
     tstr = strchr (string,'T');
+    if (tstr == NULL)
+	tstr = strchr (string, 'Z');
+    if (fstr != NULL && tstr != NULL && fstr > tstr)
+	fstr == NULL;
     cstr = strchr (string,':');
 
     /* Original FITS date format: dd/mm/yy */
@@ -1830,6 +2121,17 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 	    if (tstr > string)
 		*tstr = '\0';
 	    *iday = (int) atof (nval);
+
+	    /* If fraction of a day is present, turn it into a time */
+	    if (fstr != NULL) {
+		fday = atof (fstr);
+		hr = fday * 24.0;
+		*ihr = (int) hr;
+		mn = 60.0 * (hr - (double) *ihr);
+		*imn = (int) mn;
+		*sec = 60.0 * (mn - (double) *imn);
+		}
+
 	    if (tstr > string)
 		*tstr = 'T';
 	    }
@@ -1983,6 +2285,21 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 }
 
 
+/* UT2DOY-- Current Universal Time as year, day of year */
+
+void
+ut2doy (year, doy)
+
+int	*year;	/* Year (returned) */
+double	*doy;	/* Day of year (returned) */
+{
+    double date, time;
+    ut2dt (&date, &time);
+    dt2doy (date, time, year, doy);
+    return;
+}
+
+
 /* UT2DT-- Current Universal Time as date (yyyy.mmdd) and time (hh.mmsss) */
 
 void
@@ -1990,7 +2307,6 @@ ut2dt(date, time)
 
 double	*date;	/* Date as yyyy.mmdd (returned) */
 double	*time;	/* Time as hh.mmssxxxx (returned) */
-
 {
     long tsec;
     struct timeval tp;
@@ -2406,4 +2722,6 @@ double	dnum, dm;
  * Aug  1 2000	Make ep2jd and jd2ep consistently starting at 1/1 0:00
  *
  * Jan 11 2001	Print all messages to stderr
+ * May 21 2001	Add day of year conversions
+ * May 25 2001	Allow fraction of day in FITS date instead of time
  */

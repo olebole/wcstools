@@ -1,5 +1,5 @@
 /*** File libwcs/imsetwcs.c
- *** March 1, 2001
+ *** June 7, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (based on UIowa code)
@@ -104,6 +104,7 @@ int	verbose;
     int nmax;		/* Maximum number of matches possible (nrg or nbs) */
     double mag1,mag2;
     int refcat;		/* reference catalog switch */
+    int nmag, mprop;
     double dxys;
     char numstr[32];
     int minstars;
@@ -198,7 +199,7 @@ int	verbose;
 	refeq = 0.0;
 	}
     else {
-	refcat = RefCat (refcatname, title, &refsys, &refeq, &refep);
+	refcat = RefCat (refcatname,title,&refsys,&refeq,&refep,&mprop,&nmag);
 	wcscstr (refcoor, refsys, refeq, refep);
 	}
 
@@ -206,6 +207,7 @@ int	verbose;
 getfield:
     wcs = GetFITSWCS (filename,header,verbose,&cra,&cdec,&dra,&ddec,&secpix,
 		      &imw,&imh,&refsys, &refeq);
+    refep = wcs->epoch;
     if (nowcs (wcs)) {
 	ret = 0;
 	goto out;
@@ -275,7 +277,7 @@ getfield:
 
     /* Find the nearby reference stars, in ra/dec */
     ng = ctgread (refcatname,refcat,0,cra,cdec,dra,ddec,0.0,refsys,refeq,
-		  wcs->epoch,mag1,mag2,ngmax,&starcat,
+		  refep,mag1,mag2,ngmax,&starcat,
 		  gnum,gra,gdec,gpra,gpdec,gm,gmb,gc,NULL,verbose*100);
     if (ng > ngmax)
 	nrg = ngmax;
@@ -500,14 +502,14 @@ match:
 	ra = wcs->xref;
 	dec = wcs->yref;
 	if (refsys == WCS_J2000) {
-	    (void)fk524e (&ra, &dec, wcs->epoch);
+	    (void)fk524e (&ra, &dec, refep);
 	    ra2str (rstr, 32, ra, 3);
 	    dec2str (dstr, 32, dec, 2);
 	    printf ("# Optical axis= %s  %s B1950  x= %.2f y= %.2f\n",
 		    rstr,dstr, wcs->xrefpix, wcs->yrefpix);
 	    }
 	else {
-	    fk425e (&ra, &dec, wcs->epoch);
+	    fk425e (&ra, &dec, refep);
 	    ra2str (rstr, 32, ra, 3);
 	    dec2str (dstr, 32, dec, 2);
 	    printf ("# Optical axis= %s  %s J2000  x= %.2f y= %.2f\n",
@@ -1043,4 +1045,6 @@ int recenter;
  * Jan  9 2001	Fix bug in FitMatch() call
  * Jan 11 2001	All output except residuals to stderr
  * Mar  1 2001	Fill in catalog name using CatName() if not set
+ * Jun  7 2001	Add proper motion flag and number of magnitudes to RefCat()
+ * Jun 11 2001	Set refep from wcs->epoch after WCS is set
  */

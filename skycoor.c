@@ -1,5 +1,5 @@
 /* File skycoor.c
- * March 28, 2000
+ * April 9, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -21,6 +21,7 @@ extern void s2v3();
 extern void v2s3();
 
 static int verbose = 0;		/* verbose/debugging flag */
+static int inrad = 0;		/* If 1, input is in radians */
 static double epin = 0.0;
 static double epout = 0.0;
 static double eqout = 0.0;
@@ -45,6 +46,7 @@ char **av;
     char rastr1[32], decstr1[32];
     char csys0[32], csys1[32];
     char csys[32];
+    char cunit;
     int sys0;
     int sys1 = -1;
     double ra, dec, r, ra1, dec1;
@@ -148,6 +150,15 @@ char **av;
 
 	case 's':	/* Output ra= dec= epoch= radecsys= for sethead */
 	    keyeqval++;
+	    break;
+
+	case 'i':	/* Input units (r=radians, d=degrees, ...) */
+	    if (ac < 2)
+		usage("Missing input units for -i");
+	    cunit = *(*++av);
+	    if (cunit == 'r')
+		inrad = 1;
+	    ac--;
 	    break;
 
 	case 'w':	/* Convert RA, Dec to X, Y, Z */
@@ -356,8 +367,14 @@ int	ndec;		/* Number of decimal places in output RA seconds */
 {
     double ra, dec;
 
-    ra = str2ra (rastr0);
-    dec = str2dec (decstr0);
+    if (inrad) {
+	ra = raddeg (atof (rastr0));
+	dec = raddeg (atof (decstr0));
+	}
+    else {
+	ra = str2ra (rastr0);
+	dec = str2dec (decstr0);
+	}
 
     if (mprop) {
 	if (mprop && epin == 0.0)
@@ -418,6 +435,7 @@ char *errstring;
     fprintf (stderr,"  -d: RA and Dec output in degrees\n");
     fprintf (stderr,"  -e: Ecliptic longitude and latitude output\n");
     fprintf (stderr,"  -g: Galactic longitude and latitude output\n");
+    fprintf (stderr,"  -i: Input units (r=radians, d=degrees, ...\n");
     fprintf (stderr,"  -j: J2000 (FK5) output\n");
     fprintf (stderr,"  -n: Number of decimal places in output RA seconds\n");
     fprintf (stderr,"  -p: RA and Dec proper motion in milliarcseconds/year\n");
@@ -456,4 +474,6 @@ char *errstring;
  * Mar 14 2000	Add explicit error messages
  * Mar 22 2000	If epoch is entered, use it for both input and output
  * Mar 28 2000	Add line specifying formats for RA and Dec
+ *
+ * Apr  9 2001	Add -i option to specify radian input
  */

@@ -1,5 +1,5 @@
 CFLAGS= -g
-CC=cc
+CC= cc
 LIBWCS = libwcs/libwcs.a
 LIBS = $(LIBWCS) -lm
 #CATLIBS = $(LIBS) -lnsl -lsocket
@@ -12,7 +12,7 @@ BIN = bin
 all:	cphead delwcs delhead edhead fixpix gethead i2f imcat imhead immatch \
 	imrot imsize imstar imwcs scat sethead addpix getpix setpix sky2xy \
 	keyhead skycoor subpix xy2sky wcshead conpix gettab newfits \
-	imstack imextract sumpix remap getcol getdate
+	imstack imextract sumpix remap getcol getdate fileroot filename
 
 addpix: addpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/addpix addpix.c $(LIBS)
@@ -23,6 +23,9 @@ conpix: conpix.c $(LIBWCS) libwcs/fitsfile.h
 cphead: cphead.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/cphead cphead.c $(LIBS)
 
+crlf: crlf.c
+	$(CC) $(CFLAGS) -o $(BIN)/crlf crlf.c
+
 delwcs: delwcs.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/delwcs delwcs.c $(LIBS)
 
@@ -31,6 +34,12 @@ delhead: delhead.c $(LIBWCS) libwcs/fitsfile.h
 
 edhead: edhead.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/edhead edhead.c $(LIBS)
+
+filename: filename.c
+	$(CC) $(CFLAGS) -o $(BIN)/filename filename.c
+
+fileroot: fileroot.c
+	$(CC) $(CFLAGS) -o $(BIN)/fileroot fileroot.c
 
 fixpix: fixpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/fixpix fixpix.c $(LIBS)
@@ -49,6 +58,9 @@ getpix: getpix.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
 
 gettab: gettab.c $(LIBWCS) libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/gettab gettab.c $(CATLIBS)
+
+httpget: httpget.c $(LIBWCS) libwcs/wcscat.h
+	$(CC) $(CFLAGS) -o $(BIN)/httpget httpget.c $(CATLIBS)
 
 i2f: i2f.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/i2f i2f.c $(LIBS)

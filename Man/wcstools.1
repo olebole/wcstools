@@ -1,4 +1,4 @@
-.TH wcstools(1) WCS "12 December 1996"
+.TH wcstools(1) WCSTools "6 July 2001"
 .SH Name
 wcstools \- Programs to access image world coordinate systems and catalogs
 .SH Setting an Image World Coordinate System
@@ -17,24 +17,12 @@ imcat
 List catalog sources which should be found in the area of the sky
 covered by a specific image.
 .TP
-imgsc
-List Guide Star Catalog sources which should be found in the area of
-the sky covered by a specific image using its WCS.
-.TP
 imsize
 Print center and size of image using WCS keywords in header
 .TP
 imstar
 Find and list the n brightest stars in an IRAF or FITS image, with their
 sky coordinates if there is WCS information in the image header. 
-.TP
-imuac
-List USNO A Catalog sources which should be found in the area of
-the sky covered by a specific image using its WCS.
-.TP
-imujc
-List USNO UJ Catalog sources which should be found in the area of
-the sky covered by a specific image using its WCS.
 .TP
 sky2xy
 Print image pixel coordinates for given sky coordinates on the command line
@@ -45,17 +33,9 @@ Print sky coordinates for given image pixel coordinates on the command line
 or in a list file.
 .SH Catalog Utility Programs
 .TP
-sgsc
-Search the HST Guide Star Catalog given a region on the sky.
-.TP
-suac
-Search the USNO A Catalog given a region on the sky.
-.TP
-sujc
-Search the USNO UJ Catalog given a region on the sky.
-.TP
 scat
-Search the HST GSC, USNO UJC, or a local catalog given a region on the sky.
+Search the HST GSC, USNO-A2.0, or other catalog given a region on the sky.
+.TP
 .TP
 skycoor
 Convert between J2000, B1950, and Galactic coordinates from the command
@@ -92,5 +72,6 @@ Set header parameters in FITS or IRAF images.
 .TP
 subpix
 Subtract a constant value(s) from specified pixel(s)
+
 .SH Author
 Doug Mink, SAO (dmink@cfa.harvard.edu)

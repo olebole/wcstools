@@ -1,5 +1,5 @@
 /* File getcol.c
- * March 19, 2001
+ * June 19, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -13,6 +13,8 @@
 #include <math.h>
 #include "libwcs/wcscat.h"
 #include "libwcs/fitshead.h"
+
+#define	MAX_LTOK	80
 
 static void usage();
 static int ListFile();
@@ -42,6 +44,7 @@ static char **cop;		/* Operation characters */
 static void strclean();
 static int napp=0;		/* Number of lines to append */
 static int ndec=-1;		/* Number of decimal places in f.p. output */
+static char *cwhite;
 
 main (ac, av)
 int ac;
@@ -55,6 +58,8 @@ char **av;
     char *lranges = NULL;
     int match, newbytes;
     int nrbytes = 0;
+
+    cwhite = NULL;
 
     if (ac == 1)
         usage ();
@@ -153,6 +158,11 @@ char **av;
 		sumcol++;
 		break;
 
+	    case 'b':	/* bar-separated input */
+		cwhite = (char *) calloc (4,1);
+		strcpy (cwhite, "bar");
+		break;
+
 	    case 'c':	/* Count entries in each column */
 		countcol++;
 		break;
@@ -166,6 +176,11 @@ char **av;
 
 	    case 'h':	/* Print Starbase tab table header */
 		printhead++;
+		break;
+
+	    case 'i':	/* tab-separated input */
+		cwhite = (char *) calloc (4,1);
+		strcpy (cwhite, "tab");
 		break;
 
 	    case 'k':	/* Count columns on first line */
@@ -271,9 +286,11 @@ usage ()
     fprintf (stderr,"Extract specified columns from an ASCII table file\n");
     fprintf (stderr,"Usage: [-amv][-d num][-l num][-n num][-r lines][-s num] filename [column number range]\n");
     fprintf(stderr,"  -a: Sum numeric colmuns\n");
+    fprintf(stderr,"  -b: Input is bar-separate table file\n");
     fprintf(stderr,"  -c: Add count of number of lines in each column at end\n");
     fprintf(stderr,"  -d: Number of decimal places in f.p. output\n");
     fprintf(stderr,"  -h: Print Starbase tab table header\n");
+    fprintf(stderr,"  -i: Input is tab-separate table file\n");
     fprintf(stderr,"  -k: Print number of columns on first line\n");
     fprintf(stderr,"  -l: Number of lines to add to each line\n");
     fprintf(stderr,"  -m: Compute mean of numeric columns\n");
@@ -323,10 +340,8 @@ char	*lfile;		/* Name of file with lines to list */
     int pass;
     int iapp;
     int jcond, jval;
-    char *cwhite;
-    char token[80];
+    char token[MAX_LTOK];
 
-    cwhite = NULL;
     lrange = NULL;
     iline = NULL;
 
@@ -405,7 +420,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    }
 		}
 	    for (i = 0; i < ntok; i++) {
-		if (getoken (tokens, i+1, token)) {
+		if (getoken (tokens, i+1, token, MAX_LTOK)) {
 		    iline[il] = atoi (token);
 		    if (iline[il] > 0) {
 			nline++;
@@ -507,7 +522,7 @@ char	*lfile;		/* Name of file with lines to list */
 	
 		    /* Read comparison value from header */
 		    itok = atoi (cond[icond]);
-		    getoken (tokens, itok, token);
+		    getoken (tokens, itok, token, MAX_LTOK);
 		    cval = token;
 		    if (strchr (cval, ':')) {
 			dnum = str2dec (cval);
@@ -666,7 +681,7 @@ char	*lfile;		/* Name of file with lines to list */
 	
 		    /* Read comparison value from header */
 		    itok = atoi (cond[icond]);
-		    getoken (tokens, itok, token);
+		    getoken (tokens, itok, token, MAX_LTOK);
 		    cval = token;
 		    if (strchr (cval, ':')) {
 			dnum = str2dec (cval);
@@ -740,7 +755,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    }
 
 		for (i = 0; i < nfind; i++) {
-		    if (getoken (tokens, inum[i], token)) {
+		    if (getoken (tokens, inum[i], token, MAX_LTOK)) {
 			ltok = strlen (token);
 			printf ("%03d", inum[i]);
 			for (j = 3; j < ltok; j++)
@@ -752,7 +767,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    }
 		printf ("\n");
 		for (i = 0; i < nfind; i++) {
-		    if (getoken (tokens, inum[i], token)) {
+		    if (getoken (tokens, inum[i], token, MAX_LTOK)) {
 			ltok = strlen (token);
 			for (j = 0; j < ltok; j++)
 			    printf ("-");
@@ -766,7 +781,7 @@ char	*lfile;		/* Name of file with lines to list */
 
 	    /* Print requested columns */
 	    for (i = 0; i < nfind; i++) {
-		if (getoken (tokens, inum[i], token)) {
+		if (getoken (tokens, inum[i], token, MAX_LTOK)) {
 		    if (i > 0) {
 			if (tabout)
 			    printf ("	");
@@ -807,7 +822,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    dnum = atof (cstr);
 		else {
 		    itok = atoi (cstr);
-		    if (getoken (tokens, itok, token))
+		    if (getoken (tokens, itok, token, MAX_LTOK))
 			dnum = atof (token);
 		    else {
 			printf ("___");
@@ -818,7 +833,7 @@ char	*lfile;		/* Name of file with lines to list */
 
 		/* Extract token from input line */
 		itok = atoi (op[iop]);
-		if (getoken (tokens, itok, token)) {
+		if (getoken (tokens, itok, token, MAX_LTOK)) {
 		    dtok = atof (token);
 		    if (top == '+' || top == 'a')
 			printf ("%f", dtok + dnum);
@@ -1008,4 +1023,5 @@ char *string;
  * Jan 17 2001	Add -d option to set number of output decimal places
  * Jan 17 2001	Add a, s, m, d for add, subtract, multiply, divide const or col
  * Mar 19 2001	Drop type declarations from intcompare argument list
+ * Jun 18 2001	Add maximum length of returned string to getoken()
  */

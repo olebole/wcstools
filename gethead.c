@@ -1,5 +1,5 @@
 /* File gethead.c
- * February 27, 2001
+ * April 23, 2001
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -41,7 +41,8 @@ static int version = 0;		/* If 1, print only program name and version */
 static int printfill=0;		/* If 1, print ___ for unfound keyword values */
 static int printfile=1;		/* If 1, print filename first if >1 files */
 static int fillblank=0;		/* If 1, replace blanks in strings with _ */
-static int keyeqval=0;		/* If 1, print keyword=value, not just value */
+static int keyeqval=0;		/* If 1, print keyword=value */
+static int keyeqvaln=0;		/* If 1, print keyword=value<nl> */
 static char *rootdir=NULL;	/* Root directory for input files */
 static int ncond=0;		/* Number of keyword conditions to check */
 static int condand=1;		/* If 1, AND comparisons, else OR */
@@ -121,6 +122,10 @@ char **av;
 		case 'f': /* Do not print file names */
 		    printfile = 0;
 		    break;
+
+		case 'g': /* list keyword=value<nl> */
+		    keyeqvaln++;
+		    break;
 	
 		case 'h': /* Output column headings */
 		    printhead++;
@@ -152,6 +157,7 @@ char **av;
 	
 		case 'v': /* More verbosity */
 		    verbose++;
+		    keyeqvaln++;
 		    break;
 
 		default:
@@ -413,6 +419,7 @@ usage ()
     fprintf(stderr,"  -d: Root directory for input files (default is cwd)\n");
     fprintf(stderr,"  -e: Output keyword=value's on one line per file\n");
     fprintf(stderr,"  -f: Never print filenames (default is print if >1)\n");
+    fprintf(stderr,"  -g: Output keyword=value's on one line per keyword\n");
     fprintf(stderr,"  -h: Print column headings\n");
     fprintf(stderr,"  -n: Number of decimal places in numeric output\n");
     fprintf(stderr,"  -o: OR conditions instead of ANDing them\n");
@@ -598,7 +605,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	    strclean (str);
 	    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 		num2str (str, atof(str), 0, ndec);
-	    if (verbose)
+	    if (keyeqvaln)
 		printf ("%s = %s\n", keyword, str);
 	    else if (keyeqval) {
 		sprintf (temp, " %s=%s", keyword, str);
@@ -628,7 +635,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		    strclean (str);
 		    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 			num2str (string, atof(str), 0, ndec);
-		    if (verbose)
+		    if (keyeqvaln)
 			printf ("%s = %s\n", keyword, str);
 		    else if (keyeqval) {
 			sprintf (temp, " %s=%s", keyword, str);
@@ -660,8 +667,8 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	    strclean (str);
 	    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 		num2str (string, atof(str), 0, ndec);
-	    if (verbose)
-		printf ("%s = %s", keyword, str);
+	    if (keyeqvaln)
+		printf ("%s = %s\n", keyword, str);
 	    else if (keyeqval) {
 		sprintf (temp, " %s=%s", keyword, str);
 		strcat (outline, temp);
@@ -673,7 +680,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 
 	/* Read IRAF-style multiple-line keyword value */
 	else if (hgetm (header, keyword, 600, mstring)) {
-	    if (verbose)
+	    if (keyeqvaln)
 		printf ("%s = %s\n", keyword, mstring);
 	    else if (keyeqval) {
 		sprintf (temp, " %s=%s", keyword, mstring);
@@ -684,21 +691,21 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	    nfound++;
 	    }
 
-	else if (verbose)
+	else if (keyeqvaln)
 	    printf ("%s not found\n", keyword);
 	else if (printfill)
 	    strcat (outline, "___");
 	else
 	    notfound = 1;
 
-	if (!verbose && ikwd < nkwd-1) {
+	if (!keyeqvaln && ikwd < nkwd-1) {
 	    if (tabout)
 		strcat (outline, "	");
 	    else
 		strcat (outline, " ");
 	    }
 	}
-    if (!verbose && (nfound > 0 || printfill) && (nfile < 2 || nfound > 0 || listall))
+    if (!keyeqvaln && (nfound > 0 || printfill) && (nfile < 2 || nfound > 0 || listall))
 	printf ("%s\n", outline);
 
     free (header);
@@ -832,4 +839,5 @@ char *string;
  *
  * Feb 21 2001	Add @ wildcard option for multiple WCS keywords
  * Feb 27 2001	Add space or tab between wildcard multiple WCS keyword values
+ * Apr 23 2001	Add -g for keyword=val<lf> and print same way if -v
  */

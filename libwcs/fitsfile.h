@@ -1,5 +1,5 @@
 /* fitsfile.h  FITS and IRAF file access subroutines
- * September 8, 2000
+ * May 22, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -13,6 +13,7 @@
 /* FITS table keyword structure */
 struct Keyword {
     char kname[10];	/* Keyword for table entry */
+    int lname;		/* Length of keyword name */
     int kn;		/* Index of entry on line */
     int kf;		/* Index in line of first character of entry */
     int kl;		/* Length of entry value */
@@ -76,6 +77,17 @@ extern int isimlist();
 extern int first_token();
 
 /* Subroutines for translating dates and times in dateutil.c */
+void doy2dt();	/* year and day of year to yyyy.mmdd hh.mmss */
+double doy2ep(); /* year and day of year to fractional year (epoch) */
+double doy2epb(); /* year and day of year to Besselian epoch */
+double doy2epj(); /* year and day of year to Julian epoch */
+char *doy2fd();	/* year and day of year to FITS date */
+double doy2jd(); /* year and day of year to Julian date */
+double doy2mjd(); /* year and day of year to modified Julian date */
+double doy2ts(); /* year and day of year to seconds since 1950.0 */ 
+int doy2tsi();	/* year and day of year to IRAF seconds since 1980-01-01 */
+long doy2tsu();	/* year and day of year to Unix seconds since 1970-01-01 */
+void dt2doy();	/* yyyy.mmdd hh.mmss to year and day of year */
 double dt2ep();	/* yyyy.ddmm and hh.mmsss to fractional year (epoch) */
 double dt2epb(); /* yyyy.ddmm and hh.mmsss to Besselian epoch */
 double dt2epj(); /* yyyy.ddmm and hh.mmsss to Julian epoch */
@@ -109,6 +121,7 @@ double ep2ts();	/* Fractional year to seconds since 1950.0 */
 double epb2ts(); /* Besselian epoch to seconds since 1950.0 */
 double epj2ts(); /* Julian epoch to seconds since 1950.0 */
 void fd2dt();	/* FITS standard date string to Julian date */
+void fd2doy();	/* FITS standard date string to year, day of year */
 double fd2ep();	/* FITS standard date string to fractional year (epoch) */
 double fd2epb(); /* FITS standard date string to Besselian epoch */
 double fd2epj(); /* FITS standard date string to Julian epoch */
@@ -122,6 +135,7 @@ double fd2mjd(); /* FITS standard date string to modified Julian date */
 double fd2ts();	/* FITS standard date to seconds since 1950-01-01 */
 int fd2tsi();	/* FITS standard date to IRAF seconds since 1980-01-01 */
 long fd2tsu();	/* FITS standard date to Unix seconds since 1970-01-01 */
+void jd2doy();	/* Julian date to year and day of year */
 void jd2dt();	/* Julian date to yyyy.mmdd hh.mmssss */
 double jd2ep();	/* Julian date to fractional year */
 double jd2epb(); /* Julian date to Besselian epoch */
@@ -160,6 +174,7 @@ double tsu2ts(); /* Seconds since 1970-01-01 to seconds since 1950-01-01 */
 int tsu2tsi(); /* Seconds since 1970-01-01 to local seconds since 1980-01-01 */
 int isdate();	/* Return 1 if string is FITS old or ISO date */
 void ut2dt(); /* Current Universal Time to date (yyyy.mmdd), time (hh.mmsss) */
+void ut2doy(); /* Current Universal Time to year, day of year */
 double ut2ep(); /* Current Universal Time to fractional year */
 double ut2epb(); /* Current Universal Time to Besselian Epoch */
 double ut2epj(); /* Current Universal Time to Julian Epoch */
@@ -201,4 +216,7 @@ double ut2ts(); /* Current UT to IRAF seconds since 1950-01-01T00:00 */
  * Mar 22 2000  Add lt2* and ut2* to get current time as local and UT
  * Mar 24 2000	Add tsi2* and tsu2* to convert IRAF and Unix seconds
  * Sep  8 2000	Improve comments
+ *
+ * Apr 24 2001	Add length of column name to column data structure
+ * May 22 2001	Add day of year date conversion subroutines
  */

@@ -1,5 +1,5 @@
-/*** File libwcs/wcsinitm.c
- *** March 21, 2001
+/*** File libwcs/wcsinit.c
+ *** July 12, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -371,9 +371,11 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	wcs->prj.r0 = 0.0;
 	sprintf (keyword,"PROJR0%c", mchar);
 	hgetr8 (hstring, keyword, &wcs->prj.r0);
+
+	/* This is the original format proposed for projection constants */
 	for (i = 1; i < 10; i++) {
 	    wcs->prj.p[i] = 0.0;
-	    sprintf (keyword,"PV%d%c",i, mchar);
+	    sprintf (keyword,"PROJP%d%c",i, mchar);
 	    wcs->prj.p[i] = 0.0;
 	    hgetr8 (hstring, keyword, &wcs->prj.p[i]);
 	    }
@@ -1043,4 +1045,5 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Feb 28 2001	Fix bug which read CRPIX1 into CRPIX2
  * Mar 20 2001	Compare mchar to (char)0, not null
  * Mar 21 2001	Move ic declaration into commented out code
+ * Jul 12 2001	Read PROJPn constants into proj.p array instead of PVn
  */

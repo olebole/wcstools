@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** March 23, 2001
+ *** July 6, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -13,8 +13,13 @@
 
 /* default pathname for catalog,  used if catalog file not found in current
    working directory, but overridden by the WCS_BINDIR, SAO_PATH (if bincat
-   is SAO), or PPM_PATH (if bincat is PPM) environment variable */
+   is SAO), PPM_PATH (if bincat is PPM, HIP_PATH, if bincat is HIP, or
+   IRAS_PATH is bincat is IRAS) environment variable */
+
 char bindir[64]="/data/stars";
+
+static double *tdist;	/* Array of distances to sources from search center */
+static int ndist = 0;
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -75,14 +80,13 @@ int	nlog;
     double maxdist=0.0; /* Largest distance */
     int faintstar=0;    /* Faintest star */
     int farstar=0;      /* Most distant star */
-    double *tdist;      /* Array of distances to sources from search center */
     int sysref;		/* Catalog coordinate system */
     double eqref;	/* Catalog coordinate equinox */
     double epref;	/* Catalog position epoch */
     double ra, dec, rapm, decpm;
     double rra1a, rra2a;
-    struct Star *star;
     struct StarCat *sc;	/* Star catalog data structure */
+    struct Star *star;
     int rwrap, wrap, iwrap, istar1,istar2;
     int binset;
     char *objname;
@@ -98,7 +102,6 @@ int	nlog;
     char cstr[16];
     char str[128];
 
-    star = NULL;
     sc = *starcat;
 
     if (nlog > 0)
@@ -139,11 +142,24 @@ int	nlog;
     /* Logging interval */
     nstar = 0;
 
-    /* Allocate space for distances from search center */
-    if (nstarmax > 10)
-	tdist = (double *) calloc (nstarmax, sizeof(double));
-    else
-	tdist = (double *) calloc (10, sizeof(double));
+    /* Allocate space for distances from search center, if necessary */
+    if (nstarmax > ndist) {
+	if (ndist > 0)
+	    free ((void *)tdist);
+	if (nstarmax > 10)
+	    tdist = (double *) calloc (nstarmax, sizeof(double));
+	else
+	    tdist = (double *) calloc (10, sizeof(double));
+	if (tdist == NULL) {
+	    fprintf (stderr,"BINREAD:  cannot allocate separation array\n");
+	    ndist = 0;
+	    return (0);
+	    }
+	if (nstarmax > 10)
+	    ndist = nstarmax;
+	else
+	    ndist = 10;
+	}
 
     SearchLim (cra, cdec, dra, ddec, sysout, &ra1, &ra2, &dec1, &dec2, verbose);
 
@@ -265,8 +281,13 @@ int	nlog;
 	    else
 		magb = 20.0;
 
+	    /* If there are four magnitudes, save them in place of type */
+	    if (sc->nmag > 3)
+		isp = 100000 * star->mag[2] + star->mag[3];
+
 	    /* Spectral Type */
-	    isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+	    else
+		isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 
 	    /* Compute distance from search center */
 	    if (drad > 0 || distsort)
@@ -318,8 +339,8 @@ int	nlog;
 			tra[farstar] = ra;
 			tdec[farstar] = dec;
 			if (sc->mprop) {
-			    tpra[nstar] = rapm;
-			    tpdec[nstar] = decpm;
+			    tpra[farstar] = rapm;
+			    tpdec[farstar] = decpm;
 			    }
 			tmag[farstar] = mag;
 			tmagb[farstar] = magb;
@@ -350,8 +371,8 @@ int	nlog;
 		    tra[faintstar] = ra;
 		    tdec[faintstar] = dec;
 		    if (sc->mprop) {
-			tpra[nstar] = rapm;
-			tpdec[nstar] = decpm;
+			tpra[faintstar] = rapm;
+			tpdec[faintstar] = decpm;
 			}
 		    tmag[faintstar] = mag;
 		    tmagb[faintstar] = magb;
@@ -548,8 +569,13 @@ int	nlog;
 	else
 	    magb = 20.0;
 
+	/* If there are four magnitudes, save them in place of type */
+	if (starcat->nmag > 3)
+	    isp = 100000 * star->mag[2] + star->mag[3];
+
 	/* Spectral Type */
-	isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+	else
+	    isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 
 	/* Save star position and magnitude in table */
 	tnum[jnum] = num;
@@ -560,6 +586,8 @@ int	nlog;
 	    tpdec[jnum] = decpm;
 	    }
 	tmag[jnum] = mag;
+	if (starcat->nmag > 1)
+	    tmagb[jnum] = magb;
 	tpeak[jnum] = isp;
 	if (tobj != NULL) {
 	    lname = strlen (star->objname) + 1;
@@ -608,7 +636,7 @@ char *bincat;	/* Binary catalog file name */
 
     /* Set catalog directory; if pathname is a URL, return */
     binset = 0;
-    if (!strncmp (bincat,"PPM",3) || !strncmp (bincat,"ppm",3)) {
+    if (!strncasecmp (bincat,"PPM",3)) {
 	if ((str = getenv("PPM_PATH")) != NULL ) {
 	    if (!strncmp (str, "http:",5)) {
 		sc->caturl = str;
@@ -619,8 +647,30 @@ char *bincat;	/* Binary catalog file name */
 		}
             }
 	}
-    if (!strncmp (bincat,"SAO",3) || !strncmp (bincat,"sao",3)) {
+    else if (!strncasecmp (bincat,"SAO",3)) {
 	if ((str = getenv("SAO_PATH")) != NULL ) {
+	    if (!strncmp (str, "http:",5)) {
+		sc->caturl = str;
+		}
+	    else if (strlen (str) < 64) {
+		strcpy (bindir, str);
+		binset = 1;
+		}
+            }
+	}
+    else if (!strncasecmp (bincat,"HIP",3)) {
+	if ((str = getenv("HIP_PATH")) != NULL ) {
+	    if (!strncmp (str, "http:",5)) {
+		sc->caturl = str;
+		}
+	    else if (strlen (str) < 64) {
+		strcpy (bindir, str);
+		binset = 1;
+		}
+            }
+	}
+    else if (!strncasecmp (bincat,"IRAS",4)) {
+	if ((str = getenv("IRAS_PATH")) != NULL ) {
 	    if (!strncmp (str, "http:",5)) {
 		sc->caturl = str;
 		}
@@ -643,7 +693,9 @@ char *bincat;	/* Binary catalog file name */
 	sc->coorsys = 0;
 	sc->epoch = 0.0;
 	sc->equinox = 0.0;
-	if (!strncmp (bincat, "SAO", 3) || !strncmp (bincat, "PPM", 3))
+	if (!strncasecmp (bincat, "sao", 3) ||
+	    !strncasecmp (bincat, "ppm", 3) ||
+	    !strncasecmp (bincat, "hip", 3))
 	   sc->mprop = 1;
 	else
 	   sc->mprop = 0;
@@ -980,8 +1032,6 @@ int istar;	/* Star sequence number in binary catalog */
 
     /* Spectral type */
     moveb (sc->catline, (char *) st->isp, 2, sc->entpeak, 0);
-    if (sc->byteswapped)
-	binswap2 (st->isp, 2);
 
     /* Magnitudes (*100) */
     for (i = 0; i < sc->nmag; i++) {
@@ -1185,4 +1235,9 @@ char *from, *last, *to;
  * Mar 19 2001	Check WCS_BINDIR if PPM_PATH or SAO_PATH not set in binread()
  * Mar 22 2001	Move path environment variable reading to binopen()
  * Mar 23 2001	Set system, equinox, and epoch to 0 in binopen if using Web
+ * Jun 20 2001	Save all four magnitudes if present, dropping spectral type
+ * Jun 22 2001	Do not swap spectral type in binstar()
+ * Jun 25 2001	Add HIP_PATH and IRAS_PATH; allow 5 digits for magnitudes
+ * Jun 27 2001	Allocate separation array only when larger one is needed
+ * Jul  6 2001	Fix bug in dealing with proper motions of excess stars
  */

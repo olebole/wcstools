@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** January 11, 2001
+ *** June 27, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -18,6 +18,9 @@
 
 /* pathname of Tycho 2 CDROM or catalog search engine URL */
 char ty2cd[64]="/data/catalogs/tycho2";
+
+static double *gdist;	/* Array of distances to stars */
+static int ndist = 0;
 
 static int ty2reg();
 static int ty2regn();
@@ -62,7 +65,6 @@ int	nlog;		/* 1 for diagnostics */
     double maxdist=0.0; /* Largest distance */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
-    double *gdist;	/* Array of distances to stars */
     int nreg;		/* Number of Tycho 2 regions in search */
     int rlist[MAXREG];	/* List of first stars in regions */
     int nlist[MAXREG];	/* List of number of stars per region */
@@ -108,14 +110,14 @@ int	nlog;		/* 1 for diagnostics */
 
     SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
 
-/* If RA range includes zero, split it in two */
+    /* If RA range includes zero, split it in two */
     wrap = 0;
     if (ra1 > ra2)
 	wrap = 1;
     else
 	wrap = 0;
 
-/* make mag1 always the smallest magnitude */
+    /* Make mag1 always the smallest magnitude */
     if (mag2 < mag1) {
 	mag = mag2;
 	mag2 = mag1;
@@ -123,7 +125,16 @@ int	nlog;		/* 1 for diagnostics */
 	}
 
     /* Allocate table for distances of stars from search center */
-    gdist = (double *) malloc (nstarmax * sizeof (double));
+    if (nstarmax > ndist) {
+	if (ndist > 0)
+	    free ((void *)gdist);
+	gdist = (double *) malloc (nstarmax * sizeof (double));
+	if (gdist == NULL) {
+	    fprintf (stderr,"TY2READ:  cannot allocate separation array\n");
+	    return (0);
+	    }
+	ndist = nstarmax;
+	}
 
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
@@ -150,8 +161,11 @@ int	nlog;		/* 1 for diagnostics */
 	/* Find Tycho 2 Star Catalog regions in which to search */
 	nreg = ty2reg (rra1,rra2,rdec1,rdec2,nrmax,rlist,nlist,verbose);
 	if (nreg <= 0) {
-	    fprintf (stderr,"TY2READ:  no Tycho 2 regions found\n");
-	    return (0);
+	    fprintf (stderr,"TY2READ:  no Tycho 2 region for %.2f-%.2f %.2f %.2f\n",
+		     rra1, rra2, rdec1, rdec2);
+	    rra1 = 0.0;
+	    rra2 = rra2a;
+	    continue;
 	    }
 
 	/* Loop through region list */
@@ -218,7 +232,7 @@ int	nlog;		/* 1 for diagnostics */
 			gpdec[nstar] = decpm;
 			gmag[nstar] = mag;
 			gmagb[nstar] = magb;
-			gtype[nstar] = isp;
+			/* gtype[nstar] = isp; */
 			gdist[nstar] = dist;
 			if (dist > maxdist) {
 			    maxdist = dist;
@@ -241,7 +255,7 @@ int	nlog;		/* 1 for diagnostics */
 			    gpdec[farstar] = decpm;
 			    gmag[farstar] = mag;
 			    gmagb[farstar] = magb;
-			    gtype[farstar] = isp;
+			    /* gtype[farstar] = isp; */
 			    gdist[farstar] = dist;
 
 			    /* Find new farthest star */
@@ -264,7 +278,7 @@ int	nlog;		/* 1 for diagnostics */
 			gpdec[faintstar] = decpm;
 			gmag[faintstar] = mag;
 			gmagb[faintstar] = magb;
-			gtype[faintstar] = isp;
+			/* gtype[faintstar] = isp; */
 			gdist[faintstar] = dist;
 			faintmag = 0.0;
 
@@ -316,7 +330,6 @@ int	nlog;		/* 1 for diagnostics */
 	    fprintf (stderr,"TY2READ: %d stars found; only %d returned\n",
 		     nstar,nstarmax);
 	}
-    free ((char *)gdist);
     return (nstar);
 }
 
@@ -451,7 +464,7 @@ int	nlog;		/* 1 for diagnostics */
 	gpdec[jstar] = decpm;
 	gmag[jstar] = mag;
 	gmagb[jstar] = magb;
-	gtype[jstar] = isp;
+	/* gtype[jstar] = isp; */
 	if (nlog == 1)
 	    fprintf (stderr,"TY2RNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %s  \n",
 		     num, ra, dec, magb, mag, star->isp);
@@ -643,7 +656,7 @@ int	verbose;	/* 1 for diagnostics */
 	for (irow = ir1 - 1; irow < ir2; irow++) {
 
 	/* Read next line of region table */
-	    line = buffer + ((irow - 1) * nchar);
+	    line = buffer + (irow * nchar);
 
 	/* Declination range of the gs region */
 	/* note:  southern dechi and declow are reversed */
@@ -652,19 +665,21 @@ int	verbose;	/* 1 for diagnostics */
 	    dechi = atof (line + 29);
 	    declow = atof (line + 36);
 	    if (dechi > declow) {
-		decmin = declow;
-		decmax = dechi;
+		decmin = declow - 0.1;
+		decmax = dechi + 0.1;
 		}
 	    else {
-		decmax = declow;
-		decmin = dechi;
+		decmax = declow + 0.1;
+		decmin = dechi - 0.1;
 		}
 
 	    if (decmax >= dec1 && decmin <= dec2) {
 
 	    /* Right ascension range of the Guide Star Catalog region */
-		ralow = atof (line + 15);
-		rahi = atof (line + 22);
+		ralow = atof (line + 15) - 0.1;
+		if (ralow <= 0.0) ralow = 0.0;
+		rahi = atof (line + 22) + 0.1;
+		if (rahi > 360.0) rahi = 360.0;
 		if (rahi <= 0.0) rahi = 360.0;
 
 	    /* Check RA if 0h RA not between region RA limits */
@@ -917,9 +932,11 @@ int istar;	/* Star sequence number in Tycho 2 catalog region file */
 
     /* Set V magnitude */
     st->xmag[0] = atof (line+123);
+    st->isp[0] = (char)0;
+    st->isp[1] = (char)0;
 
-    /* Set main sequence spectral type */
-    bv2sp (NULL, st->xmag[1], st->xmag[0], st->isp);
+    /* Set main sequence spectral type
+    bv2sp (NULL, st->xmag[1], st->xmag[0], st->isp); */
 
     return (0);
 }
@@ -961,4 +978,8 @@ char	*filename;	/* Name of file for which to find size */
  * Dec 11 2000	Accept catalog search engine URL in ty2cd[]
  *
  * Jan 11 2001	All printing goes to stderr
+ * Jun 14 2001	Drop spectral type approximation
+ * Jun 15 2001	In ty2reg(), add 0.1 to tabulated region limits
+ * Jun 19 2001	When no region found, print RA and Dec limits used
+ * Jun 27 2001	Allocate gdist only if needed
  */

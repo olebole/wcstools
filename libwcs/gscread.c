@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** December 12, 2000
+ *** June 27, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -18,12 +18,27 @@ char cdn[64]="/data/gsc1";
 /* Pathname of southern hemisphere GSC CDROM */
 char cds[64]="/data/gsc2";
 
+/* Pathname of northern hemisphere GSC-ACT CDROM  or search engine URL */
+char cdna[64]="/data/mc4/gscact1";
+
+/* Pathname of southern hemisphere GSC-ACT CDROM */
+char cdsa[64]="/data/mc4/gscact2";
+
 static void gscpath();
 static int gscreg();
+
 static char *table;		/* FITS table buffer */
 static int ltab = 0;		/* Length of FITS table buffer */
+static double *gdist = NULL;	/* Array of distances to stars */
+static int ndist = 0;
 
-static int classd = -1; /* Desired object class (-1=all, 0=stars, 3=nonstars) */
+void gscfree()
+{ free ((void *)table); ltab = 0;
+  free ((void *)gdist); ndist = 0;
+  return; }
+
+static int classd = -1; /* Desired object class
+			   (-2=all objects, -1=all, 0=stars, 3=nonstars) */
 void setgsclass (class)
 int class;
 { classd = class; return; }
@@ -31,9 +46,10 @@ int class;
 /* GSCREAD -- Read HST Guide Star Catalog stars from CDROM */
 
 int
-gscread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,nstarmax,
-	 gnum,gra,gdec,gmag,gtype,nlog)
+gscread (refcat,cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,
+	 nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
 
+int	refcat;		/* Catalog code (GSC or GSCACT) */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
@@ -59,7 +75,6 @@ int	nlog;		/* 1 for diagnostics */
     double maxdist=0.0; /* Largest distance */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
-    double *gdist;	/* Array of distances to stars */
     int nreg;		/* Number of input FITS tables files */
     double xnum;		/* Guide Star number */
     int rlist[100];	/* List of input FITS tables files */
@@ -77,12 +92,13 @@ int	nlog;		/* 1 for diagnostics */
     int ik,nk,itable,ntable,jstar;
     int nbline,npos,nbhead;
     int nbr,nrmax,nstar,i;
-    int ift;
+    int ift, band0, band;
     double ra,ra0,rasum,dec,dec0,decsum,perr,perr0,perr2,perrsum,msum;
     double mag,mag0,merr,merr0,merr2,merrsum;
     double rra1, rra2, rdec1, rdec2;
     char *str;
-    char cstr[32];
+    char *title;
+    char cstr[32], numstr[32], rastr[32], decstr[32], catid[16];
 
     itot = 0;
     if (nlog == 1)
@@ -92,52 +108,76 @@ int	nlog;		/* 1 for diagnostics */
     verbose = nlog;
 
     /* If root pathname is a URL, search and return */
-    if ((str = getenv("GSC_PATH")) != NULL) {
+    if (refcat == GSC && (str = getenv("GSC_NORTH")) != NULL) {
 	if (!strncmp (str, "http:",5)) {
 	    return (webread (str,"gsc",distsort,cra,cdec,dra,ddec,drad,
 			     sysout,eqout,epout,mag1,mag2,nstarmax,gnum,gra,
 			     gdec,NULL,NULL,gmag,NULL,gtype,nlog));
 	    }
 	}
+    if (refcat == GSCACT && (str = getenv("GSCACT_NORTH")) != NULL) {
+	if (!strncmp (str, "http:",5)) {
+	    return (webread (str,"gscact",distsort,cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nstarmax,gnum,gra,
+			     gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+	    }
+	}
     if (!strncmp (cdn, "http:",5)) {
-	return (webread (cdn,"gsc",distsort,cra,cdec,dra,ddec,drad,
-			 sysout,eqout,epout,mag1,mag2,nstarmax,gnum,gra,
-			 gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+	if (refcat == GSCACT)
+	    return (webread (cdn,"gscact",distsort,cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nstarmax,gnum,gra,
+			     gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+	else
+	    return (webread (cdn,"gsc",distsort,cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nstarmax,gnum,gra,
+			     gdec,NULL,NULL,gmag,NULL,gtype,nlog));
 	}
 
     if (ltab < 1) {
 	ltab = 10000;
 	table = (char *)calloc (ltab, sizeof (char));
+	if (table == NULL) {
+	    fprintf (stderr, "GSCREAD: cannot allocate FITS table buffer\n");
+	    return (0);
+	    }
 	}
 
     for (i = 0; i < 100; i++)
 	entry[i] = 0;
 
     /* Set path to Guide Star Catalog */
-    if ((str = getenv("GSC_NORTH")) != NULL )
-	strcpy (cdn,str);
-    if ((str = getenv("GSC_SOUTH")) != NULL )
-	strcpy (cds,str);
+    if (refcat == GSCACT) {
+	if ((str = getenv("GSCACT_NORTH")) != NULL )
+	    strcpy (cdna,str);
+	if ((str = getenv("GSCACT_SOUTH")) != NULL )
+	    strcpy (cdsa,str);
+	}
+    else {
+	if ((str = getenv("GSC_NORTH")) != NULL )
+	    strcpy (cdn,str);
+	if ((str = getenv("GSC_SOUTH")) != NULL )
+	    strcpy (cds,str);
+	}
 
     wcscstr (cstr, sysout, eqout, epout);
 
     SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
 
-/* If RA range includes zero, split it in two */
+    /* If RA range includes zero, split it in two */
     wrap = 0;
     if (ra1 > ra2)
 	wrap = 1;
     else
 	wrap = 0;
 
-/* make mag1 always the smallest magnitude */
+    /* Make mag1 always the smallest magnitude */
     if (mag2 < mag1) {
 	mag = mag2;
 	mag2 = mag1;
 	mag1 = mag;
 	}
 
-/* Find Guide Star Catalog regions in which to search */
+    /* Find Guide Star Catalog regions in which to search */
     nrmax = 100;
     rra1 = ra1;
     rra2 = ra2;
@@ -147,15 +187,25 @@ int	nlog;		/* 1 for diagnostics */
 	    &rra1, &rra2, &rdec1, &rdec2, verbose);
     if (rra1 > rra2)
 	wrap = 1;
-    nreg = gscreg (rra1,rra2,rdec1,rdec2,table,nrmax,rlist,verbose);
+    nreg = gscreg (refcat,rra1,rra2,rdec1,rdec2,table,nrmax,rlist,verbose);
     if (nreg <= 0) {
 	fprintf (stderr,"GSCREAD:  no Guide Star regions found\n");
 	return (0);
 	}
 
-    gdist = (double *) malloc (nstarmax * sizeof (double));
+    /* Allocate array for distances from search center */
+    if (nstarmax > ndist) {
+	if (ndist > 0)
+	    free ((void *)gdist);
+	gdist = (double *) malloc (nstarmax * sizeof (double));
+	if (gdist == NULL) {
+	    fprintf (stderr,"GSCREAD:  cannot allocate separation array\n");
+	    return (0);
+	    }
+	ndist = nstarmax;
+	}
 
-/* Set keyword list */
+    /* Set keyword list */
     nk = 8;
     strcpy (kw[0].kname,"GSC_ID");
     strcpy (kw[1].kname,"RA_DEG");
@@ -166,15 +216,42 @@ int	nlog;		/* 1 for diagnostics */
     strcpy (kw[6].kname,"MAG_BAND");
     strcpy (kw[7].kname,"CLASS");
     for (ik = 0; ik < nk; ik++) {
+	kw[ik].lname = strlen (kw[i].kname);
 	kw[ik].kn = 0;
 	kw[ik].kf = 0;
 	kw[ik].kl = 0;
 	}
     nstar = 0;
 
-/* Loop through region list */
+    /* Write header if printing star entries as found */
+    if (nstarmax < 1) {
+	title = CatName (refcat, NULL);
+	printf ("catalog        %s\n", title);
+	free (title);
+	ra2str (rastr, 31, cra, 3);
+	printf ("ra     %s\n", rastr);
+	dec2str (decstr, 31, cdec, 2);
+	printf ("dec    %s\n", decstr);
+	if (drad != 0.0)
+	    printf ("radmin     %.1f\n", drad*60.0);
+	else {
+	    printf ("dramin     %.1f\n", dra*60.0* cos(degrad(cdec)));
+	    printf ("ddecmin    %.1f\n", ddec*60.0);
+	    }
+	printf ("radecsys       %s\n", cstr);
+	printf ("equinox        %.3f\n", eqout);
+	printf ("epoch  %.3f\n", epout);
+	printf ("program        scat 2.9.4, 27 June 2001, Doug Mink SAO\n");
+	CatID (catid, refcat);
+	printf ("%s	ra          	dec         	", catid);
+	printf ("magv 	class	band	n	arcmin\n");
+	printf ("---------	------------	------------    ");
+	printf ("-----	-----	----	-	------\n");
+	}
+
+    /* Loop through region list */
     for (ireg = 0; ireg < nreg; ireg++) {
-	gscpath (rlist[ireg],inpath);
+	gscpath (refcat, rlist[ireg], inpath);
 
     /* Read size and keyword info from FITS table header */
 	kwn = kw;
@@ -204,7 +281,7 @@ int	nlog;		/* 1 for diagnostics */
 		    break;
 		    }
 
-	 /* Extract selected fields */
+		/* Extract selected fields */
 
 		/* Star number within region */
 		num0 = ftgeti4 (entry, &kw[0]);
@@ -225,7 +302,7 @@ int	nlog;		/* 1 for diagnostics */
 		merr0 = ftgetr8 (entry, &kw[5]);
 
 		/* Bandpass code */
-		/* band0 = ftgeti4 (entry, &kw[6]); */
+		band0 = ftgeti4 (entry, &kw[6]);
 
 		/* Object class code */
 		class0 = ftgeti4 (entry, &kw[7]);
@@ -234,11 +311,15 @@ int	nlog;		/* 1 for diagnostics */
 		num0 = 0;
 
 	/* Compute mean position and magnitude for object */
-	    if (num != num0 && itable > 0 && npos > 0) {
+	    if (itable > 0 &&
+		((classd < -1 && band != band0) ||
+		(classd < -1 && class != class0) || 
+		num != num0)) {
 		ra = rasum / perrsum;
 		dec = decsum / perrsum;
-		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 		mag = msum / merrsum;
+		class = class + (band * 100) + (npos * 10000);
+		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 		if (drad > 0 || distsort)
 		    dist = wcsdist (cra,cdec,ra,dec);
 		else
@@ -254,8 +335,19 @@ int	nlog;		/* 1 for diagnostics */
 
 		    xnum = (double)rnum + (0.0001 * (double) num);
 
-	/* Save star position in table */
-		    if (nstar < nstarmax) {
+		/* Write star position and magnitudes to stdout */
+		    if (nstarmax < 1) {
+			CatNum (refcat, -9, 0, xnum, numstr);
+			ra2str (rastr, 31, ra, 3);
+			dec2str (decstr, 31, dec, 2);
+			dist = wcsdist (cra,cdec,ra,dec) * 60.0;
+			printf ("%s	%s	%s", numstr,rastr,decstr);
+			printf ("	%.2f	%d	%d	%d	%.2f\n",
+				mag, class, band, npos, dist);
+			}
+
+		/* Save star position in table */
+		    else if (nstar < nstarmax) {
 			gnum[nstar] = xnum;
 			gra[nstar] = ra;
 			gdec[nstar] = dec;
@@ -332,7 +424,7 @@ int	nlog;		/* 1 for diagnostics */
 
 	    /* Check object class */
      	    if ((classd > -1 && class0 == classd) ||
-		(classd == -1 && class0 != 5) || classd < -1) {
+		classd < -2 || (classd < 0 && class0 != 5)) {
 		perr = perr0;
 		perr2 = perr * perr;
 		if (perr2 <= 0.0) perr2 = 0.01;
@@ -346,19 +438,19 @@ int	nlog;		/* 1 for diagnostics */
 		merrsum = merrsum + (1.0 / merr2);
 		num = num0;
 		class = class0;
-		npos = npos + 1;
+		band = band0;
+		npos++;
 		}
 
-/* Log operation */
-
+	    /* Log operation */
 	    if (nlog > 0 && itable%nlog == 0)
 		fprintf (stderr,"GSCREAD: %4d / %4d: %5d / %5d  / %5d sources, region %4d.%04d\r",
 			 ireg,nreg,jstar,itable,ntable,rlist[ireg],num0);
 
-/* End of region */
+	/* End of region */
 	    }
 
-/* Close region input file */
+	/* Close region input file */
 	(void) close (ift);
 	itot = itot + itable;
 	if (nlog > 0)
@@ -366,7 +458,7 @@ int	nlog;		/* 1 for diagnostics */
 		     ireg+1,nreg,jstar,itable,ntable,rlist[ireg]);
 	}
 
-/* close output file and summarize transfer */
+    /* Close output file and summarize transfer */
     if (nlog > 0) {
 	if (nreg > 1)
 	    fprintf (stderr,"GSCREAD: %d regions: %d / %d found\n",nreg,nstar,itot);
@@ -376,15 +468,15 @@ int	nlog;		/* 1 for diagnostics */
 	    fprintf (stderr,"GSCREAD: %d stars found; only %d returned\n",
 		     nstar,nstarmax);
 	}
-    free ((char *)gdist);
     return (nstar);
 }
 
 /* GSCRNUM -- Read HST Guide Star Catalog stars from CDROM */
 
 int
-gscrnum (nstars, sysout, eqout, epout, gnum,gra,gdec,gmag,gtype,nlog)
+gscrnum (refcat, nstars, sysout, eqout, epout, gnum,gra,gdec,gmag,gtype,nlog)
 
+int	refcat;		/* Catalog code (GSC or GSCACT) */
 int	nstars;		/* Number of stars to find */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
@@ -409,7 +501,8 @@ int	nlog;		/* 1 for diagnostics */
     int ik,nk,itable,ntable,jstar;
     int nbline,npos,nbhead;
     int nbr,nstar,i, snum;
-    int ift;
+    int ift, band0, band;
+    double dnum;
     double ra,ra0,rasum,dec,dec0,decsum,perr,perr0,perr2,perrsum,msum;
     double mag,mag0,merr,merr0,merr2,merrsum;
     char *str;
@@ -417,15 +510,25 @@ int	nlog;		/* 1 for diagnostics */
     itot = 0;
 
     /* If root pathname is a URL, search and return */
-    if ((str = getenv("GSC_PATH")) != NULL) {
+    if (refcat == GSC && (str = getenv("GSC_NORTH")) != NULL) {
 	if (!strncmp (str, "http:",5)) {
 	    return (webrnum (str,"gsc",nstars,sysout,eqout,epout,
 			     gnum,gra,gdec,NULL,NULL,gmag,NULL,gtype,nlog));
 	    }
 	}
+    if (refcat == GSCACT && (str = getenv("GSCACT_NORTH")) != NULL) {
+	if (!strncmp (str, "http:",5)) {
+	    return (webrnum (str,"gscact",nstars,sysout,eqout,epout,
+			     gnum,gra,gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+	    }
+	}
     if (!strncmp (cdn, "http:",5)) {
-	return (webrnum (cdn,"gsc",nstars,sysout,eqout,epout,
-			 gnum,gra,gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+	if (refcat == GSCACT)
+	    return (webrnum (cdn,"gscact",nstars,sysout,eqout,epout,
+			     gnum,gra,gdec,NULL,NULL,gmag,NULL,gtype,nlog));
+	else
+	    return (webrnum (cdn,"gsc",nstars,sysout,eqout,epout,
+			     gnum,gra,gdec,NULL,NULL,gmag,NULL,gtype,nlog));
 	}
 
     if (ltab < 1) {
@@ -442,7 +545,7 @@ int	nlog;		/* 1 for diagnostics */
     if ((str = getenv("GSC_SOUTH")) != NULL )
 	strcpy (cds,str);
 
-/* Set keyword list */
+    /* Set keyword list */
     nk = 8;
     strcpy (kw[0].kname,"GSC_ID");
     strcpy (kw[1].kname,"RA_DEG");
@@ -453,17 +556,19 @@ int	nlog;		/* 1 for diagnostics */
     strcpy (kw[6].kname,"MAG_BAND");
     strcpy (kw[7].kname,"CLASS");
     for (ik = 0; ik < nk; ik++) {
+	kw[ik].lname = strlen (kw[i].kname);
 	kw[ik].kn = 0;
 	kw[ik].kf = 0;
 	kw[ik].kl = 0;
 	}
     nstar = 0;
 
-/* Loop through star list */
+    /* Loop through star list */
     for (jstar = 0; jstar < nstars; jstar++) {
 	rnum = (int) gnum[jstar];
-	gscpath (rnum,inpath);
-	snum = (int) (((gnum[jstar] - (double)rnum) * 10000.0) + 0.01);
+	gscpath (refcat, rnum, inpath);
+	dnum = (gnum[jstar] - (double)rnum) * 10000.0;
+	snum = (int) (dnum + 0.5);
 
     /* Read size and keyword info from FITS table header */
 	kwn = kw;
@@ -519,7 +624,7 @@ int	nlog;		/* 1 for diagnostics */
 		merr0 = ftgetr8 (entry, &kw[5]);
 
 		/* Bandpass code */
-		/* band0 = ftgeti4 (entry, &kw[6]); */
+		band0 = ftgeti4 (entry, &kw[6]);
 
 		/* Object class code */
 		class0 = ftgeti4 (entry, &kw[7]);
@@ -533,6 +638,7 @@ int	nlog;		/* 1 for diagnostics */
 		dec = decsum / perrsum;
 		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 		mag = msum / merrsum;
+		class = class + (band * 100) + (npos * 10000);
 
 		/* Save star position in table */
 		gra[nstar] = ra;
@@ -569,18 +675,18 @@ int	nlog;		/* 1 for diagnostics */
 	    merrsum = merrsum + (1.0 / merr2);
 	    num = num0;
 	    class = class0;
+	    band = band0;
 	    npos = npos + 1;
 
-/* Log operation */
-
+	    /* Log operation */
 	    if (nlog > 0 && itable%nlog == 0)
 		fprintf (stderr,"GSCRNUM: %4d / %4d: %5d / %5d sources, region %4d.%04d\r",
 			 jstar+1,nstars,itable,ntable,rnum,snum);
 
-/* End of region */
+	/* End of region */
 	    }
 
-/* Close region input file */
+	/* Close region input file */
 	(void) close (ift);
 	itot = itot + itable;
 	if (nlog > 0)
@@ -588,7 +694,6 @@ int	nlog;		/* 1 for diagnostics */
 		     jstar+1,nstars,itable,ntable,rnum,snum);
 	}
 
-/* close output file and summarize transfer */
     return (nstars);
 }
 
@@ -616,8 +721,9 @@ static int nrkw = 13;
  */
 
 static int
-gscreg (ra1, ra2, dec1, dec2, table, nrmax, rgns, verbose)
+gscreg (refcat, ra1, ra2, dec1, dec2, table, nrmax, rgns, verbose)
 
+int	refcat;		/* Catalog code (GSC or GSCACT) */
 double	ra1, ra2;	/* Right ascension limits in degrees */
 double	dec1, dec2; 	/* Declination limits in degrees */
 char	*table;		/* Table data buffer */
@@ -644,7 +750,7 @@ int	verbose;	/* 1 for diagnostics */
     double declow, dechi, decmin, decmax;
     int regnum;
 
-/* Set up keyword list for table entries to extract */
+    /* Set up keyword list for table entries to extract */
     strcpy (rkw[0].kname,"REG_NO");
     strcpy (rkw[1].kname,"RA_H_LOW");
     strcpy (rkw[2].kname,"RA_M_LOW");
@@ -664,19 +770,25 @@ int	verbose;	/* 1 for diagnostics */
 
     nrgn = 0;
 
-/* Set pathnames to guide star catalog cdroms */
-    strcpy (tabpath,cdn);
+    /* Set pathnames to Guide Star Catalog CDROM */
+    if (refcat == GSCACT)
+	strcpy (tabpath,cdna);
+    else
+	strcpy (tabpath,cdn);
 
-/* Set pathname for region table file */
+    /* Set pathname for region table file */
     strcat (tabpath,"/tables/regions.tbl");
 
-/* Open the index table */
+    /* Open the index table */
     kwn = rkw;
     ift = fitsrtopen (tabpath,&nrkw,&kwn, &nrows, &nchar, &nbhead);
-    if (ift < 0) {
 
-/* If the northern hemisphere CDROM cannot be read, try the southern */
-	strcpy (tabpath,cds);
+    /* If the northern hemisphere CDROM cannot be read, try the southern */
+    if (ift < 0) {
+	if (refcat == GSCACT)
+	    strcpy (tabpath,cdsa);
+	else
+	    strcpy (tabpath,cds);
 	strcat (tabpath,"/tables/regions.tbl");
 	ift = fitsrtopen (tabpath,&nrkw,&kwn,&nchar,&nrows,&nbhead);
 	if (ift < 0) {
@@ -685,26 +797,26 @@ int	verbose;	/* 1 for diagnostics */
 	    }
 	}
 
-/* Find region range to search based on declination */
+    /* Find region range to search based on declination */
     iz1 = gsczone (dec1);
     iz2 = gsczone (dec2);
     jr1 = 0;
     jr2 = 0;
     nwrap = 1;
 
-/* Search region northern hemisphere or only one region */
+    /* Search region northern hemisphere or only one region */
     if (iz2 >= iz1) {
 	ir1 = zreg1[iz1];
 	ir2 = zreg2[iz2];
 	}
 
-/* Search region in southern hemisphere with multiple regions */
+    /* Search region in southern hemisphere with multiple regions */
     else if (dec1 < 0 && dec2 < 0) {
 	ir1 = zreg1[iz2];
 	ir2 = zreg2[iz1];
 	}
 
-/* Search region spans equator */
+    /* Search region spans equator */
     else if (dec1 < 0 && dec2 >= 0) {
 	ir1 = zreg1[12];
 	ir2 = zreg2[iz1];
@@ -794,7 +906,7 @@ int	verbose;	/* 1 for diagnostics */
 		}
 	    }
 
-/* Handle wrap-around through the equator */
+	/* Handle wrap-around through the equator */
 	ir1 = jr1;
 	ir2 = jr2;
 	jr1 = 0;
@@ -860,18 +972,18 @@ char sgn[4];		/* Sign of declination */
 double deg;		/* Degrees of declination*/
 double min;		/* Minutes of declination */
 
-/* get declination sign from table */
+    /* Get declination sign from table */
     (void) ftgetc (fitsline, &rkw[sgncol], sgn, 3);
 
-/* get degrees of declination from table */
+    /* Get degrees of declination from table */
     deg = ftgetr8 (fitsline, &rkw[dcol]);
 
-/* get minutes of declination from table */
+    /* Get minutes of declination from table */
     min = ftgetr8 (fitsline, &rkw[mcol]);
 
     dec = deg + (min / 60.0);
 
-/* negative declination */
+    /* Negative declination */
     if (strchr (sgn, '-') != NULL)
 	dec = -dec;
 
@@ -891,7 +1003,7 @@ int zone;		/* gsc zone (returned) */
 double	zonesize;
 int ndeczones = 12;	/* number of declination zones per hemisphere */
 
-/* width of declination zones */
+    /* Width of declination zones */
     zonesize = 90.0 / ndeczones;
 
     zone = ((int) (dec / zonesize));
@@ -905,16 +1017,17 @@ int ndeczones = 12;	/* number of declination zones per hemisphere */
 /* GSCPATH -- Get HST Guide Star Catalog region FITS file pathname */
 
 static void
-gscpath (regnum,path)
+gscpath (refcat, regnum, path)
 
-int regnum;	/* Guide Star Catalog region number */
-char *path;	/* Pathname of GSC region FITS file */
+int	refcat;		/* Catalog code (GSC or GSCACT) */
+int	regnum;		/* Guide Star Catalog region number */
+char	*path;		/* Pathname of GSC region FITS file */
 
 {
     int zone;		/* Name of Guide Star Catalog zone directory */
     int i;
 
-/* get zone directory name given region number */
+    /* Get zone directory name given region number */
     for (i = 0; i < 24; i++) {
 	if (regnum >= zreg1[i] && regnum <= zreg2[i]) {
 	    zone = i;
@@ -922,15 +1035,23 @@ char *path;	/* Pathname of GSC region FITS file */
 	    }
 	}
 
-/* Set the pathname using the appropriate GSC CDROM directory */
+    /* Set the pathname using the appropriate GSC CDROM directory */
 
-/* Northern hemisphere disk (volume 1) */
-    if (regnum < zreg1[13])
-	sprintf (path,"%s/gsc/%s/%04d.gsc", cdn, zdir[zone], regnum);
+    /* Northern hemisphere disk (volume 1) */
+    if (regnum < zreg1[13]) {
+	if (refcat == GSCACT)
+	    sprintf (path,"%s/%s/%04d.gsc", cdna, zdir[zone], regnum);
+	else
+	    sprintf (path,"%s/gsc/%s/%04d.gsc", cdn, zdir[zone], regnum);
+	}
 
-/* Southern hemisphere disk (volume 2) */
-    else
-	sprintf (path,"%s/gsc/%s/%04d.gsc", cds, zdir[zone], regnum);
+    /* Southern hemisphere disk (volume 2) */
+    else {
+	if (refcat == GSCACT)
+	    sprintf (path,"%s/%s/%04d.gsc", cdsa, zdir[zone], regnum);
+	else
+	    sprintf (path,"%s/gsc/%s/%04d.gsc", cds, zdir[zone], regnum);
+	}
 
     return;
 }
@@ -984,4 +1105,12 @@ char *path;	/* Pathname of GSC region FITS file */
  * Nov 29 2000	Add option to read cataog across the web
  * Dec 11 2000	Allow search engine URL in cdn[]
  * Dec 12 2000	Fix wrong web subroutine in gscrnum()
+ *
+ * Apr 24 2001	Add bandpass code and number of entries to object class
+ * Apr 24 2001	Return individual entries if class is < -1
+ * May 23 2001	Add support for GSC-ACT
+ * May 30 2001	Use GSC_NORTH and GSCA_NORTH instead of *_PATH for consistency
+ * Jun 27 2001  Print stars as found in gscread() if nstarmax < 1
+ * Jun 27 2001	Allocate distance array only if larger one is needed
+ * Jun 27 2001	Add gscfree() to free table buffer and distance array
  */

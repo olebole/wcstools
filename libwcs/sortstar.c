@@ -1,5 +1,5 @@
 /*** File libwcs/sortstar.c
- *** March 14, 2000
+ *** June 28, 2000
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -10,6 +10,8 @@
  * int StarMagSort()		Return brightest of two stars based on mag.
  * void RASortStars()		Sort stars based on right ascension
  * int StarRASort()		Return star with lowest right ascension
+ * void DecSortStars()		Sort stars based on declination
+ * int StarDecSort()		Return star with lowest declination
  * void XSortStars()		Sort stars based on X coordinate in image
  * int StarXSort()		Return star with lowest X coordinate
  */
@@ -192,6 +194,11 @@ void *ssp1, *ssp2;
     double b1 = ((StarInfo *)ssp1)->b;
     double b2 = ((StarInfo *)ssp2)->b;
 
+    if (b1 == 99.90)
+	b1 = ((StarInfo *)ssp1)->r;
+    if (b2 == 99.90)
+	b2 = ((StarInfo *)ssp2)->r;
+
     if (b2 < b1)
 	return (1);
     else if (b2 > b1)
@@ -301,6 +308,112 @@ void *ssp1, *ssp2;
     if (ra2 > ra1)
 	return (-1);
     else if (ra2 < ra1)
+	return (1);
+    else
+	return (0);
+}
+
+
+/* Sort image stars by increasing declination */
+
+void
+DecSortStars (sn, sra, sdec, spra, spdec, sx, sy, sm, sm1, sc, sobj, ns)
+
+double *sn;		/* Identifying number */
+double *sra;		/* Right Ascension */
+double *sdec;		/* Declination */
+double *spra;		/* Right Ascension proper motion */
+double *spdec;		/* Declination proper motion */
+double *sx;		/* Image X coordinate */
+double *sy;		/* Image Y coordinate */
+double *sm;		/* First magnitude */
+double *sm1;		/* Second magnitude */
+int    *sc;		/* Other 4-byte information */
+char   **sobj;		/* Object name */
+int	ns;		/* Number of stars to sort */
+{
+    StarInfo *stars;
+    int i, hasnum, hasmag1, hasobj, haspm;
+    static int StarDecSort ();
+
+    stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
+
+    if (sn == NULL)
+	hasnum = 0;
+    else
+	hasnum = 1;
+    if (spra != NULL && spdec != NULL)
+	haspm = 1;
+    else
+	haspm = 0;
+    if (sm1 == NULL)
+	hasmag1 = 0;
+    else
+	hasmag1 = 1;
+    if (sobj == NULL)
+	hasobj = 0;
+    else
+	hasobj = 1;
+
+    for (i = 0; i < ns; i++) {
+	if (hasnum)
+	    stars[i].n = sn[i];
+	stars[i].ra = sra[i];
+	stars[i].dec = sdec[i];
+	if (haspm) {
+	    stars[i].pra = spra[i];
+	    stars[i].pdec = spdec[i];
+	    }
+	stars[i].x = sx[i];
+	stars[i].y = sy[i];
+	stars[i].b = sm[i];
+	if (hasmag1)
+	    stars[i].r = sm1[i];
+	stars[i].c = sc[i];
+	if (hasobj)
+	    stars[i].obj = sobj[i];
+	}
+
+    qsort ((char *)stars, ns, sizeof(StarInfo), StarDecSort);
+
+    for (i = 0; i < ns; i++) {
+	if (hasnum)
+	    sn[i] = stars[i].n;
+	sra[i] = stars[i].ra;
+	sdec[i] = stars[i].dec;
+	if (haspm) {
+	    spra[i] = stars[i].pra;
+	    spdec[i] = stars[i].pdec;
+	    }
+	sx[i] = stars[i].x;
+	sy[i] = stars[i].y;
+	sm[i] = stars[i].b;
+	if (hasmag1)
+	    sm1[i] = stars[i].r;
+	sc[i] = stars[i].c;
+	if (hasobj)
+	    sobj[i] = stars[i].obj;
+	}
+
+    free ((char *)stars);
+    return;
+}
+
+
+/* Order stars in increasing declination (called by qsort) */
+
+static int
+StarDecSort (ssp1, ssp2)
+
+void *ssp1, *ssp2;
+
+{
+    double dec1 = ((StarInfo *)ssp1)->dec;
+    double dec2 = ((StarInfo *)ssp2)->dec;
+
+    if (dec2 > dec1)
+	return (-1);
+    else if (dec2 < dec1)
 	return (1);
     else
 	return (0);
@@ -430,4 +543,7 @@ void *ssp1, *ssp2;
  * Aug 26 1999	Compare pointers to NULL, not 0
  *
  * Mar 14 2000	Add proper motions
+ *
+ * May 22 2001	Add sort by declination
+ * Jun 28 2001	In MagSort, if b mag is 99.9, try r mag
  */

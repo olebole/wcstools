@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** January 19, 2001
+ *** March 30, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -976,7 +976,7 @@ char *keyword;	/* character string containing the name of the variable
 		or '$'.  it is truncated to 8 characters. */
 {
     char *loc, *headnext, *headlast, *pval, *lc, *line;
-    int icol, nextchar, lkey, nleft, lhstr, lhead;
+    int icol, nextchar, lkey, nleft, lhstr, lhead, lmax;
 
 #ifdef USE_SAOLIB
 	int iel=1, ip=1, nel, np, ier;
@@ -987,18 +987,17 @@ char *keyword;	/* character string containing the name of the variable
 
     pval = 0;
 
-/* Search header string for variable name */
+/* Find current length of header string */
     if (lhead0)
-	lhead = lhead0;
-    else {
-	lhead = 0;
-	while (lhead < 256000 && hstring[lhead] != 0)
-	    lhead++;
+	lmax = lhead0;
+    else
+	lmax = 256000;
+    for (lhead = 0; lhead < lmax; lhead++) {
+	if (hstring[lhead] == (char) 0)
+	    break;
 	}
-    lhstr = strlen (hstring);
-    if (lhstr < lhead)
-	lhead = lhstr;
-	
+
+/* Search header string for variable name */
     headlast = hstring + lhead;
     headnext = hstring;
     pval = NULL;
@@ -1365,4 +1364,5 @@ int set_saolib(hstring)
  * Oct 23 2000	Fix handling of embedded + or - in isnum()
  *
  * Jan 19 2000	Return 0 from isnum(), str2ra(), and str2dec() if string is null
+ * Mar 30 2001	Fix header length finding algorithm in ksearch()
  */
