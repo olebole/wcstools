@@ -1,5 +1,5 @@
 /* File immwcs.c
- * January 28, 2000
+ * March 23, 2000
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -337,8 +337,8 @@ char *name;
     char *image;		/* Image */
     char *header;		/* FITS header */
     char *irafheader;		/* IRAF image header */
-    char newname[128];		/* Name for revised image */
-    char pixname[128];		/* Pixel file name for revised image */
+    char newname[256];		/* Name for revised image */
+    char pixname[256];		/* Pixel file name for revised image */
     char temp[16];
     char *ext;
     char *fname;
@@ -361,7 +361,7 @@ char *name;
 		}
 	    if (imsearch || writeheader || rot || mirror) {
 		if ((image = irafrimage (header)) == NULL) {
-		    hgets (header,"PIXFILE", 64, pixname);
+		    hgetm (header,"PIXFIL", 255, pixname);
 		    fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		    free (irafheader);
 		    free (header);
@@ -495,7 +495,7 @@ char *name;
 	    strcpy (pixname, "HDR$");
 	    strcat (pixname, newname);
 	    strcat (pixname, "w.pix");
-	    hputs (header, "PIXFILE", pixname);
+	    hputm (header, "PIXFIL", pixname);
 	    strcat (newname, "w.imh");
 	    }
 	}
@@ -573,4 +573,5 @@ char *
  * Oct 22 1999	Drop unused variables after lint
  *
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

@@ -1,5 +1,5 @@
 /* File scat.c
- * January 11, 2000
+ * March 28, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -16,13 +16,10 @@
 #include "libwcs/wcscat.h"
 #include "libwcs/fitsfile.h"
 
-#define MAXREF 100
-
 static void usage();
 
 static int ListCat ();
 extern void setcenter();
-extern void setradius();
 static void SearchHead();
 static int GetArea();
 
@@ -52,7 +49,6 @@ static int debug = 0;		/* True for extra information */
 static char *objname;		/* Object name for output */
 static char *keyword;		/* Column to add to tab table output */
 static char *progname;		/* Name of program as executed */
-static char progpath[128];
 static int ncat = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int match = 0;		/* If 1, match num exactly in BIN or ASC cats*/
@@ -91,115 +87,17 @@ char **av;
     objname = NULL;
 
     /* Check name used to execute programe and set catalog name accordingly */
-    strcpy (progpath, av[0]);
-    progname = progpath;
-    for (i = strlen (progpath); i > -1; i--) {
-	if (progpath[i] > 63 && progpath[i] < 90)
-	    progpath[i] = progpath[i] + 32;
-	if (progpath[i] == '/') {
-	    progname = progpath + i + 1;
-	    break;
-	    }
-	}
+    progname = ProgName (av[0]);
     for (i = 0; i < strlen (progname); i++) {
 	if (progname[i] > 95 && progname[i] < 123)
 	    cpname[i] = progname[i] - 32;
 	else
 	    cpname[i] = progname[i];
 	}
-    if (strsrch (progname,"gsc") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "gsc");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"uac1") != NULL ||
-	strsrch (progname,"ua1") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "ua1");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"uac2") != NULL ||
-	strsrch (progname,"ua2") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "ua2");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"uac") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "uac");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"usac1") != NULL ||
-	strsrch (progname,"usa1") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "usa1");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"usac2") != NULL ||
-	strsrch (progname,"usa2") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "usa2");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"usac") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "usac");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"ujc") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "ujc");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"sao") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "sao");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"ppm") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "ppm");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"ira") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "iras");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"tyc") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "tycho");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"hip") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,16);
-	strcpy (refcatn, "hipparcos");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"act") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "act");
-	refcatname[0] = refcatn;
-	}
-    else if (strsrch (progname,"bsc") != NULL) {
-	ncat = 1;
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "bsc");
-	refcatname[0] = refcatn;
+    refcatn = ProgCat (progname);
+    if (refcatn != NULL) {
+	refcatname[ncat] = refcatn;
+	ncat++;
 	}
 
     if (ac == 1)
@@ -619,8 +517,10 @@ double	eqout;		/* Equinox for output coordinates */
 
 {
     double *gnum;	/* Catalog star numbers */
-    double *gra;	/* Catalog star right ascensions, rads */
-    double *gdec;	/* Catalog star declinations rads */
+    double *gra;	/* Catalog star right ascensions */
+    double *gdec;	/* Catalog star declinations */
+    double *gpra;	/* Catalog star right ascension proper motions */
+    double *gpdec;	/* Catalog star declination proper motions */
     double *gm;		/* Catalog magnitudes */
     double *gmb;	/* Catalog B magnitudes */
     double *gx;		/* Catalog star X positions on image */
@@ -637,10 +537,11 @@ double	eqout;		/* Equinox for output coordinates */
     int ns;		/* Number of brightest catalog stars actually used */
     struct Range *range; /* Range of catalog numbers to list */
     int nfind;		/* Number of stars to find */
-    int i, ngmax;
+    int i, ngmax, mprop;
     double das, dds, drs;
     double gnmax;
     int degout;
+    double maxnum;
     char nform[64];
     FILE *fd;
     char rastr[32], decstr[32];	/* coordinate strings */
@@ -649,6 +550,8 @@ double	eqout;		/* Equinox for output coordinates */
     double drad, dra, ddec, mag1, mag2;
     double gdist, da, dd, dec, gdmax;
     int nlog, closest;
+    int nmag;
+    int typecol;
     int sysout;
     char headline[160];
     char filename[80];
@@ -657,10 +560,11 @@ double	eqout;		/* Equinox for output coordinates */
     char temp[80];
     char isp[4];
     int refcat;		/* reference catalog switch */
-    int icat, nndec;
+    int icat, nndec, nnfld;
     struct StarCat *starcat;
     double date, time;
-    int lid;
+    int gcset;
+    double pra, pdec;
     void ep2dt();
     void PrintNum();
     int LenNum();
@@ -668,6 +572,8 @@ double	eqout;		/* Equinox for output coordinates */
     gnum = NULL;
     gra = NULL;
     gdec = NULL;
+    gpra = NULL;
+    gpdec = NULL;
     gm = NULL;
     gmb = NULL;
     gx = NULL;
@@ -714,35 +620,46 @@ double	eqout;		/* Equinox for output coordinates */
 	    return (0);
 	    }
 
+	/* Find out whether catalog has proper motions */
+	mprop = PropCat ();
+
+	/* Set number of magnitudes */
+	if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
+	    refcat == HIP || refcat == UAC  || refcat == UA1  ||
+	    refcat == UA2 || refcat == TYCHO || refcat == ACT)
+	    nmag = 2;
+	else
+	    nmag = 1;
+
+	/* Set flag for plate, class, or type column */
+	if (refcat == GSC || refcat == UJC || refcat == BINCAT ||
+	    refcat == USAC || refcat == USA1 || refcat == USA2 ||
+	    refcat == UAC  || refcat == UA1  || refcat == UA2 ||
+	    refcat == ACT || (refcat == TABCAT && gcset))
+	    typecol = 1;
+	else
+	    typecol = 0;
+
 	/* Set epoch from command line, search catalog, or searched catalog */
 	epout = epoch0;
 	if (epout == 0.0) {
 	    if (srch!= NULL && srch->epoch != 0.0)
 		epout = srch->epoch;
+	    else if (sysout0 == WCS_J2000)
+		epout = 2000.0;
+	    else if (sysout0 == WCS_B1950)
+		epout = 1950.0;
 	    else
 		epout = epref;
 	    }
 
-	/* Set output coordinate system from catalog if set yet */
-	if (refcat == BINCAT || refcat == TABCAT || refcat == TXTCAT) {
-	    starcat = ctgopen (refcatname[icat], refcat);
-	    if (!sysout)
-		sysout = starcat->coorsys;
-	    if (!eqout)
-		eqout = starcat->equinox;
-	    if (!epout)
-		epout = starcat->epoch;
-	    nndec = starcat->nndec;
-	    ctgclose (starcat, refcat);
-	    }
-	else {
-	    if (!sysout)
-		sysout = WCS_J2000;
-	    if (!eqout)
-		eqout = 2000.0;
-	    if (!epout)
-		epout = eqout;
-	    }
+	/* Set output coordinate system from searched catalog if not set yet */
+	if (!sysout)
+	    sysout = sysref;
+	if (!eqout)
+	    eqout = eqref;
+	if (!epout)
+	    epout = eqout;
 
 	/* Set degree flag for output */
 	if (sysout == WCS_ECLIPTIC || sysout == WCS_GALACTIC)
@@ -791,12 +708,22 @@ double	eqout;		/* Equinox for output coordinates */
 	    if (!(gobj = (char **) calloc (nfind, sizeof(char *))))
 		fprintf (stderr, "Could not calloc %d bytes for obj\n",
 		     nfind*sizeof(char *));
+	    if (mprop) {
+		if (!(gpra = (double *) calloc (nfind, sizeof(double))))
+		    fprintf (stderr, "Could not calloc %d bytes for gpra\n",
+		 	nfind*sizeof(double));
+		if (!(gpdec = (double *) calloc (nfind, sizeof(double))))
+		    fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
+		 	nfind*sizeof(double));
+		}
 	    if (!gnum || !gra || !gdec || !gm || !gmb || !gc ||
 		!gx || !gy || !gobj) {
 		if (gm) free ((char *)gm);
 		if (gmb) free ((char *)gmb);
 		if (gra) free ((char *)gra);
 		if (gdec) free ((char *)gdec);
+		if (gpra) free ((char *)gpra);
+		if (gpdec) free ((char *)gpdec);
 		if (gnum) free ((char *)gnum);
 		if (gc) free ((char *)gc);
 		if (gx) free ((char *)gx);
@@ -809,7 +736,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    /* Find the specified catalog stars */
 	    ng = ctgrnum (refcatname[icat], refcat,
 		      nfind, sysout, eqout, epout, match,
-		      gnum, gra, gdec, gm, gmb, gc, gobj, debug);
+		      gnum, gra, gdec, gpra, gpdec, gm, gmb, gc, gobj, debug);
 
 	    if (gobj[0] == NULL)
 		gobj1 = NULL;
@@ -826,6 +753,49 @@ double	eqout;		/* Equinox for output coordinates */
 		}
 	    if (refcat == TABCAT)
 		nndec = gettabndec();
+
+	    /* Find largest catalog number printed */
+	    maxnum = 0.0;
+	    for (i = 0; i < ns; i++ ) {
+		if (gnum[i] > maxnum)
+		    maxnum = gnum[i];
+		}
+	    if (refcat == GSC)
+		nnfld = 9;
+	    else if (refcat == ACT)
+		nnfld = 10;
+	    else if (refcat == UJC)
+		nnfld = 12;
+	    else if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
+		     refcat == USAC || refcat == USA1 || refcat == USA2)
+		nnfld = 13;
+	    else if (maxnum < 10.0)
+		nnfld = 1 + nndec + 1;
+	    else if (maxnum < 100.0)
+		nnfld = 2 + nndec + 1;
+	    else if (maxnum < 1000.0)
+		nnfld = 3 + nndec + 1;
+	    else if (maxnum < 10000.0)
+		nnfld = 4 + nndec + 1;
+	    else if (maxnum < 100000.0)
+		nnfld = 5 + nndec + 1;
+	    else if (maxnum < 1000000.0)
+		nnfld = 6 + nndec + 1;
+	    else if (maxnum < 10000000.0)
+		nnfld = 7 + nndec + 1;
+	    else if (maxnum < 100000000.0)
+		nnfld = 8 + nndec + 1;
+	    else
+		nnfld = 9 + nndec + 1;
+
+	    /* Check to see whether gc is set at all */
+	    gcset = 0;
+	    for (i = 0; i < ns; i++ ) {
+		if (gc[i] != 0) {
+		    gcset = 1;
+		    break;
+		    }
+		}
 
 	    /* Write out entries for use as image centers */
 	    if (searchcenter) {
@@ -916,7 +886,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    if (nstars > 0)
 		ngmax = nstars;
 	    else
-		ngmax = MAXREF;
+		ngmax = MAXCAT;
 	    if (icat == 0) {
 		if (!(gnum = (double *) calloc (ngmax, sizeof(double))))
 		    fprintf (stderr, "Could not calloc %d bytes for gnum\n",
@@ -945,11 +915,21 @@ double	eqout;		/* Equinox for output coordinates */
 		if (!(gobj = (char **) calloc (ngmax, sizeof(char *))))
 		    fprintf (stderr, "Could not calloc %d bytes for obj\n",
 			     ngmax*sizeof(char *));
+		if (mprop) {
+		    if (!(gpra = (double *) calloc (ngmax, sizeof(double))))
+			fprintf (stderr, "Could not calloc %d bytes for gpra\n",
+				 ngmax*sizeof(double));
+		    if (!(gpdec = (double *)calloc (ngmax, sizeof(double))))
+	 		fprintf (stderr,"Could not calloc %d bytes for gpdec\n",
+		 		 ngmax*sizeof(double));
+		    }
 		if (!gnum||!gra||!gdec||!gm||!gmb||!gc||!gx||!gy||!gobj) {
 		    if (gm) free ((char *)gm);
 		    if (gmb) free ((char *)gmb);
 		    if (gra) free ((char *)gra);
 		    if (gdec) free ((char *)gdec);
+		    if (gpra) free ((char *)gpra);
+		    if (gpdec) free ((char *)gpdec);
 		    if (gnum) free ((char *)gnum);
 		    if (gc) free ((char *)gc);
 		    if (gx) free ((char *)gx);
@@ -961,8 +941,8 @@ double	eqout;		/* Equinox for output coordinates */
 
 	    /* Find the nearby reference stars, in ra/dec */
 	    ng = ctgread (refcatname[icat], refcat, distsort,
-		      cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,gobj,nlog);
+		      cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
+		      ngmax,gnum,gra,gdec,gpra,gpdec,gm,gmb,gc,gobj,nlog);
 
 	    if (gobj[0] == NULL)
 		gobj1 = NULL;
@@ -975,6 +955,49 @@ double	eqout;		/* Equinox for output coordinates */
 	    if (refcat == TABCAT)
 		nndec = gettabndec();
 
+	    /* Find largest catalog number printed */
+	    maxnum = 0.0;
+	    for (i = 0; i < ns; i++ ) {
+		if (gnum[i] > maxnum)
+		    maxnum = gnum[i];
+		}
+	    if (refcat == GSC)
+		nnfld = 9;
+	    else if (refcat == ACT)
+		nnfld = 10;
+	    else if (refcat == UJC)
+		nnfld = 12;
+	    else if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
+		     refcat == USAC || refcat == USA1 || refcat == USA2)
+		nnfld = 13;
+	    else if (maxnum < 10.0)
+		nnfld = 1 + nndec + 1;
+	    else if (maxnum < 100.0)
+		nnfld = 2 + nndec + 1;
+	    else if (maxnum < 1000.0)
+		nnfld = 3 + nndec + 1;
+	    else if (maxnum < 10000.0)
+		nnfld = 4 + nndec + 1;
+	    else if (maxnum < 100000.0)
+		nnfld = 5 + nndec + 1;
+	    else if (maxnum < 1000000.0)
+		nnfld = 6 + nndec + 1;
+	    else if (maxnum < 10000000.0)
+		nnfld = 7 + nndec + 1;
+	    else if (maxnum < 100000000.0)
+		nnfld = 8 + nndec + 1;
+	    else
+		nnfld = 9 + nndec + 1;
+
+	    /* Check to see whether gc is set at all */
+	    gcset = 0;
+	    for (i = 0; i < ng; i++ ) {
+		if (gc[i] != 0) {
+		    gcset = 1;
+		    break;
+		    }
+		}
+
 	    /* Compute distance from star to search center */
 	    for (i = 0; i < ns; i++ ) {
 		gx[i] = wcsdist (cra, cdec, gra[i], gdec[i]);
@@ -983,15 +1006,15 @@ double	eqout;		/* Equinox for output coordinates */
 
 	    /* Sort reference stars from closest to furthest */
 	    if (distsort)
-		XSortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, gobj1, ns);
+		XSortStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gmb,gc,gobj1,ns);
 
 	    /* Sort star-like objects in image by right ascension */
 	    else if (rasort)
-		RASortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, gobj1, ns);
+		RASortStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gmb,gc,gobj1,ns);
 
 	    /* Sort reference stars from brightest to faintest */
 	    else
-		MagSortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, gobj1, ns);
+		MagSortStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gmb,gc,gobj1,ns);
 
 	    /* Print one line with search center and found star */
 	    if (oneline) {
@@ -1009,37 +1032,37 @@ double	eqout;		/* Equinox for output coordinates */
 
 			/* Write tab table heading */
 			if (refcat == GSC)
-			    printf ("CATALOG	HST GSC 1.1\n");
+			    printf ("catalog	HST GSC 1.1\n");
 			else if (refcat == USAC)
-			    printf ("CATALOG	USNO SA-1.0\n");
+			    printf ("catalog	USNO SA-1.0\n");
 			else if (refcat == USA1)
-			    printf ("CATALOG	USNO SA-1.0\n");
+			    printf ("catalog	USNO SA-1.0\n");
 			else if (refcat == USA2)
-			    printf ("CATALOG	USNO SA-2.0\n");
+			    printf ("catalog	USNO SA-2.0\n");
 			else if (refcat == UAC)
-			    printf ("CATALOG	USNO A-1.0\n");
+			    printf ("catalog	USNO A-1.0\n");
 			else if (refcat == UA1)
-			    printf ("CATALOG	USNO A-1.0\n");
+			    printf ("catalog	USNO A-1.0\n");
 			else if (refcat == UA2)
-			    printf ("CATALOG	USNO A-2.0\n");
+			    printf ("catalog	USNO A-2.0\n");
 			else if (refcat == UJC)
-			    printf ("CATALOG	USNO UJ1.0\n");
+			    printf ("catalog	USNO UJ1.0\n");
 			else if (refcat == SAO)
-			    printf ("CATALOG	SAO\n");
+			    printf ("catalog	SAO\n");
 			else if (refcat == PPM)
-			    printf ("CATALOG	PPM\n");
+			    printf ("catalog	PPM\n");
 			else if (refcat == IRAS)
-			    printf ("CATALOG	IRAS Point Source\n");
+			    printf ("catalog	IRAS Point Source\n");
 			else if (refcat == TYCHO)
-			    printf ("CATALOG	Tycho\n");
+			    printf ("catalog	Tycho\n");
 			else if (refcat == HIP)
-			    printf ("CATALOG	Hipparcos\n");
+			    printf ("catalog	Hipparcos\n");
 			else if (refcat == ACT)
-			    printf ("CATALOG	ACT\n");
+			    printf ("catalog	ACT\n");
     			else if (refcat == BSC)
-			    printf ("CATALOG	Yale Bright Star Catalog");
+			    printf ("catalog	Yale Bright Star Catalog");
 			else
-			    printf ("CATALOG	%s\n", refcatname[icat]);
+			    printf ("catalog	%s\n", refcatname[icat]);
 			printf ("SEARCH	%s\n", listfile);
 			printf ("EQUINOX	%.1f\n", eqout);
 			if (epout != eqout)
@@ -1052,6 +1075,9 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("RADSEC	%.2f\n", drs);
 			else if (rad0 > 0)
 			    printf ("BOXSEC	%.2f\n", dds);
+			if (mprop) {
+			    printf ("PMUNIT	mas/yr\n");
+			    }
 
 		        /* Write column headings */
 		        if (srch != NULL)
@@ -1061,12 +1087,11 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("srch_mag	");
 		        if (srchcat->nepoch)
 			    printf ("epoch    	");
-			printf ("id");
-			lid = CatNumLen(refcat, nndec);
-			for (i = 0; i < lid-2; i++)
-			    printf (" ");
+			strcpy (headline,"id                  ");
+			headline[nnfld] = (char) 0;
+			printf ("%s", headline);
 			printf ("	ra          	dec        	");
-			printf ("mag    	n 	");
+			printf ("mag    	n  	");
 			printf ("dra");
 			for (i = 3; i < LenNum(das,2); i++)
 			    printf (" ");
@@ -1084,8 +1109,9 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("-----	");
 			if (srchcat->nepoch)
 			    printf ("---------	");
-			for (i = 0; i < lid; i++)
-			    printf ("-");
+			strcpy (headline,"--------------------");
+			headline[nnfld] = (char) 0;
+			printf ("%s", headline);
 			printf ("	------------	------------	");
 			printf ("-------	--	");
 			for (i = 0; i < LenNum(das,2); i++)
@@ -1245,37 +1271,37 @@ double	eqout;		/* Equinox for output coordinates */
 
     /* Write heading */
     if (refcat == GSC)
-	sprintf (headline, "CATALOG	HSTGSC1.1");
+	sprintf (headline, "catalog	HSTGSC1.1");
     else if (refcat == USAC)
-	sprintf (headline, "CATALOG	USNO SA-1.0");
+	sprintf (headline, "catalog	USNO SA-1.0");
     else if (refcat == USA1)
-	sprintf (headline, "CATALOG	USNO SA-1.0");
+	sprintf (headline, "catalog	USNO SA-1.0");
     else if (refcat == USA2)
-	sprintf (headline, "CATALOG	USNO SA-2.0");
+	sprintf (headline, "catalog	USNO SA-2.0");
     else if (refcat == UAC)
-	sprintf (headline, "CATALOG	USNO A-1.0");
+	sprintf (headline, "catalog	USNO A-1.0");
     else if (refcat == UA1)
-	sprintf (headline, "CATALOG	USNO A-1.0");
+	sprintf (headline, "catalog	USNO A-1.0");
     else if (refcat == UA2)
-	sprintf (headline, "CATALOG	USNO A-2.0");
+	sprintf (headline, "catalog	USNO A-2.0");
     else if (refcat == UJC)
-	sprintf (headline, "CATALOG	USNO UJ1.0");
+	sprintf (headline, "catalog	USNO UJ1.0");
     else if (refcat == SAO)
-	sprintf (headline, "CATALOG	SAO");
+	sprintf (headline, "catalog	SAO");
     else if (refcat == PPM)
-	sprintf (headline, "CATALOG	PPM");
+	sprintf (headline, "catalog	PPM");
     else if (refcat == IRAS)
-	sprintf (headline, "CATALOG	IRAS Point Source");
+	sprintf (headline, "catalog	IRAS Point Source");
     else if (refcat == TYCHO)
-	sprintf (headline, "CATALOG	Tycho");
+	sprintf (headline, "catalog	Tycho");
     else if (refcat == HIP)
-	sprintf (headline, "CATALOG	Hipparcos");
+	sprintf (headline, "catalog	Hipparcos");
     else if (refcat == ACT)
-	sprintf (headline, "CATALOG	ACT");
+	sprintf (headline, "catalog	ACT");
     else if (refcat == BSC)
-	sprintf (headline, "CATALOG	Yale Bright Star Catalog");
+	sprintf (headline, "catalog	Yale Bright Star Catalog");
     else
-	sprintf (headline, "CATALOG	%s", refcatname[icat]);
+	sprintf (headline, "catalog	%s", refcatname[icat]);
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
@@ -1284,27 +1310,37 @@ double	eqout;		/* Equinox for output coordinates */
     if (!ranges) {
 	ra2str (rastr, 32, cra, 3);
 	if (wfile)
-	    fprintf (fd, "RA	%s\n", rastr);
+	    fprintf (fd, "ra	%s\n", rastr);
 	if (tabout)
-	    printf ("RA	%s\n", rastr);
+	    printf ("ra	%s\n", rastr);
 
 	dec2str (decstr, 32, cdec, 2);
 	if (wfile)
-	    fprintf (fd, "DEC	%s\n", decstr);
+	    fprintf (fd, "dec	%s\n", decstr);
 	if (tabout)
-	    printf ("DEC	%s\n", decstr);
+	    printf ("dec	%s\n", decstr);
 
 	}
     if (wfile)
-	fprintf (fd, "EQUINOX	%.1f\n", eqout);
+	fprintf (fd, "equinox	%.1f\n", eqout);
     if (tabout)
-	printf ("EQUINOX	%.1f\n", eqout);
+	printf ("equinox	%.1f\n", eqout);
 
     if (epout != eqout) {
 	if (wfile)
-	    fprintf (fd, "EPOCH	%.1f\n", epout);
+	    fprintf (fd, "epoch	%.1f\n", epout);
 	if (tabout)
-	    printf ("EPOCH	%.1f\n", epout);
+	    printf ("epoch	%.1f\n", epout);
+	}
+    if (mprop) {
+	if (wfile) {
+	    fprintf (fd, "rpmunit	mas/yr\n");
+	    fprintf (fd, "dpmunit	mas/yr\n");
+	    }
+	if (tabout) {
+	    printf ("rpmunit	mas/yr\n");
+	    printf ("dpmunit	mas/yr\n");
+	    }
 	}
 
     if (tabout) {
@@ -1318,86 +1354,88 @@ double	eqout;		/* Equinox for output coordinates */
 	    dds = drs;
 	    }
  	if (dra0 > 0.0) {
-	    printf ("DRASEC	%.2f\n", das);
-	    printf ("DDECSEC	%.2f\n", dds);
+	    printf ("drasec	%.2f\n", das);
+	    printf ("ddecsec	%.2f\n", dds);
 	    }
 	else if (rad0 < 0)
-	    printf ("RADSEC	%.2f\n", drs);
+	    printf ("radsec	%.2f\n", drs);
 	else if (rad0 > 0)
-	    printf ("BOXSEC	%.2f\n",dds);
+	    printf ("boxsec	%.2f\n",dds);
 	}
 
     if (distsort) {
 	if (wfile)
-	    fprintf (fd, "DISTSORT	T\n");
+	    fprintf (fd, "distsort	T\n");
 	if (tabout)
-	    printf ("DISTSORT	T\n");
+	    printf ("distsort	T\n");
 	}
     else if (rasort) {
 	if (wfile)
-	    fprintf (fd, "RASORT	T\n");
+	    fprintf (fd, "rasort	T\n");
 	if (tabout)
-	    printf ("RASORT	T\n");
+	    printf ("rasort	T\n");
 	}
     if (wfile)
     if (tabout)
 
     /* Print column headings */
-    lid = CatNumLen(refcat, nndec);
     if (refcat == ACT)
-	strcpy (headline, "act_id  	");
+	strcpy (headline, "act_id       ");
     else if (refcat == BSC)
-	strcpy (headline, "bsc_id  	");
+	strcpy (headline, "bsc_id       ");
     else if (refcat == GSC)
-	strcpy (headline, "gsc_id  	");
+	strcpy (headline, "gsc_id       ");
     else if (refcat == USAC)
-	strcpy (headline,"usac_id  	");
+	strcpy (headline,"usac_id       ");
     else if (refcat == USA1)
-	strcpy (headline,"usa1_id  	");
+	strcpy (headline,"usa1_id       ");
     else if (refcat == USA2)
-	strcpy (headline,"usa2_id  	");
+	strcpy (headline,"usa2_id       ");
     else if (refcat == UAC)
-	strcpy (headline,"usnoa_id  	");
+	strcpy (headline,"usnoa_id      ");
     else if (refcat == UA1)
-	strcpy (headline,"usnoa1_id  	");
+	strcpy (headline,"usnoa1_id     ");
     else if (refcat == UA2)
-	strcpy (headline,"usnoa2_id  	");
+	strcpy (headline,"usnoa2_id     ");
     else if (refcat == UJC)
-	strcpy (headline,"usnoj_id  	");
+	strcpy (headline,"usnoj_id      ");
     else if (refcat == SAO)
-	strcpy (headline,"sao_id  	");
+	strcpy (headline,"sao_id        ");
     else if (refcat == PPM)
-	strcpy (headline,"ppm_id  	");
+	strcpy (headline,"ppm_id        ");
     else if (refcat == IRAS)
-	strcpy (headline,"iras_id  	");
+	strcpy (headline,"iras_id       ");
     else if (refcat == TYCHO)
-	strcpy (headline,"tycho_id  	");
+	strcpy (headline,"tycho_id      ");
     else if (refcat == HIP)
-	strcpy (headline,"hip_id  	");
-    else {
-	strcpy (headline,"id");
-	for (i = 0; i < lid-2; i++)
-	    headline[2+i] = ' ';
-	headline[lid] = '\t';
-	headline[lid+1] = (char) 0;
-	}
-    if (sysout == WCS_GALACTIC)
-	strcat (headline,"long_gal   	lat_gal  	");
-    else if (sysout == WCS_ECLIPTIC)
-	strcat (headline,"long_ecl   	lat_ecl  	");
-    else if (sysout == WCS_B1950)
-	strcat (headline,"ra1950      	dec1950  	");
+	strcpy (headline,"hip_id        ");
     else
-	strcat (headline,"ra      	dec      	");
+	strcpy (headline,"id            ");
+    headline[nnfld] = (char) 0;
+
+    if (sysout == WCS_GALACTIC)
+	strcat (headline,"	long_gal   	lat_gal  ");
+    else if (sysout == WCS_ECLIPTIC)
+	strcat (headline,"	long_ecl   	lat_ecl  ");
+    else if (sysout == WCS_B1950)
+	strcat (headline,"	ra1950      	dec1950  ");
+    else
+	strcat (headline,"	ra      	dec      ");
     if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 	refcat == UAC  || refcat == UA1  || refcat == UA2)
-	strcat (headline,"magb	magr	plate");
+	strcat (headline,"	magb	magr	plate");
     else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
-	strcat (headline,"magb	magv	type");
-    else if (refcat == TABCAT)
-	strcat (headline,"mag	type");
+	strcat (headline,"	magb	magv	type");
+    else if (refcat == GSC)
+	strcat (headline,"	mag	class");
+    else if (refcat == UJC)
+	strcat (headline,"	mag	plate");
     else
-	strcat (headline,"mag");
+	strcat (headline,"	mag");
+    if (refcat == SAO || refcat == PPM || (refcat == TABCAT && gcset))
+	strcat (headline,"	type");
+    if (mprop)
+	strcat (headline,"	Ux    	Uy    ");
     if (ranges == NULL)
 	strcat (headline,"	arcsec");
     if (refcat == TABCAT && keyword != NULL) {
@@ -1413,17 +1451,19 @@ double	eqout;		/* Equinox for output coordinates */
     if (tabout)
 	printf ("%s\n", headline);
 
-    for (i = 0; i < lid; i++)
-	headline[i] = '-';
-    headline[lid] = (char) 0;
-    if (refcat == USAC || refcat == USA1 || refcat == USA2 || refcat == HIP ||
-	refcat == UAC  || refcat == UA1  || refcat == UA2 || refcat == TYCHO ||
-	refcat == ACT)
-	strcat (headline,"	--------	---------	----	-----	-----");
-    else if (refcat == BINCAT || refcat == TABCAT)
-        strcat (headline,"	------------	------------	------	----");
+    strcpy (headline, "---------------------");
+    headline[nnfld] = (char) 0;
+    strcat (headline,"	------------	------------");
+    if (nmag == 2)
+	strcat (headline,"	-----	-----");
     else
-        strcat (headline,"	------------	------------	------");
+	strcat (headline,"	-----");
+    if (typecol)
+	strcat (headline,"	-----");
+    if (refcat == SAO || refcat == PPM || (refcat == TABCAT && gcset))
+	strcat (headline,"	----");
+    if (mprop)
+	strcat (headline,"	------	------");
     if (ranges == NULL)
 	strcat (headline, "	------");
     if (refcat == TABCAT && keyword != NULL)
@@ -1434,41 +1474,11 @@ double	eqout;		/* Equinox for output coordinates */
 	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
+    if (ranges == NULL)
+	strcat (headline,"	------");
     if (printhead) {
-	if (ng == 0) {
-	    if (refcat == GSC)
-		printf ("No Guide Stars Found\n");
-	    else if (refcat == USAC)
-		printf ("No USNO SA Stars Found\n");
-	    else if (refcat == USA1)
-		printf ("No USNO SA-1.0 Stars Found\n");
-	    else if (refcat == USA2)
-		printf ("No USNO SA-2.0 Stars Found\n");
-	    else if (refcat == UAC)
-		printf ("No USNO A Stars Found\n");
-	    else if (refcat == UA1)
-		printf ("No USNO A-1.0 Stars Found\n");
-	    else if (refcat == UA2)
-		printf ("No USNO A-2.0 Stars Found\n");
-	    else if (refcat == UJC)
-		printf ("No UJ 1.0 Stars Found\n");
-	    else if (refcat == SAO)
-		printf ("No SAO Stars Found\n");
-	    else if (refcat == PPM)
-		printf ("No PPM Stars Found\n");
-	    else if (refcat == IRAS)
-		printf ("No IRAS Point Sources Found\n");
-	    else if (refcat == TYCHO)
-		printf ("No Tycho Stars Found\n");
-	    else if (refcat == HIP)
-		printf ("No Hipparcos Stars Found\n");
-	    else if (refcat == ACT)
-		printf ("No ACT Stars Found\n");
-	    else if (refcat == BSC)
-		printf ("No BSC Stars Found\n");
-	    else
-		printf ("No Stars Found\n");
-	    }
+	if (ng == 0)
+	    printf ("No %s Stars Found\n", title);
 	else {
 	    if (!printxy) {
 		if (refcat == GSC)
@@ -1502,7 +1512,7 @@ double	eqout;		/* Equinox for output coordinates */
 		else if (refcat == ACT)
 		    printf ("ACT number  ");
 		else
-		    printf ("  Number  ");
+		    printf ("Number   ");
 		}
 	    else
 		printf ("  X     Y   ");
@@ -1540,17 +1550,17 @@ double	eqout;		/* Equinox for output coordinates */
 		}
 	    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		refcat == UAC  || refcat == UA1  || refcat == UA2)
-		printf (" MagB  MagR Plate");
+		printf ("  MagB  MagR Plate");
 	    else if (refcat == UJC)
 		printf ("  Mag  Plate");
 	    else if (refcat == GSC)
-		printf (" Mag  Type");
+		printf ("   Mag Class");
 	    else if (refcat == SAO || refcat == PPM ||
 		     refcat == IRAS || refcat == BSC)
 		printf ("   Mag  Type");
 	    else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
-		printf (" MagB  MagV  Type");
-	    else if (refcat == TABCAT)
+		printf ("   MagB   MagV Type");
+	    else if (refcat == TABCAT && gcset)
 		printf (" Mag     Peak");
 	    else
 		printf ("  Mag");
@@ -1585,12 +1595,18 @@ double	eqout;		/* Equinox for output coordinates */
 		gdist = 3600.0 * gx[i];
 	    else
 		gdist = 0.0;
+
+	    /* Convert proper motion to milliarcsec/year from deg/year */
+	    if (mprop) {
+		pra = (gpra[i] * 3600.0 * 1000.0) * cosdeg (gdec[i]);
+		pdec = gpdec[i] * 3600.0 * 1000.0;
+		}
 	    CatNum (refcat, nndec, gnum[i], numstr);
 	    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		refcat == UAC  || refcat == UA1  || refcat == UA2)
 		sprintf (headline, "%s	%s	%s	%.1f	%.1f	%d",
 		 numstr, rastr, decstr, gmb[i], gm[i], gc[i]);
-	    else if (refcat == UJC)
+	    else if (refcat == UJC || refcat == GSC)
 	        sprintf (headline, "%s	%s	%s	%.2f	%d",
 		 numstr, rastr, decstr, gm[i], gc[i]);
 	    else if (refcat==SAO || refcat==PPM ||
@@ -1607,17 +1623,25 @@ double	eqout;		/* Equinox for output coordinates */
 		 numstr, rastr, decstr, gmb[i], gm[i], isp);
 		}
 	    else if (refcat == TABCAT)
-	        sprintf (headline, "%s	%s	%s	%.2f	%d",
-		 numstr, rastr, decstr, gm[i], gc[i]);
+		sprintf (headline, "%s	%s	%s	%.2f",
+			 numstr, rastr, decstr, gm[i]);
 	    else if (refcat == BINCAT) {
 		isp[0] = gc[i] / 1000;
 		isp[1] = gc[i] % 1000;
-	        sprintf (headline, "%s	%s	%s	%.2f	%2s",
+		sprintf (headline, "%s	%s	%s	%.2f	%2s",
 			 numstr, rastr, decstr, gm[i], isp);
 		}
 	    else
 	        sprintf (headline, "%s	%s	%s	%.2f",
 		 numstr, rastr, decstr, gm[i]);
+	    if (mprop) {
+	        sprintf (temp, "	%6.2f	%6.2f", pra, pdec);
+	        strcat (headline, temp);
+		}
+	    if (refcat == TABCAT && gcset) {
+	        sprintf (temp, "	%d", gc[i]);
+	        strcat (headline, temp);
+		}
 
 	    if (ranges == NULL) {
 	        sprintf (temp, "	%.2f", gdist);
@@ -1652,7 +1676,7 @@ double	eqout;		/* Equinox for output coordinates */
 		    refcat == UAC  || refcat == UA1  || refcat == UA2)
 		    sprintf (headline,"%s %s %s %5.1f %5.1f %4d ",
 			numstr,rastr,decstr,gmb[i],gm[i],gc[i]);
-		else if (refcat == UJC)
+		else if (refcat == UJC | refcat == GSC)
 		    sprintf (headline,"%s %s %s %6.2f %4d",
 			numstr, rastr, decstr, gm[i],gc[i]);
 		else if (refcat == GSC)
@@ -1662,6 +1686,10 @@ double	eqout;		/* Equinox for output coordinates */
 			 refcat==IRAS || refcat == BSC) {
 		    isp[0] = gc[i] / 1000;
 		    isp[1] = gc[i] % 1000;
+		    if (isp[0] == ' ' && isp[1] == ' ') {
+			isp[0] = '_';
+			isp[1] = '_';
+			}
 		    sprintf (headline,"  %s  %s %s %6.2f  %2s",
 			numstr,rastr,decstr,gm[i],isp);
 		    }
@@ -1671,12 +1699,21 @@ double	eqout;		/* Equinox for output coordinates */
 		    sprintf (headline,"%s %s %s %6.2f %6.2f  %2s",
 			numstr,rastr,decstr,gmb[i],gm[i],isp);
 		    }
-		else if (refcat == TABCAT)
-		    sprintf (headline,"%s %s %s %6.2f %7d",
-			numstr, rastr, decstr, gm[i],gc[i]);
+		else if (refcat == TABCAT) {
+		    if (gcset)
+			sprintf (headline,"%s %s %s %6.2f %7d",
+				 numstr, rastr, decstr, gm[i],gc[i]);
+		    else
+			sprintf (headline,"%s %s %s %6.2f",
+				 numstr, rastr, decstr, gm[i]);
+		    }
 		else if (refcat == BINCAT) {
 		    isp[0] = gc[i] / 1000;
 		    isp[1] = gc[i] % 1000;
+		    if (isp[0] == ' ' && isp[1] == ' ') {
+			isp[0] = '_';
+			isp[1] = '_';
+			}
 		    sprintf (headline,"%s %s %s %6.2f %2s",
 			numstr, rastr, decstr, gm[i], isp);
 		    }
@@ -2063,4 +2100,12 @@ int	ndec;	/* Number of decimal places in output */
  * Nov 29 1999	Include fitsfile.h for date conversion
  *
  * Jan 11 2000	Get nndec for Starbase catalogs
+ * Feb 10 2000	Use reference catalog coordinate system by default
+ * Feb 15 2000	Use MAXCAT from lwcs.h instead of MAXREF
+ * Feb 28 2000	Drop Peak column if not set in TAB catalogs
+ * Mar 10 2000	Move catalog selection from executable name to subroutine
+ * Mar 14 2000	Lowercase all header keywords
+ * Mar 14 2000	Add proper motion, if present, to Starbase output
+ * Mar 27 2000	Drop unused subroutine setradius() declaration
+ * Mar 28 2000	Clean up output for catalog IDs and GSC classes
  */

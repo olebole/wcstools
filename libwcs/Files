@@ -10,17 +10,17 @@ catutil.c
   Subroutines for catalog identification and number range decoding
 cel.c
   WCSLIB spherical coordinate transformation drivers
+daoread.c
+  Read x, y, and magnitude from DAOFIND output file and return x, y, and
+  flux for use by IMSTAR or IMWCS.
+dateutil.c
+  Subroutines for conversions between various date and time formats
 dsspos.c
   dsspos() uses the WCS structure to compute sky coordinates given
   image pixel X and Y for images with Digitized Sky Survey plate solutions
   in their headers.  dsspix() uses the WCS structure to compute image
   pixel X and Y given sky coordinates for DSS images.  Algorithms from
   StSCI CASB.
-daoread.c
-  Read x, y, and magnitude from DAOFIND output file and return x, y, and
-  flux for use by IMSTAR or IMWCS.
-dateutil.c
-  Subroutines for conversions between various date and time formats
 fileutil.c
   Subroutines for finding size and contents of ASCII files
 findstar.c

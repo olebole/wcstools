@@ -1,5 +1,5 @@
 /* File immatch.c
- * January 28, 2000
+ * March 23, 2000
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -15,6 +15,7 @@
 
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcs.h"
+#include "libwcs/wcscat.h"
 
 static void usage();
 static void MatchCat();
@@ -74,91 +75,8 @@ char **av;
     setfitwcs (0);
 
     /* Check name used to execute programe and set catalog name accordingly */
-    strcpy (progpath, av[0]);
-    progname = progpath;
-    for (i = strlen (progpath); i > -1; i--) {
-	if (progpath[i] > 63 && progpath[i] < 90)
-	    progpath[i] = progpath[i] + 32;
-	if (progpath[i] == '/') {
-	    progname = progpath + i + 1;
-	    break;
-	    }
-	}
-    if (strsrch (progname,"gsc") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "gsc");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"uac") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "uac");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"ua1") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "ua1");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"ua2") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "ua2");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"usac") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "usac");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"usa1") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "usa1");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"usa2") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "usa2");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"ujc") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "ujc");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"sao") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "sao");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"ppm") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "ppm");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"ira") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "iras");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"tyc") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "tycho");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"hip") != NULL) {
-	refcatn = (char *) calloc (1,16);
-	strcpy (refcatn, "hipparcos");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"act") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "act");
-	refcatname = refcatn;
-	}
-    else if (strsrch (progname,"bsc") != NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "bsc");
-	refcatname = refcatn;
-	}
+    progname = ProgName (av[0]);
+    refcatname = ProgCat (progname);
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -295,7 +213,7 @@ char **av;
     	    ac--;
     	    break;
 
-    	case 's':   /* this fraction more image stars than GSC or vice versa */
+    	case 's':   /* This fraction more image stars than reference stars or vice versa */
     	    if (ac < 2)
     		usage (progname);
     	    setfrac (atof (*++av));
@@ -466,7 +384,7 @@ char	*name;			/* Name of FITS or IRAF image file */
     char *image;		/* Image */
     char *header;		/* FITS header */
     char *irafheader;		/* IRAF image header */
-    char pixname[64];		/* Pixel file name for revised image */
+    char pixname[256];		/* Pixel file name for revised image */
     char *newimage;
 
     image = NULL;
@@ -483,7 +401,7 @@ char	*name;			/* Name of FITS or IRAF image file */
 		}
 	    if (imsearch || rot || mirror) {
 		if ((image = irafrimage (header)) == NULL) {
-		    hgets (header,"PIXFILE", 64, pixname);
+		    hgetm (header,"PIXFIL", 255, pixname);
 		    fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		    free (irafheader);
 		    free (header);
@@ -542,7 +460,10 @@ char	*name;			/* Name of FITS or IRAF image file */
 	image = newimage;
 	}
 
-    (void) SetWCSFITS (name, header, image, refcatname, verbose);
+    if (refcatname != NULL)
+	(void) SetWCSFITS (name, header, image, refcatname, verbose);
+    else
+	printf ("IMMATCH: No reference catalog has been set \n");
 
     free (header);
     if (iraffile)
@@ -587,4 +508,5 @@ char *
  * Oct 22 1999	Drop unused variables after lint
  *
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
+ * Mar  8 2000	Move catalog selection from executable name to subroutine
  */

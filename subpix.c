@@ -1,5 +1,5 @@
 /* File subpix.c
- * October 22, 1999
+ * March 23, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -109,9 +109,9 @@ char	**value;	/* value to insert into pixel */
     char *irafheader;		/* IRAF image header */
     int i, lext, lroot;
     char *imext, *imext1;
-    char newname[128];
-    char pixname[128];
-    char tempname[128];
+    char newname[256];
+    char pixname[256];
+    char tempname[256];
     char history[64];
     char *ext, *fname;
     char echar;
@@ -134,7 +134,7 @@ char	**value;	/* value to insert into pixel */
                 return;
                 }
 	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE", 64, pixname);
+		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -291,4 +291,6 @@ char	**value;	/* value to insert into pixel */
  * Apr 29 1999	Add BZERO and BSCALE
  * Jun 29 1999	Fix typo in BSCALE setting
  * Oct 22 1999	Drop unused variables after lint
+ *
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

@@ -1,35 +1,42 @@
 /* File libwcs/wcscat.h
- * January 11, 2000
- * By Doug Mink, SAO
+ * March 27, 2000
+ * By Doug Mink, dmink@cfa.harvard.edu
  */
 
-/* Source catalog flags and programs */
+/* Source catalog flags and subroutines */
 
-#define GSC		1	/* refcat value for HST Guide Star Catalog */
-#define UJC		2	/* refcat value for USNO UJ Star Catalog */
-#define UAC		3	/* refcat value for USNO A Star Catalog */
-#define USAC		4	/* refcat value for USNO SA Star Catalog */
-#define SAO		5	/* refcat value for SAO Star Catalog */
-#define IRAS		6	/* refcat value for IRAS Point Source Catalog */
-#define PPM		7	/* refcat value for PPM Star Catalog */
-#define TYCHO		8	/* refcat value for Tycho Star Catalog */
-#define UA1		9	/* refcat value for USNO A-1.0 Star Catalog */
-#define UA2		10	/* refcat value for USNO A-2.0 Star Catalog */
-#define USA1		11	/* refcat value for USNO SA-1.0 Star Catalog */
-#define USA2		12	/* refcat value for USNO SA-2.0 Star Catalog */
-#define HIP		13	/* refcat value for Hipparcos Star Catalog */
-#define ACT		14	/* refcat value for USNO ACT Star Catalog */
-#define BSC		15	/* refcat value for Yale Bright Star Catalog */
-#define TABCAT		-1	/* refcat value for StarBase tab table catalog */
-#define BINCAT		-2	/* refcat value for TDC binary catalog */
-#define TXTCAT		-3	/* refcat value for TDC ASCII catalog */
+/* Source catalog flags returned from RefCat */
+#define GSC		1	/* HST Guide Star Catalog */
+#define UJC		2	/* USNO UJ Star Catalog */
+#define UAC		3	/* USNO A Star Catalog */
+#define USAC		4	/* USNO SA Star Catalog */
+#define SAO		5	/* SAO Star Catalog */
+#define IRAS		6	/* IRAS Point Source Catalog */
+#define PPM		7	/* PPM Star Catalog */
+#define TYCHO		8	/* Tycho Star Catalog */
+#define UA1		9	/* USNO A-1.0 Star Catalog */
+#define UA2		10	/* USNO A-2.0 Star Catalog */
+#define USA1		11	/* USNO SA-1.0 Star Catalog */
+#define USA2		12	/* USNO SA-2.0 Star Catalog */
+#define HIP		13	/* Hipparcos Star Catalog */
+#define ACT		14	/* USNO ACT Star Catalog */
+#define BSC		15	/* Yale Bright Star Catalog */
+#define TYCHO2		16	/* Tycho-2 Star Catalog */
+#define TABCAT		-1	/* StarBase tab table catalog */
+#define BINCAT		-2	/* TDC binary catalog */
+#define TXTCAT		-3	/* TDC ASCII catalog */
 
 /* Subroutines for dealing with catalogs */
-int RefCat();
-void CatNum();
-int CatNumLen();
-void SearchLim();
-void RefLim();
+int RefCat();		/* Return catalog type code, title, coord. system */
+char *ProgCat();	/* Return catalog name given program name used */
+char *ProgName();	/* Return program name given program path used */
+int PropCat();		/* Return 1 if catalog has proper motions, else 0 */
+void CatNum();		/* Return formatted source number */
+int CatNumLen();	/* Return length of source numbers */
+void SearchLim();	/* Compute limiting RA and Dec */
+void RefLim();		/* Compute limiting RA and Dec in new system */
+int isfile();		/* Return 1 if string is name of readable file */
+int agets();		/* Extract value from keyword= value in string */
 
 /* Subroutines for extracting sources from catalogs by sky region */
 int gscread();		/* Read sources from HST Guide Star Catalog */
@@ -81,6 +88,13 @@ struct Star {
     int peak;		/* Peak flux per pixel in star image */
 };
 
+/* Catalog proper motion units */
+#define PM_MASYR		1	/* milliarcseconds per year */
+#define PM_ARCSECYR		2	/* arcseconds per year */
+#define PM_DEGYR		3	/* degrees per year */
+#define PM_RADYR		4	/* radians per year */
+#define PM_TSECYR		5	/* seconds of time (RA) per year */
+
 struct StarCat {
     int star0;		/* Subtract from star number for file sequence number */
     int star1;		/* First star number in file */
@@ -127,13 +141,18 @@ struct StarCat {
     int entpeak;	/* Entry number for peak counts */
     int entepoch;	/* Entry number for epoch of observation */
     int entname;	/* Entry number for object name */
-    int entprop;	/* Entry number for proper motion */
     int entadd;		/* Entry number for additional keyword */
+    int entrpm;		/* Entry number for proper motion in right ascension */
+    int entdpm;		/* Entry number for proper motion in declination */
+    int rpmunit;	/* Units for RA proper motion (PM_x) */
+    int dpmunit;	/* Units for DEC proper motion (PM_x) */
     char keyid[16];	/* Entry name for ID */
     char keyra[16];	/* Entry name for right ascension */
     char keydec[16];	/* Entry name for declination */
     char keymag1[16];	/* Entry name for first or only magnitude */
     char keymag2[16];	/* Entry name for second magnitude, if present */
+    char keyrpm[16];	/* Entry name for right ascension proper motion */
+    char keydpm[16];	/* Entry name for declination proper motion */
     char keypeak[16];	/* Entry name for integer code */
     char keyadd[16];	/* Entry name for additional keyword */
 };
@@ -164,16 +183,19 @@ struct TabTable {
 struct TabTable *tabopen();	/* Open tab table file */
 struct StarCat *tabcatopen();	/* Open tab table catalog */
 void tabcatclose();	/* Close tab table catalog */
+int tabxyread();	/* Read x, y, and magnitude from tab table star list */
 char *tabline();	/* Find a specified line in a tab table */
 int tabrkey();		/* Keyword values from tab table catalogs */
 int tabcol();		/* Find column for name */
 int tabgetk();		/* Get tab table entries for named column */
 int tabgetc();		/* Get tab table entry for named column */
 int tabgeti4();		/* Return 4-byte integer from tab table line */
-double tabgetra();	/* Return double right ascension in degrees from tab table*/
-double tabgetdec();	/* Return double declination in degrees from tab table*/
+double tabgetra();	/* Return right ascension in degrees from tab table*/
+double tabgetdec();	/* Return declination in degrees from tab table*/
+double tabgetpm();	/* Return RA or Dec p.m. in degrees from tab table*/
 double tabgetr8();	/* Return double number from tab table line */
 void tabclose();	/* Free all arrays left open by tab table structure */
+char *tgettaberr();	/* Retrun most recent tab table error message */
 int istab();
 int gettabndec();	/* Return number of decimal places in tab catalog ids */
 
@@ -259,4 +281,11 @@ int getoken();		/* Get specified token from tokenized string */
  *
  * Jan 10 2000	Add column names to catalog data structure
  * Jan 11 2000	Add gettabndec()
+ * Feb  9 2000	Add proper motion entry information to star data structure
+ * Feb 16 2000	Add gettaberr() to return tab table error message
+ * Mar  1 2000	Add isfile() and agets() to help with ASCII files
+ * Mar  8 2000	Add ProgCat() to return catalog name from program name used
+ * Mar  8 2000	Add ProgName() to extract program name from path used
+ * Mar 10 2000	Add PropCat() to tell whether a catalog has proper motions
+ * Mar 27 2000	Add tabxyread()
  */

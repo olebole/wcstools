@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** November 23, 1999
+ *** March 27, 2000
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -124,9 +124,6 @@ int	verbose;	/* 1 to print each star's position */
     double bz, bs;		/* Pixel value scaling */
     int lwidth;
     int nextline;
-    struct TabTable *imtab;
-
-    imtab = NULL;
 
     hgeti4 (header,"NAXIS1", &w);
     hgeti4 (header,"NAXIS2", &h);
@@ -787,4 +784,6 @@ char *parstring;
  * Oct 25 1999	Fix mean loop to avoid bad pointer creation
  * Oct 29 1999	Read image star positions from tab table or DAOPHOT table
  * Nov 23 1999	Lengthen imcatname from 32 to 256 for long pathnames
+ *
+ * Mar 27 2000	Drop unused variable imtab
  */

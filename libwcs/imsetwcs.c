@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * November 23, 1999
+ * March 28, 2000
  * By Doug Mink, based on UIowa code
  */
 
@@ -22,7 +22,7 @@ extern struct WorldCoor *GetFITSWCS ();
 extern char *getimcat();
 extern void SetFITSWCS();
 extern void fk524e();
-
+extern iscdfit();
 
 /* Set the C* WCS fields in a FITS header based on a reference catalog
  * by finding stars in the image and in the reference catalog and
@@ -48,6 +48,7 @@ static double imfrac0 = 0.0;		/* If > 0.0, multiply image dimensions
 static int classd = -1;                 /* Guide Star Catalog object classes */
 static int uplate = 0;                  /* UJ Catalog plate number to use */
 static int iterate0 = 0;		/* If 1, search field again */
+static int toliterate0 = 0;		/* if 1, halve tolerances when iter */
 static int recenter0 = 0;		/* If 1, search again with new center*/
 static char matchcat[32]="";		/* Match catalog name */
 static int irafout = 0;			/* if 1, write X Y RA Dec out */
@@ -72,22 +73,24 @@ char	*refcatname;	/* Name of reference catalog */
 int	verbose;
 
 {
-    double *gnum=0;	/* Reference star numbers */
-    double *gra=0;	/* Reference star right ascensions in degrees */
-    double *gdec=0;	/* Reference star declinations in degrees */
-    double *gm=0;	/* Reference star magnitudes */
-    double *gmb=0;	/* Reference star blue magnitudes */
-    double *gx=0;	/* Reference star image X-coordinates in pixels */
-    double *gy=0;	/* Reference star image Y-coordinates in pixels */
-    int *gc=0;		/* Reference object types */
-    int *goff=0;	/* Reference star offscale flags */
+    double *gnum;	/* Reference star numbers */
+    double *gra;	/* Reference star right ascensions in degrees */
+    double *gdec;	/* Reference star declinations in degrees */
+    double *gpra;	/* Reference star right ascension proper motions (deg)*/
+    double *gpdec;	/* Reference star declination proper motions (deg) */
+    double *gm;		/* Reference star magnitudes */
+    double *gmb;	/* Reference star blue magnitudes */
+    double *gx;		/* Reference star image X-coordinates in pixels */
+    double *gy;		/* Reference star image Y-coordinates in pixels */
+    int *gc;		/* Reference object types */
+    int *goff;		/* Reference star offscale flags */
     int ng;		/* Number of reference stars in image */
     int nbg;		/* Number of brightest reference stars from search */
     int nrg;		/* Number of brightest reference stars actually used */
-    double *sx=0;	/* Image star image X-coordinates in pixels */
-    double *sy=0;	/* Image star image X-coordinates in pixels */
-    double *sb=0;	/* Image star image flux in counts */
-    int *sp=0;		/* Image star peak fluxes in counts */
+    double *sx;		/* Image star image X-coordinates in pixels */
+    double *sy;		/* Image star image X-coordinates in pixels */
+    double *sb;		/* Image star image flux in counts */
+    int *sp;		/* Image star peak fluxes in counts */
     int ns;		/* Number of image stars */
     int nbs;		/* Number of brightest image stars actually used */
     double cra, cdec;	/* Nominal center in degrees from RA/DEC FITS fields */
@@ -95,13 +98,16 @@ int	verbose;
     double secpix;	/* Pixel size in arcseconds */
     int imw, imh;	/* Image size, pixels */
     int imsearch = 1;	/* Flag set if image should be searched for sources */
+    int nmax;		/* Maximum number of matches possible (nrg or nbs) */
+    int mprop = 0;	/* 1 if proper motion in catalog */
     double mag1,mag2;
     double dxys;
     char numstr[32];
     int minstars;
     int ngmax;
     int nbin, nbytes;
-    int iterate = iterate0;
+    int iterate, toliterate;
+    int niter = 0;
     int recenter = recenter0;
     int ret = 0;
     int is, ig, igs;
@@ -118,6 +124,24 @@ int	verbose;
     double ra,dec;
     double dx, dy, dx2, dy2, dxy, tol2;
 
+    iterate = iterate0;
+    toliterate = toliterate0;
+    gnum = NULL;
+    gra = NULL;
+    gdec = NULL;
+    gpra = NULL;
+    gpdec = NULL;
+    gm = NULL;
+    gmb = NULL;
+    gx = NULL;
+    gy = NULL;
+    gc = NULL;
+    goff = NULL;
+    sb = NULL;
+    sx = NULL;
+    sy = NULL;
+    sp = NULL;
+
     /* Set reference catalog coordinate system and epoch */
     if (nofit) {
 	refsys = 0;
@@ -126,6 +150,7 @@ int	verbose;
     else {
 	refcat = RefCat (refcatname, title, &refsys, &refeq, &refep);
 	wcscstr (refcoor, refsys, refeq, refep);
+	mprop = PropCat ();
 	}
 
     /* Use already-matched stars first, if they are present */
@@ -143,6 +168,7 @@ int	verbose;
 	    hputi4 (header, "WCSNREF", ns);
 	else
 	    hputi4 (header, "WCSNREF", nbg);
+	hputnr8 (header, "WCSTOL", 4, tolerance);
 
 	SetFITSWCS (header, wcs);
 	}
@@ -161,9 +187,10 @@ getfield:
 	ret = 1;
 	goto out;
 	}
-    wcs->prjcode = WCS_TAN;
-
-    wcseqset (wcs, refeq);
+    if (fitwcs) {
+	wcs->prjcode = WCS_TAN;
+	wcseqset (wcs, refeq);
+	}
 
     if (imfrac > 0.0) {
 	dra = dra * imfrac;
@@ -193,6 +220,18 @@ getfield:
     if (!(gdec = (double *) calloc (ngmax, sizeof(double))))
 	fprintf (stderr, "Could not calloc %d bytes for gdec\n",
 		 ngmax*sizeof(double));
+    if (mprop) {
+	if (!(gpra = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gpra\n",
+		 ngmax*sizeof(double));
+	if (!(gpdec = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
+		 ngmax*sizeof(double));
+	}
+    else {
+	gpra = NULL;
+	gpdec = NULL;
+	}
     if (!(gm = (double *) calloc (ngmax, sizeof(double))))
 	fprintf (stderr, "Could not calloc %d bytes for gm\n",
 		 ngmax*sizeof(double));
@@ -205,8 +244,8 @@ getfield:
 
     /* Find the nearby reference stars, in ra/dec */
     ng = ctgread (refcatname,refcat, 0,
-		  cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		  mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
+		  cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,mag1,mag2,
+		  ngmax,gnum,gra,gdec,gpra,gpdec,gm,gmb,gc,NULL,verbose*100);
     if (ng > ngmax)
 	nrg = ngmax;
     else
@@ -237,7 +276,7 @@ getfield:
 	}
 
     /* Sort reference stars by brightness (magnitude) */
-    MagSortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, NULL, nrg);
+    MagSortStars (gnum, gra, gdec, gpra, gpdec, gx, gy, gm, gmb, gc, NULL, nrg);
 
     /* Note how reference stars were selected */
     if (ng > ngmax) {
@@ -307,6 +346,7 @@ getfield:
 
     /* Fit a world coordinate system if requested */
     if (fitwcs) {
+	niter++;
 
 	/* Sort star-like objects in image by brightness */
 	FluxSortStars (sx, sy, sb, sp, ns);
@@ -385,7 +425,7 @@ getfield:
 	    goto out;
 	    }
 	else if (verbose)
-	    printf ("%d bin hits\n", nbin);
+	    printf ("%d / %d bin hits\n", nbin, nmax);
 
 	imcatname = getimcat ();
 	if (strlen (imcatname) == 0)
@@ -397,6 +437,7 @@ getfield:
 	    hputi4 (header, "WCSNREF", ns);
 	else
 	    hputi4 (header, "WCSNREF", nbg);
+	hputnr8 (header, "WCSTOL", 4, tolerance);
 
 	SetFITSWCS (header, wcs);
 	}
@@ -412,11 +453,11 @@ getfield:
 	    printf ("# %d-term x, %d-term y polynomial fit\n",
 		    wcs->ncoeff1, wcs->ncoeff2);
 	else
-	    printf ("# Arcsec/Pixel: %.6f %.6f  Rotation: %.6f degrees\n",
+	    printf ("# Arcsec/Pixel= %.6f %.6f  Rotation= %.6f degrees\n",
 		    3600.0*wcs->xinc, 3600.0*wcs->yinc, wcs->rot);
 	ra2str (rstr, 32, wcs->xref, 3);
 	dec2str (dstr, 32, wcs->yref, 2);
-	printf ("# Optical axis: %s  %s %s at (%.2f,%.2f)\n",
+	printf ("# Optical axis= %s  %s %s x= %.2f y= %.2f\n",
 		rstr,dstr, refcoor, wcs->xrefpix, wcs->yrefpix);
 	ra = wcs->xref;
 	dec = wcs->yref;
@@ -424,14 +465,14 @@ getfield:
 	    (void)fk524e (&ra, &dec, wcs->epoch);
 	    ra2str (rstr, 32, ra, 3);
 	    dec2str (dstr, 32, dec, 2);
-	    printf ("# Optical axis: %s  %s B1950 at (%.2f,%.2f)\n",
+	    printf ("# Optical axis= %s  %s B1950  x= %.2f y= %.2f\n",
 		    rstr,dstr, wcs->xrefpix, wcs->yrefpix);
 	    }
 	else {
 	    fk425e (&ra, &dec, wcs->epoch);
 	    ra2str (rstr, 32, ra, 3);
 	    dec2str (dstr, 32, dec, 2);
-	    printf ("# Optical axis: %s  %s J2000 at (%.2f,%.2f)\n",
+	    printf ("# Optical axis= %s  %s J2000  x= %.2f y= %.2f\n",
 		    rstr,dstr, wcs->xrefpix, wcs->yrefpix);
 	    }
 	}
@@ -445,6 +486,12 @@ getfield:
 	gy[ig] = 0.0;
 	wcs2pix (wcs, gra[ig], gdec[ig], &gx[ig], &gy[ig], &goff[ig]);
 	}
+
+    /* Set maximum number of matches which are possible */
+    if (nrg < ns)
+	nmax = nrg;
+    else
+	nmax = ns;
 
     /* Find best catalog matches to stars in image */
     nmatch = 0;
@@ -491,13 +538,12 @@ getfield:
     /* If there were any matches found, print them */
     if (nmatch > 0) {
 	int rprint = verbose || !fitwcs;
-	if (ns < nbg)
-	    hputi4 (header, "WCSNREF", ns);
-	else
-	    hputi4 (header, "WCSNREF", nbg);
+	hputi4 (header, "WCSMATCH", nmatch);
+	hputi4 (header, "WCSNREF", nmax);
+	hputnr8 (header, "WCSTOL", 4, tolerance);
 	if (rprint)
-	    printf ("# %d matches between %s and %s:\n",
-		    nmatch, refcatname, imcatname);
+	    printf ("# nmatch= %d nstars= %d between %s and %s  niter= %d\n",
+		    nmatch, nmax, refcatname, imcatname, niter);
 
 	PrintRes (header,wcs,nmatch,sx1,sy1,gra1,gdec1,gm1,gnum1,refcat,rprint);
 
@@ -514,8 +560,8 @@ getfield:
 
 	    /* Print the new residuals */
 	    else {
-		printf ("# %d matches between %s and %s:\n",
-			nmatch, refcatname, imcatname);
+		printf ("# nmatch= %d nstars= %d between %s and %s niter= %d\n",
+			nmatch, nmax, refcatname, imcatname, niter);
 		PrintRes (header,wcs,nmatch,sx1,sy1,gra1,gdec1,gm1,gnum1,refcat,verbose);
 		SetFITSPlate (header, wcs);
 		}
@@ -539,6 +585,8 @@ getfield:
     /* Free catalog source arrays */
     if (gra) free ((char *)gra);
     if (gdec) free ((char *)gdec);
+    if (gpra) free ((char *)gpra);
+    if (gpdec) free ((char *)gpdec);
     if (gm) free ((char *)gm);
     if (gmb) free ((char *)gmb);
     if (gnum) free ((char *)gnum);
@@ -550,10 +598,31 @@ getfield:
 	setdcenter (wcs->xref, wcs->yref);
 	setsys (wcs->syswcs);
 	setrefpix (wcs->xrefpix, wcs->yrefpix);
-	setsecpix (-3600.0 * wcs->xinc);
-	setsecpix2 (3600.0 * wcs->yinc);
-	setrot (wcs->rot);
-	iterate = 0;
+	if (iscdfit())
+	    setcd (wcs->cd);
+	else {
+	    setsecpix (-3600.0 * wcs->xinc);
+	    setsecpix2 (3600.0 * wcs->yinc);
+	    setrot (wcs->rot);
+	    }
+	iterate--;
+	imfrac = 0.0;
+	free (wcs);
+	goto getfield;
+	}
+    if (toliterate) {
+	setdcenter (wcs->xref, wcs->yref);
+	setsys (wcs->syswcs);
+	setrefpix (wcs->xrefpix, wcs->yrefpix);
+	if (iscdfit())
+	    setcd (wcs->cd);
+	else {
+	    setsecpix (-3600.0 * wcs->xinc);
+	    setsecpix2 (3600.0 * wcs->yinc);
+	    setrot (wcs->rot);
+	    }
+	tolerance = tolerance * 0.5;
+	toliterate--;
 	imfrac = 0.0;
 	free (wcs);
 	goto getfield;
@@ -753,14 +822,19 @@ void
 setmaxcat (ncat)
 int ncat;
 { if (ncat < 1) maxcat = 25;
-  else if (ncat > 200) maxcat = 200;
   else maxcat = ncat;
   return; }
 
 void
 setiterate (iter)
 int iter;
-{ iterate0 = iter;
+{ iterate0 = iterate0 + iter;
+  return; }
+
+void
+setiteratet (iter)
+int iter;
+{ toliterate0 = toliterate0 + iter;
   return; }
 
 void
@@ -878,4 +952,16 @@ int recenter;
  * Sep 29 1999	Add option to start with pre-matched stars
  * Oct 22 1999	Change catread() to ctgread() to avoid system conflict
  * Nov 23 1999	Free wcs only after it is used to set up iterate or recenter
+ *
+ * Feb  8 2000	If iterating, halve pixel tolerance on second pass
+ * Feb 11 2000	Print maximum number of matches with number matched
+ * Feb 15 2000	Drop maximum number of image stars
+ * Feb 15 2000	When iterating, reinitialize CD matrix if it's being fit
+ * Mar  1 2000	Modify residual output so = used instead of :
+ * Mar  1 2000	Add seperate option to tighten tolerances when iterating
+ * Mar 10 2000	Add proper motion arguments to ctgread()
+ * Mar 10 2000	Do not change WCS unless fitting
+ * Mar 13 2000	Use PropCat() to dind out whether catalog has proper motion
+ * Mar 15 2000	Add proper motion arguments to RASortStars() and ctgread()
+ * Mar 28 2000	Separate tolerance reducing iterations and other iterations
  */

@@ -1,5 +1,5 @@
 /* File sethead.c
- * December 20, 1999
+ * March 22, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -125,7 +125,8 @@ char **av;
 		nkwd = getfilelines (klistfile);
 		if (nkwd > 0) {
 		    if (nkwd > maxnkwd) {
-			kwd = (char **) realloc ((void *)kwd, nkwd);
+			free (kwd);
+			kwd = (char **) calloc (nkwd, sizeof (void *));
 			maxnkwd = nkwd;
 			}
 		    keybuff = getfilebuff (klistfile);
@@ -133,10 +134,10 @@ char **av;
 			kw1 = keybuff;
 			for (ikwd = 0; ikwd < nkwd; ikwd++) {
 			    kwd[ikwd] = kw1;
-			    kw2 = strchr (kw1, newline);
-			    *kw2 = (char) 0;
-			    if (ikwd < nkwd - 1)
+			    if (ikwd < nkwd - 1) {
+				kw2 = strchr (kw1, newline);
 				kw1 = kw2 + 1;
+				}
 			    }
 			}
 		    else
@@ -238,7 +239,7 @@ char	*kwd[];		/* Names and values of those keywords */
     char newname[128];
     char *newval;
     char *ext, *fname, *imext, *imext1;
-    char *kw, *kwv, *kwl, *kwv0;
+    char *kw, *kwv, *kwl, *kwv0, *knl;
     char *v, *vq0, *vq1;
     char echar;
     int ikwd, lkwd, lkwv, lhist;
@@ -255,7 +256,8 @@ char	*kwd[];		/* Names and values of those keywords */
     char value[80];
     char keyroot[8];
     char ctemp;
-    int lval, ii, lv;
+    int lval, ii, lv, lnl;
+    char newline = 10;
 
     newimage = newimage0;
 
@@ -339,6 +341,13 @@ char	*kwd[];		/* Names and values of those keywords */
 	lkwd = kwv0 - kwd[ikwd];
 	kwv = kwv0 + 1;
 	lkwv = strlen (kwv);
+
+	/* If end of line comes before end of string terminate value there */
+	knl = strchr (kwv,newline);
+	if (knl != NULL) {
+	    lnl = knl - kwv;
+	    if (lnl < lkwv) lkwv = lnl;
+	    }
 
 	/* Get current length of header buffer */
 	lhead = gethlength (header);
@@ -535,7 +544,7 @@ char	*kwd[];		/* Names and values of those keywords */
 	endchar = strchr (history, ',');
 	*endchar = (char) 0;
 	strcat (history, " ");
-	ltime = getltime ();
+	ltime = lt2fd ();
 	strcat (history, ltime);
 	endchar = strrchr (history,':');
 	*endchar = (char) 0;
@@ -555,7 +564,7 @@ char	*kwd[];		/* Names and values of those keywords */
 		    endchar = strchr (history, ',');
 		    *endchar = (char) 0;
 		    strcat (history, " ");
-		    ltime = getltime ();
+		    ltime = lt2fd ();
 		    strcat (history, ltime);
 		    endchar = strrchr (history,':');
 		    *endchar = (char) 0;
@@ -649,4 +658,7 @@ char	*kwd[];		/* Names and values of those keywords */
  * Oct 22 1999	Drop unused variables after lint
  * Nov 17 1999	Fix bug which wrote a second entry for character values
  * Dec 20 1999	Add -d option to change date to ISO format
+ *
+ * Feb 17 2000	Fix bug reading last of assignments from file
+ * Mar 22 2000	Use lt2fd() instead of getltime()
  */

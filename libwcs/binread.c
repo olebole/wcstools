@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** October 21, 1999
+ *** March 28, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -12,7 +12,7 @@
 
 /* default pathname for catalog,  used if catalog file not found in current
    working directory, but overridden by WCS_BINDIR environment variable */
-char bindir[64]="/data/catalogs";
+char bindir[64]="c:/stars";
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -35,7 +35,7 @@ static void binswap2();
 
 int
 binread (bincat,distsort,cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-	 nstarmax,tnum,tra,tdec,tmag,tmagb,tpeak,tobj,nlog)
+	 nstarmax,tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,tobj,nlog)
 
 char	*bincat;	/* Name of reference star catalog file */
 int	distsort;	/* 1 to sort stars by distance from center */
@@ -52,6 +52,8 @@ int	nstarmax;	/* Maximum number of sources to be returned */
 double	*tnum;		/* Array of catalog numbers (returned) */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
+double  *tpra;		/* Array of right ascension proper motions (returned) */
+double  *tpdec;		/* Array of declination proper motions (returned) */
 double	*tmag;		/* Array of V magnitudes (returned) */
 double	*tmagb;		/* Array of B magnitudes (returned) */
 int	*tpeak;		/* Array of peak counts (returned) */
@@ -242,6 +244,8 @@ int	nlog;
 		    tnum[nstar] = num;
 		    tra[nstar] = ra;
 		    tdec[nstar] = dec;
+		    tpra[nstar] = rapm;
+		    tpdec[nstar] = decpm;
 		    tmag[nstar] = mag;
 		    tmagb[nstar] = magb;
 		    tpeak[nstar] = isp;
@@ -269,6 +273,8 @@ int	nlog;
 			tnum[farstar] = num;
 			tra[farstar] = ra;
 			tdec[farstar] = dec;
+			tpra[nstar] = rapm;
+			tpdec[nstar] = decpm;
 			tmag[farstar] = mag;
 			tmagb[farstar] = magb;
 			tpeak[farstar] = isp;
@@ -297,6 +303,8 @@ int	nlog;
 		    tnum[faintstar] = num;
 		    tra[faintstar] = ra;
 		    tdec[faintstar] = dec;
+		    tpra[nstar] = rapm;
+		    tpdec[nstar] = decpm;
 		    tmag[faintstar] = mag;
 		    tmagb[faintstar] = magb;
 		    tpeak[faintstar] = isp;
@@ -361,7 +369,7 @@ int	nlog;
 
 int
 binrnum (bincat, nnum, sysout, eqout, epout, match,
-	 tnum,tra,tdec,tmag,tmagb,tpeak,tobj,nlog)
+	 tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,tobj,nlog)
 
 char	*bincat;	/* Name of reference star catalog file */
 int	nnum;		/* Number of stars to look for */
@@ -372,6 +380,8 @@ int	match;		/* If 1, match number exactly, else number is sequence*/
 double	*tnum;		/* Array of star numbers to look for */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
+double  *tpra;		/* Array of right ascension proper motions (returned) */
+double  *tpdec;		/* Array of declination proper motions (returned) */
 double	*tmag;		/* Array of V magnitudes (returned) */
 double	*tmagb;		/* Array of B magnitudes (returned) */
 int	*tpeak;		/* Array of peak counts (returned) */
@@ -431,6 +441,8 @@ int	nlog;
 		    fprintf (stderr,"BINRNUM: Cannot read star %d\n", istar);
 		    tra[jnum] = 0.0;
 		    tdec[jnum] = 0.0;
+		    tpra[jnum] = 0.0;
+		    tpdec[jnum] = 0.0;
 		    tmag[jnum] = 0.0;
 		    tmagb[jnum] = 0.0;
 		    tpeak[jnum] = 0;
@@ -448,6 +460,8 @@ int	nlog;
 	    fprintf (stderr,"BINRNUM: Cannot read star %d\n", istar);
 	    tra[jnum] = 0.0;
 	    tdec[jnum] = 0.0;
+	    tpra[jnum] = 0.0;
+	    tpdec[jnum] = 0.0;
 	    tmag[jnum] = 0.0;
 	    tmagb[jnum] = 0.0;
 	    tpeak[jnum] = 0;
@@ -483,6 +497,8 @@ int	nlog;
 	tnum[jnum] = num;
 	tra[jnum] = ra;
 	tdec[jnum] = dec;
+	tpra[jnum] = rapm;
+	tpdec[jnum] = decpm;
 	tmag[jnum] = mag;
 	tpeak[jnum] = isp;
 	if (tobj != NULL) {
@@ -522,7 +538,7 @@ char *bincat;	/* Binary catalog file name */
     char *binfile;
     char binpath[128];	/* Full pathname for catalog file */
     char *str;
-    int lf;
+    int lf, nb;
     static int binsize();
 
     /* Find length of binary catalog */
@@ -576,10 +592,28 @@ char *bincat;	/* Binary catalog file name */
     else
 	sc->byteswapped = 0;
 
+    /* Allocate buffer to read one line of catalog */
+    sc->catline = (char *) calloc (sc->nbent, sizeof (char));
+
+    nb = 0;
+    sc->ncobj = 0;
     if (sc->stnum < 0)
 	sc->ncobj = -sc->stnum;
-    else
-	sc->ncobj = 0;
+    else if (sc->stnum > 0)	
+	nb = 4;
+
+    sc->entra = nb;
+    sc->entdec = nb + 8;
+    sc->entpeak = nb + 16;
+    sc->entmag1 = nb + 18;
+    nb = nb + 18 + (sc->nmag * 2);
+    if (sc->mprop) {
+	sc->entrpm = nb;
+	sc->entdpm = nb + 4;
+	nb = nb + 8;
+	}
+    if (sc->ncobj)
+	sc->entname = nb;
 
     /* Set number of decimal places in star numbers */
     if (sc->stnum == 2)
@@ -642,6 +676,7 @@ binclose (sc)
 struct StarCat *sc;	/* Star catalog descriptor */
 {
     fclose (sc->ifcat);
+    free (sc->catline);
     free (sc);
     return;
 }
@@ -747,7 +782,7 @@ struct StarCat *sc;	/* Star catalog descriptor */
 struct Star *st;	/* Current star entry */
 int istar;	/* Star sequence number in binary catalog */
 {
-    int ino, nbent;
+    int ino, nbent, i;
     long offset;
     float pm[2];
 
@@ -774,48 +809,19 @@ int istar;	/* Star sequence number in binary catalog */
 	}
 
     /* Read catalog entry */
-    if (sc->mprop)
-	nbent = sc->nbent - 8;
-    else
-	nbent = sc->nbent;
-    if (sc->stnum < 0)
-	nbent = nbent + sc->stnum;
+    if (fread (sc->catline, sc->nbent, 1, sc->ifcat) < 1)
+	return (4);
+
+    /* Read catalog number or object name */
     sc->ncobj = 0;
     if (sc->stnum <= 0) {
 	sc->ncobj = -sc->stnum;
-	if (fread (&st->ra, nbent, 1, sc->ifcat) < 1)
-	    return (4);
-	if (sc->stnum < 0) {
-	    if (fread (st->objname, sc->ncobj, 1, sc->ifcat) < 1)
-		return (4);
-	    }
+	moveb (sc->catline, st->objname, sc->ncobj, sc->entname, 0);
 	}
     else {
-	if (fread (&st->xno, nbent, 1, sc->ifcat) < 1)
-	    return (4);
+	moveb (sc->catline, (char *) &st->xno, 4, 0, 0);
 	if (sc->byteswapped)
 	    binswap4 (&st->xno);
-	}
-    if (sc->byteswapped) {
-	binswap8 (&st->ra);
-	binswap8 (&st->dec);
-	binswap2 (st->mag, sc->nmag*2);
-	}
-
-    /* Convert position to degrees */
-    st->ra = raddeg (st->ra);
-    st->dec = raddeg (st->dec);
-
-    /* Read proper motion, if it is present, and convert it to degrees */
-    if (sc->mprop) {
-	if (fread (pm, 8, 1, sc->ifcat) < 1)
-	    return (5);
-	if (sc->byteswapped) {
-	    binswap4 (&pm[0]);
-	    binswap4 (&pm[1]);
-	    }
-	st->rapm = raddeg ((double) pm[0]);
-	st->decpm = raddeg ((double) pm[1]);
 	}
 
     /* Interpret catalog number */
@@ -843,6 +849,42 @@ int istar;	/* Star sequence number in binary catalog */
 	    break;
 	}
 
+    /* Extract RA and Dec from entry */
+    moveb (sc->catline, (char *) &st->ra, 8, sc->entra, 0);
+    moveb (sc->catline, (char *) &st->dec, 8, sc->entdec, 0);
+    if (sc->byteswapped) {
+	binswap8 (&st->ra);
+	binswap8 (&st->dec);
+	}
+
+    /* Convert position to degrees */
+    st->ra = raddeg (st->ra);
+    st->dec = raddeg (st->dec);
+
+    /* Read proper motion, if it is present, and convert it to degrees */
+    if (sc->mprop) {
+	moveb (sc->catline, (char *) &pm[0], 4, sc->entrpm, 0);
+	moveb (sc->catline, (char *) &pm[1], 4, sc->entdpm, 0);
+	if (sc->byteswapped) {
+	    binswap4 (&pm[0]);
+	    binswap4 (&pm[1]);
+	    }
+	st->rapm = raddeg ((double) pm[0]);
+	st->decpm = raddeg ((double) pm[1]);
+	}
+
+    /* Spectral type */
+    moveb (sc->catline, (char *) st->isp, 2, sc->entpeak, 0);
+    if (sc->byteswapped)
+	binswap2 (st->isp, 2);
+
+    /* Magnitudes (*100) */
+    for (i = 0; i < sc->nmag; i++) {
+	moveb (sc->catline, (char *) st->mag, 2, sc->entmag1+(i*2), i*2);
+	
+	if (sc->byteswapped)
+	    binswap2 (&st->mag[i], 2);
+	}
     return (0);
 }
 
@@ -1005,4 +1047,7 @@ char    *filename;      /* Name of file to check */
  * Sep 16 1999	Fix bug which didn't always return closest stars
  * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
  * Oct 21 1999	Fix declarations after lint
+ *
+ * Mar 15 2000	Add proper motion return to binread() and binrnum()
+ * Mar 28 2000	Use moveb() to extract information from entries
  */

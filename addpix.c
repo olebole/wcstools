@@ -1,5 +1,5 @@
 /* File addpix.c
- * October 21, 1999
+ * March 23, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -109,9 +109,9 @@ char	**value;	/* value to insert into pixel */
     char *imext, *imext1;
     double bzero;		/* Zero point for pixel scaling */
     double bscale;		/* Scale factor for pixel scaling */
-    char newname[128];
-    char pixname[128];
-    char tempname[128];
+    char newname[256];
+    char pixname[256];
+    char tempname[256];
     char history[64];
     char *ext, *fname;
     char echar;
@@ -132,7 +132,7 @@ char	**value;	/* value to insert into pixel */
                 return;
                 }
 	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE", 64, pixname);
+		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -288,4 +288,6 @@ char	**value;	/* value to insert into pixel */
  * Apr 29 1999	Add BZERO and BSCALE
  * Jun 29 1999	Fix typo in BSCALE setting
  * Oct 21 1999	Drop unused variables after lint
+ *
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

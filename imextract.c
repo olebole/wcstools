@@ -1,5 +1,5 @@
 /* File imextract.c
- * October 22, 1999
+ * March 23, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -247,12 +247,12 @@ char	*kwd[];		/* Names and values of those keywords */
     char *kw, *kwv, *kwl, *kwv0;
     char *v, *vq0, *vq1;
     int ikwd, lkwd, lkwv;
-    char pixname[128];
+    char pixname[256];
     char *fname, *ext, *imext, *imext1;
     char echar;
     char temp[64];
     struct Range *range; /* Range of sequence numbers to list */
-    char newname[128];
+    char newname[256];
     char newkey[10];
     char cval[24];
     int squote = 39;
@@ -271,7 +271,7 @@ char	*kwd[];		/* Names and values of those keywords */
 		return (1);
 		}
 	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE", 64, pixname);
+		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -513,7 +513,7 @@ char	*kwd[];		/* Names and values of those keywords */
     if (iraffile && !fitsout) {
 	strcpy (pixname, newname);
 	strcat (pixname, ".pix");
-	hputs (header, "PIXFILE", pixname);
+	hputm (header, "PIXFIL", pixname);
 	strcat (newname, ".imh");
 	}
     else if (lext > 0) {
@@ -569,4 +569,6 @@ char	*kwd[];		/* Names and values of those keywords */
  * Sep 30 1999	Refine range test to avoid getting signed header parameters
  * Oct 15 1999	Always return erro code from ExtractImage()
  * Oct 22 1999	Drop unused variables after lint
+ *
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

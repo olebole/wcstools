@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** December 20, 1999
+ *** March 21, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -27,7 +27,7 @@
  * Subroutine:  isnum (string) returns 1 if number, else 0
  * Subroutine:  notnum (string) returns 0 if number, else 1
 
- * Copyright:   1999 Smithsonian Astrophysical Observatory
+ * Copyright:   2000 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -109,6 +109,7 @@ int *ival;
 
     /* Translate value from ASCII to binary */
     if (value != NULL) {
+	if (value[0] == '#') value++;
 	minint = -INT_MAX - 1;
 	lval = strlen (value);
 	if (lval > VLENGTH) {
@@ -158,6 +159,7 @@ short *ival;
 
     /* Translate value from ASCII to binary */
     if (value != NULL) {
+	if (value[0] == '#') value++;
 	lval = strlen (value);
 	if (lval > VLENGTH) {
 	    strncpy (val, value, VLENGTH);
@@ -204,6 +206,7 @@ float *rval;
 
     /* translate value from ASCII to binary */
     if (value != NULL) {
+	if (value[0] == '#') value++;
 	lval = strlen (value);
 	if (lval > VLENGTH) {
 	    strncpy (val, value, VLENGTH);
@@ -300,6 +303,7 @@ double *dval;
 
     /* Translate value from ASCII to binary */
     if (value != NULL) {
+	if (value[0] == '#') value++;
 	lval = strlen (value);
 	if (lval > VLENGTH) {
 	    strncpy (val, value, VLENGTH);
@@ -569,6 +573,7 @@ char *str;	/* String (returned) */
 		strcpy (stri, value);
 	    else if (lstri > 1) {
 		strncpy (stri, value, lstri-1);
+		stri[lstri] = (char) 0;
 		break;
 		}
 	    else {
@@ -762,8 +767,17 @@ char *keyword0;	/* character string containing the name of the keyword
     /* Extract value and remove excess spaces */
     if (q1 != NULL) {
 	v1 = q1 + 1;;
-	v2 = q2;
-	c1 = strsrch (q2,"/");
+	if (q2 != NULL) {
+	    v2 = q2;
+	    c1 = strsrch (q2,"/");
+	    }
+	else {
+	    c1 = strsrch (line,"/");
+	    if (c1 != NULL)
+		v2 = c1;
+	    else
+		v2 = line + 79;
+	    }
 	}
     else {
 	v1 = strsrch (line,"=") + 1;
@@ -798,15 +812,34 @@ char *keyword0;	/* character string containing the name of the keyword
 	if (brack2 != NULL)
 	    *brack2 = '\0';
 	ipar = atoi (brack1);
+	cwhite[0] = ' ';
+	cwhite[1] = '\0';
 	if (ipar > 0) {
-	    cwhite[0] = ' ';
-	    cwhite[1] = '\0';
 	    for (i = 1; i <= ipar; i++) {
 		cpar = strtok (v1,cwhite);
 		v1 = NULL;
 		}
-	    if (cpar != NULL)
+	    if (cpar != NULL) {
 		strcpy (cval,cpar);
+		value = cval;
+		}
+	    else
+		value = NULL;
+	    }
+
+	/* If token counter is negative, include rest of value from token on */
+	else if (ipar < 0) {
+	    for (i = 1; i < -ipar; i++) {
+		v1 = strchr (v1, ' ');
+		if (v1 == NULL)
+		    break;
+		else
+		    v1 = v1 + 1;
+		}
+	    if (v1 != NULL) {
+		strcpy (cval, v1);
+		value = cval;
+		}
 	    else
 		value = NULL;
 	    }
@@ -852,7 +885,7 @@ char *keyword;	/* character string containing the name of the variable
 	lhstr = lhead0;
     else {
 	lhstr = 0;
-	while (lhstr < 57600 && hstring[lhstr] != 0)
+	while (lhstr < 256000 && hstring[lhstr] != 0)
 	    lhstr++;
 	}
     headlast = hstring + lhstr;
@@ -953,7 +986,7 @@ char *keyword;	/* character string containing the name of the variable
 	lhead = lhead0;
     else {
 	lhead = 0;
-	while (lhead < 57600 && hstring[lhead] != 0)
+	while (lhead < 256000 && hstring[lhead] != 0)
 	    lhead++;
 	}
     lhstr = strlen (hstring);
@@ -1043,7 +1076,7 @@ char	*in;	/* Character string of sexigesimal or decimal degrees */
 {
     double dec;		/* Declination in degrees (returned) */
     double deg, min, sec, sign;
-    char *value, *c1;
+    char *value, *c1, *c2;
 
     dec = 0.0;
 
@@ -1056,16 +1089,20 @@ char	*in;	/* Character string of sexigesimal or decimal degrees */
 	    sign = -1.0;
 	    value = strsrch (value,"-") + 1;
 	    }
-	if ((c1 = strsrch (value,":")) != NULL) {
+	if ((c1 = strsrch (value,":")) == NULL)
+	    c1 = strsrch (value," ");
+	if (c1 != NULL) {
 	    *c1 = 0;
 	    deg = (double) atoi (value);
 	    *c1 = ':';
 	    value = c1 + 1;
-	    if ((c1 = strsrch (value,":")) != NULL) {
-		*c1 = 0;
+	    if ((c2 = strsrch (value,":")) == NULL)
+		c2 = strsrch (value," ");
+	    if (c2 != NULL) {
+		*c2 = 0;
 		min = (double) atoi (value);
-		*c1 = ':';
-		value = c1 + 1;
+		*c2 = ':';
+		value = c2 + 1;
 		sec = atof (value);
 		}
 	    else {
@@ -1183,9 +1220,11 @@ char *string;	/* Character string */
 {
     int lstr, i, nd;
     char cstr;
+    int fpcode;
 
     lstr = strlen (string);
     nd = 0;
+    fpcode = 1;
 
     /* Return 0 if string starts with a D or E */
     cstr = string[0];
@@ -1205,9 +1244,11 @@ char *string;	/* Character string */
 	    return (0);
 	else if (cstr >= 47 && cstr <= 57)
 	    nd++;
+	if (cstr=='.' || cstr=='d' || cstr=='e' || cstr=='d' || cstr=='e')
+	    fpcode = 2;
 	}
     if (nd > 0)
-	return (1);
+	return (fpcode);
     else
 	return (0);
 }
@@ -1280,5 +1321,13 @@ int set_saolib(hstring)
  * Oct 15 1999	Return 1 from hgetndec() if successful
  * Oct 20 1999	Drop unused variable after lint (val in hgetndec)
  * Dec  3 1999	Fix isnum() to reject strings starting with a d or e
- * Dec 20 1999	Update hgetdate() to getminutes and seconds right
+ * Dec 20 1999	Update hgetdate() to get minutes and seconds right
+ *
+ * Feb 10 2000	Parse RA and Dec with spaces as well as colons as separators
+ * Feb 11 2000	Add null at end of multi-line keyword value character string
+ * Feb 25 2000	Change max search string length from 57600 to 256000
+ * Mar 15 2000	Deal with missing second quotes in string values
+ * Mar 17 2000	Return 2 from isnum() if number is floating point (.de)
+ * Mar 17 2000	Ignore leading # for numeric values in header
+ * Mar 21 2000	Implement -n to get string value starting with nth token
  */

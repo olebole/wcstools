@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** January 28, 2000
+ *** February 29, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcsinit.c (World Coordinate Systems)
@@ -245,6 +245,7 @@ char *hstring;	/* character string containing FITS header information
 	    hgetr8 (hstring,"CD2_1",&wcs->cd[2]);
 	    wcs->cd[3] = wcs->cd[0];
 	    hgetr8 (hstring,"CD2_2",&wcs->cd[3]);
+	    (void) matinv (2, wcs->cd, wcs->dc);
 	    }
 
 	/* Else use CD matrix, if present */
@@ -805,4 +806,5 @@ struct WorldCoor *wcs;
  * Jan 27 2000	Fix MJD to epoch conversion for when MJD-OBS is the only date
  * Jan 28 2000	Set CD matrix for DSS projection, too
  * Jan 28 2000	Use wcsproj instead of oldwcs
+ * Feb 29 2000	Compute inverse CD matrix even if polynomial solution
  */

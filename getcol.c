@@ -1,5 +1,5 @@
 /* File getcol.c
- * January 26, 2000
+ * March 20, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -15,6 +15,7 @@
 
 static void usage();
 
+static int maxncond = 100;
 static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
 static int debug = 0;		/* True for extra information */
@@ -32,6 +33,11 @@ static int tabout = 0;		/* If 1, separate output fields with tabs */
 static int counttok = 0;	/* If 1, print number of columns on line */
 static int printhead = 0;	/* If 1, print Starbase tab table header */
 static int intcompare();
+static int ncond=0;		/* Number of keyword conditions to check */
+static int condand=1;		/* If 1, AND comparisons, else OR */
+static char **cond;		/* Conditions to check */
+static char **ccond;		/* Condition characters */
+static void strclean();
 
 main (ac, av)
 int ac;
@@ -44,10 +50,14 @@ char **av;
     char *ranges = NULL;
     char *lfile = NULL;
     char *lranges = NULL;
-    int match;
+    int match, newbytes, nrbytes;
+    int icond;
 
     if (ac == 1)
         usage ();
+
+    cond = (char **)calloc (maxncond, sizeof(char *));
+    ccond = (char **)calloc (maxncond, sizeof(char *));
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -66,15 +76,21 @@ char **av;
 	    if (strchr (*av,'.'))
 		match = 1;
 	    if (ranges) {
-		temp = ranges;
-		ranges = (char *)calloc (strlen(ranges)+strlen(*av)+2, 1);
-		strcpy (ranges, temp);
+		newbytes = strlen(ranges) + strlen(*av) + 2;
+		newbytes = ((newbytes / 16) + 1) * 16;
+		if (newbytes > nrbytes) {
+		    temp = ranges;
+		    ranges = (char *)calloc (newbytes, 1);
+		    strcpy (ranges, temp);
+		    free (temp);
+		    }
 		strcat (ranges, ",");
 		strcat (ranges, *av);
-		free (temp);
 		}
 	    else {
-		 ranges = (char *) calloc (strlen(*av) + 1, 1);
+		nrbytes = strlen(*av) + 2;
+		nrbytes = ((nrbytes / 16) + 1) * 16;
+		ranges = (char *) calloc (nrbytes, 1);
 		strcpy (ranges, *av);
 		}
 	    }
@@ -82,19 +98,42 @@ char **av;
 	/* Set range and make a list of column numbers from it */
 	else if (isrange (*av)) {
 	    if (ranges) {
-		temp = ranges;
-		ranges = (char *) calloc (strlen(ranges) + strlen(*av) + 2, 1);
-		strcpy (ranges, temp);
+		newbytes = strlen(ranges) + strlen(*av) + 2;
+		newbytes = ((newbytes / 16) + 1) * 16;
+		if (newbytes > nrbytes) {
+		    temp = ranges;
+		    ranges = (char *) calloc (newbytes, 1);
+		    strcpy (ranges, temp);
+		    free (temp);
+		    }
 		strcat (ranges, ",");
 		strcat (ranges, *av);
-		free (temp);
 		}
 	    else {
-		ranges = (char *) calloc (strlen(*av) + 1, 1);
+		ranges = (char *) calloc (strlen(*av) + 2, 1);
 		if (strchr (*av,'.'))
 		    match = 1;
 		strcpy (ranges, *av);
 		}
+	    }
+
+	/* Condition */
+	else if (strchr (*av, '=') != NULL || strchr (*av, '#') != NULL ||
+		 strchr (*av, '>') != NULL || strchr (*av, '<') != NULL ) {
+	    if (ncond >= maxncond) {
+		maxncond = maxncond * 2;
+		cond = (char **)realloc((void *)cond, maxncond*sizeof(void *));
+		ccond = (char **)realloc((void *)cond, maxncond*sizeof(void *));
+		}
+	    cond[ncond] = *av;
+	    ccond[ncond] = strchr (*av, '=');
+	    if (ccond[ncond] == NULL)
+		ccond[ncond] = strchr (*av, '#');
+	    if (ccond[ncond] == NULL)
+		ccond[ncond] = strchr (*av, '>');
+	    if (ccond[ncond] == NULL)
+		ccond[ncond] = strchr (*av, '<');
+	    ncond++;
 	    }
 
 	/* Otherwise, read command */
@@ -128,6 +167,10 @@ char **av;
 		    usage ();
 		nread = atoi (*++av);
 		ac--;
+		break;
+
+	    case 'o': /* OR conditions insted of ANDing them */
+		condand = 0;
 		break;
 
 	    case 'r':	/* Range of lines to read */
@@ -224,6 +267,12 @@ char	*lfile;		/* Name of file with lines to list */
     int nlmax;
     int nfind, ntok, nt, ltok;
     int *inum;
+    int skipline, icond, itok;
+    char tcond, *cstr, *cval;
+    char numstr[32], numstr1[32];
+    double dcond, dval, dnum;
+    int pass;
+    int jcond, jval;
     char *cwhite;
     char token[80];
 
@@ -335,12 +384,85 @@ char	*lfile;		/* Name of file with lines to list */
 		    iln++;
 		}
 
-	    /* Drop linefeeds */
+	    /* Turn linefeed into end of string */
 	    lastchar = line + strlen(line) - 1;
 	    if (*lastchar < 32)
 		*lastchar = (char) 0;
 
-	    printf ("%s\n", line);
+	    /* Check conditions */
+	    ntok = setoken (&tokens, line, cwhite);
+	    pass = 0;
+	    if (ncond > 0) {
+		for (icond = 0; icond < ncond; icond++) {
+		    if (condand)
+			pass = 0;
+		    tcond = *ccond[icond];
+	
+		    /* Extract test value from comparison string */
+		    *ccond[icond] = (char) 0;
+		    cstr = ccond[icond]+1;
+		    if (strchr (cstr, ':')) {
+			dnum = str2dec (cstr);
+			num2str (numstr, dnum, 0, 7);
+			cstr = numstr;
+			}
+		    strclean (cstr);
+	
+		    /* Read comparison value from header */
+		    itok = atoi (cond[icond]);
+		    getoken (tokens, itok, token);
+		    cval = token;
+		    if (strchr (cval, ':')) {
+			dnum = str2dec (cval);
+			num2str (numstr1, dnum, 0, 7);
+			cval = numstr1;
+			}
+		    strclean (cval);
+	
+		    /* Compare floating point numbers */
+		    if (isnum (cstr) == 2 && isnum (cval)) {
+			*ccond[icond] = tcond;
+			dcond = atof (cstr);
+			dval = atof (cval);
+			if (tcond == '=' && dval == dcond)
+			    pass = 1;
+			if (tcond == '#' && dval != dcond)
+			    pass = 1;
+			if (tcond == '>' && dval > dcond)
+			    pass = 1;
+			if (tcond == '<' && dval < dcond)
+			    pass = 1;
+			}
+	
+		    /* Compare integers */
+		    else if (isnum (cstr) == 1 && isnum (cval)) {
+			*ccond[icond] = tcond;
+			jcond = atoi (cstr);
+			jval = atoi (cval);
+			if (tcond == '=' && jval == jcond)
+			    pass = 1;
+			if (tcond == '#' && jval != jcond)
+			    pass = 1;
+			if (tcond == '>' && jval > jcond)
+			    pass = 1;
+			if (tcond == '<' && jval < jcond)
+			    pass = 1;
+			}
+	
+		    /* Compare strings (only equal or not equal */
+		    else {
+			*ccond[icond] = tcond;
+			if (tcond == '=' && !strcmp (cstr, cval))
+			    pass = 1;
+			if (tcond == '#' && strcmp (cstr, cval))
+			    pass = 1;
+			}
+		    }
+		if (condand && !pass)
+		    break;
+		}
+	    if (pass)
+		printf ("%s\n", line);
 	    }
 	}
 
@@ -390,7 +512,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    iln++;
 		}
 
-	    /* Drop linefeeds */
+	    /* Turn linefeed into end of string */
 	    lastchar = line + strlen(line) - 1;
 	    if (*lastchar < 32)
 		*lastchar = (char) 0;
@@ -404,8 +526,100 @@ char	*lfile;		/* Name of file with lines to list */
 		    printf ("\n");
 		return (0);
 		}
+
+	    /* Check conditions */
+	    pass = 0;
+	    if (ncond > 0) {
+		for (icond = 0; icond < ncond; icond++) {
+		    if (condand)
+			pass = 0;
+		    tcond = *ccond[icond];
+	
+		    /* Extract test value from comparison string */
+		    *ccond[icond] = (char) 0;
+		    cstr = ccond[icond]+1;
+		    if (strchr (cstr, ':')) {
+			dnum = str2dec (cstr);
+			num2str (numstr, dnum, 0, 7);
+			cstr = numstr;
+			}
+		    strclean (cstr);
+	
+		    /* Read comparison value from header */
+		    itok = atoi (cond[icond]);
+		    getoken (tokens, itok, token);
+		    cval = token;
+		    if (strchr (cval, ':')) {
+			dnum = str2dec (cval);
+			num2str (numstr, dnum, 0, 7);
+			cval = numstr;
+			}
+		    strclean (cval);
+	
+		    /* Compare floating point numbers */
+		    if (isnum (cstr) == 2 && isnum (cval)) {
+			*ccond[icond] = tcond;
+			dcond = atof (cstr);
+			dval = atof (cval);
+			if (tcond == '=' && dval == dcond)
+			    pass = 1;
+			if (tcond == '#' && dval != dcond)
+			    pass = 1;
+			if (tcond == '>' && dval > dcond)
+			    pass = 1;
+			if (tcond == '<' && dval < dcond)
+			    pass = 1;
+			}
+	
+		    /* Compare integers */
+		    else if (isnum (cstr) == 1 && isnum (cval)) {
+			*ccond[icond] = tcond;
+			jcond = atoi (cstr);
+			jval = atoi (cval);
+			if (tcond == '=' && jval == jcond)
+			    pass = 1;
+			if (tcond == '#' && jval != jcond)
+			    pass = 1;
+			if (tcond == '>' && jval > jcond)
+			    pass = 1;
+			if (tcond == '<' && jval < jcond)
+			    pass = 1;
+			}
+	
+		    /* Compare strings (only equal or not equal */
+		    else {
+			*ccond[icond] = tcond;
+			if (tcond == '=' && !strcmp (cstr, cval))
+			    pass = 1;
+			if (tcond == '#' && strcmp (cstr, cval))
+			    pass = 1;
+			}
+		    if (condand && !pass)
+			break;
+		    }
+		if (!pass)
+		    continue;
+		}
+
 	    nt = 0;
 	    if (il == 0 && printhead && tabout) {
+
+		/* Print conditions in header */
+		for (icond = 0; icond < ncond; icond++) {
+		    if (verbose) {
+			if (condand || icond == 0)
+			    printf ("%s\n",cond[icond]);
+			else
+			    printf (" or %s\n",cond[icond]);
+			}
+		    else if (tabout) {
+			if (condand || icond == 0)
+			    printf ("condition  %s\n", cond[icond]);
+			else
+			    printf ("condition  or %s\n", cond[icond]);
+			}
+		    }
+
 		for (i = 0; i < nfind; i++) {
 		    if (getoken (tokens, inum[i], token)) {
 			ltok = strlen (token);
@@ -526,6 +740,62 @@ intcompare (int *i, int *j)
 }
 
 
+/* Remove exponent and/or trailing zeroes, if reasonable */
+static void
+strclean (string)
+
+char *string;
+
+{
+    char *sdot, *s, *strend, *str;
+    int ndek, lstr, i;
+
+    /* Remove positive exponent if there are enough digits given */
+    if (strsrch (string, "E+") != NULL) {
+	lstr = strlen (string);
+	ndek = (int) (string[lstr-1] - 48);
+	ndek = ndek + (10 * ((int) (string[lstr-2] - 48)));
+	if (ndek < lstr - 7) {
+	    lstr = lstr - 4;
+	    string[lstr] = (char) 0;
+	    string[lstr+1] = (char) 0;
+	    string[lstr+2] = (char) 0;
+	    string[lstr+3] = (char) 0;
+	    sdot = strchr (string, '.');
+	    if (ndek > 0 && sdot != NULL) {
+		for (i = 1; i <= ndek; i++) {
+		    *sdot = *(sdot+1);
+		    sdot++;
+		    *sdot = '.';
+		    }
+		}
+	    }
+	}
+
+    /* Remove trailing zeroes */
+    if (strchr (string, '.') != NULL) {
+	lstr = strlen (string);
+	s = string + lstr - 1;
+	while (*s == '0' && lstr > 1) {
+	    if (*(s - 1) != '.') {
+		*s = (char) 0;
+		lstr --;
+		}
+	    s--;
+	    }
+	}
+
+    /* Remove trailing decimal point */
+    lstr = strlen (string);
+    s = string + lstr - 1;
+    if (*s == '.')
+	*s = (char) 0;
+
+    return;
+	
+}
+
+
 /* Nov  2 1999	New program
  * Nov  3 1999	Add option to read from stdin as input filename
  * Dec  1 1999	Add options to print counts, means, and sums of columns
@@ -534,4 +804,6 @@ intcompare (int *i, int *j)
  * Jan  7 2000	Add option to list range of lines or filed list of lines
  * Jan 26 2000	Add documentation of entry count and tab output
  * Jan 26 2000	Add option to print tab table header
+ * Feb 11 2000	Fix reallocation of range variables
+ * Mar 20 2000	Add conditional line printing
  */

@@ -1,5 +1,5 @@
 /* File getdate.c
- * January 26, 2000
+ * March 24, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
+#include <time.h>
 #include "libwcs/wcs.h"
 #include "libwcs/fitsfile.h"
 
@@ -25,8 +26,13 @@
 #define DTOF	9	/* Old FITS date and time */
 #define DTOFD	10	/* Old FITS date only */
 #define DTOFT	11	/* Old FITS time only */
+#define DTLT	12	/* Current local time */
+#define DTUT	13	/* Current Universal Time */
+#define DTIRAF	14	/* IRAF seconds since 1980-01-01 0:00 */
+#define DTUNIX	15	/* Unix seconds since 1970-01-01 0:00 */
 
 static void usage();
+static int ConvertDate();
 
 static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
@@ -43,6 +49,9 @@ static int nread = 0;	/* Number of lines to read (0=all) */
 static int nskip = 0;	/* Number of lines to skip */
 static int tabout = 0;	/* If 1, separate output fields with tabs */
 static int ndec = 5;	/* Number of decimal places in output */
+static int dateonly = 0; /* If 1, print date without time */
+static char *outform;
+extern void sdatedec();
 
 main (ac, av)
 int ac;
@@ -52,11 +61,13 @@ char **av;
     char *temp;
     char *datestring;
     char *timestring;
-    int intype= 0;		/* Input date type */
-    int outtype= 0;		/* Output date type */
+    int intype = 0;		/* Input date type */
+    int outtype = 0;	/* Output date type */
+    int typeset = 0;
 
     datestring = NULL;
     timestring = NULL;
+    outform = NULL;
 
     if (ac == 1)
         usage ();
@@ -73,197 +84,88 @@ char **av;
     /* crack arguments */
     for (av++; --ac > 0; av++) {
 
-	/* Read command */
-	if (!strncmp (*av, "dt2", 3)) {
+	/* Set input date format */
+	if (!strncmp (*av, "dt2", 3))
 	    intype = DTVIG;
-	    if (!strcmp (*av, "dt2ep"))
-		outtype = DTEP;
-	    else if (!strcmp (*av, "dt2epb"))
-		outtype = DTEPB;
-	    else if (!strcmp (*av, "dt2epj"))
-		outtype = DTEPJ;
-	    else if (!strcmp (*av, "dt2fd"))
-		outtype = DTFITS;
-	    else if (!strcmp (*av, "dt2jd"))
-		outtype = DTJD;
-	    else if (!strcmp (*av, "dt2mjd"))
-		outtype = DTMJD;
-	    else if (!strcmp (*av, "dt2ts"))
-		outtype = DT1950;
-	    else {
-		printf ("Unknown conversion %s\n", *av);
-		exit (1);
-		}
-	    }
-	else if (!strncmp (*av, "ep2", 3)) {
+	else if (!strncmp (*av, "ep2", 3))
 	    intype = DTEP;
-	    if (!strcmp (*av, "ep2epb"))
-		outtype = DTEPB;
-	    else if (!strcmp (*av, "ep2epj"))
-		outtype = DTEPJ;
-	    else if (!strcmp (*av, "ep2dt"))
-		outtype = DTVIG;
-	    else if (!strcmp (*av, "ep2fd"))
-		outtype = DTFITS;
-	    else if (!strcmp (*av, "ep2jd"))
-		outtype = DTJD;
-	    else if (!strcmp (*av, "ep2mjd"))
-		outtype = DTMJD;
-	    else if (!strcmp (*av, "ep2ts"))
-		outtype = DT1950;
-	    else {
-		printf ("Unknown conversion %s\n", *av);
-		exit (1);
-		}
-	    }
-	else if (!strncmp (*av, "epb2", 3)) {
+	else if (!strncmp (*av, "epb2", 3))
 	    intype = DTEPB;
-	    if (!strcmp (*av, "epb2ep"))
-		outtype = DTEP;
-	    else if (!strcmp (*av, "epb2epj"))
-		outtype = DTEPJ;
-	    else if (!strcmp (*av, "epb2dt"))
-		outtype = DTVIG;
-	    else if (!strcmp (*av, "epb2fd"))
-		outtype = DTFITS;
-	    else if (!strcmp (*av, "epb2jd"))
-		outtype = DTJD;
-	    else if (!strcmp (*av, "epb2mjd"))
-		outtype = DTMJD;
-	    else if (!strcmp (*av, "epb2ts"))
-		outtype = DT1950;
-	    else {
-		printf ("Unknown conversion %s\n", *av);
-		exit (1);
-		}
-	    }
-	else if (!strncmp (*av, "epj2", 3)) {
+	else if (!strncmp (*av, "epj2", 3))
 	    intype = DTEPJ;
-	    if (!strcmp (*av, "epj2ep"))
-		outtype = DTEP;
-	    else if (!strcmp (*av, "epj2epb"))
-		outtype = DTEPB;
-	    else if (!strcmp (*av, "epj2dt"))
-		outtype = DTVIG;
-	    else if (!strcmp (*av, "epj2fd"))
-		outtype = DTFITS;
-	    else if (!strcmp (*av, "epj2jd"))
-		outtype = DTJD;
-	    else if (!strcmp (*av, "epj2mjd"))
-		outtype = DTMJD;
-	    else if (!strcmp (*av, "epj2ts"))
-		outtype = DT1950;
-	    else {
-		printf ("Unknown conversion %s\n", *av);
-		exit (1);
-		}
-	    }
-	else if (!strncmp (*av, "fd2", 3)) {
+	else if (!strncmp (*av, "fd2", 3))
 	    intype = DTFITS;
-	    if (!strcmp (*av, "fd2dt"))
-		outtype = DTVIG;
-	    else if (!strcmp (*av, "fd2ep"))
-		outtype = DTEP;
-	    else if (!strcmp (*av, "fd2epb"))
-		outtype = DTEPB;
-	    else if (!strcmp (*av, "fd2epj"))
-		outtype = DTEPJ;
-	    else if (!strcmp (*av, "fd2fd"))
-		outtype = DTFITS;
-	    else if (!strcmp (*av, "fd2jd"))
-		outtype = DTJD;
-	    else if (!strcmp (*av, "fd2mjd"))
-		outtype = DTMJD;
-	    else if (!strcmp (*av, "fd2of"))
-		outtype = DTOF;
-	    else if (!strcmp (*av, "fd2ofd"))
-		outtype = DTOFD;
-	    else if (!strcmp (*av, "fd2oft"))
-		outtype = DTOFT;
-	    else if (!strcmp (*av, "fd2ts"))
-		outtype = DT1950;
-	    else {
-		printf ("Unknown conversion %s\n", *av);
-		exit (1);
-		}
-	    }
-	else if (!strncmp (*av, "jd2", 3)) {
+	else if (!strncmp (*av, "jd2", 3))
 	    intype = DTJD;
-	    if (!strcmp (*av, "jd2dt"))
-		outtype = DTVIG;
-	    else if (!strcmp (*av, "jd2ep"))
-		outtype = DTEP;
-	    else if (!strcmp (*av, "jd2epb"))
-		outtype = DTEPB;
-	    else if (!strcmp (*av, "jd2epj"))
-		outtype = DTEPJ;
-	    else if (!strcmp (*av, "jd2fd"))
-		outtype = DTFITS;
-	    else if (!strcmp (*av, "jd2mjd"))
-		outtype = DTMJD;
-	    else if (!strcmp (*av, "jd2ts"))
-		outtype = DT1950;
-	    else {
-		printf ("Unknown conversion %s\n", *av);
-		exit (1);
-		}
-	    }
-	else if (!strncmp (*av, "mjd2", 3)) {
-	    intype = DTJD;
-	    if (!strcmp (*av, "mjd2dt"))
-		outtype = DTVIG;
-	    else if (!strcmp (*av, "mjd2ep"))
-		outtype = DTEP;
-	    else if (!strcmp (*av, "mjd2epb"))
-		outtype = DTEPB;
-	    else if (!strcmp (*av, "mjd2epj"))
-		outtype = DTEPJ;
-	    else if (!strcmp (*av, "mjd2fd"))
-		outtype = DTFITS;
-	    else if (!strcmp (*av, "mjd2jd"))
-		outtype = DTJD;
-	    else if (!strcmp (*av, "mjd2ts"))
-		outtype = DT1950;
-	    else {
-		printf ("Unknown conversion %s\n", *av);
-		exit (1);
-		}
-	    }
-	else if (!strncmp (*av, "ts2", 3)) {
+	else if (!strncmp (*av, "mjd2", 4))
+	    intype = DTMJD;
+	else if (!strncmp (*av, "ts2", 3))
 	    intype = DT1950;
-	    if (!strcmp (*av, "ts2dt"))
-		outtype = DTVIG;
-	    else if (!strcmp (*av, "ts2ep"))
-		outtype = DTEP;
-	    else if (!strcmp (*av, "ts2epb"))
-		outtype = DTEPB;
-	    else if (!strcmp (*av, "ts2epj"))
-		outtype = DTEPJ;
-	    else if (!strcmp (*av, "ts2fd"))
-		outtype = DTFITS;
-	    else if (!strcmp (*av, "ts2jd"))
-		outtype = DTJD;
-	    else if (!strcmp (*av, "ts2mjd"))
-		outtype = DTMJD;
-	    else {
-		printf ("Unknown conversion %s\n", *av);
-		exit (1);
-		}
-	    }
+	else if (!strncmp (*av, "tsi2", 3))
+	    intype = DTIRAF;
+	else if (!strncmp (*av, "tsu2", 3))
+	    intype = DTUNIX;
+	else if (!strncmp (*av, "lt2", 3))
+	    intype = DTLT;
+	else if (!strncmp (*av, "ut2", 3))
+	    intype = DTUT;
+
+	/* Set output date format */
+	if (strsrch (*av, "2dt"))
+	    outtype = DTVIG;
+	else if (strsrch (*av, "2ep"))
+	    outtype = DTEP;
+	else if (strsrch (*av, "2epb"))
+	    outtype = DTEPB;
+	else if (strsrch (*av, "2epj"))
+	    outtype = DTEPJ;
+	else if (strsrch (*av, "2fd"))
+	    outtype = DTFITS;
+	else if (strsrch (*av, "2jd"))
+	    outtype = DTJD;
+	else if (strsrch (*av, "2mjd"))
+	    outtype = DTMJD;
+	else if (strsrch (*av, "2of"))
+	    outtype = DTOF;
+	else if (strsrch (*av, "2ofd"))
+	    outtype = DTOFD;
+	else if (strsrch (*av, "2oft"))
+	    outtype = DTOFT;
+	else if (strsrch (*av, "2tsi"))
+	    outtype = DTIRAF;
+	else if (strsrch (*av, "2tsu"))
+	    outtype = DTUNIX;
+	else if (strsrch (*av, "2ts"))
+	    outtype = DT1950;
+
+	if (typeset == 0 && (intype > 0 || outtype > 0))
+	    typeset = 1;
 	else if (*(str = *av) == '-') {
 	    char c;
 	    while (c = *++str)
 	    switch (c) {
 
-		case 'v':	/* More verbosity */
-		    verbose++;
+		case 'd':	/* Print date without time */
+		    dateonly++;
+		    break;
+
+		case 'f':	/* Output format */
+		    if (ac < 2)
+			usage();
+		    outform = *++av;
+		    ac--;
 		    break;
 
 		case 'n':	/* Number of decimal places in output */
 		    if (ac < 2)
 			usage();
 		    ndec = (int) (atof (*++av));
+		    setdatedec (ndec);
 		    ac--;
+		    break;
+
+		case 'v':	/* More verbosity */
+		    verbose++;
 		    break;
 
 		default:
@@ -271,12 +173,21 @@ char **av;
 		    break;
 		}
 	    }
-	else if (datestring == NULL)
+	else if (datestring == NULL) {
 	    datestring = *av;
-	else
+	    if (intype != DTVIG || ac == 1) {
+		ConvertDate (intype, outtype, datestring, timestring);
+		datestring = NULL;
+		}
+	    }
+	else if (intype == DTVIG) {
 	    timestring = *av;
+	    ConvertDate (intype, outtype, datestring, timestring);
+	    timestring = NULL;
+	    }
 	}
-    ConvertDate (intype, outtype, datestring, timestring);
+    if (intype == DTLT || intype == DTUT)
+	ConvertDate (intype, outtype, datestring, timestring);
 
     return (0);
 }
@@ -288,11 +199,16 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Convert date and time between various formats\n");
-    fprintf (stderr,"Usage: [-v][-n dec] itype2otype [date and/or time]\n");
+    fprintf (stderr,"Usage: [-dv][-n dec][-f format] itype2otype [date and/or time]\n");
     fprintf(stderr,"  itype: fd=FITS, dt=yyyy.mmdd, ep=epoch, jd=Julian Date\n");
+    fprintf(stderr,"         lt=local time, ut=UT, ts=seconds since 1950-01-01\n");
     fprintf(stderr,"  otype: fd=FITS, dt=yyyy.mmdd, ep=epoch, jd=Julian Date\n");
+    fprintf(stderr,"         ts=seconds since 1950-01-01, tsu=Unix sec, tsi=IRAF sec\n");
+    fprintf(stderr,"     -d: Print date without time\n");
+    fprintf(stderr,"     -f: Format for output number (C printf)\n");
     fprintf(stderr,"     -n: Number of decimal places in sec, epoch, JD\n");
     fprintf(stderr,"     -v: Verbose\n");
+    fprintf(stderr,"    now: Output current date and time\n");
     exit (1);
 }
 
@@ -305,55 +221,103 @@ char	*datestring;	/* Input date string */
 char	*timestring;	/* Input time string */
 
 {
-    double date, time, epoch, jd, ts, time1, jd1, ts1, epoch1;
+    double vdate, vtime, epoch, jd, ts, time1, jd1, ts1, epoch1;
     int lfd, oldfits;
     char *fitsdate, *newfdate;
     char ts0[8];
-    char outform[16];
+    char *tchar;
+    time_t ut0, utc;	/* UTC seconds since 1970-01-01T0:00 */
+    struct tm *ltm;	/* Local time structure */
+    int lt;		/* Local time return */
+    int its, its1;
+    long lts;
 
     strcpy (ts0, "00:00:00");
-    sprintf (outform,"%%.%df\n",ndec);
+    if (outform == NULL) {
+	outform = (char *) calloc (16, sizeof (char));
+	if (outtype == DTUNIX || outtype == DTIRAF)
+	    strcpy (outform,"%d\n");
+	else
+	    sprintf (outform,"%%.%df\n",ndec);
+	}
+    if (outtype < 1)
+	outtype = DTFITS;
+
+    if (datestring != NULL) {
+	if (!strcmp (datestring, "now")) {
+	    intype = DTVIG;
+
+	    /* Get current UTC */
+	    ut0 = (time_t) 0;
+	    utc = time (&ut0);
+
+	    /* Get local time and convert to vigesimal */
+	    ltm = localtime (&utc);
+	    vtime = (double) ltm->tm_hour + (0.01 * (double) ltm->tm_min) +
+		(0.0001 * (double) ltm->tm_sec);
+	    vdate = 1900.0 + (double) ltm->tm_year +
+		(0.01 * (double) (1 + ltm->tm_mon)) +
+		(0.0001 * (double) ltm->tm_mday);
+	    timestring = ts0;
+	    }
+	}
 
     switch (intype) {
 	case DTVIG:
 	    if (datestring != NULL) {
-		date = atof (datestring);
-		if (timestring != NULL) 
-		    time = atof (timestring);
-		else {
-		    timestring = ts0;
-		    time = 0.0;
+		if (strcmp (datestring, "now")) {
+		    vdate = atof (datestring);
+		    if (timestring != NULL) 
+			vtime = atof (timestring);
+		    else {
+			timestring = ts0;
+			vtime = 0.0;
+			}
 		    }
 		if (verbose)
 		    printf ("%s %s -> ", datestring, timestring);
+
 		switch (outtype) {
 		    case DTEP:
-			epoch = dt2ep (date, time);
+			epoch = dt2ep (vdate, vtime);
 			printf (outform, epoch);
 			break;
 		    case DTEPB:
-			epoch = dt2epb (date, time);
+			epoch = dt2epb (vdate, vtime);
 			printf (outform, epoch);
 			break;
 		    case DTEPJ:
-			epoch = dt2epj (date, time);
+			epoch = dt2epj (vdate, vtime);
 			printf (outform, epoch);
 			break;
 		    case DTFITS:
-			fitsdate = dt2fd (date, time);
+			fitsdate = dt2fd (vdate, vtime);
+			if (dateonly) {
+			    tchar = strchr (fitsdate, 'T');
+			    if (tchar != NULL)
+				*tchar = (char) 0;
+			    }
 			printf ("%s\n", fitsdate);
 			break;
 		    case DTJD:
-			jd = dt2jd (date, time);
+			jd = dt2jd (vdate, vtime);
 			printf (outform, jd);
 			break;
 		    case DTMJD:
-			jd = dt2mjd (date, time);
+			jd = dt2mjd (vdate, vtime);
 			printf (outform, jd);
 			break;
 		    case DT1950:
-			ts = dt2ts (date, time);
+			ts = dt2ts (vdate, vtime);
 			printf (outform, ts);
+			break;
+		    case DTIRAF:
+			its = dt2tsi (vdate, vtime);
+			printf (outform, its);
+			break;
+		    case DTUNIX:
+			lts = dt2tsu (vdate, vtime);
+			printf (outform, lts);
 			break;
 		    default:
 			printf ("*** Unknown output type %d\n", outtype);
@@ -411,20 +375,28 @@ char	*timestring;	/* Input time string */
 			printf (outform, epoch);
 			break;
 		    case DTVIG:
-			fd2dt (fitsdate, &date, &time);
+			fd2dt (fitsdate, &vdate, &vtime);
 			if (oldfits) {
 			    if (timestring == NULL)
-				time = 0.0;
+				vtime = 0.0;
 			    else
-				time = time1;
+				vtime = time1;
 			    }
-			printf ("%9.4f %10.7f\n", date, time);
+			if (dateonly)
+			    printf ("%9.4f\n", vdate);
+			else
+			    printf ("%9.4f %10.7f\n", vdate, vtime);
 			break;
 		    case DTFITS:
 			newfdate = fd2fd (fitsdate);
 			if (oldfits && timestring) {
 			    strcat (newfdate, "T");
 			    strcat (newfdate, timestring);
+			    }
+			if (dateonly) {
+			    tchar = strchr (newfdate, 'T');
+			    if (tchar != NULL)
+				*tchar = (char) 0;
 			    }
 			printf ("%s\n", newfdate);
 			break;
@@ -473,6 +445,22 @@ char	*timestring;	/* Input time string */
 			    }
 			printf (outform, ts);
 			break;
+		    case DTIRAF:
+			its = fd2tsi (fitsdate);
+			if (oldfits && timestring) {
+			    its1 = (int) fd2ts (timestring);
+			    its = its + its1;
+			    }
+			printf (outform, its);
+			break;
+		    case DTUNIX:
+			lts = fd2tsu (fitsdate);
+			if (oldfits && timestring) {
+			    ts1 = (int) fd2ts (timestring);
+			    lts = lts + (long) its1;
+			    }
+			printf (outform, lts);
+			break;
 		    default:
 			printf ("*** Unknown output type %d\n", outtype);
 		    }
@@ -482,8 +470,8 @@ char	*timestring;	/* Input time string */
 	    if (datestring != NULL) {
 		jd = atof (datestring);
 		if (timestring != NULL) {
-		    time = str2dec (timestring);
-		    jd = jd + time / 24.0;
+		    vtime = str2dec (timestring);
+		    jd = jd + vtime / 24.0;
 		    }
 		if (verbose)
 		    printf ("%.5f -> ", jd);
@@ -505,11 +493,19 @@ char	*timestring;	/* Input time string */
 			printf (outform, jd);
 			break;
 		    case DTVIG:
-			jd2dt (jd, &date, &time);
-			printf ("%.4f %.7f\n", date, time);
+			jd2dt (jd, &vdate, &vtime);
+			if (dateonly)
+			    printf ("%9.4f\n", vdate);
+			else
+			    printf ("%9.4f %10.7f\n", vdate, vtime);
 			break;
 		    case DTFITS:
 			fitsdate = jd2fd (jd);
+			if (dateonly) {
+			    tchar = strchr (fitsdate, 'T');
+			    if (tchar != NULL)
+				*tchar = (char) 0;
+			    }
 			printf ("%s\n", fitsdate);
 			break;
 		    case DT1950:
@@ -525,8 +521,8 @@ char	*timestring;	/* Input time string */
 	    if (datestring != NULL) {
 		jd = atof (datestring);
 		if (timestring != NULL) {
-		    time = str2dec (timestring);
-		    jd = jd + time / 24.0;
+		    vtime = str2dec (timestring);
+		    jd = jd + vtime / 24.0;
 		    }
 		if (verbose)
 		    printf ("%.5f -> ", jd);
@@ -548,11 +544,19 @@ char	*timestring;	/* Input time string */
 			printf (outform, jd);
 			break;
 		    case DTVIG:
-			mjd2dt (jd, &date, &time);
-			printf ("%.4f %.7f\n", date, time);
+			mjd2dt (jd, &vdate, &vtime);
+			if (dateonly)
+			    printf ("%9.4f\n", vdate);
+			else
+			    printf ("%9.4f %10.7f\n", vdate, vtime);
 			break;
 		    case DTFITS:
 			fitsdate = mjd2fd (jd);
+			if (dateonly) {
+			    tchar = strchr (fitsdate, 'T');
+			    if (tchar != NULL)
+				*tchar = (char) 0;
+			    }
 			printf ("%s\n", fitsdate);
 			break;
 		    case DT1950:
@@ -566,7 +570,8 @@ char	*timestring;	/* Input time string */
 	    break;
 	case DT1950:
 	    if (datestring != NULL) {
-		ts = atof (datestring);
+    		if (strcmp (datestring, "now"))
+		    ts = atof (datestring);
 		if (verbose)
 		    printf ("%.3f -> ", ts);
 		switch (outtype) {
@@ -583,11 +588,19 @@ char	*timestring;	/* Input time string */
 			printf (outform, epoch);
 			break;
 		    case DTVIG:
-			ts2dt (ts, &date, &time);
-			printf ("%.4f %.7f\n", date, time);
+			ts2dt (ts, &vdate, &vtime);
+			if (dateonly)
+			    printf ("%9.4f\n", vdate);
+			else
+			    printf ("%9.4f %10.7f\n", vdate, vtime);
 			break;
 		    case DTFITS:
 			fitsdate = ts2fd (ts);
+			if (dateonly) {
+			    tchar = strchr (fitsdate, 'T');
+			    if (tchar != NULL)
+				*tchar = (char) 0;
+			    }
 			printf ("%s\n", fitsdate);
 			break;
 		    case DTJD:
@@ -597,6 +610,77 @@ char	*timestring;	/* Input time string */
 		    case DTMJD:
 			jd = ts2mjd (ts);
 			printf (outform, jd);
+			break;
+		    case DT1950:
+			printf (outform, ts);
+			break;
+		    default:
+			printf ("*** Unknown output type %d\n", outtype);
+		    }
+		}
+	    break;
+	case DTIRAF:
+	    if (datestring != NULL) {
+    		if (strcmp (datestring, "now"))
+		    its = atoi (datestring);
+		if (verbose)
+		    printf ("%d -> ", its);
+		switch (outtype) {
+		    case DTVIG:
+			tsi2dt (its, &vdate, &vtime);
+			if (dateonly)
+			    printf ("%9.4f\n", vdate);
+			else
+			    printf ("%9.4f %10.7f\n", vdate, vtime);
+			break;
+		    case DTFITS:
+			fitsdate = tsi2fd (its);
+			if (dateonly) {
+			    tchar = strchr (fitsdate, 'T');
+			    if (tchar != NULL)
+				*tchar = (char) 0;
+			    }
+			printf ("%s\n", fitsdate);
+			break;
+		    case DT1950:
+			ts = tsi2ts (its);
+			printf (outform, ts);
+			break;
+		    default:
+			printf ("*** Unknown output type %d\n", outtype);
+		    }
+		}
+	    break;
+	case DTUNIX:
+	    if (datestring != NULL) {
+    		if (strcmp (datestring, "now"))
+		    lts = (long) (atof (datestring) + 0.5);
+		if (verbose)
+		    printf ("%d -> ", lts);
+		switch (outtype) {
+		    case DTVIG:
+			tsu2dt (lts, &vdate, &vtime);
+			if (dateonly)
+			    printf ("%9.4f\n", vdate);
+			else
+			    printf ("%9.4f %10.7f\n", vdate, vtime);
+			break;
+		    case DTFITS:
+			fitsdate = tsu2fd (lts);
+			if (dateonly) {
+			    tchar = strchr (fitsdate, 'T');
+			    if (tchar != NULL)
+				*tchar = (char) 0;
+			    }
+			printf ("%s\n", fitsdate);
+			break;
+		    case DTIRAF:
+			its = tsu2tsi (lts);
+			printf (outform, ts);
+			break;
+		    case DT1950:
+			ts = tsu2ts (lts);
+			printf (outform, ts);
 			break;
 		    default:
 			printf ("*** Unknown output type %d\n", outtype);
@@ -618,11 +702,19 @@ char	*timestring;	/* Input time string */
 			printf (outform, epoch);
 			break;
 		    case DTVIG:
-			ep2dt (epoch, &date, &time);
-			printf ("%.4f %.7f\n", date, time);
+			ep2dt (epoch, &vdate, &vtime);
+			if (dateonly)
+			    printf ("%9.4f\n", vdate);
+			else
+			    printf ("%9.4f %10.7f\n", vdate, vtime);
 			break;
 		    case DTFITS:
 			fitsdate = ep2fd (epoch);
+			if (dateonly) {
+			    tchar = strchr (fitsdate, 'T');
+			    if (tchar != NULL)
+				*tchar = (char) 0;
+			    }
 			printf ("%s\n", fitsdate);
 			break;
 		    case DTJD:
@@ -657,11 +749,19 @@ char	*timestring;	/* Input time string */
 			printf (outform, epoch);
 			break;
 		    case DTVIG:
-			epb2dt (epoch, &date, &time);
-			printf ("%.4f %.7f\n", date, time);
+			epb2dt (epoch, &vdate, &vtime);
+			if (dateonly)
+			    printf ("%9.4f\n", vdate);
+			else
+			    printf ("%9.4f %10.7f\n", vdate, vtime);
 			break;
 		    case DTFITS:
 			fitsdate = epb2fd (epoch);
+			if (dateonly) {
+			    tchar = strchr (fitsdate, 'T');
+			    if (tchar != NULL)
+				*tchar = (char) 0;
+			    }
 			printf ("%s\n", fitsdate);
 			break;
 		    case DTJD:
@@ -696,11 +796,19 @@ char	*timestring;	/* Input time string */
 			printf (outform, epoch);
 			break;
 		    case DTVIG:
-			epj2dt (epoch, &date, &time);
-			printf ("%.4f %.7f\n", date, time);
+			epj2dt (epoch, &vdate, &vtime);
+			if (dateonly)
+			    printf ("%9.4f\n", vdate);
+			else
+			    printf ("%9.4f %10.7f\n", vdate, vtime);
 			break;
 		    case DTFITS:
 			fitsdate = epj2fd (epoch);
+			if (dateonly) {
+			    tchar = strchr (fitsdate, 'T');
+			    if (tchar != NULL)
+				*tchar = (char) 0;
+			    }
 			printf ("%s\n", fitsdate);
 			break;
 		    case DTJD:
@@ -720,6 +828,94 @@ char	*timestring;	/* Input time string */
 		    }
 		}
 	    break;
+	case DTUT:
+	    switch (outtype) {
+		case DTEP:
+		    epoch = ut2ep ();
+		    printf (outform, epoch);
+		    break;
+		case DTEPB:
+		    epoch = ut2epb ();
+		    printf (outform, epoch);
+		    break;
+		case DTEPJ:
+		    epoch = ut2epj ();
+		    printf (outform, epoch);
+		    break;
+		case DTVIG:
+		    ut2dt (&vdate, &vtime);
+		    if (dateonly)
+			printf ("%9.4f\n", vdate);
+		    else
+			printf ("%9.4f %10.7f\n", vdate, vtime);
+		    break;
+		case DTFITS:
+		    newfdate = ut2fd ();
+		    if (dateonly) {
+			tchar = strchr (newfdate, 'T');
+			if (tchar != NULL)
+			    *tchar = (char) 0;
+			}
+		    printf ("%s\n", newfdate);
+		    break;
+		case DTJD:
+		    jd = ut2jd ();
+		    printf (outform, jd);
+		    break;
+		case DTMJD:
+		    jd = ut2mjd ();
+		    printf (outform, jd);
+		    break;
+		case DT1950:
+		    ts = ut2ts ();
+		    printf (outform, ts);
+		    break;
+		case DTIRAF:
+		    its = ut2tsi ();
+		    printf (outform, its);
+		    break;
+		case DTUNIX:
+		    lts = ut2tsu ();
+		    printf (outform, lts);
+		    break;
+		default:
+		    printf ("*** Unknown output type %d\n", outtype);
+		}
+	    break;
+	case DTLT:
+	    switch (outtype) {
+		case DTVIG:
+		    lt2dt (&vdate, &vtime);
+		    if (dateonly)
+			printf ("%9.4f\n", vdate);
+		    else
+			printf ("%9.4f %10.7f\n", vdate, vtime);
+		    break;
+		case DTFITS:
+		    newfdate = lt2fd ();
+		    if (dateonly) {
+			tchar = strchr (newfdate, 'T');
+			if (tchar != NULL)
+			    *tchar = (char) 0;
+			}
+		    printf ("%s\n", newfdate);
+		    break;
+		case DT1950:
+		    ts = lt2ts ();
+		    printf (outform, ts);
+		    break;
+		case DTIRAF:
+		    its = lt2tsi ();
+		    printf (outform, its);
+		    break;
+		case DTUNIX:
+		    lts = lt2tsu ();
+		    printf (outform, lts);
+		    break;
+		default:
+		    printf ("*** Unknown output type %d\n", outtype);
+		}
+	    break;
 	default:
 	    printf ("*** Unknown input type %d\n", intype);
 	}
@@ -731,5 +927,10 @@ char	*timestring;	/* Input time string */
  *
  * Jan 20 2000	Add functions to convert Julian and Besselian epochs
  * Jan 21 2000	Add functions to convert to old FITS date and time
- * Jan 26 200	Addmodified Julian date conversions
+ * Jan 26 2000	Add modified Julian date conversions
+ * Mar  2 2000	Add "today" to use current date and time
+ * Mar  2 2000	Change date and time variables to vdate and vtime
+ * Mar  3 2000	Add -d option to print only date
+ * Mar 14 2000	Allow multiple conversions on one command line
+ * Mar 24 2000	Add current local time, current UT, and IRAF and Unix seconds
  */

@@ -1,5 +1,5 @@
 /* File libwcs/dateutil.c
- * January 28, 2000
+ * March 24, 2000
  * By Doug Mink
  */
 
@@ -8,12 +8,21 @@
    ep = fractional year, often epoch of a position including proper motion
   epb = Besselian epoch = 365.242198781-day years based on 1900.0
   epj = Julian epoch = 365.25-day years based on 2000.0
-   fd = FITS date string (dd/mm/yy before 2000, then yyyy-mm-dd[Thh:mm:ss.ss])
+   fd = FITS date string which may be any of the following:
+	yyyy.ffff (fractional year)
+	dd/mm/yy (FITS standard before 2000)
+	dd-mm-yy (nonstandard FITS use before 2000)
+	yyyy-mm-dd (FITS standard after 1999)
+	yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999)
    jd = Julian Date
   mjd = modified Julian Date = Julian date - 2400000.5
   ofd = FITS date string (dd/mm/yy before 2000, else no return)
  time = use fd2* with no date to convert time as hh:mm:ss.ss to sec, day, year
-   ts = seconds since 1950.0 (used for ephemeris computations
+   ts = UT seconds since 1950-01-01T00:00 (used for ephemeris computations)
+  tsi = local seconds since 1980-01-01T00:00 (used by IRAF as a time tag)
+  tsu = UT seconds since 1970-01-01T00:00 (used as Unix system time)
+   lt = Local time
+   ut = Universal Time (UTC)
 
  * dt2ep, dt2epb, dt2epj (date, time)
  *	Convert date as yyyy.ddmm and time as hh.mmsss to fractional year
@@ -26,7 +35,11 @@
  * dt2mjd (date,time)
  *	Convert date as yyyy.ddmm and time as hh.mmsss to modified Julian date
  * dt2ts (date,time)
- *	Convert date as yyyy.ddmm and time as hh.mmsss to seconds since 1950.0
+ *	Convert date (yyyy.ddmm) and time (hh.mmsss) to seconds since 1950-01-01
+ * dt2tsi (date,time)
+ *	Convert date (yyyy.ddmm) and time (hh.mmsss) to seconds since 1980-01-01
+ * dt2tsu (date,time)
+ *	Convert date (yyyy.ddmm) and time (hh.mmsss) to seconds since 1970-01-01
  * ep2dt, epb2dt, epj2dt (epoch,date, time)
  *	Convert fractional year to date as yyyy.ddmm and time as hh.mmsss
  * ep2fd, epb2fd, epj2fd (epoch)
@@ -76,6 +89,16 @@
  *	Convert Julian date to modified Julian date
  * jd2ts (dj)
  *	Convert Julian day to seconds since 1950.0
+ * lt2dt()
+ *	Return local time as yyyy.mmdd and time as hh.mmssss
+ * lt2fd()
+ *	Return local time as FITS ISO date string
+ * lt2tsi()
+ *	Return local time as IRAF seconds since 1980-01-01 00:00
+ * lt2tsu()
+ *	Return local time as Unix seconds since 1970-01-01 00:00
+ * lt2ts()
+ *	Return local time as Unix seconds since 1950-01-01 00:00
  * mjd2dt (dj,date,time)
  *	Convert modified Julian date to date as yyyy.mmdd and time as hh.mmssss
  * mjd2ep, mjd2epb, mjd2epj (dj)
@@ -100,6 +123,32 @@
  *	Convert seconds since 1950.0 to Julian date
  * ts2mjd (tsec)
  *	Convert seconds since 1950.0 to modified Julian date
+ * tsi2fd (tsec)
+ *	Convert seconds since 1980-01-01 to FITS standard date string
+ * tsi2dt (tsec,date,time)
+ *	Convert seconds since 1980-01-01 to date as yyyy.ddmm, time as hh.mmsss
+ * tsu2fd (tsec)
+ *	Convert seconds since 1970-01-01 to FITS standard date string
+ * tsu2tsi (tsec)
+ *	Convert UT seconds since 1970-01-01 to local seconds since 1980-01-01
+ * tsu2dt (tsec,date,time)
+ *	Convert seconds since 1970-01-01 to date as yyyy.ddmm, time as hh.mmsss
+ * ut2dt(date, time)
+ *	Current Universal Time to date (yyyy.mmdd) and time (hh.mmsss)
+ * ut2ep(), ut2epb(), ut2epj()
+ *	Current Universal Time to fractional year, Besselian, Julian epoch
+ * ut2fd()
+ *	Current Universal Time to FITS ISO date string
+ * ut2jd()
+ *	Current Universal Time to Julian Date
+ * ut2mjd()
+ *	Current Universal Time to Modified Julian Date
+ * ut2tsi()
+ *	Current Universal Time to IRAF seconds since 1980-01-01T00:00
+ * ut2tsu()
+ *	Current Universal Time to Unix seconds since 1970-01-01T00:00
+ * ut2ts()
+ *	Current Universal Time to seconds since 1950-01-01T00:00
  * isdate (string)
  *	Return 1 if string is a FITS date (old or ISO)
  *
@@ -119,12 +168,19 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <time.h>
+#include <sys/time.h>
 #include "fitsfile.h"
 
 static void fixdate();
 static int caldays();
 static double dint();
 static double dmod();
+static int ndec = 3;
+void
+setdatedec (nd)
+{ ndec = nd; return; }
+
 
 /* DT2FD-- convert vigesimal date and time to FITS date, yyyy-mm-ddThh:mm:ss.ss */
 
@@ -144,19 +200,43 @@ double	time;	/* Time as hh.mmssxxxx
 {
     int iyr,imon,iday,ihr,imn;
     double sec;
+    int nf;
     char *string;
+    char tstring[32], dstring[32];
+    char outform[64];
 
-    dt2i (date, time, &iyr,&imon,&iday,&ihr,&imn,&sec, 3);
+    dt2i (date, time, &iyr,&imon,&iday,&ihr,&imn,&sec, ndec);
 
     /* Convert to ISO date format */
-    string = (char *) calloc (1, 32);
+    string = (char *) calloc (32, sizeof (char));
+
+    /* Make time string */
+    if (time != 0.0) {
+	if (ndec == 0)
+	    nf = 2;
+	else
+	    nf = 3 + ndec;
+	if (ndec > 0) {
+	    sprintf (outform, "%%02d:%%02d:%%0%d.%df", nf, ndec);
+	    sprintf (tstring, outform, ihr, imn, sec);
+	    }
+	else {
+	    sprintf (outform, "%%02d:%%02d:%%0%dd", nf);
+	    sprintf (tstring, outform, ihr, imn, (int)(sec+0.5));
+	    }
+	}
+
+    /* Make date string */
+    if (date != 0.0)
+	sprintf (dstring, "%4d-%02d-%02d", iyr, imon, iday);
+
+    /* Make FITS (ISO) date string */
     if (date == 0.0)
-	sprintf (string, "%02d:%02d:%06.3f", ihr, imn, sec);
+	strcpy (string, tstring);
     else if (time == 0.0)
-	sprintf (string, "%4d-%02d-%02d", iyr, imon, iday);
+	strcpy (string, dstring);
     else
-	sprintf (string, "%4d-%02d-%02dT%02d:%02d:%06.3f",
-		 iyr, imon, iday, ihr, imn, sec);
+	sprintf (string, "%sT%s", dstring, tstring);
 
     return (string);
 }
@@ -228,16 +308,8 @@ void
 jd2dt (dj,date,time)
 
 double	dj;	/* Julian date */
-double	*date;	/* Date as yyyy.mmdd (returned)
-		    yyyy = calendar year (e.g. 1973)
-		    mm = calendar month (e.g. 04 = april)
-		    dd = calendar day (e.g. 15) */
-double	*time;	/* Time as hh.mmssxxxx (returned)
-		    *if time<0, it is time as -(fraction of a day)
-		    hh = hour of day (0 .le. hh .le. 23)
-		    nn = minutes (0 .le. nn .le. 59)
-		    ss = seconds (0 .le. ss .le. 59)
-		  xxxx = tenths of milliseconds (0 .le. xxxx .le. 9999) */
+double	*date;	/* Date as yyyy.mmdd (returned) */
+double	*time;	/* Time as hh.mmssxxxx (returned) */
 {
     double tsec;
 
@@ -271,7 +343,7 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 }
 
 
-/* MJD2JD-- convert Julian Date to Modified Julian Date */
+/* JD2MJD-- convert Julian Date to Modified Julian Date */
 
 double
 jd2mjd (dj)
@@ -305,7 +377,6 @@ jd2epb (dj)
 double	dj;	/* Julian date */
 
 {
-    double date, time;
     return (1900.0 + (dj - 2415020.31352) / 365.242198781);
 }
 
@@ -318,12 +389,108 @@ jd2epj (dj)
 double	dj;	/* Julian date */
 
 {
-    double date, time;
     return (2000.0 + (dj - 2451545.0) / 365.25);
 }
 
 
-/* MJD2DT-- convert Modified Julian Date to date as yyyy.mmdd and time as hh.mmssss */
+/* LT2DT-- Return local time as yyyy.mmdd and time as hh.mmssss */
+
+void
+lt2dt(date, time)
+
+double	*date;	/* Date as yyyy.mmdd (returned) */
+double	*time;	/* Time as hh.mmssxxxx (returned) */
+
+{
+    long tsec;
+    struct timeval tp;
+    struct timezone tzp;
+    struct tm *ts;
+
+    gettimeofday (&tp,&tzp);
+
+    tsec = tp.tv_sec;
+    ts = localtime (&tsec);
+
+    if (ts->tm_year < 1000)
+	*date = (double) (ts->tm_year + 1900);
+    else
+	*date = (double) ts->tm_year;
+    *date = *date + (0.01 * (double) (ts->tm_mon + 1));
+    *date = *date + (0.0001 * (double) ts->tm_mday);
+    *time = (double) ts->tm_hour;
+    *time = *time + (0.01 * (double) ts->tm_min);
+    *time = *time + (0.0001 * (double) ts->tm_sec);
+
+    return;
+}
+
+
+/* LT2FD-- Return current local time as FITS ISO date string */
+
+char *
+lt2fd()
+{
+    time_t tsec;
+    struct tm *ts;
+    struct timeval tp;
+    struct timezone tzp;
+    int month, day, year, hour, minute, second;
+    char *isotime;
+
+    gettimeofday (&tp,&tzp);
+    tsec = tp.tv_sec;
+
+    ts = localtime (&tsec);
+
+    year = ts->tm_year;
+    if (year < 1000)
+	year = year + 1900;
+    month = ts->tm_mon + 1;
+    day = ts->tm_mday;
+    hour = ts->tm_hour;
+    minute = ts->tm_min;
+    second = ts->tm_sec;
+
+    isotime = (char *) calloc (32, sizeof (char));
+    sprintf (isotime, "%04d-%02d-%02dT%02d:%02d:%02d",
+                      year, month, day, hour, minute, second);
+    return (isotime);
+}
+
+
+/* LT2TSI-- Return local time as IRAF seconds since 1980-01-01 00:00 */
+
+int
+lt2tsi()
+{
+    return ((int)(lt2ts() - 946684800.0));
+}
+
+
+/* LT2TSU-- Return local time as Unix seconds since 1970-01-01 00:00 */
+
+long
+lt2tsu()
+{
+    return ((long)(lt2ts() - 631152000.0));
+}
+
+/* LT2TS-- Return local time as Unix seconds since 1950-01-01 00:00 */
+
+double
+lt2ts()
+{
+    double tsec;
+    char *datestring;
+    datestring = lt2fd();
+    tsec = fd2ts (datestring);
+    free (datestring);
+    return (tsec);
+}
+
+
+/* MJD2DT-- convert Modified Julian Date to date (yyyy.mmdd) time (hh.mmssss) */
 
 void
 mjd2dt (dj,date,time)
@@ -406,7 +573,6 @@ mjd2epb (dj)
 double	dj;	/* Modified Julian Date */
 
 {
-    double date, time;
     return (1900.0 + (dj - 15019.81352) / 365.242198781);
 }
 
@@ -419,7 +585,6 @@ mjd2epj (dj)
 double	dj;	/* Modified Julian Date */
 
 {
-    double date, time;
     return (2000.0 + (dj - 51544.5) / 365.25);
 }
 
@@ -524,7 +689,7 @@ double	epoch;	/* Julian epoch (fractional 365.25-day years) */
 }
 
 
-/* EPB2EP -- convert Besselian epoch to fractional years */
+/* EPB2EP-- convert Besselian epoch to fractional years */
 
 double
 epb2ep (epoch)
@@ -725,7 +890,7 @@ double	epoch;	/* Julian epoch (fractional 365.25-day years) */
 
 
 
-/* EPB2EPJ -- convert Besselian epoch to Julian epoch */
+/* EPB2EPJ-- convert Besselian epoch to Julian epoch */
 
 double
 epb2epj (epoch)
@@ -1040,6 +1205,42 @@ char *string;	/* FITS date string, which may be:
 }
 
 
+/* FD2TSU-- convert from FITS date to Unix seconds since 1970-01-01T0:00 */
+
+long
+fd2tsu (string)
+
+char *string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+{
+    double date, time;
+    fd2dt (string, &date, &time);
+    return (dt2tsu (date, time));
+}
+
+
+/* FD2TSI-- convert from FITS date to IRAF seconds since 1980-01-01T0:00 */
+
+int
+fd2tsi (string)
+
+char *string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+{
+    double date, time;
+    fd2dt (string, &date, &time);
+    return (dt2tsi (date, time));
+}
+
+
 /* FD2TS-- convert FITS standard date to seconds since 1950 */
 
 double
@@ -1094,7 +1295,7 @@ char *string;	/* FITS date string, which may be:
     fd2i (string,&iyr,&imon,&iday,&ihr,&imn,&sec, 3);
 
     /* Convert to old FITS date format */
-    string = (char *) calloc (1, 32);
+    string = (char *) calloc (32, sizeof (char));
     if (iyr < 1900)
 	sprintf (string, "*** date out of range ***");
     else if (iyr < 2000)
@@ -1127,7 +1328,7 @@ char *string;	/* FITS date string, which may be:
     fd2i (string,&iyr,&imon,&iday,&ihr,&imn,&sec, 3);
 
     /* Convert to old FITS date format */
-    string = (char *) calloc (1, 32);
+    string = (char *) calloc (32, sizeof (char));
     if (iyr < 1900)
 	sprintf (string, "*** date out of range ***");
     else if (iyr < 2000)
@@ -1158,7 +1359,7 @@ char *string;	/* FITS date string, which may be:
     fd2i (string,&iyr,&imon,&iday,&ihr,&imn,&sec, 3);
 
     /* Convert to old FITS date format */
-    string = (char *) calloc (1, 32);
+    string = (char *) calloc (32, sizeof (char));
     sprintf (string, "%02d:%02d:%06.3f", ihr, imn, sec);
     return (string);
 }
@@ -1201,7 +1402,7 @@ double	*time;	/* Time as hh.mmssxxxx (returned)
 }
 
 
-/* FD2EP -- convert from FITS standard date to fractional year */
+/* FD2EP-- convert from FITS standard date to fractional year */
 
 double
 fd2ep (string)
@@ -1223,7 +1424,7 @@ char *string;	/* FITS date string, which may be:
 }
 
 
-/* FD2EPB -- convert from FITS standard date to Besselian epoch */
+/* FD2EPB-- convert from FITS standard date to Besselian epoch */
 
 double
 fd2epb (string)
@@ -1245,7 +1446,7 @@ char *string;	/* FITS date string, which may be:
 }
 
 
-/* FD2EPJ -- convert from FITS standard date to Julian epoch */
+/* FD2EPJ-- convert from FITS standard date to Julian epoch */
 
 double
 fd2epj (string)
@@ -1265,6 +1466,33 @@ char *string;	/* FITS date string, which may be:
     else
 	return (jd2epj (dj));
 }
+
+
+/* DT2TSU-- convert from date and time to Unix seconds since 1970-01-01T0:00 */
+
+long
+dt2tsu (date,time)
+
+double	date;	/* Date as yyyy.mmdd */
+double	time;	/* Time as hh.mmssxxxx
+		 *if time<0, it is time as -(fraction of a day) */
+{
+    return ((long)(dt2ts (date, time) - 631152000.0));
+}
+
+
+/* DT2TSI-- convert from date and time to IRAF seconds since 1980-01-01T0:00 */
+
+int
+dt2tsi (date,time)
+
+double	date;	/* Date as yyyy.mmdd */
+double	time;	/* Time as hh.mmssxxxx
+		 *if time<0, it is time as -(fraction of a day) */
+{
+    return ((int)(dt2ts (date, time) - 946684800.0));
+}
+
 
 
 /* DT2TS-- convert from date, time as yyyy.mmdd hh.mmsss to sec since 1950.0 */
@@ -1364,6 +1592,95 @@ double	*time;	/* Time as hh.mmssxxxx (returned)
 }
 
 
+/* TSI2DT-- Convert seconds since 1980-01-01 to date yyyy.ddmm, time hh.mmsss */
+
+void
+tsi2dt (isec,date,time)
+
+int	isec;	/* Seconds past 1980-01-01 */
+double	*date;	/* Date as yyyy.mmdd (returned) */
+double	*time;	/* Time as hh.mmssxxxx (returned) */
+{
+    ts2dt (tsi2ts (isec), date, time);
+}
+
+
+/* TSI2FD-- Convert seconds since 1980-01-01 to FITS standard date string */
+
+char *
+tsi2fd (isec)
+
+int	isec;	/* Seconds past 1980-01-01 */
+{
+    return (ts2fd (tsi2ts (isec)));
+}
+
+
+/* TSI2TS-- Convert seconds since 1980-01-01 to seconds since 1950-01-01 */
+
+double
+tsi2ts (isec)
+int	isec;	/* Seconds past 1980-01-01 */
+{
+    return ((double) isec + 946684800.0);
+}
+
+
+/* TSU2FD-- Convert seconds since 1970-01-01 to FITS standard date string */
+
+char *
+tsu2fd (isec)
+long	isec;	/* Seconds past 1970-01-01 */
+{
+    return (ts2fd (tsu2ts (isec)));
+}
+
+
+/* TSU2DT-- Convert seconds since 1970-01-01 to date yyyy.ddmm, time hh.mmsss */
+
+void
+tsu2dt (isec,date,time)
+long	isec;	/* Seconds past 1970-01-01 */
+double	*date;	/* Date as yyyy.mmdd (returned) */
+double	*time;	/* Time as hh.mmssxxxx (returned) */
+{
+    ts2dt (tsu2ts (isec), date, time);
+}
+
+
+/* TSU2TS-- Convert seconds since 1970-01-01 to seconds since 1950-01-01 */
+
+double
+tsu2ts (isec)
+long	isec;	/* Seconds past 1970-01-01 */
+{
+    return ((double) isec + 631152000.0);
+}
+
+/* TSU2TSI-- UT seconds since 1970-01-01 to local seconds since 1980-01-01 */
+
+int
+tsu2tsi (isec)
+long	isec;	/* Seconds past 1970-01-01 */
+{
+    double date, time;
+    struct tm *ts;
+
+    /* Get local time  from UT seconds */
+    ts = localtime (&isec);
+    if (ts->tm_year < 1000)
+	date = (double) (ts->tm_year + 1900);
+    else
+	date = (double) ts->tm_year;
+    date = date + (0.01 * (double) (ts->tm_mon + 1));
+    date = date + (0.0001 * (double) ts->tm_mday);
+    time = (double) ts->tm_hour;
+    time = time + (0.01 * (double) ts->tm_min);
+    time = time + (0.0001 * (double) ts->tm_sec);
+    return ((int)(dt2ts (date, time) - 631152000.0));
+}
+
+
 /* TS2FD-- convert seconds since 1950.0 to FITS date, yyyy-mm-ddThh:mm:ss.ss */
 
 char *
@@ -1372,7 +1689,6 @@ ts2fd (tsec)
 double	tsec;	/* Seconds past 1950.0 */
 {
     double date, time;
-    char *string;
 
     ts2dt (tsec, &date, &time);
     return (dt2fd (date, time));
@@ -1404,7 +1720,6 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 
 {
     double t,d;
-    int days;
 
     t = time;
     d = date;
@@ -1429,7 +1744,7 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 }
 
 
-/* FD2I -- convert from FITS standard date to year, mon, day, hours, min, sec */
+/* FD2I-- convert from FITS standard date to year, mon, day, hours, min, sec */
 
 void
 fd2i (string, iyr, imon, iday, ihr, imn, sec, ndsec)
@@ -1450,7 +1765,7 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 
 {
     double tsec;
-    int days, i;
+    int i;
     char *sstr, *dstr, *tstr, *cstr, *nval;
 
     /* Initialize all returned data to zero */
@@ -1459,7 +1774,7 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
     *iday = 0;
     *ihr = 0;
     *imn = 0;
-    *sec = 0,0;
+    *sec = 0.0;
 
     /* Return if no input string */
     if (string == NULL)
@@ -1626,7 +1941,7 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 
     /* Number of centuries since last /400 */
     days = days - (146097.0 * (double) (nc4));
-    nc = (int) ((days / 36524.0) + 0.0001);
+    nc = (int) ((days / 36524.0) + 0.000001);
     if (nc > 3) nc = 3;
 
     /* Number of leap years since last century */
@@ -1640,11 +1955,18 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 
     /* Day of month */
     days = days - (365.0 * (double) ny);
-    *iday = (int) (days + 0.00000001) + 1;
-    for (m = 1; m <= 12; m++) {
-	im = (m + ((m - 1) / 5)) % 2;
-	if (*iday-1 < im+30) break;
-	*iday = *iday - im - 30;
+    if (days < 0) {
+	m = 0;
+	*iday = 29;
+	}
+    else {
+	*iday = (int) (days + 0.00000001) + 1;
+	for (m = 1; m <= 12; m++) {
+	    im = (m + ((m - 1) / 5)) % 2;
+	    /* printf ("%d %d %d %d\n", m, im, *iday, nc); */
+	    if (*iday-1 < im+30) break;
+	    *iday = *iday - im - 30;
+	    }
 	}
 
     /* Month */
@@ -1657,6 +1979,148 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
     fixdate (iyr, imon, iday, ihr, imn, sec, ndsec);
 
     return;
+}
+
+
+/* UT2DT-- Current Universal Time as date (yyyy.mmdd) and time (hh.mmsss) */
+
+void
+ut2dt(date, time)
+
+double	*date;	/* Date as yyyy.mmdd (returned) */
+double	*time;	/* Time as hh.mmssxxxx (returned) */
+
+{
+    long tsec;
+    struct timeval tp;
+    struct timezone tzp;
+    struct tm *ts;
+
+    gettimeofday (&tp,&tzp);
+
+    tsec = tp.tv_sec;
+    ts = gmtime (&tsec);
+
+    if (ts->tm_year < 1000)
+	*date = (double) (ts->tm_year + 1900);
+    else
+	*date = (double) ts->tm_year;
+    *date = *date + (0.01 * (double) (ts->tm_mon + 1));
+    *date = *date + (0.0001 * (double) ts->tm_mday);
+    *time = (double) ts->tm_hour;
+    *time = *time + (0.01 * (double) ts->tm_min);
+    *time = *time + (0.0001 * (double) ts->tm_sec);
+
+    return;
+}
+
+
+/* UT2EP-- Return current Universal Time as fractional year */
+
+double
+ut2ep()
+{
+    return (jd2ep (ut2jd()));
+}
+
+
+/* UT2EPB-- Return current Universal Time as Besselian epoch */
+
+double
+ut2epb()
+{
+    return (jd2epb (ut2jd()));
+}
+
+
+/* UT2EPJ-- Return current Universal Time as Julian epoch */
+
+double
+ut2epj()
+{
+    return (jd2epj (ut2jd()));
+}
+
+
+/* UT2FD-- Return current Universal Time as FITS ISO date string */
+
+char *
+ut2fd()
+{
+    int year, month, day, hour, minute, second;
+    long tsec;
+    struct timeval tp;
+    struct timezone tzp;
+    struct tm *ts;
+    char *isotime;
+
+    gettimeofday (&tp,&tzp);
+    tsec = tp.tv_sec;
+    ts = gmtime (&tsec);
+
+    year = ts->tm_year;
+    if (year < 1000)
+	year = year + 1900;
+    month = ts->tm_mon + 1;
+    day = ts->tm_mday;
+    hour = ts->tm_hour;
+    minute = ts->tm_min;
+    second = ts->tm_sec; 
+
+    isotime = (char *) calloc (32, sizeof (char));
+    sprintf (isotime, "%04d-%02d-%02dT%02d:%02d:%02d",
+		      year, month, day, hour, minute, second);
+    return (isotime);
+}
+
+
+/* UT2JD-- Return current Universal Time as Julian Date */
+
+double
+ut2jd()
+{
+    return (fd2jd (ut2fd()));
+}
+
+
+/* UT2MJD-- convert current UT to Modified Julian Date */
+
+double
+ut2mjd ()
+
+{
+    return (ut2jd() - 2400000.5);
+}
+
+/* UT2TS-- current Universal Time as IRAF seconds since 1950-01-01T00:00 */
+
+double
+ut2ts()
+{
+    double tsec;
+    char *datestring;
+    datestring = ut2fd();
+    tsec = fd2ts (datestring);
+    free (datestring);
+    return (tsec);
+}
+
+
+/* UT2TSI-- current Universal Time as IRAF seconds since 1980-01-01T00:00 */
+
+int
+ut2tsi()
+{
+    return ((int)(ut2ts() - 946684800.0));
+}
+
+
+/* UT2TSU-- current Universal Time as IRAF seconds since 1970-01-01T00:00 */
+
+long
+ut2tsu()
+{
+    return ((long)(ut2ts () - 631152000.0));
 }
 
 
@@ -1934,4 +2398,9 @@ double	dnum, dm;
  * Jan 11 2000	Fix epoch to date conversion so .0 is 0:00, not 12:00
  * Jan 21 2000	Add separate Besselian and Julian epoch computations
  * Jan 28 2000	Add Modified Julian Date conversions
+ * Mar  2 2000	Implement decimal places for FITS date string
+ * Mar 14 2000	Fix bug in dealing with 2000-02-29 in ts2i()
+ * Mar 22 2000	Add lt2* and ut2* to get current time as local and UT
+ * Mar 24 2000	Fix calloc() calls
+ * Mar 24 2000	Add tsi2* and tsu2* to convert IRAF and Unix seconds
  */

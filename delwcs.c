@@ -1,5 +1,5 @@
 /* File delwcs.c
- * October 22, 1999
+ * March 23, 2000
  * By Doug Mink, after University of Iowa code
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -93,8 +93,8 @@ char *filename;
     int nbhead;		/* Actual number of bytes in FITS header */
     int iraffile;	/* 1 if IRAF image */
     char *irafheader;	/* IRAF image header */
-    char pixname[128];	/* IRAF pixel file name */
-    char newname[128];
+    char pixname[256];	/* IRAF pixel file name */
+    char newname[256];
     int lext, lroot;
     char *ext, *fname, *imext, *imext1;
     char echar;
@@ -109,7 +109,7 @@ char *filename;
 		return;
 		}
 	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE", 64, pixname);
+		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -247,4 +247,6 @@ char *filename;
  * Nov 30 1998	Add version and help commands for consistency
  *
  * Oct 21 1999	Drop unused variables after lint
+ *
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

@@ -1,5 +1,5 @@
 /* File imrot.c
- * January 24, 2000
+ * March 23, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -157,7 +157,7 @@ char *name;
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
     char *irafheader;		/* IRAF image header */
-    char newname[64];		/* Name for revised image */
+    char newname[256];		/* Name for revised image */
     char *ext;
     char *newimage;
     char *imext, *imext1;
@@ -167,7 +167,7 @@ char *name;
     char echar;
     char temp[8];
     char history[64];
-    char pixname[128];
+    char pixname[256];
 
     /* If not overwriting input file, make up a name for the output file */
     if (!overwrite) {
@@ -255,7 +255,7 @@ char *name;
 		return;
 		}
 	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE", 64, pixname);
+		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -355,4 +355,5 @@ char *name;
  * Oct 22 1999	Drop unused variables after lint
  *
  * Jan 24 2000	Add to name if BITPIX is changed
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

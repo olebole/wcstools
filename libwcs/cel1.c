@@ -237,29 +237,58 @@
 #include <math.h>
 #include "wcslib.h"
 
-/* Map error number to error message for each function. */
-const char *celset_errmsg[] = {
-   0,
-   "Invalid coordinate transformation parameters",
-   "Ill-conditioned coordinate transformation parameters"};
-
-const char *celfwd_errmsg[] = {
-   0,
-   "Invalid coordinate transformation parameters",
-   "Invalid projection parameters",
-   "Invalid value of (lng,lat)"};
-
-const char *celrev_errmsg[] = {
-   0,
-   "Invalid coordinate transformation parameters",
-   "Invalid projection parameters",
-   "Invalid value of (x,y)"};
-
 int  npcode = 25;
 char pcodes[25][4] =
       {"AZP", "TAN", "SIN", "STG", "ARC", "ZPN", "ZEA", "AIR", "CYP", "CAR",
        "MER", "CEA", "COP", "COD", "COE", "COO", "BON", "PCO", "GLS", "PAR",
        "AIT", "MOL", "CSC", "QSC", "TSC"};
+
+/* Map error number to error message for each function. */
+char *
+celset_errmsg (errno)
+int	errno;		/* Error code returned by call to celset() */
+{
+    if (errno == 0)
+	return ( (char)0 );
+    else if (errno == 1)
+	return ( "Invalid coordinate transformation parameters" );
+    else if (errno == 2)
+	return ( "Ill-conditioned coordinate transformation parameters");
+    else
+	return ( "Unknown error code");
+}
+
+char *
+celfwd_errmsg (errno)
+int	errno;		/* Error code returned by call to celfwd() */
+{
+    if (errno == 0)
+	return ( (char)0 );
+    else if (errno == 1)
+	return ( "Invalid coordinate transformation parameters" );
+    else if (errno == 2)
+	return ( "Invalid projection parameters" );
+    else if (errno == 3)
+	return ( "Invalid value of (lng,lat)" );
+    else
+	return ( "Unknown error code");
+}
+
+char *
+celrev_errmsg (errno)
+int	errno;		/* Error code returned by call to celrev() */
+{
+    if (errno == 0)
+	return ( (char)0 );
+    else if (errno == 1)
+	return ( "Invalid coordinate transformation parameters" );
+    else if (errno == 2)
+	return ( "Invalid projection parameters" );
+    else if (errno == 3)
+	return ( "Invalid value of (x,y)" );
+    else
+	return ( "Unknown error code");
+}
  
 
 int celset(pcode, cel, prj)
@@ -568,4 +597,6 @@ double *lng, *lat;
 }
 /* Dec 20 1999	Doug Mink -Change cosd() and sind() to cosdeg() and sindeg()
  * Dec 20 1999	Doug Mink -Include wcslib.h, which includes wcsmath.h and cel.h
+ *
+ * Feb  3 2000	Doug Mink - Change *_errmsg from arrays to functions
  */

@@ -1,5 +1,5 @@
 /* File gettab.c
- * January 4, 2000
+ * February 16, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -22,6 +22,7 @@
 static void usage();
 static void PrintValues();
 static char *strclean();
+static int maxncond = 100;
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;
@@ -35,6 +36,10 @@ static int assign = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int nlines = 0;
 static int *keeplines;		/* List of lines to keep if nlines > 0 */
+static int ncond=0;             /* Number of keyword conditions to check */
+static int condand=1;           /* If 1, AND comparisons, else OR */
+static char **cond;             /* Conditions to check */
+static char **ccond;            /* Condition characters */
 
 main (ac, av)
 int ac;
@@ -59,10 +64,6 @@ char **av;
     char string[80];
     int icond,ncond;
     char *vali, *calias, *valeq, *valgt, *vallt;
-    char *cond[MAXCOND];
-    char opcond[MAXCOND]; /* Logical conditions <, =, > */
-    char *vcond[MAXCOND]; /* ASCII values to be tested against */
-    double xcond[MAXCOND]; /* Numeric values to be tested against */
     struct TabTable *tabtable;
     char *ranges = NULL;
     char *temp;
@@ -77,6 +78,9 @@ char **av;
 	version = 1;
 	usage();
 	}
+
+    cond = (char **)calloc (maxncond, sizeof(char *));
+    ccond = (char **)calloc (maxncond, sizeof(char *));
 
     nkwd = 0;
     ncond = 0;
@@ -110,6 +114,10 @@ char **av;
 			usage();
 		    ndec = (int) (atof (*++av));
 		    ac--;
+		    break;
+
+		case 'o': /* OR conditions insted of ANDing them */
+		    condand = 0;
 		    break;
 
 		case 'p':	/* output column headings */
@@ -212,6 +220,25 @@ char **av;
 	    continue;
 	    }
 
+	/* Condition */
+	else if (strchr (*av, '=') != NULL || strchr (*av, '#') != NULL ||
+		 strchr (*av, '>') != NULL || strchr (*av, '<') != NULL ) {
+	    if (ncond >= maxncond) {
+		maxncond = maxncond * 2;
+		cond = (char **)realloc((void *)cond, maxncond*sizeof(void *));
+		ccond = (char **)realloc((void *)cond, maxncond*sizeof(void *));
+		}
+	    cond[ncond] = *av;
+	    ccond[ncond] = strchr (*av, '=');
+	    if (ccond[ncond] == NULL)
+		ccond[ncond] = strchr (*av, '#');
+	    if (ccond[ncond] == NULL)
+		ccond[ncond] = strchr (*av, '>');
+	    if (ccond[ncond] == NULL)
+		ccond[ncond] = strchr (*av, '<');
+	    ncond++;
+	    }
+
 	/* Record column name */
 	else {
 	    kwd[nkwd] = *av;
@@ -233,55 +260,6 @@ char **av;
 	nfile++;
 	}
 
-    /* Set conditions */
-    for (icond = 0; icond < ncond; icond++) {
-	valeq = strchr (cond[icond], '=');
-	vallt = strchr (cond[icond], '<');
-	valgt = strchr (cond[icond], '>');
-	if (valeq != NULL || vallt != NULL || valgt != NULL) {
-	    vali = valeq;
-	    if (vali == NULL)
-		vali = vallt;
-	    if (vali == NULL)
-		vali = valgt;
-	    *vali = (char) 0;
-	    vcond[icond] = vali + 1;
-	    if (valeq != NULL) {
-		if (!isnum (vcond[icond]) && !strchr (vcond[icond],':'))
-		    opcond[icond] = 's';
-		else {
-		    opcond[icond] = '=';
-		    if (strchr (vcond[icond], ':'))
-			xcond[icond] = str2dec (vcond[icond]);
-		    else
-			xcond[icond] = atof (vcond[icond]);
-		    }
-		}
-	    else if (vallt != NULL) {
-		opcond[icond] = '<';
-		if (strchr (vcond[icond], ':')) {
-		    if (strsrch(cond[icond],"RA") || strsrch(cond[icond],"ra"))
-			xcond[icond] = str2ra (vcond[icond]);
-		    else
-			xcond[icond] = str2dec (vcond[icond]);
-		    }
-		else
-		    xcond[icond] = atof (vcond[icond]);
-		}
-	    else if (valgt != NULL) {
-		opcond[icond] = '>';
-		if (strchr (vcond[icond], ':')) {
-		    if (strsrch(cond[icond],"RA") || strsrch(cond[icond],"ra"))
-			xcond[icond] = str2ra (vcond[icond]);
-		    else
-			xcond[icond] = str2dec (vcond[icond]);
-		    }
-		else
-		    xcond[icond] = atof (vcond[icond]);
-		}
-	    }
-	}
-
     /* Decode ranges */
     if (ranges != NULL) {
 	range = RangeInit (ranges, nldef);
@@ -296,12 +274,33 @@ char **av;
 	/* Print column headings if tab table or headings requested */
 	if (printhead || tabout) {
 
+	    /* Open the input tab table */
+	    if ((tabtable = tabopen (name)) == NULL) {
+		fprintf (stderr,"%s\n", gettaberr());
+		return (1);
+		}
+
 	    /* For tab table output, keep input header information */
 	    if (tabout) {
-    		if ((tabtable = tabopen (name)) != NULL &&
-		    tabtable->tabbuff != tabtable->tabhead) {
+		if (tabtable->tabbuff != tabtable->tabhead) {
 		    *(tabtable->tabhead-1) = (char) 0;
 		    printf ("%s\n", tabtable->tabbuff);
+		    }
+		}
+
+	    /* Print conditions in header */
+	    for (icond = 0; icond < ncond; icond++) {
+		if (verbose) {
+		    if (condand || icond == 0)
+			printf ("%s\n",cond[icond]);
+		    else
+			printf (" or %s\n",cond[icond]);
+		    }
+		else if (tabout) {
+		    if (condand || icond == 0)
+			printf ("condition	%s\n", cond[icond]);
+		    else
+			printf ("condition	or %s\n", cond[icond]);
 		    }
 		}
 
@@ -320,20 +319,20 @@ char **av;
 
 	    /* Print column names */
 	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
-		if (alias[ikwd])
+		if (alias[ikwd]) {
 		    kw1 = alias[ikwd];
-		else
+		    lkwd = strlen (alias[ikwd]);
+		    }
+		else {
 		    kw1 = kwd[ikwd];
+		    lkwd = strlen (kwd[ikwd]);
+		    }
 		printf ("%s",kw1);
 		if ((i = tabcol (tabtable, kwd[ikwd])) > 0) {
 		    lfield = tabtable->lcfld[i-1];
 		    if (lfield > 32)
 			lfield = 32;
 		    }
-		if (alias[ikwd])
-		    lkwd = strlen (alias[ikwd]);
-		else
-		    lkwd = strlen (kwd[ikwd]);
 		if (tabout && lfield > lkwd) {
 		    for (i = lkwd; i < lfield; i++)
 			printf (" ");
@@ -347,47 +346,21 @@ char **av;
 		}
 
 	    /* Print field-defining hyphens if tab table output requested */
-	    if (nfile > 1) {
-		if (tabout) {
-		    printf ("--------");
-		    if (maxlfn > 8) {
-			for (i = 8; i < maxlfn; i++)
-			    printf (" ");
+	    if (tabout) {
+		for (ikwd = 0; ikwd < nkwd; ikwd++) {
+		    if ((i = tabcol (tabtable, kwd[ikwd])) > 0) {
+			lfield = tabtable->lcfld[i-1];
+			for (i = 0; i < lfield; i++)
+			    printf ("-");
+			if (ikwd == nkwd - 1)
+			    printf ("\n");
+			else
+			    printf ("	");
 			}
-		    printf ("	");
 		    }
-		else
-		    printf (" ");
 		}
 
-	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
-		strcpy (string, "---------------------------------");
-		if (tabout) {
-		    if ((i = tabcol (tabtable, kwd[ikwd])) > 0) {
-			lkwd = tabtable->lcfld[i-1];
-			if (lkwd > 32)
-			    lkwd = 32;
-			}
-		    else if (alias[ikwd])
-			lkwd = strlen (alias[ikwd]);
-		    else
-			lkwd = strlen (kwd[ikwd]);
-		    }
-		else if (alias[ikwd])
-		    lkwd = strlen (alias[ikwd]);
-		else
-		    lkwd = strlen (kwd[ikwd]);
-		string[lkwd] = 0;
-		printf ("%s",string);
-		if (verbose || ikwd == nkwd - 1)
-	    	    printf ("\n");
-		else if (tabout)
-	    	    printf ("	");
-		else
-		    printf (" ");
-		}
-	    if (tabout)
-		 tabclose (tabtable);
+	    tabclose (tabtable);
 	    }
 
     /* Get table values one at a time */
@@ -402,7 +375,7 @@ char **av;
 	    while (fgets (filename, 128, flist) != NULL) {
 		lastchar = filename + strlen (filename) - 1;
 		if (*lastchar < 32) *lastchar = 0;
-		PrintValues (filename,nkwd,kwd,alias,ncond,cond,opcond,vcond,xcond);
+		PrintValues (filename,nkwd,kwd,alias);
 		if (verbose)
 		    printf ("\n");
 		}
@@ -412,15 +385,19 @@ char **av;
 	/* Read tables from command line list */
 	else {
 	    for (ifile = 0; ifile < nfile; ifile++)
-	    	PrintValues (fn[ifile],nkwd,kwd,alias,ncond,cond,opcond,vcond,xcond);
+	    	PrintValues (fn[ifile],nkwd,kwd,alias);
 	    }
 	}
 
     else {
 	for (ifile = 0; ifile < nfile; ifile++)
-	    PrintValues (fn[ifile],nkwd,kwd,alias,ncond,cond,opcond,vcond,xcond);
+	    PrintValues (fn[ifile],nkwd,kwd,alias);
 	}
 
+    if (ccond != NULL)
+	free (ccond);
+    if (cond != NULL)
+	free (cond);
     return (0);
 }
 
@@ -430,13 +407,14 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF header keyword values\n");
-    fprintf(stderr,"usage: gettab [-ahtv][-n num] file1.tab ... filen.tab kw1 kw2 ... kwn\n");
-    fprintf(stderr,"       gettab [-ahptv][-n num] @filelist kw1 kw2 ... kwn\n");
-    fprintf(stderr,"       gettab [-ahptv][-n num] <file1.tab kw1 kw2 ... kwn\n");
+    fprintf(stderr,"usage: gettab [-ahoptv][-n num] file1.tab ... filen.tab kw1 kw2 ... kwn\n");
+    fprintf(stderr,"       gettab [-ahoptv][-n num] @filelist kw1 kw2 ... kwn\n");
+    fprintf(stderr,"       gettab [-ahoptv][-n num] <file1.tab kw1 kw2 ... kwn\n");
     fprintf(stderr,"  -a: List file even if keywords are not found\n");
     fprintf(stderr,"  -e: Print keyword=value list\n");
     fprintf(stderr,"  -h: Print column headings\n");
     fprintf(stderr,"  -n: Number of decimal places in numeric output\n");
+    fprintf(stderr,"  -o: OR conditions instead of ANDing them\n");
     fprintf(stderr,"  -p: Print full pathnames of files\n");
     fprintf(stderr,"  -t: Output in tab-separated table format\n");
     fprintf(stderr,"  -v: Verbose\n");
@@ -445,49 +423,44 @@ usage ()
 
 
 static void
-PrintValues (name, nkwd, kwd, alias, ncond, kcond, opcond, vcond, xcond)
+PrintValues (name, nkwd, kwd, alias)
 
 char	*name;	  /* Name of FITS or IRAF image file */
 int	nkwd;	  /* Number of keywords for which to print values */
 char	*kwd[];	  /* Names of keywords for which to print values */
 char	*alias[]; /* Output names of keywords if different from input */
-int	ncond;	  /* Number of conditions which must be met */
-char	*kcond[]; /* Columns to be tested */
-char	*opcond;  /* Logical conditions <, =, > */
-char	*vcond[]; /* Values to be tested against */
-double	*xcond;	  /* Values to be tested against */
 
 {
     char *str;
+    char *cstr, *cval, cvalue[64];
+    char numstr[32], numstr1[32];
+    int pass;
     int drop;
-    int icond;
+    int jval, jcond, icond, i, lstr;
+    double dval, dcond, dnum;
+    char tcond;
     char fnform[8];
     char string[80];
     char *filename;
     char outline[1000];
-    char *line;
+    char *line, *last;
     char *endline;
     char newline = 10;
     int ikwd, nfound;
-    int i, iline, keep;
+    int iline, keep;
     double xnum;
     struct TabTable *tabtable;
-    int col[MAXCOL];
-    int ccond[MAXCOND];
+    int *col;
+    int *ccol;
 
     /* Figure out conditions first, separating out keywords to check */
 
-    /* Retrieve FITS header from FITS or IRAF .imh file */
+    /* Read tab table and set up data structure */
     if ((tabtable = tabopen (name)) == NULL)
 	return;
 
     if (verbose) {
 	fprintf (stderr,"Print table Values from tab table file %s\n", name);
-	}
-
-    if (tabout || printhead) {
-	*(tabtable->tabdata - 1) = 0;
-	printf ("%s\n", tabtable->tabhead);
 	}
 
     /* Find file name */
@@ -505,17 +478,28 @@ double	*xcond;	  /* Values to be tested against */
 	}
     nfound = 0;
     line = tabtable->tabdata;
+    last = line + strlen (tabtable->tabdata);
+
+    /* Find column numbers for column names to speed up comparisons */
+    if (ncond > 0) {
+	ccol = (int *) calloc (ncond, sizeof (int));
+	ccol[0] = 0;
+	for (icond = 0; icond < ncond; icond++) {
+	    tcond = *ccond[icond];
+	    *ccond[icond] = (char) 0;
+            ccol[icond] = tabcol (tabtable, ccond[icond]);
+	    *ccond[icond] = tcond;
+	    }
+	}
 
     /* Find column numbers for column names to speed up extraction */
-    ccond[0] = 0;
-    for (icond = 0; icond < ncond; icond++)
-	ccond[icond] = tabcol (tabtable, kcond[icond]);
+    col = (int *) calloc (nkwd, sizeof (int));
     col[0] = 0;
     for (ikwd = 0; ikwd < nkwd; ikwd++)
 	col[ikwd] = tabcol (tabtable, kwd[ikwd]);
 
     iline = 0;
-    while (line != NULL && strlen (line) > 0) {
+    while (line != NULL && line < last) {
 	outline[0] = (char) 0;
 
 	/* Check line number if extracting specific lines */
@@ -528,106 +512,140 @@ double	*xcond;	  /* Values to be tested against */
 		    keep = 1;
 		}
 	    if (!keep)
-		drop = 1;
+		continue;
 	    }
 
 	/* Check conditions */
-	for (icond = 0; icond < ncond; icond++) {
-	    if (ccond[icond] > 0 &&
-		!tabgetc (tabtable, line, ccond[icond], string, 80)) {
-		str = strclean (string);
-		if (opcond[icond] == 's') {
-		    if (!strcmp (str, vcond[icond])) {
-			drop++;
-			break;
-			}
+	pass = 0;
+	if (ncond > 0) {
+	    for (icond = 0; icond < ncond; icond++) {
+		if (condand)
+		    pass = 0;
+
+		/* Extract test value from comparison string */
+		tcond = *ccond[icond];
+		*ccond[icond] = (char) 0;
+		cstr = ccond[icond]+1;
+		if (strchr (cstr, ':')) {
+		    dnum = str2dec (cstr);
+		    num2str (numstr, dnum, 0, 7);
+		    cstr = numstr;
 		    }
-		else {
-		    if (strchr (str, ':')) {
-			if (strsrch (kcond[icond], "RA") ||
-			    strsrch (kcond[icond], "ra"))
-			    xnum = str2ra (string);
-			else
-			    xnum = str2dec (string);
-			}
-		    else if (!isnum (str)) {
-			drop++;
-			break;
-			}
-		    else
-			xnum = atof (str);
-		    if (opcond[icond] == '=' && xnum != xcond[icond]) {
-			drop++;
-			break;
-			}
-		    else if (opcond[icond] == '>' && xnum <= xcond[icond]) {
-			drop++;
-			break;
-			}
-		    else if (opcond[icond] == '<' && xnum >= xcond[icond]) {
-			drop++;
-			break;
-			}
-		    
+		strclean (cstr);
+
+		/* Read comparison value from tab table */
+		if (tabgetc (tabtable, line, ccol[icond], cvalue, 64))
+		    continue;
+		cval = cvalue;
+		if (strchr (cval, ':')) {
+		    dnum = str2dec (cval);
+		    num2str (numstr1, dnum, 0, 7);
+		    cval = numstr1;
 		    }
+		strclean (cval);
+
+		/* Compare floating point numbers */
+		if (isnum (cstr) == 2 && isnum (cval)) {
+		    *ccond[icond] = tcond;
+		    dcond = atof (cstr);
+		    dval = atof (cval);
+		    if (tcond == '=' && dval == dcond)
+			pass = 1;
+		    if (tcond == '#' && dval != dcond)
+			pass = 1;
+		    if (tcond == '>' && dval > dcond)
+			pass = 1;
+		    if (tcond == '<' && dval < dcond)
+			pass = 1;
+		    }
+
+	    /* Compare integers */
+	    else if (isnum (cstr) == 1 && isnum (cval)) {
+		*ccond[icond] = tcond;
+		jcond = atoi (cstr);
+		jval = atoi (cval);
+		if (tcond == '=' && jval == jcond)
+		    pass = 1;
+		if (tcond == '#' && jval != jcond)
+		    pass = 1;
+		if (tcond == '>' && jval > jcond)
+		    pass = 1;
+		if (tcond == '<' && jval < jcond)
+		    pass = 1;
 		}
+
+		/* Compare strings (only equal or not equal */
+		else {
+		    *ccond[icond] = tcond;
+		    if (tcond == '=' && !strcmp (cstr, cval))
+			pass = 1;
+		    if (tcond == '#' && strcmp (cstr, cval))
+			pass = 1;
+		    }
+		if (condand && !pass)
+		    break;
+		}
+	    if (!pass)
+		continue;
 	    }
 
 	/* Extract desired columns */
-	if (!drop) {
-	    if (nkwd == 0) {
-		endline = strchr (line+1, newline);
-		*endline = 0;
-		printf ("%s\n", line);
-		*endline = newline;
-		}
-	    else {
-		for (ikwd = 0; ikwd < nkwd; ikwd++) {
-		    if (!tabgetc (tabtable, line, col[ikwd], string, 80)) {
-			str = strclean (string);
-			if (ndec > -9 && isnum (str) && strchr (str, '.'))
-			    num2str (str, atof(str), 0, ndec);
-			if (verbose) {
-			    if (alias[ikwd])
-				printf ("%s/%s = %s",kwd[ikwd],alias[ikwd],str);
-			    else
-				printf ("%s = %s", kwd[ikwd], str);
-			    }
-			else if (assign) {
-			    if (alias[ikwd])
-				strcat (outline, alias[ikwd]);
-			    else
-				strcat (outline, kwd[ikwd]);
-			    strcat (outline, "=");
-			    strcat (outline, str);
-			    }
+	if (nkwd == 0) {
+	    endline = strchr (line+1, newline);
+	    *endline = 0;
+	    printf ("%s\n", line);
+	    *endline = newline;
+	    }
+	else {
+	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
+		if (!tabgetc (tabtable, line, col[ikwd], string, 80)) {
+		    str = strclean (string);
+		    if (ndec > -9 && isnum (str) && strchr (str, '.'))
+			num2str (str, atof(str), 0, ndec);
+		    if (verbose) {
+			if (alias[ikwd])
+			    printf ("%s/%s = %s",kwd[ikwd],alias[ikwd],str);
 			else
-			    strcat (outline, str);
-			nfound++;
+			    printf ("%s = %s", kwd[ikwd], str);
 			}
-		    else if (verbose)
-			printf ("%s not found", kwd[ikwd]);
+		    else if (assign) {
+			if (alias[ikwd])
+			    strcat (outline, alias[ikwd]);
+			else
+			    strcat (outline, kwd[ikwd]);
+			strcat (outline, "=");
+			strcat (outline, str);
+			 }
 		    else
-			strcat (outline, "___");
-
-		    if (verbose)
-			printf ("\n");
-		    else if (ikwd < nkwd-1) {
-			if (tabout)
-			    strcat (outline, "	");
-			else
-			    strcat (outline, " ");
-			}
+			strcat (outline, str);
+		    nfound++;
 		    }
+		else if (verbose)
+		    printf ("%s not found", kwd[ikwd]);
+		else
+		    strcat (outline, "___");
 
-		if (!verbose && (nfile < 2 || nfound > 0 || listall))
-		    printf ("%s\n", outline);
+		if (verbose)
+		    printf ("\n");
+		else if (ikwd < nkwd-1) {
+		    if (tabout)
+			strcat (outline, "	");
+		    else
+			strcat (outline, " ");
+		    }
 		}
+
+	    if (!verbose && (nfile < 2 || nfound > 0 || listall))
+		printf ("%s\n", outline);
 	    }
 
 	line = strchr (line+1, newline);
-	if (line != NULL)
-	    line++;
+	if (line == NULL)
+	    break;
+	if (strlen (line) < 1)
+	    break;
+	if (*++line == (char) 0)
+	    break;
 	}
 
     tabclose (tabtable);
@@ -709,4 +727,5 @@ char *string;
  *
  * Jan  3 2000	Use isrange() to check for ranges
  * Jan  4 2000	If no keywords are specified, print entire line if tests met
+ * Feb 16 2000	Always open tab table if printing headers OR putting out tab
  */

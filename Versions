@@ -1,4 +1,28 @@
-Version 2.7.1 (February 7, 2000)
+Version 2.7.2 (March 28, 2000)
+cphead: New program to copy keyword values between headers
+gethead: Add extraction of keyword= values from any ASCII file
+         Add conditions for use of specific header files
+         Add replacement of embedded spaces with underscores
+getcol and gettab: Add conditions for use of lines in files
+imwcs: Allow iterating without then with tolerance reducing in one run
+imcat and scat: Improve handling of Starbase tab table catalogs
+                Clean up output formatting
+platepos.c: Use inverse CD matrix to get better initial x,y value
+imgetwcs.c: Set reference pixel value to output system (bug fix)
+hput.c: Do not add quotes if writing COMMENT or HISTORY using hputs()
+imhfile.c: Minimize length of path in pixel file name, fix bug dealing with
+           very long file paths.
+dateutil: Fix bug causing 2000-02-29 to appear as 2000-03-01; other dates OK.
+          Add conversion routines for current local and UT times.
+Proper motion reporting has been implemented in scat and imcat with
+additional modifications to ctgread.c, tabread.c, actread.c, and binread.c
+
+Version 2.7.1 (February 15, 2000)
+cphead: New program to copy keyword values between headers
+imwcs and immatch: Increase limit of matches to 500
+getcol: improve parsing of ranges of columns and lines
+gethead: Add optional output format which can be input to sethead
+tabread: implement proper motions in Starbase tab table files
 imstack: add option to stack a single image on itself n times and fix bugs
 
 Version 2.7.0 (February 3, 2000)

@@ -1,5 +1,5 @@
 /* File fixpix.c
- * October 22, 1999
+ * March 23, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -173,9 +173,9 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
     double bzero;		/* Zero point for pixel scaling */
     double bscale;		/* Scale factor for pixel scaling */
     char *imext, *imext1;
-    char newname[128];
-    char pixname[128];
-    char tempname[128];
+    char newname[256];
+    char pixname[256];
+    char tempname[256];
     char line[128];
     char history[64];
     char echar;
@@ -197,7 +197,7 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
                 return;
                 }
 	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE", 64, pixname);
+		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -430,4 +430,6 @@ int	ixr, iyr;	/* Upper right corner of region (1 based) */
  * Sep 27 1999	Use new 1-based-coordinate image access subroutines
  * Oct 15 1999	Fix input from list file
  * Oct 22 1999	Drop unused variables after lint
+ *
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

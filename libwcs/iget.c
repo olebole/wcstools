@@ -1,5 +1,5 @@
 /*** File libwcs/iget.c
- *** October 21, 1999
+ *** February 11, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	iget.c (Get IRAF FITS Header parameter values)
@@ -380,13 +380,13 @@ char *keyword0;	/* character string containing the name of the keyword
 	i = 0;
 	if (*vpos == '"') {
 	     vpos++;
-	     while (*vpos != '"')
+	     while (*vpos && *vpos != '"' && i < 500)
 		line[i++] = *vpos++;
 	     }
 
 /* Otherwise copy until next space or tab */
 	else {
-	     while (*vpos != ' ' && *vpos != (char)9 && *vpos > 0)
+	     while (*vpos != ' ' && *vpos != (char)9 && *vpos > 0 && i < 500)
 		line[i++] = *vpos++;
 	     }
 
@@ -504,4 +504,6 @@ char *keyword;	/* character string containing the name of the variable
 
  * May  5 1999	values.h -> POSIX limits.h: MAXINT->INT_MAX, MAXSHORT->SHRT_MAX
  * Oct 21 1999	Fix declarations after lint
+ *
+ * Feb 11 2000	Stop search for end of quoted keyword if more than 500 chars
  */

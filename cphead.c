@@ -1,4 +1,4 @@
-/* File keyhead.c
+/* File cphead.c
  * March 22, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -13,21 +13,32 @@
 #include <math.h>
 #include "libwcs/fitsfile.h"
 
-#define MAXKWD 50
-#define MAXFILES 1000
+#define MAXKWD 100
+#define MAXFILES 2000
 static int maxnkwd = MAXKWD;
 static int maxnfile = MAXFILES;
 
 static void usage();
-static void ChangeKeyNames ();
+static void CopyValues();
+static void strclean();
+extern char *GetFITShead();
 
 static int verbose = 0;		/* verbose/debugging flag */
-static int newimage = 0;	/* write new image with modified header */
-static int replace = 0;		/* replace value of first keyword with second */
+static int nfile = 0;
+static int ndec = -9;
+static int maxlfn = 0;
+static int listall = 0;
+static int listpath = 0;
+static int newimage0 = 0;
 static int keyset = 0;
 static int histset = 0;
+static int tabout = 0;
+static int printhead = 0;
 static int version = 0;		/* If 1, print only program name and version */
-
+static int printfill=0;		/* If 1, print ___ for unfound keyword values */
+static int printfile=1;		/* If 1, print filename first if >1 files */
+static int keyeqval=0;		/* If 1, print keyword=value, not just value */
+static char *rootdir=NULL;	/* Root directory for input files */
 
 main (ac, av)
 int ac;
@@ -37,15 +48,18 @@ char **av;
     char **kwd;
     int nkwd = 0;
     char **fn;
-    int nfile = 0;
     int ifile;
-    int readlist = 0;
-    char filename[128];
+    int lfn;
+    char filename[256];
+    char *infile;
+    char *name;
     FILE *flist, *fdk;
     char *listfile;
     char *ilistfile;
     char *klistfile;
-    int ikwd;
+    int ikwd, lkwd, i;
+    char *kw, *kwe;
+    char string[80];
 
     ilistfile = NULL;
     klistfile = NULL;
@@ -65,31 +79,41 @@ char **av;
 
     /* crack arguments */
     for (av++; --ac > 0; av++) {
-	if (*(str = *av) == '-') {
+	if (*(str = *av)=='-') {
 	    char c;
 	    while (c = *++str)
 	    switch (c) {
 
-		case 'h':	/* set HISTORY */
+		case 'd': /* Root directory for input */
+		    if (ac < 2)
+			usage();
+		    rootdir = *++av;
+		    ac--;
+		    break;
+
+		case 'h':	/* Set HISTORY */
 		    histset++;
 		    break;
 	
-		case 'k':	/* set KEYHEAD keyword */
+		case 'k':	/* Set CPHEAD keyword */
 		    keyset++;
 		    break;
-	
-		case 'n':	/* write to new file */
-		    newimage = 1;
+
+		case 'n':	/* Write new file */
+		    newimage0++;
 		    break;
 
-		case 'r':	/* write to new file */
-		    replace = 1;
+		case 'p': /* Number of decimal places in output */
+		    if (ac < 2)
+			usage();
+		    ndec = (int) (atof (*++av));
+		    ac--;
 		    break;
 	
-		case 'v':	/* more verbosity */
+		case 'v': /* More verbosity */
 		    verbose++;
 		    break;
-	
+
 		default:
 		    usage();
 		    break;
@@ -98,7 +122,6 @@ char **av;
 
 	/* File containing a list of keywords or files */
 	else if (*av[0] == '@') {
-	    readlist++;
 	    listfile = *av + 1;
 	    if (isimlist (listfile)) {
 		ilistfile = listfile;
@@ -113,7 +136,7 @@ char **av;
 			maxnkwd = nkwd;
 			}
 		    if ((fdk = fopen (klistfile, "r")) == NULL) {
-			fprintf (stderr,"KEYHEAD: File %s cannot be read\n",
+			fprintf (stderr,"GETHEAD: File %s cannot be read\n",
 				 klistfile);
 			nkwd = 0;
 			}
@@ -130,12 +153,24 @@ char **av;
 
 	/* Image file */
 	else if (isfits (*av) || isiraf (*av)) {
-	    if (nfile >= maxnfile) {
-		maxnfile = maxnfile * 2;
-		fn = (char **) realloc ((void *)fn, maxnfile);
+	    if (infile == NULL)
+		infile = *av;
+	    else {
+		if (nfile >= maxnfile) {
+		    maxnfile = maxnfile * 2;
+		    fn = (char **) realloc ((void *)fn, maxnfile);
+		    }
+		fn[nfile] = *av;
+
+		if (listpath || (name = strrchr (fn[nfile],'/')) == NULL)
+		    name = fn[nfile];
+		else
+		    name = name + 1;
+		lfn = strlen (name);
+		if (lfn > maxlfn)
+		    maxlfn = lfn;
+		nfile++;
 		}
-	    fn[nfile] = *av;
-	    nfile++;
 	    }
 
 	/* Keyword */
@@ -149,26 +184,34 @@ char **av;
 	    }
 	}
 
-    if (nkwd <= 0 || nfile < 0 )
+    if (nkwd <= 0 || nfile <= 0 )
 	usage ();
+
+    if (nkwd > 1)
+	printfill = 1;
+    if (nfile < 2 && !listall)
+	printfile = 0;
+
 
     /* Open file containing a list of images, if there is one */
     if (ilistfile != NULL) {
 	if ((flist = fopen (ilistfile, "r")) == NULL) {
-	    fprintf (stderr,"KEYHEAD: Image list file %s cannot be read\n",
+	    fprintf (stderr,"GETHEAD: Image list file %s cannot be read\n",
 		     ilistfile);
 	    usage ();
 	    }
 	}
+    if (nfile < 1)
+	usage();
 
     /* Read through headers of images */
     for (ifile = 0; ifile < nfile; ifile++) {
 	if (ilistfile != NULL) {
 	    first_token (flist, 254, filename);
-	    ChangeKeyNames (filename, nkwd, kwd);
+	    CopyValues (infile, filename, nkwd, kwd);
 	    }
 	else
-	    ChangeKeyNames (fn[ifile], nkwd, kwd);
+	    CopyValues (infile, fn[ifile], nkwd, kwd);
 
 	if (verbose)
 	    printf ("\n");
@@ -184,54 +227,75 @@ usage ()
 {
     if (version)
 	exit (-1);
-    fprintf (stderr,"Change FITS or IRAF header keyword names\n");
-    fprintf(stderr,"Usage: [-hknv][-f num][-m num] file.fit [file.fits...] kw1=kw1a ... kwn=kwna\n");
-    fprintf(stderr,"  or : [-nhkrv][-f num][-m num] @filelist kw1=kw1a kw2=kw2a ... kwn=kwna\n");
-    fprintf(stderr,"  or : [-hknv][-f num][-m num] file.fit [file.fits...] @keywordlist\n");
-    fprintf(stderr,"  or : [-nhkrv][-f num][-m num] @filelist @keywordlist\n");
-    fprintf(stderr,"  -h: save procesing in HISTORY keyword in files\n");
-    fprintf(stderr,"  -k: save procesing in KEYHEAD keyword in files\n");
-    fprintf(stderr,"  -n: write new file\n");
-    fprintf(stderr,"  -r: replace value of 1st keyword with value of 2nd keyword\n");
-    fprintf(stderr,"  -v: verbose\n");
+    fprintf (stderr,"Copy FITS or IRAF header keyword values\n");
+    fprintf(stderr,"usage: cphead [-v][-d dir][-p num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
+    fprintf(stderr,"       cphead [-v][-d dir][-p num] file1.fit @filelist kw1 kw2 ... kwn\n");
+    fprintf(stderr,"       cphead [-v][-d dir][-p num] file1.fit @filelist @kwlist\n");
+    fprintf(stderr,"  -d: Root directory for input files (default is cwd)\n");
+    fprintf(stderr,"  -h: Write HISTORY line\n");
+    fprintf(stderr,"  -k: Write CPHEAD keyword\n");
+    fprintf(stderr,"  -n: Write a new file (add e before the extension)\n");
+    fprintf(stderr,"  -p: Number of decimal places in numeric output\n");
+    fprintf(stderr,"  -v: Verbose\n");
     exit (1);
 }
 
 
 static void
-ChangeKeyNames (filename, nkwd, kwd)
+CopyValues (infile, filename, nkwd, kwd)
 
-char	*filename;	/* Name of FITS or IRAF image file */
-int	nkwd;		/* Number of keywords for which to set values */
-char	*kwd[];		/* Names and values of those keywords */
+char	*infile;	/* FITS or IRAF image file from which to read */
+char	*filename;	/* FITS or IRAF image file to which to write */
+int	nkwd;		/* Number of keywords for which to print values */
+char	*kwd[];		/* Names of keywords for which to print values */
 
 {
     char *header;	/* FITS image header */
-    int lhead;		/* Maximum number of bytes in FITS header */
-    int nbhead;		/* Actual number of bytes in FITS header */
+    char *headout;	/* FITS image header */
+    int newimage;
     char *irafheader;	/* IRAF image header */
-    int iraffile;	/* 1 if IRAF image, 0 if FITS image */
-    int lext, lroot, lhist;
-    char *image, *imext, *imext1;
+    char *image;	/* Input and output image buffer */
+    double dval;
+    int ival, nch;
+    int iraffile;
+    char fnform[8];
     char newname[128];
-    char *ext, *fname;
-    char *kw, *kwv, *kwl, *kwn;
-    char *value, *q, *line;
-    char echar;
-    int ikwd, lkwd, lkwn;
-    int squote = 39;
-    int dquote = 34;
-    char cval[24];
-    int fdr, fdw, ipos, nbr, nbw, naxis, nchange;
-    char history[72];
-    char *endchar;
+    char string[80];
+    char temp[1028];
+    char outline[1000];
+    char mstring[800];
+    char *kw, *kwe, *filepath, *fname, *ext, *imext, *imext1;
+    char *kwv, *kwl, *kwv0, *knl;
+    int ikwd, lkwd, nfound, notfound, lext, lroot, lhist, lhead;
     char *ltime;
+    int naxis, ipos, nbhead, nbr, nbw;
+    int fdr, fdw;
+    char history[72];
+    char echar;
+    char *endchar;
+    int imageread = 0;
+
+    newimage = newimage0;
+
+    if (rootdir) {
+	nch = strlen (rootdir) + strlen (infile) + 2;
+	filepath = (char *) calloc (1, nch);
+	strcat (filepath, rootdir);
+	strcat (filepath, "/");
+	strcat (filepath, infile);
+	}
+    else
+	filepath = infile;
+
+    /* Retrieve FITS header from FITS or IRAF .imh file */
+    if ((header = GetFITShead (filepath)) == NULL)
+	return;
 
     /* Open IRAF image if .imh extension is present */
     if (isiraf (filename)) {
 	iraffile = 1;
 	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
-	    if ((header = iraf2fits (filename, irafheader, lhead, &nbhead)) == NULL) {
+	    if ((headout = iraf2fits (filename, irafheader, lhead, &nbhead)) == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
 		free (irafheader);
 		return;
@@ -246,13 +310,16 @@ char	*kwd[];		/* Names and values of those keywords */
     /* Open FITS file if .imh extension is not present */
     else {
 	iraffile = 0;
-	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
-	    hgeti4 (header,"NAXIS",&naxis);
+	if ((headout = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
+	    hgeti4 (headout,"NAXIS",&naxis);
 	    if (naxis > 0) {
-		if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
+		if ((image = fitsrimage (filename, nbhead, headout)) == NULL) {
 		    if (verbose)
-			fprintf (stderr,"Cannot read FITS image %s\n",filename);
+			fprintf (stderr, "No FITS image in %s\n", filename);
+		    imageread = 0;
 		    }
+		else
+		    imageread = 1;
 		}
 	    else {
 		if (verbose)
@@ -265,75 +332,55 @@ char	*kwd[];		/* Names and values of those keywords */
 	    return;
 	    }
 	}
+
     if (verbose) {
-	fprintf (stderr,"Change Header Keyword Names from ");
+	fprintf (stderr,"Copy Header Parameter Values from ");
+	hgeti4 (header, "IMHVER", &iraffile );
+	if (iraffile)
+	    fprintf (stderr,"IRAF image file %s to ", infile);
+	else
+	    fprintf (stderr,"FITS image file %s to ", infile);
+	hgeti4 (headout, "IMHVER", &iraffile );
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", filename);
 	else
 	    fprintf (stderr,"FITS image file %s\n", filename);
 	}
 
-    if (nkwd < 1)
-	return;
+    nfound = 0;
 
-    /* Change keywords one at a time */
-    nchange = 0;
+    notfound = 0;
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
-	if (strchr (kwd[ikwd],'=') != NULL) {
-        strcpy (cval,"                    ");
-	kwv = strchr (kwd[ikwd],'=');
-	*kwv = 0;
-	lkwd = kwv - kwd[ikwd];
-	kwn = kwv + 1;
-	lkwn = strlen (kwn);
-
-	/* Make keywords all upper case */
-	kwl = kwd[ikwd] + lkwd;
-	for (kw = kwd[ikwd]; kw < kwl; kw++) {
+	lkwd = strlen (kwd[ikwd]);
+	kwe = kwd[ikwd] + lkwd;
+	for (kw = kwd[ikwd]; kw < kwe; kw++) {
 	    if (*kw > 96 && *kw < 123)
 		*kw = *kw - 32;
 	    }
-	kwl = kwn + lkwn;
-	for (kw = kwn; kw < kwl; kw++) {
-	    if (*kw > 96 && *kw < 123)
-		*kw = *kw - 32;
-	    }
-
-	/* Change keyword value */
-	if (replace) {
-	    if ((line = ksearch (header, kwn)) == NULL)
-		continue;
-	    q = strchr (line, squote);
-	    if (q == NULL)
-		q = strchr (line, dquote);
-	    value = hgetc (header, kwn);
-	    if (q != NULL && q < line+80) {
-		hputs (header, kwd[ikwd], value);
-		if (verbose)
-		    printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, value);
+	if (hgets (header, kwd[ikwd], 80, string)) {
+	    strclean (string);
+	    if (isnum (string)) {
+		if (strchr (string,'.')) {
+		    hgetr8 (header, kwd[ikwd], &dval);
+		    hputr8 (headout, kwd[ikwd], dval);
+		    }
+		else {
+		    hgeti4 (header, kwd[ikwd], &ival);
+		    hputi4 (headout, kwd[ikwd], ival);
+		    }
 		}
-	    else {
-		hputc (header, kwd[ikwd], value);
-		if (verbose)
-		    printf ("%s = %s = %s\n", kwd[ikwd], kwn, value);
-		}
-	    }
+	    else
+		hputs (headout, kwd[ikwd], string);
 
-	/* Change keyword name */
-	else {
-	    if ((line = ksearch (header, kwd[ikwd])) == NULL)
-		continue;
-	    hchange (header, kwd[ikwd], kwn);
 	    if (verbose)
-		printf ("%s => %s\n", kwd[ikwd], kwn);
+		printf ("%s = %s", kwd[ikwd], string);
+	    nfound++;
 	    }
-	*kwv = '=';
-	nchange++;
+	else if (verbose)
+	    printf ("%s not found\n", kwd[ikwd]);
+	else
+	    notfound = 1;
 	}
-	}
-
-    if (!nchange)
-	return;
 
     /* Make up name for new FITS or IRAF output file */
     if (newimage) {
@@ -392,8 +439,8 @@ char	*kwd[];		/* Names and values of those keywords */
 
     /* Add history to header */
     if (keyset || histset) {
-	if (hgets (header, "KEYHEAD", 72, history))
-	    hputc (header, "HISTORY", history);
+	if (hgets (headout, "CPHEAD", 72, history))
+	    hputc (headout, "HISTORY", history);
 	endchar = strchr (history, ',');
 	*endchar = (char) 0;
 	strcat (history, " ");
@@ -403,14 +450,17 @@ char	*kwd[];		/* Names and values of those keywords */
 	*endchar = (char) 0;
 	strcat (history, " ");
 	for (ikwd = 0; ikwd < nkwd; ikwd++) {
+	    kwv0 = strchr (kwd[ikwd],'=');
+	    if (kwv0)
+		*kwv0 = (char) 0;
 	    lhist = strlen (history);
 	    lkwd = strlen (kwd[ikwd]);
 
 	    /* If too may keywords, start a second history line */
-	    if (lhist + lkwd > 71) {
+	    if (lhist + lkwd + 10 > 71) {
 		if (histset) {
 		    strcat (history, " updated");
-		    hputc (header, "HISTORY", history);
+		    hputc (headout, "HISTORY", history);
 		    endchar = strchr (history, ',');
 		    *endchar = (char) 0;
 		    strcat (history, " ");
@@ -424,41 +474,44 @@ char	*kwd[];		/* Names and values of those keywords */
 		    break;
 		}
 	    strcat (history, kwd[ikwd]);
+	    if (kwv0)
+		*kwv0 = '=';
 	    if (nkwd == 2 && ikwd < nkwd-1)
 		strcat (history, " and ");
 	    else if (ikwd < nkwd-1)
 		strcat (history, ", ");
 	    }
+	strcat (history, " updated");
 	if (keyset)
-	    hputs (header, "KEYHEAD", history);
+	    hputs (headout, "CPHEAD", history);
 	if (histset)
-	    hputc (header, "HISTORY", history);
+	    hputc (headout, "HISTORY", history);
 	}
 
     /* Write fixed header to output file */
     if (iraffile) {
-	if (irafwhead (newname, lhead, irafheader, header) > 0 && verbose)
+	if (irafwhead (newname, lhead, irafheader, headout) > 0 && verbose)
 	    printf ("%s rewritten successfully.\n", newname);
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
 	free (irafheader);
 	}
-    else if (naxis > 0) {
-	if (fitswimage (newname, header, image) > 0 && verbose)
+    else if (naxis > 0 && imageread) {
+	if (fitswimage (newname, headout, image) > 0 && verbose)
 	    printf ("%s: rewritten successfully.\n", newname);
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
 	free (image);
 	}
     else {
-	if ((fdw = fitswhead (newname, header)) > 0) {
+	if ((fdw = fitswhead (newname, headout)) > 0) {
 	    fdr = fitsropen (filename);
 	    ipos = lseek (fdr, nbhead, SEEK_SET);
 	    image = (char *) calloc (2880, 1);
 	    while ((nbr = read (fdr, image, 2880)) > 0) {
 		nbw = write (fdw, image, nbr);
 		if (nbw < nbr)
-		    fprintf (stderr,"SETHEAD: %d / %d bytes written\n",nbw,nbr);
+		    fprintf (stderr,"CPHEAD: %d / %d bytes written\n",nbw,nbr);
 		}
 	    close (fdr);
 	    close (fdw);
@@ -467,32 +520,68 @@ char	*kwd[];		/* Names and values of those keywords */
 	    free (image);
 	    }
 	}
+
     free (header);
+    free (headout);
     return;
 }
 
-/* Dec 17 1997	New program
- *
- * May 28 1998	Include fitsio.h instead of fitshead.h
- * Jul 24 1998	Make irafheader char instead of int
- * Aug  6 1998	Change fitsio.h to fitsfile.h
- * Aug 14 1998	Preserve extension when creating new file name
- * Aug 14 1998	If changing primary header, write out entire input file
- * Oct  5 1998	Allow header changes even if no data is present
- * Oct  5 1998	Determine assignment arguments by presence of equal sign
- * Oct  5 1998	Use isiraf() to check for file type
- * Oct 28 1998	Add option to replace keyword value with that of other keyword
- * Nov 25 1998	Fix bug in keyword name change code
- * Nov 30 1998	Add version and help commands for consistency
- *
- * Mar 18 1999	Fix bug so that reading filenames from a file works
- * Apr  2 1999	Add warning if too many files or keywords on command line
- * Apr  2 1999	Add -f and -m to change maximum number of files or keywords
- * Jul 14 1999  Read lists of BOTH keywords and files simultaneously
- * Jul 14 1999  Reallocate keyword array if too many in file
- * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
- * Oct 22 1999	Drop unused variables after lint
- * Nov 30 1999	Cast realloc's
- *
+
+/* Remove exponent and trailing zeroes, if reasonable */
+static void
+strclean (string)
+
+char *string;
+
+{
+    char *sdot, *s;
+    int ndek, lstr, i;
+
+    /* Remove positive exponent if there are enough digits given */
+    if (strsrch (string, "E+") != NULL) {
+	lstr = strlen (string);
+	ndek = (int) (string[lstr-1] - 48);
+	ndek = ndek + (10 * ((int) (string[lstr-2] - 48)));
+	if (ndek < lstr - 7) {
+	    lstr = lstr - 4;
+	    string[lstr] = (char) 0;
+	    string[lstr+1] = (char) 0;
+	    string[lstr+2] = (char) 0;
+	    string[lstr+3] = (char) 0;
+	    sdot = strchr (string, '.');
+	    if (ndek > 0 && sdot != NULL) {
+		for (i = 1; i <= ndek; i++) {
+		    *sdot = *(sdot+1);
+		    sdot++;
+		    *sdot = '.';
+		    }
+		}
+	    }
+	}
+
+    /* Remove trailing zeroes */
+    if (strchr (string, '.') != NULL) {
+	lstr = strlen (string);
+	s = string + lstr - 1;
+	while (*s == '0' && lstr > 1) {
+	    if (*(s - 1) != '.') {
+		*s = (char) 0;
+		lstr --;
+		}
+	    s--;
+	    }
+	}
+
+    /* Remove trailing decimal point */
+    lstr = strlen (string);
+    s = string + lstr - 1;
+    if (*s == '.')
+	*s = (char) 0;
+
+    return;
+	
+}
+
+/* Feb 24 2000	New program based on sethead and gethead
  * Mar 22 2000	Use lt2fd() instead of getltime()
  */

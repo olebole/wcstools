@@ -1,6 +1,6 @@
 WCSTools
 
-This is version 2.7.0 of the WCSTools package developed by Doug Mink
+This is version 2.7.2 of the WCSTools package developed by Doug Mink
 at the Smithsonian Astrophysical Observatory, with significant code from
 
 Bill Cotton of NRAO (projection),
@@ -30,23 +30,23 @@ of this software is in the Versions file.
 
 The complete source code is in
 
-	ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-2.7.0.tar.gz
+	ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-2.7.2.tar.gz
 
 To install the code, create a directory for it, download it, and run
 
-	gzcat wcstools-2.7.0.tar.gz | tar xvf -
+	gzcat wcstools-2.7.2.tar.gz | tar xvf -
 
 The main directory will contain the source code for the programs, and
 a subdirectory, libwcs, will contain the source code for the subroutines
 Catalog access subroutines, gscread.c, uacread.c, and ujcread.c, contain
 wired-in paths to the root directories of the HST Guide Star Catalog,
-the USNO A 1.0 Catalog, and the USNO J Catalog, respectively.  You
-should change them to match the path in your local installation.
+the USNO-A* and USNO-SA* Catalogs, and the USNO J Catalog, respectively.
+You should change them to match the path in your local installation.
 Environment variables may be also used to override whatever path is
 in the code:  GSC_NORTH sets the path for the HST GSC CDROM containing
 the northern hemisphere and GSC_SOUTH does the same for the southern
-hemisphere, USA_PATH sets the path for the USNO SA 1.0 catalog, and
-UA_ROOT sets the path to the directory below which the USNO A 1.0 CDROMs
+hemisphere, USA2_PATH sets the path for the USNO-SA2.0 catalog, and
+UA2_ROOT sets the path to the directory below which the USNO-A2.0 CDROMs
 are mounted.
 
 	make all
@@ -73,7 +73,7 @@ and uses the same WCS subroutines as WCSTools.  If you want to include the
 same WCS access in your own code, the subset of the WCSTools library
 which is used in SAOimage is available at
 
-	ftp://cfa-ftp.harvard.edu/pub/gsc/SAOimage/wcssubs-2.7.0.tar.gz
+	ftp://cfa-ftp.harvard.edu/pub/gsc/SAOimage/wcssubs-2.7.2.tar.gz
 
 -Doug Mink  (dmink@cfa.harvard.edu)
  Telescope Data Center

@@ -1,5 +1,5 @@
 /* File remap.c
- * January 28, 2000
+ * March 23, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -331,7 +331,7 @@ char	*filename;	/* FITS or IRAF file filename */
     int iraffile;
     int i, j, ii, jj, hpin, wpin, hpout, wpout, nbout, ix, iy, npout;
     int offscl, lblock;
-    char pixname[128];
+    char pixname[256];
     struct WorldCoor *wcsin;
     double bzin, bsin, bzout, bsout;
     double dx, dy, dx0, dy0, pfrac, secpix0, secpix1;
@@ -349,7 +349,7 @@ char	*filename;	/* FITS or IRAF file filename */
 		return (1);
 		}
 	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE", 64, pixname);
+		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -554,4 +554,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Dec  3 1999	Add option to set output BITPIX
  *
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

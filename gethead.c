@@ -1,5 +1,5 @@
 /* File gethead.c
- * November 30, 1999
+ * March 21, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -12,11 +12,17 @@
 #include <unistd.h>
 #include <math.h>
 #include "libwcs/fitsfile.h"
+#include "libwcs/wcscat.h"
 
 #define MAXKWD 100
 #define MAXFILES 2000
 static int maxnkwd = MAXKWD;
+static int maxncond = MAXKWD;
 static int maxnfile = MAXFILES;
+
+#define FILE_FITS 1
+#define FILE_IRAF 2
+#define FILE_ASCII 3
 
 static void usage();
 static void PrintValues();
@@ -33,17 +39,24 @@ static int tabout = 0;
 static int printhead = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int printfill=0;		/* If 1, print ___ for unfound keyword values */
-static int printfile=1;		/* If 1, print ___ for unfound keyword values */
+static int printfile=1;		/* If 1, print filename first if >1 files */
+static int fillblank=0;		/* If 1, replace blanks in strings with _ */
+static int keyeqval=0;		/* If 1, print keyword=value, not just value */
 static char *rootdir=NULL;	/* Root directory for input files */
+static int ncond=0;		/* Number of keyword conditions to check */
+static int condand=1;		/* If 1, AND comparisons, else OR */
+static char **cond;		/* Conditions to check */
+static char **ccond;		/* Condition characters */
 
 main (ac, av)
 int ac;
 char **av;
 {
     char *str;
-    char **kwd;
+    char **kwd;		/* Keywords to read */
     int nkwd = 0;
     char **fn;
+    int *ft;
     int ifile;
     int lfn;
     char filename[256];
@@ -55,13 +68,20 @@ char **av;
     int ikwd, lkwd, i;
     char *kw, *kwe;
     char string[80];
+    int nbytes;
+    int filetype;
+    int icond;
 
     ilistfile = NULL;
     klistfile = NULL;
     nkwd = 0;
+    ncond = 0;
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
+    ft = (int *)calloc (maxnfile, sizeof(int));
     kwd = (char **)calloc (maxnkwd, sizeof(char *));
+    cond = (char **)calloc (maxncond, sizeof(char *));
+    ccond = (char **)calloc (maxncond, sizeof(char *));
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -83,11 +103,19 @@ char **av;
 		    listall++;
 		    break;
 	
+		case 'b': /* Replace blanks with underscores */
+		    fillblank++;
+		    break;
+	
 		case 'd': /* Root directory for input */
 		    if (ac < 2)
 			usage();
 		    rootdir = *++av;
 		    ac--;
+		    break;
+
+		case 'e': /* list keyword=value for input to sethead */
+		    keyeqval++;
 		    break;
 	
 		case 'f': /* Do not print file names */
@@ -103,6 +131,10 @@ char **av;
 			usage();
 		    ndec = (int) (atof (*++av));
 		    ac--;
+		    break;
+	
+		case 'o': /* OR conditions insted of ANDing them */
+		    condand = 0;
 		    break;
 	
 		case 'p': /* List file pathnames, not just file names */
@@ -162,9 +194,16 @@ char **av;
 	else if (isfits (*av) || isiraf (*av)) {
 	    if (nfile >= maxnfile) {
 		maxnfile = maxnfile * 2;
-		fn = (char **) realloc ((void *)fn, maxnfile);
+		nbytes = maxnfile * sizeof (char *);
+		fn = (char **) realloc ((void *)fn, nbytes);
+		nbytes = maxnfile * sizeof (int);
+		ft = (int *) realloc ((void *)ft, nbytes);
 		}
 	    fn[nfile] = *av;
+	    if (isfits (*av))
+		ft[nfile] = FILE_FITS;
+	    else
+		ft[nfile] = FILE_IRAF;
 
 	    if (listpath || (name = strrchr (fn[nfile],'/')) == NULL)
 		name = fn[nfile];
@@ -174,6 +213,54 @@ char **av;
 	    if (lfn > maxlfn)
 		maxlfn = lfn;
 	    nfile++;
+	    }
+
+	/* Image file */
+	else if (isfile (*av)) {
+	    if (nfile >= maxnfile) {
+		maxnfile = maxnfile * 2;
+		nbytes = maxnfile * sizeof (char *);
+		fn = (char **) realloc ((void *)fn, nbytes);
+		nbytes = maxnfile * sizeof (int);
+		ft = (int *) realloc ((void *)ft, nbytes);
+		}
+	    fn[nfile] = *av;
+	    ft[nfile] = FILE_ASCII;
+
+	    if (listpath || (name = strrchr (fn[nfile],'/')) == NULL)
+		name = fn[nfile];
+	    else
+		name = name + 1;
+	    lfn = strlen (name);
+	    if (lfn > maxlfn)
+		maxlfn = lfn;
+	    nfile++;
+	    }
+
+	/* Condition */
+	else if (strchr (*av, '=') != NULL || strchr (*av, '#') != NULL ||
+		 strchr (*av, '>') != NULL || strchr (*av, '<') != NULL ) {
+	    if (ncond >= maxncond) {
+		maxncond = maxncond * 2;
+		cond = (char **)realloc((void *)cond, maxncond*sizeof(void *));
+		ccond = (char **)realloc((void *)cond, maxncond*sizeof(void *));
+		}
+	    cond[ncond] = *av;
+	    ccond[ncond] = strchr (*av, '=');
+	    if (ccond[ncond] == NULL)
+		ccond[ncond] = strchr (*av, '#');
+	    if (ccond[ncond] == NULL)
+		ccond[ncond] = strchr (*av, '>');
+	    if (ccond[ncond] == NULL)
+		ccond[ncond] = strchr (*av, '<');
+	    kwe = ccond[ncond];
+	    if (kwe != NULL) {
+		for (kw = cond[ncond]; kw < kwe; kw++) {
+		    if (*kw > 96 && *kw < 123)
+			*kw = *kw - 32;
+		    }
+		}
+	    ncond++;
 	    }
 
 	/* Keyword */
@@ -197,6 +284,23 @@ char **av;
 
     /* Print column headings if tab table or headings requested */
     if (printhead) {
+
+	/* Print conditions in header */
+	for (icond = 0; icond < ncond; icond++) {
+	    if (verbose) {
+		if (condand || icond == 0)
+		    printf ("%s\n",cond[icond]);
+		else
+		    printf (" or %s\n",cond[icond]);
+		}
+	    else if (tabout) {
+		if (condand || icond == 0)
+		    printf ("condition	%s\n", cond[icond]);
+		else
+		    printf ("condition	or %s\n", cond[icond]);
+		}
+	    }
+
 	if (printfile) {
 	    printf ("FILENAME");
 	    if (maxlfn > 8) {
@@ -209,7 +313,7 @@ char **av;
 		printf (" ");
 	    }
 
-	/* Print keyword names in header */
+	/* Make keyword names upper case and print keyword names in header */
 	for (ikwd = 0; ikwd < nkwd; ikwd++) {
 	    lkwd = strlen (kwd[ikwd]);
 	    kwe = kwd[ikwd] + lkwd;
@@ -267,10 +371,14 @@ char **av;
     for (ifile = 0; ifile < nfile; ifile++) {
 	if (ilistfile != NULL) {
 	    first_token (flist, 254, filename);
-	    PrintValues (filename, nkwd, kwd);
+	    if (isiraf (filename))
+		filetype = FILE_IRAF;
+	    else
+		filetype = FILE_FITS;
+	    PrintValues (filename, filetype, nkwd, kwd);
 	    }
 	else
-	    PrintValues (fn[ifile], nkwd, kwd);
+	    PrintValues (fn[ifile], ft[ifile], nkwd, kwd);
 
 	if (verbose)
 	    printf ("\n");
@@ -287,13 +395,18 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF header keyword values\n");
-    fprintf(stderr,"usage: gethead [-ahtv][-d dir][-f num][-m num][-n num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
-    fprintf(stderr,"       gethead [-ahptv][-d dir][-f num][-m num][-n num] @filelist kw1 kw2 ... kwn\n");
+    fprintf(stderr,"usage: gethead [-abhoptv][-d dir][-f num][-m num][-n num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
+    fprintf(stderr,"       gethead [-abhoptv][-d dir][-f num][-m num][-n num] @filelist kw1 kw2 ... kwn\n");
+    fprintf(stderr,"usage: gethead [-abhoptv][-d dir][-f num][-m num][-n num] file1.fit ... filen.fits @keywordlist\n");
+    fprintf(stderr,"       gethead [-abhoptv][-d dir][-f num][-m num][-n num] @filelist @keywordlist\n");
     fprintf(stderr,"  -a: List file even if keywords are not found\n");
+    fprintf(stderr,"  -b: Replace blanks in strings with underscores\n");
     fprintf(stderr,"  -d: Root directory for input files (default is cwd)\n");
+    fprintf(stderr,"  -e: Output keyword=value's on one line per file\n");
     fprintf(stderr,"  -f: Never print filenames (default is print if >1)\n");
     fprintf(stderr,"  -h: Print column headings\n");
     fprintf(stderr,"  -n: Number of decimal places in numeric output\n");
+    fprintf(stderr,"  -o: OR conditions instead of ANDing them\n");
     fprintf(stderr,"  -p: Print full pathnames of files\n");
     fprintf(stderr,"  -t: Output in tab-separated table format\n");
     fprintf(stderr,"  -u: Always print ___ if keyword not found\n");
@@ -303,22 +416,31 @@ usage ()
 
 
 static void
-PrintValues (name, nkwd, kwd)
+PrintValues (name, filetype, nkwd, kwd)
 
-char	*name;	/* Name of FITS or IRAF image file */
-int	nkwd;	/* Number of keywords for which to print values */
-char	*kwd[];	/* Names of keywords for which to print values */
+char	*name;		/* Name of FITS or IRAF image file */
+int	filetype;	/* Type of file (FILE_FITS, FILE_IRAF, FILE_ASCII) */
+int	nkwd;		/* Number of keywords for which to print values */
+char	*kwd[];		/* Names of keywords for which to print values */
 
 {
-    char *header;	/* FITS image header */
+    char *header;	/* FITS image header or contents of ASCII file */
+    char *cstr, *str;
     int iraffile;
     char fnform[8];
     char string[80];
+    char temp[1028];
     char *filename;
     char outline[1000];
     char mstring[800];
     char *kw, *kwe, *filepath;
     int ikwd, lkwd, nfound, notfound, nch;
+    int jval, jcond, icond, i, lstr;
+    double dval, dcond, dnum;
+    char tcond;
+    char cvalue[64], *cval;
+    char numstr[32], numstr1[32];
+    int pass;
 
     if (rootdir) {
 	nch = strlen (rootdir) + strlen (name) + 1;
@@ -330,14 +452,22 @@ char	*kwd[];	/* Names of keywords for which to print values */
     else
 	filepath = name;
 
+    /* Read ASCII file into buffer */
+    if (filetype == FILE_ASCII) {
+	if ((header = getfilebuff (filepath)) == NULL)
+	    return;
+	}
+
     /* Retrieve FITS header from FITS or IRAF .imh file */
-    if ((header = GetFITShead (filepath)) == NULL)
+    else if ((header = GetFITShead (filepath)) == NULL)
 	return;
 
     if (verbose) {
 	fprintf (stderr,"Print Header Parameter Values from ");
 	hgeti4 (header, "IMHVER", &iraffile );
-	if (iraffile)
+	if (filetype == FILE_ASCII)
+	    fprintf (stderr,"ASCII file %s\n", name);
+	else if (filetype == FILE_IRAF)
 	    fprintf (stderr,"IRAF image file %s\n", name);
 	else
 	    fprintf (stderr,"FITS image file %s\n", name);
@@ -360,29 +490,138 @@ char	*kwd[];	/* Names of keywords for which to print values */
 	}
     else
 	outline[0] = (char) 0;
-    nfound = 0;
 
+    /* Check conditions */
+    pass = 0;
+    if (ncond > 0) {
+	for (icond = 0; icond < ncond; icond++) {
+	    if (condand)
+		pass = 0;
+	    tcond = *ccond[icond];
+
+	    /* Extract test value from comparison string */
+	    *ccond[icond] = (char) 0;
+	    cstr = ccond[icond]+1;
+	    if (strchr (cstr, ':')) {
+		dnum = str2dec (cstr);
+		num2str (numstr, dnum, 0, 7);
+		cstr = numstr;
+		}
+	    strclean (cstr);
+
+	    /* Read comparison value from header */
+	    if (!hgets (header, cond[icond], 64, cvalue))
+		continue;
+	    cval = cvalue;
+	    if (strchr (cval, ':')) {
+		dnum = str2dec (cval);
+		num2str (numstr1, dnum, 0, 7);
+		cval = numstr1;
+		}
+	    strclean (cval);
+
+	    /* Compare floating point numbers */
+	    if (isnum (cstr) == 2 && isnum (cval)) {
+		*ccond[icond] = tcond;
+		dcond = atof (cstr);
+		dval = atof (cval);
+		if (tcond == '=' && dval == dcond)
+		    pass = 1;
+		if (tcond == '#' && dval != dcond)
+		    pass = 1;
+		if (tcond == '>' && dval > dcond)
+		    pass = 1;
+		if (tcond == '<' && dval < dcond)
+		    pass = 1;
+		}
+
+	    /* Compare integers */
+	    else if (isnum (cstr) == 1 && isnum (cval)) {
+		*ccond[icond] = tcond;
+		jcond = atoi (cstr);
+		jval = atoi (cval);
+		if (tcond == '=' && jval == jcond)
+		    pass = 1;
+		if (tcond == '#' && jval != jcond)
+		    pass = 1;
+		if (tcond == '>' && jval > jcond)
+		    pass = 1;
+		if (tcond == '<' && jval < jcond)
+		    pass = 1;
+		}
+
+	    /* Compare strings (only equal or not equal */
+	    else {
+		*ccond[icond] = tcond;
+		if (tcond == '=' && !strcmp (cstr, cval))
+		    pass = 1;
+		if (tcond == '#' && strcmp (cstr, cval))
+		    pass = 1;
+		}
+	    if (condand && !pass)
+		return;
+	    }
+	if (!pass)
+	    return;
+	}
+
+    /* Read keywords from header */
+    nfound = 0;
     notfound = 0;
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
-	lkwd = strlen (kwd[ikwd]);
-	kwe = kwd[ikwd] + lkwd;
-	for (kw = kwd[ikwd]; kw < kwe; kw++) {
-	    if (*kw > 96 && *kw < 123)
-		*kw = *kw - 32;
+
+	/* IF FITS header, look for upper case keywords only */
+	if (filetype != FILE_ASCII) {
+	    lkwd = strlen (kwd[ikwd]);
+	    kwe = kwd[ikwd] + lkwd;
+	    for (kw = kwd[ikwd]; kw < kwe; kw++) {
+		if (*kw > 96 && *kw < 123)
+		    *kw = *kw - 32;
+		}
 	    }
-	if (hgets (header, kwd[ikwd], 80, string)) {
-	    strclean (string);
-	    if (ndec > -9 && isnum (string) && strchr (string, '.'))
-		num2str (string, atof(string), 0, ndec);
+	if (filetype == FILE_ASCII &&
+	    agets (header, kwd[ikwd], 80, string)) {
+	    str = string;
+	    strclean (str);
+	    if (ndec > -9 && isnum (str) && strchr (str, '.'))
+		num2str (str, atof(str), 0, ndec);
 	    if (verbose)
-		printf ("%s = %s", kwd[ikwd], string);
+		printf ("%s = %s", kwd[ikwd], str);
+	    else if (keyeqval) {
+		sprintf (temp, " %s=%s", kwd[ikwd], str);
+		strcat (outline, temp);
+		}
 	    else
-		strcat (outline, string);
+		strcat (outline, str);
+	    nfound++;
+	    }
+	else if (hgets (header, kwd[ikwd], 80, string)) {
+	    if (string[0] == '#' && isnum (string+1)) {
+		lstr = strlen (string);
+		for (i = 0; i < lstr; i++)
+		    string[i] = string[i+1];
+		}
+	    str = string;
+	    strclean (str);
+	    if (ndec > -9 && isnum (str) && strchr (str, '.'))
+		num2str (string, atof(str), 0, ndec);
+	    if (verbose)
+		printf ("%s = %s", kwd[ikwd], str);
+	    else if (keyeqval) {
+		sprintf (temp, " %s=%s", kwd[ikwd], str);
+		strcat (outline, temp);
+		}
+	    else
+		strcat (outline, str);
 	    nfound++;
 	    }
 	else if (hgetm (header, kwd[ikwd], 600, mstring)) {
 	    if (verbose)
 		printf ("%s = %s", kwd[ikwd], mstring);
+	    else if (keyeqval) {
+		sprintf (temp, " %s=%s", kwd[ikwd], mstring);
+		strcat (outline, temp);
+		}
 	    else
 		strcat (outline, mstring);
 	    nfound++;
@@ -411,15 +650,32 @@ char	*kwd[];	/* Names of keywords for which to print values */
 }
 
 
-/* Remove exponent and trailing zeroes, if reasonable */
+/* Remove exponent, leading #, and/or trailing zeroes, if reasonable */
 static void
 strclean (string)
 
 char *string;
 
 {
-    char *sdot, *s;
+    char *sdot, *s, *strend, *str, ctemp, *slast;
     int ndek, lstr, i;
+
+    /* If number, ignore leading # and remove trailing non-numeric character */
+    if (string[0] == '#') {
+	strend = string + strlen (string);
+	str = string + 1;
+	strend = str + strlen (str) - 1;
+	ctemp = *strend;
+	if (!isnum (strend))
+	    *strend = (char) 0;
+	if (isnum (str)) {
+	    strend = string + strlen (string);
+	    for (str = string; str < strend; str++)
+		*str = *(str + 1);
+	    }
+	else
+	    *strend = ctemp;
+	}
 
     /* Remove positive exponent if there are enough digits given */
     if (strsrch (string, "E+") != NULL) {
@@ -462,8 +718,17 @@ char *string;
     if (*s == '.')
 	*s = (char) 0;
 
+    /* Replace embedded blanks with underscores, if requested to */
+    if (fillblank) {
+	lstr = strlen (string);
+	slast = string + lstr;
+	for (s = string; s < slast; s++) {
+	    if (*s == ' ') *s = '_';
+	    }
+	}
+
     return;
-	
+
 }
 
 /* Sep  4 1996	New program
@@ -500,4 +765,10 @@ char *string;
  * Nov 19 1999	Add -f to never print filenames
  * Nov 30 1999	Fix so no file name is printed if only one file unless -a
  * Nov 30 1999	Cast realloc's
+ *
+ * Feb 24 2000	Add option to output keyword=value
+ * Mar  1 2000	Add option to read ASCII files with keyword=value in them
+ * Mar 17 2000	Add conditions
+ * Mar 20 2000	Drop leading # from numbers
+ * Mar 21 2000	Add -b option to replace blanks with underscores
  */

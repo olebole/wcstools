@@ -1,5 +1,5 @@
 /* fitshead.h  FITS header access subroutines
- * October 21, 1999
+ * March 27, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -153,7 +153,11 @@ extern "C" {
 	const char* keyword,	/* FITS keyword */
 	const int ndec,		/* Number of decimal places in keyword value */
 	const double dval);	/* double value */
-    int hputs(			/* Implant short into FITS header */
+    int hputs(			/* Quoted character string into FITS header */
+	char* hstring,		/* FITS header string (modified) */
+	const char* keyword,	/* FITS keyword */
+	const char* cval);	/* Character string value */
+    int hputm(			/* Quoted character string, mutiple keywords */
 	char* hstring,		/* FITS header string (modified) */
 	const char* keyword,	/* FITS keyword */
 	const char* cval);	/* Character string value */
@@ -256,10 +260,10 @@ extern int gethlength();
 extern int mgets();	/* Previously allocated string from multiline keyword */
 extern int mgetr8();	/* double from multiline keyword */
 extern int mgeti4();	/* int from multiline keyword */
-extern igeti4();	/* long integer from IRAF compound keyword value */
-extern igetr4();	/* real from IRAF compound keyword value */
-extern igetr8();	/* double from IRAF compound keyword value */
-extern igets();		/* character string from IRAF compound keyword value */
+extern int igeti4();	/* long integer from IRAF compound keyword value */
+extern int igetr4();	/* real from IRAF compound keyword value */
+extern int igetr8();	/* double from IRAF compound keyword value */
+extern int igets();	/* character string from IRAF compound keyword value */
 
 /* Subroutines in hput.c */
 
@@ -272,7 +276,8 @@ extern int hputnr8();	/* double with specified number of decimal places */
 extern int hputra();	/* Right ascension in degrees into hh:mm:ss.sss */
 extern int hputdec();	/* Declination in degrees into dd:mm:ss.ss */
 extern int hputl();	/* 0 -> F, else T FITS logical entry */
-extern int hputs();	/* Character string */
+extern int hputs();	/* Quoted character string */
+extern int hputm();	/* Quoted character string into mutiple keywords */
 extern int hputc();	/* Character string without quotes (returns 0 if OK) */
 extern int hputcom();	/* Comment after keyword=value (returns 0 if OK) */
 
@@ -325,4 +330,7 @@ extern char *getutime(); /* Return current UT as an ISO-format string */
  * Oct 14 1999	All HPUT subroutines now return an error code, 0 if OK, else -1
  * Oct 15 1999	Add hputcom() declaration
  * Oct 21 1999	Add hgetm() declaration
+ *
+ * Mar 22 2000	Add int to iget*() declarations
+ * Mar 27 2000	Add hputm() declaration
  */

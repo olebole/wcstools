@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** January 10, 2000
+ *** March 15, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -28,8 +28,6 @@ static double ctg2dec();
 static int ctgsize();
 double dt2ep();		/* Julian Date to epoch (fractional year) */
 
-static char cat = 9;
-static char *cathead;
 static char newline = 10;
 
 
@@ -38,7 +36,7 @@ static char newline = 10;
 int
 ctgread (catfile, refcat, distsort, cra, cdec, dra, ddec, drad,
 	 sysout, eqout, epout, mag1, mag2, nsmax,
-	 tnum, tra, tdec, tmag, tmagb, tc, tobj, nlog)
+	 tnum, tra, tdec, tpra, tpdec, tmag, tmagb, tc, tobj, nlog)
 
 char	*catfile;	/* Name of reference star catalog file */
 int	refcat;		/* Catalog code from wcctg.h */
@@ -52,10 +50,12 @@ int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
-int	nsmax;	/* Maximum number of stars to be returned */
+int	nsmax;		/* Maximum number of stars to be returned */
 double	*tnum;		/* Array of UJ numbers (returned) */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
+double	*tpra;		/* Array of right ascension proper motions (returned) */
+double	*tpdec;		/* Array of declination proper motions (returned) */
 double	*tmag;		/* Array of magnitudes (returned) */
 double	*tmagb;		/* Array of second magnitudes (returned) */
 int	*tc;		/* Array of fluxes (returned) */
@@ -108,39 +108,39 @@ int	nlog;
         else if (refcat == ACT)
             nstar = actread (cra,cdec,dra,ddec,drad,distsort,
 			     sysout,eqout,epout,mag1, mag2,nsmax,
-			     tnum,tra,tdec,tmag,tmagb,tc,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,nlog);
         else if (refcat == SAO)
-            nstar = binread ("SAOra", distsort,
-                          cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
-                          mag2,nsmax,tnum,tra,tdec,tmag,tmagb,tc,NULL,nlog);
+            nstar = binread ("SAOra", distsort,cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == PPM)
-            nstar = binread ("PPMra", distsort,
-                          cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
-                          mag2,nsmax,tnum,tra,tdec,tmag,tmagb,tc,NULL,nlog);
+            nstar = binread ("PPMra",distsort,cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == IRAS)
-            nstar = binread ("IRAS", distsort,
-                          cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
-                          mag2,nsmax,tnum,tra,tdec,tmag,tmagb,tc,NULL,nlog);
+            nstar = binread ("IRAS", distsort, cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == TYCHO)
-            nstar = binread ("tychora", distsort,
-                          cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
-                          mag2,nsmax,tnum,tra,tdec,tmag,tmagb,tc,NULL,nlog);
+            nstar = binread ("tychora", distsort,cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == HIP)
-            nstar = binread ("hipparcosra", distsort,
-                          cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
-                          mag2,nsmax,tnum,tra,tdec,tmag,tmagb,tc,NULL,nlog);
+            nstar = binread ("hipparcosra", distsort, cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == BSC)
-            nstar = binread ("BSC5ra", distsort,
-                          cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
-                          mag2,nsmax,tnum,tra,tdec,tmag,tmagb,tc,NULL,nlog);
+            nstar = binread ("BSC5ra", distsort, cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == BINCAT)
-            nstar = binread (catfile, distsort,
-                          cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
-                          mag2,nsmax,tnum,tra,tdec,tmag,tmagb,tc,tobj,nlog);
+            nstar = binread (catfile, distsort, cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
         else if (refcat == TABCAT)
-            nstar = tabread (catfile, distsort,
-                          cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
-                          mag2,nsmax,tnum,tra,tdec,tmag,tmagb,tc,tobj,nlog);
+            nstar = tabread (catfile, distsort,cra,cdec,dra,ddec,drad,
+			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
 	return (nstar);
 	}
 
@@ -342,8 +342,8 @@ int	nlog;
 /* CTGRNUM -- Read ASCII stars with specified numbers */
 
 int
-ctgrnum (catfile,refcat,
-	 nnum,sysout,eqout,epout,match,tnum,tra,tdec,tmag,tmagb,tc,tobj,nlog)
+ctgrnum (catfile,refcat, nnum,sysout,eqout,epout,match,
+	 tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog)
 
 char	*catfile;	/* Name of reference star catalog file */
 int	refcat;		/* Catalog code from wcctg.h */
@@ -355,6 +355,8 @@ int	match;		/* 1 to match star number exactly, else sequence num.*/
 double	*tnum;		/* Array of star numbers to look for */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
+double	*tpra;		/* Array of right ascension proper motions (returned) */
+double	*tpdec;		/* Array of declination proper motions (returned) */
 double	*tmag;		/* Array of magnitudes (returned) */
 double	*tmagb;		/* Array of second magnitudes (returned) */
 int	*tc;		/* Array of fluxes (returned) */
@@ -395,28 +397,28 @@ int	nlog;
 			     tnum,tra,tdec,tmag,tc,nlog);
 	else if (refcat == SAO)
 	    nstar = binrnum ("SAO",nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tmag,tmagb,tc,NULL,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
 	else if (refcat == PPM)
 	    nstar = binrnum ("PPM",nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tmag,tmagb,tc,NULL,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
 	else if (refcat == IRAS)
 	    nstar = binrnum ("IRAS",nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tmag,tmagb,tc,NULL,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
 	else if (refcat == TYCHO)
 	    nstar = binrnum ("tycho",nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tmag,tmagb,tc,NULL,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
 	else if (refcat == HIP)
 	    nstar = binrnum ("hipparcos",nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tmag,tmagb,tc,NULL,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
 	else if (refcat == BSC)
 	    nstar = binrnum ("BSC5",nnum,sysout,eqout,epout,match,
-			     tnum,tra,tdec,tmag,tmagb,tc,NULL,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
 	else if (refcat == ACT)
 	    nstar = actrnum (nnum,sysout,eqout,epout,
-			     tnum,tra,tdec,tmag,tmagb,tc,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,nlog);
 	else if (refcat == TABCAT)
 	    nstar = tabrnum (catfile,nnum,sysout,eqout,epout,
-			     tnum,tra,tdec,tmag,tmagb,tc,tobj,nlog);
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
 	else if (refcat == BINCAT)
 	    nstar = binrnum (catfile,nnum,sysout,eqout,epout,match,
 			     tnum,tra,tdec,tmag,tmagb,tc,tobj,nlog);
@@ -606,7 +608,6 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	(void) fclose (fcat);
 	return (NULL);
 	}
-    cathead = sc->catbuff;
 
     /* Extract catalog information from first line */
     sc->inform = 'H';
@@ -1127,4 +1128,6 @@ char	*in;	/* Character string */
  * Nov 16 1999	Transfer dec degree sign if table format
  *
  * Jan 10 2000	Add second magnitude to tabread() and tabrnum()
+ * Mar 10 2000	Add proper motions to ctgread(), ctgrnum(), tabread(), tabrnum()
+ * Mar 15 2000	Add proper motions to binread(), binrnum(), actread(), actrnum()
  */

@@ -4,9 +4,11 @@ LIBWCS = libwcs/libwcs.a
 LIBS = $(LIBWCS) -lm
 BIN = bin
 .PRECIOUS: ${LIBWCS}
+.c.o:
+	$(CC) -c $(CFLAGS) $(DEFS) $<
 
-all:	delwcs delhead edhead fixpix gethead i2f imcat imhead immatch imrot \
-	imsize imstar imwcs scat sethead addpix getpix setpix sky2xy \
+all:	cphead delwcs delhead edhead fixpix gethead i2f imcat imhead immatch \
+	imrot imsize imstar imwcs scat sethead addpix getpix setpix sky2xy \
 	keyhead skycoor subpix xy2sky wcshead conpix gettab newfits \
 	imstack imextract sumpix remap getcol getdate
 
@@ -15,6 +17,9 @@ addpix: addpix.c $(LIBWCS) libwcs/fitsfile.h
 
 conpix: conpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/conpix conpix.c $(LIBS)
+
+cphead: cphead.c $(LIBWCS) libwcs/fitsfile.h
+	$(CC) $(CFLAGS) -o $(BIN)/cphead cphead.c $(LIBS)
 
 delwcs: delwcs.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/delwcs delwcs.c $(LIBS)

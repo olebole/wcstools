@@ -1,5 +1,5 @@
 /* File libwcs/imgetwcs.c
- * November 16, 1999
+ * March 27, 2000
  * By Doug Mink, remotely based on UIowa code
  */
 
@@ -23,6 +23,7 @@
 /* These parameters can be set on the command line */
 static double secpix0 = PSCALE;		/* Set image scale--override header */
 static double secpix2 = PSCALE;		/* Set image scale 2--override header */
+static double *cd0 = NULL;		/* Set CD matrix--override header */
 static double rot0 = 361.0;		/* Initial image rotation */
 static int comsys = WCS_J2000;		/* Command line center coordinte system */
 static int wp0 = 0;			/* Initial width of image */
@@ -34,7 +35,6 @@ static double yref0 = -99999.0;		/* Reference pixel Y coordinate */
 static int ptype0 = -1;			/* Projection type to fit */
 static int  nctype = 28;		/* Number of possible projections */
 static char ctypes[28][4];		/* 3-letter codes for projections */
-static double rad0 = 10.0;              /* Search box radius in arcseconds */
 static int usecdelt = 0;		/* Use CDELT if 1, else CD matrix */
 
 /* Set a nominal world coordinate system from image header info.
@@ -141,7 +141,7 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	}
 
     /* Set plate scale from command line, if it is there */
-    if (secpix0 != 0.0) {
+    if (secpix0 != 0.0 || cd0 != NULL) {
         if (secpix2 != 0.0) {
 	    *secpix = 0.5 * (secpix0 + secpix2);
 	    hputnr8 (header, "SECPIX1", 5, secpix0);
@@ -155,7 +155,7 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	    hdel (header, "CD2_1");
 	    hdel (header, "CD2_2");
 	    }
-	else {
+	else if (secpix0 != 0.0) {
 	    *secpix = secpix0;
 	    hputnr8 (header, "SECPIX", 5, *secpix);
 	    degpix = *secpix / 3600.0;
@@ -165,6 +165,16 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	    hdel (header, "CD1_2");
 	    hdel (header, "CD2_1");
 	    hdel (header, "CD2_2");
+	    }
+	else {
+	    hputr8 (header, "CD1_1", cd0[0]);
+	    hputr8 (header, "CD1_2", cd0[1]);
+	    hputr8 (header, "CD2_1", cd0[2]);
+	    hputr8 (header, "CD2_2", cd0[3]);
+	    hdel (header, "CDELT1");
+	    hdel (header, "CDELT2");
+	    hdel (header, "CROTA1");
+	    hdel (header, "CROTA2");
 	    }
 	if (!ksearch (header,"CRVAL1")) {
 	    hgetra (header, "RA", &ra0);
@@ -231,16 +241,6 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	printf ("Reference pixel (%.2f,%.2f) %s %s %s\n",
 		 wcs->xrefpix, wcs->yrefpix, rstr, dstr, cstr);
 	}
-    if (wcs->coorflip) {
-	wcs->crval[1] = ra1;
-	wcs->crval[0] = dec1;
-	}
-    else {
-	wcs->crval[0] = ra1;
-	wcs->crval[1] = dec1;
-	}
-    wcs->xref = wcs->crval[0];
-    wcs->yref = wcs->crval[1];
 
     /* Get center and size for catalog searching */
     wcssize (wcs, cra, cdec, dra, ddec);
@@ -267,6 +267,8 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	/* hchange (header,"PLTRAH","PLT0RAH");
 	wcs->plate_fit = 0; */
 	}
+
+    /* Convert center to desired coordinate system */
     else if (wcs->syswcs != *sysout && wcs->equinox != *eqout) {
 	wcscon (wcs->syswcs, *sysout, wcs->equinox, *eqout, &ra1, &dec1, wcs->epoch);
 	if (wcs->coorflip) {
@@ -280,6 +282,10 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	}
     wcs->crval[0] = wcs->xref;
     wcs->crval[1] = wcs->yref;
+    wcs->cel.ref[0] = wcs->crval[0];
+    wcs->cel.ref[1] = wcs->crval[1];
+    wcs->cel.flag = 0;
+    wcs->wcsl.flag = 0;
     wcs->equinox = *eqout;
     wcs->syswcs = *sysout;
     wcs->sysout = *sysout;
@@ -290,6 +296,8 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     strcpy (wcs->radecsys, cstr);
     strcpy (wcs->radecout, cstr);
     strcpy (wcs->radecin, cstr);
+    wcsininit (wcs, wcs->radecsys);
+    wcsoutinit (wcs, wcs->radecsys);
 
     if (usecdelt) {
 	hputnr8 (header, "CDELT1", 9, wcs->xinc);
@@ -359,6 +367,15 @@ double secpix;
 { secpix2 = secpix; return; }
 
 void
+setcd (cd)		/* Set initial CD matrix */
+double *cd;
+{ int i;
+  if (cd0 != NULL) free (cd0);
+  cd0 = (double *) calloc (4, sizeof (double));
+  for (i = 0; i < 4; i++) cd0[i] = cd[i];
+  return; }
+
+void
 setsys (comsys0)		/* Set WCS coordinates as FK4 */
 int comsys0;
 { comsys = comsys0; return; }
@@ -385,11 +402,6 @@ void
 setrefpix (x, y)
 double x, y;
 { xref0 = x; yref0 = y; return; }
-
-void
-setradius (rad)
-double rad;
-{ rad0 = rad; return; }
 
 void
 setproj (ptype)
@@ -495,4 +507,8 @@ char*	ptype;
  * Nov  1 1999	If CDELTn set from command line delete previous header CD matrix
  * Nov 12 1999	Add galactic coordinates as command line option
  * Nov 16 1999	Set radecsys correctly for command line galactic
+ *
+ * Feb 15 2000	Add option to override the header CD matrix (like CDELTs)
+ * Feb 29 2000	Fix bug, converting reference pixel WCS coordinates everywhere
+ * Mar 27 2000	Drop unused subroutine setradius()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** October 21, 1999
+ *** March 28, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -19,7 +19,7 @@ static int gscreg();
 static char *table;		/* FITS table buffer */
 static int ltab = 0;		/* Length of FITS table buffer */
 
-static int classd; /* Desired object class (-1=all, 0=stars, 3=nonstars) */
+static int classd = -1; /* Desired object class (-1=all, 0=stars, 3=nonstars) */
 void setgsclass (class)
 int class;
 { classd = class; return; }
@@ -64,7 +64,6 @@ int	nlog;		/* 1 for diagnostics */
     int class, class0;	/* Object class (0>star, 3>other) */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
     struct Keyword kw[8];	/* Keyword structure */
     struct Keyword *kwn;
 
@@ -385,7 +384,6 @@ int	nlog;		/* 1 for diagnostics */
     int class, class0;		/* Object class (0>star, 3>other) */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
     struct Keyword kw[8];	/* Keyword structure */
     struct Keyword *kwn;
 
@@ -949,4 +947,7 @@ char *path;	/* Pathname of GSC region FITS file */
  * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
  * Sep 22 1999	Rewrite table allocation so it works; make ltab static
  * Oct 21 1999	Include wcscat.h, unistd.h
+ *
+ * Mar 27 2000	Drop unused variables after lint
+ * Mar 28 2000	Make default to read all classes
  */

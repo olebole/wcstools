@@ -1,5 +1,5 @@
 /* File saoimage/wcslib/platepos.c
- * October 21, 1999
+ * February 29, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	platepos.c (Plate solution WCS conversion
@@ -144,14 +144,17 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
     eta = raddeg (etar);
 
     /* Set initial value for x,y */
-    if (wcs->x_coeff[1] == 0.0)
+    x = xi * wcs->dc[0] + eta * wcs->dc[1];
+    y = xi * wcs->dc[2] + eta * wcs->dc[3];
+
+    /* if (wcs->x_coeff[1] == 0.0)
 	x = xi - wcs->x_coeff[0];
     else
 	x = (xi - wcs->x_coeff[0]) / wcs->x_coeff[1];
     if (wcs->y_coeff[2] == 0.0)
 	y = eta - wcs->y_coeff[0];
     else
-	y = (eta - wcs->y_coeff[0]) / wcs->y_coeff[2];
+	y = (eta - wcs->y_coeff[0]) / wcs->y_coeff[2]; */
 
     /* Iterate by Newton's method */
     for (i = 0; i < max_iterations; i++) {
@@ -358,4 +361,7 @@ struct WorldCoor *wcs;  /* WCS structure */
  * Sep 10 1998	Check for xc1 and yc2 divide by zero after Allen Harris, SAO
  *
  * Oct 21 1999	Drop unused variables after lint
+ *
+ * Feb 29 2000	Use inverse CD matrix to get initial X,Y in platepix()
+ *		as suggested by Paolo Montegriffo from Bologna Ast. Obs.
  */

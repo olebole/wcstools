@@ -1,5 +1,5 @@
 /* File imstar.c
- * January 28, 2000
+ * March 23, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -29,8 +29,6 @@ static int mirror = 0;		/* If 1, flip image right-left before rotating*/
 static void usage();
 static void ListStars();
 extern char *RotFITS();
-extern void RASortStars();
-extern void FluxSortStars();
 extern void setstarsig();
 extern void setbmin();
 extern void setmaxrad();
@@ -384,8 +382,8 @@ char	*filename;	/* FITS or IRAF file filename */
     char rastr[32], decstr[32];
     int i, bitpix;
     char headline[160];
-    char pixname[128];
-    char outfile[64];
+    char pixname[256];
+    char outfile[256];
     char *ext;
     char temp[32];
     FILE *fd;
@@ -402,7 +400,7 @@ char	*filename;	/* FITS or IRAF file filename */
 		}
 	    if (imsearch) {
 		if ((image = irafrimage (header)) == NULL) {
-		    hgets (header,"PIXFILE", 64, pixname);
+		    hgetm (header,"PIXFIL", 255, pixname);
 		    fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		    free (irafheader);
 		    free (header);
@@ -509,7 +507,7 @@ char	*filename;	/* FITS or IRAF file filename */
 
     /* Sort star-like objects in image by right ascension */
     if (rasort && iswcs (wcs))
-	RASortStars (0, sra, sdec, sx, sy, sb, 0, sp, ns);
+	RASortStars (0, sra, sdec, NULL, NULL, sx, sy, sb, 0, sp, ns);
     sprintf (headline, "IMAGE	%s", filename);
 
     /* Open plate catalog file */
@@ -806,4 +804,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Nov 19 1999	Make display and file output formats identical
  *
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
+ * Mar 15 2000	Add NULL proper motion arguments to RASortStars()
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

@@ -1,5 +1,5 @@
 /* File imhfile.c
- * February 3, 2000
+ * March 27, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
@@ -44,7 +44,7 @@
  *		Return 1 if IRAF .imh file, else 0
 
 
- * Copyright:   1999 Smithsonian Astrophysical Observatory
+ * Copyright:   2000 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -58,6 +58,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <time.h>
+#include <sys/types.h>
 #include "fitsfile.h"
 
 /* Parameters from iraf/lib/imhdr.h for IRAF version 1 images */
@@ -128,7 +129,7 @@ float irafgetr4();
 char *irafgetc2();
 char *irafgetc();
 char *iraf2str();
-static void same_path();
+static char *same_path();
 static void irafputr4();
 static void irafputi4();
 static void irafputc2();
@@ -144,10 +145,8 @@ int pix_version ();
 int irafncmp ();
 static int machswap();
 static int irafsize();
-extern long timezone;
 
 #define SECONDS_1970_TO_1980    315532800L
-static int getclocktime();
 
 /* Subroutine:	irafrhead
  * Purpose:	Open and read the iraf .imh file, translating it to FITS, too.
@@ -246,7 +245,7 @@ char	*fitsheader;	/* FITS image header (filled) */
     char pixname[SZ_IM2PIXFILE+1];
 
     /* Convert pixel file name to character string */
-    hgets (fitsheader, "PIXFILE", SZ_IM2PIXFILE, pixname);
+    hgetm (fitsheader, "PIXFIL", SZ_IM2PIXFILE, pixname);
     hgeti4 (fitsheader, "PIXOFF", &lpixhead);
 
     if ((bang = strchr (pixname, '!')) != NULL ) {
@@ -422,9 +421,8 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 
 {
     char *objname;	/* object name from FITS file */
-    int lstr, i, j, k, ib, nax, nbits;
-    double tsec;
-    char *pixname, *bang, *chead;
+    int lstr, i, j, k, ib, nax, nbits, nl, lname;
+    char *pixname, *newpixname, *bang, *chead;
     char *fitsheader;
     int nblock, nlines;
     char *fhead, *fhead1, *fp, endline[81];
@@ -575,30 +573,55 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     if (rmin != rmax) {
 	hputr4 (fitsheader, "IRAFMIN", rmin);
 	fhead = fhead + 80;
+	hputcom (fitsheader,"IRAFMIN", "IRAF .imh minimum");
 	hputr4 (fitsheader, "IRAFMAX", rmax);
+	hputcom (fitsheader,"IRAFMAX", "IRAF .imh maximum");
 	fhead = fhead + 80;
 	}
 
     /* Save image header filename in header */
-    hputs (fitsheader,"IMHFILE",hdrname);
-    hputcom (fitsheader,"IMHFILE", "IRAF header file name");
-    fhead = fhead + 80;
+    nl = hputm (fitsheader,"IMHFIL",hdrname);
+    if (nl > 0) {
+	lname = strlen (hdrname);
+	strcpy (fitsline, "IRAF header file name");
+	if (lname < 43)
+	    hputcom (fitsheader,"IMHFIL_1", fitsline);
+	else if (lname > 67 && lname < 110)
+	    hputcom (fitsheader,"IMHFIL_2", fitsline);
+	else if (lname > 134 && lname < 177)
+	    hputcom (fitsheader,"IMHFIL_3", fitsline);
+	}
+    if (nl > 0) fhead = fhead + (nl * 80);
 
     /* Save image pixel file pathname in header */
     if (imhver == 2)
 	pixname = irafgetc (irafheader, IM2_PIXFILE, SZ_IM2PIXFILE);
-    else {
-	pixname = irafgetc2 (irafheader, IM_PIXFILE, SZ_IMPIXFILE);
-	}
-    if (strncmp(pixname, "HDR", 3) == 0 )
-	same_path (pixname, hdrname);
-    if ((bang = strchr (pixname, '!')) != NULL )
-	hputs (fitsheader,"PIXFILE",bang+1);
     else
-	hputs (fitsheader,"PIXFILE",pixname);
-    free (pixname);
-    hputcom (fitsheader,"PIXFILE", "IRAF .pix pixel file");
+	pixname = irafgetc2 (irafheader, IM_PIXFILE, SZ_IMPIXFILE);
+    if (strncmp(pixname, "HDR", 3) == 0 ) {
+	newpixname = same_path (pixname, hdrname);
+	free (pixname);
+	pixname = newpixname;
+	hputl (fitsheader, "SAMEDIR", 1);
+	}
+    else
+	hputl (fitsheader, "SAMEDIR", 0);
     fhead = fhead + 80;
+    if ((bang = strchr (pixname, '!')) != NULL )
+	nl = hputm (fitsheader,"PIXFIL",bang+1);
+    else
+	nl = hputm (fitsheader,"PIXFIL",pixname);
+    free (pixname);
+    if (nl > 0) {
+	strcpy (fitsline, "IRAF .pix pixel file");
+	if (lname < 43)
+	    hputcom (fitsheader,"PIXFIL_1", fitsline);
+	else if (lname > 67 && lname < 110)
+	    hputcom (fitsheader,"PIXFIL_2", fitsline);
+	else if (lname > 134 && lname < 177)
+	    hputcom (fitsheader,"PIXFIL_3", fitsline);
+	}
+    if (nl > 0) fhead = fhead + (nl * 80);
 
     /* Save image offset from star of pixel file */
     pixoff = irafgeti4 (irafheader, impixoff);
@@ -641,8 +664,10 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 
     /* Read modification time */
     mtime = irafgeti4 (irafheader, imtime);
-    tsec = (double) mtime + 946684800.0;
-    dstring = ts2fd (tsec);
+    if (mtime == 0)
+	dstring = lt2fd ();
+    else
+	dstring = tsi2fd (mtime);
     hputs (fitsheader, "DATE-MOD", dstring);
     hputcom (fitsheader,"DATE-MOD", "Date of latest file modification");
     free (dstring);
@@ -757,7 +782,13 @@ char	*fitsheader;	/* FITS image header */
 
 {
     int fd;
-    int nbw, nbhead;
+    int nbw, nbhead, lphead, pixswap;
+
+   /* Get rid of redundant header information */
+    hgeti4 (fitsheader, "PIXOFF", &lphead);
+    hgeti4 (fitsheader, "PIXSWAP", &pixswap);
+
+    /* Write IRAF header file */
 
     /* Convert FITS header to IRAF header */
     irafheader = fits2iraf (fitsheader, irafheader, lhead, &nbhead);
@@ -811,22 +842,25 @@ char	*image;		/* IRAF image */
     int fd;
     char *bang;
     int nbw, bytepix, bitpix, naxis, naxis1, naxis2, nbimage, lphead;
-    char *pixn, pixname[SZ_IM2PIXFILE+1];
+    char *pixn, *pixname;
     int imhver, pixswap;
 
     hgeti4 (fitsheader, "IMHVER", &imhver);
 
-    if (!hgets (fitsheader, "PIXFILE", SZ_IM2PIXFILE, pixname)) {
+    if (!hgetm (fitsheader, "PIXFIL", SZ_IM2PIXFILE, pixname)) {
 	if (imhver == 2)
 	    pixn = irafgetc (irafheader, IM2_PIXFILE, SZ_IM2PIXFILE);
 	else
 	    pixn = irafgetc2 (irafheader, IM_PIXFILE, SZ_IMPIXFILE);
 	if (strncmp(pixn, "HDR", 3) == 0 )
-	    same_path (pixn, hdrname);
-	if ((bang = strchr (pixn, '!')) != NULL )
-	    strcpy (pixname, bang+1);
-	else
-	    strcpy (pixname, pixn);
+	    pixname = same_path (pixn, hdrname);
+	else {
+	    pixname = (char *) calloc (SZ_IM2PIXFILE, sizeof (char));
+	    if ((bang = strchr (pixn, '!')) != NULL )
+		strcpy (pixname, bang+1);
+	    else
+		strcpy (pixname, pixn);
+	    }
 	free (pixn);
         }
 
@@ -849,14 +883,9 @@ char	*image;		/* IRAF image */
     else
 	nbimage = naxis1 * naxis2 * bytepix;
 
-   /* Get rid of redundant header information */
+   /* Read information about pixel file from header */
     hgeti4 (fitsheader, "PIXOFF", &lphead);
     hgeti4 (fitsheader, "PIXSWAP", &pixswap);
-    hdel (fitsheader, "PIXOFF");
-    hdel (fitsheader, "PIXSWAP");
-    hdel (fitsheader, "HEADSWAP");
-    hdel (fitsheader, "IMHVER");
-    hdel (fitsheader, "DATE-MOD");
 
     /* Write IRAF header file */
     if (irafwhead (hdrname, lhead, irafheader, fitsheader))
@@ -893,13 +922,14 @@ char	*image;		/* IRAF image */
     nbw = write (fd, image, nbimage);
     close (fd);
 
+    free (pixname);
     return (nbw);
 }
 
 
 /* Put filename and header path together */
 
-static void
+static char *
 same_path (pixname, hdrname)
 
 char	*pixname;	/* IRAF pixel file pathname */
@@ -907,39 +937,40 @@ char	*hdrname;	/* IRAF image header file pathname */
 
 {
     int len;
-    char temp[SZ_IMPIXFILE];
+    char *newpixname;
+
+    newpixname = (char *) calloc (SZ_IM2PIXFILE, sizeof (char));
 
     /* Pixel file is in same directory as header */
     if (strncmp(pixname, "HDR$", 4) == 0 ) {
-	(void)strncpy (temp, &pixname[4], SZ_IMPIXFILE);
-	(void)strncpy (pixname, hdrname, SZ_IMPIXFILE);
+	(void)strncpy (newpixname, hdrname, SZ_IM2PIXFILE);
 
 	/* find the end of the pathname */
-	len = strlen(pixname);
+	len = strlen (newpixname);
 #ifndef VMS
-	while( (len > 0) && (pixname[len-1] != '/') )
+	while( (len > 0) && (newpixname[len-1] != '/') )
 #else
-	while( (len > 0) && (pixname[len-1] != ']') && (pixname[len-1] != ':') )
+	while( (len > 0) && (newpixname[len-1] != ']') && (newpixname[len-1] != ':') )
 #endif
-      len--;
+	    len--;
 
 	/* add name */
-	pixname[len] = '\0';
-	(void)strncat(pixname, temp, SZ_IMPIXFILE);
+	newpixname[len] = '\0';
+	(void)strncat (newpixname, &pixname[4], SZ_IM2PIXFILE);
 	}
 
     /* Pixel file has same name as header file, but with .pix extension */
     else if (strncmp (pixname, "HDR", 3) == 0 ) {
 
 	/* load entire header name string into name buffer */
-	(void)strncpy (pixname, hdrname, SZ_IMPIXFILE);
-	len = strlen (pixname);
-	pixname[len-3] = 'p';
-	pixname[len-2] = 'i';
-	pixname[len-1] = 'x';
+	(void)strncpy (newpixname, hdrname, SZ_IM2PIXFILE);
+	len = strlen (newpixname);
+	newpixname[len-3] = 'p';
+	newpixname[len-2] = 'i';
+	newpixname[len-1] = 'x';
 	}
 
-    return;
+    return (newpixname);
 }
 
 /* Convert FITS image header to IRAF image header, returning IRAF header */
@@ -954,10 +985,10 @@ int	nbhead;		/* Length of IRAF header */
 int	*nbiraf;	/* Length of returned IRAF header */
 
 {
-    int i, n, pixoff;
+    int i, n, pixoff, samedir, lhdrdir, lpixdir;
     short *irafp, *irafs, *irafu;
-    char *iraf2u, *iraf2p;
-    char *fitsend, *fitsp, pixfile[SZ_IM2PIXFILE];
+    char *iraf2u, *iraf2p, *filename;
+    char *fitsend, *fitsp, pixfile[SZ_IM2PIXFILE], hdrfile[SZ_IM2HDRFILE];
     char title[SZ_IM2TITLE], temp[80];
     int	nax, nlfits, imhver, nbits, pixtype, hdrlength, mtime;
     int imndim, imlen, imphyslen, impixtype, imhlen, imtime, immax, immin;
@@ -965,7 +996,9 @@ int	*nbiraf;	/* Length of returned IRAF header */
 
     hgeti4 (fitsheader, "IMHVER", &imhver);
     hdel (fitsheader, "IMHVER");
+    hdel (fitsheader, "IMHVER");
     hgetl (fitsheader, "HEADSWAP", &headswap);
+    hdel (fitsheader, "HEADSWAP");
     hdel (fitsheader, "HEADSWAP");
     if (imhver == 2) {
 	imhlen = IM2_HDRLEN;
@@ -1064,7 +1097,31 @@ int	*nbiraf;	/* Length of returned IRAF header */
     hdel (fitsheader, "IRAFMAX");
 
     /* Replace pixel file name, if it is in the FITS header */
-    if (hgets (fitsheader, "PIXFILE", SZ_IM2PIXFILE, pixfile)) {
+    if (hgetm (fitsheader, "PIXFIL", SZ_IM2PIXFILE, pixfile)) {
+	samedir = 0;
+	hgetl (fitsheader, "SAMEDIR", &samedir);
+	if (samedir) {
+	    filename = strrchr (pixfile, '/');
+	    if (filename)
+		filename = filename + 1;
+	    else
+		filename = pixfile;
+	    strcpy (temp, "HDR$");
+	    strcat (temp,filename);
+	    strcpy (pixfile, temp);
+	    }
+	else if (hgetm (fitsheader, "IMHFIL", SZ_IM2HDRFILE, hdrfile) &&
+	    strchr (pixfile, '/')) {
+	    lpixdir = strrchr (pixfile, '/') - pixfile;
+	    lhdrdir = strrchr (hdrfile, '/') - hdrfile;
+	    if (lpixdir == lhdrdir && !strncmp (pixfile, hdrfile, lpixdir)) {
+		filename = strrchr (pixfile, '/') + 1;
+		strcpy (temp, "HDR$");
+		strcat (temp,filename);
+		strcpy (pixfile, temp);
+		}
+	    }
+
 	if (!strchr (pixfile,'/') && !strchr (pixfile,'$')) {
 	    strcpy (temp, "HDR$");
 	    strcat (temp,pixfile);
@@ -1074,11 +1131,15 @@ int	*nbiraf;	/* Length of returned IRAF header */
             irafputc (pixfile, irafheader, IM2_PIXFILE, SZ_IM2PIXFILE);
 	else
             irafputc2 (pixfile, irafheader, IM_PIXFILE, SZ_IMPIXFILE);
-	hdel (fitsheader,"PIXFILE");
+	hdel (fitsheader,"PIXFIL_1");
+	hdel (fitsheader,"PIXFIL_2");
+	hdel (fitsheader,"PIXFIL_3");
+	hdel (fitsheader,"PIXFIL_4");
+	hdel (fitsheader,"SAMEDIR");
 	}
 
     /* Replace header file name, if it is in the FITS header */
-    if (hgets (fitsheader, "IMHFILE", SZ_IM2HDRFILE, pixfile)) {
+    if (hgetm (fitsheader, "IMHFIL", SZ_IM2HDRFILE, pixfile)) {
 	if (!strchr (pixfile,'/') && !strchr (pixfile,'$')) {
 	    strcpy (temp, "HDR$");
 	    strcat (temp,pixfile);
@@ -1088,7 +1149,10 @@ int	*nbiraf;	/* Length of returned IRAF header */
             irafputc (pixfile, irafheader, IM2_HDRFILE, SZ_IM2HDRFILE);
 	else
             irafputc2 (pixfile, irafheader, IM_HDRFILE, SZ_IMHDRFILE);
-	hdel (fitsheader, "IMHFILE");
+	hdel (fitsheader, "IMHFIL_1");
+	hdel (fitsheader, "IMHFIL_2");
+	hdel (fitsheader, "IMHFIL_3");
+	hdel (fitsheader, "IMHFIL_4");
 	}
 
     /* Replace image title, if it is in the FITS header */
@@ -1101,6 +1165,11 @@ int	*nbiraf;	/* Length of returned IRAF header */
 	}
     hgeti4 (fitsheader, "PIXOFF", &pixoff);
     hdel (fitsheader, "PIXOFF");
+    hdel (fitsheader, "PIXOFF");
+    hdel (fitsheader, "PIXSWAP");
+    hdel (fitsheader, "PIXSWAP");
+    hdel (fitsheader, "DATE-MOD");
+    hdel (fitsheader, "DATE-MOD");
     fitsend = ksearch (fitsheader,"END");
 
     /* Find length of FITS header */
@@ -1116,7 +1185,7 @@ int	*nbiraf;	/* Length of returned IRAF header */
 	irafheader = realloc (irafheader, *nbiraf);
 
     /* Reset modification time */
-    mtime = getclocktime ();
+    mtime = lt2tsi ();
     irafputi4 (irafheader, imtime, mtime);
 
     /*  Replace user portion of IRAF header with remaining FITS header */
@@ -1149,8 +1218,8 @@ int	*nbiraf;	/* Length of returned IRAF header */
     /* Length of header file */
     irafputi4 (irafheader, imhlen, hdrlength);
 
-    /* Offset in .pix file to first pixel data */
-    hputi4 (fitsheader, "PIXOFF", pixoff);
+    /* Offset in .pix file to first pixel data
+    hputi4 (fitsheader, "PIXOFF", pixoff); */
 
     /* Return number of bytes in new IRAF header */
     return (irafheader);
@@ -1627,35 +1696,6 @@ machswap ()
 }
 
 
-/* Get the local standard (clock) time, in units of seconds since
-   1980-01-01T00:00:00. */
-
-static int
-getclocktime ()
-
-{
-    time_t ut0,utc;		/* UTC seconds since 1970-01-01T0:00 */
-    struct tm *ltm;		/* Local time structure */
-    int lt;			/* Local time returned */
-
-    /* Get current UTC */
-    ut0 = (time_t) 0;
-    utc = time (&ut0);
-
-    /* Subtract minutes westward from UTC */
-    ltm = localtime (&utc);
-    lt = utc - timezone;
-
-    /* Correct for daylight savings time, if in effect */
-    if (ltm->tm_isdst)
-	lt += 3600;
-
-    /* Change base from Unix 1970-01-01T0:00 to IRAF 1980-01-01T0:00 */
-    lt -= SECONDS_1970_TO_1980;
-    return (lt);
-}
-
-
 /* ISIRAF -- return 1 if IRAF imh file, else 0 */
 
 int
@@ -1751,4 +1791,12 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  *
  * Jan 13 2000	Fix bug which dropped characters in iraf2fits()
  * Feb  3 2000	Declare timezone long, not time_t; drop unused variable
+ * Mar  7 2000	Add more code to keep pixel file path short
+ * Mar 10 2000	Fix bugs when writing .imh file headers
+ * Mar 21 2000	Change computation of IRAF time tags to use only data structure
+ * Mar 22 2000	Move IRAF time tag computation to lt2tsi() in dateutil.c
+ * Mar 24 2000	Use Unix file update time if none in header
+ * Mar 27 2000	Use hputm() to save file paths up to 256 characters
+ * Mar 27 2000	Write filename comments after 1st keyword with short value
+ * Mar 27 2000	Allocate pixel file name in same_path to imh2 length
  */

@@ -1,6 +1,6 @@
 /*** File libwcs/fitsfile.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** February 23, 2000
+ *** March 27, 2000
 
  * Module:      fitsfile.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -980,7 +980,6 @@ char	*filename0;	/* Name of input FITS image file */
     char *oldhead;	/* Input file image header */
     int nbhead0;	/* Length of input file image header */
     int lhead0;
-    double bzero, bscale;
     int nbbuff, nbuff, ibuff, nbr, nbdata;
 
     /* Compute size of image in bytes using relevant header parameters */
@@ -1274,4 +1273,5 @@ char    *filename;      /* Name of file for which to find size */
  * Nov 24 1999	Add fitscimage()
  *
  * Feb 23 2000	Fix problem with some error returns in fitscimage()
+ * Mar 17 2000	Drop unused variables after lint
  */

@@ -6,7 +6,7 @@ image, using specific keywords in the image header which relate pixel
 position within the image to position on the sky.  Auxillary programs
 search star catalogs and manipulate images.
 
-This is version 2.7.0 of the WCSTools package developed by Doug Mink
+This is version 2.7.2 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 
@@ -52,6 +52,8 @@ Program Descriptions
 addpix	Add a constant value(s) to specified pixel(s)
 
 conpix	Operate on all of the pixels of an image
+
+cphead	Copy keyword values between FITS or IRAF images
 
 delhead	Delete specified keywords from FITS or IRAF image file headers
 

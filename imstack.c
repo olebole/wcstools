@@ -1,5 +1,5 @@
 /* File imstack.c
- * February 7, 2000
+ * March 23, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -187,7 +187,7 @@ char	*filename;	/* FITS or IRAF file filename */
     int bitpix, nblocks, nbytes;
     int iraffile;
     int i, itime, nout;
-    char pixname[128];
+    char pixname[256];
 
     /* Open IRAF header */
     if (isiraf (filename)) {
@@ -200,7 +200,7 @@ char	*filename;	/* FITS or IRAF file filename */
 		return (1);
 		}
 	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE", 64, pixname);
+		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -348,4 +348,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Oct 22 1999	Drop unused variables after lint
  *
  * Feb  7 2000	Add option to repeat files in stack
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

@@ -1,5 +1,5 @@
 /* File sumpix.c
- * December 14, 1999
+ * March 23, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -145,7 +145,7 @@ char *rrange;	/* Row range string */
     int nx, ny, ix, iy, x, y;
     int np;
     double dnp, mean, variance, std, sumsq;
-    char pixname[128];
+    char pixname[256];
     char numform[8];
     char numforme[8];
     struct Range *xrange;    /* X range structure */
@@ -162,7 +162,7 @@ char *rrange;	/* Row range string */
 		return;
 		}
 	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE", 64, pixname);
+		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -340,4 +340,6 @@ char *rrange;	/* Row range string */
  * Oct 29 1999	Add option to compute and print mean, rms, std, and/or sum
  * Dec 10 1999	Add option -n to set number of decimal places in output
  * Dec 14 1999	Change rms to variance
+ *
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

@@ -1,7 +1,7 @@
 /*** File wcscon.c
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Based on Starlink subroutines by Patrick Wallace
- *** October 20, 1999
+ *** March 14, 2000
 
  * Module:	wcscon.c (World Coordinate System conversion)
  * Purpose:	Convert between various sky coordinate systems
@@ -117,7 +117,6 @@ double	*pphi;	/* Latitude or declination proper motion in degrees/year
 	}
 
     /* Precess from input equinox, if necessary */
-    /* Add proper motion if B1950 or J2000 input */
     if (eq1 != eq2) {
 	if (sys1 == WCS_B1950 && eq1 != 1950.0)
 	   fk4prec (eq1, 1950.0, dtheta, dphi);
@@ -212,9 +211,9 @@ double	*pphi;	/* Latitude or declination proper motion in degrees/year
     /* Precess to desired equinox, if necessary */
     if (eq1 != eq2) {
 	if (sys2 == WCS_B1950 && eq2 != 1950.0)
-	   fk4prec (1950.0, eq2, dtheta, dphi);
+	    fk4prec (1950.0, eq2, dtheta, dphi);
 	if (sys2 == WCS_J2000 && eq2 != 2000.0)
-	   fk5prec (2000.0, eq2, dtheta, dphi);
+	    fk5prec (2000.0, eq2, dtheta, dphi);
 	}
 
     /* Keep latitude/declination between +90 and -90 degrees */
@@ -354,10 +353,27 @@ double	epoch;	/* Besselian epoch in years */
     /* Precess to desired equinox, if necessary */
     if (eq1 != eq2) {
 	if (sys2 == WCS_B1950 && eq2 != 1950.0)
-	   fk4prec (1950.0, eq2, dtheta, dphi);
+	    fk4prec (1950.0, eq2, dtheta, dphi);
 	if (sys2 == WCS_J2000 && eq2 != 2000.0)
-	   fk5prec (2000.0, eq2, dtheta, dphi);
+	    fk5prec (2000.0, eq2, dtheta, dphi);
 	}
+
+    /* Keep latitude/declination between +90 and -90 degrees */
+    if (*dphi > 90.0) {
+	*dphi = 180.0 - *dphi;
+	*dtheta = *dtheta + 180.0;
+	}
+    else if (*dphi < -90.0) {
+	*dphi = -180.0 - *dphi;
+	*dtheta = *dtheta + 180.0;
+	}
+
+    /* Keep longitude/right ascension between 0 and 360 degrees */
+    if (*dtheta > 360.0)
+	*dtheta = *dtheta - 360.0;
+    else if (*dtheta < 0.0)
+	*dtheta = *dtheta + 360.0;
+
     return;
 }
 
@@ -368,6 +384,7 @@ wcscsys (wcstring)
 
 char *wcstring;		/* Name of coordinate system */
 {
+    double equinox;
 
     if (wcstring[0] == 'J' || wcstring[0] == 'j' ||
 	!strcmp (wcstring,"2000") || !strcmp (wcstring, "2000.0") ||
@@ -398,6 +415,13 @@ char *wcstring;		/* Name of coordinate system */
     else if (wcstring[0] == 'P' || wcstring[0] == 'p' )
 	return WCS_PLANET;
 
+    else if (isnum (wcstring)) {
+	equinox = atof (wcstring);
+	if (equinox > 1980.0)
+	    return WCS_J2000;
+	else
+	    return WCS_B1950;
+	}
     else
 	return -1;
 }
@@ -574,7 +598,7 @@ double	*ra;		/* Right ascension in degrees (J2000 in, B1950 out) */
 double	*dec;		/* Declination in degrees (J2000 in, B1950 out) */
 double	*rapm;		/* Proper motion in right ascension */
 double	*decpm;		/* Proper motion in declination */
-			/* In:  deg/jul.yr.  Out: deg/trop.yr.  */
+			/* In:  ra/dec deg/jul.yr.  Out: ra/dec deg/trop.yr.  */
 
 /*  This routine converts stars from the new, IAU 1976, FK5, Fricke
     system, to the old, Bessel-Newcomb, FK4 system, using Yallop's
@@ -645,7 +669,7 @@ double	*decpm;		/* Proper motion in declination */
     double v1[6],v2[6];
     double xd,yd,zd;
     double rxyz,rxysq,rxy;
-    double dra,ddec,scon,tcon;
+    double dra,ddec;
     int	i,j;
     int	diag = 0;
 
@@ -745,10 +769,8 @@ double	*decpm;		/* Proper motion in declination */
     *decpm = raddeg (dd1950);
 
     if (diag) {
-	scon = raddeg (3.6e3);
-	tcon = raddeg (2.4e2);
-	dra = tcon * (r1950 - r2000);
-	ddec = scon * (d1950 - d2000);
+	dra = 240.0 * raddeg (r1950 - r2000);
+	ddec = 3600.0 * raddeg (d1950 - d2000);
 	printf("B1950-J2000: dra= %11.5f sec  ddec= %f11.5f arcsec\n",
 		dra, ddec);
 	}
@@ -821,7 +843,7 @@ double	*ra, *dec;	/* Right ascension and declination in degrees
 			   input:  B1950.0,fk4	returned:  J2000.0,fk5 */
 double	*rapm, *decpm;	/* Proper motion in right ascension and declination
 			   input:  B1950.0,fk4	returned:  J2000.0,fk5
-			           deg/trop.yr.            deg/jul.yr.  */
+			           ra/dec deg/trop.yr.     ra/dec deg/jul.yr.  */
 
 /* This routine converts stars from the old, Bessel-Newcomb, FK4
    system to the new, IAU 1976, FK5, Fricke system, using Yallop's
@@ -888,7 +910,7 @@ double	*rapm, *decpm;	/* Proper motion in right ascension and declination
 
     /* Miscellaneous */
     double ur,ud,sr,cr,sd,cd,w,wd;
-    double x,y,z,xd,yd,zd, dra,ddec,scon,tcon;
+    double x,y,z,xd,yd,zd, dra,ddec;
     double rxysq,rxyzsq,rxy,spxy;
     int	i,j;
     int	diag = 0;
@@ -980,10 +1002,8 @@ double	*rapm, *decpm;	/* Proper motion in right ascension and declination
     *decpm = raddeg (dd2000);
 
     if (diag) {
-	scon = raddeg (3.6e3);
-	tcon = raddeg (2.4e2);
-	dra = tcon * (r2000 - r1950);
-	ddec = scon * (d2000 - d1950);
+	dra = 240.0 * raddeg (r2000 - r1950);
+	ddec = 3600.0 * raddeg (d2000 - d1950);
 	printf("J2000-B1950: dra= %11.5f sec  ddec= %f11.5f arcsec\n",
 		dra, ddec);
 	}
@@ -1599,6 +1619,7 @@ double *dec;	/* Dec in degrees mean equator & equinox of epoch ep0
 
     *ra = raddeg (rra);
     *dec = raddeg (rdec);
+    return;
 }
 
 
@@ -1718,4 +1739,8 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
  * Oct 21 1998	In wcscstr(), drop .00 from returned string
  * Nov 18 1998	Rename jpcop() v2s3() and jpcon() s2v3() (spherical to vector)
  * Dec  2 1998	Add PLANET coordinate system to wcscsys() and wcscstr()
+ *
+ * Mar 10 2000	Precess coordinates correctly from other than 1950.0 and 2000.0
+ * Mar 10 2000	Set coordinate system to J2000 or B1950 if string is numeric
+ * Mar 14 2000	Clean up code in fk524m() and fk425m()
  */

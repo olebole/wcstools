@@ -1,5 +1,5 @@
 /* File imsize.c
- * January 28, 2000
+ * February 15, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -237,7 +237,7 @@ char *name;
     char fileroot[64];
     char *filename, *ext;
     int nax;
-    int hp, wp, i, lfroot;
+    int bp, hp, wp, i, lfroot;
     double cra, cdec, dra, ddec, secpix;
     double xmin, xmax, ymin, ymax, dx, dy;
     struct WorldCoor *wcs;
@@ -290,7 +290,10 @@ char *name;
     wcs = GetFITSWCS (name, header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
 		      &wp, &hp, &sysim, &eqim);
     if (nowcs (wcs)) {
-	printf ("%s: No WCS for file, cannot compute image size\n", name);
+	hgeti4 (header,"NAXIS1", &wp);
+	hgeti4 (header,"NAXIS2", &hp);
+	hgeti4 (header,"BITPIX", &bp);
+	printf ("%s %d x %d,  %d bits/pixel\n", name, wp, hp, bp);
 	return;
 	}
 
@@ -424,4 +427,5 @@ char *name;
  * Oct 22 1999	Drop unused variables after lint
  *
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
+ * Feb 15 2000	Print size of image if no WCS
  */

@@ -1,5 +1,5 @@
 /* File getpix.c
- * December 13, 1999
+ * March 23, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -158,7 +158,7 @@ char *rrange;   /* Row range string */
     char *c;
     int *yi;
     int bitpix,xdim,ydim, ipix, i, nx, ny, ix, iy, x, y;
-    char pixname[128];
+    char pixname[255];
     char nform[8];
     struct Range *xrange;    /* X range structure */
     struct Range *yrange;    /* Y range structure */
@@ -174,7 +174,7 @@ char *rrange;   /* Row range string */
 		return;
 		}
 	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE", 64, pixname);
+		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -486,4 +486,6 @@ char *rrange;   /* Row range string */
  * Oct 22 1999	Drop unused variables after lint
  * Dec  9 1999	Add -g -l limits
  * Dec 13 1999	Fix bug so that -g and -l limits can be ANDed
+ *
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

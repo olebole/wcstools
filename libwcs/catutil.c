@@ -1,12 +1,18 @@
 /* File libwcs/catutil.c
- * January 11, 2000
- * By Doug Mink
+ * March 28, 2000
+ * By Doug Mink, dmink@cfa.harvard.edu
  */
 
 /* int RefCat (refcatname,title,syscat,eqcat,epcat)
  *	Return catalog type code, title, coord. system
+ * char *ProgCat (progname)
+ *	Return catalog name from program name, NULL if none there
+ * char *ProgName (progpath0)
+ *	Return program name from pathname by which program is invoked
  * void CatNum (refcat, nndec, dnum, numstr)
  *	Return formatted source number
+ * int	PropCat (refcatname)
+ *	Return 1 if catalog has proper motion, else 0
  * void SearchLim (cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, verbose)
  *	Comput limiting RA and Dec from center and half-widths
  * int CatNumLen (refcat, nndec)
@@ -33,13 +39,22 @@
  *	Get next token from tokenized string
  * int getoken (tokens, itok, token)
  *	Get specified token from tokenized string
+ * int isfile (filename)
+ *	Return 1 if file is a readable file, else 0
+ * int agets (string, keyword, lval, value)
+ *	Read value from a file where keyword=value, anywhere on a line
+ * int moveb (source, destination, nbytes, offs, offd)
+ *	Move bytes between two variables
  */
 
+#include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include "wcs.h"
 #include "wcscat.h"
+
+static int catprop = 0;		/* 1 if catalog has proper motion, else 0 */
 
 /* Return code for reference catalog or its type */
 
@@ -53,6 +68,8 @@ double	*eqcat;		/* Equinox of catalog (returned) */
 double	*epcat;		/* Epoch of catalog (returned) */
 {
     struct StarCat *starcat;
+
+    catprop = 0;
 
     if (strncmp(refcatname,"gs",2)==0 ||
 	strncmp (refcatname,"GS",2)== 0) {
@@ -115,6 +132,7 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*eqcat = starcat->equinox;
 	*epcat = starcat->epoch;
 	binclose (starcat);
+	catprop = 1;
 	return (SAO);
 	}
     else if (strncmp(refcatname,"ppm",3)==0 ||
@@ -126,6 +144,7 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*eqcat = starcat->equinox;
 	*epcat = starcat->epoch;
 	binclose (starcat);
+	catprop = 1;
 	return (PPM);
 	}
     else if (strncmp(refcatname,"iras",4)==0 ||
@@ -167,6 +186,7 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
+	catprop = 1;
 	return (ACT);
 	}
     else if (strncmp(refcatname,"bsc",3)==0 ||
@@ -194,9 +214,13 @@ double	*epcat;		/* Epoch of catalog (returned) */
     else if (istab (refcatname)) {
 	strcpy (title, refcatname);
 	strcat (title, " Catalog Sources");
-	*syscat = WCS_J2000;
-	*eqcat = 2000.0;
-	*epcat = 2000.0;
+	if ((starcat = ctgopen (refcatname, TABCAT)) == NULL)
+	    return (0);
+	*syscat = starcat->coorsys;
+	*eqcat = starcat->equinox;
+	*epcat = starcat->epoch;
+	catprop = starcat->mprop;
+	ctgclose (starcat, TXTCAT);
 	return (TABCAT);
 	}
     else {
@@ -210,6 +234,117 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	ctgclose (starcat, TXTCAT);
 	return (TXTCAT);
 	}
+}
+
+
+char *
+ProgName (progpath0)
+
+char *progpath0;	/* Pathname by which program is invoked */
+{
+    char *progpath, *progname;
+    int i, lpath;
+
+    lpath = (strlen (progpath0) + 2) / 8;
+    lpath = (lpath + 1) * 8;;
+    progpath = (char *) calloc (lpath, 1);
+    strcpy (progpath, progpath0);
+    progname = progpath;
+    for (i = strlen (progpath); i > -1; i--) {
+        if (progpath[i] > 63 && progpath[i] < 90)
+            progpath[i] = progpath[i] + 32;
+        if (progpath[i] == '/') {
+            progname = progpath + i + 1;
+            break;
+            }
+	}
+    return (progname);
+}
+
+
+char *
+ProgCat (progname)
+
+char *progname;	/* Program name which might contain catalog code */
+{
+    char *refcatname;
+    refcatname = NULL;
+
+    if (strsrch (progname,"gsc") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "gsc");
+	}
+    else if (strsrch (progname,"uac") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "uac");
+	}
+    else if (strsrch (progname,"ua1") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "ua1");
+	}
+    else if (strsrch (progname,"ua2") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "ua2");
+	}
+    else if (strsrch (progname,"usac") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "usac");
+	}
+    else if (strsrch (progname,"usa1") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "usa1");
+	}
+    else if (strsrch (progname,"usa2") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "usa2");
+	}
+    else if (strsrch (progname,"ujc") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "ujc");
+	}
+    else if (strsrch (progname,"sao") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "sao");
+	}
+    else if (strsrch (progname,"ppm") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "ppm");
+	}
+    else if (strsrch (progname,"ira") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "iras");
+	}
+    else if (strsrch (progname,"tyc") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "tycho");
+	}
+    else if (strsrch (progname,"hip") != NULL) {
+	refcatname = (char *) calloc (1,16);
+	strcpy (refcatname, "hipparcos");
+	}
+    else if (strsrch (progname,"act") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "act");
+	}
+    else if (strsrch (progname,"bsc") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "bsc");
+	}
+
+    return (refcatname);
+}
+
+
+/* Return 1 if most recently opened catalog has proper motion, else 0 */
+
+int
+PropCat (refcat, refcatname)
+
+int	refcat;		/* Catalog code */
+char	*refcatname;	/* Catalog name */
+
+{
+    return (catprop);
 }
 
 
@@ -437,6 +572,9 @@ int	verbose;	/* 1 to print limits, else 0 */
     return;
 }
 
+
+/* RANGEINIT -- Initialize range structure from string */
+
 struct Range *
 RangeInit (string, ndef)
 
@@ -505,9 +643,7 @@ int	ndef;		/* Maximum allowable range value */
 
 	/* Get last limit
 	* Must be '-', or 'x' otherwise last = first */
-	if (string[ip] == 'x')
-	    ;
-	else if (string[ip] == '-' || string[ip] == ':') {
+	if (string[ip] == '-' || string[ip] == ':') {
 	    ip++;
 	    while (string[ip] == ' ' || string[ip] == '	' ||
 	   	   string[ip] == ',')
@@ -518,12 +654,10 @@ int	ndef;		/* Maximum allowable range value */
 		last = strtod (string+ip, &slast);
 		ip = slast - string;
 		}
-	    else if (string[ip] == 'x')
-		;
-	    else
+	    else if (string[ip] != 'x')
 		last = first + ndef;
 	    }
-	else
+	else if (string[ip] != 'x')
 	    last = first;
 
 	/* Skip delimiters */
@@ -544,9 +678,7 @@ int	ndef;		/* Maximum allowable range value */
 		step = strtod (string+ip, &slast);
 		ip = slast - string;
 		}
-	    else if (string[ip] == '-' || string[ip] == ':')
-		;
-	    else
+	    else if (string[ip] != '-' && string[ip] != ':')
 		step = 1.0;
             }
 
@@ -562,7 +694,7 @@ int	ndef;		/* Maximum allowable range value */
 }
 
 
-/* Return 1 if string is a range, else 0 */
+/* ISRANGE -- Return 1 if string is a range, else 0 */
 
 int
 isrange (string)
@@ -586,7 +718,7 @@ char *string;		/* String which might be a range of numbers */
 }
 
 
-/* Restart at beginning of range */
+/* RSTART -- Restart at beginning of range */
 
 void
 rstart (range)
@@ -599,7 +731,7 @@ struct Range *range;	/* Range structure */
 }
 
 
-/*  Return number of values from range structure */
+/* RGETN -- Return number of values from range structure */
 
 int
 rgetn (range)
@@ -611,7 +743,7 @@ struct Range *range;	/* Range structure */
 }
 
 
-/*  Return next number from range structure as 8-byte floating point number */
+/*  RGETR8 -- Return next number from range structure as 8-byte f.p. number */
 
 double
 rgetr8 (range)
@@ -649,7 +781,7 @@ struct Range *range;	/* Range structure */
 }
 
 
-/*  Return next number from range structure as 4-byte integer */
+/*  RGETI4 -- Return next number from range structure as 4-byte integer */
 
 int
 rgeti4 (range)
@@ -884,6 +1016,164 @@ char *token;		/* token (returned) */
     return (ltok);
 }
 
+
+/* ISFILE -- Return 1 if file is a readable file, else 0 */
+
+int
+isfile (filename)
+
+char    *filename;      /* Name of file for which to find size */
+{
+    if (access (filename, R_OK))
+	return (0);
+    else
+	return (1);
+}
+
+
+/* AGETS -- Get keyword value from ASCII string with keyword=value anywhere */
+
+int
+agets (string, keyword0, lval, value)
+
+char *string;  /* character string containing <keyword>= <value> info */
+char *keyword0;  /* character string containing the name of the keyword
+                   the value of which is returned.  hget searches for a
+                   line beginning with this string.  if "[n]" or ",n" is
+		   present, the n'th token in the value is returned. */
+int lval;       /* Size of str in characters */
+char *value;      /* String (returned) */
+{
+    char skey[16];
+    char keyword[81];
+    char *pval;
+    char squot[2], dquot[2], lbracket[2], rbracket[2], comma[2];
+    char *lastval, *rval, *brack1, *brack2, *lastring;
+    int ipar, i;
+
+    squot[0] = (char) 39;
+    squot[1] = (char) 0;
+    dquot[0] = (char) 34;
+    dquot[1] = (char) 0;
+    lbracket[0] = (char) 91;
+    lbracket[1] = (char) 0;
+    comma[0] = (char) 44;
+    comma[1] = (char) 0;
+    rbracket[0] = (char) 93;
+    rbracket[1] = (char) 0;
+    lastring = string + strlen (string);
+
+    /* Find length of variable name */
+    strncpy (keyword,keyword0, sizeof(keyword)-1);
+    brack1 = strsrch (keyword,lbracket);
+    if (brack1 == NULL)
+	brack1 = strsrch (keyword,comma);
+    if (brack1 != NULL) {
+	*brack1 = '\0';
+	brack1++;
+	}
+
+    /* First look for keyword= value */
+    skey[0] = ' ';
+    skey[1] = (char) 0;
+    strcat (skey, keyword);
+    strcat (skey, "=");
+    pval = strsrch (string, skey);
+
+    /* Look for keyword = value */
+    if (pval == NULL) {
+	skey[0] = ' ';
+	skey[1] = (char) 0;
+	strcat (skey, keyword);
+	strcat (skey, " =");
+	pval = strsrch (string, skey);
+	}
+
+    /* Look for keyword:  value */
+    if (pval == NULL) {
+	skey[0] = ' ';
+	skey[1] = (char) 0;
+	strcat (skey, keyword);
+	strcat (skey, ": ");
+	pval = strsrch (string, skey);
+	}
+
+    /* If keyword has not been found, return 0 */
+    if (pval == NULL)
+	return (0);
+
+    /* Otherwise, bump pointer past keyword */
+    else
+	pval = pval + strlen (skey);
+
+    /* Drop leading spaces */
+    while (*pval == ' ') pval++;
+
+    /* If keyword has brackets, figure out which token to extract */
+    if (brack1 != NULL) {
+        brack2 = strsrch (brack1,rbracket);
+        if (brack2 != NULL)
+            *brack2 = '\0';
+        ipar = atoi (brack1);
+	}
+    else
+	ipar = 1;
+
+    /* Move to appropriate token */
+    for (i = 1; i < ipar; i++) {
+	while (*pval != ' ' && *pval != '/' && pval < lastring)
+	    pval++;
+
+	/* Drop leading spaces  or / */
+	while (*pval == ' ' || *pval == '/')
+	    pval++;
+	}
+
+    /* Transfer token value to returned string */
+    rval = value;
+    lastval = value + lval - 1;
+    while (*pval != ' ' && *pval != '\n' && *pval != '/' &&
+	   pval < lastring && rval < lastval)
+	*rval++ = *pval++;
+    if (rval < lastval)
+	*rval = (char) 0;
+    else
+	*lastval = 0;
+
+    return (1);
+}
+
+
+/* Move bytes from one place to another (any data type) */
+
+int
+moveb (source, dest, nbytes, offs, offd)
+
+char	*source;	/* Address of variable from which to move first byte */
+char	*dest;		/* Address of variable to which to move first byte */
+int	nbytes;		/* Number of bytes to move */
+int	offs;		/* Offset from start of source for first byte */
+int	offd;		/* Offset from start of destination for first byte */
+{
+char *from, *last, *to;
+    from = source + offs;
+    to = dest + offd;
+    last = from + nbytes;
+    while (from < last) *(to++) = *(from++);
+    return (from - source - offs);
+}
+
+/*
+ * Jul 14 1999	New subroutines
+ * Jul 15 1999	Add getfilebuff()
+ * Oct 15 1999	Fix format eror in error message
+ * Oct 21 1999	Fix declarations after lint
+ * Dec  9 1999	Add next_token(); set pointer to next token in first_token
+ *
+ * Mar  1 2000	Add isfile() to tell if a string is the name of a readable file
+ * Mar  1 2000	Add agets() to read a parameter from a comment line of a file
+ */
+
 /* Mar  2 1998	Make number and second magnitude optional
  * Oct 21 1998	Add RefCat() to set reference catalog code
  * Oct 26 1998	Include object names in star catalog entry structure
@@ -912,4 +1202,11 @@ char *token;		/* token (returned) */
  * Nov  3 1999	Fix bug which lost last character on a line in getoken
  *
  * Jan 11 2000	Use nndec for Starbase files, too
+ * Feb 10 2000	Read coordinate system, epoch, and equinox from Starbase files
+ * Mar  1 2000	Add isfile() to tell whether string is name of readable file
+ * Mar  1 2000	Add agets() to return value from keyword = value in string
+ * Mar  8 2000	Add ProgCat() to return catalog flag from program name
+ * Mar 13 2000	Add PropCat() to return whether catalog has proper motions
+ * Mar 27 2000	Clean up code after lint
+ * Mar 28 2000	Add moveb() to transfer bytes regardless of alignment
  */

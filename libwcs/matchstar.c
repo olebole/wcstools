@@ -1,12 +1,14 @@
 /* File libwcs/matchstar.c
- * October 20, 1999
+ * March 10, 2000
  * By Doug Mink, Smithsonian Astrophyscial Observatory
  */
 
 /* StarMatch (ns, sx, sy, ng, gra, gdec, gx, gy, tol, wcs, nfit, debug)
  *  Find shift, scale, and rotation of image stars to best-match reference stars
+ *
  * FitMatch (ns, sx, sy, ng, gra, gdec, gx, gy, tol, wcs, nfit, debug)
  *  Find shift, scale, and rotation of image stars to RA/Dec/X/Y matches
+ *
  * wcs_amoeba (wcs0) Set up temp arrays and call multivariate solver
  * chisqr (v) Compute the chisqr of the vector v
  * amoeba (p, y, ndim, ftol, itmax, funk, nfunk)
@@ -41,6 +43,7 @@ static double	xrefpix, yrefpix;
 static int	nbin_p;
 static int	nfit;	/* Number of parameters to fit */
 static int	pfit0 = 0;	/* List of parameters to fit, 1 per digit */
+static int	cdfit = 0;	/* 1 if CD matrix has been fit */
 static int	resid_refine = 0;
 static int	minbin=2;		/* Minimum number of coincidence hits needed */
 static int	vfit[NPAR1]; /* Parameters being fit: index to value vector
@@ -113,12 +116,17 @@ int	debug;
     minmatch = 0.5 * ns;
     if (ns > ng)
 	minmatch = 0.5 * ng;
+
+    if (debug)
+	fprintf (stderr,"Match history: nim=%d nref=%d tol=%3.0f minbin=%d minmatch=%d):\n",
+		ns, ng, tol, minbin, minmatch);
+
     is = (int *) calloc (maxnbin, sizeof(int));
     ig = (int *) calloc (maxnbin, sizeof(int));
     ibs = (int *) calloc (maxnbin, sizeof(int));
     ibg = (int *) calloc (maxnbin, sizeof(int));
-    for (g = 0; g < ng; g++) {
-	for (s = 0; s < ns; s++) {
+    for (s = 0; s < ns; s++) {
+	for (g = 0; g < ng; g++) {
 	    dx = gx[g] - sx[s];
 	    dy = gy[g] - sy[s];
 	    nbin = 1;
@@ -162,10 +170,19 @@ int	debug;
 			}
 		    }
 		peaks[0] = nmatch;
-		dxpeaks[0] = (int) (bestdx + 0.5);
-		dypeaks[0] = (int) (bestdy + 0.5);
+		if (bestdx > 0.0)
+		    dxpeaks[0] = (int) (bestdx + 0.5);
+		else
+		    dxpeaks[0] = (int) (bestdx - 0.5);
+		if (bestdy > 0)
+		    dypeaks[0] = (int) (bestdy + 0.5);
+		else
+		    dypeaks[0] = (int) (bestdy - 0.5);
 		if (npeaks < NPEAKS)
 		    npeaks++;
+		if (debug)
+		    printf ("%d: %d matches at image %d cat %d: dx= %d dy= %d\n",
+			    npeaks, nmatch, s, g, dxpeaks[0], dypeaks[0]);
 		}
 	    if (nmatch > minmatch)
 		break;
@@ -174,14 +191,12 @@ int	debug;
 	    break;
 	}
 
-    if (debug) {
+    /* if (debug) {
 	int i;
-	fprintf (stderr,"Bin history (ns=%d ng=%d tol=%3.0f minbin=%d):\n",
-		ns, ng, tol, minbin);
 	for (i = 0; i < npeaks; i++)
 	    fprintf (stderr," %d bins at dx=%d dy=%d\n",
 		    peaks[i], dxpeaks[i], dypeaks[i]);
-	}
+	} */
 
     /* peak is broad */
     if (npeaks < 2 || peaks[1] == peaks[0]) {
@@ -281,6 +296,10 @@ int	debug;
     cd0[1] = wcs->cd[1];
     cd0[2] = wcs->cd[2];
     cd0[3] = wcs->cd[3];
+    if (vfit[6] > -1)
+	cdfit = 1;
+    else
+	cdfit = 0;
 
     /* Fit image star coordinates to reference star positions */
     wcs_amoeba (wcs);
@@ -1260,6 +1279,10 @@ int nfit;
     return;
 }
 
+int
+iscdfit ()
+{ return (cdfit); }
+
 /* Aug  6 1996	New subroutine
  * Sep  1 1996	Move constants to lwcs.h
  * Sep  3 1996	Use offscale pixels for chi^2 computation
@@ -1300,4 +1323,8 @@ int nfit;
  * Sep  8 1999	Fix bug found by Jean-Baptiste Marquette
  * Oct  1 1999	Add ReadMatch() to read a set of matches from a file
  * Oct 20 1999	Include wcscat.h
+ *
+ * Feb 15 2000	Add iscdfit() to return wheterh CD matrix is being fit
+ * Mar 10 2000	Add debug statement to list max matches as they are found
+ * Mar 10 2000	Change loop order to image stars first
  */ 

@@ -1,5 +1,5 @@
 /* File conpix.c
- * February 1, 2000
+ * March 23, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -71,7 +71,7 @@ char **av;
                 usage ();
 	    if (*(av+1)[0] == 'g') {
 		addgnoise++;
-		op[nop] = PIX_ADDNOISE;
+		op[nop++] = PIX_ADDNOISE;
 		newimage++;
 		av++;
 		}
@@ -226,9 +226,9 @@ double	*opcon;		/* Constants for operations */
     char *irafheader;		/* IRAF image header */
     int lext, lroot;
     char *imext, *imext1;
-    char newname[128];
-    char pixname[128];
-    char tempname[128];
+    char newname[256];
+    char pixname[256];
+    char tempname[256];
     char history[64];
     char *ext, *fname;
     char echar;
@@ -249,7 +249,7 @@ double	*opcon;		/* Constants for operations */
                 return;
                 }
 	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE", 64, pixname);
+		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -587,4 +587,5 @@ double	flux;	/* Square root of this is 1/2.35 of Gaussian FWHM */
  *
  * Feb  1 2000	Always write new file if Gaussian noise; add 'g' to filename
  * Feb  1 2000	Add option to add Gaussian noise; add 'ag' to filename
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

@@ -1,5 +1,5 @@
 /* File libwcs/fitswcs.c
- * October 21, 1999
+ * March 23, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
@@ -64,7 +64,7 @@ char *filename;	/* FITS or IRAF file filename */
     if (isiraf (filename)) {
 	if ((irafheader = irafrhead (filename, &nbiraf)) != NULL) {
 	    if ((header = iraf2fits (filename, irafheader, nbiraf, &lhead)) == NULL) {
-		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
+		fprintf (stderr, "Cannot translate IRAF header %s\n",filename);
 		free (irafheader);
 		irafheader = NULL;
 		return (NULL);
@@ -508,4 +508,6 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Jul  8 1999	Write RADECSYS as FK5 or FK4 instead of J2000 or B1950
  * Jul 21 1999	Add SECPIX plate scale output to SetFITSWCS()
  * Oct 21 1999	Fix declarations after lint
+ *
+ * Mar 23 2000	Fix bug in IRAF header error message
  */

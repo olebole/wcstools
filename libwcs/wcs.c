@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** January 28, 2000
+ *** February 24, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -2047,7 +2047,8 @@ struct WorldCoor *wcs;	/* World coordinate system structure */
 double	xpos,ypos;	/* World coordinates in degrees */
 char	*coorsys;	/* Input world coordinate system:
 			   FK4, FK5, B1950, J2000, GALACTIC, ECLIPTIC
-			   fk4, fk5, b1950, j2000, galactic, ecliptic */
+			   fk4, fk5, b1950, j2000, galactic, ecliptic
+			   * If NULL, use image WCS */
 double	*xpix,*ypix;	/* Image coordinates in pixels */
 int	*offscl;	/* 0 if within bounds, else off scale */
 {
@@ -2071,8 +2072,14 @@ int	*offscl;	/* 0 if within bounds, else off scale */
 	yp = 90.0 - yp;
     else if (wcs->latbase == -90)
 	yp = yp - 90.0;
-    sysin = wcscsys (coorsys);
-    eqin = wcsceq (coorsys);
+    if (coorsys == NULL) {
+	sysin = wcs->syswcs;
+	eqin = wcs->equinox;
+	}
+    else {
+	sysin = wcscsys (coorsys);
+	eqin = wcsceq (coorsys);
+	}
     wcs->zpix = 1.0;
 
     /* Convert coordinates to same system as image */
@@ -2572,4 +2579,5 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Nov 17 1999	Fix bug which caused software to miss NCP projection
  *
  * Jan 24 2000	Default to AIPS for NCP, CAR, and COE proj.; if -z use WCSLIB
+ * Feb 24 2000	If coorsys is null in wcsc2pix, wcs->radecin is assumed
  */

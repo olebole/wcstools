@@ -1,5 +1,5 @@
 /* File lwcs.h
- * June 11, 1999
+ * February 15, 2000
  * By Doug Mink
  */
 
@@ -23,13 +23,16 @@
 
 /* The following are used in world coordinate system fitting (imsetwcs.c) */
 #define MINSTARS	3	/* Minimum stars from reference and image */
-#define MAXSTARS	25	/* Max star pairs we need to try using */
-#define MAXREF		100	/* Max reference stars to use in image region */
+#define MAXSTARS	50	/* Default max star pairs to try matching */
 #define MAGLIM1		0.0	/* Faintest reference catalog magnitude to use*/
 #define MAGLIM2		0.0	/* Faintest reference catalog magnitude to use*/
 #define PIXDIFF		10	/* +- this many pixels is a match */
 #define PSCALE		0	/* Plate scale in arcsec/pixel */
 				/* (if nonzero, this overrides image header) */
 
+#define MAXCAT		100	/* Max reference stars to keep in scat or imcat */
+
 /* Jun 11 1999	Set BURNEDOUT to 0 so it is ignored
+ *
+ * Feb 15 2000	Drop MAXREF; add MAXCAT for imcat and scat; MAXSTARS from 25 to 50
  */

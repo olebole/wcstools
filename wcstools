@@ -3,6 +3,7 @@ echo "WCSTools 2.7.0 Programs"
 
 echo "addpix:    Add a constant value(s) to specified pixel(s)"
 echo "conpix:    Operate on all of the pixels of an image"
+echo "cphead:    Copy keyword values between FITS or IRAF images"
 echo "delhead:   Delete specified keywords from FITS or IRAF image file headers"
 echo "delwcs:    Delete the WCS keywords from an image"
 echo "edhead:    Edit the header of a FITS or IRAF file"

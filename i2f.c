@@ -1,5 +1,5 @@
 /* File i2f.c
- * October 22, 1998
+ * March 23, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -100,11 +100,11 @@ char *name;
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
     char *irafheader;	/* IRAF image header */
-    char pixname[128];	/* Pixel file name */
+    char pixname[256];	/* Pixel file name */
     char history[128];	/* for HISTORY line */
     char *filename;	/* Pointer to start of file name */
-    char irafname[128];	/* Name of IRAF file */
-    char fitsname[128];	/* Name of FITS file */
+    char irafname[256];	/* Name of IRAF file */
+    char fitsname[256];	/* Name of FITS file */
     char *ext;		/* Pointer to start of extension */
     char *endchar;
     char *ltime;
@@ -119,7 +119,7 @@ char *name;
 		return;
 		}
 	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE", 64, pixname);
+		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -155,7 +155,7 @@ char *name;
 		return;
 		}
 	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE",64, pixname);
+		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -182,7 +182,7 @@ char *name;
     endchar = strchr (history, ',');
     *endchar = (char) 0;
     strcat (history, " ");
-    ltime = getltime ();
+    ltime = lt2fd ();
     strcat (history, ltime);
     endchar = strrchr (history,':');
     *endchar = (char) 0;
@@ -227,4 +227,7 @@ char *name;
 
  * Sep 28 1999	Add standard output option
  * Oct 22 1999	Drop unused variables after lint
+ *
+ * Mar 22 2000	Use lt2fd() instead of getltime()
+ * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** January 5, 2000
+ *** March 15, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -26,7 +26,7 @@ static int actsra();
 
 int
 actread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,nstarmax,
-	 gnum,gra,gdec,gmag,gmagb,gtype,nlog)
+	 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
@@ -42,6 +42,8 @@ int	nstarmax;	/* Maximum number of stars to be returned */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
+double  *gpra;          /* Array of right ascension proper motions (returned) */
+double  *gpdec;         /* Array of declination proper motions (returned) */
 double	*gmag;		/* Array of visual magnitudes (returned) */
 double	*gmagb;		/* Array of blue magnitudes (returned) */
 int	*gtype;		/* Array of object types (returned) */
@@ -193,6 +195,8 @@ int	nlog;		/* 1 for diagnostics */
 			gnum[nstar] = num;
 			gra[nstar] = ra;
 			gdec[nstar] = dec;
+			gpra[nstar] = rapm;
+			gpdec[nstar] = decpm;
 			gmag[nstar] = mag;
 			gmagb[nstar] = magb;
 			gtype[nstar] = isp;
@@ -214,6 +218,8 @@ int	nlog;		/* 1 for diagnostics */
 			    gnum[farstar] = num;
 			    gra[farstar] = ra;
 			    gdec[farstar] = dec;
+			    gpra[nstar] = rapm;
+			    gpdec[nstar] = decpm;
 			    gmag[farstar] = mag;
 			    gmagb[farstar] = magb;
 			    gtype[farstar] = isp;
@@ -235,6 +241,8 @@ int	nlog;		/* 1 for diagnostics */
 			gnum[faintstar] = num;
 			gra[faintstar] = ra;
 			gdec[faintstar] = dec;
+			gpra[nstar] = rapm;
+			gpdec[nstar] = decpm;
 			gmag[faintstar] = mag;
 			gmagb[faintstar] = magb;
 			gtype[faintstar] = isp;
@@ -296,7 +304,8 @@ int	nlog;		/* 1 for diagnostics */
 /* ACTRNUM -- Read HST Guide Star Catalog stars from CDROM */
 
 int
-actrnum (nstars, sysout, eqout, epout, gnum,gra,gdec,gmag,gmagb,gtype,nlog)
+actrnum (nstars,sysout,eqout,epout,
+	 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog)
 
 int	nstars;		/* Number of stars to find */
 int	sysout;		/* Search coordinate system */
@@ -305,6 +314,8 @@ double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
+double  *gpra;          /* Array of right ascension proper motions (returned) */
+double  *gpdec;         /* Array of declination proper motions (returned) */
 double	*gmag;		/* Array of V magnitudes (returned) */
 double	*gmagb;		/* Array of B magnitudes (returned) */
 int	*gtype;		/* Array of object types (returned) */
@@ -385,6 +396,8 @@ int	nlog;		/* 1 for diagnostics */
 	/* Save star position and magnitude in table */
 	gra[nstar] = ra;
 	gdec[nstar] = dec;
+	gpra[nstar] = rapm;
+	gpdec[nstar] = decpm;
 	gmag[nstar] = mag;
 	gmagb[nstar] = magb;
 	gtype[nstar] = isp;
@@ -814,4 +827,5 @@ char	*filename;	/* Name of file for which to find size */
  * Oct 21 1999	Delete unused varaiables after lint
  *
  * Jan  5 2000	Add 2 to spectral type string so there can be proper termination
+ * Mar 15 2000	Add proper motions to returns from actread() and actrnum()
  */
