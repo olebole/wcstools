@@ -1,3 +1,8 @@
+Version 2.9.1 (March 2, 2001)
+wcsinit.c: Fix bug which read CRPIX1 as CRPIX2 as well as CRPIX1
+scat: Add option -z to append to pre-existing file (for SAOimage star matching)
+imsetwcs.c: Fix bugs with pre-matched stars.
+
 Version 2.9.0 (February 23, 2001)
 wcsinit.c, wcs.c, wcs.h: Implement sequentially dependent WCS's
 fitsfile.c: Debug multiple WCS implementation with multi-extension FITS files
@@ -46,7 +51,7 @@ imhfile.c: Use header directory if pixel file not found at its pathname
 
 Version 2.8.3 (August 3, 2000)
 setpix:  Add -a, -s, -m, and -d options to operate on existing pixel values
-in an image sections with a constant.
+in image sections with a constant.
 wcshead: Add -w option to print limits of 1-D images (often spectra)
 scat: Add ASCII catalog /x option to use X Y instead of spherical coordinates
 imcat, scat: Preserve star catalog structure between calls to avoid rereading

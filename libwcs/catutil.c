@@ -1,11 +1,13 @@
 /*** File libwcs/catutil.c
- *** January 17, 2001
+ *** March 1, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
 
 /* int RefCat (refcatname,title,syscat,eqcat,epcat)
  *	Return catalog type code, title, coord. system
+ * char *CatName (refcat)
+ *	Return catalog name given catalog type code
  * char *ProgCat (progname)
  *	Return catalog name from program name, NULL if none there
  * char *ProgName (progpath0)
@@ -87,17 +89,13 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	catprop = 0;
 	refcat = GSC;
 	}
-    else if (strncmp(refcatname,"us",2)==0 ||
-	strncmp(refcatname,"US",2)==0) {
+    else if (strncmp(refcatname,"usa",3)==0 ||
+	strncmp(refcatname,"USA",3)==0) {
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
 	catprop = 0;
-	if (strncmp (refcatname, ".usno", 5) == 0) {
-	    sprintf (title, "USNO %s Stars", refcatname);
-	    refcat = USNO;
-	    }
-	else if (strchr (refcatname, '1') != NULL) {
+	if (strchr (refcatname, '1') != NULL) {
 	    strcpy (title, "USNO SA-1.0 Catalog Stars");
 	    refcat = USA1;
 	    }
@@ -109,6 +107,14 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	    strcpy (title, "USNO SA Catalog Stars");
 	    refcat = USAC;
 	    }
+	}
+    else if (strncmp (refcatname, ".usnop", 6) == 0) {
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	catprop = 0;
+	sprintf (title, "USNO %s Stars", refcatname);
+	refcat = USNO;
 	}
     else if (strncmp(refcatname,"ua",2)==0 ||
 	strncmp(refcatname,"UA",2)==0) {
@@ -280,6 +286,53 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	    }
 	}
     return refcat;
+}
+
+char *
+CatName (refcat)
+
+int refcat;		/* Catalog code */
+{
+    char *catname;
+
+    if (refcat > 0 && refcat < 17)
+	catname = (char *)calloc (16, 1);
+    else
+	return (NULL);
+
+    if (refcat ==  GSC)		/* HST Guide Star Catalog */
+	strcpy (catname, "GSC");
+    else if (refcat ==  UJC)	/* USNO UJ Star Catalog */
+	strcpy (catname, "UJC");
+    else if (refcat ==  UAC)	/* USNO A Star Catalog */
+	strcpy (catname, "UA2");
+    else if (refcat ==  USAC)	/* USNO SA Star Catalog */
+	strcpy (catname, "USA2");
+    else if (refcat ==  SAO)	/* SAO Star Catalog */
+	strcpy (catname, "SAO");
+    else if (refcat ==  IRAS)	/* IRAS Point Source Catalog */
+	strcpy (catname, "IRAS");
+    else if (refcat ==  PPM)	/* PPM Star Catalog */
+	strcpy (catname, "PPM");
+    else if (refcat ==  TYCHO)	/* Tycho Star Catalog */
+	strcpy (catname, "TYCHO");
+    else if (refcat ==  UA1)	/* USNO A-1.0 Star Catalog */
+	strcpy (catname, "UA1");
+    else if (refcat ==  UA2)	/* USNO A-2.0 Star Catalog */
+	strcpy (catname, "UA2");
+    else if (refcat ==  USA1)	/* USNO SA-1.0 Star Catalog */
+	strcpy (catname, "USA1");
+    else if (refcat ==  USA2)	/* USNO SA-2.0 Star Catalog */
+	strcpy (catname, "USA2");
+    else if (refcat ==  HIP)	/* Hipparcos Star Catalog */
+	strcpy (catname, "HIP");
+    else if (refcat ==  ACT)	/* USNO ACT Star Catalog */
+	strcpy (catname, "ACT");
+    else if (refcat ==  BSC)	/* Yale Bright Star Catalog */
+	strcpy (catname, "BSC");
+    else if (refcat ==  TYCHO2)	/* Tycho-2 Star Catalog */
+	strcpy (catname, "TY2");
+    return (catname);
 }
 
 
@@ -1476,4 +1529,6 @@ char	*isp;	/* Spectral type */
  * Dec 13 2000	Add StrNdec() to get number of decimal places in star numbers
  *
  * Jan 17 2001	Add vertical bar (|) as column separator
+ * Feb 28 2001	Separate .usno stars from usa stars
+ * Mar  1 2001	Add CatName()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/imsetwcs.c
- *** January 11, 2001
+ *** March 1, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (based on UIowa code)
@@ -40,7 +40,7 @@ extern iscdfit();
 static double tolerance = PIXDIFF;	/* +/- this many pixels is a hit */
 static double refmag1 = MAGLIM1;	/* reference catalog magnitude limit */
 static double refmag2 = MAGLIM2;	/* reference catalog magnitude limit */
-static int refcat = GSC;		/* reference catalog switch */
+static char defcatname[8];		/* default catalog name */
 static double frac = 1.0;		/* Additional catalog/image stars */
 static int nofit = 0;			/* if =1, do not fit WCS */
 static int maxcat = MAXSTARS;		/* Maximum number of catalog stars to use */
@@ -103,6 +103,7 @@ int	verbose;
     int imsearch = 1;	/* Flag set if image should be searched for sources */
     int nmax;		/* Maximum number of matches possible (nrg or nbs) */
     double mag1,mag2;
+    int refcat;		/* reference catalog switch */
     double dxys;
     char numstr[32];
     int minstars;
@@ -218,6 +219,14 @@ getfield:
     if (fitwcs) {
 	wcs->prjcode = WCS_TAN;
 	wcseqset (wcs, refeq);
+	}
+
+    if (refcatname == NULL) {
+	refcatname = CatName (refcat);
+	if (refcatname == NULL) {
+	    ret = 0;
+	    goto out;
+	    }
 	}
 
     if (imfrac > 0.0) {
@@ -456,11 +465,12 @@ getfield:
 	else if (verbose)
 	    fprintf (stderr,"%d / %d bin hits\n", nbin, nbg);
 
+	hputs (header, "WCSRFCAT", refcatname);
 	imcatname = getimcat ();
 	if (strlen (imcatname) == 0)
-	    imcatname = filename;
-	hputs (header, "WCSRFCAT", refcatname);
-	hputs (header, "WCSIMCAT", imcatname);
+	    hputs (header, "WCSIMCAT", filename);
+	else
+	    hputs (header, "WCSIMCAT", imcatname);
 	hputi4 (header, "WCSMATCH", nbin);
 	if (ns < nbg)
 	    hputi4 (header, "WCSNREF", ns);
@@ -477,8 +487,6 @@ match:
 
     if (verbose || !fitwcs) {
 	imcatname = getimcat ();
-	if (strlen (imcatname) == 0)
-	    imcatname = filename;
 	if (wcs->ncoeff1 > 0)
 	    printf ("# %d-term x, %d-term y polynomial fit\n",
 		    wcs->ncoeff1, wcs->ncoeff2);
@@ -577,7 +585,10 @@ match:
 	if (rprint)
 	    if (refcatname == NULL)
 		printf ("# nmatch= %d nstars= %d in and %s  niter= %d\n",
-			nmatch, nmax, imcatname, niter);
+			nmatch, nmax, matchcat, niter);
+	    else if (strlen (imcatname) == 0)
+		printf ("# nmatch= %d nstars= %d between %s and %s  niter= %d\n",
+			nmatch, nmax, refcatname, filename, niter);
 	    else
 		printf ("# nmatch= %d nstars= %d between %s and %s  niter= %d\n",
 			nmatch, nmax, refcatname, imcatname, niter);
@@ -599,7 +610,10 @@ match:
 	    else {
 		if (refcatname == NULL)
 		printf ("# nmatch= %d nstars= %d in %s niter= %d\n",
-			nmatch, nmax, imcatname, niter);
+			nmatch, nmax, matchcat, niter);
+		else if (strlen (imcatname) == 0)
+		printf ("# nmatch= %d nstars= %d between %s and %s niter= %d\n",
+			nmatch, nmax, refcatname, filename, niter);
 		else
 		printf ("# nmatch= %d nstars= %d between %s and %s niter= %d\n",
 			nmatch, nmax, refcatname, imcatname, niter);
@@ -610,8 +624,15 @@ match:
 	}
 
     else {
-	fprintf (stderr, "SetWCSFITS: No matches between %s and %s:\n",
-	refcatname, imcatname);
+	if (refcatname == NULL)
+	    fprintf (stderr, "SetWCSFITS: No matches in %s:\n",
+		     matchcat);
+	else if (strlen (imcatname) == 0)
+	    fprintf (stderr, "SetWCSFITS: No matches between %s and %s:\n",
+		     refcatname, filename);
+	else
+	    fprintf (stderr, "SetWCSFITS: No matches between %s and %s:\n",
+		     refcatname, imcatname);
 	hputi4 (header, "WCSMATCH", 0);
 	}
     if (gra1) free ((char *)gra1);
@@ -1021,4 +1042,5 @@ int recenter;
  * Jan  8 2001	Add verbose flag to ReadMatch() call
  * Jan  9 2001	Fix bug in FitMatch() call
  * Jan 11 2001	All output except residuals to stderr
+ * Mar  1 2001	Fill in catalog name using CatName() if not set
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinitm.c
- *** February 23, 2001
+ *** February 28, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -332,7 +332,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	sprintf (keyword,"CRPIX1%c",mchar);
 	hgetr8 (hstring, keyword, &wcs->crpix[0]);
 	wcs->crpix[1] = 1.0;
-	sprintf (keyword,"CRPIX1%c",mchar);
+	sprintf (keyword,"CRPIX2%c",mchar);
 	hgetr8 (hstring, keyword, &wcs->crpix[1]);
 	wcs->xrefpix = wcs->crpix[0];
 	wcs->yrefpix = wcs->crpix[1];
@@ -1040,4 +1040,5 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Jan 31 2001	Treat single character WCS name as WCS character
  * Feb 20 2001	Implement WCSDEPx nested WCS's
  * Feb 23 2001	Initialize all 4 terms of CD matrix
+ * Feb 28 2001	Fix bug which read CRPIX1 into CRPIX2
  */

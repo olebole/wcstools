@@ -1,5 +1,5 @@
 /* File scat.c
- * January 2, 2001
+ * March 1, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -26,6 +26,7 @@ static void SearchHead();
 static int GetArea();
 
 static int verbose = 0;		/* Verbose/debugging flag */
+static int afile = 0;		/* True to append output file */
 static int wfile = 0;		/* True to print output file */
 static int classd = -1;		/* Guide Star Catalog object classes */
 static double maglim1 = MAGLIM1; /* Catalog bright magnitude limit */
@@ -483,6 +484,11 @@ char **av;
 		ac--;
 		break;
 
+	    case 'z':	/* Set append flag */
+		afile++;
+		wfile++;
+		break;
+
 	    default:
 		usage (progname, *av);
 		break;
@@ -712,10 +718,11 @@ char *command;
     fprintf(dev,"  -t: Tab table to standard output as well as file\n");
     fprintf(dev,"  -u x y: Print x y instead of number in front of non-tab entry\n");
     fprintf(dev,"  -v: Verbose\n");
-    fprintf(dev,"  -w: Write tab table output file search[objname].[catalog]\n");
+    fprintf(dev,"  -w: Write output file search[objname].[catalog]\n");
     if (!strcmp (progname, "scat") || !strcmp (progname, "sgsc"))
 	fprintf(dev,"  -x type: GSC object type (0=stars 3=galaxies -1=all)\n");
     fprintf(dev,"  -y year: Epoch of output positions in years\n");
+    fprintf(dev,"  -z: Append to output file search[objname].[catalog]\n");
     exit (1);
 }
 
@@ -1517,13 +1524,22 @@ double	eqout;		/* Equinox for output coordinates */
 		    strcat (filename,".");
 		    strcat (filename,refcatname[i]);
 		    }
+		if (printxy)
+		    strcat (filename,".match");
 
-		fd = fopen (filename, "w");
+		if (afile)
+		    fd = fopen (filename, "a");
+		else
+		    fd = fopen (filename, "w");
 
 		/* Free result arrays and return if cannot write file */
 		if (fd == NULL) {
-		    fprintf (stderr, "%s:  cannot write file %s\n",
-			     cpname, filename);
+		    if (afile)
+			fprintf (stderr, "%s:  cannot append to file %s\n",
+				 cpname, filename);
+		    else
+			fprintf (stderr, "%s:  cannot write file %s\n",
+				 cpname, filename);
         	    return (0);
 		    }
 		}
@@ -1564,48 +1580,53 @@ double	eqout;		/* Equinox for output coordinates */
 	sprintf (headline, "catalog	Yale Bright Star Catalog");
     else
 	sprintf (headline, "catalog	%s", refcatname[icat]);
-    if (wfile)
-	fprintf (fd, "%s\n", headline);
-    if (tabout)
+    if (tabout) {
 	printf ("%s\n", headline);
+	if (wfile)
+	    fprintf (fd, "%s\n", headline);
+	}
 
     if (!ranges) {
 	ra2str (rastr, 32, cra, 3);
-	if (wfile)
-	    fprintf (fd, "ra	%s\n", rastr);
-	if (tabout)
+	if (tabout) {
 	    printf ("ra	%s\n", rastr);
+	    if (wfile)
+		fprintf (fd, "ra	%s\n", rastr);
+	    }
 
 	dec2str (decstr, 32, cdec, 2);
-	if (wfile)
-	    fprintf (fd, "dec	%s\n", decstr);
-	if (tabout)
-	    printf ("dec	%s\n", decstr);
-
-	}
-    if (wfile)
-	fprintf (fd, "equinox	%.1f\n", eqout);
-    if (tabout)
-	printf ("equinox	%.1f\n", eqout);
-
-    if (wfile)
-	fprintf (fd, "epoch	%.1f\n", epout);
-    if (tabout)
-	printf ("epoch	%.1f\n", epout);
-    if (mprop) {
-	if (wfile) {
-	    if (degout)
-		fprintf (fd, "rpmunit	arcsec/century\n");
-	    else
-		fprintf (fd, "rpmunit	tsec/century\n");
-	    fprintf (fd, "dpmunit	arcsec/century\n");
-	    }
 	if (tabout) {
-	    if (degout)
+	    printf ("dec	%s\n", decstr);
+	    if (wfile)
+		fprintf (fd, "dec	%s\n", decstr);
+	    }
+	}
+    if (tabout) {
+	printf ("equinox	%.1f\n", eqout);
+	if (wfile)
+	    fprintf (fd, "equinox	%.1f\n", eqout);
+	}
+
+    if (tabout) {
+	printf ("epoch	%.1f\n", epout);
+	if (wfile)
+	    fprintf (fd, "epoch	%.1f\n", epout);
+	}
+    if (mprop) {
+	if (tabout) {
+	    if (degout) {
 		printf ("rpmunit	arcsec/century\n");
-	    else
+		if (wfile)
+		    fprintf (fd, "rpmunit	arcsec/century\n");
+		}
+	    else {
 		printf ("rpmunit	tsec/century\n");
+		if (wfile)
+		    fprintf (fd, "rpmunit	tsec/century\n");
+		}
 	    printf ("dpmunit	arcsec/century\n");
+	    if (wfile)
+		fprintf (fd, "dpmunit	arcsec/century\n");
 	    }
 	}
 
@@ -1629,20 +1650,19 @@ double	eqout;		/* Equinox for output coordinates */
 	    printf ("boxsec	%.2f\n",dds);
 	}
 
-    if (distsort) {
+    if (distsort && tabout) {
+	printf ("distsort	T\n");
 	if (wfile)
 	    fprintf (fd, "distsort	T\n");
-	if (tabout)
-	    printf ("distsort	T\n");
 	}
-    else if (rasort) {
+    else if (rasort && tabout) {
+	printf ("rasort	T\n");
 	if (wfile)
 	    fprintf (fd, "rasort	T\n");
-	if (tabout)
-	    printf ("rasort	T\n");
 	}
-    if (wfile)
-    if (tabout)
+    if (tabout) {
+	if (wfile)
+	}
 
     /* Print column headings */
     if (refcat == ACT)
@@ -1714,10 +1734,11 @@ double	eqout;		/* Equinox for output coordinates */
 	strcat (headline,"	object");
     if (printxy)
 	strcat (headline, "	X      	Y      ");
-    if (wfile)
-	fprintf (fd, "%s\n", headline);
-    if (tabout)
+    if (tabout) {
 	printf ("%s\n", headline);
+	if (wfile)
+	    fprintf (fd, "%s\n", headline);
+	}
 
     strcpy (headline, "---------------------");
     headline[nnfld] = (char) 0;
@@ -1738,105 +1759,116 @@ double	eqout;		/* Equinox for output coordinates */
 	strcat (headline,"	------");
     if (printxy)
 	strcat (headline, "	-------	-------");
-    if (wfile)
-	fprintf (fd, "%s\n", headline);
-    if (tabout)
-	printf ("%s\n", headline);
     if (ranges == NULL)
 	strcat (headline,"	------");
+    if (tabout) {
+	printf ("%s\n", headline);
+	if (wfile)
+	    fprintf (fd, "%s\n", headline);
+	}
     if (printhead) {
 	if (ng == 0)
 	    printf ("No %s Stars Found\n", title);
 	else {
-	    if (!printxy) {
+	    if (printxy)
+		strcpy (headline, "  X     Y   ");
+	    else {
 		if (refcat == GSC)
-		    printf ("GSC number ");
+		    strcpy (headline, "GSC number ");
 		else if (refcat == USAC)
-		    printf ("USNO SA number ");
+		    strcpy (headline, "USNO SA number ");
 		else if (refcat == USA1)
-		    printf ("USNO SA1 number");
+		    strcpy (headline, "USNO SA1 number");
 		else if (refcat == USA2)
-		    printf ("USNO SA2 number");
+		    strcpy (headline, "USNO SA2 number");
 		else if (refcat == UAC)
-		    printf ("USNO A number  ");
+		    strcpy (headline, "USNO A number  ");
 		else if (refcat == UA1)
-		    printf ("USNO A1 number ");
+		    strcpy (headline, "USNO A1 number ");
 		else if (refcat == UA2)
-		    printf ("USNO A2 number ");
+		    strcpy (headline, "USNO A2 number ");
 		else if (refcat == UJC)
-		    printf (" UJ number    ");
+		    strcpy (headline, " UJ number    ");
 		else if (refcat == SAO)
-		    printf ("SAO number ");
+		    strcpy (headline, "SAO number ");
 		else if (refcat == PPM)
-		    printf ("PPM number ");
+		    strcpy (headline, "PPM number ");
 		else if (refcat == BSC)
-		    printf ("BSC number ");
+		    strcpy (headline, "BSC number ");
 		else if (refcat == IRAS)
-		    printf ("IRAS number ");
+		    strcpy (headline, "IRAS number ");
 		else if (refcat == TYCHO)
-		    printf ("Tycho number ");
+		    strcpy (headline, "Tycho number ");
 		else if (refcat == TYCHO2)
-		    printf ("Tycho2 num  ");
+		    strcpy (headline, "Tycho2 num  ");
 		else if (refcat == HIP)
-		    printf ("Hip number  ");
+		    strcpy (headline, "Hip number  ");
 		else if (refcat == ACT)
-		    printf ("ACT number  ");
+		    strcpy (headline, "ACT number  ");
 		else
-		    printf ("Number   ");
+		    strcpy (headline, "Number   ");
 		}
-	    else
-		printf ("  X     Y   ");
 	    if (sysout == WCS_B1950) {
 		if (degout) {
 		    if (eqout == 1950.0)
-			printf ("  RA1950   Dec1950  ");
-		    else
-			printf ("RAB%7.2f DecB%7.2f  ", eqout, eqout);
+			strcat (headline, "  RA1950   Dec1950  ");
+		    else {
+			sprintf (temp, "RAB%7.2f DecB%7.2f  ", eqout, eqout);
+			strcat (headline, temp);
+			}
 		    }
 		else {
 		    if (eqout == 1950.0)
-			printf ("RAB1950      DecB1950    ");
-		    else
-			printf ("RAB%7.2f   DecB%7.2f  ", eqout, eqout);
+			strcat (headline, "RAB1950      DecB1950    ");
+		    else {
+			sprintf (temp, "RAB%7.2f   DecB%7.2f  ", eqout, eqout);
+			strcat (headline, temp);
+			}
 		    }
 		}
 	    else if (sysout == WCS_ECLIPTIC)
-		printf ("Ecl Lon    Ecl Lat  ");
+		strcat (headline, "Ecl Lon    Ecl Lat  ");
 	    else if (sysout == WCS_GALACTIC)
-		printf ("Gal Lon    Gal Lat  ");
+		strcat (headline, "Gal Lon    Gal Lat  ");
 	    else {
 		if (degout) {
 		    if (eqout == 2000.0)
-			printf ("  RA2000   Dec2000  ");
-		    else
-			printf ("RAJ%7.2f  DecJ%7.2f ", eqout, eqout);
+			strcat (headline, "  RA2000   Dec2000  ");
+		    else {
+			sprintf (temp,"RAJ%7.2f  DecJ%7.2f ", eqout, eqout);
+			strcat (headline, temp);
+			}
 		    }
 		else {
 		    if (eqout == 2000.0)
-			printf (" RA2000       Dec2000   ");
-		    else
-			printf ("RAJ%7.2f   DecJ%7.2f  ", eqout, eqout);
+			strcat (headline, " RA2000       Dec2000   ");
+		    else {
+			sprintf (temp,"RAJ%7.2f   DecJ%7.2f  ", eqout, eqout);
+			strcat (headline, temp);
+			}
 		    }
 		}
 	    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		refcat == UAC  || refcat == UA1  || refcat == UA2)
-		printf ("  MagB  MagR Plate");
+		strcat (headline, "  MagB  MagR Plate");
 	    else if (refcat == UJC)
-		printf ("  Mag  Plate");
+		strcat (headline, "  Mag  Plate");
 	    else if (refcat == GSC)
-		printf ("   Mag Class");
+		strcat (headline, "   Mag Class");
 	    else if (refcat == SAO || refcat == PPM ||
 		     refcat == IRAS || refcat == BSC)
-		printf ("   Mag  Type");
+		strcat (headline, "   Mag  Type");
 	    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT)
-		printf ("  MagB   MagV Type");
+		strcat (headline, "  MagB   MagV Type");
 	    else if (refcat == TABCAT && gcset)
-		printf (" Mag     Peak");
+		strcat (headline, " Mag     Peak");
 	    else
-		printf ("  Mag");
+		strcat (headline, "  Mag");
 	    if (ranges == NULL)
-		printf ("  Arcsec");
-	    printf ("\n");
+		strcat (headline, "  Arcsec");
+	    printf ("%s\n", headline);
+	    if (wfile && !tabout)
+		fprintf (fd, "%s\n", headline);
 	    }
 	}
 
@@ -1937,10 +1969,11 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, "	");
 		strcat (numstr, ystr);
 		}
-	    if (wfile)
-		fprintf (fd, "%s\n", headline);
-	    else if (tabout)
+	    if (tabout) {
 		printf ("%s\n", headline);
+		if (wfile)
+		    fprintf (fd, "%s\n", headline);
+		}
 	    else {
 		if (printxy) {
 		    strcpy (numstr, xstr);
@@ -2005,6 +2038,8 @@ double	eqout;		/* Equinox for output coordinates */
 		    strcat (headline, temp);
 		    }
 		printf ("%s\n", headline);
+		if (wfile)
+		    fprintf (fd, "%s\n", headline);
 		}
 	    }
 	}
@@ -2657,4 +2692,7 @@ char *parstring;
  * Dec 29 2000	Set debug flag if two v's encountered as command line arguments
  *
  * Jan  2 2001	Fix proper motion test; fix box size in heading
+ * Mar  1 2001	If printing x and y, add .match extension to output file
+ * Mar  1 2001	Print output file as tab/Starbase only if -t
+ * Mar  1 2001	Add -z option to append to output file
  */

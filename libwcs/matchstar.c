@@ -1,5 +1,5 @@
 /*** File libwcs/matchstar.c
- *** January 11, 2001
+ *** February 28, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -41,8 +41,8 @@ extern int getfilelines();
 /* Statics used by the chisqr evaluator */
 static double	*sx_p;
 static double	*sy_p;
-static double	*gx_p;
-static double	*gy_p;
+static double	*gra_p;
+static double	*gdec_p;
 static double	xref_p, yref_p;
 static double	xrefpix, yrefpix;
 static int	nbin_p;
@@ -240,8 +240,8 @@ int	debug;
     /* Provide non-parametric access to the star lists */
     sx_p = sbx;
     sy_p = sby;
-    gx_p = gbra;
-    gy_p = gbdec;
+    gra_p = gbra;
+    gdec_p = gbdec;
     xref_p = wcs->xref;
     yref_p = wcs->yref;
     xrefpix = wcs->xrefpix;
@@ -455,7 +455,7 @@ double	**sdec;		/* Probable image star declinations in degrees */
 int	debug;		/* Printed debugging information if not zero */
 
 {
-    int nbytes, nread, ir, ntok, itok;
+    int nbytes, nread, ir, ntok, itok, iytok;
     double *tx, *ty, *tra, *tdec, ra, dec, x, y;
     int ndec;
     int nmatch = 0;	/* Number of matches read from file */
@@ -529,22 +529,30 @@ int	debug;		/* Printed debugging information if not zero */
 	    /* if (debug)
 		fprintf (stderr, "%d: %s\n", nmatch, line); */
 
-	    /* Image X coordinate */
+	    /* Image X coordinate or RA */
 	    itok = 1;
 	    if (getoken(&tokens, itok, token)) {
 
 		/* Read RA, Dec, X, Y if first token has : in it */
 		if (strchr (token, ':') != NULL) {
 		    ra = str2ra (token);
+		    iytok = 4;
 		    if (getoken(&tokens, 2, token))
 			dec = str2dec (token);
 		    if (getoken(&tokens, 3, token)) {
 			if (isnum (token))
 			    x = atof (token);
-			else
-			    continue;
+			else {
+			    iytok = 5;
+			    if (getoken(&tokens, 4, token)) {
+				if (isnum (token))
+				    x = atof (token);
+				else
+				    continue;
+				}
+			    }
 			}
-		    if (getoken(&tokens, 4, token)) {
+		    if (getoken(&tokens, iytok, token)) {
 			if (isnum (token))
 			    y = atof (token);
 			else
@@ -742,8 +750,8 @@ int	debug;		/* Printed debugging information if not zero */
     /* Provide non-parametric access to the star lists */
     sx_p = sbx;
     sy_p = sby;
-    gx_p = gbra;
-    gy_p = gbdec;
+    gra_p = gbra;
+    gdec_p = gbdec;
     xref_p = wcs->xref;
     yref_p = wcs->yref;
     xrefpix = wcs->xrefpix;
@@ -803,6 +811,10 @@ int	debug;		/* Printed debugging information if not zero */
     cd0[1] = wcs->cd[1];
     cd0[2] = wcs->cd[2];
     cd0[3] = wcs->cd[3];
+    if (vfit[6] > -1)
+	cdfit = 1;
+    else
+	cdfit = 0;
 
     /* Fit image star coordinates to reference star positions */
     wcs_amoeba (wcs);
@@ -840,7 +852,7 @@ int	debug;		/* Printed debugging information if not zero */
 	double *ye = (double *) malloc (nmatch * sizeof(double));
 	int i, j;
 	double xmean, ymean, rmean, xsumsq, ysumsq, diff;
-	double mx, my, xsig, ysig, rsig, siglim;
+	double mra, mdec, xsig, ysig, rsig, siglim;
 	char wcstring[64];
 	double xsum = 0.0;
 	double ysum = 0.0;
@@ -850,9 +862,9 @@ int	debug;		/* Printed debugging information if not zero */
 
 	/* Compute residuals at each star location */
 	for (i = 0; i < nmatch; i++) {
-	    pix2wcs (wcs, sbx[i], sby[i], &mx, &my);
-	    xe[i] = (mx - gbra[i]) * 3600.0;
-	    ye[i] = (my - gbdec[i]) * 3600.0;
+	    pix2wcs (wcs, sbx[i], sby[i], &mra, &mdec);
+	    xe[i] = (mra - gbra[i]) * 3600.0;
+	    ye[i] = (mdec - gbdec[i]) * 3600.0;
 	    resid[i] = sqrt (xe[i]*xe[i] + ye[i]*ye[i]);
 	    if (debug) {
 		pix2wcst (wcs, sbx[i], sby[i], wcstring, 64);
@@ -1214,22 +1226,22 @@ struct WorldCoor *wcs0;
     sumy = 0.0;
     sumr = 0.0;
     for (i = 0; i < nbin_p; i++) {
-	double mx, my, ex, ey, er;
+	double mra, mdec, ex, ey, er;
 	char rastr[16], decstr[16];
 
-	pix2wcs (wcsf, sx_p[i], sy_p[i], &mx, &my);
-	ex = 3600.0 * (mx - gx_p[i]);
-	ey = 3600.0 * (my - gy_p[i]);
+	pix2wcs (wcsf, sx_p[i], sy_p[i], &mra, &mdec);
+	ex = 3600.0 * (mra - gra_p[i]);
+	ey = 3600.0 * (mdec - gdec_p[i]);
 	er = sqrt (ex * ex + ey * ey);
 	sumx = sumx + ex;
 	sumy = sumy + ey;
 	sumr = sumr + er;
 
-	ra2str (rastr, 16, gx_p[i], 3);
-	dec2str (decstr, 16, gy_p[i], 2);
+	ra2str (rastr, 16, gra_p[i], 3);
+	dec2str (decstr, 16, gdec_p[i], 2);
 	fprintf (stderr,"%2d: c: %s %s ", i+1, rastr, decstr);
-	ra2str (rastr, 16, mx, 3);
-	dec2str (decstr, 16, my, 2);
+	ra2str (rastr, 16, mra, 3);
+	dec2str (decstr, 16, mdec, 2);
 	fprintf (stderr, "i: %s %s %6.3f %6.3f %6.3f\n",
 		rastr, decstr, 3600.0*ex, 3600.0*ey,
 		3600.0*sqrt(ex*ex + ey*ey));
@@ -1327,7 +1339,7 @@ int	iter;	/* Number of iterations */
     /* Compute sum of squared residuals for these parameters */
     chsq = 0.0;
     for (i = 0; i < nbin_p; i++) {
-	wcs2pix (wcsf, gx_p[i], gy_p[i], &xmp, &ymp, &offscale);
+	wcs2pix (wcsf, gra_p[i], gdec_p[i], &xmp, &ymp, &offscale);
 	/* if (!offscale) { */
 	    dx = xmp - sx_p[i];
 	    dy = ymp - sy_p[i];
@@ -1553,4 +1565,5 @@ iscdfit ()
  * Jan  2 2001	Modify ReadMatch() to read hh mm ss dd mm ss, too
  * Jan  9 2001	Work on FitMatch()
  * Jan 11 2001	All diagnostic printing goes to stderr
+ * Feb 28 2001	Ignore coordinate system if present after match file coordinates
  */ 

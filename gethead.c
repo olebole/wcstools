@@ -1,5 +1,5 @@
 /* File gethead.c
- * February 21, 2001
+ * February 27, 2001
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -450,7 +450,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
     char tcond;
     char cvalue[64], *cval;
     char numstr[32], numstr1[32];
-    int pass, iwcs;
+    int pass, iwcs, nwild;
 
     if (rootdir) {
 	nch = strlen (rootdir) + strlen (name) + 1;
@@ -612,6 +612,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	/* Read all keywords from multiple WCS's if wildcarded with @ */
 	else if (keyword[lkwd-1] == '@') {
 	    keyword[lkwd-1] = (char) 0;
+	    nwild = 0;
 	    for (iwcs = -1; iwcs < 26; iwcs++) {
 		if (iwcs < 0)
 		    keyword[lkwd-1] = (char)0;
@@ -633,8 +634,16 @@ char	*kwd[];		/* Names of keywords for which to print values */
 			sprintf (temp, " %s=%s", keyword, str);
 			strcat (outline, temp);
 			}
-		    else
+		    else {
+			if (nwild) {
+			    if (tabout)
+				strcat (outline, "	");
+			    else
+				strcat (outline, " ");
+			    }
 			strcat (outline, str);
+			nwild++;
+			}
 		    nfound++;
 		    }
 		}
@@ -822,4 +831,5 @@ char *string;
  * Jun 12 2000	If -p is set, print all file names (-a)
  *
  * Feb 21 2001	Add @ wildcard option for multiple WCS keywords
+ * Feb 27 2001	Add space or tab between wildcard multiple WCS keyword values
  */
