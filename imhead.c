@@ -1,5 +1,5 @@
 /* File imhead.c
- * May 6, 2004
+ * March 17, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -147,8 +147,16 @@ char *name;
     if (verbose || nfiles > 1) {
 	if (isiraf (name))
 	    printf ("%s IRAF file header:\n", name);
-	else
+	else if (isfits (name))
 	    printf ("%s FITS file header:\n", name);
+	else {
+	    printf ("*** %s is not a FITS or IRAF file\n", name);
+	    return;
+	    }
+	}
+    else if (!isiraf (name) && !isfits (name)) {
+	printf ("*** %s is not a FITS or IRAF file\n", name);
+	return;
 	}
 
     if (fitsout) {
@@ -235,4 +243,6 @@ char	*header;	/* Image FITS header */
  * Jun 19 2002	Add verbose argument to GetFITShead()
  *
  * May  6 2004	Add -i argument to read extension header without primary
+ *
+ * Mar 17 2005	Check to make sure that input images are FITS or IRAF format
  */

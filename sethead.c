@@ -1,5 +1,5 @@
 /* File sethead.c
- * September 7, 2004
+ * March 7, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -13,7 +13,7 @@
 #include <math.h>
 #include "libwcs/fitsfile.h"
 
-#define MAXKWD 50
+#define MAXKWD 100
 #define MAXFILES 1000
 static int maxnkwd = MAXKWD;
 static int maxnfile = MAXFILES;
@@ -35,7 +35,7 @@ static int krename = 0;
 static char prefix[2];
 static int version = 0;		/* If 1, print only program name and version */
 static int logfile = 0;
-static int first = 1;
+static int first_file = 1;
 static char spchar = (char) 0;	/* Character to replace with spaces */
 static int nproc = 0;
 
@@ -62,7 +62,6 @@ char **av;
     char *ilistfile;
     char *klistfile;
     int ikwd, i, nc;
-    int newimage1;
     char *dq, *sq, *sl;
     char lf = (char) 10;
     char cr = (char) 13;
@@ -110,6 +109,22 @@ char **av;
 	
 		case 'l':	/* Log files changed */
 		    logfile++;
+		    break;
+
+		case 'm':	/* Maximum number of keywords to be changed */
+		    if (ac > 1) {
+			maxnkwd = atoi (++av[0]);
+			ac--;
+			free (kwd);
+			kwd = (char **) calloc (maxnkwd, sizeof (void *));
+			for (ikwd = 0; ikwd < maxnkwd; ikwd++)
+			    kwd[ikwd] = NULL;
+			kwd = kwdnew;
+			free (comment);
+			comment = (char **) calloc (maxnkwd, sizeof (void *));
+			for (ikwd = 0; ikwd < maxnkwd; ikwd++)
+			    comment[ikwd] = NULL;
+			}
 		    break;
 
 		case 'n':	/* Write new file */
@@ -163,6 +178,11 @@ char **av;
 			    kwdnew[ikwd] = kwd[ikwd];
 			free (kwd);
 			kwd = kwdnew;
+			comnew = (char **) calloc (maxnkwd, sizeof (void *));
+			for (ikwd = 0; ikwd < nkwd; ikwd++)
+			    comnew[ikwd] = comment[ikwd];
+			free (comment);
+			comment = comnew;
 			}
 		    keybuff = getfilebuff (klistfile);
 		    if (keybuff != NULL) {
@@ -295,11 +315,9 @@ char **av;
 	if (ilistfile != NULL) {
 	    first_token (flist, 254, filename);
 	    SetValues (filename, nkwd, kwd, comment);
-	    newimage0 = newimage1;
 	    }
 	else
 	    SetValues (fn[ifile], nkwd, kwd, comment);
-	    newimage0 = newimage1;
 	}
     if (ilistfile != NULL)
 	fclose (flist);
@@ -323,6 +341,7 @@ usage ()
     fprintf(stderr,"  -h: Write HISTORY line\n");
     fprintf(stderr,"  -k: Write SETHEAD keyword\n");
     fprintf(stderr,"  -l: Log files as processed (on one line)\n");
+    fprintf(stderr,"  -m num: Change max number of keywords changed to num\n");
     fprintf(stderr,"  -n: Write a new file (add e before the extension)\n");
     fprintf(stderr,"  -r [char]: Rename reset keywords with char or X prefixed\n");
     fprintf(stderr,"  -s [char]: Replace this character with space in string values\n");
@@ -346,7 +365,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     int nbhead;		/* Actual number of bytes in FITS header */
     char *irafheader;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
-    int newimage;	/* 1 to awrite new image file, else 0 */
+    int newimage;	/* 1 to write new image file, else 0 */
     int i, lext, lroot, ndec, isra;
     char *image;
     char newname[MAXNEW];
@@ -422,13 +441,13 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    return;
 	    }
 	}
-    if (verbose && first) {
+    if (verbose && first_file) {
 	fprintf (stderr,"Set Header Parameter Values in ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", filename);
 	else
 	    fprintf (stderr,"FITS image file %s\n", filename);
-	first = 0;
+	first_file = 0;
 	}
 
     if (nkwd < 1)
@@ -1042,4 +1061,9 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Aug 30 2004	Add option to add, subtract, multiply, or divide constant
  * Sep  7 2004	Set buffer pointers to null after freeing buffers
  * Sep  7 2004	Change input filename length from 128 to 1024
+ *
+ * Jan 25 2005	Drop newimage1; it is not needed
+ * Mar  1 2005	Print header if first_file, not first
+ * Mar  7 2005	Update comment as well as keyword vector if max exceeded
+ * Mar  7 2005	Update comment as well as keyword vector if max exceeded
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.c
- *** November 1, 2004
+ *** March 9, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2004
+ *** Copyright (C) 1994-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -1068,7 +1068,7 @@ struct WorldCoor *wcs;	/* World coordinate system structure */
     if (wcs->rot < 0.0)
 	wcs->rot = wcs->rot + 360.0;
     if (wcs->rot >= 360.0)
-	wcs->rot = wcs->rot = 360.0;
+	wcs->rot = wcs->rot - 360.0;
 
     /* Set image mirror flag based on axis orientation */
     wcs->imflip = 0;
@@ -2749,4 +2749,6 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Sep 17 2004	If spherical coordinate output, keep 0 < long/RA < 360
  * Sep 17 2004	Fix bug in wcsfull() when wrapping around RA=0:00
  * Nov  1 2004	Keep wcs->rot between 0 and 360
+ *
+ * Mar  9 2005	Fix bug in wcsrotset() which set rot > 360 to 360
  */

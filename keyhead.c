@@ -1,5 +1,5 @@
 /* File keyhead.c
- * July 1, 2004
+ * March 1, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -31,6 +31,7 @@ static int histset = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int logfile = 0;
 static int nproc = 0;
+static int first_file = 1;
 
 
 int
@@ -299,12 +300,13 @@ char	*kwd[];		/* Names and values of those keywords */
 	    return;
 	    }
 	}
-    if (verbose) {
+    if (verbose && first_file) {
 	fprintf (stderr,"Change Header Keyword Names from ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", filename);
 	else
 	    fprintf (stderr,"FITS image file %s\n", filename);
+	first_file = 0;
 	}
 
     if (nkwd < 1)
@@ -620,4 +622,6 @@ char	*kwd[];		/* Names and values of those keywords */
  *
  * May  6 2004	Add code to write into FITS extension headers in situ
  * Jul  1 2004	Change first extension if no extension specified
+ *
+ * Mar  1 2005	Print program information only on first file if looping
  */

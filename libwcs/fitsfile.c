@@ -1,8 +1,8 @@
 /*** File libwcs/fitsfile.c
- *** August 31, 2004
+ *** March 17, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -1761,7 +1761,7 @@ isfits (filename)
 
 char    *filename;      /* Name of file for which to find size */
 {
-    FILE *diskfile;
+    int diskfile;
     char keyword[16];
     int nbr;
 
@@ -1781,11 +1781,11 @@ char    *filename;      /* Name of file for which to find size */
 
     /* If no FITS file extension, try opening the file */
     else {
-	if ((diskfile = fopen (filename, "rb")) == NULL)
+	if ((diskfile = open (filename, O_RDONLY)) < 0)
 	    return (0);
 	else {
-	    nbr = fread (keyword, 1, 8, diskfile);
-	    fclose (diskfile);
+	    nbr = read (diskfile, keyword, 8);
+	    close (diskfile);
 	    if (nbr < 8)
 		return (0);
 	    else if (!strncmp (keyword, "SIMPLE", 6))
@@ -1917,4 +1917,6 @@ fitserr ()
  * Jul  1 2004	Initialize INHERIT to 1
  * Aug 30 2004	Move fitsheadsize() declaration to fitsfile.h
  * Aug 31 2004	If SIMPLE=F, put whatever is in file after header in image
+ *
+ * Mar 17 2005	Use unbuffered I/O in isfits() for robustness
  */

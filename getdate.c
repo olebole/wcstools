@@ -1,5 +1,5 @@
 /* File getdate.c
- * August 30, 2004
+ * March 7, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -33,6 +33,7 @@
 #define DTDOY	16	/* Year and day of year (including fraction) */
 #define DTHJD	17	/* Heliocentric Julian Date */
 #define DTMHJD	18	/* Modified Heliocentric Julian Date */
+#define DTNOW	19	/* Current time (for input only) */
 
 #define UT	0
 #define ET	1
@@ -79,6 +80,7 @@ static int nskip = 0;	/* Number of lines to skip */
 static int tabout = 0;	/* If 1, separate output fields with tabs */
 static int ndec = 5;	/* Number of decimal places in output */
 static int dateonly = 0; /* If 1, print date without time */
+static int timeonly = 0; /* If 1, print time without date */
 static char *outform0;
 static int nftok = 2;	/* Number of tokens for FITS date format */
 static int outtime = UT;	/* Type of time to be output */
@@ -147,6 +149,8 @@ char **av;
 		intype = DTMJD;
 	    else if (!strncmp (*av, "mhjd2", 5))
 		intype = DTMHJD;
+	    else if (!strncmp (*av, "now2", 4))
+		intype = DTNOW;
 	    else if (!strncmp (*av, "ts2", 3))
 		intype = DT1950;
 	    else if (!strncmp (*av, "tsi2", 4))
@@ -254,6 +258,10 @@ char **av;
 		    ac--;
 		    break;
 
+		case 't':	/* Print time without date */
+		    timeonly++;
+		    break;
+
 		case 'v':	/* More verbosity */
 		    verbose++;
 		    break;
@@ -298,6 +306,7 @@ char **av;
 		if (strchr (timestring, ':')) {
 		    av++;
 		    ac--;
+		    timestring = NULL;
 		    }
 		}
 	    if ((intype != DTVIG && intype != DTDOY) || ac == 1) {
@@ -313,7 +322,7 @@ char **av;
 	    timestring = NULL;
 	    }
 	}
-    if (intype == DTLT || intype == DTUT)
+    if (intype == DTLT || intype == DTUT || intype == DTNOW)
 	ConvertDate (intype, outtype, datestring, timestring);
 
     return (0);
@@ -333,6 +342,7 @@ usage ()
     fprintf(stderr,"         jhd=Heliocentric Julian Date, mhjd=Modified HJD\n");
     fprintf(stderr,"         ep=epoch, epj=Julian epoch, epb=Besselian epoch\n");
     fprintf(stderr,"         lt=local time, ut=UT, ts=seconds since 1950-01-01\n");
+    fprintf(stderr,"         now=current time\n");
     fprintf(stderr,"  otype: fd=FITS, dt=yyyy.mmdd, jd=Julian Date, mjd=Modified Julian Date\n");
     fprintf(stderr,"         jhd=Heliocentric Julian Date, mhjd=Modified HJD\n");
     fprintf(stderr,"         ep=epoch, epj=Julian epoch, epb=Besselian epoch\n");
@@ -347,7 +357,6 @@ usage ()
     fprintf(stderr,"     -m: Print output as Mean Sidereal Time\n");
     fprintf(stderr,"     -n: Number of decimal places in sec, epoch, JD\n");
     fprintf(stderr,"     -v: Verbose\n");
-    fprintf(stderr,"    now: Output current date and time\n");
     exit (1);
 }
 
@@ -474,6 +483,16 @@ char	*timestring;	/* Input time string */
 		}
 	    break;
 	case DTFITS:
+	case DTNOW:
+	case DTLT:
+	    if (intype == DTNOW) {
+		newfdate = ut2fd ();
+		datestring = newfdate;
+		}
+	    else if (intype == DTLT) {
+		newfdate = lt2fd ();
+		datestring = newfdate;
+		}
 	    if (datestring != NULL) {
 		if (strchr (datestring,'/'))
 		    oldfits = 1;
@@ -536,7 +555,7 @@ char	*timestring;	/* Input time string */
 			    }
 			if (dateonly)
 			    printf ("%9.4f\n", vdate);
-			else if (vdate == 0.0)
+			else if (vdate == 0.0 || timeonly)
 			    printf ("%10.7f\n", vtime);
 			else
 			    printf ("%9.4f %10.7f\n", vdate, vtime);
@@ -1527,72 +1546,6 @@ char	*timestring;	/* Input time string */
 		    printf ("*** Unknown output type %d\n", outtype);
 		}
 	    break;
-	case DTLT:
-	    switch (outtype) {
-		case DTEP:
-		    ts = lt2ts ();
-		    epoch = ts2ep (ts);
-		    printf (outform, epoch);
-			    break;
-		case DTEPB:
-		    ts = lt2ts ();
-		    epoch = ts2epb (ts);
-		    printf (outform, epoch);
-		    break;
-		case DTEPJ:
-		    ts = lt2ts ();
-		    epoch = ts2epj (ts);
-		    printf (outform, epoch);
-		    break;
-		case DTVIG:
-		    lt2dt (&vdate, &vtime);
-		    if (dateonly)
-			printf ("%9.4f\n", vdate);
-		    else
-			printf ("%9.4f %10.7f\n", vdate, vtime);
-		    break;
-		case DTFITS:
-		    newfdate = lt2fd ();
-		    if (dateonly) {
-			tchar = strchr (newfdate, 'T');
-			if (tchar != NULL)
-			    *tchar = (char) 0;
-			}
-		    printf ("%s\n", newfdate);
-		    break;
-		case DTJD:
-		    ts = lt2ts ();
-		    jd = ts2jd (ts);
-		    if (outtime == ET) jd = jd2jed (jd);
-		    printf (outform, jd);
-		    break;
-		case DTMJD:
-		    ts = lt2ts ();
-		    jd = ts2mjd (ts);
-		    printf (outform, jd);
-		    break;
-		case DTHJD:
-		    ts = lt2ts ();
-		    jd = ts2jd (ts);
-		    jd = jd2hjd (jd, ra, dec, coorsys);
-		    printf (outform, jd);
-		    break;
-		case DT1950:
-		    ts = lt2ts ();
-		    printf (outform, ts);
-		    break;
-		case DTIRAF:
-		    its = lt2tsi ();
-		    printf (outform, its);
-		    break;
-		case DTUNIX:
-		    lts = lt2tsu ();
-		    printf (outform, lts);
-		    break;
-		default:
-		    printf ("*** Unknown output type %d\n", outtype);
-		}
-	    break;
 	default:
 	    printf ("*** Unknown input type %d\n", intype);
 	}
@@ -1629,4 +1582,6 @@ char	*timestring;	/* Input time string */
  * Nov 21 2003	Fix bug so times are not assumed to be coordinates
  *
  * Apr 28 2004	Add more Heliocentric Julian Date conversions
+ *
+ * Mar  7 2005	Add "now" as input type
  */
