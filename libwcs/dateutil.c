@@ -1,5 +1,5 @@
 /* File libwcs/dateutil.c
- * March 24, 2000
+ * August 1, 2000
  * By Doug Mink
  */
 
@@ -1027,7 +1027,7 @@ double	time;	/* Time as hh.mmssxxxx
     if (date == 0.0)
 	epoch = dj / 365.2422;
     else {
-	time0 = 12.0;
+	time0 = 0.0;
 	date0 = dint (date) + 0.0101;
 	date1 = dint (date) + 1.0101;
 	dj0 = dt2jd (date0, time0);
@@ -2402,4 +2402,5 @@ double	dnum, dm;
  * Mar 24 2000	Fix calloc() calls
  * Mar 24 2000	Add tsi2* and tsu2* to convert IRAF and Unix seconds
  * May  1 2000	In old FITS format, all years < 1000 get 1900 added to them
+ * Aug  1 2000	Make ep2jd and jd2ep consistently starting at 1/1 0:00
  */

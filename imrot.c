@@ -1,5 +1,5 @@
 /* File imrot.c
- * March 23, 2000
+ * July 20, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -22,6 +22,7 @@ static int mirror = 0;	/* reflect image across vertical axis */
 static int rotate = 0;	/* rotation in degrees, degrees counter-clockwise */
 static int bitpix = 0;	/* number of bits per pixel (FITS code) */
 static int fitsout = 0;	/* Output FITS file from IRAF input if 1 */
+static int nsplit = 0;	/* Output multiple FITS files from n-extension file */
 static int overwrite = 0;	/* allow overwriting of input image file */
 static int version = 0;		/* If 1, print only program name and version */
 
@@ -35,6 +36,8 @@ char **av;
     char filename[128];
     FILE *flist;
     char *listfile;
+    char *fni;
+    int lfn, i;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -70,6 +73,13 @@ char **av;
     	    rotate = (int) atof (*++av);
     	    ac--;
     	    break;
+
+	case 's':	/* split input FITS multiextension image file */
+    	    if (ac < 2)
+    		usage ();
+	    nsplit = atoi (*++av);
+	    ac--;
+	    break;
 
     	case 'x':	/* Number of bits per pixel */
     	    if (ac < 2)
@@ -120,11 +130,31 @@ char **av;
     else {
 	while (ac-- > 0) {
     	    char *fn = *av++;
-    	    if (verbose)
-    		printf ("%s:\n", fn);
-    	    imRot (fn);
-    	    if (verbose)
-    		printf ("\n");
+	    lfn = strlen (fn);
+	    if (lfn < 8)
+		lfn = 8;
+	    if (nsplit > 0) {
+		lfn = strlen (fn);
+		if (lfn < 8)
+		    lfn = 8;
+		fni = (char *)calloc (lfn+4, 1);
+		for (i = 1; i <= nsplit; i++) {
+		    sprintf (fni, "%s,%d", fn, i);
+    		    if (verbose)
+    			printf ("%s:\n", fni);
+		    imRot (fni);
+		    if (verbose)
+  			printf ("\n");
+		    }
+		free (fni);
+		}
+	    else {
+    		if (verbose)
+    		    printf ("%s:\n", fn);
+    		imRot (fn);
+		if (verbose)
+  		    printf ("\n");
+		}
 	    }
 	}
 
@@ -137,11 +167,12 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Rotate and/or Reflect FITS and IRAF image files\n");
-    fprintf(stderr,"Usage: [-vm [-r rot] file.fts ...\n");
+    fprintf(stderr,"Usage: [-vm][-r rot][-s num] file.fits ...\n");
     fprintf(stderr,"  -f: write FITS image from IRAF input\n");
     fprintf(stderr,"  -l: reflect image across vertical axis\n");
     fprintf(stderr,"  -o: allow overwriting of input image, else write new one\n");
     fprintf(stderr,"  -r: image rotation angle in degrees (default 0)\n");
+    fprintf(stderr,"  -s: split n-extension FITS file\n");
     fprintf(stderr,"  -v: verbose\n");
     fprintf(stderr,"  -x: output pixel size in bits (FITS code, default=input)\n");
     exit (1);
@@ -228,7 +259,7 @@ char *name;
 	else if (bitpix == 8)
 	    strcat (newname, "b8");
 	if (fitsout)
-	    strcat (newname, ".fit");
+	    strcat (newname, ".fits");
 	else if (lext > 0) {
 	    if (imext != NULL) {
 		echar = *imext;
@@ -356,4 +387,6 @@ char *name;
  *
  * Jan 24 2000	Add to name if BITPIX is changed
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
+ * Jul 20 2000	Use .fits, not .fit, extension on output FITS file names
+ * Jul 20 2000	Add -s option to split multi-extension FITS files
  */

@@ -1,5 +1,5 @@
 /* File newfits.c
- * November 1, 1999
+ * August 1, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -31,10 +31,11 @@ extern struct WorldCoor *GetFITSWCS();
 
 static int verbose = 0;	/* verbose/debugging flag */
 static int bitpix = 0;	/* number of bits per pixel (FITS code, 0=no image) */
-static int version = 0;		/* If 1, print only program name and version */
+static int version = 0;	/* If 1, print only program name and version */
 static int wcshead = 0;	/* If 1, add WCS information from command line */
 static int nx = 100;	/* width of image in pixels */
 static int ny = 100;	/* height of image in pixels */
+static char *pixfile;	/* Pixel file name */
 
 main (ac, av)
 int ac;
@@ -48,6 +49,8 @@ char **av;
     char *listfile;
     char rastr[32], decstr[32];
     double x, y;
+
+    pixfile = NULL;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -124,6 +127,13 @@ char **av;
     		case 'd':	/* Set CDELTn, CROTAn instead of CD matrix */
 		    setcdelt();
     		    break;
+
+    		case 'i':	/* Input pixel file */
+    		    if (ac < 2)
+    			usage();
+		    pixfile = *++av;
+		    ac--;
+		    break;
 	
     		case 'j':	/* Reference pixel coordinates in J2000 */
     		    if (ac < 3)
@@ -218,11 +228,12 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Make dataless FITS image header files\n");
-    fprintf(stderr,"Usage: [-v] [-a degrees] [-p scale] [-b ra dec] [-j ra dec] [-s nx ny]\n");
+    fprintf(stderr,"Usage: [-v][-a degrees][-p scale][-b ra dec][-j ra dec][-s nx ny][-i file]\n");
     fprintf(stderr,"       [-x x y] file.fits ...\n");
     fprintf(stderr,"  -a: initial rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
     fprintf(stderr,"  -d: set CDELTn, CROTAn instead of CD matrix\n");
+    fprintf(stderr,"  -i: read image from a binary file\n");
     fprintf(stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
     fprintf(stderr,"  -o: output pixel size in bits (FITS code, default=0)\n");
     fprintf(stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
@@ -248,9 +259,15 @@ char *name;
     int hp;		/* Image height in pixels (returned) */
     int sysout=0;	/* Coordinate system to return (0=image, returned) */
     double eqout=0.0;	/* Equinox to return (0=image, returned) */
-    int i, nbimage;
+    int i;
+    int nbimage;	/* Number of bytes in image */
+    int nbskip;		/* Number of bytes to skip in file before image */
+    int nbfile;		/* Number of bytes in file */
+    int nbread;		/* Number of bytes actually read from file */
     struct WorldCoor *wcs;
     FILE *diskfile;
+    char *cplus;
+    char history[256];
 
     if (verbose) {
 	if (bitpix != 0)
@@ -279,15 +296,49 @@ char *name;
     hputi4 (header, "NAXIS", 2);
     hputi4 (header, "NAXIS1", nx);
     hputi4 (header, "NAXIS2", ny);
+    if (bitpix < 0)
+	nbimage = (-bitpix / 8) * nx * ny;
+    else
+	nbimage =  (bitpix / 8) * nx * ny;
 
+    /* Read image file, if there is one */
+    nbskip = 0;
+    if (pixfile != NULL) {
+	if ((cplus = strchr (pixfile,'+')) != NULL) {
+	    *cplus = (char) 0;
+	    nbskip = atoi (cplus+1);
+	    }
+	nbfile = getfilesize (pixfile);
+	if (nbfile > 0) {
+	    nbfile = nbfile - nbskip;
+	    if ((image = calloc (nbimage, 1)) != NULL) {
+		if ((diskfile = fopen (pixfile, "r")) != NULL) {
+		    fseek (diskfile, nbskip, 0);
+		    nbread = fread (image, 1, nbimage, diskfile);
+		    if (nbread < nbimage)
+			printf ("*** NEWFITS: %d / %d bytes read from %s\n",
+				nbread, nbimage, pixfile);
+		    else if (verbose)
+			printf ("NEWFITS: %d bytes read from %s\n",
+				nbread, pixfile);
+		    fclose (diskfile);
+		    sprintf (history, "Pixels from file %s", pixfile);
+		    hputc (header, "HISTORY", history);
+		    }
+		else
+		    printf ("*** NEWFITS: Could not open file %s\n", pixfile);
+		}
+	    else
+		printf ("*** NEWFITS: Could not allocate %d bytes for image\n",
+			nbimage);
+	    }
+	}
 
     /* Set up blank image, if bitpix is non-zero */
-    if (bitpix != 0) {
-	if (bitpix < 0)
-	    nbimage = -bitpix * nx * ny;
-	else
-	    nbimage =  bitpix * nx * ny;
-	image = calloc (nbimage, 1);
+    else if (bitpix != 0) {
+	if ((image = calloc (nbimage, 1)) == NULL)
+	    printf ("*** NEWFITS: Could not allocate %d bytes for image\n",
+		    nbimage);
 	if (verbose)
 	    fprintf (stderr, "NEWFITS: %d bits/pixel\n", bitpix);
 	}
@@ -301,8 +352,14 @@ char *name;
 	wcsfree (wcs);
 	}
 
-    if (fitswimage (name, header, image) > 0 && verbose)
-	printf ("%s: written successfully.\n", name);
+    if (fitswimage (name, header, image) > 0 && verbose) {
+	if (image == NULL)
+	    printf ("%s: dataless FITS image header written successfully.\n",
+		name);
+	else
+	    printf ("%s: %d-byte FITS image written successfully.\n",
+		nbimage, name);
+	}
 
     free (header);
     if (image != NULL)
@@ -317,4 +374,6 @@ char *name;
  * Oct 15 1999	Free wcs using wcsfree()
  * Oct 22 1999	Drop unused variables after lint
  * Nov  1 1999	Set header length after creating it; add option for CDELTn
+ *
+ * Aug  1 2000	Add -i option to add image from binary file
  */

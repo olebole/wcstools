@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** March 28, 2000
+ *** June 26, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -103,7 +103,7 @@ int	nlog;		/* 1 for diagnostics */
 
     wcscstr (cstr, sysout, eqout, epout);
 
-    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
 
 /* If RA range includes zero, split it in two */
     wrap = 0;
@@ -950,4 +950,5 @@ char *path;	/* Pathname of GSC region FITS file */
  *
  * Mar 27 2000	Drop unused variables after lint
  * Mar 28 2000	Make default to read all classes
+ * Jun 26 2000	Add coordinate system to SearchLim() arguments
  */

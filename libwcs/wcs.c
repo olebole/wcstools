@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** May 10, 2000
+ *** July 3, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -966,6 +966,14 @@ struct WorldCoor *wcs;	/* World coordinate system structure */
 {
     int off;
     double cra, cdec, xc, xn, xe, yc, yn, ye;
+
+    /* If image is one-dimensional, leave rotation angle alone */
+    if (wcs->nxpix < 1.5 || wcs->nypix < 1.5) {
+	wcs->imrot = wcs->rot;
+	wcs->pa_north = wcs->rot + 90.0;
+	wcs->pa_east = wcs->rot + 180.0;
+	return;
+	}
 
     wcs->xinc = fabs (wcs->xinc);
     wcs->yinc = fabs (wcs->yinc);
@@ -2199,6 +2207,10 @@ double  *ypix;          /* y pixel number  (dec or lat without rotation) */
 	}
 
     /* Set input for WCSLIB subroutines */
+    wcscrd[0] = 0.0;
+    wcscrd[1] = 0.0;
+    wcscrd[2] = 0.0;
+    wcscrd[3] = 0.0;
     wcscrd[wcs->wcsl.lng] = xpos;
     wcscrd[wcs->wcsl.lat] = ypos;
 
@@ -2580,4 +2592,6 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Jan 24 2000	Default to AIPS for NCP, CAR, and COE proj.; if -z use WCSLIB
  * Feb 24 2000	If coorsys is null in wcsc2pix, wcs->radecin is assumed
  * May 10 2000	In wcstype(), default to WCS_LIN, not error (after Bill Joye)
+ * Jun 22 2000	In wcsrotset(), leave rotation angle alone in 1-d image
+ * Jul  3 2000	Initialize wcscrd[] to zero in wcspix()
  */

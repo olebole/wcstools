@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** October 21, 1999
+ *** June 26, 20000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -98,7 +98,7 @@ int	verbose;	/* 1 for diagnostics */
 
     wcscstr (cstr, sysout, eqout, epout);
 
-    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
 
     /* mag1 is always the smallest magnitude */
     if (mag2 < mag1) {
@@ -734,4 +734,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
  * Oct 20 1999	Include wcscat.h
  * Oct 21 1999	Delete unused variables after lint
+ *
+ * Jun 26 2000	Add coordinate system to SearchLim() arguments
  */

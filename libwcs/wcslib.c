@@ -413,7 +413,8 @@ const char *wcsmix_errmsg[] = {
 #define signb(X) ((X) < 0.0 ? 1 : 0)
 
 
-int wcsset (naxis, ctype, wcs)
+int
+wcsset (naxis, ctype, wcs)
 
 const int naxis;
 const char ctype[][9];
@@ -512,8 +513,8 @@ struct wcsprm *wcs;
 
 /*--------------------------------------------------------------------------*/
 
-int wcsfwd(ctype, wcs, world, crval, cel, phi, theta, prj, imgcrd, lin,
-    pixcrd)
+int
+wcsfwd(ctype, wcs, world, crval, cel, phi, theta, prj, imgcrd, lin, pixcrd)
 
 const char ctype[][9];
 struct wcsprm* wcs;
@@ -602,8 +603,8 @@ double pixcrd[];
 
 /*--------------------------------------------------------------------------*/
 
-int wcsrev(ctype, wcs, pixcrd, lin, imgcrd, prj, phi, theta, crval, cel,
-    world)
+int
+wcsrev(ctype, wcs, pixcrd, lin, imgcrd, prj, phi, theta, crval, cel, world)
 
 const char ctype[][9];
 struct wcsprm *wcs;
@@ -701,8 +702,9 @@ double world[];
 
 /*--------------------------------------------------------------------------*/
 
-int wcsmix(ctype, wcs, mixpix, mixcel, vspan, vstep, viter, world, crval, cel,
-           phi, theta, prj, imgcrd, lin, pixcrd)
+int
+wcsmix(ctype, wcs, mixpix, mixcel, vspan, vstep, viter, world, crval, cel,
+       phi, theta, prj, imgcrd, lin, pixcrd)
 
 const char ctype[][9];
 struct wcsprm *wcs;

@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** May 26, 2000
+ *** August 3, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -64,7 +64,7 @@ char *keyword0;
 
 int
 tabread (tabcatname,distsort,cra,cdec,dra,ddec,drad,
-	 sysout,eqout,epout,mag1,mag2,nstarmax,
+	 sysout,eqout,epout,mag1,mag2,nstarmax,starcat,
 	 tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,tkey,nlog)
 
 char	*tabcatname;	/* Name of reference star catalog file */
@@ -79,6 +79,7 @@ double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	nstarmax;	/* Maximum number of stars to be returned */
+struct StarCat **starcat; /* Star catalog data structure */
 double	*tnum;		/* Array of UJ numbers (returned) */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
@@ -102,8 +103,8 @@ int	nlog;
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
     char cstr[32];
-    struct StarCat *starcat;
     struct Star *star;
+    struct StarCat *sc;	/* Star catalog data structure */
 
     int wrap;
     int jstar;
@@ -117,12 +118,14 @@ int	nlog;
     int istar, nstars;
     int verbose;
 
+    sc = *starcat;
+
     if (nlog > 0)
 	verbose = 1;
     else
 	verbose = 0;
 
-    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
 
     /* If RA range includes zero, split it in two */
     wrap = 0;
@@ -142,38 +145,42 @@ int	nlog;
     nstar = 0;
     tdist = (double *) calloc (nstarmax, sizeof (double));
 
-    starcat = tabcatopen (tabcatname);
-    if (starcat == NULL || starcat->nstars <= 0) {
+    star = (struct Star *) calloc (1, sizeof (struct Star));
+    if (sc == NULL)
+	sc = tabcatopen (tabcatname);
+    *starcat = sc;
+    if (sc == NULL || sc->nstars <= 0) {
 	if (taberr != NULL)
 	    fprintf (stderr,"%s\n", taberr);
 	fprintf (stderr,"TABREAD: Cannot read catalog %s\n", tabcatname);
+	free (star);
+	sc = NULL;
 	return (0);
 	}
 
-    nstars = starcat->nstars;
+    nstars = sc->nstars;
     jstar = 0;
 
     /* Set catalog coordinate system */
-    if (starcat->equinox != 0.0)
-	eqref = starcat->equinox;
+    if (sc->equinox != 0.0)
+	eqref = sc->equinox;
     else
 	eqref = eqout;
-    if (starcat->epoch != 0.0)
-	epref = starcat->epoch;
+    if (sc->epoch != 0.0)
+	epref = sc->epoch;
     else
 	epref = epout;
-    if (starcat->coorsys)
-	sysref = starcat->coorsys;
+    if (sc->coorsys)
+	sysref = sc->coorsys;
     else
 	sysref = sysout;
     wcscstr (cstr, sysout, eqout, epout);
-    star = (struct Star *) calloc (1, sizeof (struct Star));
 
     /* Loop through catalog */
     for (istar = 1; istar <= nstars; istar++) {
 
 	/* Read position of next star */
-	if (tabstar (istar, starcat, star)) {
+	if (tabstar (istar, sc, star)) {
 	    fprintf (stderr,"TABREAD: Cannot read star %d\n", istar);
 	    break;
 	    }
@@ -189,7 +196,7 @@ int	nlog;
 	dec = star->dec;
 	rapm = star->rapm;
 	decpm = star->decpm;
-	if (starcat->mprop)
+	if (sc->mprop)
 	    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
 		     &ra, &dec, &rapm, &decpm);
 	else
@@ -214,7 +221,7 @@ int	nlog;
 		tnum[nstar] = num;
 		tra[nstar] = ra;
 		tdec[nstar] = dec;
-		if (starcat->mprop) {
+		if (sc->mprop) {
 		    tpra[nstar] = rapm;
 		    tpdec[nstar] = decpm;
 		    }
@@ -244,7 +251,7 @@ int	nlog;
 		    tnum[farstar] = num;
 		    tra[farstar] = ra;
 		    tdec[farstar] = dec;
-		    if (starcat->mprop) {
+		    if (sc->mprop) {
 			tpra[farstar] = rapm;
 			tpdec[farstar] = decpm;
 			}
@@ -275,7 +282,7 @@ int	nlog;
 		tnum[faintstar] = num;
 		tra[faintstar] = ra;
 		tdec[faintstar] = dec;
-		if (starcat->mprop) {
+		if (sc->mprop) {
 		    tpra[faintstar] = rapm;
 		    tpdec[faintstar] = decpm;
 		    }
@@ -326,7 +333,6 @@ int	nlog;
 		     nstar,nstarmax);
 	}
 
-    tabcatclose (starcat);
     free ((char *)tdist);
     return (nstar);
 }
@@ -377,11 +383,17 @@ int	nlog;
     nstar = 0;
     nndec = 0;
     nndec0 = 0;
+
+    /* Allocate catalog entry buffer */
+    star = (struct Star *) calloc (1, sizeof (struct Star));
+
+    /* Open star catalog */
     starcat = tabcatopen (tabcatname);
     if (starcat == NULL || starcat->nstars <= 0) {
 	if (taberr != NULL)
 	    fprintf (stderr,"%s\n", taberr);
 	fprintf (stderr,"TABRNUM: Cannot read catalog %s\n", tabcatname);
+	free (star);
 	return (0);
 	}
     startab = starcat->startab;
@@ -402,8 +414,6 @@ int	nlog;
 	sysref = sysout;
     wcscstr (cstr, sysout, eqout, epout);
 
-    /* Allocate catalog entry buffer */
-    star = (struct Star *) calloc (1, sizeof (struct Star));
     star->num = 0.0;
 
     /* Loop through star list */
@@ -438,6 +448,7 @@ int	nlog;
 		eqref = star->equinox;
 
 		/* Extract selected fields  */
+		num = star->num;
 		ra = star->ra;
 		dec = star->dec;
 		rapm = star->rapm;
@@ -452,6 +463,7 @@ int	nlog;
 		peak = star->peak;
 
 		/* Save star position and magnitude in table */
+		tnum[jnum] = num;
 		tra[jnum] = ra;
 		tdec[jnum] = dec;
 		if (starcat->mprop) {
@@ -687,22 +699,38 @@ static char tab = 9;
 /* TABCATOPEN -- Open tab table catalog, returning number of entries */
 
 struct StarCat *
-tabcatopen (tabfile)
+tabcatopen (tabpath)
 
-char *tabfile;	/* Tab table catalog file name */
+char *tabpath;		/* Tab table catalog file pathname */
 {
     char cstr[32];
+    char *tabname;
     struct TabTable *startab;
     struct StarCat *sc;
-    int i;
+    int i, lnum, ndec, istar;
+    char *line;
+    double dnum;
 
     /* Allocate catalog data structure */
     sc = (struct StarCat *) calloc (1, sizeof (struct StarCat));
 
     /* Open the tab table file */
-    if ((startab = tabopen (tabfile)) == NULL)
+    if ((startab = tabopen (tabpath)) == NULL)
 	return (NULL);
     sc->startab = startab;
+
+    /* Save name of catalog */
+    tabname = strrchr (tabpath, '/');
+    if (tabname)
+	tabname = tabname + 1;
+    else
+	tabname = tabpath;
+    if (strlen (tabname) < 24)
+	strcpy (sc->isfil, tabname);
+    else {
+	strncpy (sc->isfil, tabname, 23);
+	sc->isfil[23] = (char) 0;
+	}
 
     /* Find column and name of object identifier */
     sc->entid = -1;
@@ -715,6 +743,10 @@ char *tabfile;	/* Tab table catalog file name */
 	i = sc->entid - 1;
 	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
 	}
+    else if ((sc->entid = tabcont (startab, "ID"))) {
+	i = sc->entid - 1;
+	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
+	}
     sc->nndec = nndec;
 
     /* Find column and name of object right ascension */
@@ -723,6 +755,8 @@ char *tabfile;	/* Tab table catalog file name */
     if ((sc->entra = tabcol (startab, "RA")))
 	strcpy (sc->keyra, "RA");
     else if ((sc->entra = tabcol (startab, "ra")))
+	strcpy (sc->keyra, "ra");
+    else if ((sc->entra = tabcol (startab, "Ra")))
 	strcpy (sc->keyra, "ra");
     else if ((sc->entra = tabcont (startab, "ra"))) {
 	i = sc->entra - 1;
@@ -735,6 +769,8 @@ char *tabfile;	/* Tab table catalog file name */
     if ((sc->entdec = tabcol (startab, "DEC")))
 	strcpy (sc->keydec, "DEC");
     else if ((sc->entdec = tabcol (startab, "dec")))
+	strcpy (sc->keydec, "dec");
+    else if ((sc->entdec = tabcol (startab, "Dec")))
 	strcpy (sc->keydec, "dec");
     else if ((sc->entdec = tabcont (startab, "dec"))) {
 	i = sc->entdec;
@@ -912,6 +948,46 @@ char *tabfile;	/* Tab table catalog file name */
     else
 	sc->stnum = 0;
 
+    /* Find out if ID is number, and if so, how many decimal places it has */
+    if (sc->entid) {
+
+	istar = 1;
+	if ((line = tabline (startab, istar)) == NULL) {
+	    fprintf (stderr,"TABCATOPEN: Cannot read first star\n");
+	    tabcatclose (sc);
+	    return (NULL);
+	    }
+	tabgetc (startab, line, sc->entid, cstr, 32);
+
+	/* Find number of decimal places in identifier */
+	if (tabhgeti4 (startab, "ndec", &nndec)) {
+	    sc->nndec = nndec;
+	    if (!isnum (cstr))
+		sc->stnum = 5;
+	    }
+	else if (isnum (cstr)) {
+	    dnum = tabgetr8 (startab,line,sc->entid);
+	    sprintf (cstr,"%.0f", (dnum * 100000000.0) + 0.1);
+	    lnum = strlen (cstr);
+	    for (i = 0; i < 8; i++) {
+		if (cstr[lnum-i-1] != '0') {
+		    ndec = 8 - i;
+		    if (ndec > nndec) {
+			nndec = ndec;
+			sc->nndec = nndec;
+			}
+		    break;
+		    }
+		}
+	    sc->nndec = nndec;
+	    }
+	else {
+	    sc->stnum = 5;
+	    sc->nndec = nndec;
+	    }
+	}
+    sc->refcat = TABCAT;
+
     return (sc);
 }
 
@@ -952,30 +1028,37 @@ struct Star *st; /* Star data structure, updated on return */
     /* Extract selected fields  */
     if (sc->entid) {
 	tabgetc (startab, line, sc->entid, cnum, 32);
-	if (isnum (cnum)) {
-	    st->num = tabgetr8 (startab,line,sc->entid);
+	if (isnum (cnum) || isnum (cnum+1)) {
+	    if (isnum(cnum))
+		st->num = atof (cnum);
+	    else
+		st->num = atof (cnum+1);
 	    lastnum = st->num;
 
 	    /* Find number of decimal places in identifier */
-	    sprintf (cnum,"%.0f", (st->num * 100000000.0) + 0.1);
-	    lnum = strlen (cnum);
-	    for (i = 0; i < 8; i++) {
-		if (cnum[lnum-i-1] != '0') {
-		    ndec = 8 - i;
-		    if (ndec > nndec) {
-			nndec = ndec;
-			sc->nndec = nndec;
+	    if (strchr (cnum,'.') == NULL) {
+		nndec = 0;
+		sc->nndec = nndec;
+		}
+	    else {
+		sprintf (cnum,"%.0f", (st->num * 100000000.0) + 0.1);
+		lnum = strlen (cnum);
+		for (i = 0; i < 8; i++) {
+		    if (cnum[lnum-i-1] != '0') {
+			ndec = 8 - i;
+			if (ndec > nndec) {
+			    nndec = ndec;
+			    sc->nndec = nndec;
+			    }
+			break;
 			}
-		    break;
 		    }
 		}
 	    nndec0 = nndec;
 	    }
 	else {
-	    nndec = nndec0 + 1;
-	    sc->nndec = nndec;
-	    lastnum = lastnum + (1.0 / pow (10.0, (double)nndec));
-	    st->num = lastnum;
+	    strcpy (st->objname, cnum);
+	    st->num = st->num + 1.0;
 	    }
 	}
     else {
@@ -1804,4 +1887,12 @@ char    *filename;      /* Name of file to check */
  * Mar 13 2000	Do not free tabtable structure if it is null
  * Mar 27 2000	Clean up code after lint
  * May 26 2000	Add ability to read named tables in a multi-table file
+ * Jun 26 2000	Add coordinate system to SearchLim() arguments
+ * Jul  5 2000	Check for additional column heading variations
+ * Jul 10 2000	Deal with number of decimal places and name/number in tabcatopen()
+ * Jul 12 2000	Add star catalog data structure to tabread() argument list
+ * Jul 13 2000	Use nndec header parameter to optionally set decimal places
+ * Jul 25 2000	Pass star catalog address of data structure address
+ * Aug  3 2000	Skip first character of ID if rest is number
+ * Aug  3 2000	If no decimal point in numeric ID, set ndec to zero
  */

@@ -1,5 +1,5 @@
 /* File scat.c
- * June 2, 2000
+ * July 13, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -75,6 +75,7 @@ static double *gy;		/* Catalog star Y positions on image */
 static int *gc;			/* Catalog star object classes */
 static char **gobj;		/* Catalog star object names */
 static char **gobj1;		/* Catalog star object names */
+static struct StarCat *starcat[5]; /* Star catalog data structure */
 
 main (ac, av)
 int ac;
@@ -98,6 +99,8 @@ char **av;
     ranges = NULL;
     keyword = NULL;
     objname = NULL;
+    for (i = 0; i < 5; i++)
+	starcat[i] = NULL;
 
     /* Null out buffers before starting */
     gnum = NULL;
@@ -419,12 +422,21 @@ char **av;
                 	}
 		    ra0 = srch->ra;
 		    dec0 = srch->dec;
-		    syscoor = srch->coorsys;
-		    eqcoor = srch->equinox;
-		    if (epoch0 != 0.0) {
-			ra0 = ra0 + (srch->rapm * (epoch0 - srch->epoch));
-			dec0 = dec0 + (srch->decpm * (epoch0 - srch->epoch));
-			}
+		    if (eqout > 0.0)
+			eqcoor = eqout;
+		    else
+			eqcoor = srch->equinox;
+		    if (epoch0 != 0.0)
+			epoch = epoch0;
+		    else
+			epoch = srch->epoch;
+		    if (sysout0)
+			syscoor = sysout0;
+		    else
+			syscoor = srch->coorsys;
+		    wcsconp (srch->coorsys, syscoor, srch->equinox, eqcoor,
+			     srch->epoch,epoch,
+			     &ra0,&dec0,&srch->rapm,&srch->decpm);
 		    ListCat (ncat, refcatname, ranges, eqout);
 		    }
 		tabcatclose (srchcat);
@@ -446,12 +458,21 @@ char **av;
                 	}
 		    ra0 = srch->ra;
 		    dec0 = srch->dec;
-		    syscoor = srch->coorsys;
-		    eqcoor = srch->equinox;
-		    if (epoch0 != 0.0) {
-			ra0 = ra0 + (srch->rapm * (epoch0 - srch->epoch));
-			dec0 = dec0 + (srch->decpm * (epoch0 - srch->epoch));
-			}
+		    if (eqout > 0.0)
+			eqcoor = eqout;
+		    else
+			eqcoor = srch->equinox;
+		    if (epoch0 != 0.0)
+			epoch = epoch0;
+		    else
+			epoch = srch->epoch;
+		    if (sysout0)
+			syscoor = sysout0;
+		    else
+			syscoor = srch->coorsys;
+		    wcsconp (srch->coorsys, syscoor, srch->equinox, eqcoor,
+			     srch->epoch,epoch,
+			     &ra0,&dec0,&srch->rapm,&srch->decpm);
 		    ListCat (ncat, refcatname, ranges, eqout);
 		    }
 		ctgclose (srchcat, srchtype);
@@ -461,8 +482,10 @@ char **av;
     else
 	ListCat (ncat, refcatname, ranges, eqout);
 
-    for (i = 0; i < ncat; i++)
+    for (i = 0; i < ncat; i++) {
 	free (refcatname[i]);
+	ctgclose (starcat[i]);
+	}
 
     /* Free memory used for search results and return */
     if (gx) free ((char *)gx);
@@ -592,6 +615,7 @@ double	eqout;		/* Equinox for output coordinates */
     int icat, nndec, nnfld, nsfld;
     double date, time;
     int gcset;
+    int ndist;
     double pra, pdec;
     void ep2dt();
     void PrintNum();
@@ -874,8 +898,6 @@ double	eqout;		/* Equinox for output coordinates */
 		gx[i] = 0.0;
 		gy[i] = 1.0;
 		}
-	    if (refcat == TABCAT)
-		nndec = gettabndec();
 
 	    /* Find largest catalog number printed */
 	    maxnum = 0.0;
@@ -912,7 +934,11 @@ double	eqout;		/* Equinox for output coordinates */
 		    if (gnum[i] > gnmax) gnmax = gnum[i];
 		    }
 		for (i = 0; i < ns; i++ ) {
-		    if (degout) {
+		    if (sysref == WCS_XY) {
+			num2str (rastr, gra[i], 10, 5);
+			num2str (decstr, gdec[i], 10, 5);
+			}
+		    else if (degout) {
 			deg2str (rastr, 32, gra[i], 6);
 			deg2str (decstr, 32, gdec[i], 6);
 			}
@@ -998,7 +1024,8 @@ double	eqout;		/* Equinox for output coordinates */
 	    /* Find the nearby reference stars, in ra/dec */
 	    ng = ctgread (refcatname[icat], refcat, distsort,
 		      cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-		      ngmax,gnum,gra,gdec,gpra,gpdec,gm,gmb,gc,gobj,nlog);
+		      ngmax,&starcat[icat],
+		      gnum,gra,gdec,gpra,gpdec,gm,gmb,gc,gobj,nlog);
 
 	    if (gobj[0] == NULL)
 		gobj1 = NULL;
@@ -1008,8 +1035,6 @@ double	eqout;		/* Equinox for output coordinates */
 		ns = ngmax;
 	    else
 		ns = ng;
-	    if (refcat == TABCAT)
-		nndec = gettabndec();
 
 	    /* Find largest catalog number to be printed */
 	    maxnum = 0.0;
@@ -1184,8 +1209,14 @@ double	eqout;		/* Equinox for output coordinates */
 		        else
 			    printf ("%s ", numstr);
 			}
-		    ra2str (rastr, 32, cra, 3);
-		    dec2str (decstr, 32, cdec, 2);
+		    if (degout) {
+			num2str (rastr, cra, 10, 5);
+			num2str (decstr, cdec, 10, 5);
+			}
+		    else {
+			ra2str (rastr, 32, cra, 3);
+			dec2str (decstr, 32, cdec, 2);
+			}
 		    if (tabout)
 			printf ("%s	%s", rastr, decstr);
 		    else
@@ -1209,10 +1240,18 @@ double	eqout;		/* Equinox for output coordinates */
 			if (strlen (gobj1[0]) > 0)
 			    strcpy (numstr, gobj1[0]);
 			}
+		    else if (starcat[icat] != NULL)
+			CatNum (refcat,nnfld,starcat[icat]->nndec,gnum[0],numstr);
 		    else
-			CatNum (refcat, nnfld, nndec, gnum[0], numstr);
-		    ra2str (rastr, 32, gra[0], 3);
-		    dec2str (decstr, 32, gdec[0], 2);
+			CatNum (refcat,nnfld,nndec,gnum[0],numstr);
+		    if (degout) {
+			num2str (rastr, gra[0], 10, 5);
+			num2str (decstr, gdec[0], 10, 5);
+			}
+		    else {
+			ra2str (rastr, 32, gra[0], 3);
+			dec2str (decstr, 32, gdec[0], 2);
+			}
 		    if (tabout)
 			printf ("	%s	%s	%s	%5.2f	%d",
 			        numstr, rastr, decstr, gm[0], ng);
@@ -1220,24 +1259,33 @@ double	eqout;		/* Equinox for output coordinates */
 			printf (" %s %s %s %5.2f %d",
 			        numstr, rastr, decstr, gm[0], ng);
 		    dec = (gdec[0] + cdec) * 0.5;
-		    da = 3600.0 * (gra[0] - cra) * cos (degrad (dec));
-		    dd = 3600.0 * (gdec[0] - cdec);
-		    gdist = 3600.0 * gx[0];
+		    if (degout) {
+			da = gra[0] - cra;
+			dd = gdec[0] - cdec;
+			gdist = sqrt (da*da + dd*dd);
+			ndist = 5;
+			}
+		    else {
+			da = 3600.0 * (gra[0] - cra) * cos (degrad (dec));
+			dd = 3600.0 * (gdec[0] - cdec);
+			gdist = 3600.0 * gx[0];
+			ndist = 2;
+			}
 		    if (tabout)
 			printf ("	");
 		    else
 			printf (" ");
-		    PrintNum (das, da, 2);
+		    PrintNum (das, da, ndist);
 		    if (tabout)
 			printf ("	");
 		    else
 			printf (" ");
-		    PrintNum (dds, dd, 2);
+		    PrintNum (dds, dd, ndist);
 		    if (tabout)
 			printf ("	");
 		    else
 			printf (" ");
-		    PrintNum (drs, gdist, 2);
+		    PrintNum (drs, gdist, ndist);
 		    printf ("\n");
 		    }
 		notprinted = 0;
@@ -1818,7 +1866,11 @@ double	*drad;		/* Radius to search in degrees (0=box) (returned) */
     *cra = ra0;
     *cdec = dec0;
     if (verbose) {
-	if (syscoor == WCS_ECLIPTIC || syscoor == WCS_GALACTIC || degout0) {
+	if (syscoor == WCS_XY) {
+	    num2str (rstr, *cra, 10, 5);
+            num2str (dstr, *cdec, 10, 5);
+	    }
+	else if (syscoor==WCS_ECLIPTIC || syscoor==WCS_GALACTIC || degout0) {
 	    deg2str (rstr, 32, *cra, 5);
             deg2str (dstr, 32, *cdec, 5);
 	    }
@@ -1849,24 +1901,43 @@ double	*drad;		/* Radius to search in degrees (0=box) (returned) */
     /* Set search box radius from command line, if it is there */
     if (dra0 > 0.0) {
 	*drad = 0.0;
-	*dra = (dra0 / cos (degrad (*cdec))) / 3600.0;
-	*ddec = ddec0 / 3600.0;
+	if (syscoor == WCS_XY) {
+	    *dra = dra0;
+	    *ddec = ddec0;
+	    }
+	else {
+	    *dra = (dra0 / cos (degrad (*cdec))) / 3600.0;
+	    *ddec = ddec0 / 3600.0;
+	    }
 	}
     else if (rad0 > 0.0) {
 	*drad = 0.0;
-	*ddec = rad0 / 3600.0;
-	if (*cdec < 90.0 && *cdec > -90.0)
-	    *dra = *ddec / cos (degrad (*cdec));
-	else
-	    *dra = 180.0;
+	if (syscoor == WCS_XY) {
+	    *dra = rad0;
+	    *ddec = rad0;
+	    }
+	else {
+	    *ddec = rad0 / 3600.0;
+	    if (*cdec < 90.0 && *cdec > -90.0)
+		*dra = *ddec / cos (degrad (*cdec));
+	    else
+		*dra = 180.0;
+	    }
 	}
     else if (rad0 < 0.0) {
-	*drad = -rad0 / 3600.0;
-	*ddec = *drad;
-	if (*cdec < 90.0 && *cdec > -90.0)
-	    *dra = *ddec / cos (degrad (*cdec));
-	else
-	    *dra = 180.0;
+	if (syscoor == WCS_XY) {
+	    *drad = -rad0;
+	    *dra = *drad;
+	    *ddec = *drad;
+	    }
+	else {
+	    *drad = -rad0 / 3600.0;
+	    *ddec = *drad;
+	    if (*cdec < 90.0 && *cdec > -90.0)
+		*dra = *ddec / cos (degrad (*cdec));
+	    else
+		*dra = 180.0;
+	    }
 	}
     else {
 	if (verbose)
@@ -1875,8 +1946,14 @@ double	*drad;		/* Radius to search in degrees (0=box) (returned) */
 	}
 
     if (verbose) {
-	ra2str (rstr, 32, *dra * 2.0, 2); 
-	dec2str (dstr, 32, *ddec * 2.0, 2); 
+	if (syscoor == WCS_XY) {
+	    num2str (rstr, *dra * 2.0, 10, 5); 
+	    num2str (dstr, *ddec * 2.0, 10, 5); 
+	    }
+	else {
+	    ra2str (rstr, 32, *dra * 2.0, 2); 
+	    dec2str (dstr, 32, *ddec * 2.0, 2); 
+	    }
 	fprintf (stderr,"Area:    %s x %s\n", rstr, dstr);
 	}
 
@@ -1910,7 +1987,11 @@ int	nnfld;		/* Number of characters in ID field */
     ra = cra;
     dec = cdec;
     wcscon (sys1, sys2, eq1, eq2, &ra, &dec, ep2);
-    if (sys2 == WCS_ECLIPTIC || sys2 == WCS_GALACTIC || degout0) {
+    if (sys1 == WCS_XY) {
+	num2str (rastr, ra, 10, 5);
+	num2str (decstr, dec, 10, 5);
+	}
+    else if (sys2 == WCS_ECLIPTIC || sys2 == WCS_GALACTIC || degout0) {
 	deg2str (rastr, 32, ra, 5);
 	deg2str (decstr, 32, dec, 5);
 	}
@@ -2131,4 +2212,9 @@ int	ndec;	/* Number of decimal places in output */
  * May 26 2000	Always use CatNumLen() to get ID number field size
  * May 31 2000	Do not sort if only one star
  * Jun  2 2000	Set to NULL when freeing
+ * Jun 23 2000	Add degree output for one-line matches (-l)
+ * Jun 26 2000	Add XY output
+ * Jul 13 2000	Add star catalog data structure to ctgread() argument list
+ * Jul 13 2000	Precess search catalog sources to specified system and epoch
+ * Jul 25 2000	Pass address of star catalog data structure address
  */

@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
- * January 28, 2000
+ * June 26, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 #ifndef _wcs_h_
@@ -145,6 +145,7 @@ struct WorldCoor {
 #define WCS_NPOLE	7	/* Longitude and north polar angle */
 #define WCS_SPA		8	/* Longitude and south polar angle */
 #define WCS_PLANET	9	/* Longitude and latitude on planet */
+#define WCS_XY		10	/* X-Y Cartesian coordinates */
 
 /* Method to use */
 #define WCS_BEST	0	/* Use best WCS projections */
@@ -526,4 +527,5 @@ void wcscstr();		/* Return system string from system code, equinox, epoch */
  * Oct 21 1999	Add declaration of setwcsfile()
  *
  * Jan 28 2000	Add flags for choice of WCS projection subroutines
+ * Jun 26 2000	Add XY coordinate system
  */

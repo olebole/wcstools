@@ -1,5 +1,5 @@
 /* File i2f.c
- * June 6, 2000
+ * July 6, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -29,6 +29,11 @@ int ac;
 char **av;
 {
     char *str;
+    char *listfile;
+    char filename[256];
+    int ifile, nfile;
+    FILE *flist;
+
     outname[0] = 0;
     outdir[0] = 0;
 
@@ -81,6 +86,23 @@ char **av;
     if (ac == 0)
 	usage ();
 
+     else if (*av[0] == '@') {
+	listfile = *av + 1;
+	if (isimlist (listfile)) {
+	    nfile = getfilelines (listfile);
+	    if ((flist = fopen (listfile, "r")) == NULL) {
+		fprintf (stderr,"I2F: Image list file %s cannot be read\n",
+			 listfile);
+		usage ();
+		}
+	    for (ifile = 0; ifile < nfile; ifile++) {
+		first_token (flist, 254, filename);
+		IRAFtoFITS (filename);
+		}
+	    fclose (flist);
+	    }
+	}
+
     else {
 	while (ac-- > 0) {
 	    char *fn = *av++;
@@ -100,7 +122,8 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Write FITS files from IRAF image files\n");
     fprintf(stderr,"usage: i2f [-isvx] [-o name] [-d path] file.imh ...\n");
-    fprintf(stderr,"  -d: move .imh file to this directory\n");
+    fprintf(stderr,"       i2f [-isvx] [-o name] [-d path] @imhlist\n");
+    fprintf(stderr,"  -d: write FITS file(s) to this directory\n");
     fprintf(stderr,"  -i: delete unnecessary IRAF keywords\n");
     fprintf(stderr,"  -o: output name for one file\n");
     fprintf(stderr,"  -s: write output to standard output\n");
@@ -328,4 +351,5 @@ char *name;
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  * May 30 2000	Add option to delete IRAF keywords
  * Jun  6 2000	Add options to delete IRAF files and to write FITS elsewhere
+ * Jul  6 2000	Implement conversion of file list
  */

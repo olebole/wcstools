@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * May 26, 2000
+ * July 12, 2000
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -120,6 +120,7 @@ struct StarCat {
     char isfil[24];	/* Star catalog file name */
     char isname[64];	/* Star catalog description */
     int  byteswapped;	/* 1 if catalog is byte-reversed from CPU */
+    int  refcat;	/* Code for type of catalog (TXTCAT, BINCAT, etc.) */
     int  coorsys;	/* Coordinate system
 			   B1950 J2000 Galactic Ecliptic */
     double epoch;	/* Epoch of catalog coordinates in years */
@@ -298,4 +299,5 @@ int getoken();		/* Get specified token from tokenized string */
  * May 22 2000	Add Tycho 2 support, bv2sp()
  * May 26 2000	Add separate pointer to header in tab table structure
  * May 26 2000	Add separate pointer to table name in tab table structure
+ * Jul 12 2000	Add catalog type code to ctalog data structure
  */

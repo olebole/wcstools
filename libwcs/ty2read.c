@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** June 13, 2000
+ *** June 26, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -89,7 +89,7 @@ int	nlog;		/* 1 for diagnostics */
 
     wcscstr (cstr, sysout, eqout, epout);
 
-    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
 
 /* If RA range includes zero, split it in two */
     wrap = 0;
@@ -901,4 +901,5 @@ char	*filename;	/* Name of file for which to find size */
 
 /* Jun  2 2000	New program, based on actread.c and gscread.c
  * Jun 13 2000	Correctly order magnitudes: 0=V, 1=B
+ * Jun 26 2000	Add coordinate system to SearchLim() arguments
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** June 9, 2000
+ *** June 26, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Subroutines to read from the USNO A and SA catalogs
@@ -229,7 +229,7 @@ int	nlog;		/* Logging interval */
 
     wcscstr (cstr, sysout, eqout, epout);
 
-    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
 
 /* mag1 is always the smallest magnitude */
     if (mag2 < mag1) {
@@ -1026,4 +1026,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Oct 21 1999	Clean up code after lint
  *
  * Jun  9 2000	Fix bug detecting swapped files on Alphas and PCs if RA=0
+ * Jun 26 2000	Add coordinate system to SearchLim() arguments
  */

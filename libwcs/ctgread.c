@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** May 20, 2000
+ *** July 25, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -35,7 +35,7 @@ static char newline = 10;
 
 int
 ctgread (catfile, refcat, distsort, cra, cdec, dra, ddec, drad,
-	 sysout, eqout, epout, mag1, mag2, nsmax,
+	 sysout, eqout, epout, mag1, mag2, nsmax, starcat,
 	 tnum, tra, tdec, tpra, tpdec, tmag, tmagb, tc, tobj, nlog)
 
 char	*catfile;	/* Name of reference star catalog file */
@@ -51,6 +51,7 @@ double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	nsmax;		/* Maximum number of stars to be returned */
+struct StarCat **starcat; /* Catalog data structure */
 double	*tnum;		/* Array of UJ numbers (returned) */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
@@ -74,8 +75,8 @@ int	nlog;
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
     char cstr[32];
-    struct StarCat *starcat;
     struct Star *star;
+    struct StarCat *sc; /* Catalog data structure */
     char *objname;
     int nameobj;	/* Save object name if 1, else do not */
     int lname;
@@ -116,41 +117,41 @@ int	nlog;
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == SAO)
             nstar = binread ("SAOra", distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == PPM)
             nstar = binread ("PPMra",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == IRAS)
             nstar = binread ("IRAS", distsort, cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == TYCHO)
             nstar = binread ("tychora", distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == HIP)
             nstar = binread ("hipparcosra", distsort, cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == BSC)
             nstar = binread ("BSC5ra", distsort, cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == BINCAT)
             nstar = binread (catfile, distsort, cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
         else if (refcat == TABCAT)
             nstar = tabread (catfile, distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     sysout,eqout,epout,mag1,mag2,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
 	return (nstar);
 	}
 
     star = NULL;
-    starcat = NULL;
+    sc = *starcat;
 
     if (nlog > 0)
 	verbose = 1;
@@ -159,7 +160,7 @@ int	nlog;
 
     wcscstr (cstr, sysout, eqout, epout);
 
-    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
+    SearchLim (cra, cdec, dra, ddec, sysout, &ra1, &ra2, &dec1, &dec2, verbose);
 
 /* If RA range includes zero, split it in two */
     wrap = 0;
@@ -183,26 +184,30 @@ int	nlog;
     tdist = (double *) malloc (nsmax * sizeof (double));
 
     /* Open catalog file */
-    starcat = ctgopen (catfile, refcat);
-    if (starcat == NULL)
+    if (sc == NULL)
+	sc = ctgopen (catfile, refcat);
+    *starcat = sc;
+    if (sc == NULL)
 	return (0);
-    if (starcat->nstars <= 0) {
-	free (starcat);
+    if (sc->nstars <= 0) {
+	free (sc);
 	if (star != NULL)
 	    free (star);
+	sc = NULL;
 	return (0);
 	}
 
     jstar = 0;
-    if (tobj == NULL || starcat->ignore)
+    if (tobj == NULL || sc->ignore)
 	nameobj = 0;
     else
 	nameobj = 1;
 
     /* Loop through catalog */
-    for (istar = 1; istar <= starcat->nstars; istar++) {
-	if (ctgstar (istar, starcat, star)) {
-	    fprintf (stderr,"CATREAD: Cannot read star %d\n", istar);
+    for (istar = 1; istar <= sc->nstars; istar++) {
+	if (ctgstar (istar, sc, star)) {
+	    fprintf (stderr,"\nCTGREAD: Cannot read %s star %d\n",
+		     sc->isfil, istar);
 	    break;
 	    }
 
@@ -217,20 +222,26 @@ int	nlog;
 	dec = star->dec;
 	rapm = star->rapm;
 	decpm = star->decpm;
-	if (starcat->mprop)
-	    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
-		     &ra, &dec, &rapm, &decpm);
-	else
-	    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+	if (sc->inform != 'X') {
+	    if (sc->mprop)
+		wcsconp (sysref, sysout, eqref, eqout, epref, epout,
+		         &ra, &dec, &rapm, &decpm);
+	    else
+		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+	    }
 	mag = star->xmag[0];
 	peak = 0;
-	if (drad > 0 || distsort)
-	    dist = wcsdist (cra,cdec,ra,dec);
+	if (drad > 0 || distsort) {
+	    if (sc->inform == 'X')
+		dist = sqrt ((ra-cra)*(ra-cra) + (dec-cdec)*(dec-cdec));
+	    else
+		dist = wcsdist (cra,cdec,ra,dec);
+	    }
 	else
 	    dist = 0.0;
 
 	/* If catalog is RA-sorted, stop reading if past highest RA */
-	if (starcat->rasorted && !wrap && ra > ra2)
+	if (sc->rasorted && !wrap && ra > ra2)
 	    break;
 
 	/* Check magnitude and position limits */
@@ -318,7 +329,7 @@ int	nlog;
 	    nstar++;
 	    jstar++;
 	    if (nlog == 1)
-		fprintf (stderr,"CATREAD: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
+		fprintf (stderr,"CTGREAD: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
 			 num,ra,dec,cstr,mag,peak);
 
 	    /* End of accepted star processing */
@@ -326,22 +337,21 @@ int	nlog;
 
 	/* Log operation */
 	if (nlog > 0 && istar%nlog == 0)
-	    fprintf (stderr,"CATREAD: %5d / %5d / %5d sources catalog %s\r",
-		     jstar,istar,starcat->nstars,catfile);
+	    fprintf (stderr,"CTGREAD: %5d / %5d / %5d sources catalog %s\r",
+		     jstar,istar,sc->nstars,catfile);
 
 	/* End of star loop */
 	}
 
     /* Summarize search */
     if (nlog > 0) {
-	fprintf (stderr,"CATREAD: Catalog %s : %d / %d / %d found\n",
-		 catfile,jstar,istar,starcat->nstars);
+	fprintf (stderr,"CTGREAD: Catalog %s : %d / %d / %d found\n",
+		 catfile,jstar,istar,sc->nstars);
 	if (nstar > nsmax)
-	    fprintf (stderr,"CATREAD: %d stars found; only %d returned\n",
+	    fprintf (stderr,"CTGREAD: %d stars found; only %d returned\n",
 		     nstar,nsmax);
 	}
 
-    ctgclose (starcat, TXTCAT);
     free ((char *)tdist);
     free (star);
     return (nstar);
@@ -439,7 +449,7 @@ int	nlog;
 	}
 
     if ((starcat = ctgopen (catfile, refcat)) == NULL) {
-	fprintf (stderr,"CATRNUM: Cannot read catalog %s\n", catfile);
+	fprintf (stderr,"CTGRNUM: Cannot read catalog %s\n", catfile);
 	return (0);
 	}
     sysref = starcat->coorsys;
@@ -468,7 +478,7 @@ int	nlog;
 	if (match && starcat->stnum > 0 && starcat->stnum < 5) {
 	    for (istar = 1; istar <= starcat->nstars; istar++) {
 		if (ctgstar (istar, starcat, star)) {
-		    fprintf (stderr,"CATRNUM: Cannot read star %d\n", istar);
+		    fprintf (stderr,"CTGRNUM: Cannot read star %d\n", istar);
 		    break;
 		    }
 		if (star->num == tnum[jnum]) {
@@ -480,7 +490,7 @@ int	nlog;
 	else {
 	    istar = (int) (tnum[jnum] + 0.5);
 	    if (ctgstar (istar, starcat, star)) {
-		fprintf (stderr,"CATRNUM: Cannot read star %d\n", istar);
+		fprintf (stderr,"CTGRNUM: Cannot read star %d\n", istar);
 		continue;
 		}
 	    starfound = 1;
@@ -501,11 +511,13 @@ int	nlog;
 	    eqref = star->equinox;
 	    epref = star->epoch;
     
-	    if (starcat->mprop)
-		wcsconp (sysref, sysout, eqref, eqout, epref, epout,
-			 &ra, &dec, &rapm, &decpm);
-	    else
-		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+	    if (starcat->inform != 'X') {
+		if (starcat->mprop)
+		    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
+			     &ra, &dec, &rapm, &decpm);
+		else
+		    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+		}
 	    mag = star->xmag[0];
 	    peak = 0;
 
@@ -522,7 +534,7 @@ int	nlog;
 		}
 	    nstar++;
 	    if (nlog == 1)
-		fprintf (stderr,"CATRNUM: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
+		fprintf (stderr,"CTGRNUM: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
 			 num,ra,dec,cstr,mag,peak);
 
 	    /* End of accepted star processing */
@@ -530,7 +542,7 @@ int	nlog;
 
 	/* Log operation */
 	if (nlog > 0 && jnum%nlog == 0)
-	    fprintf (stderr,"CATRNUM: %5d / %5d / %5d sources catalog %s\r",
+	    fprintf (stderr,"CTGRNUM: %5d / %5d / %5d sources catalog %s\r",
 		     nstar,jnum,starcat->nstars,catfile);
 
 	/* End of star loop */
@@ -538,10 +550,10 @@ int	nlog;
 
 /* Summarize search */
     if (nlog > 0)
-	fprintf (stderr,"CATRNUM: Catalog %s : %d / %d found\n",
+	fprintf (stderr,"CTGRNUM: Catalog %s : %d / %d found\n",
 		 catfile,nstar,starcat->nstars);
 
-    ctgclose(starcat, TXTCAT);
+    ctgclose(starcat);
     free (star);
     return (nstar);
 }
@@ -559,6 +571,7 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     FILE *fcat;
     char header[80];
     char catpath[128];	/* Full pathname for catalog file */
+    char *catname;
     char *str;
     int nr, lfile, lhead, ldesc;
     char *catnew, *catdesc;
@@ -592,7 +605,7 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	strcat (catpath, catfile);
 	lfile = ctgsize (catpath);
 	if (lfile < 2) {
-	    fprintf (stderr,"CATOPEN: ASCII catalog %s has no entries\n",catfile);
+	    fprintf (stderr,"CTGOPEN: ASCII catalog %s has no entries\n",catfile);
 	    return (NULL);
 	    }
 	}
@@ -604,26 +617,40 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 
     /* Open ASCII catalog */
     if (!(fcat = fopen (catpath, "r"))) {
-	fprintf (stderr,"CATOPEN: ASCII catalog %s cannot be read\n",catfile);
+	fprintf (stderr,"CTGOPEN: ASCII catalog %s cannot be read\n",catfile);
+	free (sc);
 	return (NULL);
 	}
 
     /* Allocate buffer to hold entire catalog and read it */
     if ((sc->catbuff = malloc (lfile+2)) == NULL) {
-	fprintf (stderr,"CATOPEN: Cannot allocate memory for ASCII catalog %s\n",
+	fprintf (stderr,"CTGOPEN: Cannot allocate memory for ASCII catalog %s\n",
 		 catfile);
 	fclose (fcat);
+	free (sc);
 	return (NULL);
 	}
     sc->catbuff[lfile] = (char) 0;
     sc->catbuff[lfile+1] = (char) 0;
 
+    /* Separate filename from pathname and save in structure */
+    catname = strrchr (catfile,'/');
+    if (catname)
+	catname = catname + 1;
+    else
+	catname = catfile;
+    if (strlen (catname) < 24)
+	strcpy (sc->isfil, catname);
+    else
+	strncpy (sc->isfil, catname, 23);
+
     /* Read entire catalog into memory at once */
     nr = fread (sc->catbuff, 1, lfile, fcat);
     if (nr < lfile) {
-	fprintf (stderr,"CATOPEN: read only %d / %d bytes of file %s\n",
+	fprintf (stderr,"CTGOPEN: read only %d / %d bytes of file %s\n",
 		 nr, lfile, catfile);
 	(void) fclose (fcat);
+	free (sc);
 	return (NULL);
 	}
 
@@ -730,6 +757,12 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     if (strsrch (header, "/t") || strsrch (header, "/T"))
 	sc->inform = 'T';
 
+    /* X Y format (x.xxxxxx y.yyyyy) */
+    if (strsrch (header, "/x") || strsrch (header, "/X")) {
+	sc->inform = 'X';
+	sc->coorsys = WCS_XY;
+	}
+
     /* Epoch per catalog object as yyyy.mmdd */
     if (strsrch (header, "/y") || strsrch (header, "/Y"))
 	sc->nepoch = 1;
@@ -759,7 +792,8 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     sc->nstars = 0;
     while ((catnew = strchr (catnew, newline)) != NULL) {
 	catnew = catnew + 1;
-	sc->nstars = sc->nstars + 1;
+	if (*catnew != '#')
+	    sc->nstars = sc->nstars + 1;
 	}
     sc->catline = sc->catdata;
     sc->catlast = sc->catdata + lfile;
@@ -791,6 +825,8 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	*linend = ctemp;
 	}
 
+    sc->refcat = TXTCAT;
+
     (void) fclose (fcat);
     return (sc);
 }
@@ -799,19 +835,25 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 /* CTGCLOSE -- Close ASCII catalog and free associated data structures */
 
 void
-ctgclose (sc, refcat)
+ctgclose (sc)
 
 struct	StarCat *sc;
-int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 {
-    if (refcat == BINCAT)
+    if (sc == NULL)
+	return;
+
+    else if (sc->refcat == BINCAT)
 	binclose (sc);
-    else if (refcat == TABCAT)
+    else if (sc->refcat == TABCAT)
 	tabcatclose (sc);
-    else if (refcat == TXTCAT) {
+    else if (sc->refcat == TXTCAT) {
 	free (sc->catbuff);
 	free (sc);
 	}
+    else
+	free (sc);
+
+    sc = NULL;
     return;
 }
 
@@ -838,13 +880,15 @@ struct Star *st; /* Star data structure, updated on return */
 
     /* Return error if requested number beyond catalog */
     if (istar > sc->nstars) {
-	fprintf (stderr, "CATSTAR:  %d is not in catalog\n",istar);
+	fprintf (stderr, "CTGSTAR:  %d is not in catalog\n",istar);
 	return (-1);
 	}
 
     /* If star is 0, read next star in catalog */
     else if (istar < 1) {
 	line = strchr (sc->catline, newline) + 1;
+	while (*line == '#')
+	    line = strchr (line, newline) + 1;
 	if (line == NULL)
 	    return (-1);
 	else
@@ -855,8 +899,11 @@ struct Star *st; /* Star data structure, updated on return */
     else if (istar < sc->istar) {
 	sc->istar = 1;
 	sc->catline = sc->catdata;
+	nextline = sc->catline;
 	while (sc->istar < istar) {
-	    nextline = strchr (sc->catline, newline) + 1;
+	    nextline = strchr (nextline, newline) + 1;
+	    while (*nextline == '#')
+		nextline = strchr (nextline, newline) + 1;
 	    if (nextline == NULL)
 		return (-1);
 	    sc->catline = nextline;
@@ -866,8 +913,11 @@ struct Star *st; /* Star data structure, updated on return */
 
     /* If star is after current star, read forward to it */
     else if (istar > sc->istar) {
+	nextline = sc->catline;
 	while (sc->istar < istar) {
-	    nextline = strchr (sc->catline, newline) + 1;
+	    nextline = strchr (nextline, newline) + 1;
+	    while (*nextline == '#')
+		nextline = strchr (nextline, newline) + 1;
 	    if (nextline == NULL)
 		return (-1);
 	    sc->catline = nextline;
@@ -938,6 +988,10 @@ struct Star *st; /* Star data structure, updated on return */
     else if (sc->inform == 'D')
 	st->ra = atof (token);
 
+    /* Translate single-token right ascension as X image coordinate */
+    else if (sc->inform == 'X')
+	st->ra = atof (token);
+
     /* Translate single-token right ascension (hh:mm:ss.ss or hh.mmssss) */
     else
 	st->ra = ctg2ra (token);
@@ -968,6 +1022,10 @@ struct Star *st; /* Star data structure, updated on return */
 	if (deg > 0 && decsgn)
 	    st->dec = -st->dec;
 	}
+
+    /* Translate single-token declination as Y image coordinate */
+    else if (sc->inform == 'X')
+	st->dec = atof (token);
 
     /* Translate single-token declination as degrees */
     else if (sc->inform == 'D')
@@ -1193,4 +1251,10 @@ char	*in;	/* Character string */
  * Apr  3 2000	Add /i option to ignore stuff at end of line
  * Apr  3 2000	Ignore leading # on first two lines of ASCII catalog file
  * May 20 2000	Add Tycho 2 catalog support
+ * Jun 23 2000	Ignore any line with # as first character, not just heading
+ * Jun 26 2000	Implement /X catalog flag to avoid conversions
+ * Jun 26 2000	Add coordinate system to SearchLim() arguments
+ * Jun 26 2000	Ignore lines starting with # when counting stars in catalog
+ * Jul 12 2000	Add star catalog data structure to ctgread() argument list
+ * Jul 25 2000	Pass star catalog address of data structure address
  */

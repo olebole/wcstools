@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** June 9, 2000
+ *** June 26, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -90,7 +90,7 @@ int	nlog;		/* 1 for diagnostics */
 
     wcscstr (cstr, sysout, eqout, epout);
 
-    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
+    SearchLim (cra, cdec, dra, ddec, sysout, &ra1, &ra2, &dec1, &dec2, verbose);
 
 /* If RA range includes zero, split it in two */
     wrap = 0;
@@ -824,4 +824,5 @@ char	*filename;	/* Name of file for which to find size */
  * May 31 2000	Get spectral type from bv2sp()
  * Jun  2 2000	Free all allocated data structures
  * Jun  9 2000	Fix bug which caused memory overflow if limiting number
+ * Jun 26 2000	Add coordinate system to SearchLim() arguments
  */

@@ -1,5 +1,5 @@
 /* File setpix.c
- * March 23, 2000
+ * June 21, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,6 +14,12 @@
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcs.h"
 #include "libwcs/wcscat.h"
+
+#define PIX_ADD 1
+#define PIX_SUB 2
+#define PIX_MUL 3
+#define PIX_DIV 4
+#define PIX_SET 5
 
 static void usage();
 static void SetPix();
@@ -38,6 +44,7 @@ char **av;
     FILE *flist;
     int i = 0;
     int iv = 0;
+    int op;
 
     fn[0] = NULL;
     value[0] = NULL;
@@ -52,6 +59,7 @@ char **av;
 	version = 1;
 	usage();
 	}
+    op = PIX_SET;
 
     /* crack arguments */
     for (av++; --ac > 0; av++) {
@@ -61,11 +69,23 @@ char **av;
 	    char c;
 	    while (c = *++str) {
 		switch (c) {
+		    case 'a':	/* Add constant to image section */
+			op = PIX_ADD;
+			break;
+		    case 'd':	/* Divide image section by constant */
+			op = PIX_DIV;
+			break;
 		    case 'i':	/* print each change */
 			eachpix++;
 			break;
+		    case 'm':	/* Multiply image section by constant */
+			op = PIX_MUL;
+			break;
 		    case 'n':	/* ouput new file */
 			newimage++;
+			break;
+		    case 's':	/* Subtract constant from image section */
+			op = PIX_SUB;
 			break;
 		    case 'v':	/* some verbosity */
 			verbose++;
@@ -125,7 +145,7 @@ char **av;
     /* Loop through pixel changes for each image */
     i = 0;
     while (fn[i] != NULL) {
-	SetPix (fn[i], crange, rrange, value);
+	SetPix (fn[i], op, crange, rrange, value);
 	i++;
 	}
 
@@ -140,17 +160,22 @@ usage ()
     fprintf (stderr,"Edit pixels of FITS or IRAF image file\n");
     fprintf(stderr,"Usage: setpix [-vn] file.fts x_range y_range value ...\n");
     fprintf(stderr,"Usage: setpix [-vn] file.fts @valuefile ...\n");
+    fprintf(stderr,"  -a: Add constant to pixels\n");
+    fprintf(stderr,"  -d: Divide pixels by constant\n");
     fprintf(stderr,"  -i: List each line which is dropped \n");
+    fprintf(stderr,"  -m: Multiply pixels by constant\n");
     fprintf(stderr,"  -n: write new file, else overwrite \n");
+    fprintf(stderr,"  -s: Subtract constant from pixels\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
 }
 
 
 static void
-SetPix (filename, crange, rrange, value)
+SetPix (filename, op, crange, rrange, value)
 
 char	*filename;	/* FITS or IRAF file filename */
+int	op;		/* Operation to perform */
 char	**crange;	/* Column range string */
 char	**rrange;	/* Row range string */
 char	**value;	/* value to insert into pixel */
@@ -173,13 +198,25 @@ char	**value;	/* value to insert into pixel */
     char *ext, *fname;
     char newline[1];
     char echar;
-    double dpix;
+    double dpix, dpi;
     char *c;
+    char opstring[32];
     int bitpix,xdim,ydim;
     struct Range *xrange;    /* X range structure */
     struct Range *yrange;    /* Y range structure */
 
     newline[0] = 10;
+
+    if (op == PIX_SET)
+	strcpy (opstring, "set to");
+    else if (op == PIX_MUL)
+	strcpy (opstring, "multiplied by");
+    else if (op == PIX_DIV)
+	strcpy (opstring, "divided by");
+    else if (op == PIX_SUB)
+	strcpy (opstring, "minus");
+    else if (op == PIX_ADD)
+	strcpy (opstring, "plus");
 
     /* Open IRAF image and header */
     if (isiraf (filename)) {
@@ -257,12 +294,27 @@ char	**value;	/* value to insert into pixel */
 	    ny = ydim;
 	    for (x = 0; x < nx; x++) {
 		for (y = 0; y < ny; y++) {
-		    putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
+		    if (op == PIX_SET) {
+			putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
+			dpi = dpix;
+			}
+		    else {
+			dpi = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
+			if (op == PIX_MUL)
+			    dpi = dpi * dpix;
+			else if (op == PIX_ADD)
+			    dpi = dpi + dpix;
+			else if (op == PIX_SUB)
+			    dpi = dpi - dpix;
+			else if (op == PIX_DIV)
+			    dpi = dpi / dpix;
+			putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpi);
+			}
 	            if (bitpix > 0) {
-			if (dpix > 0)
-	 		    ipix = (int) (dpix + 0.5);
-			else if (dpix < 0)
-		 	    ipix = (int) (dpix - 0.5);
+			if (dpi > 0)
+	 		    ipix = (int) (dpi + 0.5);
+			else if (dpi < 0)
+		 	    ipix = (int) (dpi - 0.5);
 			else
 			    ipix = 0;
 			}
@@ -271,14 +323,14 @@ char	**value;	/* value to insert into pixel */
 		        if (bitpix > 0)
 			    printf (pform, ipix);
 			else
-			    printf (pform, dpix);
+			    printf (pform, dpi);
 			printf ("\n");
 			}
 		    }
 		}
-	    sprintf (history,"SETPIX: pixels in image set to %s",value[i]);
+	    sprintf (history,"SETPIX: pixels in image %s %s",
+		     opstring, value[i]);
 	    }
-
 
 	/* Set entire columns */
 	if (!strcmp (rrange[i], "0")) {
@@ -289,12 +341,27 @@ char	**value;	/* value to insert into pixel */
 		rstart (xrange);
 		x = rgeti4 (xrange) - 1;
 		for (y = 0; y < ny; y++) {
-		    putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
+		    if (op == PIX_SET) {
+			putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
+			dpi = dpix;
+			}
+		    else {
+			dpi = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
+			if (op == PIX_MUL)
+			    dpi = dpi * dpix;
+			else if (op == PIX_ADD)
+			    dpi = dpi + dpix;
+			else if (op == PIX_SUB)
+			    dpi = dpi - dpix;
+			else if (op == PIX_DIV)
+			    dpi = dpi / dpix;
+			putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpi);
+			}
 	            if (bitpix > 0) {
-			if (dpix > 0)
-	 		    ipix = (int) (dpix + 0.5);
+			if (dpi > 0)
+	 		    ipix = (int) (dpi + 0.5);
 			else if (dpix < 0)
-		 	    ipix = (int) (dpix - 0.5);
+		 	    ipix = (int) (dpi - 0.5);
 			else
 			    ipix = 0;
 			}
@@ -303,17 +370,17 @@ char	**value;	/* value to insert into pixel */
 		        if (bitpix > 0)
 			    printf (pform, ipix);
 			else
-			    printf (pform, dpix);
+			    printf (pform, dpi);
 			printf ("\n");
 			}
 		    }
 		}
 	    if (isnum (crange[i]))
-		sprintf (history, "SETPIX: pixels in column %s set to %s",
-		     crange[i],value[i]);
+		sprintf (history, "SETPIX: pixels in column %s %s %s",
+		     crange[i],opstring,value[i]);
 	    else
-		sprintf (history, "SETPIX: pixels in columns %s set to %s",
-		     crange[i],value[i]);
+		sprintf (history, "SETPIX: pixels in columns %s %s %s",
+		     crange[i],opstring,value[i]);
 	    free (xrange);
 	    }
 
@@ -325,13 +392,28 @@ char	**value;	/* value to insert into pixel */
 	    for (iy = 0; iy < ny; iy++) {
 		y = rgeti4 (yrange) - 1;
 		for (x = 0; x < nx; x++) {
-		    putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
+		    if (op == PIX_SET) {
+			putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
+			dpi = dpix;
+			}
+		    else {
+			dpi = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
+			if (op == PIX_MUL)
+			    dpi = dpi * dpix;
+			else if (op == PIX_ADD)
+			    dpi = dpi + dpix;
+			else if (op == PIX_SUB)
+			    dpi = dpi - dpix;
+			else if (op == PIX_DIV)
+			    dpi = dpi / dpix;
+			putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpi);
+			}
 		    if (eachpix) {
 			if (bitpix > 0) {
-			    if (dpix > 0)
-	 			ipix = (int) (dpix + 0.5);
-			    else if (dpix < 0)
-		 		ipix = (int) (dpix - 0.5);
+			    if (dpi > 0)
+	 			ipix = (int) (dpi + 0.5);
+			    else if (dpi < 0)
+		 		ipix = (int) (dpi - 0.5);
 			    else
 				ipix = 0;
 			    }
@@ -339,17 +421,17 @@ char	**value;	/* value to insert into pixel */
 			if (bitpix > 0)
 			    printf (pform, ipix);
 			else
-			    printf (pform, dpix);
+			    printf (pform, dpi);
 			printf ("\n");
 			}
 		    }
 		}
 	    if (isnum (rrange[i]))
-		sprintf (history, "SETPIX: pixels in row %s set to %s",
-		     rrange[i],value[i]);
+		sprintf (history, "SETPIX: pixels in row %s %s %s",
+		     rrange[i],opstring,value[i]);
 	    else
-		sprintf (history, "SETPIX: pixels in rows %s set to %s",
-		     rrange[i],value[i]);
+		sprintf (history, "SETPIX: pixels in rows %s %s %s",
+		     rrange[i],opstring,value[i]);
 	    free (yrange);
 	    }
 
@@ -370,16 +452,30 @@ char	**value;	/* value to insert into pixel */
 		/* Loop through columns */
 		for (ix = 0; ix < nx; ix++) {
 		    x = rgeti4 (xrange);
-		    putpix1 (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
-        	
+		    if (op == PIX_SET) {
+			putpix1 (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
+			dpi = dpix;
+			}
+		    else {
+			dpi = getpix1 (image,bitpix,xdim,ydim,bzero,bscale,x,y);
+			if (op == PIX_MUL)
+			    dpi = dpi * dpix;
+			else if (op == PIX_ADD)
+			    dpi = dpi + dpix;
+			else if (op == PIX_SUB)
+			    dpi = dpi - dpix;
+			else if (op == PIX_DIV)
+			    dpi = dpi / dpix;
+			putpix1 (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpi);
+			}
 		    if (eachpix) {
 	        	if (bitpix > 0) {
 			    if ((c = strchr (pform,'f')) != NULL)
 				*c = 'd';
-			    if (dpix > 0)
-	 			ipix = (int) (dpix + 0.5);
-			    else if (dpix < 0)
-		 		ipix = (int) (dpix - 0.5);
+			    if (dpi > 0)
+	 			ipix = (int) (dpi + 0.5);
+			    else if (dpi < 0)
+		 		ipix = (int) (dpi - 0.5);
 			    else
 				ipix = 0;
 			    }
@@ -391,7 +487,7 @@ char	**value;	/* value to insert into pixel */
 			if (bitpix > 0)
 			    printf (pform, ipix);
 			else
-			    printf (pform, dpix);
+			    printf (pform, dpi);
 			printf ("\n");
 			}
 		    }
@@ -399,17 +495,17 @@ char	**value;	/* value to insert into pixel */
 
 	    /* Note addition as history line in header */
 	    if (isnum (crange[i]) && isnum (rrange[i]))
-		sprintf (history, "SETPIX: pixel at row %s, column %s set to %s",
-		     rrange[i], crange[i], value[i]);
+		sprintf (history, "SETPIX: pixel at row %s, column %s %s %s",
+		     rrange[i], crange[i], opstring, value[i]);
 	    else if (isnum (rrange[i]))
-		sprintf (history, "SETPIX: pixels in row %s, columns %s set to %s",
-		     rrange[i], crange[i], value[i]);
+		sprintf (history, "SETPIX: pixels in row %s, columns %s %s %s",
+		     rrange[i], crange[i], opstring, value[i]);
 	    else if (isnum (crange[i]))
-		sprintf (history, "SETPIX: pixels in column %s, rows %s set to %s",
-		     crange[i], rrange[i], value[i]);
+		sprintf (history, "SETPIX: pixels in column %s, rows %s %s %s",
+		     crange[i], rrange[i], opstring, value[i]);
 	    else
-		sprintf (history, "SETPIX: pixels in rows %s, columns %s set to %s",
-		     rrange[i], crange[i], value[i]);
+		sprintf (history, "SETPIX: pixels in rows %s, columns %s %s %s",
+		     rrange[i], crange[i], opstring, value[i]);
 	    free (xrange);
 	    free (yrange);
 	    }
@@ -526,4 +622,5 @@ char	**value;	/* value to insert into pixel */
  * Dec 13 1999	Fix bug with region setting; add option to set entire image
  *
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
+ * Jun 21 2000	Add options to operate on existing image
  */

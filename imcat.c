@@ -1,5 +1,5 @@
 /* File imcat.c
- * May 26, 2000
+ * July 25, 2000
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -46,6 +46,7 @@ static char *keyword = NULL;	/* Column to add to tab table output */
 static int sysout = 0;		/* Output coordinate system */
 static double eqout = 0.0;	/* Equinox for output coordinates */
 static int version = 0;		/* If 1, print only program name and version */
+static struct StarCat *starcat[5]; /* Star catalog data structure */
 
 main (ac, av)
 int ac;
@@ -71,6 +72,9 @@ char **av;
     int lcat;
     int scat = 0;
     char *progname;		/* Name of program as executed */
+
+    for (i = 0; i< 5; i++)
+	starcat[i] = NULL;
 
     for (i = 0; i < 5; i++) {
 	region_radius[i] = 0;
@@ -338,9 +342,11 @@ char **av;
 	}
 
     /* If no arguments left, print usage */
-    /* if (ac == 0 || !refcat) */
-    if (ac == 0)
-	usage(progname);
+    if (ac == 0) {
+	for (i = 0; i < 5; i++)
+	    if (starcat[i] != NULL) ctgclose (starcat[i]);
+	usage (progname);
+	}
 
     while (ac-- > 0) {
     	char *fn = *av++;
@@ -350,6 +356,8 @@ char **av;
     	if (debug)
     	    printf ("\n");
 	}
+    for (i = 0; i < 5; i++)
+	if (starcat[i] != NULL) ctgclose (starcat[i]);
 
     return (0);
 }
@@ -501,7 +509,6 @@ int	*region_char;	/* Character for SAOimage region file output */
     int mprop;
     double pra, pdec;
     double maxnum;
-    struct StarCat *starcat;
 
     gnum = NULL;
     gra = NULL;
@@ -551,7 +558,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 	}
 
     /* Set up limits for search */
-    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, 0);
+    SearchLim (cra, cdec, dra, ddec, sysout, &ra1, &ra2, &dec1, &dec2, 0);
     epout = wcs->epoch;
     if (verbose || printhead) {
 	char rastr1[16],rastr2[16],decstr1[16],decstr2[16], cstr[16];
@@ -653,24 +660,18 @@ int	*region_char;	/* Character for SAOimage region file output */
 
     /* Find the nearby reference stars, in ra/dec */
     drad = 0.0;
-    if (refcat == BINCAT || refcat == TABCAT || refcat == TXTCAT) {
-	starcat = ctgopen (refcatname[icat], refcat);
-	nndec = starcat->nndec;
-	ctgclose (starcat, refcat);
-	}
     ng = ctgread (refcatname[icat], refcat, 0,
-		  cra,cdec,dra,ddec,drad,sysout,eqout, epout,mag1,mag2,
-		  ngmax,gnum,gra,gdec,gpra,gpdec,gm,gmb,gc,gobj,nlog);
+		  cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
+		  ngmax,&starcat[icat],
+		  gnum,gra,gdec,gpra,gpdec,gm,gmb,gc,gobj,nlog);
+    if (refcat == BINCAT || refcat == TABCAT || refcat == TXTCAT)
+	nndec = starcat[icat]->nndec;
 
     /* Find out whether object names are set */
     if (gobj[0] == NULL)
 	gobj1 = NULL;
     else
 	gobj1 = gobj;
-
-    /* Find number of decimal places in Starbase catalog */
-    if (refcat == TABCAT)
-	nndec = gettabndec();
 
     if (ng > ngmax)
 	nbg = ngmax;
@@ -1446,4 +1447,8 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Mar 28 2000	Clean up output for catalog IDs and GSC classes
  * May 26 2000	Add Tycho 2 catalog
  * May 26 2000	Always use CatNumLen() to get ID number field size
+ * Jul 12 2000	Add star catalog data structure to ctgread() argument list
+ * Jul 25 2000	Add coordinate system to SearchLim() call
+ * Jul 25 2000	Fix star catalog structure initialization bug
+ * Jul 25 2000	Pass address of star catalog data structure address
  */

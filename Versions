@@ -1,3 +1,18 @@
+Version 2.8.3 (August 3, 2000)
+setpix:  Add -a, -s, -m, and -d options to operate on existing pixel values
+in an image sections with a constant.
+wcshead: Add -w option to print limits of 1-D images (often spectra)
+scat: Add ASCII catalog /x option to use X Y instead of spherical coordinates
+imcat, scat: Preserve star catalog structure between calls to avoid rereading
+Starbase and TDC ASCII and binary catalog files buffered in memory.
+imrot: Add -s option to split multi-extension FITS files to _n.fits
+newfits: Add -i option to fill data section of new FITS file from binary file
+wcs.c: Use keyword rotation angle for one-dimensional file
+imsetwcs.c: Fix bug which caused occasional segv, introduced in 2.8.0
+dateutil.c: Fix bug so ep2jd() and jd2ep() both start at 1/1 0:00
+catutil.c: Fix CatNum() and CatNumLen() to deal with integers > 10 digits
+tabread.c: Return actual catalog number from tabrnum()
+
 Version 2.8.2 (June 13, 2000)
 scat, imcat, immatch, imwcs: Fix bug which reversed Tycho-2 B and V magnitudes
 gethead: If -p, always print filename, even for one file

@@ -1,5 +1,5 @@
 /* File libwcs/catutil.c
- * June 2, 2000
+ * July 26, 2000
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -13,14 +13,12 @@
  *	Return formatted source number
  * int	PropCat (refcatname)
  *	Return 1 if catalog has proper motion, else 0
- * void SearchLim (cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, verbose)
- *	Comput limiting RA and Dec from center and half-widths
+ * void SearchLim (cra, cdec, dra, ddec, sys, ra1, ra2, dec1, dec2, verbose)
+ *	Compute limiting RA and Dec from center and half-widths
  * int CatNumLen (refcat, nndec)
  *	Return length of source number
  * int CatMaxField (refcat, maxnum, nndec)
  *	Return Maximum field size for source numbers
- * void SearchLim (cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, verbose)
- *	Compute limiting RA and Dec from center and half-widths
  * void RefLim (cra,cdec,dra,ddec,sysc,sysr,eqc,eqr,epc,ramin,ramax,decmin,decmax,verbose)
  *	Compute limiting RA and Dec in new system from center and half-widths
  * struct Range *RangeInit (string, ndef)
@@ -51,6 +49,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "wcs.h"
 #include "wcscat.h"
 
@@ -412,12 +411,16 @@ char	*numstr;	/* Formatted number (returned) */
 	    sprintf (nform,"%%%d.%df", nndec+5, nndec);
 	sprintf (numstr, nform, dnum);
 	}
+    else if (nnfld > 10) {
+	sprintf (nform,"%%%d.0f", nnfld);
+	sprintf (numstr, nform, dnum+0.49);
+	}
     else if (nnfld > 0) {
 	sprintf (nform,"%%%dd", nnfld);
-	sprintf (numstr, nform, (int)(dnum+0.5));
+	sprintf (numstr, nform, (int)(dnum+0.49));
 	}
     else
-	sprintf (numstr, "%6d", (int)(dnum+0.5));
+	sprintf (numstr, "%6d", (int)(dnum+0.49));
 
     return;
 }
@@ -477,17 +480,28 @@ int	nndec;		/* Number of decimal places ( >= 0) */
 	    return (7 + nndec + ndp);
 	else if (maxnum < 100000000.0)
 	    return (8 + nndec + ndp);
-	else
+	else if (maxnum < 1000000000.0)
 	    return (9 + nndec + ndp);
+	else if (maxnum < 10000000000.0)
+	    return (10 + nndec + ndp);
+	else if (maxnum < 100000000000.0)
+	    return (11 + nndec + ndp);
+	else if (maxnum < 1000000000000.0)
+	    return (12 + nndec + ndp);
+	else if (maxnum < 10000000000000.0)
+	    return (13 + nndec + ndp);
+	else
+	    return (14 + nndec + ndp);
 	}
 }
 
 
 void
-SearchLim (cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, verbose)
+SearchLim (cra, cdec, dra, ddec, syscoor, ra1, ra2, dec1, dec2, verbose)
 
 double	cra, cdec;	/* Center of search area  in degrees */
 double	dra, ddec;	/* Horizontal and verticla half-widths of area */
+int	syscoor;	/* Coordinate system */
 double	*ra1, *ra2;	/* Right ascension limits in degrees */
 double	*dec1, *dec2;	/* Declination limits in degrees */
 int	verbose;	/* 1 to print limits, else 0 */
@@ -500,10 +514,12 @@ int	verbose;	/* 1 to print limits, else 0 */
     *ra2 = cra + dra;
 
     /* Keep right ascension between 0 and 360 degrees */
-    if (*ra1 < 0.0)
-	*ra1 = *ra1 + 360.0;
-    if (*ra2 > 360.0)
-	*ra2 = *ra2 - 360.0;
+    if (syscoor != WCS_XY) {
+	if (*ra1 < 0.0)
+	    *ra1 = *ra1 + 360.0;
+	if (*ra2 > 360.0)
+	    *ra2 = *ra2 - 360.0;
+	}
 
     /* Set declination limits for search */
     *dec1 = cdec - ddec;
@@ -517,22 +533,33 @@ int	verbose;	/* 1 to print limits, else 0 */
 	}
 
     /* Search zones which include the poles cover 360 degrees in RA */
-    if (*dec1 < -90.0) {
-	*dec1 = -90.0;
-	*ra1 = 0.0;
-	*ra2 = 359.99999;
+    if (syscoor != WCS_XY) {
+	if (*dec1 < -90.0) {
+	    *dec1 = -90.0;
+	    *ra1 = 0.0;
+	    *ra2 = 359.99999;
+	    }
+	if (*dec2 > 90.0) {
+	    *dec2 = 90.0;
+	    *ra1 = 0.0;
+	    *ra2 = 359.99999;
+	    }
 	}
-    if (*dec2 > 90.0) {
-	*dec2 = 90.0;
-	*ra1 = 0.0;
-	*ra2 = 359.99999;
-	}
+
     if (verbose) {
 	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
-	ra2str (rstr1, 16, *ra1, 3);
-        dec2str (dstr1, 16, *dec1, 2);
-	ra2str (rstr2, 16, *ra2, 3);
-        dec2str (dstr2, 16, *dec2, 2);
+	if (syscoor == WCS_XY) {
+	    num2str (rstr1, *ra1, 10, 5);
+            num2str (dstr1, *dec1, 10, 5);
+	    num2str (rstr2, *ra2, 10, 5);
+            num2str (dstr2, *dec2, 10, 5);
+	    }
+	else {
+	    ra2str (rstr1, 16, *ra1, 3);
+            dec2str (dstr1, 16, *dec1, 2);
+	    ra2str (rstr2, 16, *ra2, 3);
+            dec2str (dstr2, 16, *dec2, 2);
+	    }
 	fprintf (stderr,"SearchLim: RA: %s - %s  Dec: %s - %s\n",
 		 rstr1,rstr2,dstr1,dstr2);
 	}
@@ -1284,4 +1311,7 @@ char	*isp;	/* Spectral type */
  * May 25 2000	Add Tycho 2 catalog
  * May 26 2000	Add field size argument to CatNum() and CatNumLen()
  * Jun  2 2000	Set proper motion for all catalog types in RefCat()
+ * Jun 26 2000	Add XY image coordinate system
+ * Jul 26 2000	Include math.h to get strtod() on SunOS machines
+ * Aug  2 2000	Allow up to 14 digits in catalog IDs
  */

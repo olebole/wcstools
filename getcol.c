@@ -1,5 +1,5 @@
 /* File getcol.c
- * May 1, 2000
+ * July 21, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -274,6 +274,7 @@ char	*lfile;		/* Name of file with lines to list */
     int i, j, il, ir, nbytes;
     char line[1024];
     char fline[1024];
+    char *nextline;
     char *lastchar;
     FILE *fd;
     FILE *lfd;
@@ -343,8 +344,9 @@ char	*lfile;		/* Name of file with lines to list */
 	    return;
 	    }
 	il = 0;
+	nextline = line;
 	for (ir = 0; ir < nread; ir++) {
-	    if (fgets (line, 1024, lfd) == NULL)
+	    if (fgets (nextline, 1024, lfd) == NULL)
 		break;
 
 	    /* Skip lines with comments
@@ -352,9 +354,18 @@ char	*lfile;		/* Name of file with lines to list */
 		continue;
 
 	    /* Drop linefeeds */
-	    lastchar = line + strlen(line) - 1;
+	    lastchar = nextline + strlen(nextline) - 1;
 	    if (*lastchar < 32)
 		*lastchar = (char) 0;
+
+	    /* Add lines with escaped linefeeds */
+	    lastchar = nextline + strlen(nextline) - 1;
+	    if (*lastchar == (char) 92) {
+		nextline = lastchar;
+		continue;
+		}
+	    else
+		nextline = line;
 
 	    ntok = setoken (&tokens, line, cwhite);
 	    nt = 0;
@@ -402,13 +413,24 @@ char	*lfile;		/* Name of file with lines to list */
     if (ranges == NULL) {
 	iln = 0;
 	il = 0;
+	nextline = line;
 	for (ir = 0; ir < nread; ir++) {
-	    if (fgets (line, 1024, fd) == NULL)
+	    if (fgets (nextline, 1024, fd) == NULL)
 		break;
 
 	    /* Skip lines with comments
-	    if (line[0] == '#')
+	    if (nextline[0] == '#')
 		continue;
+
+	    /* Add lines with escaped linefeeds */
+	    lastchar = nextline + strlen(nextline) - 1;
+	    if (*lastchar == (char) 92) {
+		nextline = lastchar;
+		continue;
+		}
+	    else
+		nextline = line;
+
 	    il++;
 
 	    /* Skip if line is not on list, if there is one */
@@ -541,9 +563,24 @@ char	*lfile;		/* Name of file with lines to list */
 	    }
 	wfile = 0;
 	iln = 0;
+	nextline = line;
 	for (il = 0; il < nread; il++) {
-	    if (fgets (line, 1024, fd) == NULL)
+	    if (fgets (nextline, 1024, fd) == NULL)
 		break;
+
+	    /* Turn linefeed into end of string */
+	    lastchar = line + strlen(line) - 1;
+	    if (*lastchar < 32)
+		*lastchar = (char) 0;
+
+	    /* Add lines with escaped linefeeds */
+	    lastchar = nextline + strlen(nextline) - 1;
+	    if (*lastchar == (char) 92) {
+		nextline = lastchar;
+		continue;
+		}
+	    else
+		nextline = line;
 
 	    /* Skip if line is not on list, if there is one */
 	    if (iline != NULL) {
@@ -554,11 +591,6 @@ char	*lfile;		/* Name of file with lines to list */
 		else
 		    iln++;
 		}
-
-	    /* Turn linefeed into end of string */
-	    lastchar = line + strlen(line) - 1;
-	    if (*lastchar < 32)
-		*lastchar = (char) 0;
 
 	    /* Echo line if it is a comment */
 	    if (line[0] == '#') {
@@ -887,4 +919,5 @@ char *string;
  * Mar 20 2000	Add conditional line printing
  * Apr  4 2000	Add option to operate on keyword values
  * Apr  5 2000	Simply echo lines starting with #
+ * Jul 21 2000	Link lines with escaped linefeeds at end to next line
  */

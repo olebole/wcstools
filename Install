@@ -1,6 +1,6 @@
 WCSTools
 
-This is version 2.7.2 of the WCSTools package developed by Doug Mink
+This is version 2.8.3 of the WCSTools package developed by Doug Mink
 at the Smithsonian Astrophysical Observatory, with significant code from
 
 Bill Cotton of NRAO (projection),
@@ -30,11 +30,11 @@ of this software is in the Versions file.
 
 The complete source code is in
 
-	ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-2.7.2.tar.gz
+	ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-2.8.3.tar.gz
 
 To install the code, create a directory for it, download it, and run
 
-	gzcat wcstools-2.7.2.tar.gz | tar xvf -
+	gzcat wcstools-2.8.3.tar.gz | tar xvf -
 
 The main directory will contain the source code for the programs, and
 a subdirectory, libwcs, will contain the source code for the subroutines
@@ -73,7 +73,7 @@ and uses the same WCS subroutines as WCSTools.  If you want to include the
 same WCS access in your own code, the subset of the WCSTools library
 which is used in SAOimage is available at
 
-	ftp://cfa-ftp.harvard.edu/pub/gsc/SAOimage/wcssubs-2.7.2.tar.gz
+	ftp://cfa-ftp.harvard.edu/pub/gsc/SAOimage/wcssubs-2.8.3.tar.gz
 
 -Doug Mink  (dmink@cfa.harvard.edu)
  Telescope Data Center

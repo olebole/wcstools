@@ -1,5 +1,5 @@
 /*** File libwcs/iget.c
- *** February 11, 2000
+ *** July 29, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	iget.c (Get IRAF FITS Header parameter values)
@@ -341,23 +341,17 @@ char *keyword0;	/* character string containing the name of the keyword
 	static char cval[500];
 	char *value;
 	char cwhite[8];
-	char squot[2],dquot[2],lbracket[2],rbracket[2],slash[2];
+	char lbracket[2],rbracket[2];
 	char keyword[16];
 	char line[500];
 	char *vpos,*cpar;
 	char *c1, *brack1, *brack2;
 	int ipar, i;
 
-	squot[0] = 39;
-	squot[1] = 0;
-	dquot[0] = 34;
-	dquot[1] = 0;
 	lbracket[0] = 91;
 	lbracket[1] = 0;
 	rbracket[0] = 93;
 	rbracket[1] = 0;
-	slash[0] = 47;
-	slash[1] = 0;
 
 /* Find length of variable name */
 	strcpy (keyword,keyword0);
@@ -506,4 +500,5 @@ char *keyword;	/* character string containing the name of the variable
  * Oct 21 1999	Fix declarations after lint
  *
  * Feb 11 2000	Stop search for end of quoted keyword if more than 500 chars
+ * Jul 20 2000	Drop unused variables squot, dquot, and slash in igetc()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** June 2, 2000
+ *** July 25, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -38,7 +38,7 @@ static void moveb();
 
 int
 binread (bincat,distsort,cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-	 nstarmax,tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,tobj,nlog)
+	 nstarmax,starcat,tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tpeak,tobj,nlog)
 
 char	*bincat;	/* Name of reference star catalog file */
 int	distsort;	/* 1 to sort stars by distance from center */
@@ -52,6 +52,7 @@ double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	nstarmax;	/* Maximum number of sources to be returned */
+struct StarCat **starcat; /* Star catalog data structure */
 double	*tnum;		/* Array of catalog numbers (returned) */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
@@ -78,8 +79,8 @@ int	nlog;
     double epref;	/* Catalog position epoch */
     double ra, dec, rapm, decpm;
     double rra1a, rra2a;
-    struct StarCat *starcat;
     struct Star *star;
+    struct StarCat *sc;	/* Star catalog data structure */
     int rwrap, wrap, iwrap, istar1,istar2;
     char *objname;
     int lname;
@@ -94,7 +95,7 @@ int	nlog;
     char cstr[16];
 
     star = NULL;
-    starcat = NULL;
+    sc = *starcat;
 
     if (nlog > 0)
 	verbose = 1;
@@ -112,11 +113,14 @@ int	nlog;
     nstar = 0;
 
     /* Open catalog file */
-    starcat = binopen (bincat);
-    if (starcat == NULL)
+    if (sc == NULL)
+	sc = binopen (bincat);
+    *starcat = sc;
+    if (sc == NULL)
 	return (0);
-    if (starcat->nstars <= 0) {
-	binclose (starcat);
+    if (sc->nstars <= 0) {
+	binclose (sc);
+	sc = NULL;
 	return (0);
 	}
 
@@ -126,11 +130,11 @@ int	nlog;
     else
 	tdist = (double *) calloc (10, sizeof(double));
 
-    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
+    SearchLim (cra, cdec, dra, ddec, sysout, &ra1, &ra2, &dec1, &dec2, verbose);
   
-    sysref = starcat->coorsys;
-    eqref = starcat->equinox;
-    epref = starcat->epoch;
+    sysref = sc->coorsys;
+    eqref = sc->equinox;
+    epref = sc->epoch;
     RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
 	    &rra1, &rra2, &rdec1, &rdec2, verbose);
     if (verbose) {
@@ -191,20 +195,20 @@ int	nlog;
     for (iwrap = 0; iwrap <= rwrap; iwrap++) {
 
 	/* Set first and last stars to check */
-	if (starcat->rasorted) {
-	    istar1 = binsra (starcat, star, rra1);
-	    istar2 = binsra (starcat, star, rra2);
+	if (sc->rasorted) {
+	    istar1 = binsra (sc, star, rra1);
+	    istar2 = binsra (sc, star, rra2);
 	    }
 	else {
-	    istar1 = starcat->star1;
-	    istar2 = starcat->star0 + starcat->nstars;
+	    istar1 = sc->star1;
+	    istar2 = sc->star0 + sc->nstars;
 	    }
 	if (verbose)
 	    printf ("BINREAD: Searching stars %d through %d\n",istar1,istar2);
 
 	/* Loop through catalog */
 	for (istar = istar1; istar <= istar2; istar++) {
-	    if (binstar (starcat, star, istar)) {
+	    if (binstar (sc, star, istar)) {
 		fprintf (stderr,"BINREAD: Cannot read star %d\n", istar);
 		break;
 		}
@@ -222,7 +226,7 @@ int	nlog;
 
 	    /* Magnitude */
 	    mag = 0.01 * (double) star->mag[0];
-	    if (starcat->nmag > 1) {
+	    if (sc->nmag > 1) {
 		magb = mag;
 		mag = 0.01 * (double) star->mag[1];
 		}
@@ -250,7 +254,7 @@ int	nlog;
 		    tnum[nstar] = num;
 		    tra[nstar] = ra;
 		    tdec[nstar] = dec;
-		    if (starcat->mprop) {
+		    if (sc->mprop) {
 			tpra[nstar] = rapm;
 			tpdec[nstar] = decpm;
 			}
@@ -281,7 +285,7 @@ int	nlog;
 			tnum[farstar] = num;
 			tra[farstar] = ra;
 			tdec[farstar] = dec;
-			if (starcat->mprop) {
+			if (sc->mprop) {
 			    tpra[nstar] = rapm;
 			    tpdec[nstar] = decpm;
 			    }
@@ -313,7 +317,7 @@ int	nlog;
 		    tnum[faintstar] = num;
 		    tra[faintstar] = ra;
 		    tdec[faintstar] = dec;
-		    if (starcat->mprop) {
+		    if (sc->mprop) {
 			tpra[nstar] = rapm;
 			tpdec[nstar] = decpm;
 			}
@@ -351,7 +355,7 @@ int	nlog;
 	/* Log operation */
 	    if (nlog > 0 && istar%nlog == 0)
 		fprintf (stderr,"BINREAD: %5d / %5d / %5d sources catalog %s\r",
-			jstar,istar,starcat->nstars,bincat);
+			jstar,istar,sc->nstars,bincat);
 
 	/* End of star loop */
 	    }
@@ -364,13 +368,12 @@ int	nlog;
     /* Summarize search */
     if (nlog > 0) {
 	fprintf (stderr,"BINREAD: Catalog %s : %d / %d / %d found\n",
-		 bincat,jstar,istar,starcat->nstars);
+		 bincat,jstar,istar,sc->nstars);
 	if (nstar > nstarmax)
 	    fprintf (stderr,"BINREAD: %d stars found; only %d returned\n",
 		     nstar,nstarmax);
 	}
 
-    binclose (starcat);
     free ((void *)star);
     free ((void *)tdist);
     return (nstar);
@@ -679,6 +682,8 @@ char *bincat;	/* Binary catalog file name */
 	sc->rasorted = 1;
     if (!strncmp (binfile, "IRAS", 4))
 	sc->rasorted = 1;
+
+    sc->refcat = BINCAT;
     return (sc);
 }
 
@@ -1078,4 +1083,7 @@ char *from, *last, *to;
  * Mar 28 2000	Use moveb() to extract information from entries
  * Mar 30 2000	Use standard i/O instead of stream I/O
  * Jun  2 2000	Minor changes after lint
+ * Jun 26 2000	Add coordinate system to SearchLim() arguments
+ * Jul 12 2000	Add star catalog structure to binread() argument list
+ * Jul 25 2000	Pass star catalog address of data structure address
  */

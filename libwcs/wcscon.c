@@ -1,7 +1,7 @@
 /*** File wcscon.c
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Based on Starlink subroutines by Patrick Wallace
- *** March 14, 2000
+ *** June 26, 2000
 
  * Module:	wcscon.c (World Coordinate System conversion)
  * Purpose:	Convert between various sky coordinate systems
@@ -127,8 +127,11 @@ double	*pphi;	/* Latitude or declination proper motion in degrees/year
     /* Convert to B1950 FK4 */
     if (sys2 == WCS_B1950) {
 	if (sys1 == WCS_J2000) {
-	    if (*ptheta != 0.0 || *pphi != 0.0)
+	    if (*ptheta != 0.0 || *pphi != 0.0) {
 		fk524m (dtheta, dphi, ptheta, pphi);
+		if (ep1 == 2000.0)
+		    ep1 = 1950.0;
+		}
 	    else if (ep2 != 1950.0)
 		fk524e (dtheta, dphi, ep2);
 	    else
@@ -146,8 +149,11 @@ double	*pphi;	/* Latitude or declination proper motion in degrees/year
 
     else if (sys2 == WCS_J2000) {
         if (sys1 == WCS_B1950) {
-	    if (*ptheta != 0.0 || *pphi != 0.0)
+	    if (*ptheta != 0.0 || *pphi != 0.0) {
 		fk425m (dtheta, dphi, ptheta, pphi);
+		if (ep1 == 1950.0)
+		    ep1 = 2000.0;
+		}
             else if (ep2 > 0.0)
                 fk425e (dtheta, dphi, ep2);
             else
@@ -465,6 +471,11 @@ double	epoch;		/* Epoch of coordinate system */
 {
 
     char *estr;
+
+    if (syswcs == WCS_XY) {
+	strcpy (cstr, "XY");
+	return;
+	}
 
     /* Try to figure out coordinate system if it is not set */
     if (epoch == 0.0)
@@ -1743,4 +1754,6 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
  * Mar 10 2000	Precess coordinates correctly from other than 1950.0 and 2000.0
  * Mar 10 2000	Set coordinate system to J2000 or B1950 if string is numeric
  * Mar 14 2000	Clean up code in fk524m() and fk425m()
+ * May 31 2000	Add proper motion correctly if proper motion precessed
+ * Jun 26 2000	Add some support for WCS_XY image coordinates
  */

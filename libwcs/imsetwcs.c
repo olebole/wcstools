@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * May 26, 2000
+ * July 25, 2000
  * By Doug Mink, based on UIowa code
  */
 
@@ -125,6 +125,7 @@ int	verbose;
     int nmatch;
     double ra,dec;
     double dx, dy, dx2, dy2, dxy, tol2;
+    struct StarCat *starcat;
 
     iterate = iterate0;
     toliterate = toliterate0;
@@ -143,6 +144,7 @@ int	verbose;
     sx = NULL;
     sy = NULL;
     sp = NULL;
+    starcat = NULL;
 
     /* Set reference catalog coordinate system and epoch */
     if (nofit) {
@@ -245,9 +247,9 @@ getfield:
 		 ngmax*sizeof(int));
 
     /* Find the nearby reference stars, in ra/dec */
-    ng = ctgread (refcatname,refcat, 0,
-		  cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,mag1,mag2,
-		  ngmax,gnum,gra,gdec,gpra,gpdec,gm,gmb,gc,NULL,verbose*100);
+    ng = ctgread (refcatname,refcat,0,cra,cdec,dra,ddec,0.0,refsys,refeq,
+		  wcs->epoch,mag1,mag2,ngmax,&starcat,
+		  gnum,gra,gdec,gpra,gpdec,gm,gmb,gc,NULL,verbose*100);
     if (ng > ngmax)
 	nrg = ngmax;
     else
@@ -733,7 +735,7 @@ int	verbose;	/* True for more information */
 	dec2str (dstr, 32, gdec1[i], 2);
 	if (irafout)
 	    printf (" %6.1f %6.1f %s %s %5.2f ",sx1[i],sy1[i],rstr,dstr,gm1[i]);
-	CatNum (refcat, 0, gnum1[i], numstr);
+	CatNum (refcat, nnfld, 0, gnum1[i], numstr);
 	printf (" %s",numstr);
 	if (!irafout)
 	    printf (" %s %s %5.2f %6.1f %6.1f ",rstr,dstr,gm1[i],sx1[i],sy1[i]);
@@ -984,4 +986,7 @@ int recenter;
  * Mar 15 2000	Add proper motion arguments to RASortStars() and ctgread()
  * Mar 28 2000	Separate tolerance reducing iterations and other iterations
  * May 26 2000	Set catalog number field size using CatNumLen()
+ * Jun 22 2000	Fix bug created in last update (found by J.-B. Marquette)
+ * Jul 12 2000	Add catalog data structre to ctgread() call
+ * Jul 25 2000	Pass address of star catalog data structure address
  */

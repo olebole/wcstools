@@ -1,6 +1,6 @@
 /*** File libwcs/fitsfile.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** March 27, 2000
+ *** July 28, 2000
 
  * Module:      fitsfile.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -215,6 +215,9 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		pheader = (char *) calloc ((unsigned int) nbprim, 1);
 		strncpy (pheader, header, lprim);
 		pheader[lprim] = 0;
+		hchange (pheader, "SIMPLE", "ROOTHEAD");
+		hdel (pheader, "BITPIX");
+		hdel (pheader, "NAXIS");
 		}
 
 	    /* If header has no data, start with the next record */
@@ -361,9 +364,9 @@ char	*header;	/* FITS header for image (previously read) */
 
 {
     int fd;
-    int nbimage, naxis1, naxis2, bytepix, nbr;
-    int bitpix, naxis, nblocks, nbytes;
-    char *image;
+    int nbimage, naxis1, naxis2, bytepix, nbread;
+    int bitpix, naxis, nblocks, nbytes, nbleft, nbr;
+    char *image, *imleft;
 
     /* Open the image file and read the header */
     if (strcmp (filename,"stdin") && strcmp (filename,"STDIN") ) {
@@ -421,7 +424,21 @@ char	*header;	/* FITS header for image (previously read) */
 
     /* Allocate and read image */
     image = (char *) malloc (nbytes);
-    nbr = read (fd, image, nbytes);
+    nbleft = nbytes;
+    imleft = image;
+    nbr = 0;
+    while (nbleft > 0) {
+	nbread = read (fd, imleft, nbleft);
+	nbr = nbr + nbread;
+#ifndef VMS
+	if (fd == STDIN_FILENO && nbread < nbleft && nbread > 0) {
+	    nbleft = nbleft - nbread;
+	    imleft = imleft + nbread;
+	    }
+	else
+#endif
+	    nbleft = 0;
+	}
 #ifndef VMS
     if (fd != STDIN_FILENO)
 	(void)close (fd);
@@ -1274,4 +1291,7 @@ char    *filename;      /* Name of file for which to find size */
  *
  * Feb 23 2000	Fix problem with some error returns in fitscimage()
  * Mar 17 2000	Drop unused variables after lint
+ * Jul 20 2000	Drop BITPIX and NAXIS from primary header if extension printerd
+ * Jul 20 2000	Start primary part of header with ROOTHEAD keyword
+ * Jul 28 2000	Add loop to deal with buffered stdin
  */
