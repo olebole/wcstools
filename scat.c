@@ -1,5 +1,5 @@
 /* File scat.c
- * September 16, 1999
+ * September 21, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -539,37 +539,37 @@ char *progname;
     if (version)
 	exit (-1);
     if (strsrch (progname,"gsc") != NULL)
-	fprintf (stderr,"Find HST Guide Stars in a square on the sky\n");
+	fprintf (stderr,"Find HST Guide Stars in a region on the sky\n");
     else if (strsrch (progname,"ujc") != NULL)
-	fprintf (stderr,"Find USNO J Catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find USNO J Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"uac") != NULL)
-	fprintf (stderr,"Find USNO A Catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find USNO A Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"ua1") != NULL)
-	fprintf (stderr,"Find USNO A-1.0 Catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find USNO A-1.0 Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"ua2") != NULL)
-	fprintf (stderr,"Find USNO A-2.0 Catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find USNO A-2.0 Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"usac") != NULL)
-	fprintf (stderr,"Find USNO SA Catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find USNO SA Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"usa1") != NULL)
-	fprintf (stderr,"Find USNO SA-1.0 Catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find USNO SA-1.0 Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"usa2") != NULL)
-	fprintf (stderr,"Find USNO SA-2.0 Catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find USNO SA-2.0 Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"sao") != NULL)
-	fprintf (stderr,"Find SAO Catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find SAO Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"ppm") != NULL)
-	fprintf (stderr,"Find PPM Catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find PPM Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"ira") != NULL)
-	fprintf (stderr,"Find IRAS Point Sources in a square on the sky\n");
+	fprintf (stderr,"Find IRAS Point Sources in a region on the sky\n");
     else if (strsrch (progname,"tyc") != NULL)
-	fprintf (stderr,"Find Tycho Catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find Tycho Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"hip") != NULL)
-	fprintf (stderr,"Find Hipparcos Catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find Hipparcos Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"act") != NULL)
-	fprintf (stderr,"Find ACT Catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find ACT Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"bsc") != NULL)
-	fprintf (stderr,"Find Bright Star Catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find Bright Star Catalog stars in a region on the sky\n");
     else
-	fprintf (stderr,"Find catalog stars in a square on the sky\n");
+	fprintf (stderr,"Find catalog stars in a region on the sky\n");
     fprintf (stderr,"Usage: [-abdehjlstvw] [-m [mag1] mag2] [-n num] [-r arcsec] [-u x y] ra dec sys or @list\n");
     fprintf(stderr,"  -a: List single closest catalog source\n");
     fprintf(stderr,"  -b: Output B1950 (FK4) coordinates\n");
@@ -2041,4 +2041,5 @@ int	ndec;	/* Number of decimal places in output */
  * Sep 10 1999	Do all searches through catread() and catrnum()
  * Sep 16 1999	Fix galactic coordinate header
  * Sep 16 1999	Add distsort argument to catread() call
+ * Sep 21 1999	Change description of search area from square to region
  */

@@ -1,5 +1,5 @@
 /* File i2f.c
- * November 30, 1998
+ * September 28, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -19,12 +19,14 @@ static void IRAFtoFITS ();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;		/* If 1, print only program name and version */
+char outname[128];              /* Name for output image */
 
 main (ac, av)
 int ac;
 char **av;
 {
     char *str;
+    outname[0] = 0;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -43,6 +45,15 @@ char **av;
 		case 'v':	/* more verbosity */
 		    verbose++;
 		    break;
+		case 'o':	/* output file name */
+		    if (ac < 2)
+			usage ();
+		    strcpy (outname, *++av);
+		    ac--;
+		    break;
+		case 's':	/* output to stdout */
+		    strcpy (outname, "stdout");
+		    break;
 	        default:
 		    usage();
 		    break;
@@ -58,10 +69,10 @@ char **av;
 	while (ac-- > 0) {
 	    char *fn = *av++;
 	    if (verbose)
-		printf ("%s:\n", fn);
+		fprintf (stderr,"%s:\n", fn);
 	    IRAFtoFITS (fn);
 	    if (verbose)
-		printf ("\n");
+		fprintf (stderr,"\n");
 	    }
 	}
 
@@ -74,7 +85,9 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Write FITS files from IRAF image files\n");
-    fprintf(stderr,"usage: i2f [-v] file.imh ...\n");
+    fprintf(stderr,"usage: i2f [-vs] [-o name] file.imh ...\n");
+    fprintf(stderr,"  -o: output name for one file\n");
+    fprintf(stderr,"  -s: write output to standard output\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
 }
@@ -122,7 +135,12 @@ char *name;
 	ext = strsrch (fitsname,".imh");
 	strcpy (ext,".fits");
 	if (verbose) {
-	    fprintf (stderr,"Write FITS files from IRAF image file %s\n", name);
+	    if (outname[0] == (char) 0)
+		fprintf (stderr, "Write FITS file from IRAF image file %s\n",
+			 name);
+	    else
+		fprintf (stderr,"Write FITS file %s from IRAF image file %s\n",
+			 outname, name);
 	    }
 	}
 
@@ -175,12 +193,16 @@ char *name;
 	history[72] = 0;
     hputc (header, "HISTORY", history);
 
+    /* If assigned output name, use it */
+    if (outname[0] != (char) 0)
+	strcpy (fitsname, outname);
+
     /* Write FITS image */
     if (fitswimage (fitsname, header, image) > 0 && verbose)
-	printf ("%s: rewritten successfully.\n", fitsname);
+	fprintf (stderr, "%s: rewritten successfully.\n", fitsname);
 
     else if (verbose)
-	printf ("%s: not written.\n", fitsname);
+	fprintf (stderr, "%s: not written.\n", fitsname);
 
     free (header);
     free (image);
@@ -203,4 +225,6 @@ char *name;
  * Aug 14 1998	Write file.fits instead of file.fit
  * Aug 17 1998	Add HISTORY to header
  * Nov 30 1998	Add version and help commands for consistency
+
+ * Sep 28 1999	Add standard output option
  */

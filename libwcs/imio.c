@@ -1,13 +1,21 @@
 /*** File wcslib/imio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** September 14, 1999
+ *** September 28, 1999
 
  * Module:      imio.c (image pixel manipulation)
  * Purpose:     Read and write pixels from arbitrary data type 2D arrays
  * Subroutine:	getpix (image, bitpix, w, h, bz, bs, x, y)
- *		Get pixel from 2D image of any numeric type
+ *		Read pixel from 2D image of any numeric type (0,0 lower left)
+ * Subroutine:	getpix1 (image, bitpix, w, h, bz, bs, x, y)
+ *		Read pixel from 2D image of any numeric type (1,1 lower left)
  * Subroutine:	putpix (image, bitpix, w, h, bz, bs, x, y, dpix)
- *		Copy pixel into 2D image of any numeric type
+ *		Write pixel into 2D image of any numeric type (0,0 lower left)
+ * Subroutine:	putpix1 (image, bitpix, w, h, bz, bs, x, y, dpix)
+ *		Write pixel into 2D image of any numeric type (1,1 lower left)
+ * Subroutine:	addpix (image, bitpix, w, h, bz, bs, x, y, dpix)
+ *		Copy pixel into 2D image of any numeric type (0,0 lower left)
+ * Subroutine:	addpix1 (image, bitpix, w, h, bz, bs, x, y, dpix)
+ *		Add pixel into 2D image of any numeric type (1,1 lower left)
  * Subroutine:	getvec (image, bitpix, bz, bs, pix1, npix, dpix)
  *		Get vector from 2D image of any numeric type
  * Subroutine:	putvec (image, bitpix, bz, bs, pix1, npix, dpix)
@@ -37,6 +45,26 @@
 #include <stdio.h>
 #include "imio.h"
 
+/* GETPIX1 -- Get pixel from 2D FITS image of any numeric type */
+
+double
+getpix1 (image, bitpix, w, h, bzero, bscale, x, y)
+
+char	*image;		/* Image array as 1-D vector */
+int	bitpix;		/* FITS bits per pixel */
+			/*  16 = short, -16 = unsigned short, 32 = int */
+			/* -32 = float, -64 = double */
+int	w;		/* Image width in pixels */
+int	h;		/* Image height in pixels */
+double  bzero;		/* Zero point for pixel scaling */
+double  bscale;		/* Scale factor for pixel scaling */
+int	x;		/* One-based horizontal pixel number */
+int	y;		/* One-based vertical pixel number */
+
+{
+    return (getpix (image, bitpix, w, h, bzero, bscale, x-1, y-1));
+}
+
 
 /* GETPIX -- Get pixel from 2D image of any numeric type */
 
@@ -51,8 +79,8 @@ int	w;		/* Image width in pixels */
 int	h;		/* Image height in pixels */
 double  bzero;		/* Zero point for pixel scaling */
 double  bscale;		/* Scale factor for pixel scaling */
-int	x;
-int	y;
+int	x;		/* Zero-based horizontal pixel number */
+int	y;		/* Zero-based vertical pixel number */
 
 {
     short *im2;
@@ -104,6 +132,29 @@ int	y;
 	  dpix = 0.0;
 	}
     return (bzero + (bscale * dpix));
+}
+
+
+/* PUTPIX1 -- Copy pixel into 2D FITS image of any numeric type */
+
+void
+putpix1 (image, bitpix, w, h, bzero, bscale, x, y, dpix)
+
+char	*image;
+int	bitpix;		/* Number of bits per pixel */
+			/*  16 = short, -16 = unsigned short, 32 = int */
+			/* -32 = float, -64 = double */
+int	w;		/* Image width in pixels */
+int	h;		/* Image height in pixels */
+double  bzero;		/* Zero point for pixel scaling */
+double  bscale;		/* Scale factor for pixel scaling */
+int	x;		/* One-based horizontal pixel number */
+int	y;		/* One-based vertical pixel number */
+double	dpix;
+
+{
+    putpix (image, bitpix, w, h, bzero, bscale, x-1, y-1, dpix);
+    return;
 }
 
 
@@ -168,6 +219,99 @@ double	dpix;
 	case -64:
 	    imd = (double *)image;
 	    imd[(y*w) + x] = dpix;
+	    break;
+
+	}
+    return;
+}
+
+
+/* ADDPIX1 -- Add pixel value into 2D FITS image of any numeric type */
+
+void
+addpix1 (image, bitpix, w, h, bzero, bscale, x, y, dpix)
+
+char	*image;
+int	bitpix;		/* Number of bits per pixel */
+			/*  16 = short, -16 = unsigned short, 32 = int */
+			/* -32 = float, -64 = double */
+int	w;		/* Image width in pixels */
+int	h;		/* Image height in pixels */
+double  bzero;		/* Zero point for pixel scaling */
+double  bscale;		/* Scale factor for pixel scaling */
+int	x;		/* One-based horizontal pixel number */
+int	y;		/* One-based vertical pixel number */
+double	dpix;		/* Value to add to pixel */
+
+{
+    addpix (image, bitpix, w, h, bzero, bscale, x-1, y-1, dpix);
+    return;
+}
+
+
+/* ADDPIX -- Add pixel value into 2D image of any numeric type */
+
+void
+addpix (image, bitpix, w, h, bzero, bscale, x, y, dpix)
+
+char	*image;
+int	bitpix;		/* Number of bits per pixel */
+			/*  16 = short, -16 = unsigned short, 32 = int */
+			/* -32 = float, -64 = double */
+int	w;		/* Image width in pixels */
+int	h;		/* Image height in pixels */
+double  bzero;		/* Zero point for pixel scaling */
+double  bscale;		/* Scale factor for pixel scaling */
+int	x;		/* Zero-based horizontal pixel number */
+int	y;		/* Zero-based vertical pixel number */
+double	dpix;		/* Value to add to pixel */
+
+{
+    short *im2;
+    int *im4;
+    unsigned short *imu;
+    float *imr;
+    double *imd;
+    int ipix;
+
+/* Return if coordinates are not inside image */
+    if (x < 0 || x >= w)
+	return;
+    if (y < 0 || y >= h)
+	return;
+
+    dpix = (dpix - bzero) / bscale;
+    ipix = (y * w) + x;
+
+    switch (bitpix) {
+
+	case 8:
+	    image[ipix] = image[ipix] + (char) dpix;
+	    break;
+
+	case 16:
+	    im2 = (short *)image;
+	    im2[ipix] = im2[ipix] + (short) dpix;
+	    break;
+
+	case 32:
+	    im4 = (int *)image;
+	    im4[ipix] = im4[ipix] + (int) dpix;
+	    break;
+
+	case -16:
+	    imu = (unsigned short *)image;
+	    imu[ipix] = imu[ipix] + (unsigned short) dpix;
+	    break;
+
+	case -32:
+	    imr = (float *)image;
+	    imr[ipix] = imr[ipix] + (float) dpix;
+	    break;
+
+	case -64:
+	    imd = (double *)image;
+	    imd[ipix] = imd[ipix] + dpix;
 	    break;
 
 	}
@@ -712,4 +856,6 @@ imswapped ()
  * Apr 29 1999	Add scaling to getpix, putpix, getvec, and putvec
  * Apr 29 1999	Fix bug in getvec in dealing with 1-byte data
  * Sep 14 1999	Change dp incrementing so it works on Alpha compiler
+ * Sep 27 1999	Add interface for 1-based (FITS) image access
+ * Sep 27 1999	Add addpix() and addpix1()
  */

@@ -1,5 +1,5 @@
 /* File imstar.c
- * July 7, 1999
+ * September 20, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -624,14 +624,8 @@ char	*filename;	/* FITS or IRAF file filename */
 	}
 
     for (i = 0; i < ns; i++) {
-	if (iswcs (wcs))
-	    pix2wcs (wcs, sx[i], sy[i], &ra, &dec);
-	else {
-	    ra = 0.0;
-	    dec = 0.0;
-	    }
-	ra2str (rastr, 32, ra, 3);
-	dec2str (decstr, 32, dec, 2);
+	ra2str (rastr, 32, sra[i], 3);
+	dec2str (decstr, 32, sdec[i], 2);
 	sprintf (headline, "%d	%s	%s	%.2f	%.2f	%.2f	%.2f	%d",
 		     i+1, rastr,decstr, smag[i], sx[i], sy[i], sb[i], sp[i]);
 	if (tabout)
@@ -727,4 +721,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jul  7 1999	Fix bug setting rotation
  * Jul  7 1999	Do not add 0 to file name if no rotation
  * Jul  7 1999	If -n argument more than found stars, list only number found
+ * Sep 20 1999	Drop second call to pix2wcs
  */

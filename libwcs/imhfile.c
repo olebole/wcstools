@@ -1,5 +1,5 @@
 /* File imhfile.c
- * July 13, 1999
+ * September 22, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
@@ -648,17 +648,21 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 	    else if (irafchar == 10) {
 		(void)strncpy (fhead, fitsline, 80);
 		/* printf ("%80s\n",fitsline); */
-		j = 0;
-		fhead = fhead + 80;
+		if (strncmp (fitsline, "OBJECT ", 7) != 0) {
+		    fhead = fhead + 80;
+		    j = 0;
+		    }
 		for (k = 0; k < 80; k++)
 		    fitsline[k] = ' ';
 		}
 	    else {
 		if (j > 80) {
-		    (void)strncpy (fhead, fitsline, 80);
-		    /* printf ("%80s\n",fitsline); */
-		    j = 9;
-		    fhead = fhead + 80;
+		    if (strncmp (fitsline, "OBJECT ", 7) != 0) {
+			(void)strncpy (fhead, fitsline, 80);
+			/* printf ("%80s\n",fitsline); */
+			j = 9;
+			fhead = fhead + 80;
+			}
 		    for (k = 0; k < 80; k++)
 			fitsline[k] = ' ';
 		    }
@@ -683,19 +687,23 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 	    if (irafchar == 0)
 		break;
 	    else if (irafchar == 10) {
-		(void)strncpy (fhead, fitsline, 80);
+		if (strncmp (fitsline, "OBJECT ", 7) != 0) {
+		    (void)strncpy (fhead, fitsline, 80);
+		    fhead = fhead + 80;
+		    }
 		/* printf ("%80s\n",fitsline); */
 		j = 0;
-		fhead = fhead + 80;
 		for (k = 0; k < 80; k++)
 		    fitsline[k] = ' ';
 		}
 	    else {
 		if (j > 80) {
-		    (void)strncpy (fhead, fitsline, 80);
+		    if (strncmp (fitsline, "OBJECT ", 7) != 0) {
+			(void)strncpy (fhead, fitsline, 80);
+			j = 9;
+			fhead = fhead + 80;
+			}
 		    /* printf ("%80s\n",fitsline); */
-		    j = 9;
-		    fhead = fhead + 80;
 		    for (k = 0; k < 80; k++)
 			fitsline[k] = ' ';
 		    }
@@ -1731,4 +1739,5 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  *
  * Jan 27 1999	Read and write all of 3D image if one dimension is =1
  * Jul 13 1999	Improve error messages; change irafsize() argument to fd
+ * Sep 22 1999	Don't copy OBJECT keyword from .imh file; use binary title
  */

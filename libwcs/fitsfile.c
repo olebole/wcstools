@@ -1,6 +1,6 @@
 /*** File libwcs/fitsfile.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** July 14, 1999
+ *** September 27, 1999
 
  * Module:      fitsfile.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -833,20 +833,27 @@ char	*image;		/* FITS image pixels */
     double bzero, bscale;
 
     /* Open the output file */
-    if (!access (filename, 0)) {
-	fd = open (filename, O_WRONLY);
-	if (fd < 3) {
-	    fprintf (stderr, "FITSWIMAGE:  file %s not writeable\n", filename);
-	    return (0);
+    if (strcmp (filename,"stdout") && strcmp (filename,"STDOUT") ) {
+
+	if (!access (filename, 0)) {
+	    fd = open (filename, O_WRONLY);
+	    if (fd < 3) {
+		fprintf (stderr, "FITSWIMAGE:  file %s not writeable\n", filename);
+		return (0);
+		}
+	    }
+	else {
+	    fd = open (filename, O_RDWR+O_CREAT, 0666);
+	    if (fd < 3) {
+		fprintf (stderr, "FITSWIMAGE:  cannot create file %s\n", filename);
+		return (0);
+		}
 	    }
 	}
-    else {
-	fd = open (filename, O_RDWR+O_CREAT, 0666);
-	if (fd < 3) {
-	    fprintf (stderr, "FITSWIMAGE:  cannot create file %s\n", filename);
-	    return (0);
-	    }
-	}
+#ifndef VMS
+    else
+	fd = STDOUT_FILENO;
+#endif
 
     /* Change BITPIX=-16 files to BITPIX=16 with BZERO and BSCALE */
     bitpix = 0;
@@ -1086,4 +1093,5 @@ char    *filename;      /* Name of file for which to find size */
  * Apr 30 1999	Add % as alternative to , to denote sub-images
  * May 25 1999	Set buffer offsets to 0 when FITS table file is opened
  * Jul 14 1999	Do not try to write image data if BITPIX is 0
+ * Sep 27 1999	Add STDOUT as output filename option in fitswimage()
  */

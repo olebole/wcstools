@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** September 16, 1999
+ *** September 22, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -14,8 +14,8 @@ char cds[64]="/data/gsc2";	/* Pathname of southern hemisphere GSC CDROM */
 
 static void gscpath();
 static int gscreg();
-static char *table = NULL;	/* FITS table buffer */
-static int ltab;		/* Length of FITS table buffer */
+static char *table;		/* FITS table buffer */
+static int ltab = 0;		/* Length of FITS table buffer */
 
 static int classd; /* Desired object class (-1=all, 0=stars, 3=nonstars) */
 void setgsclass (class)
@@ -85,10 +85,12 @@ int	nlog;		/* 1 for diagnostics */
     else
 	verbose = 0;
     verbose = nlog;
-    if (table == NULL) {
+
+    if (ltab < 1) {
 	ltab = 10000;
-	table = malloc (10000);
+	table = (char *)calloc (ltab, sizeof (char));
 	}
+
     for (i = 0; i < 100; i++)
 	entry[i] = 0;
 
@@ -126,7 +128,7 @@ int	nlog;		/* 1 for diagnostics */
 	    &rra1, &rra2, &rdec1, &rdec2, verbose);
     if (rra1 > rra2)
 	wrap = 1;
-    nreg = gscreg (rra1,rra2,rdec1,rdec2,ltab,table,nrmax,rlist,verbose);
+    nreg = gscreg (rra1,rra2,rdec1,rdec2,table,nrmax,rlist,verbose);
     if (nreg <= 0) {
 	fprintf (stderr,"GSCREAD:  no Guide Star regions found\n");
 	return (0);
@@ -385,7 +387,7 @@ int	nlog;		/* 1 for diagnostics */
     struct Keyword kw[8];	/* Keyword structure */
     struct Keyword *kwn;
 
-    int rnum, num0, num, itot,ltab;
+    int rnum, num0, num, itot;
     int ik,nk,itable,ntable,jstar;
     int nbline,npos,nbhead;
     int nbr,nstar,i, snum;
@@ -395,10 +397,12 @@ int	nlog;		/* 1 for diagnostics */
     char *str;
 
     itot = 0;
-    if (table == NULL) {
+
+    if (ltab < 1) {
 	ltab = 10000;
-	table = malloc (10000);
+	table = (char *)calloc (ltab, sizeof (char));
 	}
+
     for (i = 0; i < 100; i++)
 	entry[i] = 0;
 
@@ -582,11 +586,10 @@ static int nrkw = 13;
  */
 
 static int
-gscreg (ra1, ra2, dec1, dec2, ltab, table, nrmax, rgns, verbose)
+gscreg (ra1, ra2, dec1, dec2, table, nrmax, rgns, verbose)
 
 double	ra1, ra2;	/* Right ascension limits in degrees */
 double	dec1, dec2; 	/* Declination limits in degrees */
-int	ltab;		/* Maximum length of table buffer in bytes */
 char	*table;		/* Table data buffer */
 int	nrmax;		/* Maximum number of regions to find */
 int	*rgns;		/* Region numbers (returned)*/
@@ -942,4 +945,5 @@ char *path;	/* Pathname of GSC region FITS file */
  * Sep 10 1999	Set class selection with subroutine, not argument
  * Sep 16 1999	Fix bug which didn't always return closest stars
  * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
+ * Sep 22 1999	Rewrite table allocation so it works; make ltab static
  */

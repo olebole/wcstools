@@ -1,5 +1,5 @@
 /* fitsfile.h  FITS and IRAF file access subroutines
- * July 14, 1998
+ * September 28, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -47,16 +47,21 @@ extern char *iraf2fits();
 extern char *fits2iraf();
 
 /* Image pixel access subroutines in imio.c */
-extern double getpix();
-extern void putpix();
-extern void movepix();
-extern void getvec();
-extern void putvec();
-extern void imswap();
-extern void imswap2();
-extern void imswap4();
-extern void imswap8();
-extern int imswapped();
+extern double getpix();	/* Read one pixel from any data type 2-D array (0,0)*/
+extern double getpix1(); /* Read one pixel from any data type 2-D array (1,1)*/
+extern void putpix();	/* Write one pixel to any data type 2-D array (0,0)*/
+extern void putpix1();	/* Write one pixel to any data type 2-D array (1,1) */
+extern void addpix();	/* Add to one pixel in any data type 2-D array (0,0)*/
+extern void addpix1();	/* Add to one pixel in any data type 2-D array (1,1)*/
+extern void movepix();	/* Move one pixel value between two 2-D arrays (0,0) */
+extern void movepix1();	/* Move one pixel value between two 2-D arrays (1,1) */
+extern void getvec();	/* Read vector from 2-D array */
+extern void putvec();	/* Write vector into 2-D array */
+extern void imswap();	/* Swap alternating bytes in a vector */
+extern void imswap2();	/* Swap bytes in a vector of 2-byte (short) integers */
+extern void imswap4();	/* Reverse bytes in a vector of 4-byte numbers */
+extern void imswap8();	/* Reverse bytes in a vector of 8-byte numbers */
+extern int imswapped();	/* Return 1 if machine byte order is not FITS order */
 
 /* File utilities from fileutil.c */
 extern int getfilelines();
@@ -83,4 +88,5 @@ extern int first_token();
  * Oct  7 1998	Note separation of imhfile.c into two files
  *
  * Jul 15 1999	Add fileutil.c subroutines
+ * Sep 28 1999	Add (1,1)-based image access subroutines
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** August 16, 1999
+ *** August 20, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -33,7 +33,7 @@
  * Subroutine:	getwcsin (wcs) returns current input coordinate system used by wcs2pix
  * Subroutine:	setwcsdeg(wcs, new) sets WCS output in degrees or hh:mm:ss
  * Subroutine:	getradecsys(wcs) returns current coordinate system type
- * Subroutine:	wcscom (wcs,file,x,y) executes a command using the current world coordinates
+ * Subroutine:	wcscom (wcs,file,x,y,wcstr) executes a command using the current world coordinates
  * Subroutine:	setwcslin (wcs, mode) sets output string mode for LINEAR
  * Subroutine:	pix2wcst (wcs,xpix,ypix,wcstring,lstr) pixels -> sky coordinate string
  * Subroutine:	pix2wcs (wcs,xpix,ypix,xpos,ypos) pixel coordinates -> sky coordinates
@@ -113,8 +113,6 @@ char	*proj;	/* Projection */
 {
     struct WorldCoor *wcs;
     double cdelt1, cdelt2;
-    char *str;
-    char envar[16];
 
     wcs = (struct WorldCoor *) calloc (1, sizeof(struct WorldCoor));
 
@@ -215,8 +213,6 @@ double	epoch;	/* Epoch of coordinates, used for FK4/FK5 conversion
 		 * no effect if 0 */
 {
     struct WorldCoor *wcs;
-    char *str;
-    char envar[16];
 
     wcs = (struct WorldCoor *) calloc (1, sizeof(struct WorldCoor));
 
@@ -525,8 +521,6 @@ double cdelt1, cdelt2;		/* scale in degrees/pixel, ignored if cd is not NULL */
 double crota;			/* Rotation angle in degrees, ignored if cd is not NULL */
 double *cd;			/* Rotation matrix, used if not NULL */
 {
-    int i, j;
-    double *pci;
     extern int matinv();
 
     if (nowcs (wcs))
@@ -701,10 +695,9 @@ double crota;		/* Rotation counterclockwise in degrees */
 {
     extern int matinv();
     double *pci;
-    double crot, srot, s;
-    int i, j, naxes;
+    double crot, srot;
+    int i, j;
 
-    naxes = wcs->naxes;
     wcs->cdelt[0] = cdelt1;
     if (cdelt2 != 0.0)
 	wcs->cdelt[1] = cdelt2;
@@ -835,7 +828,6 @@ double *pc;		/* Rotation matrix, ignored if NULL */
 {
     extern int matinv();
     double *pci, *pc0i;
-    double crot, srot, s;
     int i, j, naxes;
 
     if (pc == NULL)
@@ -1393,36 +1385,31 @@ char	*command;		/* command with %s where coordinates will go */
 /* Execute Unix command with world coordinates (from x,y) and/or filename */
 
 void
-wcscom ( wcs, i, filename, xfile, yfile )
+wcscom ( wcs, i, filename, xfile, yfile, wcstring )
 
 struct WorldCoor *wcs;		/* World coordinate system structure */
 int	i;			/* Number of command (0-9) to execute */
 char	*filename;		/* Image file name */
 double	xfile,yfile;		/* Image pixel coordinates for WCS command */
+char	*wcstring;		/* WCS String from pix2wcst() */
 {
-    char wcstring[32];
-    int lstr = 32;
     char command[120];
     char comform[120];
     char xystring[32];
     char *fileform, *posform, *imform;
     int ier;
 
-    if (nowcs (wcs))
+    if (nowcs (wcs)) {
+	(void)fprintf(stderr,"WCSCOM: no WCS\n");
 	return;
+	}
 
     if (wcs->command_format[i] != NULL)
 	strcpy (comform, wcs->command_format[i]);
     else
 	strcpy (comform, "sgsc -ah %s");
 
-    if (nowcs (wcs))
-	(void)fprintf(stderr,"WCSCOM: no WCS\n");
-
-    else if (comform[0] > 0) {
-
-	/* Get WCS coordinates for this image coordinate */
-	(void) pix2wcst (wcs,xfile,yfile,wcstring,lstr);
+    if (comform[0] > 0) {
 
 	/* Create and execute search command */
 	fileform = strsrch (comform,"%f");
@@ -2174,7 +2161,6 @@ double  *ypix;          /* y pixel number  (dec or lat without rotation) */
 
 {
     int offscl;
-    int i;
     int wcsfwd();
     double wcscrd[4], imgcrd[4], pixcrd[4];
     double phi, theta;
@@ -2316,7 +2302,7 @@ setwcscom (wcs)
 struct WorldCoor *wcs;  /* WCS parameter structure */
 {
     char envar[16];
-    int lcom, i;
+    int i;
     char *str;
     if (nowcs(wcs))
 	return;
@@ -2330,15 +2316,15 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
 	else if ((str = getenv (envar)) != NULL)
 	    wcscominit (wcs, i, str);
 	else if (i == 1)
-	    wcscominit (wcs, i, "suac -ah %s");
+	    wcscominit (wcs, i, "suac -ah %s");	/* F1= Search USNO A Catalog */
 	else if (i == 2)
-	    wcscominit (wcs, i, "sgsc -ah %s");
+	    wcscominit (wcs, i, "sgsc -ah %s");	/* F2= Search HST GSC */
 	else if (i == 3)
-	    wcscominit (wcs, i, "stycho -ah %s");
+	    wcscominit (wcs, i, "sact -ah %s"); /* F3= Search USNO ACT Catalog */
 	else if (i == 4)
-	    wcscominit (wcs, i, "sppm -ah %s");
+	    wcscominit (wcs, i, "sppm -ah %s");	/* F4= Search PPM Catalog */
 	else if (i == 5)
-	    wcscominit (wcs, i, "ssao -ah %s");
+	    wcscominit (wcs, i, "ssao -ah %s");	/* F5= Search SAO Catalog */
 	else
 	    wcs->command_format[i] = NULL;
 	}
@@ -2559,4 +2545,6 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Jun 16 1999	Add wcsrange() to return image RA and Dec limits
  * Jul  8 1999	Always use FK5 and FK4 instead of J2000 and B1950 in RADECSYS
  * Aug 16 1999	Print dd:mm:ss dd:mm:ss if not J2000 or B1950 output
+ * Aug 20 1999	Add WCS string argument to wcscom(); don't compute it there
+ * Aug 20 1999	Change F3 WCS command default from Tycho to ACT
  */

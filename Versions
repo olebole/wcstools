@@ -1,3 +1,14 @@
+Version 2.6.6 (September 28, 1999)
+scat: Fix access to GSC by number
+i2f: Add option to write to standard output
+fixpix: Fix bugs
+remap: New program
+gscread.c: Fix table allocation bug
+imhfile.c: Don't copy OBJECT keyword from .imh file; use binary i_title
+fitsfile.c: Add option to write to standard output as filename stdout
+imio.c: Add new subroutines to add to a pixel (addpix) and use FITS one-based
+        rather than C zero-based image coordinates.
+
 Version 2.6.5 (September 16, 1999)
 scat: Fix bug which returned inconstent results from distance sorts.
 scat.c, imcat.c, imsetwcs.c: Rewrite catalog access so it all goes through

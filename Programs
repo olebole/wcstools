@@ -49,6 +49,8 @@ keyhead.c
 newfits.c
   Create dataless FITS image header files with BITPIX=0 or blank FITS
   image file if BITPIX is set to any legal value.
+remap.c
+  Rebin an image from its current WCS to one specified on the command line
 sethead.c
   Set header keyword values in FITS or IRAF images.
 setpix.c

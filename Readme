@@ -6,7 +6,7 @@ image, using specific keywords in the image header which relate pixel
 position within the image to position on the sky.  Auxillary programs
 search star catalogs and manipulate images.
 
-This is version 2.6.5 of the WCSTools package developed by Doug Mink
+This is version 2.6.6 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 
@@ -97,6 +97,8 @@ imwcs	Automaticaly find stars in a FITS or IRAF image, match them to HST
 keyhead	Change keyword names in headers of FITS or IRAF images.
 
 newhead	Create dataless FITS image header files with BITPIX=0
+
+remap	Remap an image from one WCS into another, rebinning as necessary
 
 sethead	Set header keyword values in FITS or IRAF images.
 

@@ -1,5 +1,5 @@
 /* File fixpix.c
- * June 29, 1999
+ * September 27, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -388,12 +388,12 @@ int	ixr, iyr;	/* Upper right corner of region (1 based) */
 	if (iyl - 1 < 0 || iyr + 1 > ydim - 1)
 	    return;
 	for (ix = ixl; ix <= ixr; ix++) {
-	    pixl = getpix (image,bitpix,xdim,ydim,bzero,bscale,ix,iyl-1);
-	    pixr = getpix (image,bitpix,xdim,ydim,bzero,bscale,ix,iyr+1);
-	    dpix = (pixr - pixl) / (double)(ydiff + 1);
+	    pixl = getpix1 (image,bitpix,xdim,ydim,bzero,bscale,ix,iyl-1);
+	    pixr = getpix1 (image,bitpix,xdim,ydim,bzero,bscale,ix,iyr+1);
+	    dpix = (pixr - pixl) / (double)ydiff;
 	    for (iy = iyl; iy <= iyr; iy++) {
 		pixl = pixl + dpix;
-		putpix (image,bitpix,xdim,ydim,bzero,bscale,ix,iy,pixl);
+		putpix1 (image,bitpix,xdim,ydim,bzero,bscale,ix,iy,pixl);
 		}
 	    }
 	}
@@ -403,12 +403,12 @@ int	ixr, iyr;	/* Upper right corner of region (1 based) */
 	if (ixl - 1 < 0 || ixr + 1 > xdim - 1)
 	    return;
 	for (iy = iyl; iy <= iyr; iy++) {
-	    pixl = getpix (image,bitpix,xdim,ydim,bzero,bscale,ixl-1,iy);
-	    pixr = getpix (image,bitpix,xdim,ydim,bzero,bscale,ixr+1,iy);
-	    dpix = (pixr - pixl) / (double)(ydiff + 1);
+	    pixl = getpix1 (image,bitpix,xdim,ydim,bzero,bscale,ixl-1,iy);
+	    pixr = getpix1 (image,bitpix,xdim,ydim,bzero,bscale,ixr+1,iy);
+	    dpix = (pixr - pixl) / (double)xdiff;
 	    for (ix = ixl; ix <= ixr; ix++) {
 		pixl = pixl + dpix;
-		putpix (image,bitpix,xdim,ydim,bzero,bscale,ix,iy,pixl);
+		putpix1 (image,bitpix,xdim,ydim,bzero,bscale,ix,iy,pixl);
 		}
 	    }
 	}
@@ -429,4 +429,5 @@ int	ixr, iyr;	/* Upper right corner of region (1 based) */
  *
  * Apr 29 1999	Add BZERO and BSCALE
  * Jun 29 1999	Fix typo in BSCALE setting
+ * Sep 27 1999	Use new 1-based-coordinate image access subroutines
  */

@@ -1,5 +1,5 @@
 /* File libwcs/catutil.c
- * August 16, 1999
+ * September 21, 1999
  * By Doug Mink
  */
 
@@ -582,7 +582,7 @@ char *string;		/* String which might be a range of numbers */
     if (strchr (string+1, '-') || strchr (string+1, ',')) {
 	lstr = strlen (string);
 	for (i = 0; i < lstr; i++) {
-	    if (strchr ("0123456789-,.", (int)string[i]) == NULL)
+	    if (strchr ("0123456789-,.x", (int)string[i]) == NULL)
 		return (0);
 	    }
 	return (1);
@@ -690,4 +690,5 @@ struct Range *range;	/* Range structure */
  * Jul  1 1999	Move date and time utilities to dateutil.c
  * Jul 23 1999	Add Bright Star Catalog
  * Aug 16 1999	Add RefLim() to set catalog search limits
+ * Sep 21 1999	In isrange(), check for x
  */
