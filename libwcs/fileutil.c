@@ -1,5 +1,5 @@
 /*** File libwcs/fileutil.c
- *** October 21, 1999
+ *** September 25, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -13,8 +13,12 @@
  *		Return size of a binary or ASCII file
  * Subroutine:	isimlist (filename)
  *		Return 1 if file is list of FITS or IRAF image files, else 0
+ * Subroutine:	isfilelist (filename)
+ *		Return 1 if file is list of readable files, else 0
+ * Subroutine:	isfile (filename)
+ *		Return 1 if file is a readable file, else 0
 
- * Copyright:   1999 Smithsonian Astrophysical Observatory
+ * Copyright:   2001 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -150,7 +154,7 @@ char    *filename;      /* Name of file for which to find size */
 int
 isimlist (filename)
 
-char    *filename;      /* Name of file for which to find size */
+char    *filename;      /* Name of possible list file */
 {
     FILE *diskfile;
     char token[256];
@@ -167,6 +171,44 @@ char    *filename;      /* Name of file for which to find size */
 	    return (0);
 	}
 }
+
+
+/* ISFILELIST -- Return 1 if list of readable files, else 0 */
+int
+isfilelist (filename)
+
+char    *filename;      /* Name of possible list file */
+{
+    FILE *diskfile;
+    char token[256];
+    int ncmax = 254;
+
+    if ((diskfile = fopen (filename, "r")) == NULL)
+	return (0);
+    else {
+	first_token (diskfile, ncmax, token);
+	fclose (diskfile);
+	if (isfile (token))
+	    return (1);
+	else
+	    return (0);
+	}
+}
+
+
+/* ISFILE -- Return 1 if file is a readable file, else 0 */
+
+int
+isfile (filename)
+
+char    *filename;      /* Name of file for which to find size */
+{
+    if (access (filename, R_OK))
+	return (0);
+    else
+	return (1);
+}
+
 
 static char *token1;
 
@@ -216,4 +258,6 @@ next_token ()
  * Oct 15 1999	Fix format eror in error message
  * Oct 21 1999	Fix declarations after lint
  * Dec  9 1999	Add next_token(); set pointer to next token in first_token
+ *
+ * Sep 25 2001	Add isfilelist(); move isfile() from catutil.c
  */

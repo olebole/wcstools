@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** September 11, 2001
+ *** September 27, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -18,7 +18,6 @@
 #include <string.h>
 #include <math.h>
 #include <sys/types.h>
-#include "fitshead.h"
 #include "wcs.h"
 #include "wcscat.h"
 
@@ -813,8 +812,6 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	sc->nmag = 3;
     else if (strsrch (header, "/4"))
 	sc->nmag = 4;
-    else
-	sc->nmag = 1;
 
     /* No number in first column, RA or object name first */
     if (strsrch (header, "/n") || strsrch (header, "/N"))
@@ -886,6 +883,10 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	sc->nmag = sc->nmag + 1;
 	if (sc->nmag == 2)
 	    strcpy (sc->keymag2, "velocity");
+	else if (sc->nmag == 3)
+	    strcpy (sc->keymag3, "velocity");
+	else if (sc->nmag == 4)
+	    strcpy (sc->keymag4, "velocity");
 	else
 	    strcpy (sc->keymag1, "velocity");
 	}
@@ -1172,7 +1173,7 @@ struct Star *st; /* Star data structure, updated on return */
 	}
 
     /* Magnitude, if present */
-    if (sc->nmag < 3 && sc->mprop == 2)
+    if (sc->nmag > 0 && sc->mprop == 2)
 	nmag = sc->nmag - 1;
     else
 	nmag = sc->nmag;
@@ -1208,7 +1209,7 @@ struct Star *st; /* Star data structure, updated on return */
 	    st->radvel = atof (token);
 	else
 	    st->radvel = 0.0;
-	st->xmag[sc->nmag] = st->radvel;
+	st->xmag[nmag] = st->radvel;
 	}
 
     /* Proper motion, if present */
@@ -1452,4 +1453,6 @@ char	*in;	/* Character string */
  * Aug 24 2001	Use STNUM < 0 instead of STNUM ==5 for object name not number
  * Sep 11 2001	Allow an arbitrary number of magnitudes
  * Sep 11 2001	Add sort magnitude as argument to *read() subroutines
+ * Sep 19 2001	Drop fitshead.h; it is in wcs.h
+ * Sep 27 2001	Fix bug which reset number of magnitudes to 1 if /m not last
  */

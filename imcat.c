@@ -1,5 +1,5 @@
 /* File imcat.c
- * September 18, 2001
+ * September 20, 2001
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -841,54 +841,22 @@ int	*region_char;	/* Character for SAOimage region file output */
 	}
 
     /* Sort reference stars by brightness (magnitude) */
-    if (sortmag > 0 && sortmag <= nmag)
-	magsort = sortmag - 1;
-    else
-	magsort = 0;
     MagSortStars (gnum, gra, gdec, gpra, gpdec, gx, gy, gm, gc, gobj1, nbg,
 		  nmag, sortmag);
 
     /* List the brightest reference stars */
-    if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
- 	refcat == USAC || refcat == USA1 || refcat == USA2) {
-	if (sortmag == 2)
-	    strcpy (magname, "MagR");
-	else
-	    strcpy (magname, "MagB");
-	}
-    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT) {
-	if (sortmag == 1)
-	    strcpy (magname, "MagB");
-	else
-	    strcpy (magname, "MagV");
-	}
-    else if (refcat==GSC2) {
-	if (sortmag == 2)
-	    strcpy (magname, "MagJ");
-	else if (sortmag == 3)
-	    strcpy (magname, "MagV");
-	else if (sortmag == 4)
-	    strcpy (magname, "MagN");
-	else
-	    strcpy (magname, "MagF");
-	}
-    else if (refcat==TMPSC) {
-	if (sortmag == 1)
-	    strcpy (magname, "MagJ");
-	else if (sortmag == 2)
-	    strcpy (magname, "MagH");
-	else
-	    strcpy (magname, "MagK");
-	}
+    CatMagName (sortmag, refcat, magname);
+    if (sortmag > 0 && sortmag <= nmag)
+	magsort = sortmag - 1;
     else
-	strcpy (magname, "Mag");
+	magsort = 0;
     if (ng > ngmax) {
 	if (verbose || printhead) {
 	    if (mag2 > 0.0)
 		printf ("%d / %d %s %.1f < %s < %.1f",
 			nbg,ng,title,gm[magsort][0],magname,gm[magsort][nbg-1]);
 	    else
-		printf ("%d / %d %s %s < %.1f",
+		printf ("%d / %d %s %s <= %.1f",
 			nbg, ng, title, magname, gm[magsort][nbg-1]);
 	    }
 	}
@@ -1697,4 +1665,5 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Sep 13 2001	Use 2-D array of magnitudes, rather than multiple vectors
  * Sep 14 2001	Add option to print catalog as returned over the web
  * Sep 18 2001	Add flags to IRAS and 2MASS point sources
+ * Sep 20 2001	Get magnitude name for limits from CatMagName()
  */

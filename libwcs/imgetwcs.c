@@ -1,5 +1,5 @@
 /*** File libwcs/imgetwcs.c
- *** January 11, 2001
+ *** September 19, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (remotely based on UIowa code)
@@ -10,7 +10,6 @@
 #include <math.h>
 #include <string.h>
 
-#include "fitshead.h"
 #include "wcs.h"
 #include "lwcs.h"
 
@@ -535,4 +534,5 @@ char*	ptype;
  * Sep 14 2000	Set xinc and yinc correctly if center pixel in header
  *
  * Jan 11 2001	All printing to stderr
+ * Sep 19 2001	Drop fitshead.h; it is in wcs.h
  */

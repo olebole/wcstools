@@ -1,5 +1,5 @@
 /*** File libwcs/imsetwcs.c
- *** September 13, 2001
+ *** September 19, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (based on UIowa code)
@@ -10,7 +10,6 @@
 #include <math.h>
 #include <string.h>
 
-#include "fitshead.h"
 #include "wcs.h"
 #include "lwcs.h"
 #include "wcscat.h"
@@ -1123,4 +1122,5 @@ setmagfit ()
  * Sep 11 2001	Add magnitude selection
  * Sep 11 2001	Use single, 2-D magnitude argument to ctgread()
  * Sep 13 2001	Add reference catalog magnitude selection
+ * Sep 19 2001	Drop fitshead.h; it is in wcs.h
  */

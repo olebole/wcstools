@@ -1,5 +1,5 @@
 /*** File webread.c
- *** September 14, 2001
+ *** September 21, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -81,6 +81,7 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
     struct StarCat *starcat;
     char cstr[32];
     double ra, dec;
+    int nstar;
 
     /* Convert coordinate system to string */
     wcscstr (cstr, sysout, eqout, epout);
@@ -139,20 +140,18 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 	dec = cdec;
 	if (sysout != WCS_J2000)
 	    wcscon (sysout, WCS_J2000, eqout, 2000.0, &ra, &dec, epout);
-	sprintf (srchurl, "?ra=%.7f&dec=%.7f&", ra, dec);
-	if (drad != 0.0) {
+	if (dec < 0.0)
+	    sprintf (srchurl, "?%.7f%.7f&", ra/15.0, dec);
+	else
+	    sprintf (srchurl, "?%.7f+%.7f&", ra/15.0, dec);
+	if (drad > 0.0)
 	    dtemp = drad * 60.0;
-	    sprintf (temp, "radius=%.3f&",dtemp);
-	    }
-	else {
-	    dtemp = dra / cos (degrad(dec));
-	    if (dtemp > ddec)
-		sprintf (temp, "radius=%.3f&",dtemp*60.0);
-	    else
-		sprintf (temp, "radius=%.3f&",ddec*60.0);
-	    }
+	else
+	    dtemp = 60.0 * sqrt (dra*dra + ddec*ddec);
+	sprintf (temp, "r=0,%.3f&",dtemp);
 	strcat (srchurl, temp);
-	sprintf (temp, "nout=%d&mime=skycat", nstarmax);
+	nstar = 100000;
+	sprintf (temp, "nout=%d&f=8", nstar);
 	strcat (srchurl, temp);
 	if (nlog > 0)
 	    fprintf (stderr, "%s%s\n", caturl, srchurl);
@@ -164,23 +163,26 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 	dec = cdec;
 	if (sysout != WCS_J2000)
 	    wcscon (sysout, WCS_J2000, eqout, 2000.0, &ra, &dec, epout);
-	sprintf (srchurl, "?ra=%.7f&dec=%.7f&", ra, dec);
-	if (drad != 0.0) {
-	    dtemp = drad * 3600.0;
-	    sprintf (temp, "radius=%.3f&",dtemp);
-	    }
-	else {
-	    if (dra > ddec)
-		sprintf (temp, "radius=%.3f&",dra*3600.0);
-	    else
-		sprintf (temp, "radius=%.3f&",ddec*3600.0);
-	    }
+	if (dec < 0.0)
+	    sprintf (srchurl, "?%.7f%.7f&", ra, dec);
+	else
+	    sprintf (srchurl, "?%.7f+%.7f&", ra, dec);
+	if (drad > 0.0)
+	    dtemp = drad * 60.0;
+	else
+	    dtemp = 60.0 * sqrt (dra*dra + ddec*ddec);
+	sprintf (temp, "radius=0,%.3f&", temp);
 	strcat (srchurl, temp);
 	if (mag1 != mag2) {
 	    sprintf (temp, "mag=%.2f,%.2f&", mag1, mag2);
 	    strcat (srchurl, temp);
 	    }
-	sprintf (temp, "format=8&sort=mr");
+	if (sortmag == 2)
+	    sprintf (temp, "format=8&sort=mr&");
+	else
+	    sprintf (temp, "format=8&sort=m&");
+	strcat (srchurl, temp);
+	sprintf (temp, "n=%d", nstarmax);
 	strcat (srchurl, temp);
 	if (nlog > 0)
 	    fprintf (stderr,"%s%s\n", caturl, srchurl);
@@ -211,6 +213,17 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 	if (nlog > 0)
 	    fprintf (stderr, "WEBREAD: Could not open Starbase table as catalog\n");
 	return (0);
+	}
+
+    if (!strncmp (caturl+lurl-12,"usnoa-server",12)) {
+	starcat->coorsys = WCS_J2000;
+	starcat->epoch = 2000.0;
+	starcat->equinox = 2000.0;
+	starcat->nmag = 2;
+	starcat->entmag1 = 5;
+	starcat->entmag2 = 4;
+	strcpy (starcat->keymag1, "magb");
+	strcpy (starcat->keymag2, "magr");
 	}
 
     /* Extract desired sources from catalog  and return them */
@@ -245,33 +258,60 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
     char csys[32];
     struct TabTable *tabtable;
     int i, refcat, nfld, nmag, mprop;
+    int lurl;
     char title[64];	/* Description of catalog (returned) */
     int syscat;		/* Catalog coordinate system (returned) */
     double eqcat;	/* Equinox of catalog (returned) */
     double epcat;	/* Epoch of catalog (returned) */
+    int ireg, istar;
     char cstr[32];
     char temp[64];
     struct StarCat *starcat;
 
-    /* Make list of catalog numbers */
-    refcat = RefCat (refcatname,title,&syscat,&eqcat,&epcat,&mprop,&nmag);
-    for (i = 0; i < nnum; i++) {
-	nfld = CatNumLen (refcatname, unum[i], 0);
-	CatNum (refcat, -nfld, 0, unum[i], numstr);
-	if (i > 0) {
-	    strcat (numlist, ",");
-	    strcat (numlist, numstr);
+    /* Set up search query from arguments */
+    lurl = strlen (caturl);
+
+    /* Set up query for scat used as server */
+    if (!strncmp (caturl+lurl-4,"scat",4)) {
+
+	/* Make list of catalog numbers */
+	refcat = RefCat (refcatname,title,&syscat,&eqcat,&epcat,&mprop,&nmag);
+	for (i = 0; i < nnum; i++) {
+	    nfld = CatNumLen (refcatname, unum[i], 0);
+	    CatNum (refcat, -nfld, 0, unum[i], numstr);
+	    if (i > 0) {
+		strcat (numlist, ",");
+		strcat (numlist, numstr);
 	    }
-	else
-	    strcpy (numlist, numstr);
+	    else
+		strcpy (numlist, numstr);
+	    }
+
+	/* Set up search query */
+	wcscstr (cstr, sysout, eqout, epout);
+	sprintf (srchurl, "?catalog=%s&num=%s&outsys=%s&",refcatname,numlist,csys);
+	if (epout != 0.0) {
+	    sprintf (temp, "epoch=%.5f&", epout);
+	    strcat (srchurl, temp);
+	    }
 	}
 
-    /* Set up search query */
-    wcscstr (cstr, sysout, eqout, epout);
-    sprintf (srchurl, "?catalog=%s&num=%s&outsys=%s&",refcatname,numlist,csys);
-    if (epout != 0.0) {
-	sprintf (temp, "epoch=%.5f&", epout);
-	strcat (srchurl, temp);
+    /* Set up query for ESO GSC server */
+    else if (!strncmp (caturl+lurl-10,"gsc-server",10)) {
+	ireg = (int) unum[0];
+	istar = (int) (10000.0 * (unum[0] - (double) ireg) + 0.5);
+	sprintf (srchurl, "?object=GSC%05d%05d&nout=1&f=8", ireg, istar);
+	if (nlog > 0)
+	    fprintf (stderr, "%s%s\n", caturl, srchurl);
+	}
+
+    /* Set up query for ESO USNO A server */
+    else if (!strncmp (caturl+lurl-12,"usnoa-server",12)) {
+	ireg = (int) unum[0];
+	istar = (int) (100000000.0 * (unum[0] - (double) ireg) + 0.5);
+	sprintf (srchurl, "?object=U%04d_%08d&n=1&format=8&");
+	if (nlog > 0)
+	    fprintf (stderr,"%s%s\n", caturl, srchurl);
 	}
 
     /* Run search across the web */
@@ -711,4 +751,5 @@ FileINetParse(file, port, adrinet)
  * Sep 11 2001	Pass array of magnitude vectors
  * Sep 14 2001	Pass sort type, if distance or magnitude
  * Sep 14 2001	Add option to print entire returned file if nlog < 0
+ * Sep 21 2001	Debug searches of ESO USNO-A2.0 and GSC catalogs
  */

@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * September 14, 2001
+ * September 25, 2001
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -42,11 +42,11 @@ void CatID();		/* Return catalog ID keyword given catalog type code */
 void CatNum();		/* Return formatted source number */
 int CatNumLen();	/* Return length of source numbers */
 int CatNdec();		/* Return number of decimal places in source numbers */
+void CatMagName();	/* Return name of specified magnitude */
 
 int StrNdec();		/* Return number of decimal places in numeric string */
 void SearchLim();	/* Compute limiting RA and Dec */
 void RefLim();		/* Compute limiting RA and Dec in new system */
-int isfile();		/* Return 1 if string is name of readable file */
 int isacat();		/* Return 1 if string is name of ASCII catalog file */
 int ageti4();		/* Extract int value from keyword= value in string */
 int agetr8();		/* Extract double value from keyword= value in string */
@@ -400,4 +400,6 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * Sep 10 2001	Add entry line and distance from search center to Star
  * Sep 13 2001	Add YSortStars() and SORT_Y
  * Sep 14 2001	Add lbuff to TabTable structure
+ * Sep 20 2001	Add CatMagName()
+ * Sep 25 2001	Move isfile() to fitsfile.h
  */

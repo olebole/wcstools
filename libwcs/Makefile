@@ -13,47 +13,45 @@ libwcs.a:	$(OBJS)
 	ar rv $@ $?
 	ranlib $@
 
-actread.o:	fitsfile.h wcscat.h wcs.h
-binread.o:	wcscat.h wcs.h
-ctgread.o:	wcscat.h wcs.h
-catutil.o:	wcscat.h wcs.h
+actread.o:	fitsfile.h wcscat.h wcs.h fitshead.h wcslib.h
+binread.o:	wcscat.h wcs.h fitshead.h wcslib.h
+ctgread.o:	wcscat.h wcs.h fitshead.h wcslib.h
+catutil.o:	wcscat.h wcs.h fitshead.h wcslib.h
 cel.o:		wcslib.h
-dateutil.o:	fitsfile.h wcscat.h
-dsspos.o:	wcs.h
+dateutil.o:	fitsfile.h wcscat.h fitshead.h
+dsspos.o:	wcs.h fitshead.h wcslib.h
 fileutil.o:	fitshead.h
 findstar.o:	fitshead.h lwcs.h imio.h
-fitsfile.o:	fitsfile.h
-fitswcs.o:	fitsfile.h wcs.h
-gscread.o:	fitsfile.h wcs.h wcscat.h
-gsc2read.o:	fitsfile.h wcs.h wcscat.h
+fitsfile.o:	fitsfile.h fitshead.h
+fitswcs.o:	fitsfile.h wcs.h fitshead.h wcslib.h
+gscread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
+gsc2read.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
 hget.o:		fitshead.h
 hput.o:		fitshead.h
 iget.o:		fitshead.h
-imgetwcs.o:	fitshead.h wcs.h lwcs.h
-imhfile.o:	fitsfile.h
+imgetwcs.o:	fitshead.h wcs.h lwcs.h wcslib.h
+imhfile.o:	fitsfile.h fitshead.h
 imio.o:		fitshead.h imio.h
-imsetwcs.o:	fitshead.h wcs.h lwcs.h wcscat.h
+imsetwcs.o:	fitshead.h wcs.h lwcs.h wcscat.h wcslib.h
 imrotate.o:	fitshead.h imio.h
 lin.o:		wcslib.h
-matchstar.o:	fitshead.h wcs.h lwcs.h
-platefit.o:	wcs.h
-platepos.o:	wcs.h
+matchstar.o:	fitshead.h wcs.h lwcs.h wcslib.h
+platefit.o:	wcs.h fitshead.h wcslib.h
+platepos.o:	wcs.h fitshead.h wcslib.h
 polfit.o:	
 proj.o:		wcslib.h
 sortstar.o:	wcscat.h
 sph.o:		wcslib.h
-tabread.o:	fitshead.h wcs.h
-tmcread.o:	fitsfile.h wcs.h wcscat.h
-tnxpos.o:	wcs.h
-ty2read.o:	fitsfile.h wcs.h wcscat.h
-uacread.o:	fitshead.h wcs.h wcscat.h
-ujcread.o:	fitshead.h wcs.h wcscat.h
-wcs.o:		fitshead.h wcs.h
-wcsinit.o:	fitshead.h wcs.h
-wcscon.o:	wcs.h
+tabread.o:	fitshead.h wcs.h wcslib.h
+tmcread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
+tnxpos.o:	wcs.h fitshead.h wcslib.h
+ty2read.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
+uacread.o:	fitshead.h wcs.h wcscat.h wcslib.h
+ujcread.o:	fitshead.h wcs.h wcscat.h wcslib.h
+wcs.o:		fitshead.h wcs.h wcslib.h
+wcsinit.o:	fitshead.h wcs.h wcslib.h
+wcscon.o:	wcs.h fitshead.h wcslib.h
 wcslib.o:	wcslib.h
 wcstrig.o:	wcslib.h
 webread.o:	wcscat.h
-worldpos.o:	wcs.h
-fitsfile.h:	fitshead.h imio.h
-wcs.h:		wcslib.h fitshead.h
+worldpos.o:	wcs.h fitshead.h wcslib.h

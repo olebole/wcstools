@@ -1,7 +1,7 @@
 /*=============================================================================
 *
 *   WCSLIB - an implementation of the FITS WCS proposal.
-*   Copyright (C) 1995-1999, Mark Calabretta
+*   Copyright (C) 1995-2000, Mark Calabretta
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -140,7 +140,6 @@
 *            PC1_1, PC1_2, PC2_1, PC2_2
 *
 *         so it would be legitimate to set lin.pc = *m.
-*
 *      double *cdelt
 *         Pointer to the first element of an array of double containing the
 *         coordinate increments, CDELTn.
@@ -161,7 +160,7 @@
 *   leak will result.
 *
 *   Author: Mark Calabretta, Australia Telescope National Facility
-*   $Id: lin.c,v 2.4 1999/06/16 00:03:19 mcalabre Exp $
+*   $Id: lin.c,v 2.5 2000/03/10 01:14:42 mcalabre Exp $
 *===========================================================================*/
 
 #include <math.h>
@@ -446,4 +445,6 @@ double inv[];
 /* Dec 20 1999	Doug Mink - Include wcslib.h, which includes lin.h
  *
  * Feb 15 2001	Doug Mink - Add comments for WCSLIB 2.6; no code changes
+ * Sep 19 2001	Doug Mink - Add above change to WCSLIB 2.7 code
  */
+

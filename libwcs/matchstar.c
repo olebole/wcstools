@@ -1,5 +1,5 @@
 /*** File libwcs/matchstar.c
- *** August 2, 2001
+ *** September 24, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -24,7 +24,6 @@
 #include <math.h>
 #include <malloc.h>
 #include <string.h>
-#include "fitshead.h"
 #include "wcs.h"
 #include "lwcs.h"
 #include "wcscat.h"
@@ -120,6 +119,8 @@ int	debug;
     if (ng > ns)
 	maxnbin = ng;
     minmatch = 0.5 * ns;
+    if (minmatch > 40)
+	minmatch = 0.25 * ns;
     if (ns > ng)
 	minmatch = 0.5 * ng;
 
@@ -1610,4 +1611,6 @@ iscdfit ()
  * Feb 28 2001	Ignore coordinate system if present after match file coordinates
  * Jun 18 2001	Add maximum length of returned string to getoken()
  * Aug  2 2001	Separate parameter listing and counting into subroutines
+ * Sep 19 2001	Drop fitshead.h; it is in wcs.h
+ * Sep 24 2001	Ease match numeric criterium if half num is > 40
  */ 

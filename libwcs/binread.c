@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** September 18, 2001
+ *** September 19, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -28,7 +28,6 @@ static int ndist = 0;
 #include <strings.h>
 #include <sys/types.h>
 #include <fcntl.h>
-#include "fitshead.h"
 #include "wcs.h"
 #include "wcscat.h"
 
@@ -1259,4 +1258,5 @@ char *from, *last, *to;
  * Sep 11 2001	Pass array of magnitude vectors to avoid kludges
  * Sep 11 2001	Add sort magnitude argument
  * Sep 18 2001	Fix magnitude number in binrnum()
+ * Sep 19 2001	Drop fitshead.h; it is in wcs.h
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** September 11, 2001
+ *** September 21, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -12,19 +12,28 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "fitshead.h"
 #include "wcs.h"
 #include "wcscat.h"
 
 static int ucat=UA2;
 
-/* USNO SA-1.0 directory pathname; replaced by USA1_PATH environment variable
+/* USNO A-2.0 directory pathname; replaced by UA2_PATH environment variable
+ * Use this if CDROMs have been transferred to a single hard disk
+ * Otherwise set to null string ("") and use cdroot
  * This may also be a URL to a catalog search engine */
-static char usa1path[64]="/data/usnosa10";
+static char ua2path[64]="/data/ua2";
+
+/* Uncomment following line to use ESO USNO-A server for UA2
+static char ua2path[64]="http://archive.eso.org/skycat/servers/usnoa-server";
+ */
 
 /* USNO SA-2.0 directory pathname; replaced by USA2_PATH environment variable
  * This may also be a URL to a catalog search engine */
 static char usa2path[64]="/data/usnosa20";
+
+/* USNO SA-1.0 directory pathname; replaced by USA1_PATH environment variable
+ * This may also be a URL to a catalog search engine */
+static char usa1path[64]="/data/usnosa10";
 
 /* USNO A-1.0 directory pathname; replaced by UA1_PATH environment variable
  * Use this if CDROMs have been transferred to a single hard disk
@@ -32,11 +41,6 @@ static char usa2path[64]="/data/usnosa20";
  * This may also be a URL to a catalog search engine */
 static char ua1path[64]="/data/ua1";
 
-/* USNO A-2.0 directory pathname; replaced by UA2_PATH environment variable
- * Use this if CDROMs have been transferred to a single hard disk
- * Otherwise set to null string ("") and use cdroot
- * This may also be a URL to a catalog search engine */
-static char ua2path[64]="/data/ua2";
 static char *uapath;
 
 /* Root directory for CDROMs; replaced by UA_ROOT environment variable */
@@ -1117,4 +1121,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Jun 27 2001	Allocate udist only when larger array is needed
  * Sep 11 2001	Change to single magnitude argeument
  * Sep 11 2001	Add sort magnitude argument to uacread()
+ * Sep 19 2001	Drop fitshead.h; it is in wcs.h
+ * Sep 21 2001	Add commented-out URL of ESO web catalog server
  */

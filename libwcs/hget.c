@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** September 12, 2001
+ *** September 20, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -1087,6 +1087,7 @@ char	*in;	/* Character string of sexigesimal or decimal degrees */
     double dec;		/* Declination in degrees (returned) */
     double deg, min, sec, sign;
     char *value, *c1, *c2;
+    int lval;
 
     dec = 0.0;
 
@@ -1097,14 +1098,30 @@ char	*in;	/* Character string of sexigesimal or decimal degrees */
     /* Translate value from ASCII colon-delimited string to binary */
     if (in[0]) {
 	value = in;
-	if (!strsrch (value,"-"))
-	    sign = 1.0;
-	else {
+
+	/* Remove leading spaces */
+	while (*value == ' ')
+	    value++;
+
+	/* Save sign */
+	if (*value == '-') {
 	    sign = -1.0;
-	    value = strsrch (value,"-") + 1;
+	    value++;
 	    }
+	else if (*value == '+') {
+	    sign = 1.0;
+	    value++;
+	    }
+	else
+	    sign = 1.0;
+
+	/* Remove trailing spaces */
+	lval = strlen (value);
+	while (value[lval-1] == ' ')
+	    lval--;
+	
 	if ((c1 = strsrch (value,":")) == NULL)
-	    c1 = strsrch (value," ");
+	    c1 = strnsrch (value," ",lval);
 	if (c1 != NULL) {
 	    *c1 = 0;
 	    deg = (double) atoi (value);
@@ -1251,13 +1268,20 @@ char *string;	/* Character string */
 	return (0);
 	}
 
+    /* Remove trailing spaces */
+    while (string[lstr-1] == ' ')
+	lstr--;
+
     /* Numeric strings contain 0123456789-+ and d or e for exponents */
     for (i = 0; i < lstr; i++) {
 	cstr = string[i];
 	if (cstr == '\n')
 	    break;
+
+	/* Ignore leading spaces */
 	if (cstr == ' ' && nd == 0)
 	    continue;
+
 	if ((cstr < 48 || cstr > 57) &&
 	    cstr != '+' && cstr != '-' &&
 	    cstr != 'D' && cstr != 'd' &&
@@ -1372,4 +1396,6 @@ int set_saolib(hstring)
  * Mar 30 2001	Fix header length finding algorithm in ksearch()
  * Jul 13 2001	Make val[] static int instead of int; drop unused variables
  * Sep 12 2001	Read yyyy/mm/dd dates as well as dd/mm/yyyy
+ * Sep 20 2001	Ignore leading spaces in str2dec()
+ * Sep 20 2001	Ignore trailing spaces in isnum()
  */

@@ -1,7 +1,7 @@
 /*=============================================================================
 *
 *   WCSLIB - an implementation of the FITS WCS proposal.
-*   Copyright (C) 1995-1999, Mark Calabretta
+*   Copyright (C) 1995-2000, Mark Calabretta
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -150,7 +150,8 @@
 *      double ref[4]
 *         The first pair of values should be set to the celestial longitude
 *         and latitude (usually right ascension and declination) of the
-*         reference point of the projection.
+*         reference point of the projection.  These are given by the CRVALn
+*         keywords in FITS.
 *
 *         The second pair of values are the native longitude and latitude of
 *         the pole of the celestial coordinate system and correspond to the
@@ -184,9 +185,6 @@
 *      double euler[5]
 *         Euler angles and associated intermediaries derived from the
 *         coordinate reference values.
-*      int (*prjfwd)()
-*      int (*prjrev)()
-*         Pointers to the forward and reverse projection routines.
 *
 *
 *   WCS projection codes
@@ -194,8 +192,8 @@
 *   Zenithals/azimuthals:
 *      AZP: zenithal/azimuthal perspective
 *      TAN: gnomonic
-*      SIN: synthesis (generalized orthographic)
 *      STG: stereographic
+*      SIN: synthesis (generalized orthographic)
 *      ARC: zenithal/azimuthal equidistant
 *      ZPN: zenithal/azimuthal polynomial
 *      ZEA: zenithal/azimuthal equal area
@@ -203,9 +201,17 @@
 *
 *   Cylindricals:
 *      CYP: cylindrical perspective
+*      CEA: cylindrical equal area
 *      CAR: Cartesian
 *      MER: Mercator
-*      CEA: cylindrical equal area
+*
+*   Pseudo-cylindricals:
+*      SFL: Sanson-Flamsteed
+*      PAR: parabolic
+*      MOL: Mollweide
+*
+*   Conventional:
+*      AIT: Hammer-Aitoff
 *
 *   Conics:
 *      COP: conic perspective
@@ -217,21 +223,13 @@
 *      BON: Bonne
 *      PCO: polyconic
 *
-*   Pseudo-cylindricals:
-*      GLS: Sanson-Flamsteed (global sinusoidal)
-*      PAR: parabolic
-*      MOL: Mollweide
-*
-*   Conventional:
-*      AIT: Hammer-Aitoff
-*
 *   Quad-cubes:
+*      TSC: tangential spherical cube
 *      CSC: COBE quadrilateralized spherical cube
 *      QSC: quadrilateralized spherical cube
-*      TSC: tangential spherical cube
 *
 *   Author: Mark Calabretta, Australia Telescope National Facility
-*   $Id: cel.c,v 2.7 1999/12/13 07:26:09 mcalabre Exp $
+*   $Id: cel.c,v 2.11 2000/12/17 23:23:16 mcalabre Exp $
 *===========================================================================*/
 
 #include <math.h>
@@ -255,15 +253,10 @@ const char *celrev_errmsg[] = {
    "Invalid coordinate transformation parameters",
    "Invalid projection parameters",
    "Invalid value of (x,y)"};
-
-int  npcode = 25;
-char pcodes[25][4] =
-      {"AZP", "TAN", "SIN", "STG", "ARC", "ZPN", "ZEA", "AIR", "CYP", "CAR",
-       "MER", "CEA", "COP", "COD", "COE", "COO", "BON", "PCO", "GLS", "PAR",
-       "AIT", "MOL", "CSC", "QSC", "TSC"};
  
 
-int celset(pcode, cel, prj)
+int
+celset(pcode, cel, prj)
 
 const char pcode[4];
 struct celprm *cel;
@@ -272,113 +265,12 @@ struct prjprm *prj;
 {
    int dophip;
    const double tol = 1.0e-10;
-   double clat0, cphip, cthe0, theta0, slat0, sphip, sthe0;
+   double clat0, cphip, cthe0, slat0, sphip, sthe0;
    double latp, latp1, latp2;
    double u, v, x, y, z;
 
-   /* Set pointers to the forward and reverse projection routines. */
-   if (strcmp(pcode, "AZP") == 0) {
-      cel->prjfwd = azpfwd;
-      cel->prjrev = azprev;
-      theta0 = 90.0;
-   } else if (strcmp(pcode, "TAN") == 0) {
-      cel->prjfwd = tanfwd;
-      cel->prjrev = tanrev;
-      theta0 = 90.0;
-   } else if (strcmp(pcode, "SIN") == 0) {
-      cel->prjfwd = sinfwd;
-      cel->prjrev = sinrev;
-      theta0 = 90.0;
-   } else if (strcmp(pcode, "STG") == 0) {
-      cel->prjfwd = stgfwd;
-      cel->prjrev = stgrev;
-      theta0 = 90.0;
-   } else if (strcmp(pcode, "ARC") == 0) {
-      cel->prjfwd = arcfwd;
-      cel->prjrev = arcrev;
-      theta0 = 90.0;
-   } else if (strcmp(pcode, "ZPN") == 0) {
-      cel->prjfwd = zpnfwd;
-      cel->prjrev = zpnrev;
-      theta0 = 90.0;
-   } else if (strcmp(pcode, "ZEA") == 0) {
-      cel->prjfwd = zeafwd;
-      cel->prjrev = zearev;
-      theta0 = 90.0;
-   } else if (strcmp(pcode, "AIR") == 0) {
-      cel->prjfwd = airfwd;
-      cel->prjrev = airrev;
-      theta0 = 90.0;
-   } else if (strcmp(pcode, "CYP") == 0) {
-      cel->prjfwd = cypfwd;
-      cel->prjrev = cyprev;
-      theta0 = 0.0;
-   } else if (strcmp(pcode, "CAR") == 0) {
-      cel->prjfwd = carfwd;
-      cel->prjrev = carrev;
-      theta0 = 0.0;
-   } else if (strcmp(pcode, "MER") == 0) {
-      cel->prjfwd = merfwd;
-      cel->prjrev = merrev;
-      theta0 = 0.0;
-   } else if (strcmp(pcode, "CEA") == 0) {
-      cel->prjfwd = ceafwd;
-      cel->prjrev = cearev;
-      theta0 = 0.0;
-   } else if (strcmp(pcode, "COP") == 0) {
-      cel->prjfwd = copfwd;
-      cel->prjrev = coprev;
-      theta0 = prj->p[1];
-   } else if (strcmp(pcode, "COD") == 0) {
-      cel->prjfwd = codfwd;
-      cel->prjrev = codrev;
-      theta0 = prj->p[1];
-   } else if (strcmp(pcode, "COE") == 0) {
-      cel->prjfwd = coefwd;
-      cel->prjrev = coerev;
-      theta0 = prj->p[1];
-   } else if (strcmp(pcode, "COO") == 0) {
-      cel->prjfwd = coofwd;
-      cel->prjrev = coorev;
-      theta0 = prj->p[1];
-   } else if (strcmp(pcode, "BON") == 0) {
-      cel->prjfwd = bonfwd;
-      cel->prjrev = bonrev;
-      theta0 = 0.0;
-   } else if (strcmp(pcode, "PCO") == 0) {
-      cel->prjfwd = pcofwd;
-      cel->prjrev = pcorev;
-      theta0 = 0.0;
-   } else if (strcmp(pcode, "GLS") == 0) {
-      cel->prjfwd = glsfwd;
-      cel->prjrev = glsrev;
-      theta0 = 0.0;
-   } else if (strcmp(pcode, "PAR") == 0) {
-      cel->prjfwd = parfwd;
-      cel->prjrev = parrev;
-      theta0 = 0.0;
-   } else if (strcmp(pcode, "AIT") == 0) {
-      cel->prjfwd = aitfwd;
-      cel->prjrev = aitrev;
-      theta0 = 0.0;
-   } else if (strcmp(pcode, "MOL") == 0) {
-      cel->prjfwd = molfwd;
-      cel->prjrev = molrev;
-      theta0 = 0.0;
-   } else if (strcmp(pcode, "CSC") == 0) {
-      cel->prjfwd = cscfwd;
-      cel->prjrev = cscrev;
-      theta0 = 0.0;
-   } else if (strcmp(pcode, "QSC") == 0) {
-      cel->prjfwd = qscfwd;
-      cel->prjrev = qscrev;
-      theta0 = 0.0;
-   } else if (strcmp(pcode, "TSC") == 0) {
-      cel->prjfwd = tscfwd;
-      cel->prjrev = tscrev;
-      theta0 = 0.0;
-   } else {
-      /* Unrecognized projection code. */
+   /* Initialize the projection driver routines. */
+   if (prjset(pcode, prj)) {
       return 1;
    }
 
@@ -386,7 +278,7 @@ struct prjprm *prj;
    dophip = (cel->ref[2] == 999.0);
 
    /* Compute celestial coordinates of the native pole. */
-   if (theta0 == 90.0) {
+   if (prj->theta0 == 90.0) {
       /* Reference point is at the native pole. */
 
       if (dophip) {
@@ -404,15 +296,15 @@ struct prjprm *prj;
 
       /* Set default for longitude of the celestial pole. */
       if (dophip) {
-         cel->ref[2] = (cel->ref[1] < theta0) ? 180.0 : 0.0;
+         cel->ref[2] = (cel->ref[1] < prj->theta0) ? 180.0 : 0.0;
       }
 
       clat0 = cosdeg (cel->ref[1]);
       slat0 = sindeg (cel->ref[1]);
       cphip = cosdeg (cel->ref[2]);
       sphip = sindeg (cel->ref[2]);
-      cthe0 = cosdeg (theta0);
-      sthe0 = sindeg (theta0);
+      cthe0 = cosdeg (prj->theta0);
+      sthe0 = sindeg (prj->theta0);
 
       x = cthe0*cphip;
       y = sthe0;
@@ -470,7 +362,7 @@ struct prjprm *prj;
          if (fabs(clat0) < tol) {
             /* Celestial pole at the reference point. */
             cel->euler[0] = cel->ref[0];
-            cel->euler[1] = 90.0 - theta0;
+            cel->euler[1] = 90.0 - prj->theta0;
          } else if (latp > 0.0) {
             /* Celestial pole at the native north pole.*/
             cel->euler[0] = cel->ref[0] + cel->ref[2] - 180.0;
@@ -512,7 +404,8 @@ struct prjprm *prj;
 
 /*--------------------------------------------------------------------------*/
 
-int celfwd(pcode, lng, lat, cel, phi, theta, prj, x, y)
+int
+celfwd(pcode, lng, lat, cel, phi, theta, prj, x, y)
 
 const char pcode[4];
 const double lng, lat;
@@ -532,7 +425,7 @@ double *x, *y;
    sphfwd(lng, lat, cel->euler, phi, theta);
 
    /* Apply forward projection. */
-   if ((err = cel->prjfwd(*phi, *theta, prj, x, y))) {
+   if ((err = prj->prjfwd(*phi, *theta, prj, x, y))) {
       return err == 1 ? 2 : 3;
    }
 
@@ -541,7 +434,8 @@ double *x, *y;
 
 /*--------------------------------------------------------------------------*/
 
-int celrev(pcode, x, y, prj, phi, theta, cel, lng, lat)
+int
+celrev(pcode, x, y, prj, phi, theta, cel, lng, lat)
 
 const char pcode[4];
 const double x, y;
@@ -558,7 +452,7 @@ double *lng, *lat;
    }
 
    /* Apply reverse projection. */
-   if ((err = cel->prjrev(x, y, prj, phi, theta))) {
+   if ((err = prj->prjrev(x, y, prj, phi, theta))) {
       return err == 1 ? 2 : 3;
    }
 
@@ -567,9 +461,11 @@ double *lng, *lat;
 
    return 0;
 }
-/* Dec 20 1999	Doug Mink -Change cosd() and sind() to cosdeg() and sindeg()
- * Dec 20 1999	Doug Mink -Include wcslib.h, which includes wcsmath.h and cel.h
+
+/* Dec 20 1999	Doug Mink - Change cosd() and sind() to cosdeg() and sindeg()
+ * Dec 20 1999	Doug Mink - Include wcslib.h, which includes wcsmath.h and cel.h
  * Dec 18 2000	Doug Mink - Include string.h for strcmp()
  *
  * Mar 20 2001	Doug Mink - Add () around err assignments in if statements
+ * Sep 19 2001	Doug Mink - Add above changes to WCSLIB-2.7 cel.c
  */

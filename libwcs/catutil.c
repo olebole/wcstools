@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** August 20, 2001
+ *** September 20, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -22,12 +22,12 @@
  *	Return length of source number
  * int CatNdec (refcat)
  *	Return number of decimal places in source number, if known
+ * void CatMagName (imag, refcat, magname)
+ *	Returns name of specified magnitude
  * int StrNdec (string)
  *	Returns number of decimal places in a numeric string (-1=not number)
  * int NumNdec (number)
  *	Returns number of decimal places in a number
- * int CatMaxField (refcat, maxnum, nndec)
- *	Return Maximum field size for source numbers
  * void RefLim (cra,cdec,dra,ddec,sysc,sysr,eqc,eqr,epc,ramin,ramax,decmin,decmax,verbose)
  *	Compute limiting RA and Dec in new system from center and half-widths
  * struct Range *RangeInit (string, ndef)
@@ -48,8 +48,6 @@
  *	Get next token from tokenized string
  * int getoken (tokens, itok, token, maxchars)
  *	Get specified token from tokenized string
- * int isfile (filename)
- *	Return 1 if file is a readable file, else 0
  * int ageti4 (string, keyword, ival)
  *	Read int value from a file where keyword=value, anywhere on a line
  * int agetr8 (string, keyword, dval)
@@ -827,6 +825,58 @@ int	refcat;		/* Catalog code */
 	return (-1);
 }
 
+/* Return name of specified magnitude */
+
+void
+CatMagName (imag, refcat, magname)
+
+int	imag;		/* Sequence number of magnitude */
+int	refcat;		/* Catalog code */
+char	*magname;	/* Name of magnitude, returned */
+{
+    if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
+	refcat == USAC || refcat == USA1 || refcat == USA2) {
+	if (imag == 2)
+	    strcpy (magname, "MagR");
+	else
+	    strcpy (magname, "MagB");
+	}
+    if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
+	refcat == USAC || refcat == USA1 || refcat == USA2) {
+	if (imag == 2)
+	    strcpy (magname, "MagR");
+	else
+	    strcpy (magname, "MagB");
+	}
+    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT) {
+	if (imag == 1)
+	    strcpy (magname, "MagB");
+	else
+	    strcpy (magname, "MagV");
+	}
+    else if (refcat==GSC2) {
+	if (imag == 2)
+	    strcpy (magname, "MagJ");
+	else if (imag == 3)
+	    strcpy (magname, "MagV");
+	else if (imag == 4)
+	    strcpy (magname, "MagN");
+	else
+	    strcpy (magname, "MagF");
+	}
+    else if (refcat==TMPSC) {
+	if (imag == 1)
+	    strcpy (magname, "MagJ");
+	else if (imag == 2)
+	    strcpy (magname, "MagH");
+	else
+	    strcpy (magname, "MagK");
+	}
+    else
+	strcpy (magname, "Mag");
+    return;
+}
+
 
 /* Return number of decimal places in numeric string (-1 if not number) */
 
@@ -1549,20 +1599,6 @@ int	maxchars;	/* Maximum length of token */
 }
 
 
-/* ISFILE -- Return 1 if file is a readable file, else 0 */
-
-int
-isfile (filename)
-
-char    *filename;      /* Name of file for which to find size */
-{
-    if (access (filename, R_OK))
-	return (0);
-    else
-	return (1);
-}
-
-
 /* AGETI4 -- Read int value from a file where keyword=value, anywhere */
 
 int
@@ -2031,4 +2067,6 @@ FILE	*fd;		/* Output file descriptor; none if NULL */
  * Jun 20 2001	Add GSC II
  * Jun 25 2001	Fix GSC II number padding
  * Aug 20 2001	Add NumNdec() and guess number of decimal places if needed
+ * Sep 20 2001	Add CatMagName()
+ * Sep 25 2001	Move isfile() to fileutil.c
  */

@@ -14,7 +14,7 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.0.4 of the WCSTools package developed by Doug Mink
+This is version 3.0.5 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 

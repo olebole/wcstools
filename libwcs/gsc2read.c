@@ -1,5 +1,5 @@
 /*** File libwcs/gsc2read.c
- *** September 14, 2001
+ *** September 20, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -156,7 +156,7 @@ int	nlog;		/* 1 for diagnostics */
 	     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,&starcat,
 	     gnum,gra,gdec,gpra,gpdec,gmag,gtype,NULL,nlog);
 
-    tabcatclose (*starcat);
+    tabcatclose (starcat);
     starcat = NULL;
 
     return (nstar);
@@ -205,4 +205,5 @@ int	nlog;		/* 1 for diagnostics */
  * Jun 29 2001	Always set maximum magnitude to 99.9 to get Tycho-2 stars, too
  * Sep 13 2001	Pass array of magnitudes, not vector
  * Sep 14 2001	Add option to print entire returned file if nlog < 0
+ * Sep 20 2001	Make argument starcat, not *starcat in tabcatclose()
  */

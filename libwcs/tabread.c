@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** September 11, 2001
+ *** September 21, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -32,7 +32,6 @@
 #include <string.h>
 #include <math.h>
 #include <sys/types.h>
-#include "fitshead.h"
 #include "wcs.h"
 #include "wcscat.h"
 
@@ -421,8 +420,10 @@ int	nlog;
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
     char cstr[32];
+    char str[32];
     char *objname;
     int lname, lstar;
+    int ireg, inum;
     struct TabTable *startab;
     struct StarCat *sc;
     struct Star *star;
@@ -482,7 +483,18 @@ int	nlog;
 
 	    /* Check ID number first */
 	    (void) setoken (&startok, line, "tab");
-	    num = tabgetr8 (&startok,sc->entid);
+	    if (!strcmp (sc->isfil,"gsc-server")) {
+   		if (tabgetc (&startok, sc->entid, str, 24))
+		    num = 0.0;
+		else {
+		    num = atof (str+3) * 0.00001;
+		    ireg = (int) num;
+		    inum = (int) (((num - (double)ireg) * 100000.0) + 0.5);
+		    num = (double) ireg + 0.0001 * (double) inum;
+		    }
+		}
+	    else
+		num = tabgetr8 (&startok,sc->entid);
 	    if (num == 0.0)
 		num = (double) istar;
 	    if (num == tnum[jnum])
@@ -640,9 +652,9 @@ int	nlog;
 
 	/* Extract x, y, and magnitude */
 	(void) setoken (&startok, line, "tab");
-	xi = tabgetr8 (startok, entx);
-	yi = tabgetr8 (startok, enty);
-	magi = tabgetr8 (startok, entmag);
+	xi = tabgetr8 (&startok, entx);
+	yi = tabgetr8 (&startok, enty);
+	magi = tabgetr8 (&startok, entmag);
 
 	(*xa)[istar] = xi;
 	(*ya)[istar] = yi;
@@ -732,7 +744,8 @@ char	**tval;		/* Returned values for specified keyword */
 		}
 
 	    /* Check ID number */
-	    if ((num = tabgetr8 (startab,line,sc->entid)) == 0.0)
+	    (void) setoken (&startok, line, "tab");
+	    if ((num = tabgetr8 (&startok,line,sc->entid)) == 0.0)
 		num = (double) istar;
 	    if (num == tnum[jnum])
 		break;
@@ -743,7 +756,7 @@ char	**tval;		/* Returned values for specified keyword */
 	    nstar++;
 
 	    /* Extract selected field */
-	    (void) tabgetk (startab, line, keyword, value, TABMAX);
+	    (void) tabgetk (startab, &startok, keyword, value, TABMAX);
 	    lval = strlen (value);
 	    if (lval > 0) {
 		tvalue = (char *) calloc (1, lval+1);
@@ -1187,9 +1200,11 @@ int	verbose;	/* 1 to print error messages */
 {
     struct TabTable *startab = sc->startab;
     char *line;
+    char *uscore;
     char cnum[32];
+    char *cn;
     int ndec, i;
-    int lnum;
+    int lnum, ireg, inum;
 
     if ((line = gettabline (startab, istar)) == NULL) {
 	if (verbose)
@@ -1206,30 +1221,44 @@ int	verbose;	/* 1 to print error messages */
     /* Extract ID  */
     st->objname[0] = (char) 0;
     if (sc->entid) {
-	tabgetc (startok, sc->entid, cnum, 32);
-	if (isnum (cnum) || isnum (cnum+1)) {
+	tabgetc (&startok, sc->entid, cnum, 32);
+	if (!strcmp (sc->isfil,"usnoa-server")) {
+	    if ((uscore = strchr (cnum, '_')) != NULL)
+		*uscore = '.';
+	    cn = cnum + 1;
+	    }
+	else if (!strcmp (sc->isfil,"gsc-server"))
+	    cn = cnum + 3;
+	else
+	    cn = cnum;
+	if (isnum (cn) || isnum (cn+1)) {
 	    if (isnum(cnum))
-		st->num = atof (cnum);
+		st->num = atof (cn);
 	    else {
 		if (cnum[0] == 'S')
-		    st->num = -atof (cnum+1);
+		    st->num = -atof (cn+1);
 		else
-		    st->num = atof (cnum+1);
+		    st->num = atof (cn+1);
+		}
+	    if (!strcmp (sc->isfil,"gsc-server")) {
+		ireg = atoi (cn) / 100000;
+		inum = atoi (cn) % 100000;
+		st->num = (double) ireg + 0.0001 * (double) inum;
 		}
 
 	    /* Find field length of identifier */
-	    sc->nnfld = strlen (cnum);
+	    sc->nnfld = strlen (cn);
 
 	    /* Find number of decimal places in identifier */
-	    if (strchr (cnum,'.') == NULL) {
+	    if (strchr (cn,'.') == NULL) {
 		nndec = 0;
 		sc->nndec = nndec;
 		}
 	    else {
-		sprintf (cnum,"%.0f", (st->num * 100000000.0) + 0.1);
+		sprintf (cn,"%.0f", (st->num * 100000000.0) + 0.1);
 		lnum = strlen (cnum);
 		for (i = 0; i < 8; i++) {
-		    if (cnum[lnum-i-1] != '0') {
+		    if (cn[lnum-i-1] != '0') {
 			ndec = 8 - i;
 			if (ndec > nndec) {
 			    nndec = ndec;
@@ -1273,7 +1302,7 @@ int	verbose;	/* 1 to print error messages */
 	st->xmag[3] = 0.0;
 
     /* Right ascension proper motion */
-    st->rapm = tabgetpm (&startok, sc->entrpm);
+    st->rapm = tabgetr8 (&startok, sc->entrpm);
     if (sc->rpmunit == PM_MASYR)
 	st->rapm = st->rapm / 3600000.0;
     else if (sc->rpmunit == PM_MTSYR)
@@ -1292,7 +1321,7 @@ int	verbose;	/* 1 to print error messages */
 	st->rapm = 0.0;
 
     /* Declination proper motion */
-    st->decpm = tabgetpm (&startok, sc->entdpm);
+    st->decpm = tabgetr8 (&startok, sc->entdpm);
     if (sc->dpmunit == PM_MASYR)
 	st->decpm = st->decpm / 3600000.0;
     else if (sc->dpmunit == PM_ARCSECYR)
@@ -1713,21 +1742,6 @@ int	ientry;		/* sequence of entry on line */
 	return (str2dec (str));
 }
 
-/* TABGETPM -- returns double RA or Dec proper motion in degrees/year */
-
-double
-tabgetpm (tabtok, ientry)
-
-struct Tokens *tabtok;	/* Line token structure */
-int	ientry;		/* sequence of entry on line */
-{
-    char str[24];
-
-    if (tabgetc (tabtok, ientry, str, 24))
-	return (0.0);
-    else
-	return (atof (str));
-}
 
 /* TABGETR8 -- returns 8-byte floating point number from tab table line */
 
@@ -1770,11 +1784,10 @@ int	ientry;		/* sequence of entry on line */
 /* TABGETK -- returns a character entry from tab table line for named column */
 
 int
-tabgetk (tabtable, tabtok, line, keyword, string, maxchar)
+tabgetk (tabtable, tabtok, keyword, string, maxchar)
 
 struct TabTable *tabtable;	/* Tab table structure */
 struct Tokens *tabtok;		/* Line token structure */
-char	*line;			/* tab table line */
 char	*keyword;		/* column header of desired value */
 char	*string;		/* character string (returned) */
 int	maxchar;	/* Maximum number of characters in returned string */
@@ -2181,4 +2194,8 @@ char    *filename;      /* Name of file to check */
  * Aug 21 2001	Read object name into tkey if it is present
  * Sep 11 2001	Allow an arbitrary number of magnitudes
  * Sep 11 2001  Add sort magnitude argument to tabread()
+ * Sep 19 2001	Drop fitshead.h; it is in wcs.h
+ * Sep 20 2001	Clean up pointers for Alpha and Linux; drop tabgetpm()
+ * Sep 20 2001	Change _ to . in ESO server USNO-A2.0 numbers
+ * Sep 21 2001	Rearrange ESO server GSC numbers
  */

@@ -1,5 +1,5 @@
 /* File gethead.c
- * April 23, 2001
+ * September 25, 2001
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -173,6 +173,10 @@ char **av;
 		ilistfile = listfile;
 		nfile = getfilelines (ilistfile);
 		}
+	    else if (isfilelist (listfile)) {
+		ilistfile = listfile;
+		nfile = getfilelines (ilistfile);
+		}
 	    else {
 		klistfile = listfile;
 		nkwd = getfilelines (klistfile);
@@ -222,7 +226,7 @@ char **av;
 	    nfile++;
 	    }
 
-	/* Image file */
+	/* Text file */
 	else if (isfile (*av)) {
 	    if (nfile >= maxnfile) {
 		maxnfile = maxnfile * 2;
@@ -332,9 +336,11 @@ char **av;
 	for (ikwd = 0; ikwd < nkwd; ikwd++) {
 	    lkwd = strlen (kwd[ikwd]);
 	    kwe = kwd[ikwd] + lkwd;
-	    for (kw = kwd[ikwd]; kw < kwe; kw++) {
-		if (*kw > 96 && *kw < 123)
-		    *kw = *kw - 32;
+	    if (ft[0] != FILE_ASCII) {
+		for (kw = kwd[ikwd]; kw < kwe; kw++) {
+		    if (*kw > 96 && *kw < 123)
+			*kw = *kw - 32;
+		    }
 		}
 	    printf ("%s",kwd[ikwd]);
 	    if (verbose || ikwd == nkwd - 1)
@@ -346,30 +352,28 @@ char **av;
 	    }
 
 	/* Print field-defining hyphens if tab table output requested */
-	if (printfile) {
-	    if (tabout) {
-		printf ("--------");
-		if (maxlfn > 8) {
-		    for (i = 8; i < maxlfn; i++)
-			printf (" ");
-		    }
-		printf ("	");
-		}
+	if (printfile && tabout) {
+	    strcpy (string, "-----------------------------------");
+	    if (maxlfn > 8)
+		string[maxlfn] = (char) 0;
 	    else
-		printf (" ");
-	    }
-
-	for (ikwd = 0; ikwd < nkwd; ikwd++) {
-	    strcpy (string, "----------");
-	    lkwd = strlen (kwd[ikwd]);
-	    string[lkwd] = 0;
+		string[8] = (char) 0;
 	    printf ("%s",string);
 	    if (verbose || ikwd == nkwd - 1)
-	    	printf ("\n");
-	    else if (tabout)
-	    	printf ("	");
+		printf ("\n");
 	    else
-		printf (" ");
+		printf ("	");
+
+	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
+		strcpy (string, "--------------");
+		lkwd = strlen (kwd[ikwd]);
+		string[lkwd] = (char) 0;
+		printf ("%s",string);
+		if (verbose || ikwd == nkwd - 1)
+		    printf ("\n");
+		else
+		    printf ("	");
+		}
 	    }
 	}
 
@@ -388,8 +392,10 @@ char **av;
 	    first_token (flist, 254, filename);
 	    if (isiraf (filename))
 		filetype = FILE_IRAF;
-	    else
+	    else if (isfits (filename))
 		filetype = FILE_FITS;
+	    else
+		filetype = FILE_ASCII;
 	    PrintValues (filename, filetype, nkwd, kwd);
 	    }
 	else
@@ -840,4 +846,5 @@ char *string;
  * Feb 21 2001	Add @ wildcard option for multiple WCS keywords
  * Feb 27 2001	Add space or tab between wildcard multiple WCS keyword values
  * Apr 23 2001	Add -g for keyword=val<lf> and print same way if -v
+ * Sep 25 2001	Allow file and command line lists of ASCII files
  */

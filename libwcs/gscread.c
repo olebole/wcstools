@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** September 11, 2001
+ *** September 21, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -14,6 +14,10 @@
 
 /* Pathname of northern hemisphere GSC CDROM  or search engine URL */
 char cdn[64]="/data/gsc1";
+
+/* Uncomment following line to use ESO GSC server for GSC
+static char cdn[64]="http://archive.eso.org/skycat/servers/gsc-server";
+ */
 
 /* Pathname of southern hemisphere GSC CDROM */
 char cds[64]="/data/gsc2";
@@ -98,6 +102,7 @@ int	nlog;		/* 1 for diagnostics */
     double mag,mag0,merr,merr0,merr2,merrsum;
     double rra1, rra2, rdec1, rdec2;
     char *str;
+    char *url;
     char *title;
     char cstr[32], numstr[32], rastr[32], decstr[32], catid[16];
 
@@ -109,31 +114,28 @@ int	nlog;		/* 1 for diagnostics */
     verbose = nlog;
 
     /* If root pathname is a URL, search and return */
-    if (refcat == GSC && (str = getenv("GSC_NORTH")) != NULL) {
-	if (!strncmp (str, "http:",5)) {
-	    return (webread (str,"gsc",distsort,cra,cdec,dra,ddec,drad,
+    if (refcat == GSC) {
+	url = cdn;
+	if ((str = getenv("GSC_NORTH")) == NULL)
+	    str = getenv ("GSC_PATH");
+	if (str != NULL) url = str;
+	if (!strncmp (url, "http:",5))
+	    return (webread (url,"gsc",distsort,cra,cdec,dra,ddec,drad,
 			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
 			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
-	    }
 	}
-    if (refcat == GSCACT && (str = getenv("GSCACT_NORTH")) != NULL) {
-	if (!strncmp (str, "http:",5)) {
-	    return (webread (str,"gscact",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
-			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
-	    }
-	}
-    if (!strncmp (cdn, "http:",5)) {
-	if (refcat == GSCACT)
-	    return (webread (cdn,"gscact",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
-			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
-	else
-	    return (webread (cdn,"gsc",distsort,cra,cdec,dra,ddec,drad,
+    if (refcat == GSCACT) {
+	url = cdna;
+	if ((str = getenv("GSCACT_NORTH")) == NULL)
+	    str = getenv ("GSCA_PATH");
+	if (str != NULL) url = str;
+	if (!strncmp (url, "http:",5))
+	    return (webread (url,"gscact",distsort,cra,cdec,dra,ddec,drad,
 			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
 			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
 
+    /* Allocate FITS table buffer which is saved between calls */
     if (ltab < 1) {
 	ltab = 10000;
 	table = (char *)calloc (ltab, sizeof (char));
@@ -507,28 +509,27 @@ int	nlog;		/* 1 for diagnostics */
     double ra,ra0,rasum,dec,dec0,decsum,perr,perr0,perr2,perrsum,msum;
     double mag,mag0,merr,merr0,merr2,merrsum;
     char *str;
+    char *url;
 
     itot = 0;
 
     /* If root pathname is a URL, search and return */
-    if (refcat == GSC && (str = getenv("GSC_NORTH")) != NULL) {
-	if (!strncmp (str, "http:",5)) {
+    if (refcat == GSC) {
+	url = cdn;
+	if ((str = getenv("GSC_NORTH")) == NULL)
+	    str = getenv ("GSC_PATH");
+	if (str != NULL) url = str;
+	if (!strncmp (url, "http:",5))
 	    return (webrnum (str,"gsc",nstars,sysout,eqout,epout,
 			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
-	    }
 	}
-    if (refcat == GSCACT && (str = getenv("GSCACT_NORTH")) != NULL) {
-	if (!strncmp (str, "http:",5)) {
-	    return (webrnum (str,"gscact",nstars,sysout,eqout,epout,
-			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
-	    }
-	}
-    if (!strncmp (cdn, "http:",5)) {
-	if (refcat == GSCACT)
-	    return (webrnum (cdn,"gscact",nstars,sysout,eqout,epout,
-			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
-	else
-	    return (webrnum (cdn,"gsc",nstars,sysout,eqout,epout,
+    if (refcat == GSCACT) {
+	url = cdna;
+	if ((str = getenv("GSCACT_NORTH")) == NULL)
+	    str = getenv ("GSCACT_PATH");
+	if (str != NULL) url = str;
+	if (!strncmp (url, "http:",5))
+	    return (webrnum (url,"gscact",nstars,sysout,eqout,epout,
 			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
 
@@ -1115,4 +1116,5 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Jun 27 2001	Allocate distance array only if larger one is needed
  * Jun 27 2001	Add gscfree() to free table buffer and distance array
  * Sep 11 2001	Use single magnitude argument to gscread() and webread()
+ * Sep 21 2001	Clean up web interface
  */

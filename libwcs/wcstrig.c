@@ -184,4 +184,6 @@ const double x, y;
 /* Dec 20 1999	Doug Mink - Change cosd() and sind() to cosdeg() and sindeg()
  * Dec 20 1999	Doug Mink - Include wcslib.h, which includes wcstrig.h
  * Dec 20 1999	Doug Mink - Use PI from wcslib.h, not locally defined
+ *
+ * Sep 19 2001	Doug Mink - No change for WCSLIB 2.7
  */

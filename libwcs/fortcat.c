@@ -1,5 +1,5 @@
 /*** File libwcs/fortcat.c
- *** February 16, 2001
+ *** September 19, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -23,7 +23,6 @@
 #include <string.h>
 #include <math.h>
 #include <sys/types.h>
-#include "fitshead.h"
 #include "wcs.h"
 #include "wcscat.h"
 
@@ -135,3 +134,7 @@ int	nread;		/* Number of stars read from catalog */
 
     return;
 }
+/*
+ * Feb 16 2001	New subroutines
+ * Sep 19 2001	Drop fitshead.h; it is in wcs.h
+ */

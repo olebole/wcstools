@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** September 11, 2001
+ *** September 19, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -10,7 +10,6 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "fitshead.h"
 #include "wcs.h"
 #include "wcscat.h"
 
@@ -789,4 +788,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  *
  * Jan 11 2001	All printing is to stderr
  * Jun  7 2001	Add proper motion flag and number of magnitudes to RefCat()
+ * Sep 19 2001	Drop fitshead.h; it is in wcs.h
  */

@@ -1,5 +1,5 @@
 /* File scat.c
- * September 19, 2001
+ * September 20, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -871,6 +871,7 @@ double	eqout;		/* Equinox for output coordinates */
     double gdist, da, dd, dec, gdmax;
     int nlog;
     int nmag;
+    int magsort;
     int typecol;
     int band;
     int imag;
@@ -893,6 +894,7 @@ double	eqout;		/* Equinox for output coordinates */
     char tstr[32];
     double flux;
     double pra, pdec;
+    char magname[16];
     void ep2dt();
     void PrintNum();
     int LenNum();
@@ -1035,6 +1037,8 @@ double	eqout;		/* Equinox for output coordinates */
 
     /* Start of per catalog loop */
     for (icat = 0; icat < ncat; icat++) {
+	if (ncat > 1)
+	   nohead = 1;
 	nndec = 0;
 	isp[2] = (char) 0;
 	isp[3] = (char) 0;
@@ -1873,6 +1877,11 @@ double	eqout;		/* Equinox for output coordinates */
 		}
 
 	    /* List the brightest or closest MAXSTARS reference stars */
+	    if (sortmag > 0 && sortmag <= nmag)
+		magsort = sortmag - 1;
+	    else
+		magsort = 0;
+	    CatMagName (sortmag, refcat, magname);
 	    if (ng > ngmax) {
 		if ((verbose || printhead) && !closest) {
 		    if (distsort) {
@@ -1883,22 +1892,22 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("Closest of %d %s",ng, title);
 			}
 		    else if (maglim1 > 0.0)
-			printf ("%d / %d %s (between %.2f and %.2f)",
-			    ns, ng, title, gm[0], gm[ns-1]);
+			printf ("%d / %d %s (%s between %.2f and %.2f)",
+			    ns, ng, title, magname, gm[0], gm[magsort][ns-1]);
 		    else
-			printf ("%d / %d %s (brighter than %.2f)",
-		 	    ns, ng, title, gm[ns-1]);
+			printf ("%d / %d %s (%s brighter than %.2f)",
+		 	    ns, ng, title, magname, gm[magsort][ns-1]);
 		    printf ("\n");
 		    }
 		}
 	    else {
 	        if (verbose || printhead) {
 		    if (maglim1 > 0.0)
-			printf ("%d %s between %.2f and %.2f\n",
-			    ng, title, maglim1, maglim2);
+			printf ("%d %s, %s between %.2f and %.2f\n",
+			    ng, title, magname, maglim1, maglim2);
 		    else if (maglim2 > 0.0)
-			printf ("%d %s brighter than %.2f\n",
-			    ng, title, maglim2);
+			printf ("%d %s, %s brighter than %.2f\n",
+			    ng, title, magname, maglim2);
 		    else if (verbose)
 			printf ("%d %s\n", ng, title);
 		    }
@@ -3473,4 +3482,5 @@ PrintGSClass ()
  * Sep 14 2001	Add sort magnitude options to web interface
  * Sep 17 2001	Add limits for 2MASS Point Source Catalog
  * Sep 19 2001	Fix bug dealing with IRAS limited fluxes in one-line output
+ * Sep 20 2001	Print appropriate limiting magnitude and name
  */

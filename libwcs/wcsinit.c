@@ -28,7 +28,6 @@
 #include <stdio.h>		/* stderr */
 #include <math.h>
 #include "wcs.h"
-#include "fitshead.h"
 #ifndef VMS
 #include <stdlib.h>
 #endif

@@ -1,5 +1,5 @@
 /* fitsfile.h  FITS and IRAF file access subroutines
- * May 22, 2001
+ * September 25, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -74,6 +74,8 @@ extern int getfilelines();
 extern char *getfilebuff();
 extern int getfilesize();
 extern int isimlist();
+extern int isfilelist();
+extern int isfile();
 extern int first_token();
 
 /* Subroutines for translating dates and times in dateutil.c */
@@ -219,4 +221,5 @@ double ut2ts(); /* Current UT to IRAF seconds since 1950-01-01T00:00 */
  *
  * Apr 24 2001	Add length of column name to column data structure
  * May 22 2001	Add day of year date conversion subroutines
+ * Sep 25 2001	Add isfilelist() and isfile()
  */
