@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** April 3, 2003
+ *** April 14, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -299,6 +299,8 @@ int	nlog;		/* Logging interval */
 
     /* Write header if printing star entries as found */
     if (nstarmax < 1) {
+	char *revmessage;
+	revmessage = getrevmsg();
 	title = CatName (ucat, refcatname);
 	printf ("catalog        %s\n", title);
 	free ((char *)title);
@@ -315,6 +317,7 @@ int	nlog;		/* Logging interval */
 	printf ("radecsys       %s\n", cstr);
 	printf ("equinox        %.3f\n", eqout);
 	printf ("epoch  %.3f\n", epout);
+	printf ("program        scat %s\n", revmessage);
 	CatID (catid, ucat);
 	printf ("%s	ra          	dec         	", catid);
 	printf ("magb 	magr  	arcmin\n");
@@ -1181,4 +1184,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  * Mar 10 2003	Improve test for position
  * Apr  3 2003	Drop unused variables after lint
+ * Apr 14 2003	Explicitly get revision date if nstarmax < 1
  */

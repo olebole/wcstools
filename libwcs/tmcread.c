@@ -1,5 +1,5 @@
 /*** File libwcs/tmcread.c
- *** April 3, 2003
+ *** April 14, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2003
@@ -189,6 +189,8 @@ int	nlog;		/* 1 for diagnostics */
 
     /* Write header if printing star entries as found */
     if (nstarmax < 1) {
+	char *revmessage;
+	revmessage = getrevmsg();
 	printf ("catalog	2MASS Point Source Catalog\n");
 	ra2str (rastr, 31, cra, 3);
 	printf ("ra	%s\n", rastr);
@@ -203,6 +205,7 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("radecsys	%s\n", cstr);
 	printf ("equinox	%.3f\n", eqout);
 	printf ("epoch	%.3f\n", epout);
+	printf ("program	stmc %s\n", revmessage);
 	printf ("2mass_id  	ra          	dec         	");
 	printf ("magj  	magh  	magk  	arcmin\n");
 	printf ("----------	------------	------------	");
@@ -922,5 +925,6 @@ char	*filename;	/* Name of file for which to find size */
  * Feb 13 2002	Fix catalog name in web access
  * Oct  3 2002	Use global variable for scat version
  *
- * APr  3 2003	Drop unused variables after lint
+ * Apr  3 2003	Drop unused variables after lint
+ * Apr 14 2003	Explicitly get revision date if nstarmax < 1
  */

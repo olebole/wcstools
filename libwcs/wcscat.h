@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** April 3, 2003
+ *** April 15, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -50,6 +50,8 @@
 #define GSCACT		19	/* GSC-ACT revised Guide Star Catalog */
 #define GSC2		20	/* GSC II version 2.2 */
 #define UB1		21	/* USNO B-1.0 Star Catalog */
+#define UCAC1		22	/* USNO CCD Astrograph Catalog 1.0 */
+#define UCAC2		23	/* USNO CCD Astrograph Catalog 2.0 */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */
@@ -354,6 +356,10 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
 void vothead();		/* Print heading for VOTable SCAT output */
 void vottail();		/* Terminate VOTable SCAT output */
 
+/* Subroutines for version/date string */
+void setrevmsg();	/* Set version/date string */
+char *getrevmsg();	/* Return version/date string */
+
 /* Sep 22 1998  New header file (star.h)
  * Oct 16 1998  Add more options for ASCII catalogs
  * Oct 20 1998  Add object name to binary files
@@ -447,4 +453,6 @@ void vottail();		/* Terminate VOTable SCAT output */
  * Mar 24 2003	Add CatCde() to get only catalog code
  * Apr  3 2003	Add ubcread(), ubcrnum(), and FluxSortStars()
  * Apr  3 2003	Drop gsc2rnum()
+ * Apr 14 2003	Add setrevmsg() and getrevmsg()
+ * Apr 15 2003	Add UCAC1 and UCAC2
  */

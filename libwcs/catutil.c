@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** April 3, 2003
+ *** April 14, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -87,6 +87,10 @@
  *	Print heading for VOTable format catalog search return
  * void vottail ()
  *	Print end of VOTable format catalog search return
+ * void	setrevmsg (revmessage)
+ *	Set version/date message for nstarmax=-1 returns from *read subroutines
+ * char	*getrevmsg ()
+ *	Return version/date message for nstarmax=-1 returns from *read subroutines
  */
 
 #include <unistd.h>
@@ -96,6 +100,17 @@
 #include <math.h>
 #include "wcs.h"
 #include "wcscat.h"
+
+static char *revmessage = NULL;	/* Version and date for calling program */
+static char *revmsg0 = "";
+void
+setrevmsg (revmsg)		/* Set version and date string*/
+char *revmsg;
+{ revmessage = revmsg; return; }
+char *
+getrevmsg ()			/* Return version and date string */
+{ if (revmessage == NULL) return (revmsg0);
+  else return (revmessage); }
 
 /* Return code for reference catalog or its type */
 
@@ -2494,4 +2509,5 @@ vottail ()
  * Jan 27 2003	Adjust dra in RefLimit to max width in RA seconds in region
  * Mar 10 2003	Clean up RefLim() to better represent region to be searched
  * Mar 24 2003	Add CatCode() to separate catalog type from catalog parameters
+ * Apr 14 2003	Add setrevmsg() and getrevmsg()
  */

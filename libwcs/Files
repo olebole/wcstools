@@ -116,6 +116,9 @@ uacread.c
 ubcread.c
   Return USNO B Catalog stars from their standard format files for a
   given RA, Dec, and magnitude range or list of star numbers.
+ucacread.c
+  Return USNO UCAC1 Catalog stars from their standard format files for a
+  given RA, Dec, and magnitude range or list of star numbers.
 ujcread.c
   Return USNO UJ Catalog stars from its standard CDROM format files for
   a given RA, Dec, and magnitude range or list of star numbers.

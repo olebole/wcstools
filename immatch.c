@@ -1,5 +1,5 @@
 /* File immatch.c
- * January 23, 2003
+ * April 13, 2003
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -61,6 +61,7 @@ extern void setimfrac();
 extern void setsortmag();
 extern void setmirror();
 extern void setrotate();
+extern void setrevmsg();
 
 main (ac, av)
 int ac;
@@ -606,4 +607,5 @@ char	*name;			/* Name of FITS or IRAF image file */
  * Apr 10 2002	Accept letter as well as number for magnitude
  *
  * Jan 23 2003	Add USNO-B1.0 Catalog
+ * Apr 13 2003	Set revision message for subroutines using setrevmsg()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** April 3, 2003
+ *** April 14, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1999-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -190,6 +190,8 @@ int	nlog;		/* 1 for diagnostics */
 
     /* Write header if printing star entries as found */
     if (nstarmax < 1) {
+	char *revmessage;
+	revmessage = getrevmsg();
 	printf ("catalog	ACT\n");
 	ra2str (rastr, 31, cra, 3);
 	printf ("ra	%s\n", rastr);
@@ -206,6 +208,7 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("radecsys	%s\n", cstr);
 	printf ("equinox	%.3f\n", eqout);
 	printf ("epoch	%.3f\n", epout);
+	printf ("program	scat %s\n", revmessage);
 	printf ("act_id    	ra          	dec         	");
 	printf ("magb 	magv 	ura   	udec  	arcmin\n");
 	printf ("----------	------------	------------    ");
@@ -948,4 +951,5 @@ char	*filename;	/* Name of file for which to find size */
  *
  * Mar 11 2003	Fix position limit testing
  * Apr  3 2003	Drop unused type variables in actstar() and actread()
+ * Apr 14 2003	Explicitly get revision date if nstarmax < 1
  */

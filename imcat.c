@@ -1,5 +1,5 @@
 /* File imcat.c
- * April 2, 2003
+ * April 14, 2003
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -59,8 +59,11 @@ static webdump = 0;
 static char *progname;		/* Name of program as executed */
 static int minid = 0;		/* Minimum number of plate IDs for USNO-B1.0 */
 static int minpmqual = 0;	/* Minimum USNO-B1.0 proper motion quality */
+
 extern int getminpmqual();
 extern int getminid();
+extern void setrevmsg();
+
 static void ImageLim();
 
 main (ac, av)
@@ -818,6 +821,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 
     if (nstars > 0)
 	ngmax = nstars;
+    else if (nstars < 0)
+	ngmax = 1;
     else
 	ngmax = MAXCAT;
 
@@ -891,6 +896,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	}
     else
 	nlog = 0;
+    if (nstars < 0)
+	ngmax = -1;
 
     /* Find the nearby reference stars, in ra/dec */
     drad = 0.0;
@@ -898,6 +905,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 		  cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
 		  sortmag,ngmax,&starcat[icat],
 		  gnum,gra,gdec,gpra,gpdec,gm,gc,gobj,nlog);
+    if (ngmax < 0)
+	return;
 
     /* Set flag if any proper motions are non-zero
     mprop = 0;
@@ -1919,4 +1928,6 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Mar  4 2003	If star is offscale, set x and y to 0.0
  * Mar 25 2003	Deal correctly with rotated images
  * Apr  2 2003	Try rotated images again
+ * Apr 13 2003	Set revision message for subroutines using setrevmsg()
+ * Apr 14 2003	Pass through nstarmax=-1 option to ctgread()
  */

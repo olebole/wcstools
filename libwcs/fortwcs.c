@@ -1,5 +1,5 @@
 /*** File saoimage/wcslib/fortwcs.c
- *** April 3, 2003
+ *** April 7, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -34,6 +34,7 @@
  * Subroutine:	wcskinit_ (nxpix,nypix,ctype1,ctype2,crpix1,crpix2,crval1,
  *			   crval2, cd,cdelt1,cdelt2,crota,equinox,epoch)
  *		    sets a WCS structure from keyword-based arguments
+ * Subroutine:	wcsclose_ (iwcs) closes and frees the specified WCS structure
  * Subroutine:	wcssize_ (wcs, cra, cdec, dra, ddec)
  *		    returns the image center and size in WCS units
  * Subroutine:	wcsdist_ (x1,y1,x2,y2,diff)
@@ -56,7 +57,7 @@
  * Subroutine:	wcs2pix_ (wcs,xpos,ypos,xpix,ypix)
  *		    sky coordinates -> pixel coordinates
 
- * Copyright:   2000 Smithsonian Astrophysical Observatory
+ * Copyright:   2000-2003 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -102,6 +103,8 @@ int	nc;		/* Number of characters in hstring (supplied by Fortran */
     else if (nwcs == 0) {
 	pwcs = (struct WorldCoor **) calloc (10, sizeof (void *));
 	nwcs = 10;
+	*iwcs = 0;
+	pwcs[0] = twcs;
 	}
     else {
 	for (id = 0; id < nwcs; id++) {
@@ -146,6 +149,14 @@ int	np;		/* Length of projection (supplied by Fortran) */
     /* Set index to -1 if no WCS is found in header */
     if (twcs == NULL)
 	*iwcs = -1;
+
+    /* Otherwise, use first available index into vector of pointers */
+    else if (nwcs == 0) {
+	pwcs = (struct WorldCoor **) calloc (10, sizeof (void *));
+	nwcs = 10;
+	*iwcs = 0;
+	pwcs[0] = twcs;
+	}
     else {
 	for (id = 0; id < 10; id++) {
 	    if (pwcs[id] == NULL) {
@@ -189,6 +200,14 @@ int	nc1, nc2;	/* Lengths of CTYPEs (supplied by Fortran) */
     /* Set index to -1 if no WCS is found in header */
     if (twcs == NULL)
 	*iwcs = -1;
+
+    /* Otherwise, use first available index into vector of pointers */
+    else if (nwcs == 0) {
+	pwcs = (struct WorldCoor **) calloc (10, sizeof (void *));
+	nwcs = 10;
+	*iwcs = 0;
+	pwcs[0] = twcs;
+	}
     else {
 	for (id = 0; id < nwcs; id++) {
 	    if (pwcs[id] == NULL) {
@@ -265,7 +284,8 @@ char	*radecsys;	/* Equinox (returned) */
 
 /* Compute distance in degrees between two sky coordinates */
 
-void wcsdist_ (x1,y1,x2,y2,diff)
+void
+wcsdist_ (x1,y1,x2,y2,diff)
 
 double	*x1,*y1;	/* (RA,Dec) or (Long,Lat) in degrees */
 double	*x2,*y2;	/* (RA,Dec) or (Long,Lat) in degrees */
@@ -557,4 +577,7 @@ int	*offscl;
  * Jun  2 2000	Fix WCS structure pointers
  *
  * Feb 16 2001	Change name of file from wcsfort.c to fortwcs.c
+ *
+ * Apr  7 2003	Add wcsclose_() to list at top of file
+ * Apr  7 2003	Fix all init_() subroutines to work correctly on first call
  */

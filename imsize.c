@@ -1,5 +1,5 @@
 /* File imsize.c
- * October 3, 2002
+ * April 11, 2003
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -31,6 +31,7 @@ static double frac = 0.0;
 static int verbose = 0;		/* verbose/debugging flag */
 static int dss = 0;		/* Flag to drop extra stuff for DSS */
 static int dssc = 0;		/* Flag to drop extra stuff for DSS */
+static int degout = 0;		/* Flag to print center in degrees */
 static double eqout = 0.0;
 static double eqim = 0.0;
 static int sysout = 0;
@@ -120,7 +121,7 @@ char **av;
 		}
 	    break;
 
-	case 'd':	/* Change output for DSS */
+	case 's':	/* Change output for DSS getimage */
 	    strcpy (coorsys, "J2000");
 	    eqout = 2000.0;
 	    sysout = WCS_J2000;
@@ -134,6 +135,10 @@ char **av;
 		frac = atof (*++av+1);
 		ac--;
 		}
+	    break;
+
+	case 'd':	/* ouput center in degrees */
+	    degout++;
 	    break;
 
 	case 'e':	/* ouput epoch of plate */
@@ -274,8 +279,9 @@ usage ()
     fprintf (stderr,"Usage: [-vcd] [-p scale] [-b ra dec] [-j ra dec] FITS or IRAF file(s)\n");
     fprintf (stderr,"  -b: Output B1950 (B1950) coordinates (optional center)\n");
     fprintf (stderr,"  -c: Format output without pixel dimensions (optional size change)\n");
-    fprintf (stderr,"  -d: Format output as input to DSS getimage (optional size change)\n");
+    fprintf (stderr,"  -d: Output center in degrees\n");
     fprintf (stderr,"  -e: Add epoch of image to output line\n");
+    fprintf (stderr,"  -g: Format output as input to DSS getimage (optional size change)\n");
     fprintf (stderr,"  -j: Output J2000 (J2000) coordinates (optional center)\n");
     fprintf (stderr,"  -n: Number of decimal places in output (default 3)\n");
     fprintf (stderr,"  -p: Initial plate scale in arcsec per pixel (default 0)\n");
@@ -567,4 +573,6 @@ char *name;
  * Jun 18 2002	Use extn for image extension, ext for filename extension
  * Jun 19 2002	Add verbose argument to GetFITShead()
  * Oct  3 2002	Initialize uninitialized switch nfext
+ *
+ * APr 11 2003	Add -d option for degree center
  */

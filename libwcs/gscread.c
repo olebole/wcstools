@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** April 3, 2003
+ *** April 14, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -243,6 +243,8 @@ int	nlog;		/* 1 for diagnostics */
 
     /* Write header if printing star entries as found */
     if (nstarmax < 1) {
+	char *revmessage;
+	revmessage = getrevmsg();
 	title = CatName (refcat, NULL);
 	printf ("catalog	%s\n", title);
 	free (title);
@@ -259,6 +261,7 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("radecsys	%s\n", cstr);
 	printf ("equinox	%.3f\n", eqout);
 	printf ("epoch	%.3f\n", epout);
+	printf ("program	scat %s\n", revmessage);
 	CatID (catid, refcat);
 	printf ("%s	ra          	dec         	", catid);
 	printf ("magv 	ulass	band	n	arcmin\n");
@@ -1164,4 +1167,5 @@ char	*path;		/* Pathname of GSC region FITS file */
  *
  * Mar 10 2003	Improve position limits
  * Apr  3 2003	Drop wrap in gscread(); add test for npos in gscread()
+ * Apr 14 2003	Explicitly get revision date if nstarmax < 1
  */

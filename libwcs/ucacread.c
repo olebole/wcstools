@@ -1,8 +1,8 @@
-/*** File libwcs/ty2read.c
+/*** File libwcs/ucacread.c
  *** April 14, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2000-2003
+ *** Copyright (C) 2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -39,25 +39,25 @@
 
 #define MAXREG 100
 
-/* pathname of Tycho 2 CDROM or catalog search engine URL */
-char ty2cd[64]="/data/astrocat/tycho2";
+/* pathname of UCAC1 decompressed data files or search engine URL */
+char ucacd[64]="/data/astrocat/ucac1";
 
 static double *gdist;	/* Array of distances to stars */
 static int ndist = 0;
 
-static int ty2reg();
-static int ty2regn();
-static int ty2zone();
-static int ty2size();
-struct StarCat *ty2open();
-void ty2close();
-static int ty2star();
-static int ty2size();
+static int ucacreg();
+static int ucacregn();
+static int ucaczone();
+static int ucacsize();
+struct StarCat *ucacopen();
+void ucacclose();
+static int ucacstar();
+static int ucacsize();
 
-/* TY2READ -- Read Tycho 2 Star Catalog stars from CDROM */
+/* UCACREAD -- Read UCAC Star Catalog stars */
 
 int
-ty2read (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,sortmag,
+ucacread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,sortmag,
 	 nstarmax,gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -88,7 +88,7 @@ int	nlog;		/* 1 for diagnostics */
     double maxdist=0.0; /* Largest distance */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
-    int nreg;		/* Number of Tycho 2 regions in search */
+    int nreg;		/* Number of UCAC regions in search */
     int regnum[MAXREG];	/* List of region numbers */
     int rlist[MAXREG];	/* List of first stars in regions */
     int nlist[MAXREG];	/* List of number of stars per region */
@@ -121,15 +121,15 @@ int	nlog;		/* 1 for diagnostics */
 	verbose = 0;
 
     /* If pathname is a URL, search and return */
-    if ((str = getenv("TY2_PATH")) != NULL ) {
+    if ((str = getenv("UCAC_PATH")) != NULL ) {
 	if (!strncmp (str, "http:",5)) {
-	    return (webread (str,"tycho2",distsort,cra,cdec,dra,ddec,drad,
+	    return (webread (str,"ucac1",distsort,cra,cdec,dra,ddec,drad,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			     gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	    }
 	}
-    if (!strncmp (ty2cd, "http:",5)) {
-	return (webread (ty2cd,"tycho2",distsort,cra,cdec,dra,ddec,drad,
+    if (!strncmp (ucaccd, "http:",5)) {
+	return (webread (ucaccd,"ucac1",distsort,cra,cdec,dra,ddec,drad,
 			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	}
@@ -160,7 +160,7 @@ int	nlog;		/* 1 for diagnostics */
 	    free ((void *)gdist);
 	gdist = (double *) malloc (nstarmax * sizeof (double));
 	if (gdist == NULL) {
-	    fprintf (stderr,"TY2READ:  cannot allocate separation array\n");
+	    fprintf (stderr,"UCACREAD:  cannot allocate separation array\n");
 	    return (0);
 	    }
 	ndist = nstarmax;
@@ -204,7 +204,7 @@ int	nlog;		/* 1 for diagnostics */
     if (nstarmax < 1) {
 	char *revmessage;
 	revmessage = getrevmsg();
-	printf ("catalog	Tycho-2\n");
+	printf ("catalog	UCAC1\n");
 	ra2str (rastr, 31, cra, 3);
 	printf ("ra	%s\n", rastr);
 	dec2str (decstr, 31, cdec, 2);
@@ -221,7 +221,7 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("equinox	%.3f\n", eqout);
 	printf ("epoch	%.3f\n", epout);
 	printf ("program	scat %s\n", revmessage);
-	printf ("tycho2_id	ra          	dec         	");
+	printf ("ucac_id	ra          	dec         	");
 	printf ("magb 	magv 	ura   	udec  	arcmin\n");
 	printf ("----------	------------	------------    ");
 	printf ("-----	-----	------	------	------\n");
@@ -230,10 +230,10 @@ int	nlog;		/* 1 for diagnostics */
     /* If searching through RA = 0:00, split search in two */
     for (iw = 0; iw <= wrap; iw++) {
 
-	/* Find Tycho 2 Star Catalog regions in which to search */
-	nreg = ty2reg (rra1,rra2,rdec1,rdec2,nrmax,regnum,rlist,nlist,verbose);
+	/* Find UCAC Star Catalog regions in which to search */
+	nreg = ucacreg (rra1,rra2,rdec1,rdec2,nrmax,regnum,rlist,nlist,verbose);
 	if (nreg <= 0) {
-	    fprintf (stderr,"TY2READ:  no Tycho 2 region for %.2f-%.2f %.2f %.2f\n",
+	    fprintf (stderr,"UCACREAD:  no UCAC region for %.2f-%.2f %.2f %.2f\n",
 		     rra1, rra2, rdec1, rdec2);
 	    rra1 = 0.0;
 	    rra2 = rra2a;
@@ -247,20 +247,20 @@ int	nlog;		/* 1 for diagnostics */
 	    istar1 = rlist[ireg];
 	    istar2 = istar1 + nlist[ireg];
 	    if (verbose)
-		fprintf (stderr,"TY2READ: Searching stars %d through %d\n",
+		fprintf (stderr,"UCACREAD: Searching stars %d through %d\n",
 			istar1, istar2-1);
 
-	    /* Open file for this region of Tycho 2 catalog */
-	    starcat = ty2open (rlist[ireg], nlist[ireg]);
+	    /* Open file for this region of UCAC catalog */
+	    starcat = ucacopen (rlist[ireg], nlist[ireg]);
 	    if (starcat == NULL) {
-		fprintf (stderr,"TY2READ: File %s not found\n",inpath);
+		fprintf (stderr,"UCACREAD: File %s not found\n",inpath);
 		return (0);
 		}
 
 	    /* Loop through catalog for this region */
 	    for (istar = istar1; istar < istar2; istar++) {
-		if (ty2star (starcat, star, istar)) {
-		    fprintf (stderr,"TY2READ: Cannot read star %d\n", istar);
+		if (ucacstar (starcat, star, istar)) {
+		    fprintf (stderr,"UCACREAD: Cannot read star %d\n", istar);
 		    break;
 		    }
 
@@ -394,7 +394,7 @@ int	nlog;		/* 1 for diagnostics */
 
 		    nstar++;
 		    if (nlog == 1)
-			fprintf (stderr,"TY2READ: %11.6f: %9.5f %9.5f %5.2f %5.2f\n",
+			fprintf (stderr,"UCACREAD: %11.6f: %9.5f %9.5f %5.2f %5.2f\n",
 				 num,ra,dec,magb,magv);
 
 		    /* End of accepted star processing */
@@ -403,7 +403,7 @@ int	nlog;		/* 1 for diagnostics */
 		/* Log operation */
 		jstar++;
 		if (nlog > 0 && istar%nlog == 0)
-		    fprintf (stderr,"TY2READ: %5d / %5d / %5d sources\r",
+		    fprintf (stderr,"UCACREAD: %5d / %5d / %5d sources\r",
 			     nstar,jstar,starcat->nstars);
 
 		/* End of star loop */
@@ -411,11 +411,11 @@ int	nlog;		/* 1 for diagnostics */
 
 	    ntot = ntot + starcat->nstars;
 	    if (nlog > 0)
-		fprintf (stderr,"TY2READ: %4d / %4d: %5d / %5d  / %5d sources from region %4d    \n",
+		fprintf (stderr,"UCACREAD: %4d / %4d: %5d / %5d  / %5d sources from region %4d    \n",
 		 	 ireg+1,nreg,nstar,jstar,starcat->nstars,rlist[ireg]);
 
 	    /* Close region input file */
-	    ty2close (starcat);
+	    ucacclose (starcat);
 	    }
 	rra1 = 0.0;
 	rra2 = rra2a;
@@ -424,20 +424,20 @@ int	nlog;		/* 1 for diagnostics */
 /* close output file and summarize transfer */
     if (nlog > 0) {
 	if (nreg > 1)
-	    fprintf (stderr,"TY2READ: %d regions: %d / %d found\n",nreg,nstar,ntot);
+	    fprintf (stderr,"UCACREAD: %d regions: %d / %d found\n",nreg,nstar,ntot);
 	else
-	    fprintf (stderr,"TY2READ: 1 region: %d / %d found\n",nstar,ntot);
+	    fprintf (stderr,"UCACREAD: 1 region: %d / %d found\n",nstar,ntot);
 	if (nstar > nstarmax)
-	    fprintf (stderr,"TY2READ: %d stars found; only %d returned\n",
+	    fprintf (stderr,"UCACREAD: %d stars found; only %d returned\n",
 		     nstar,nstarmax);
 	}
     return (nstar);
 }
 
-/* TY2RNUM -- Read HST Guide Star Catalog stars from CDROM */
+/* UCACRNUM -- Read HST Guide Star Catalog stars from CDROM */
 
 int
-ty2rnum (nstars,sysout,eqout,epout,
+ucacrnum (nstars,sysout,eqout,epout,
 	 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
 int	nstars;		/* Number of stars to find */
@@ -474,14 +474,14 @@ int	nlog;		/* 1 for diagnostics */
 	verbose = 0;
 
     /* If pathname is a URL, search and return */
-    if ((str = getenv("TY2_PATH")) != NULL ) {
+    if ((str = getenv("UCAC_PATH")) != NULL ) {
 	if (!strncmp (str, "http:",5)) {
-	    return (webrnum (str,"tycho2",nstars,sysout,eqout,epout,
+	    return (webrnum (str,"ucac1",nstars,sysout,eqout,epout,
 			     gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	    }
 	}
-    if (!strncmp (ty2cd, "http:",5)) {
-	return (webrnum (ty2cd,"tycho2",nstars,sysout,eqout,epout,
+    if (!strncmp (ucaccd, "http:",5)) {
+	return (webrnum (ucaccd,"ucac1",nstars,sysout,eqout,epout,
 			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	}
 
@@ -494,18 +494,18 @@ int	nlog;		/* 1 for diagnostics */
     for (jstar = 0; jstar < nstars; jstar++) {
 	rnum = (int) (gnum[jstar] + 0.0000001);
 	
-	/* Find numbered stars (rrrr.nnnnn) */
+	/* Find numbered stars (rrr.nnnnnn) */
 	if (gnum[jstar]-(double)rnum > 0.0000001) {
-	    ty2regn (rnum, &istar1, &istar2, verbose);
+	    ucacregn (rnum, &istar1, &istar2, verbose);
 	    nstar = istar2 - istar1 + 1;
-	    starcat = ty2open (istar1, nstar);
+	    starcat = ucacopen (istar1, nstar);
     	    if (starcat == NULL) {
-		fprintf (stderr,"TY2RNUM: File %s not found\n",inpath);
+		fprintf (stderr,"UCACRNUM: File %s not found\n",inpath);
 		return (0);
 		}
 	    for (istar = istar1; istar < istar2; istar++) {
-		if (ty2star (starcat, star, istar)) {
-		    fprintf (stderr,"TY2RNUM: Cannot read star %d\n", istar);
+		if (ucacstar (starcat, star, istar)) {
+		    fprintf (stderr,"UCACRNUM: Cannot read star %d\n", istar);
 		    gra[jstar] = 0.0;
 		    gdec[jstar] = 0.0;
 		    gmag[0][jstar] = 0.0;
@@ -517,18 +517,18 @@ int	nlog;		/* 1 for diagnostics */
 			break;
 		    }
 		}
-	    ty2close (starcat);
+	    ucacclose (starcat);
 	    }
 	/* Find nth sequential stars in catalog (not rrrr.nnnnn) */
 	else {
 	    istar = (int) (gnum[jstar] + 0.01);
-	    starcat = ty2open (istar, 10);
+	    starcat = ucacopen (istar, 10);
     	    if (starcat == NULL) {
-		fprintf (stderr,"TY2RNUM: File %s not found\n",inpath);
+		fprintf (stderr,"UCACRNUM: File %s not found\n",inpath);
 		return (0);
 		}
-	    if (ty2star (starcat, star, istar)) {
-		fprintf (stderr,"TY2RNUM: Cannot read star %d\n", istar);
+	    if (ucacstar (starcat, star, istar)) {
+		fprintf (stderr,"UCACRNUM: Cannot read star %d\n", istar);
 		gra[jstar] = 0.0;
 		gdec[jstar] = 0.0;
 		gmag[0][jstar] = 0.0;
@@ -536,7 +536,7 @@ int	nlog;		/* 1 for diagnostics */
 		gtype[jstar] = 0;
 		continue;
 		}
-	    ty2close (starcat);
+	    ucacclose (starcat);
 	    }
 
 	/* If star has been found in catalog */
@@ -569,7 +569,7 @@ int	nlog;		/* 1 for diagnostics */
 	gmag[1][jstar] = magv;
 	/* gtype[jstar] = isp; */
 	if (nlog == 1)
-	    fprintf (stderr,"TY2RNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %s  \n",
+	    fprintf (stderr,"UCACRNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %s  \n",
 		     num, ra, dec, magb, magv, star->isp);
 
 	/* End of star loop */
@@ -577,13 +577,13 @@ int	nlog;		/* 1 for diagnostics */
 
 /* Summarize search */
     if (nlog > 0)
-	fprintf (stderr,"TY2RNUM: %d / %d found\n",nstar,starcat->nstars);
+	fprintf (stderr,"UCACRNUM: %d / %d found\n",nstar,starcat->nstars);
 
     return (nstars);
 }
 
 
-/* Tycho 2 region index for ty2regn() and ty2reg() */
+/* UCAC region index for ucacregn() and ucacreg() */
 
 /* First region in each declination zone */
 int treg1[25]={1,594,1178,1729,2259,2781,3246,3652,4014,4294,4492,4615,4663,
@@ -593,12 +593,12 @@ int treg1[25]={1,594,1178,1729,2259,2781,3246,3652,4014,4294,4492,4615,4663,
 int treg2[24]={593,1177,1728,2258,2780,3245,3651,4013,4293,4491,4614,4662,
                5259,5837,6411,6988,7522,8021,8463,8839,9133,9345,9489,9537};
 
-/* TY2REGN -- read the range of stars in a region from the Tycho 2 Catalog
+/* UCACREGN -- read the range of stars in a region from the UCAC Catalog
  * index table.
  */
 
 static int
-ty2regn (region, star1, star2, verbose)
+ucaczone (region, star1, star2, verbose)
 
 int	region;		/* Region to find */
 int	*star1;		/* First star number in region (returned)*/
@@ -625,46 +625,38 @@ int	verbose;	/* 1 for diagnostics */
     if (deczone > 24)
 	return (0);
 
-/* Set path to Tycho 2 Catalog CDROM */
-    if ((str = getenv("TY2_PATH")) != NULL ) {
+/* Set path to UCAC Catalog */
+    if ((str = getenv("UCAC_PATH")) != NULL ) {
 	lpath = strlen (str) + 16;
 	tabpath = (char *) malloc (lpath);
 	strcpy (tabpath, str);
 	}
     else {
-	lpath = strlen (ty2cd) + 16;
+	lpath = strlen (ucaccd) + 16;
 	tabpath = (char *) malloc (lpath);
-	strcpy (tabpath, ty2cd);
+	strcpy (tabpath, ucaccd);
 	}
 
-/* Set pathname for index table file */
-    strcat (tabpath,"/data/index.dat");
+/* Set pathname for zone file */
+    sprintf (temp,"/u1/z%03d", deczone);
+    strcat (tabpath, temp);
+    nb = getfilesize (tabpath);
+    nstars = nb / 67;
 
-/* Read the index table */
-    if ((buffer = getfilebuff (tabpath)) == NULL) {
-	fprintf (stderr,"TY2REG:  error reading region table %s\n",tabpath);
-	return (0);
-	}
-
-/* Read first star from regionth line of region table */
-    line = buffer + ((region - 1) * nchar);
-    *star1 = atoi (line);
-
-/* Read last star + 1 from region+1th line of region table */
-    *star2 = atoi (line+nchar);
-    free (buffer);
+    *star1 = 1;
+    *star2 = nstars;
     free (tabpath);
     return (1);
 }
 
 
-/* TY2REG -- search the Tycho 2 Catalog index table for fields
+/* UCACREG -- search the UCAC Catalog index table for fields
  * in the specified range of coordinates and magnitudes.
  * Build lists containing the first star and number of stars for each range.
  */
 
 static int
-ty2reg (ra1, ra2, dec1, dec2, nrmax, regnum, rstar, nstar, verbose)
+ucacreg (ra1, ra2, dec1, dec2, nrmax, regnum, rstar, nstar, verbose)
 
 double	ra1, ra2;	/* Right ascension limits in degrees */
 double	dec1, dec2; 	/* Declination limits in degrees */
@@ -695,14 +687,14 @@ int	verbose;	/* 1 for diagnostics */
 	}
     nrgn = 0;
 
-/* Set path to Tycho 2 Catalog CDROM */
-    if ((str = getenv("TY2_PATH")) != NULL ) {
+/* Set path to UCAC Catalog CDROM */
+    if ((str = getenv("UCAC_PATH")) != NULL ) {
 	tabpath = (char *) malloc (strlen (str) + 16);
 	strcpy (tabpath, str);
 	}
     else {
-	tabpath = (char *) malloc (strlen (ty2cd) + 16);
-	strcpy (tabpath, ty2cd);
+	tabpath = (char *) malloc (strlen (ucaccd) + 16);
+	strcpy (tabpath, ucaccd);
 	}
 
 /* Set pathname for index table file */
@@ -710,13 +702,13 @@ int	verbose;	/* 1 for diagnostics */
 
 /* Read the index table */
     if ((buffer = getfilebuff (tabpath)) == NULL) {
-	fprintf (stderr,"TY2REG:  error reading region table %s\n",tabpath);
+	fprintf (stderr,"UCACREG:  error reading region table %s\n",tabpath);
 	return (0);
 	}
 
 /* Find region range to search based on declination */
-    iz1 = ty2zone (dec1);
-    iz2 = ty2zone (dec2);
+    iz1 = ucaczone (dec1);
+    iz2 = ucaczone (dec2);
     jr1 = 0;
     jr2 = 0;
     nwrap = 1;
@@ -744,14 +736,14 @@ int	verbose;	/* 1 for diagnostics */
 
     nsrch = ir2 - ir1 + 1;
     if (verbose)
-	fprintf (stderr,"TY2REG: searching %d regions: %d - %d\n",nsrch,ir1,ir2);
+	fprintf (stderr,"UCACREG: searching %d regions: %d - %d\n",nsrch,ir1,ir2);
     if (jr1 > 0) {
 	nsrch1 = jr2 - jr1 + 1;
 	if (verbose)
-	    fprintf (stderr,"TY2REG: searching %d regions: %d - %d\n",nsrch1,jr1,jr2);
+	    fprintf (stderr,"UCACREG: searching %d regions: %d - %d\n",nsrch1,jr1,jr2);
 	}
     if (verbose)
-	fprintf(stderr,"TY2REG: RA: %.5f - %.5f, Dec: %.5f - %.5f\n",ra1,ra2,dec1,dec2);
+	fprintf(stderr,"UCACREG: RA: %.5f - %.5f, Dec: %.5f - %.5f\n",ra1,ra2,dec1,dec2);
 
     nrgn = 0;
 
@@ -792,7 +784,7 @@ int	verbose;	/* 1 for diagnostics */
 		    /* Add this region to list, if there is space */
 		    if (ralow <= ra2 && rahi >= ra1) {
 			if (verbose)
-			    fprintf (stderr,"TY2REG: Region %d added to search\n",irow);
+			    fprintf (stderr,"UCACREG: Region %d added to search\n",irow);
 			if (nrgn < nrmax) {
 			    regnum[nrgn] = irow;
 			    rstar[nrgn] = num1;
@@ -835,10 +827,10 @@ int	verbose;	/* 1 for diagnostics */
 
  
  
-/*  TY2ZONE -- find the zone number where a declination can be found */
+/*  UCACZONE -- find the zone number where a declination can be found */
  
 static int
-ty2zone (dec)
+ucaczone (dec)
  
 double dec;		/* declination in degrees */
  
@@ -859,10 +851,10 @@ int ndeczones = 12;	/* number of declination zones per hemisphere */
 
 
 
-/* TY2OPEN -- Open Tycho 2 catalog file, returning number of entries */
+/* UCACOPEN -- Open UCAC catalog file, returning number of entries */
 
 struct StarCat *
-ty2open (nstar, nread)
+ucacopen (nstar, nread)
 
 int	nstar;	/* Number of first star to read */
 int	nread;	/* Number of star entries to read */
@@ -873,42 +865,42 @@ int	nread;	/* Number of star entries to read */
     int lfile, lpath;
     int lread, lskip, nr;
     char *str;
-    char *ty2file;
-    char *ty2path;	/* Full pathname for catalog file */
+    char *ucacfile;
+    char *ucacpath;	/* Full pathname for catalog file */
 
-    /* Set path to Tycho 2 Catalog CDROM */
-    if ((str = getenv("TY2_PATH")) != NULL ) {
+    /* Set path to UCAC Catalog CDROM */
+    if ((str = getenv("UCAC_PATH")) != NULL ) {
 	lpath = strlen(str) + 18;
-	ty2path = (char *) malloc (lpath);
-	strcpy (ty2path, str);
+	ucacpath = (char *) malloc (lpath);
+	strcpy (ucacpath, str);
 	}
     else {
-	lpath = strlen(ty2cd) + 18;
-	ty2path = (char *) malloc (lpath);
-	strcpy (ty2path, ty2cd);
+	lpath = strlen(ucaccd) + 18;
+	ucacpath = (char *) malloc (lpath);
+	strcpy (ucacpath, ucaccd);
 	}
 
     /* Set pathname for catalog file */
-    strcat (ty2path, "/data/catalog.dat");
+    strcat (ucacpath, "/data/catalog.dat");
 
-    /* Find length of Tycho 2 catalog file */
-    lfile = ty2size (ty2path);
+    /* Find length of UCAC catalog file */
+    lfile = ucacsize (ucacpath);
 
     /* Check for existence of catalog */
     if (lfile < 2) {
-	fprintf (stderr,"TY2OPEN: Binary catalog %s has no entries\n",ty2path);
-	free (ty2path);
+	fprintf (stderr,"UCACOPEN: Binary catalog %s has no entries\n",ucacpath);
+	free (ucacpath);
 	return (NULL);
 	}
 
-    /* Open Tycho 2 file */
-    if (!(fcat = fopen (ty2path, "r"))) {
-	fprintf (stderr,"TY2OPEN: Tycho 2 file %s cannot be read\n",ty2path);
-	free (ty2path);
+    /* Open UCAC file */
+    if (!(fcat = fopen (ucacpath, "r"))) {
+	fprintf (stderr,"UCACOPEN: UCAC file %s cannot be read\n",ucacpath);
+	free (ucacpath);
 	return (0);
 	}
 
-    /* Set Tycho 2 catalog header information */
+    /* Set UCAC catalog header information */
     sc = (struct StarCat *) calloc (1, sizeof (struct StarCat));
     sc->byteswapped = 0;
 
@@ -916,15 +908,15 @@ int	nread;	/* Number of star entries to read */
     sc->nstars = lfile / sc->nbent;
 
     /* Separate filename from pathname and save in structure */
-    ty2file = strrchr (ty2path,'/');
-    if (ty2file)
-	ty2file = ty2file + 1;
+    ucacfile = strrchr (ucacpath,'/');
+    if (ucacfile)
+	ucacfile = ucacfile + 1;
     else
-	ty2file = ty2path;
-    if (strlen (ty2file) < 24)
-	strcpy (sc->isfil, ty2file);
+	ucacfile = ucacpath;
+    if (strlen (ucacfile) < 24)
+	strcpy (sc->isfil, ucacfile);
     else
-	strncpy (sc->isfil, ty2file, 23);
+	strncpy (sc->isfil, ucacfile, 23);
 
     /* Set other catalog information in structure */
     sc->inform = 'J';
@@ -934,7 +926,7 @@ int	nread;	/* Number of star entries to read */
     sc->ifcat = fcat;
     sc->sptype = 2;
 
-    /* Tycho 2 stars are not RA-sorted within regions */
+    /* UCAC stars are not RA-sorted within regions */
     sc->rasorted = 0;
 
     /* Read part of catalog into a buffer */
@@ -945,27 +937,27 @@ int	nread;	/* Number of star entries to read */
 	fseek (fcat, lskip, 0);
 	nr = fread (sc->catdata, 1, lread, fcat);
 	if (nr < lread) {
-	    fprintf (stderr,"TY2OPEN: Read %d / %d bytes\n", nr, lread);
-            ty2close (sc);
-	    free (ty2path);
+	    fprintf (stderr,"UCACOPEN: Read %d / %d bytes\n", nr, lread);
+            ucacclose (sc);
+	    free (ucacpath);
             return (NULL);
             }
 	sc->catlast = sc->catdata + lread;
 	}
     else {
-	fprintf (stderr,"TY2OPEN: Cannot allocate %d-byte buffer.\n", lread);
-        ty2close (sc);
-	free (ty2path);
+	fprintf (stderr,"UCACOPEN: Cannot allocate %d-byte buffer.\n", lread);
+        ucacclose (sc);
+	free (ucacpath);
 	return (NULL);
 	}
     sc->istar = nstar;
-    free (ty2path);
+    free (ucacpath);
     return (sc);
 }
 
 
 void
-ty2close (sc)
+ucacclose (sc)
 struct StarCat *sc;	/* Star catalog descriptor */
 {
     fclose (sc->ifcat);
@@ -976,15 +968,15 @@ struct StarCat *sc;	/* Star catalog descriptor */
 }
 
 
-/* TY2STAR -- Get Tycho 2 catalog entry for one star;
+/* UCACSTAR -- Get UCAC catalog entry for one star;
               return 0 if successful */
 
 static int
-ty2star (sc, st, istar)
+ucacstar (sc, st, istar)
 
 struct StarCat *sc;	/* Star catalog descriptor */
 struct Star *st;	/* Current star entry */
-int istar;	/* Star sequence number in Tycho 2 catalog region file */
+int istar;	/* Star sequence number in UCAC catalog region file */
 {
     char *line;
     double regnum, starnum, multnum;
@@ -999,7 +991,7 @@ int istar;	/* Star sequence number in Tycho 2 catalog region file */
 
     /* Drop out if star number is too large */
     if (istar > sc->nstars) {
-	fprintf (stderr, "TY2STAR:  %d  > %d is not in catalog\n",
+	fprintf (stderr, "UCACSTAR:  %d  > %d is not in catalog\n",
 		 istar, sc->nstars);
 	return (3);
 	}
@@ -1008,49 +1000,38 @@ int istar;	/* Star sequence number in Tycho 2 catalog region file */
     if (istar > 0) {
 	line = sc->catdata + ((istar - sc->istar) * sc->nbent);
 	if (line >= sc->catlast) {
-	    fprintf (stderr, "TY2STAR:  star %d past buffer\n", istar);
+	    fprintf (stderr, "UCACSTAR:  star %d past buffer\n", istar);
 	    return (4);
 	    }
 	}
 
     /* Read catalog entry */
     if (sc->nbent > sc->catlast-line) {
-	fprintf (stderr, "TY2STAR:  %d / %d bytes read\n",
+	fprintf (stderr, "UCACSTAR:  %d / %d bytes read\n",
 		 sc->catlast - line, sc->nbent);
 	return (5);
 	}
 
-    regnum = atof (line);
-    starnum = atof (line+5);
-    multnum = atof (line+11);
-    st->num = regnum + (0.0001 * starnum) + (0.00001 * multnum);
+    st->num = regnum + (0.000001 * (double) istar);
 
     /* Read position in degrees */
-    st->ra = atof (line+15);
-    st->dec = atof (line+28);
+    st->ra = atof (line) / 3600000.0;
+    st->dec = (atof (line+10) / 3600000.0) - 90.0;
 
     /* Read proper motion and convert it to to degrees/year */
     st->rapm = (atof (line+41) / 3600000.0) / cosdeg (st->dec);
-    st->decpm = atof (line+49) / 3600000.0;
-
-    /* Set B magnitude */
-    st->xmag[1] = atof (line+110);
+    st->decpm = atof (line+48) / 3600000.0;
 
     /* Set V magnitude */
-    st->xmag[0] = atof (line+123);
-    st->isp[0] = (char)0;
-    st->isp[1] = (char)0;
-
-    /* Set main sequence spectral type
-    bv2sp (NULL, st->xmag[1], st->xmag[0], st->isp); */
+    st->xmag[0] = atof (line+20) * 0.01;
 
     return (0);
 }
 
-/* TY2SIZE -- return size of Tycho 2 catalog file in bytes */
+/* UCACSIZE -- return size of UCAC catalog file in bytes */
 
 static int
-ty2size (filename)
+ucacsize (filename)
 
 char	*filename;	/* Name of file for which to find size */
 {
@@ -1076,31 +1057,6 @@ char	*filename;	/* Name of file for which to find size */
 }
 
 
-/* Jun  2 2000	New program, based on actread.c and gscread.c
- * Jun 13 2000	Correctly order magnitudes: 0=V, 1=B
- * Jun 26 2000	Add coordinate system to SearchLim() arguments
- * Sep 25 2000	Set sc->sptype to 2 to indicate presence of spectral type
- * Nov 29 2000	Add option to read catalog using HTTP
- * Dec 11 2000	Accept catalog search engine URL in ty2cd[]
- *
- * Jan 11 2001	All printing goes to stderr
- * Jun 14 2001	Drop spectral type approximation
- * Jun 15 2001	In ty2reg(), add 0.1 to tabulated region limits
- * Jun 19 2001	When no region found, print RA and Dec limits used
- * Jun 27 2001	Allocate gdist only if needed
- * Sep 11 2001	Change to single magnitude argeument
- * Sep 11 2001	Add sort magnitude argument to uacread()
- * Nov 20 2001	Change cos(degrad()) to cosdeg()
- * Dec  3 2001	Change default directory to /data/astrocat/tycho2
- *
- * Apr  3 2002	Fix bug so magnitude filtering is actually done (all passed)
- * Apr  8 2002	Fix uninitialized variable
- * Apr 10 2002	Separate catalog and output sort mags (in:vb out: bv)
- * Oct  3 2002	Print stars as found in ty2read() if nstarmax < 1
- *
- * Feb  3 2003	Include math.h because of fabs()
- * Feb 27 2003	Add 60 arcsec/century to margins of search box to get moving stars
- * Mar 11 2003	Fix position limit testing
- * Apr  3 2003	Drop unused variables after lint
+/* Apr 10 2003	New subroutines, based on ty2read.c
  * Apr 14 2003	Explicitly get revision date if nstarmax < 1
  */

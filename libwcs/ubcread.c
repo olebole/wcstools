@@ -1,5 +1,5 @@
 /*** File libwcs/ubcread.c
- *** March 21, 2003
+ *** April 15, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2003
@@ -225,6 +225,8 @@ int	nlog;		/* Logging interval */
 
     /* Write header if printing star entries as found */
     if (nstarmax < 1) {
+	char *revmessage;
+	revmessage = getrevmsg();
 	title = CatName (ucat, refcatname);
 	printf ("catalog	%s\n", title);
 	free ((char *)title);
@@ -243,6 +245,7 @@ int	nlog;		/* Logging interval */
 	printf ("radecsys	%s\n", cstr);
 	printf ("equinox	%.3f\n", eqout);
 	printf ("epoch  %.3f\n", epout);
+	printf ("program        scat %s\n", revmessage);
 	CatID (catid, ucat);
 	printf ("%s	ra          	dec         	", catid);
 	printf ("magb1 	magr1 	magb1 	magb2 	magn  	ura  	udec  	");
@@ -365,7 +368,7 @@ int	nlog;		/* Logging interval */
 					&ra,&dec,epout);
 				}
 			    else {
-				rapm0 = ubcpra (star.pm);
+				rapm0 = ubcpra (star.pm) / cos (degrad (dec));
 				decpm0 = ubcpdec (star.pm);
 				rapm = rapm0;
 				decpm = decpm0;
@@ -1072,4 +1075,5 @@ int nbytes = nbent; /* Number of bytes to reverse */
 /* Jan 30 2003	New subroutine based on ubcread.c
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  * Mar 21 2003	Improve search limit test by always using wcsdist()
+ * Apr 15 2003	Explicitly get revision date if nstarmax < 1
  */

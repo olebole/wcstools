@@ -74,6 +74,7 @@ extern void setsortmag();
 extern void setparm();
 extern void setmirror();
 extern void setrotate();
+extern void setrevmsg();
 
 main (ac, av)
 int ac;
@@ -937,4 +938,5 @@ char	*name;		/* FITS or IRAF image filename */
  * Jul 31 2002	Add iteration with more parameters fit
  *
  * Jan 23 2003	Add USNO-B1.0 Catalog
+ * Apr 13 2003	Set revision message for subroutines using setrevmsg()
  */

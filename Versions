@@ -1,3 +1,9 @@
+Version 3.3.3 (April 15, 2003)
+scat, imcat, immatch, imwcs: Set library revision message using setrevmsg()
+catutil.c: Add new subroutines setrevmsg() and getrevmsg() to use constant revmessage
+*read.c: Get version/date string from getrevmsg() instead of main constant RevMsg
+ubcread.c: Fix proper motion bug; RA pm is now multiplied by cos(dec)
+
 Version 3.3.2 (April 7, 2003)
 xy2sky,sky2xy: Add -o option to print only RA or Dec or x or y
 wcsinit: Add distortion initialization to wcsinit()

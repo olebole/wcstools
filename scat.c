@@ -1,5 +1,5 @@
 /* File scat.c
- * March 25, 2003
+ * April 13, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -111,6 +111,7 @@ static int minpmqual = 0;	/* Minimum USNO-B1.0 proper motion quality */
 static int rdra = 0;		/* If 1, dra is in ra units, not sky units */
 extern void setminpmqual();
 extern void setminid();
+extern void setrevmsg();
 
 main (ac, av)
 int ac;
@@ -3984,4 +3985,5 @@ PrintGSClass ()
  * Mar 10 2003	Add letter or number of magnitude if sorted
  * Mar 25 2003	Output coordinate system can be different from search system
  * Mar 25 2003	Fix headings print search, catalog, and output coordinates
+ * Apr 13 2003	Set revision message for subroutines using setrevmsg()
  */
