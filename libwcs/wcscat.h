@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * July 26, 1999
+ * September 13, 1999
  * By Doug Mink, SAO
  */
 
@@ -48,6 +48,13 @@ int tabrnum();		/* Read sources from tab table catalog */
 int binrnum();		/* Read sources from SAO TDC binary format catalog */
 int catrnum();		/* Read sources from SAO TDC ASCII format catalog */
 int actrnum();		/* Read sources from USNO ACT Catalog */
+void setgsclass();	/* Set GSC object class */
+void setuplate();	/* Set USNO catalog plate number to search */
+int getuplate();	/* Get USNO catalog plate number to search */
+void settabkey();	/* Set tab table keyword to read for object */
+int catstar();		/* Read one star entry from ASCII catalog, 0 if OK */
+int binstar();		/* Read one star entry from binary catalog, 0 if OK */
+int tabstar();		/* Read one star entry from tab table catalog, 0 if OK */
 
 /* Subroutines for sorting tables of star positions and magnitudes */
 void XSortStars();
@@ -120,6 +127,7 @@ struct StarCat {
     int entepoch;	/* Entry number for epoch of observation */
     int entname;	/* Entry number for object name */
     int entprop;	/* Entry number for proper motion */
+    int entkey;		/* Entry number for additional keyword */
 };
 
 /* Subroutines for reading headers of TDC binary and ASCII catalogs */
@@ -226,4 +234,6 @@ double ep2jd();	/* fractional year to Julian Date */
  * Jul 26 1999	Add Yale Bright Star Catalog
  * Aug 16 1999	Add RefLim() to get converted search coordinates right
  * Aug 25 1999	Add ACT catalog
+ * Sep 10 1999	Move special case setting from argument list to subroutines
+ * Sep 13 1999	Add subroutines to access data structure for single stars
  */

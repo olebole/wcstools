@@ -1,5 +1,5 @@
 /*** File libwcs/agascread.c
- *** August 25, 1999
+ *** September 16, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -14,23 +14,24 @@ char cds[64]="/data/gsc2";	/* pathname of southern hemisphere AGASC CDROM */
 
 static void agascpath();
 static int agascreg();
+static int classd=-1;	/* Desired object class (-1=all, 0=stars, 3=nonstars) */
 
 /* AGASCREAD -- Read AXAF Guide and Acquisition Star Catalog stars from CDROM */
 
 int
-agascread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,classd,nstarmax,
-	 gnum,gra,gdec,gmag,gtype,nlog)
+agascread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,
+	   nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+int	distsort;	/* 1 to sort stars by distance from center */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
-int	classd;		/* Desired object class (-1=all, 0=stars, 3=nonstars) */
 int	nstarmax;	/* Maximum number of stars to be returned */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
@@ -175,7 +176,7 @@ int	nlog;		/* 1 for diagnostics */
 		    break;
 		    }
 
-	 /* Extract selected fields */
+	     /* Extract selected fields */
 
 		/* Star number within region */
 		num0 = ftgeti4 (entry, &kw[0]);
@@ -210,12 +211,12 @@ int	nlog;		/* 1 for diagnostics */
 		dec = decsum / perrsum;
 		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 		mag = msum / merrsum;
-		if (drad > 0)
+		if (drad > 0 || distsort)
 		    dist = wcsdist (cra,cdec,ra,dec);
 		else
 		    dist = 0.0;
 
-	/* Check magnitude and position limits */
+	    /* Check magnitude and position limits */
 		if (((mag1 != mag2 && (mag >= mag1 && mag <= mag2)) ||
 		    (mag1 == mag2)) &&
 		    ((wrap && (ra >= ra1 || ra <= ra2)) ||
@@ -225,7 +226,7 @@ int	nlog;		/* 1 for diagnostics */
 
 		    xnum = (double)rnum + (0.0001 * (double) num);
 
-	/* Save star position in table */
+		/* Save star position in table */
 		    if (nstar < nstarmax) {
 			gnum[nstar] = xnum;
 			gra[nstar] = ra;
@@ -245,25 +246,27 @@ int	nlog;		/* 1 for diagnostics */
 
 		/* If too many stars and radial search,
 		   replace furthest star */
-		    else if (drad > 0 && dist < maxdist) {
-			gnum[farstar] = xnum;
-			gra[farstar] = ra;
-			gdec[farstar] = dec;
-			gmag[farstar] = mag;
-			gtype[farstar] = class;
-			gdist[farstar] = dist;
-			maxdist = 0.0;
+		    else if (distsort) {
+			if (dist < maxdist) {
+			    gnum[farstar] = xnum;
+			    gra[farstar] = ra;
+			    gdec[farstar] = dec;
+			    gmag[farstar] = mag;
+			    gtype[farstar] = class;
+			    gdist[farstar] = dist;
 
-		    /* Find new farthest star */
-			for (i = 0; i < nstarmax; i++) {
-			    if (gdist[i] > maxdist) {
-				maxdist = gdist[i];
-				farstar = i;
+			/* Find new farthest star */
+			    maxdist = 0.0;
+			    for (i = 0; i < nstarmax; i++) {
+				if (gdist[i] > maxdist) {
+				    maxdist = gdist[i];
+				    farstar = i;
+				    }
 				}
 			    }
 			}
 
-		/* If too many stars, replace faintest star */
+		/* Else if too many stars, replace faintest star */
 		    else if (mag < faintmag) {
 			gnum[faintstar] = xnum;
 			gra[faintstar] = ra;
@@ -288,7 +291,7 @@ int	nlog;		/* 1 for diagnostics */
 				rnum,num,ra,dec,cstr,mag,class,npos);
 		    }
 
-	/* Reset star position for averaging */
+	    /* Reset star position for averaging */
 		rasum = 0.0;
 		decsum = 0.0;
 		msum = 0.0;
@@ -318,16 +321,15 @@ int	nlog;		/* 1 for diagnostics */
 		npos = npos + 1;
 		}
 
-/* Log operation */
-
+	/* Log operation */
 	    if (nlog > 0 && itable%nlog == 0)
 		fprintf (stderr,"AGASCREAD: %4d / %4d: %5d / %5d  / %5d sources, region %4d.%04d\r",
 			 ireg,nreg,jstar,itable,ntable,rlist[ireg],num0);
 
-/* End of region */
+	    /* End of region */
 	    }
 
-/* Close region input file */
+	/* Close region input file */
 	(void) close (ift);
 	itot = itot + itable;
 	if (nlog > 0)
@@ -335,12 +337,14 @@ int	nlog;		/* 1 for diagnostics */
 		     ireg+1,nreg,jstar,itable,ntable,rlist[ireg]);
 	}
 
-/* close output file and summarize transfer */
+    /* Close output file and summarize transfer */
     if (nlog > 0) {
 	if (nreg > 1)
-	    fprintf (stderr,"AGASCREAD: %d regions: %d / %d found\n",nreg,nstar,itot);
+	    fprintf (stderr,"AGASCREAD: %d regions: %d / %d found\n",
+		     nreg,nstar,itot);
 	else
-	    fprintf (stderr,"AGASCREAD: 1 region: %d / %d found\n",nstar,itable);
+	    fprintf (stderr,"AGASCREAD: 1 region: %d / %d found\n",
+		     nstar,itable);
 	if (nstar > nstarmax)
 	    fprintf (stderr,"AGASCREAD: %d stars found; only %d returned\n",
 		     nstar,nstarmax);
@@ -898,4 +902,6 @@ char *path;	/* Pathname of AGASC region FITS file */
  * Aug 16 1999	Add RefLim() to get converted search coordinates right
  * Aug 16 1999  Fix bug to fix failure to search across 0:00 RA
  * Aug 25 1999	Return real number of stars from agascread()
+ * Sep 16 1999	Fix bug which didn't always return closest stars
+ * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** August 25, 1999
+ *** September 16, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -17,10 +17,15 @@ static int gscreg();
 static char *table = NULL;	/* FITS table buffer */
 static int ltab;		/* Length of FITS table buffer */
 
+static int classd; /* Desired object class (-1=all, 0=stars, 3=nonstars) */
+void setgsclass (class)
+int class;
+{ classd = class; return; }
+
 /* GSCREAD -- Read HST Guide Star Catalog stars from CDROM */
 
 int
-gscread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,classd,nstarmax,
+gscread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,nstarmax,
 	 gnum,gra,gdec,gmag,gtype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -28,11 +33,11 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+int	distsort;	/* 1 to sort stars by distance from center */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
-int	classd;		/* Desired object class (-1=all, 0=stars, 3=nonstars) */
 int	nstarmax;	/* Maximum number of stars to be returned */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
@@ -213,7 +218,7 @@ int	nlog;		/* 1 for diagnostics */
 		dec = decsum / perrsum;
 		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 		mag = msum / merrsum;
-		if (drad > 0)
+		if (drad > 0 || distsort)
 		    dist = wcsdist (cra,cdec,ra,dec);
 		else
 		    dist = 0.0;
@@ -246,22 +251,24 @@ int	nlog;		/* 1 for diagnostics */
 			    }
 			}
 
-		/* If too many stars and radial search,
+		/* If too many stars and distance sorting,
 		   replace furthest star */
-		    else if (drad > 0 && dist < maxdist) {
-			gnum[farstar] = xnum;
-			gra[farstar] = ra;
-			gdec[farstar] = dec;
-			gmag[farstar] = mag;
-			gtype[farstar] = class;
-			gdist[farstar] = dist;
-			maxdist = 0.0;
+		    else if (distsort) {
+			if (dist < maxdist) {
+			    gnum[farstar] = xnum;
+			    gra[farstar] = ra;
+			    gdec[farstar] = dec;
+			    gmag[farstar] = mag;
+			    gtype[farstar] = class;
+			    gdist[farstar] = dist;
+			    maxdist = 0.0;
 
-		    /* Find new farthest star */
-			for (i = 0; i < nstarmax; i++) {
-			    if (gdist[i] > maxdist) {
-				maxdist = gdist[i];
-				farstar = i;
+			/* Find new farthest star */
+			    for (i = 0; i < nstarmax; i++) {
+				if (gdist[i] > maxdist) {
+				    maxdist = gdist[i];
+				    farstar = i;
+				    }
 				}
 			    }
 			}
@@ -368,10 +375,10 @@ double	*gmag;		/* Array of magnitudes (returned) */
 int	*gtype;		/* Array of object types (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
-    char *table;	/* FITS table */
-    char inpath[64];	/* Pathname for input FITS table file */
-    char entry[100];	/* Buffer for FITS table row */
-    int class, class0;	/* Object class (0>star, 3>other) */
+    char *table;		/* FITS table */
+    char inpath[64];		/* Pathname for input FITS table file */
+    char entry[100];		/* Buffer for FITS table row */
+    int class, class0;		/* Object class (0>star, 3>other) */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
@@ -932,4 +939,7 @@ char *path;	/* Pathname of GSC region FITS file */
  * Aug 16 1999	Add RefLim() to get converted search coordinates right
  * Aug 16 1999	Fix bug to fix failure to search across 0:00 RA
  * Aug 25 1999	Return real number of stars from gscread()
+ * Sep 10 1999	Set class selection with subroutine, not argument
+ * Sep 16 1999	Fix bug which didn't always return closest stars
+ * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
  */

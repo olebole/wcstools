@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** August 25, 1999
+ *** September 16, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Subroutines to read from the USNO A and SA catalogs
@@ -78,10 +78,17 @@ static int uacpath();
 static int uacstar();
 static void uacswap();
 
-/* USACREAD -- Read USNO SA-1.0 Catalog stars from CDROM */
+static int xplate = 0;	/* If nonzero, use objects only from this plate */
+void setuplate (xplate0)
+int xplate0;
+{ xplate = xplate0; return; }
+int getuplate ()
+{ return (xplate); }
+
+/* USACREAD -- Read USNO SA Catalog stars from CDROM */
 
 int
-usaread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,xplate,nstarmax,
+usaread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,nstarmax,
 	 unum,ura,udec,umag,umagb,uplate,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -89,11 +96,11 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+int	distsort;	/* 1 to sort stars by distance from center */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
-int	xplate;		/* If nonzero, use objects only from this plate */
 int	nstarmax;	/* Maximum number of stars to be returned */
 double	*unum;		/* Array of UA numbers (returned) */
 double	*ura;		/* Array of right ascensions (returned) */
@@ -107,8 +114,9 @@ int	nlog;		/* Logging interval */
     int uacread();
 
     ucat = USNOSA10;
-    i = uacread ("usac",cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-		 xplate,nstarmax,unum,ura,udec,umag,umagb,uplate,nlog);
+    i = uacread ("usac",distsort,cra,cdec,dra,ddec,drad,
+		 sysout,eqout,epout,mag1,mag2,nstarmax,
+		 unum,ura,udec,umag,umagb,uplate,nlog);
     ucat = USNOA10;
     return (i);
 }
@@ -116,10 +124,11 @@ int	nlog;		/* Logging interval */
 /* UACREAD -- Read USNO A or SA Catalog stars from CDROM */
 
 int
-uacread (refcatname,cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-	 xplate,nstarmax,unum,ura,udec,umag,umagb,uplate,nlog)
+uacread (refcatname,distsort,cra,cdec,dra,ddec,drad,sysout,eqout,epout,
+	 mag1,mag2,nstarmax,unum,ura,udec,umag,umagb,uplate,nlog)
 
 char	*refcatname;	/* Name of catalog (UAC, USAC, UAC2, USAC2) */
+int	distsort;	/* 1 to sort stars by distance from center */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
@@ -129,7 +138,6 @@ int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
-int	xplate;		/* If nonzero, use objects only from this plate */
 int	nstarmax;	/* Maximum number of stars to be returned */
 double	*unum;		/* Array of UA numbers (returned) */
 double	*ura;		/* Array of right ascensions (returned) */
@@ -312,7 +320,7 @@ int	nlog;		/* Logging interval */
 			    ra = uacra (star.rasec);
 			    dec = uacdec (star.decsec);
 			    wcscon (sysref,sysout,eqref,eqout,&ra,&dec,epout);
-			    if (drad > 0)
+			    if (distsort || drad > 0)
 				dist = wcsdist (cra,cdec,ra,dec);
 			    else
 				dist = 0.0;
@@ -343,23 +351,25 @@ int	nlog;		/* Logging interval */
 					}
 				    }
 
-			    /* If too many stars and radial search,
+			    /* If too many stars and distance sorting,
 				replace furthest star */
-				else if (drad > 0 && dist < maxdist) {
-				    unum[farstar] = num;
-				    ura[farstar] = ra;
-				    udec[farstar] = dec;
-				    umag[farstar] = mag;
-				    umagb[farstar] = magb;
-				    uplate[farstar] = plate;
-				    udist[farstar] = dist;
-				    maxdist = 0.0;
+				else if (distsort) {
+				    if (dist < maxdist) {
+					unum[farstar] = num;
+					ura[farstar] = ra;
+					udec[farstar] = dec;
+					umag[farstar] = mag;
+					umagb[farstar] = magb;
+					uplate[farstar] = plate;
+					udist[farstar] = dist;
 
-			    /* Find new farthest star */
-				    for (i = 0; i < nstarmax; i++) {
-					if (udist[i] > maxdist) {
-					    maxdist = udist[i];
-					    farstar = i;
+				    /* Find new farthest star */
+					maxdist = 0.0;
+					for (i = 0; i < nstarmax; i++) {
+					    if (udist[i] > maxdist) {
+						maxdist = udist[i];
+						farstar = i;
+						}
 					    }
 					}
 				    }
@@ -373,9 +383,9 @@ int	nlog;		/* Logging interval */
 				    umagb[faintstar] = magb;
 				    uplate[faintstar] = plate;
 				    udist[faintstar] = dist;
-				    faintmag = 0.0;
 
 			    /* Find new faintest star */
+				    faintmag = 0.0;
 				    for (i = 0; i < nstarmax; i++) {
 					if (umag[i] > faintmag) {
 					    faintmag = umag[i];
@@ -1005,4 +1015,7 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Aug 16 1999	Add RefLim() to get converted search coordinates right
  * Aug 16 1999  Fix bug to fix failure to search across 0:00 RA
  * Aug 25 1999  Return real number of stars from uacread()
+ * Sep 10 1999	Set plate selection with subroutine, not argument
+ * Sep 16 1999	Fix bug which didn't always return closest stars
+ * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
  */

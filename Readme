@@ -6,7 +6,7 @@ image, using specific keywords in the image header which relate pixel
 position within the image to position on the sky.  Auxillary programs
 search star catalogs and manipulate images.
 
-This is version 2.6.4 of the WCSTools package developed by Doug Mink
+This is version 2.6.5 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 
@@ -27,7 +27,27 @@ World Wide Web at
 
         http://tdc-www.harvard.edu/software/wcstools/
 
-Brief descriptions of the programs follow:
+References
+
+If the WCSTools package has proven useful in your work, please reference
+at least one of the following papers. If you want to find out which is
+most applicable, the full texts are available on the WCSTools web site.
+
+The paper presented at ADASS in 1996 is the best published description
+of the IMWCS world coordinate system fitting program: 
+     "WCSTools: Putting Image World Coordinate Systems to Use",
+     Douglas J. Mink, 1997, in Astronomical Data Analysis Software and
+     Systems VI, A.S.P. Conference Series, Vol. 125, Gareth Hunt and
+     H. E. Payne, eds., pp.  249-252. 
+
+The 1998 ADASS paper is the best published description of the other tools
+in the WCSTools package, including SAOimage when used for WCS work: 
+     "WCSTools: An Image Astrometry Toolkit",
+     Douglas J. Mink (1998), in Astronomical Data Analysis Software and
+     Systems VIII, A.S.P. Conference Series, Vol. 172, 1999, Dave Mehringer,
+     Ray Plante, Doug Roberts, eds., pp.  498-501. 
+
+Program Descriptions
 
 addpix	Add a constant value(s) to specified pixel(s)
 
@@ -98,3 +118,5 @@ wcshead	Print basic world coordinate system information on one line per image
 
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
+
+-Doug Mink, SAO, 14 September 1999

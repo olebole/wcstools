@@ -1,5 +1,5 @@
 /* File catbin.c
- * January 19, 1999
+ * September 10, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -35,8 +35,6 @@ static int degout0 = 0;		/* 1 if degrees output instead of hms */
 static int syscoor = -1;	/* Input search coordinate system */
 static int nstars = 0;		/* Number of brightest stars to list */
 static int debug = 0;		/* True for extra information */
-static int refcat = GSC;	/* reference catalog switch */
-static char refcatname[32]="GSC";	/* reference catalog name */
 static int refcat2 = 0;		/* Second reference catalog switch */
 static char *keyword = NULL;	/* Column to add to tab table output */
 static int bincat = 0;		/* Flag for specific binary catalog */
@@ -53,7 +51,9 @@ char **av;
     int i, nc;
     double *snum;
     snum = NULL;
+    char *refcatname;	/* Input catalog name */
 
+    refcatname = NULL;
     if (ac == 1)
         usage ();
 
@@ -86,7 +86,7 @@ char **av;
 	    case 'c':       /* Set input catalog */
 		if (ac < 2)
 		    usage();
-		strcpy (refcatname, *++av);
+		refcatname = *++av;
 		refcat = -1;
 		ac--;
 		break;
@@ -104,13 +104,16 @@ char **av;
 		break;
 
 	    default:
-		usage ();
+		if (refcatname) {
+		    outname = *++av;
+		    BinCat (refcatname);
+		    }
+		else
+		    refcatname = *++av;
 		break;
 	    }
 	    }
 	}
-
-    BinCat (refcatname);
 
     return (0);
 }
@@ -120,7 +123,7 @@ usage ()
 {
     if (version)
 	exit (-1);
-    fprintf (stderr,"Usage: [-bstvw] [-m [mag1] mag2] [-e sys] [-n num] [-r arcsec] [-b][-j] ra dec\n");
+    fprintf (stderr,"Usage: [-bjtvw] [-m [mag1] mag2] [-e sys] [-n num] [-r arcsec] [-b][-j] ra dec\n");
     fprintf(stderr,"  -b: Output B1950 (FK4) coordinates\n");
     fprintf(stderr,"  -c: Input catalog\n");
     fprintf(stderr,"  -j: Output J2000 (FK5) coordinates\n");
@@ -146,6 +149,8 @@ char *refcatname;	/* Name of catalog to translate */
     char rastr[32], decstr[32];	/* coordinate strings */
     double drad, dra, ddec, ra1, dec1, mag1, mag2;
     double gdist;
+    char **gobj;	/* Catalog star object names */
+    char **gobj1;	/* Catalog star object names */
     double mag;
     int nlog;
     char headline[160];
@@ -156,6 +161,7 @@ char *refcatname;	/* Name of catalog to translate */
     char temp[80];
     int ntab;
     int tabcat = 0;
+    int refcat = 0;	/* reference catalog switch */
 
     if (verbose || printhead) {
 	}
@@ -226,86 +232,53 @@ char *refcatname;	/* Name of catalog to translate */
     /* Find stars specified by number */
     if (snum != NULL) {
 	nbytes = nfind * sizeof (double);
-	if (!(gnum = (double *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gnum\n", nbytes);
+	if (!(gnum = (double *) calloc (nfind, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gnum\n",
+		     nfind*sizeof(double));
 	else {
 	    for (i = 0; i < nfind; i++)
 		gnum[i] = snum[i];
 	    }
-	if (!(gra = (double *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gra\n", nbytes);
-	if (!(gdec = (double *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gdec\n", nbytes);
-	if (!(gm = (double *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gm\n", nbytes);
-	if (!(gmb = (double *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gmb\n", nbytes);
-	if (!(gc = (int *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gc\n", nbytes);
-	if (!(gx = (double *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gx\n", nbytes);
-	if (!(gy = (double *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gy\n", nbytes);
-	if (!gnum || !gra || !gdec || !gm || !gmb || !gc || !gx || !gy) {
+	if (!(gra = (double *) calloc (nfind, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gra\n",
+		     nfind*sizeof(double));
+	if (!(gdec = (double *) calloc (nfind, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gdec\n",
+		     nfind*sizeof(double));
+	if (!(gm = (double *) calloc (nfind, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gm\n",
+		     nfind*sizeof(double));
+	if (!(gmb = (double *) calloc (nfind, sizeof (double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gmb\n",
+		     nfind*sizeof(double));
+	if (!(gc = (int *) calloc (nfind, sizeof(int))))
+	    fprintf (stderr, "Could not calloc %d bytes for gc\n",
+		     nfind*sizeof(int));
+	if (!(gx = (double *) calloc (nfind, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gx\n",
+		     nfind*sizeof(double));
+	if (!(gy = (double *) calloc (nfind, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gy\n",
+		     nfind*sizeof(double));
+	if (!(gobj = (char **) calloc (nfind, sizeof (void *))))
+	    fprintf (stderr, "Could not calloc %d bytes for obj\n", nbytes);
+		     nfind*sizeof(char *));
+	if (!gnum || !gra || !gdec || !gm || !gmb || !gc || !gobj) {
 	    if (gm) free ((char *)gm);
 	    if (gmb) free ((char *)gmb);
 	    if (gra) free ((char *)gra);
 	    if (gdec) free ((char *)gdec);
 	    if (gnum) free ((char *)gnum);
 	    if (gc) free ((char *)gc);
-	    if (gx) free ((char *)gx);
-	    if (gy) free ((char *)gy);
+	    if (gobj) free ((char *)gobj);
 	    return (0);
 	    }
 	wfile = 0;
 
 	/* Find the specified catalog stars */
-	if (refcat == GSC)
-	    nbg = gscrnum (nfind,sysout,eqout,epout,
-			   gnum,gra,gdec,gm,gc,nlog);
-	else if (refcat == USAC)
-	    nbg = usarnum (nfind,sysout,eqout,epout,
-			   gnum,gra,gdec,gm,gmb,gc,nlog);
-	else if (refcat == UAC)
-	    nbg = uacrnum (nfind,sysout,eqout,epout,
-			   gnum,gra,gdec,gm,gmb,gc,nlog);
-	else if (refcat == UJC)
-	    nbg = ujcrnum (nfind,sysout,eqout,epout,
-			   gnum,gra,gdec,gm,gc,nlog);
-	else if (refcat == SAO)
-	    nbg = binrnum ("SAO",nfind,sysout,eqout,epout,
-			   gnum,gra,gdec,gm,gmb,gc,nlog);
-	else if (refcat == PPM)
-	    nbg = binrnum ("PPM",nfind,sysout,eqout,epout,
-			   gnum,gra,gdec,gm,gmb,gc,nlog);
-	else if (refcat == IRAS)
-	    nbg = binrnum ("IRAS",nfind,sysout,eqout,epout,
-			   gnum,gra,gdec,gm,gmb,gc,nlog);
-	else if (refcat == TYCHO)
-	    nbg = binrnum ("tycho",nfind,sysout,eqout,epout,
-			   gnum,gra,gdec,gm,gmb,gc,nlog);
-	else if (tabcat)
-	    nbg = tabrnum (refcatname,nfind,sysout,eqout,epout,
-			   gnum,gra,gdec,gm,gc,debug);
-	else if (bincat) {
-	    nbg = binrnum (refcatname,nfind,sysout,eqout,epout,
-			   gnum,gra,gdec,gm,gmb,gc,nlog);
-	    nbytes = nbg * sizeof (char *);
-	    if (!(gobj = malloc (nbytes)))
-		fprintf (stderr, "Could not malloc %d bytes for obj\n", nbytes);
-	    else
-		binrobj (refcatname, nfind, gnum, gobj);
-	    }
-	else {
-	    nbg = catrnum (refcatname,nfind,sysout,eqout,epout,
-			   gnum,gra,gdec,gm,debug);
-	    nbytes = nbg * sizeof (char *);
-	    if (!(gobj = malloc (nbytes)))
-		fprintf (stderr, "Could not malloc %d bytes for obj\n", nbytes);
-	    else
-		catrobj (refcatname, nfind, gnum, gobj);
-	    }
-	    
+	nbg = catrnum (refcatname, refcat, nfind,sysout,eqout,epout,
+		       gnum,gra,gdec,gm,gmb,gc,gobj,nlog);
+
 	for (i = 0; i < nbg; i++ ) {
 	    gx[i] = 0.0;
 	    gy[i] = 1.0;
@@ -365,48 +338,24 @@ char *refcatname;	/* Name of catalog to translate */
 	if (!(gc = (int *) calloc (ngmax, sizeof(int))))
 	    fprintf (stderr, "Could not calloc %d bytes for gc\n",
 		     ngmax*sizeof(int));
-	if (!gnum || !gra || !gdec || !gm || !gmb || !gc) {
+	if (!(gobj = (char **) calloc (nfind, sizeof (void *))))
+		     ngmax*sizeof(char *));
+	    fprintf (stderr, "Could not calloc %d bytes for gobj\n",
+	if (!gnum || !gra || !gdec || !gm || !gmb || !gc || !gobj) {
 	    if (gm) free ((char *)gm);
 	    if (gmb) free ((char *)gmb);
 	    if (gra) free ((char *)gra);
 	    if (gdec) free ((char *)gdec);
 	    if (gnum) free ((char *)gnum);
 	    if (gc) free ((char *)gc);
+	    if (gobj) free ((char *)gobj);
 	    return (0);
 	    }
 
 	/* Find the nearby reference stars, in ra/dec */
-	if (refcat == GSC)
-	    ng = gscread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-			  classd,ngmax,gnum,gra,gdec,gm,gc,nlog);
-	else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
-		 refcat == UAC  || refcat == UA1  || refcat == UA2)
-	    ng = uacread (refcatname,cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-			  mag1,mag2,uplate,ngmax,gnum,gra,gdec,gm,gmb,gc,nlog);
-	else if (refcat == UJC)
-	    ng = ujcread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-			  uplate,ngmax,gnum,gra,gdec,gm,gc,nlog);
-	else if (refcat == SAO)
-	    ng = binread ("SAOra",cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-			  mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,nlog);
-	else if (refcat == PPM)
-	    ng = binread ("PPMra",cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-			  mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,nlog);
-	else if (refcat == IRAS)
-	    ng = binread ("IRAS",cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-			  mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,nlog);
-	else if (refcat == TYCHO)
-	    ng = binread ("tychora",cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-			  mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,nlog);
-	else if (bincat)
-	    ng = binread (refcatname,cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-			  mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,nlog);
-	else if (tabcat)
-	    ng = tabread (refcatname,cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-			  mag1,mag2,ngmax,gnum,gra,gdec,gm,gc,nlog);
-	else
-	    ng = catread (refcatname,cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-			  mag1,mag2,ngmax,gnum,gra,gdec,gm,nlog);
+	ng = catread (refcatname, refcat
+		      cra,cdec,dra,ddec,drad,sysout,eqout,epout,
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,gobj,nlog);
 
 	if (!(gx = (double *) malloc (nbytes)))
 	    fprintf (stderr, "Could not malloc %d bytes for gx\n", nbytes);
@@ -476,17 +425,6 @@ char *refcatname;	/* Name of catalog to translate */
 		    printf ("%d %s", ng, title);
 		printf ("\n");
 		}
-	    }
-
-	/* Get object names from ASCII or binary catalog */
-	if (refcat < 0 && !tabcat) {
-	    nbytes = nbg * sizeof (char *);
-	    if (!(gobj = malloc (nbytes)))
-		fprintf (stderr, "Could not malloc %d bytes for obj\n", nbytes);
-	    else if (bincat)
-		binrobj (refcatname, nbg, gnum, gobj);
-	    else
-		catrobj (refcatname, nbg, gnum, gobj);
 	    }
 
 	/* Open result catalog file */
@@ -1041,4 +979,5 @@ double	drad;
  * Nov 30 1998	Add version and help commands for consistency
 
  * Jan 19 1999	Update USNO A and SA catalog reading
+ * Sep 10 1999	Do all searches through catread() and catrnum()
  */

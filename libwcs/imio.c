@@ -1,6 +1,6 @@
 /*** File wcslib/imio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** April 29, 1999
+ *** September 14, 1999
 
  * Module:      imio.c (image pixel manipulation)
  * Purpose:     Read and write pixels from arbitrary data type 2D arrays
@@ -496,8 +496,10 @@ double	*dpix;		/* Vector of pixels to copy */
     pix2 = pix1 + npix;
 
     if (bzero != 0.0 || bscale != 1.0) {
-	for (ipix = pix1; ipix < pix2; ipix++)
-	    *dp = (*dp++ - bzero) / bscale;
+	for (ipix = pix1; ipix < pix2; ipix++) {
+	    *dp = (*dp - bzero) / bscale;
+	    dp++;
+	    }
 	dp = dpix;
 	}
 
@@ -709,4 +711,5 @@ imswapped ()
  *
  * Apr 29 1999	Add scaling to getpix, putpix, getvec, and putvec
  * Apr 29 1999	Fix bug in getvec in dealing with 1-byte data
+ * Sep 14 1999	Change dp incrementing so it works on Alpha compiler
  */

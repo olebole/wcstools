@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** August 25, 1999
+ *** September 16, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -24,7 +24,7 @@ static int actsize();
 /* ACTREAD -- Read USNO ACT Star Catalog stars from CDROM */
 
 int
-actread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,nstarmax,
+actread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,nstarmax,
 	 gnum,gra,gdec,gmag,gmagb,gtype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -32,6 +32,7 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+int	distsort;	/* 1 to sort stars by distance from center */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
@@ -175,7 +176,7 @@ int	nlog;		/* 1 for diagnostics */
 		isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 
 		/* Compute distance from search center */
-		if (drad > 0)
+		if (drad > 0 || distsort)
 		    dist = wcsdist (cra,cdec,ra,dec);
 		else
 		    dist = 0.0;
@@ -206,22 +207,25 @@ int	nlog;		/* 1 for diagnostics */
 			    }
 			}
 
-		    /* If too many stars, radial search, replace furthest star */
-		    else if (drad > 0 && dist < maxdist) {
-			gnum[farstar] = num;
-			gra[farstar] = ra;
-			gdec[farstar] = dec;
-			gmag[farstar] = mag;
-			gmagb[farstar] = magb;
-			gtype[farstar] = isp;
-			gdist[farstar] = dist;
-			maxdist = 0.0;
+		    /* If too many stars and distance sorting,
+		       replace farthest star */
+		    else if (distsort) {
+			if (dist < maxdist) {
+			    gnum[farstar] = num;
+			    gra[farstar] = ra;
+			    gdec[farstar] = dec;
+			    gmag[farstar] = mag;
+			    gmagb[farstar] = magb;
+			    gtype[farstar] = isp;
+			    gdist[farstar] = dist;
 
-			/* Find new farthest star */
-			for (i = 0; i < nstarmax; i++) {
-			    if (gdist[i] > maxdist) {
-				maxdist = gdist[i];
-				farstar = i;
+			    /* Find new farthest star */
+			    maxdist = 0.0;
+			    for (i = 0; i < nstarmax; i++) {
+				if (gdist[i] > maxdist) {
+				    maxdist = gdist[i];
+				    farstar = i;
+				    }
 				}
 			    }
 			}
@@ -814,4 +818,6 @@ char	*filename;	/* Name of file for which to find size */
  * Jun 16 1999	Use SearchLim()
  * Aug 16 1999	Add RefLim() to get converted search coordinates right
  * Aug 25 1999	Return real number of stars from actread()
+ * Sep 16 1999	Fix bug which didn't always return closest stars
+ * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
  */

@@ -1,3 +1,13 @@
+Version 2.6.5 (September 16, 1999)
+scat: Fix bug which returned inconstent results from distance sorts.
+scat.c, imcat.c, imsetwcs.c: Rewrite catalog access so it all goes through
+catread(), catrnum(), etc.  Add distsort argument to all *read() calls.
+catread.c:  Add argument for catalog type from RefCat(), and add code to call
+access routines for each type of catalog supported by the package.
+imio.c: Fix scaling code which caused problems on some compilers
+tabread.c:  Fix coordinate system problems
+matchstar.c: Fix bug initializing CD matrix
+
 Version 2.6.4 (August 31, 1999)
 scat.c: Fix -r before decimal coordinates. Fix long/lat and 0:00 search bugs.
 imcat.c and scat.c: Fix formatting and -n option

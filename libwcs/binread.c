@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** August 25, 1999
+ *** September 16, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -23,7 +23,6 @@ char bindir[64]="/data/catalogs";
 #include "wcs.h"
 #include "wcscat.h"
 
-static int binstar();
 static int binsra();
 void binclose();
 static void binswap8();
@@ -40,10 +39,11 @@ static int nentry = 0;
 /* BINREAD -- Read binary catalog sources + names in specified region */
 
 int
-binread (bincat,cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
+binread (bincat,distsort,cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
 	 nstarmax,tnum,tra,tdec,tmag,tmagb,tpeak,tobj,nlog)
 
 char	*bincat;	/* Name of reference star catalog file */
+int	distsort;	/* 1 to sort stars by distance from center */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
@@ -233,7 +233,7 @@ int	nlog;
 	    isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 
 	    /* Compute distance from search center */
-	    if (drad > 0)
+	    if (drad > 0 || distsort)
 		dist = wcsdist (cra,cdec,ra,dec);
 	    else
 		dist = 0.0;
@@ -270,29 +270,32 @@ int	nlog;
 			}
 		    }
 
-		/* If too many stars and radial search, replace furthest star */
-		else if (drad > 0 && dist < maxdist) {
-		    tnum[farstar] = num;
-		    tra[farstar] = ra;
-		    tdec[farstar] = dec;
-		    tmag[farstar] = mag;
-		    tmagb[farstar] = magb;
-		    tpeak[farstar] = isp;
-		    tdist[farstar] = dist;
-		    if (tobj != NULL) {
-			free (tobj[farstar]);
-			lname = strlen (star->objname) + 1;
-			objname = (char *)calloc (lname, 1);
-			strcpy (objname, star->objname);
-			tobj[farstar] = objname;
-			}
-		    maxdist = 0.0;
+		/* If too many stars and distance sorting,
+		   replace furthest star */
+		else if (distsort) {
+		    if (dist < maxdist) {
+			tnum[farstar] = num;
+			tra[farstar] = ra;
+			tdec[farstar] = dec;
+			tmag[farstar] = mag;
+			tmagb[farstar] = magb;
+			tpeak[farstar] = isp;
+			tdist[farstar] = dist;
+			if (tobj != NULL) {
+			    free (tobj[farstar]);
+			    lname = strlen (star->objname) + 1;
+			    objname = (char *)calloc (lname, 1);
+			    strcpy (objname, star->objname);
+			    tobj[farstar] = objname;
+			    }
+			maxdist = 0.0;
 
 		    /* Find new farthest star */
-		    for (i = 0; i < nstarmax; i++) {
-			if (tdist[i] > maxdist) {
-			    maxdist = tdist[i];
-			    farstar = i;
+			for (i = 0; i < nstarmax; i++) {
+			    if (tdist[i] > maxdist) {
+				maxdist = tdist[i];
+				farstar = i;
+				}
 			    }
 			}
 		    }
@@ -1013,4 +1016,6 @@ char    *filename;      /* Name of file to check */
  * Aug 16 1999	Add RefLim() to get converted search coordinates right
  * Aug 24 1999	Fix declination limit bug which broke search 
  * Aug 25 1999	Return real number of stars from binread()
+ * Sep 16 1999	Fix bug which didn't always return closest stars
+ * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
  */

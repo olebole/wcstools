@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * August 31, 1999
+ * September 16, 1999
  * By Doug Mink, based on UIowa code
  */
 
@@ -166,64 +166,28 @@ getfield:
 	ngmax = (int) ((double) ngmax * imfrac * imfrac);
     nbytes = ngmax * sizeof (double);
     if (!(gnum = (double *) calloc (ngmax, sizeof(double))))
-	fprintf (stderr, "Could not calloc %d bytes for gnum\n", ngmax*sizeof(double));
+	fprintf (stderr, "Could not calloc %d bytes for gnum\n",
+		 ngmax*sizeof(double));
     if (!(gra = (double *) calloc (ngmax, sizeof(double))))
-	fprintf (stderr, "Could not calloc %d bytes for gra\n", ngmax*sizeof(double));
+	fprintf (stderr, "Could not calloc %d bytes for gra\n",
+		 ngmax*sizeof(double));
     if (!(gdec = (double *) calloc (ngmax, sizeof(double))))
-	fprintf (stderr, "Could not calloc %d bytes for gdec\n", ngmax*sizeof(double));
+	fprintf (stderr, "Could not calloc %d bytes for gdec\n",
+		 ngmax*sizeof(double));
     if (!(gm = (double *) calloc (ngmax, sizeof(double))))
-	fprintf (stderr, "Could not calloc %d bytes for gm\n", ngmax*sizeof(double));
+	fprintf (stderr, "Could not calloc %d bytes for gm\n",
+		 ngmax*sizeof(double));
     if (!(gmb = (double *) calloc (ngmax, sizeof(double))))
-	fprintf (stderr, "Could not calloc %d bytes for gmb\n", ngmax*sizeof(double));
+	fprintf (stderr, "Could not calloc %d bytes for gmb\n",
+		 ngmax*sizeof(double));
     if (!(gc = (int *) calloc (ngmax, sizeof(int))))
-	fprintf (stderr, "Could not calloc %d bytes for gc\n", ngmax*sizeof(int));
+	fprintf (stderr, "Could not calloc %d bytes for gc\n",
+		 ngmax*sizeof(int));
 
     /* Find the nearby reference stars, in ra/dec */
-    if (refcat == UAC || refcat == UA1 || refcat == UA2 ||
-	refcat == USAC || refcat == USA1 || refcat == USA2)
-	ng = uacread (refcatname,cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		      mag1,mag2,uplate,ngmax,gnum,gra,gdec,gm,gmb,gc,verbose*1000);
-    else if (refcat == UJC)
-	ng = ujcread (cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		      mag1,mag2,uplate,ngmax,gnum,gra,gdec,gm,gc,verbose);
-    else if (refcat == GSC)
-	ng = gscread (cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,mag1,mag2,
-		      classd,ngmax,gnum,gra,gdec,gm,gc,verbose*100);
-    else if (refcat == ACT)
-	ng = actread (cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,verbose*100);
-    else if (refcat == BSC)
-	ng = binread ("BSC5",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
-    else if (refcat == SAO)
-	ng = binread ("SAOra",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
-    else if (refcat == PPM)
-	ng = binread ("PPMra",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
-    else if (refcat == IRAS)
-	ng = binread ("IRAS",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
-    else if (refcat == TYCHO)
-	ng = binread ("tychora",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
-    else if (refcat == HIP)
-	ng = binread ("hipparcosra",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
-    else if (refcat == BINCAT)
-	ng = binread (refcatname,cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
-    else if (refcat == TABCAT)
-	ng = tabread (refcatname,cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gc,verbose*100);
-    else if (refcat == TXTCAT)
-	ng = catread (refcatname,cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,verbose);
-    else {
-	fprintf (stderr,"No reference star catalog specified\n");
-	ret = 0;
-	goto out;
-	}
+    ng = catread (refcatname,refcat, 0,
+		  cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
+		  mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
     if (ng > ngmax)
 	nrg = ngmax;
     else
@@ -277,7 +241,7 @@ getfield:
 
     if (verbose) {
 	printf ("%s:\n",refcatname);
-	for (ig = 0; ig < ng; ig++) {
+	for (ig = 0; ig < nrg; ig++) {
 	    ra2str (rstr, 32, gra[ig], 3);
 	    dec2str (dstr, 32, gdec[ig], 2);
 	    CatNum (refcat, wcs->ndec, gnum[ig], numstr);
@@ -509,10 +473,10 @@ getfield:
     /* If there were any matches found, print them */
     if (nmatch > 0) {
 	int rprint = verbose || !fitwcs;
-	if (ns < ng)
+	if (ns < nbg)
 	    hputi4 (header, "WCSNREF", ns);
 	else
-	    hputi4 (header, "WCSNREF", ng);
+	    hputi4 (header, "WCSNREF", nbg);
 	if (rprint)
 	    printf ("# %d matches between %s and %s:\n",
 		    nmatch, refcatname, imcatname);
@@ -886,4 +850,7 @@ int recenter;
  * Jul 27 1999	Add WCSNREF, maximum possible matches
  * Aug 26 1999	Handle true number return from search subroutines
  * Aug 31 1999	Set image catalog name when only matching stars
+ * Sep 13 1999	Do all catalog searches through catread()
+ * Sep 15 1999	Fix improper uses of ng instead of nrg
+ * Sep 16 1999	Add zero distsort argument to catread() call
  */

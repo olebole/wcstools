@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** August 25, 1999
+ *** September 16, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -45,12 +45,18 @@ static int iline = 0;	/* Current line of data */
 
 static char *tabdata;
 
+static char *kwo = NULL;	/* Keyword returned by tabread(), tabrnum() */
+void settabkey (keyword0)
+char *keyword0;
+{ kwo = keyword0; return; }
+
 
 /* TABREAD -- Read tab table stars in specified region */
 
 int
-tabread (tabcatname,cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-	 nstarmax,tnum,tra,tdec,tmag,tpeak,nlog)
+tabread (tabcatname,distsort,cra,cdec,dra,ddec,drad,
+	 sysout,eqout,epout,mag1,mag2,nstarmax,
+	 tnum,tra,tdec,tmag,tpeak,tkey,nlog)
 
 char	*tabcatname;	/* Name of reference star catalog file */
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -58,6 +64,7 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+int	distsort;	/* 1 to sort stars by distance from center */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
@@ -68,6 +75,7 @@ double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
 double	*tmag;		/* Array of magnitudes (returned) */
 int	*tpeak;		/* Array of peak counts (returned) */
+char	**tkey;		/* Array of additional keyword values */
 int	nlog;
 {
     double ra1,ra2;	/* Limiting right ascensions of region in degrees */
@@ -89,6 +97,8 @@ int	nlog;
     int wrap;
     int jstar;
     int nstar;
+    char *objname;
+    int lname;
     double ra,dec, rapm, decpm;
     double mag;
     double num;
@@ -174,7 +184,7 @@ int	nlog;
 	    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 	mag = star->xmag[0];
 	peak = star->peak;
-	if (drad > 0)
+	if (drad > 0 || distsort)
 	    dist = wcsdist (cra,cdec,ra,dec);
 	else
 	    dist = 0.0;
@@ -194,6 +204,12 @@ int	nlog;
 		tmag[nstar] = mag;
 		tpeak[nstar] = peak;
 		tdist[nstar] = dist;
+		if (kwo != NULL) {
+		    lname = strlen (star->objname) + 1;
+		    objname = (char *)calloc (lname, 1);
+		    strcpy (objname, star->objname);
+		    tkey[nstar] = objname;
+		    }
 		if (dist > maxdist) {
 		    maxdist = dist;
 		    farstar = nstar;
@@ -202,23 +218,31 @@ int	nlog;
 		    faintmag = mag;
 		    faintstar = nstar;
 		    }
-		    }
+		}
 
 	    /* If radial search & too many stars, replace furthest star */
-	    else if (drad > 0 && dist < maxdist) {
-		tnum[farstar] = num;
-		tra[farstar] = ra;
-		tdec[farstar] = dec;
-		tmag[farstar] = mag;
-		tpeak[farstar] = peak;
-		tdist[farstar] = dist;
-		maxdist = 0.0;
+	    else if (distsort) {
+		if (dist < maxdist) {
+		    tnum[farstar] = num;
+		    tra[farstar] = ra;
+		    tdec[farstar] = dec;
+		    tmag[farstar] = mag;
+		    tpeak[farstar] = peak;
+		    tdist[farstar] = dist;
+		    if (kwo != NULL) {
+			lname = strlen (star->objname) + 1;
+			objname = (char *)calloc (lname, 1);
+			strcpy (objname, star->objname);
+			tkey[farstar] = objname;
+			}
 
-		/* Find new farthest star */
-		for (i = 0; i < nstarmax; i++) {
-		    if (tdist[i] > maxdist) {
-			maxdist = tdist[i];
-			farstar = i;
+		    /* Find new farthest star */
+		    maxdist = 0.0;
+		    for (i = 0; i < nstarmax; i++) {
+			if (tdist[i] > maxdist) {
+			    maxdist = tdist[i];
+			    farstar = i;
+			    }
 			}
 		    }
 		}
@@ -231,6 +255,12 @@ int	nlog;
 		tmag[faintstar] = mag;
 		tpeak[faintstar] = peak;
 		tdist[faintstar] = dist;
+		if (kwo != NULL) {
+		    lname = strlen (star->objname) + 1;
+		    objname = (char *)calloc (lname, 1);
+		    strcpy (objname, star->objname);
+		    tkey[faintstar] = objname;
+		    }
 		faintmag = 0.0;
 
 		/* Find new faintest star */
@@ -277,7 +307,8 @@ int	nlog;
 /* TABRNUM -- Read tab table stars with specified numbers */
 
 int
-tabrnum (tabcatname, nnum, sysout, eqout, epout, tnum,tra,tdec,tmag,tpeak,nlog)
+tabrnum (tabcatname,nnum,sysout,eqout,epout,
+	 tnum,tra,tdec,tmag,tpeak,tkey,nlog)
 
 char	*tabcatname;	/* Name of reference star catalog file */
 int	nnum;		/* Number of stars to look for */
@@ -289,6 +320,7 @@ double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
 double	*tmag;		/* Array of magnitudes (returned) */
 int	*tpeak;		/* Array of peak counts (returned) */
+char	**tkey;		/* Array of additional keyword values */
 int	nlog;
 {
     int jnum;
@@ -303,6 +335,8 @@ int	nlog;
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
     char cstr[32];
+    char *objname;
+    int lname;
     struct TabTable *startab;
     struct StarCat *starcat;
     struct Star *star;
@@ -378,6 +412,12 @@ int	nlog;
 	    tdec[jnum] = dec;
 	    tmag[jnum] = mag;
 	    tpeak[jnum] = peak;
+	    if (kwo != NULL) {
+		lname = strlen (star->objname) + 1;
+		objname = (char *)calloc (lname, 1);
+		strcpy (objname, star->objname);
+		tkey[nstar] = objname;
+		}
 	    nstar++;
 	    if (nlog == 1)
 		fprintf (stderr,"TABRNUM: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
@@ -509,6 +549,8 @@ char *tabfile;	/* Tab table catalog file name */
 	sc->entmag = tabcol (startab, "mag");
     if (!(sc->entpeak = tabcol (startab, "PEAK")))
 	sc->entpeak = tabcol (startab, "peak");
+    if (kwo != NULL)
+	sc->entkey = tabcol (startab, kwo);
 
     /* Set catalog coordinate system */
     sc->coorsys = 0;
@@ -524,14 +566,14 @@ char *tabfile;	/* Tab table catalog file name */
     else if (tabhgetr8 (startab,"EQUINOX", &sc->equinox)) {
 	if (!tabhgetr8 (startab,"EPOCH",&sc->epoch))
 	    sc->epoch = sc->equinox;
-	if (sc->equinox = 1950.0)
+	if (sc->equinox == 1950.0)
 	    sc->coorsys = WCS_B1950;
 	else
 	    sc->coorsys = WCS_J2000;
 	}
     else if (tabhgetr8 (startab,"EPOCH", &sc->epoch)) {
 	sc->equinox = sc->epoch;
-	if (sc->equinox = 1950.0)
+	if (sc->equinox == 1950.0)
 	    sc->coorsys = WCS_B1950;
 	else
 	    sc->coorsys = WCS_J2000;
@@ -568,7 +610,7 @@ tabcatclose (sc)
 
 
 /* TABSTAR -- Get tab table catalog entry for one star;
-   return NULL if unsuccessful */
+   return 0 if successful, else -1 */
 
 int
 tabstar (istar, sc, st)
@@ -594,6 +636,12 @@ struct Star *st; /* Star data structure, updated on return */
     st->dec = tabgetdec (startab, line, sc->entdec);    /* Declination */
     st->xmag[0] = tabgetr8 (startab, line, sc->entmag);     /* Magnitude */
     st->peak = tabgeti4 (startab, line, sc->entpeak);   /* Peak counts */
+
+    /* Extract selected field */
+    if (kwo != NULL)
+	(void) tabgetk (startab, line, kwo, st->objname, 32);
+    else
+	st->objname[0] = (char) 0;
 
     st->rapm = 0.0;
     st->decpm = 0.0;
@@ -1196,4 +1244,9 @@ char    *filename;      /* Name of file to check */
  * Jun 16 1999	Use SearchLim()
  * Aug 16 1999	Fix bug to fix failure to search across 0:00 RA
  * Aug 25 1999  Return real number of stars from tabread()
+ * Sep 10 1999	Fix bug setting equinox and coordinate system in tabcatopen()
+ * Sep 10 1999	Set additional keyword selection with subroutine
+ * Sep 13 1999	Fix comment for tabstar()
+ * Sep 16 1999	Fix bug which didn't always return closest stars
+ * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
  */

@@ -1,5 +1,5 @@
 /* File setpix.c
- * July 12, 1999
+ * September 14, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -139,6 +139,7 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Edit pixels of FITS or IRAF image file\n");
     fprintf(stderr,"Usage: setpix [-vn] file.fts x_range y_range value ...\n");
+    fprintf(stderr,"Usage: setpix [-vn] file.fts @valuefile ...\n");
     fprintf(stderr,"  -n: write new file, else overwrite \n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
@@ -484,4 +485,5 @@ char	**value;	/* value to insert into pixel */
  * Apr 29 1999	Add BZERO and BSCALE
  * Jun 29 1999	Fix typo in BSCALE setting
  * Jul 12 1999	Add ranges
+ * Sep 14 1999	Add file of values to usage
  */

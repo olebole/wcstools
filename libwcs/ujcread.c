@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** August 26, 1999
+ *** September 16, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -39,19 +39,19 @@ static void ujcswap();
 /* UJCREAD -- Read USNO J Catalog stars from CDROM */
 
 int
-ujcread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-	 xplate,nstarmax,unum,ura,udec,umag,uplate,verbose)
+ujcread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,
+	 nstarmax,unum,ura,udec,umag,uplate,verbose)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+int	distsort;	/* 1 to sort stars by distance from center */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
-int	xplate;		/* If nonzero, use objects only from this plate */
 int	nstarmax;	/* Maximum number of stars to be returned */
 double	*unum;		/* Array of UJ numbers (returned) */
 double	*ura;		/* Array of right ascensions (returned) */
@@ -76,6 +76,7 @@ int	verbose;	/* 1 for diagnostics */
     double epref=2000.0;	/* Catalog epoch */
     char cstr[32];
     double num;		/* UJ number */
+    int xplate;		/* If nonzero, use objects only from this plate */
 
     double rra1, rra2, rdec1, rdec2;
     int wrap, iwrap;
@@ -89,6 +90,7 @@ int	verbose;	/* 1 for diagnostics */
     char *str;
 
     itot = 0;
+    xplate = getuplate ();
 
     /* Set path to USNO J Catalog */
     if ((str = getenv("UJ_PATH")) != NULL )
@@ -176,7 +178,7 @@ int	verbose;	/* 1 for diagnostics */
 			wcscon (sysref,sysout,eqref,eqout,&ra,&dec,epout);
 			mag = ujcmag (star.magetc);	/* Magnitude */
 			plate = ujcplate (star.magetc);	/* Plate number */
-			if (drad > 0)
+			if (drad > 0 || distsort)
 			    dist = wcsdist (cra,cdec,ra,dec);
 			else
 			    dist = 0.0;
@@ -209,22 +211,24 @@ int	verbose;	/* 1 for diagnostics */
 				    }
 				}
 
-			    /* If too many stars and radial search,
+			    /* If too many stars and distance sorting,
 				replace furthest star */
-			    else if (drad > 0 && dist < maxdist) {
-				unum[farstar] = num;
-				ura[farstar] = ra;
-				udec[farstar] = dec;
-				umag[farstar] = mag;
-				uplate[farstar] = plate;
-				udist[farstar] = dist;
-				maxdist = 0.0;
+			    else if (distsort) {
+				if (dist < maxdist) {
+				    unum[farstar] = num;
+				    ura[farstar] = ra;
+				    udec[farstar] = dec;
+				    umag[farstar] = mag;
+				    uplate[farstar] = plate;
+				    udist[farstar] = dist;
 
 				/* Find new farthest star */
-				for (i = 0; i < nstarmax; i++) {
-				    if (udist[i] > maxdist) {
-					maxdist = udist[i];
-					farstar = i;
+				    maxdist = 0.0;
+				    for (i = 0; i < nstarmax; i++) {
+					if (udist[i] > maxdist) {
+					    maxdist = udist[i];
+					    farstar = i;
+					    }
 					}
 				    }
 				}
@@ -316,6 +320,7 @@ int	nlog;		/* Logging interval */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
+    int xplate;		/* If nonzero, use objects only from this plate */
 
     int znum;
     int jnum;
@@ -325,6 +330,8 @@ int	nlog;		/* Logging interval */
     double mag;
     int istar, plate;
     char *str;
+
+    xplate = getuplate ();
 
     /* Set path to USNO J Catalog */
     if ((str = getenv("UJ_PATH")) != NULL )
@@ -726,4 +733,7 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Aug 16 1999  Fix bug to fix failure to search across 0:00 RA
  * Aug 25 1999  Return real number of stars from ujcread()
  * Aug 26 1999	Set nlog to 100 if verbose mode is on
+ * Sep 10 1999	Set plate selection with subroutine, not argument
+ * Sep 16 1999	Fix bug which didn't always return closest stars
+ * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
  */

@@ -1,5 +1,5 @@
 /* File imcat.c
- * August 25, 1999
+ * September 16, 1999
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -274,6 +274,7 @@ char **av;
 	    if (ac < 2)
 		usage (progname);
 	    keyword = *++av;
+	    settabkey (keyword);
 	    ac--;
 	    break;
 
@@ -302,6 +303,7 @@ char **av;
     	    if (ac < 2)
     		usage(progname);
     	    classd = (int) atof (*++av);
+	    setgsclass (classd);
     	    ac--;
     	    break;
 
@@ -373,6 +375,7 @@ char **av;
     	    if (ac < 2)
     		usage(progname);
     	    uplate = (int) atof (*++av);
+	    setuplate (uplate);
     	    ac--;
     	    break;
 
@@ -711,57 +714,15 @@ int	*region_char;	/* Character for SAOimage region file output */
 
     /* Find the nearby reference stars, in ra/dec */
     drad = 0.0;
-    if (refcat == GSC)
-	ng = gscread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-		      classd,ngmax,gnum,gra,gdec,gm,gc,nlog);
-    else if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
-	     refcat == USAC || refcat == USA1 || refcat == USA2)
-	ng = uacread (refcatname[icat],cra,cdec,dra,ddec,drad,sysout,eqout,
-		     epout,mag1,mag2,uplate,ngmax,gnum,gra,gdec,gm,gmb,gc,nlog);
-    else if (refcat == UJC)
-	ng = ujcread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-		      uplate,ngmax,gnum,gra,gdec,gm,gc,nlog);
-    else if (refcat == ACT)
-	ng = actread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,nlog);
-    else if (refcat == SAO)
-	ng = binread ("SAOra",cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,nlog);
-    else if (refcat == PPM)
-	ng = binread ("PPMra",cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,nlog);
-    else if (refcat == IRAS)
-	ng = binread ("IRAS",cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,nlog);
-    else if (refcat == TYCHO)
-	ng = binread ("tychora",cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,nlog);
-    else if (refcat == HIP)
-	ng = binread ("hipparcosra",cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,nlog);
-    else if (refcat == BSC)
-	ng = binread ("BSC5ra",cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,nlog);
-    else if (refcat == BINCAT) {
-	ng = binread (refcatname[icat],cra,cdec,dra,ddec,drad,sysout,eqout,
-		      epout,mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,gobj,nlog);
-	starcat = binopen (refcatname[icat]);
+    if (refcat == BINCAT || refcat == TABCAT || refcat == TXTCAT) {
+	starcat = catopen (refcatname[icat], refcat);
 	nndec = starcat->nndec;
-	binclose (starcat);
+	catclose (starcat, refcat);
 	}
-    else if (refcat == TABCAT) {
-	ng = tabread (refcatname[icat],cra,cdec,dra,ddec,drad,sysout,eqout,
-		      epout,mag1,mag2,ngmax,gnum,gra,gdec,gm,gc,nlog);
-	if (keyword != NULL)
-	    tabrkey (refcatname[icat], ng, gnum, keyword, gobj);
-	}
-    else {
-	ng = catread (refcatname[icat],cra,cdec,dra,ddec,drad,sysout,eqout,
-		      epout,mag1,mag2,ngmax,gnum,gra,gdec,gm,gobj,nlog);
-	starcat = catopen (refcatname[icat]);
-	nndec = starcat->nndec;
-	catclose (starcat);
-	}
+    ng = catread (refcatname[icat], refcat, 0,
+		  cra,cdec,dra,ddec,drad,sysout,eqout, epout,mag1,mag2,
+		  ngmax,gnum,gra,gdec,gm,gmb,gc,gobj,nlog);
+
     if (gobj[0] == NULL)
 	gobj1 = NULL;
     else
@@ -1515,4 +1476,6 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Aug 25 1999	Add Bright Star Catalog, BSC
  * Aug 25 1999	Allocate using calloc(ngmax, ) instead of malloc(nbytes)
  * Aug 25 1999	Add option to set circle radius in pixels if < -1
+ * Sep 10 1999	Do all searches through catread() and catrnum()
+ * Sep 16 1999	Add zero distsort argument to catread() call
  */
