@@ -1,5 +1,5 @@
 /* File libwcs/matchstar.c
- * September 8, 1999
+ * October 1, 1999
  * By Doug Mink, Smithsonian Astrophyscial Observatory
  */
 
@@ -112,10 +112,10 @@ int	debug;
     minmatch = 0.5 * ns;
     if (ns > ng)
 	minmatch = 0.5 * ng;
-    is = (int *) malloc (maxnbin * sizeof(int));
-    ig = (int *) malloc (maxnbin * sizeof(int));
-    ibs = (int *) malloc (maxnbin * sizeof(int));
-    ibg = (int *) malloc (maxnbin * sizeof(int));
+    is = (int *) calloc (maxnbin, sizeof(int));
+    ig = (int *) calloc (maxnbin, sizeof(int));
+    ibs = (int *) calloc (maxnbin, sizeof(int));
+    ibg = (int *) calloc (maxnbin, sizeof(int));
     for (g = 0; g < ng; g++) {
 	for (s = 0; s < ns; s++) {
 	    dx = gx[g] - sx[s];
@@ -419,13 +419,36 @@ int	debug;
     return (nmatch);
 }
 
+int
+ReadMatch (filename, sbx, sby, gbra, gbdec, debug)
+
+double	*sbx;		/* Image star X coordinates in pixels */
+double	*sby;		/* Image star Y coordinates in pixels */
+double	*gbra;		/* Reference star right ascensions in degrees */
+double	*gbdec;		/* Reference star right ascensions in degrees */
+int	debug;
+
+{
+    int nmatch = 0;	/* Number of matches read from file */
+
+    /* If tab file, read from ra, dec, x, y  columns */
+    if (istab (filename)) {
+	}
+
+    /* Otherwise, assume first 4 columns are x, y, ra, dec */
+    else {
+	}
+
+    return (nmatch);
+}
+
 
 /* Find shift, scale, and rotation of image stars to best-match reference stars
  * Return count of total coincidences found, else 0 if none or -1 if trouble.
  */
 
 int
-FitMatch (nmatch, sbx, sby, ng, gbra, gbdec, gx, gy, tol, dx, dy, wcs, debug)
+FitMatch (nmatch, sbx, sby, gbra, gbdec, gx, gy, dx, dy, wcs, debug)
 
 int	nmatch;		/* Number of matched stars */
 double	*sbx;		/* Image star X coordinates in pixels */
@@ -434,7 +457,6 @@ double	*gbra;		/* Reference star right ascensions in degrees */
 double	*gbdec;		/* Reference star right ascensions in degrees */
 double	*gx;		/* Reference star X coordinates in pixels */
 double	*gy;		/* Reference star Y coordinates in pixels */
-double	tol;		/* +/- this many pixels is a hit */
 double	dx, dy;		/* Nominal offset between current WCS and ref stars */
 struct WorldCoor *wcs;	/* World coordinate structure (fit returned) */
 int	debug;
@@ -1274,4 +1296,5 @@ int nfit;
  * Apr 21 1999	Add subroutines to set and retrieve resid_refine independently
  * Jul 21 1999	Add FitMatch() to fit WCS to already-matched stars
  * Sep  8 1999	Fix bug found by Jean-Baptiste Marquette
+ * Oct  1 1999	Add ReadMatch() to read a set of matches from a file
  */ 

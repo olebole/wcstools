@@ -1,5 +1,5 @@
 /* File libwcs/catutil.c
- * September 21, 1999
+ * October 5, 1999
  * By Doug Mink
  */
 
@@ -27,6 +27,12 @@
  *	Return next number from range structure as 4-byte integer
  * int rgetr8 (range)
  *	Return next number from range structure as 8-byte floating point number
+ * int setoken (tokens, string, cwhite)
+ *	Tokenize a string for easy decoding
+ * int nextoken (tokens, token)
+ *	Get next token from tokenized string
+ * int getoken (tokens, itok, token)
+ *	Get specified token from tokenized string
  */
 
 #include <stdlib.h>
@@ -669,6 +675,229 @@ struct Range *range;	/* Range structure */
     return ((int) (value + 0.000000001));
 }
 
+
+/* -- SETOKEN -- tokenize a string for easy decoding */
+
+int
+setoken (tokens, string, cwhite)
+
+struct Tokens *tokens;	/* Token structure returned */
+char	*string;	/* character string to tokenize */
+char	*cwhite;	/* additional whitespace characters
+			 * if = tab, disallow spaces and commas */
+{
+    int ntok;		/* number of tokens found (returned) */
+    char squote,dquote,jch, newline;
+    char token[32];
+    char *iq, *stri, *wtype, *str0, *inew;
+    int i0,i,j,naddw;
+
+    newline = (char) 10;
+    squote = (char) 39;
+    dquote = (char) 34;
+    if (string == NULL)
+	return (0);
+
+    /* Line is terminated by newline or NULL */
+    inew = strchr (string, newline);
+    if (inew != NULL)
+	tokens->lline = inew - string - 1;
+    else
+	tokens->lline = strlen (string);
+
+    /* Save current line in structure */
+    tokens->line = string;
+
+    /* Add extra whitespace characters */
+    if (cwhite == NULL)
+	naddw = 0;
+    else
+	naddw = strlen (cwhite);
+
+    /* if character is tab, allow only tabs and nulls as separators */
+    if (naddw > 0 && !strncmp (cwhite, "tab", 3)) {
+	tokens->white[0] = (char) 9;
+	tokens->white[1] = (char) 0;
+	tokens->nwhite = 2;
+	}
+
+    /* otherwise, allow spaces, tabs, commas, nulls, and cwhite */
+    else {
+	tokens->nwhite = 3 + naddw;;
+	tokens->white[0] = ' ';
+	tokens->white[1] = (char) 9;
+	tokens->white[2] = ',';
+	tokens->white[3] = (char) 0;
+	if (tokens->nwhite > 20)
+	    tokens->nwhite = 20;
+	if (naddw > 0) {
+	    i = 0;
+	    for (j = 3; j < tokens->nwhite; j++) {
+		tokens->white[j] = cwhite[i];
+		i++;
+		}
+	    }
+	}
+    tokens->white[tokens->nwhite] = (char) 0;
+
+    tokens->ntok = 0;
+    tokens->itok = 0;
+    iq = string - 1;
+    for (i = 0; i < MAXTOKENS; i++) {
+	tokens->tok1[i] = NULL;
+	tokens->ltok[i] = 0;
+	}
+
+    /* Process string one character at a time */
+    stri = string;
+    str0 = string;
+    while (stri < string+tokens->lline) {
+
+	/* Keep stuff between quotes in one token */
+	if (stri <= iq)
+	    continue;
+	jch = *stri;
+
+	/* Handle quoted strings */
+	if (jch == squote)
+	    iq = strchr (stri+1, squote);
+	else if (jch == dquote)
+	    iq = strchr (stri+1, dquote);
+	else
+	    iq = stri;
+	if (iq > stri) {
+	    tokens->ntok = tokens->ntok + 1;
+	    if (tokens->ntok < MAXTOKENS) return (MAXTOKENS);
+	    tokens->tok1[tokens->ntok] = stri + 1;
+	    tokens->ltok[tokens->ntok] = (iq - stri) - 1;
+	    stri = iq + 1;
+	    str0 = iq + 1;
+	    continue;
+	    }
+
+	/* Search for unquoted tokens */
+	wtype = strchr (tokens->white, jch);
+
+	/* If this is one of the additional whitespace characters,
+	 * pass as a separate token */
+	if (wtype > tokens->white + 2) {
+
+	    /* Terminate token before whitespace */
+	    if (stri > str0) {
+		tokens->ntok = tokens->ntok + 1;
+		if (tokens->ntok > MAXTOKENS) return (MAXTOKENS);
+		tokens->tok1[tokens->ntok] = str0;
+		tokens->ltok[tokens->ntok] = stri - str0;
+		}
+
+	    /* Make whitespace character next token; start new one */
+	    tokens->ntok = tokens->ntok + 1;
+	    if (tokens->ntok < MAXTOKENS) return (MAXTOKENS);
+	    tokens->tok1[tokens->ntok] = stri;
+	    tokens->ltok[tokens->ntok] = 1;
+	    stri++;
+	    str0 = stri;
+	    }
+
+	/* Pass previous token if regular whitespace or NULL */
+	else if (wtype != NULL || jch == (char) 0) {
+
+	    /* Ignore leading whitespace */
+	    if (stri == str0) {
+		stri++;
+		str0 = stri;
+		}
+
+	    /* terminate token before whitespace; start new one */
+	    else {
+		tokens->ntok = tokens->ntok + 1;
+		if (tokens->ntok > MAXTOKENS) return (MAXTOKENS);
+		tokens->tok1[tokens->ntok] = str0;
+		tokens->ltok[tokens->ntok] = stri - str0;
+		stri++;
+		str0 = stri;
+		}
+	    }
+
+	/* Keep going if not whitespace */
+	else
+	    stri++;
+	}
+
+    /* Add token terminated by end of line */
+    if (str0 < stri) {
+	tokens->ntok = tokens->ntok + 1;
+	if (tokens->ntok > MAXTOKENS)
+	    return (MAXTOKENS);
+	tokens->tok1[tokens->ntok] = str0;
+	tokens->ltok[tokens->ntok] = stri - str0;
+	}
+
+    tokens->itok = 0;
+
+    return (tokens->ntok);
+}
+
+
+/* NEXTOKEN -- get next token from tokenized string */
+
+int
+nextoken (tokens, token)
+ 
+struct Tokens *tokens;	/* Token structure returned */
+char	*token;		/* token (returned) */
+{
+    int it, ltok;
+
+    tokens->itok = tokens->itok + 1;
+    it = tokens->itok;
+    if (it > tokens->ntok)
+	it = tokens->ntok;
+    else if (it < 1)
+	it = 1;
+    ltok = tokens->ltok[it];
+    strncpy (token, tokens->tok1[it], ltok);
+    token[ltok] = (char) 0;
+    return (ltok);
+}
+
+
+/* GETOKEN -- get specified token from tokenized string */
+
+int
+getoken (tokens, itok, token)
+
+struct Tokens *tokens;	/* Token structure returned */
+int itok;		/* token sequence number of token
+			 * if <0, get whole string after token -itok
+			 * if =0, get whole string */
+char *token;		/* token (returned) */
+{
+    int ltok;		/* length of token string (returned) */
+    int it;
+
+    it = itok;
+    if (it > 0 ) {
+	if (it > tokens->ntok)
+	    it = tokens->ntok;
+	ltok = tokens->ltok[it];
+	strncpy (token, tokens->tok1[it], ltok);
+	}
+    else if (it < 0) {
+	if (it < -tokens->ntok)
+	    it  = -tokens->ntok;
+	ltok = tokens->line + tokens->lline - tokens->tok1[-it];
+	strncpy (token, tokens->tok1[-it], ltok);
+	}
+    else {
+	ltok = tokens->lline;
+	strncpy (token, tokens->tok1[1], ltok);
+	}
+    token[ltok] = (char) 0;
+
+    return (ltok);
+}
+
 /* Mar  2 1998	Make number and second magnitude optional
  * Oct 21 1998	Add RefCat() to set reference catalog code
  * Oct 26 1998	Include object names in star catalog entry structure
@@ -691,4 +920,5 @@ struct Range *range;	/* Range structure */
  * Jul 23 1999	Add Bright Star Catalog
  * Aug 16 1999	Add RefLim() to set catalog search limits
  * Sep 21 1999	In isrange(), check for x
+ * Oct  5 1999	Add setoken(), nextoken(), and getoken()
  */

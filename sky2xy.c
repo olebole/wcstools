@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * March 17, 1999
+ * October 14, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -110,19 +110,22 @@ char **av;
 		*(ln-1) = *ln;
 	    if (fd = fopen (listname, "r")) {
 		while (fgets (line, 80, fd)) {
+		    csys[0] = (char) 0;
 		    n = sscanf (line,"%s %s %s", rastr, decstr, csys);
 		    ra = str2ra (rastr);
 		    dec = str2dec (decstr);
 		    if (n > 2)
 			sysin = wcscsys (csys);
-		    else
-			sysin = -1;
-		    if (sysin > -1)
-			wcsc2pix (wcs, ra, dec, csys, &x, &y, &offscale);
-		    else {
-			wcs2pix (wcs, ra, dec, &x, &y, &offscale);
+		    else if (*coorsys) {
+			sysin = wcscsys (coorsys);
 			strcpy (csys, coorsys);
 			}
+		    else {
+			sysin = wcs->sysin;
+			strcpy (csys, wcs->radecin);
+			}
+		    wcsc2pix (wcs, ra, dec, csys, &x, &y, &offscale);
+
 		    if (verbose)
 			printf ("%s %s %s -> %.5f %.5f -> %.3f %.3f",
 				 rastr, decstr, csys, ra, dec, x, y);
@@ -165,9 +168,10 @@ char **av;
 		    ac--;
 		    av++;
 		    }
-		else {
+		else if (*coorsys)
+		    strcpy (csys, coorsys);
+		else
 		    strcpy (csys, wcs->radecsys);
-		    }
 		}
 	    else {
 		if (wcs->prjcode < 0)
@@ -252,4 +256,5 @@ usage ()
  * Nov 30 1998	Add version and help commands for consistency
  *
  * Mar 17 1999	Add flag for positions off image but within projection
+ * Oct 14 1999	Use command line coordinate flag if system not in coordinates
  */

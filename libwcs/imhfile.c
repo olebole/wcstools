@@ -1,5 +1,5 @@
 /* File imhfile.c
- * September 22, 1999
+ * October 14, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
@@ -469,8 +469,9 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 
     /*  Initialize FITS header */
     nblock = (nlines * 80) / 2880;
-    *nbfits = (nblock + 3) * 2880;
+    *nbfits = (nblock + 5) * 2880 + 4;
     fitsheader = (char *) calloc (*nbfits, 1);
+    hlength (fitsheader, *nbfits);
     if (fitsheader == NULL) {
 	(void)fprintf(stderr, "IRAF2FITS Cannot allocate %d-byte FITS header\n",
 		*nbfits);
@@ -1740,4 +1741,5 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * Jan 27 1999	Read and write all of 3D image if one dimension is =1
  * Jul 13 1999	Improve error messages; change irafsize() argument to fd
  * Sep 22 1999	Don't copy OBJECT keyword from .imh file; use binary title
+ * Oct 14 1999	Set FITS header length
  */

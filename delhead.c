@@ -1,5 +1,5 @@
 /* File delhead.c
- * July 15, 1999
+ * September 29, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -13,7 +13,7 @@
 #include <math.h>
 #include "fitsfile.h"
 
-#define MAXKWD 100
+#define MAXKWD 500
 #define MAXFILES 1000
 static int maxnkwd = MAXKWD;
 static int maxnfile = MAXFILES;
@@ -371,4 +371,5 @@ char	*kwd[];		/* Names of those keywords */
  * Jul 14 1999	Read lists of BOTH keywords and files simultaneously
  * Jul 14 1999	Reallocate keyword array if too many in file
  * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
+ * Sep 29 1999	Change maximum number of keywords from 100 to 500
  */

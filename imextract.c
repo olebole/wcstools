@@ -1,5 +1,5 @@
 /* File imextract.c
- * May 18, 1999
+ * September 30, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -83,38 +83,42 @@ char **av;
 	    continue;
 	    }
 
-	/* Set range and make a list of extraction numbers from it */
-	else if (strchr (*av + 1, '-') || strchr (*av + 1, ',')) {
-	    if (ranges) {
-		temp = ranges;
-		ranges = (char *) calloc (strlen(ranges) + strlen(*av) + 2, 1);
-		strcpy (ranges, temp);
-		strcat (ranges, ",");
-		strcat (ranges, *av);
-		free (temp);
-		}
-	    else {
-		ranges = (char *) calloc (strlen(*av) + 1, 1);
-		strcpy (ranges, *av);
-		}
-	    continue;
-	    }
+	/* Number argument is either specific image number or range */
+	else if (isnum(*av)) {
 
-	/* If numeric argument, set image to be extracted */
-	else if (isnum (str)) {
-	    if (ranges) {
-		temp = ranges;
-		ranges = (char *)calloc (strlen(ranges)+strlen(*av)+2, 1);
-		strcpy (ranges, temp);
-		strcat (ranges, ",");
-		strcat (ranges, *av);
-		free (temp);
+	    /* Set range and make a list of extraction numbers from it */
+	    if (strchr(*av + 1,'-') || strchr(*av + 1,',')) {
+		if (ranges) {
+		    temp = ranges;
+		    ranges = (char *) calloc (strlen(ranges) + strlen(*av) + 2, 1);
+		    strcpy (ranges, temp);
+		    strcat (ranges, ",");
+		    strcat (ranges, *av);
+		    free (temp);
+		    }
+		else {
+		    ranges = (char *) calloc (strlen(*av) + 1, 1);
+		    strcpy (ranges, *av);
+		    }
+		continue;
 		}
+
+	    /* If numeric argument, set image to be extracted */
 	    else {
-		ranges = (char *) calloc (strlen(*av) + 1, 1);
-		strcpy (ranges, *av);
+		if (ranges) {
+		    temp = ranges;
+		    ranges = (char *)calloc (strlen(ranges)+strlen(*av)+2, 1);
+		    strcpy (ranges, temp);
+		    strcat (ranges, ",");
+		    strcat (ranges, *av);
+		    free (temp);
+		    }
+		else {
+		    ranges = (char *) calloc (strlen(*av) + 1, 1);
+		    strcpy (ranges, *av);
+		    }
+		continue;
 		}
-	    continue;
 	    }
 
 	/* If equal sign in argument, it is a header keyword assignment */
@@ -566,4 +570,5 @@ char	*kwd[];		/* Names and values of those keywords */
  * Mar  8 1999	Extract range of images in one pass
  * Mar  9 1999	Add option to write to a specific directory
  * May 18 1999	If suffix is null string, do not add _
+ * Sep 30 1999	Refine range test to avoid getting signed header parameters
  */

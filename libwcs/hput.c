@@ -1,5 +1,5 @@
 /*** File libwcs/hput.c
- *** August 16, 1999
+ *** October 14, 1999
  *** By Doug Mink
 
  * Module:	hput.c (Put FITS Header parameter values)
@@ -25,7 +25,7 @@
  * Subroutine:  getltime () returns current local time as ISO-style string
  * Subroutine:  getutime () returns current UT as ISO-style string
 
- * Copyright:   1998 Smithsonian Astrophysical Observatory
+ * Copyright:   1999 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -40,12 +40,11 @@
 #include "fitshead.h"
 
 static int verbose=0;	/* Set to 1 to print error messages and other info */
-void hputc();
 
 
 /*  HPUTI4 - Set int keyword = ival in FITS header string */
 
-void
+int
 hputi4 (hstring,keyword,ival)
 
   char *hstring;	/* character string containing FITS-style header
@@ -65,16 +64,13 @@ hputi4 (hstring,keyword,ival)
     sprintf (value,"%d",ival);
 
     /* Put value into header string */
-    hputc (hstring,keyword,value);
-
-    /* Return to calling program */
-    return;
+    return (hputc (hstring,keyword,value));
 }
 
 
 /*  HPUTI2 - Set short keyword = ival in FITS header string */
 
-void
+int
 hputi2 (hstring,keyword,ival)
 
   char *hstring;	/* FITS header string */
@@ -88,16 +84,13 @@ hputi2 (hstring,keyword,ival)
     sprintf (value,"%d",ival);
 
     /* Put value into header string */
-    hputc (hstring,keyword,value);
-
-    /* Return to calling program */
-    return;
+    return (hputc (hstring,keyword,value));
 }
 
 
 /*  HPUTR4 - Set float keyword = rval in FITS header string */
 
-void
+int
 hputr4 (hstring,keyword,rval)
 
 char *hstring;		/* FITS header string */
@@ -110,16 +103,13 @@ float rval;		/* float number */
     sprintf (value,"%f",rval);
 
     /* Put value into header string */
-    hputc (hstring,keyword,value);
-
-    /* Return to calling program */
-    return;
+    return (hputc (hstring,keyword,value));
 }
 
 
 /*  HPUTR8 - Set double keyword = dval in FITS header string */
 
-void
+int
 hputr8 (hstring,keyword,dval)
 
 char	*hstring;	/* FITS header string */
@@ -132,16 +122,13 @@ double	dval;		/* double number */
     sprintf (value,"%g",dval);
 
     /* Put value into header string */
-    hputc (hstring,keyword,value);
-
-    /* Return to calling program */
-    return;
+    return (hputc (hstring,keyword,value));
 }
 
 
 /*  HPUTNR8 - Set double keyword = dval in FITS header string */
 
-void
+int
 hputnr8 (hstring,keyword,ndec,dval)
 
 char	*hstring;	/* FITS header string */
@@ -166,16 +153,13 @@ double	dval;		/* double number */
 	}
 
     /* Put value into header string */
-    hputc (hstring,keyword,value);
-
-    /* Return to calling program */
-    return;
+    return (hputc (hstring,keyword,value));
 }
 
 
 /*  HPUTRA - Set double keyword = hh:mm:ss.sss in FITS header string */
 
-void
+int
 hputra (hstring,keyword, ra)
 
 char *hstring;		/* FITS header string */
@@ -188,16 +172,13 @@ double ra;		/* Right ascension in degrees */
     ra2str (value, 30, ra, 3);
 
     /* Put value into header string */
-    hputs (hstring,keyword,value);
-
-    /* Return to calling program */
-    return;
+    return (hputs (hstring,keyword,value));
 }
 
 
 /*  HPUTDEC - Set double keyword = dd:mm:ss.sss in FITS header string */
 
-void
+int
 hputdec (hstring, keyword, dec)
 
 char *hstring;		/* FITS header string */
@@ -210,17 +191,14 @@ double dec;		/* Declination in degrees */
     dec2str (value, 30, dec, 2);
 
     /* Put value into header string */
-    hputs (hstring,keyword,value);
-
-    /* Return to calling program */
-   return;
+    return (hputs (hstring,keyword,value));
 }
 
 
 
 /*  HPUTL - Set keyword = F if lval=0, else T, in FITS header string */
 
-void
+int
 hputl (hstring, keyword,lval)
 
 char *hstring;		/* FITS header */
@@ -236,16 +214,13 @@ int lval;		/* logical variable (0=false, else true) */
 	strcpy (value, "F");
 
     /* Put value into header string */
-    hputc (hstring,keyword,value);
-
-    /* Return to calling program */
-    return;
+    return (hputc (hstring,keyword,value));
 }
 
 
 /*  HPUTS - Set character string keyword = 'cval' in FITS header string */
 
-void
+int
 hputs (hstring,keyword,cval)
 
 char *hstring;	/* FITS header */
@@ -280,16 +255,13 @@ char *cval;	/* character string containing the value for variable
     value[lcval+2] = (char) 0;
 
     /* Put value into header string */
-    hputc (hstring,keyword,value);
-
-    /* Return to calling program */
-    return;
+    return (hputc (hstring,keyword,value));
 }
 
 
 /*  HPUTC - Set character string keyword = value in FITS header string */
 
-void
+int
 hputc (hstring,keyword,value)
 
 char *hstring;
@@ -302,26 +274,41 @@ char *value;	/* character string containing the value for variable
     char newcom[50];
     char blank[80];
     char *v, *vp, *v1, *v2, *q1, *q2, *c1, *ve;
-    int lkeyword, lcom, lval, lc, i, lv1;
+    int lkeyword, lcom, lval, lc, i, lv1, lhead;
     char *blsearch();
 
     for (i = 0; i < 80; i++)
 	blank[i] = ' ';
 
-    /*  find length of keyword and value */
+    /* Find length of keyword, value, and header */
     lkeyword = strlen (keyword);
     lval = strlen (value);
+    lhead = gethlength (hstring);
 
     /*  If COMMENT or HISTORY, always add it just before the END */
     if (lkeyword == 7 && (strncmp (keyword,"COMMENT",7) == 0 ||
 	strncmp (keyword,"HISTORY",7) == 0)) {
+	
+	/* First look for blank lines before END */
+        v1 = blsearch (hstring, "END");
+    
+	/*  Otherwise, create a space for it at the end of the header */
+	if (v1 == NULL) {
 
-	/* Find end of header */
-	v1 = ksearch (hstring,"END");
-	v2 = v1 + 80;
+	    /* Find end of header */
+	    v1 = ksearch (hstring,"END");
+	    v2 = v1 + 80;
 
-	/* Move END down one line */
-	strncpy (v2, v1, 80);
+	    /* If header length is exceeded, return error code */
+	    if (v2 - hstring > lhead) {
+		return (-1);
+		}
+
+	    /* Move END down 80 characters */
+	    strncpy (v2, v1, 80);
+	    }
+	else
+	    v2 = v1 + 80;
 
 	/* Insert keyword */
 	strncpy (v1,keyword,7);
@@ -337,7 +324,7 @@ char *value;	/* character string containing the value for variable
 
 	/* Insert comment */
 	strncpy (v1+9,value,lv1);
-	return;
+	return (0);
 	}
 
     /* Otherwise search for keyword */
@@ -355,6 +342,12 @@ char *value;	/* character string containing the value for variable
 	    ve = ksearch (hstring,"END");
 	    v1 = ve;
 	    v2 = v1 + 80;
+
+	    /* If header length is exceeded, return error code */
+	    if (v2 - hstring > lhead) {
+		return (-1);
+		}
+
 	    strncpy (v2, ve, 80);
 	    }
 	else
@@ -438,89 +431,98 @@ char *value;	/* character string containing the value for variable
 		printf ("HPUT: %s  = %s\n",keyword, value);
 	    }
 
-	return;
+	return (0);
 }
 
 
 /*  HPUTCOM - Set comment for keyword or on line in FITS header string */
 
-void
+int
 hputcom (hstring,keyword,comment)
 
   char *hstring;
   char *keyword;
   char *comment;
 {
-	char squot;
-	char line[100];
-	int lkeyword, lcom;
-	char *vp, *v1, *v2, *c0, *c1, *q1, *q2;
-	char *ksearch();
+    char squot;
+    char line[100];
+    int lkeyword, lcom, lhead;
+    char *vp, *v1, *v2, *c0, *c1, *q1, *q2;
+    char *ksearch();
 
-	squot = 39;
+    squot = 39;
 
-/*  Find length of variable name */
-	lkeyword = strlen (keyword);
+    /*  Find length of variable name */
+    lkeyword = strlen (keyword);
+    lhead = gethlength (hstring);
 
-/*  If COMMENT or HISTORY, always add it just before the END */
-	if (lkeyword == 7 && (strncmp (keyword,"COMMENT",7) == 0 ||
-	    strncmp (keyword,"HISTORY",7) == 0)) {
+    /*  If COMMENT or HISTORY, always add it just before the END */
+    if (lkeyword == 7 && (strncmp (keyword,"COMMENT",7) == 0 ||
+	strncmp (keyword,"HISTORY",7) == 0)) {
 
 	/* Find end of header */
-	    v1 = ksearch (hstring,"END");
-	    v2 = v1 + 80;
-	    strncpy (v2, v1, 80);
+	v1 = ksearch (hstring,"END");
+	v2 = v1 + 80;
+
+	/* If header length is exceeded, return error code */
+	if (v2 - hstring > lhead) {
+	    return (-1);
+	    }
+
+	/* Move END down 80 characters */
+	strncpy (v2, v1, 80);
 
 	/*  blank out new line and insert keyword */
-	    for (vp = v1; vp < v2; vp++)
-		*vp = ' ';
-	    strncpy (v1, keyword, lkeyword);
+	for (vp = v1; vp < v2; vp++)
+	    *vp = ' ';
+	strncpy (v1, keyword, lkeyword);
+	}
+
+    /* Search header string for variable name */
+    else {
+	v1 = ksearch (hstring,keyword);
+	v2 = v1 + 80;
+
+	/* If parameter is not found, return without doing anything */
+	if (v1 == NULL) {
+	    if (verbose)
+		printf ("HPUTCOM: %s not found\n",keyword);
+	    return (-1);
 	    }
 
-/* search header string for variable name */
-	else {
-	    v1 = ksearch (hstring,keyword);
-	    v2 = v1 + 80;
-
-	/* if parameter is not found, return without doing anything */
-	    if (v1 == NULL) {
-		if (verbose)
-		    printf ("HPUTCOM: %s not found\n",keyword);
-		return;
-		}
-
-	/* otherwise, extract entry for this variable from the header */
-	    strncpy (line, v1, 80);
-	    line[80] = '\0'; /* Null-terminate linebefore strchr call */
+	/* Otherwise, extract entry for this variable from the header */
+	strncpy (line, v1, 80);
+	line[80] = '\0'; /* Null-terminate linebefore strchr call */
 
 	/* check for quoted value */
-	    q1 = strchr (line,squot);
-	    if (q1 != NULL)
-		q2 = strchr (q1+1,squot);
-	    else
-		q2 = NULL;
+	q1 = strchr (line,squot);
+	if (q1 != NULL)
+	    q2 = strchr (q1+1,squot);
+	else
+	    q2 = NULL;
 
-	    if (q2 == NULL || q2-line < 31)
-		c0 = v1 + 31;
-	    else
-		c0 = v1 + (q2-line) + 2; /* allan: 1997-09-30, was c0=q2+2 */
+	if (q2 == NULL || q2-line < 31)
+	    c0 = v1 + 31;
+	else
+	    c0 = v1 + (q2-line) + 2; /* allan: 1997-09-30, was c0=q2+2 */
 
-	    strncpy (c0, "/ ",2);
-	    }
+	strncpy (c0, "/ ",2);
+	}
 
-/* create new entry */
-	lcom = strlen (comment);
+    /* Create new entry */
+    lcom = strlen (comment);
 
-	if (lcom > 0) {
-	    c1 = c0 + 2;
-	    if (c1+lcom > v2)
-		lcom = v2 - c1;
-	    strncpy (c1, comment, lcom);
-	    }
+    if (lcom > 0) {
+	c1 = c0 + 2;
+	if (c1+lcom > v2)
+	    lcom = v2 - c1;
+	strncpy (c1, comment, lcom);
+	}
 
-	if (verbose) {
-	    printf ("HPUTCOM: %s / %s\n",keyword,comment);
-	    }
+    if (verbose) {
+	printf ("HPUTCOM: %s / %s\n",keyword,comment);
+	}
+    return (0);
 }
 
 
@@ -1131,4 +1133,6 @@ getutime ()
  * Jan 28 1999	Fix bug to avoid writing HISTORY or COMMENT past 80 characters
  * Jul 14 1999	Pad string in hputs() to minimum of 8 characters
  * Aug 16 1999	Keep angle between -180 and +360 in dec2str()
+ * Oct  6 1999	Reallocate header buffer if it is too small in hputc()
+ * Oct 14 1999	Do not reallocate header; return error if not successful
  */

@@ -1,6 +1,6 @@
 /*** File libwcs/fitsfile.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** September 27, 1999
+ *** October 14, 1999
 
  * Module:      fitsfile.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -139,6 +139,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     headend = NULL;
     nbh = FITSBLOCK * 20 + 4;
     header = (char *) calloc ((unsigned int) nbh, 1);
+    (void) hlength (header, nbh);
     headnext = header;
     nrec = 1;
     hdu = 0;
@@ -194,6 +195,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    if (nrec * FITSBLOCK > nbh) {
 		nbh = (nrec + 4) * FITSBLOCK + 4;
 		header = (char *) realloc (header,(unsigned int) nbh);
+		(void) hlength (header, nbh);
 		headnext = header + *nbhead - FITSBLOCK;
 		}
 	    headnext = headnext + FITSBLOCK;
@@ -314,8 +316,10 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 
     /* Allocate an extra block for good measure */
     *lhead = (nrec + 1) * FITSBLOCK;
-    if (*lhead > nbh)
+    if (*lhead > nbh) {
 	header = (char *) realloc (header,(unsigned int) *lhead);
+	(void) hlength (header, *lhead);
+	}
     else
 	*lhead = nbh;
 
@@ -334,10 +338,12 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		nrec = nrec + 1;
 	    *lhead = (nrec+1) * FITSBLOCK;
 	    header = (char *) realloc (header,(unsigned int) *lhead);
+	    (void) hlength (header, *lhead);
 	    }
 	strncpy (headend, pheader, lprim);
 	free (pheader);
 	}
+
     return (header);
 }
 
@@ -1094,4 +1100,6 @@ char    *filename;      /* Name of file for which to find size */
  * May 25 1999	Set buffer offsets to 0 when FITS table file is opened
  * Jul 14 1999	Do not try to write image data if BITPIX is 0
  * Sep 27 1999	Add STDOUT as output filename option in fitswimage()
+ * Oct  6 1999	Set header length global variable hget.lhead0 in fitsrhead()
+ * Oct 14 1999	Update header length as it is changed in fitsrhead()
  */

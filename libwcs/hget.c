@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** July 15, 1999
+ *** October 14, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -56,10 +56,9 @@ char *hgetc ();
 
 char val[VLENGTH+1];
 
+static int lhead0 = 0;	/* Length of header string */
 
 /* Set the length of the header string, if not terminated by NULL */
-
-static int lhead0 = 0;
 int
 hlength (header, lhead)
 char	*header; /* FITS header */
@@ -72,6 +71,17 @@ int	lhead;	/* Maximum length of FITS header */
 	lhead0 = hend + 80 - header;
 	}
     return (lhead0);
+}
+
+/* Return the length of the header string, computing it if lhead0 not set */
+int
+gethlength (header)
+char	*header; /* FITS header */
+{
+    if (lhead0 > 0)
+	return (lhead0);
+    else
+	return (hlength (header, 0));
 }
 
 
@@ -915,7 +925,7 @@ char *keyword;	/* character string containing the name of the variable
 		or '$'.  it is truncated to 8 characters. */
 {
     char *loc, *headnext, *headlast, *pval, *lc, *line;
-    int icol, nextchar, lkey, nleft, lhstr;
+    int icol, nextchar, lkey, nleft, lhstr, lhead;
 
 #ifdef USE_SAOLIB
 	int iel=1, ip=1, nel, np, ier;
@@ -928,13 +938,17 @@ char *keyword;	/* character string containing the name of the variable
 
 /* Search header string for variable name */
     if (lhead0)
-	lhstr = lhead0;
+	lhead = lhead0;
     else {
-	lhstr = 0;
-	while (lhstr < 57600 && hstring[lhstr] != 0)
-	    lhstr++;
+	lhead = 0;
+	while (lhead < 57600 && hstring[lhead] != 0)
+	    lhead++;
 	}
-    headlast = hstring + lhstr;
+    lhstr = strlen (hstring);
+    if (lhstr < lhead)
+	lhead = lhstr;
+	
+    headlast = hstring + lhead;
     headnext = hstring;
     pval = NULL;
     while (headnext < headlast) {
@@ -1240,4 +1254,6 @@ int set_saolib(hstring)
  * Apr  5 1999	Check lengths of strings before copying them
  * May  5 1999	values.h -> POSIX limits.h: MAXINT->INT_MAX, MAXSHORT->SHRT_MAX
  * Jul 15 1999	Add hgetm() options of 1- or 2-digit keyword extensions
+ * Oct  6 1999	Add gethlength() to return header length
+ * Oct 14 1999	In ksearch(), search only to null not to end of buffer
  */

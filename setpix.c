@@ -1,5 +1,5 @@
 /* File setpix.c
- * September 14, 1999
+ * October 14, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -30,9 +30,9 @@ int ac;
 char **av;
 {
     char *str;
-    char *fn[100];
-    char *crange[100], *rrange[100];
-    char *value[100];
+    char *fn[500];
+    char *crange[500], *rrange[500];
+    char *value[500];
     char *listfile = NULL;
     char nextline[128];
     FILE *flist;
@@ -140,6 +140,7 @@ usage ()
     fprintf (stderr,"Edit pixels of FITS or IRAF image file\n");
     fprintf(stderr,"Usage: setpix [-vn] file.fts x_range y_range value ...\n");
     fprintf(stderr,"Usage: setpix [-vn] file.fts @valuefile ...\n");
+    fprintf(stderr,"  -i: List each line which is dropped \n");
     fprintf(stderr,"  -n: write new file, else overwrite \n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
@@ -386,7 +387,14 @@ char	**value;	/* value to insert into pixel */
 		sprintf (history, "SETPIX: pixels in rows %s, columns %s set to %s",
 		     rrange[i], crange[i], value[i]);
 	    }
-	hputc (header,"HISTORY",history);
+	if (hputc (header,"HISTORY",history)) {
+	    lhead = gethlength (header);
+	    lhead = lhead + 14400;
+	    if ((header = (char *) realloc (header, (unsigned int) lhead)) != NULL) {
+		hlength (header, lhead);
+		hputc (header,"HISTORY",history);
+		}
+	    }
 	if (verbose)
 	    printf ("%s\n", history);
 	free (xrange);
@@ -486,4 +494,7 @@ char	**value;	/* value to insert into pixel */
  * Jun 29 1999	Fix typo in BSCALE setting
  * Jul 12 1999	Add ranges
  * Sep 14 1999	Add file of values to usage
+ * Oct  5 1999	Bump maximum number of ranges and files from 100 to 500
+ * Oct  7 1999	Add -i option to usage()
+ * Oct 14 1999	Reallocate header and try again if history writing unsuccessful
  */

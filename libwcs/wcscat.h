@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * September 13, 1999
+ * October 1, 1999
  * By Doug Mink, SAO
  */
 
@@ -209,6 +209,23 @@ double ep2jd();	/* fractional year to Julian Date */
 #define WCS_EX 5	/* shape for SAOimage plotting */
 #define WCS_VAR 6	/* shape for HST GSC SAOimage plotting (+ and x)*/
 
+/* Structire and subroutines for access to tokens within a string */
+#define MAXTOKENS 20    /* Maximum number of tokens to parse */
+#define MAXWHITE 20     /* Maximum number of whitespace characters */
+struct Tokens {
+    char *line;         /* Line which has been parsed */
+    int lline;          /* Number of characters in line */
+    int ntok;           /* Number of tokens on line */
+    int nwhite;         /* Number of whitespace characters */
+    char white[MAXWHITE];       /* Whitespace (separator) characters */
+    char *tok1[MAXTOKENS];      /* Pointers to start of tokens */
+    int ltok[MAXTOKENS];        /* Lengths of tokens */
+    int itok;           /* Current token number */
+};
+int setoken();		/* Tokenize a string for easy decoding */
+int nextoken();		/* Get next token from tokenized string */
+int getoken();		/* Get specified token from tokenized string */
+
 /* Sep 22 1998  New header file (star.h)
  * Oct 16 1998  Add more options for ASCII catalogs
  * Oct 20 1998  Add object name to binary files
@@ -236,4 +253,5 @@ double ep2jd();	/* fractional year to Julian Date */
  * Aug 25 1999	Add ACT catalog
  * Sep 10 1999	Move special case setting from argument list to subroutines
  * Sep 13 1999	Add subroutines to access data structure for single stars
+ * Oct  1 1999	Add structure and subroutines for tokenized strings
  */

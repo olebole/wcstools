@@ -1,5 +1,5 @@
 /* File sethead.c
- * July 15, 1999
+ * October 14, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -317,6 +317,9 @@ char	*kwd[];		/* Names and values of those keywords */
 	kwv = kwv0 + 1;
 	lkwv = strlen (kwv);
 
+	/* Get current length of header buffer */
+	lhead = gethlength (header);
+
 	/* Make keyword all upper case */
 	kwl = kwd[ikwd] + lkwd;
 	for (kw = kwd[ikwd]; kw < kwl; kw++) {
@@ -339,18 +342,39 @@ char	*kwd[];		/* Names and values of those keywords */
 	    for (v = kwv; v < kwv+lkwv; v++)
 		cval[i++] = *v;
 	    cval[21] = 0;
-	    hputc (header, kwd[ikwd], cval);
+	    if (hputc (header, kwd[ikwd], cval)) {
+		lhead = lhead + 28800;
+		if ((header =
+		    (char *)realloc(header,(unsigned int)lhead)) != NULL) {
+		    hlength (header, lhead);
+		    hputc (header,kwd[ikwd], cval);
+		    }
+		}
 	    }
 
 	/* Write boolean value to keyword */
-	else if (!strcmp (kwv,"T") || !strcmp (kwv,"t"))
-	    hputl (header, kwd[ikwd], 1);
-	else if (!strcmp (kwv,"YES") || !strcmp (kwv,"yes"))
-	    hputl (header, kwd[ikwd], 1);
-	else if (!strcmp (kwv,"F") || !strcmp (kwv,"f"))
-	    hputl (header, kwd[ikwd], 0);
-	else if (!strcmp (kwv,"NO") || !strcmp (kwv,"no"))
-	    hputl (header, kwd[ikwd], 0);
+	else if (!strcmp (kwv,"T") || !strcmp (kwv,"t") ||
+		 !strcmp (kwv,"YES") || !strcmp (kwv,"yes")) {
+	    if (hputl (header, kwd[ikwd], 1)) {
+		lhead = lhead + 28800;
+		if ((header =
+		    (char *)realloc(header,(unsigned int)lhead)) != NULL) {
+		    hlength (header, lhead);
+		    hputl (header,kwd[ikwd], 1);
+		    }
+		}
+	    }
+	else if (!strcmp (kwv,"F") || !strcmp (kwv,"f") ||
+		 !strcmp (kwv,"NO") || !strcmp (kwv,"no")) {
+	    if (hputl (header, kwd[ikwd], 0)) {
+		lhead = lhead + 28800;
+		if ((header =
+		    (char *)realloc(header,(unsigned int)lhead)) != NULL) {
+		    hlength (header, lhead);
+		    hputl (header,kwd[ikwd], 0);
+		    }
+		}
+	    }
 
 	/* Write character string to keyword */
 	else {
@@ -372,7 +396,14 @@ char	*kwd[];		/* Names and values of those keywords */
 		}
 	    lval = strlen (kwv);
 	    if (lval < 69)
-		hputs (header, kwd[ikwd], kwv);
+		if (hputs (header, kwd[ikwd], kwv)) {
+		    lhead = lhead + 14400;
+		    if ((header =
+			(char *)realloc(header,(unsigned int)lhead)) != NULL) {
+			hlength (header, lhead);
+			hputs (header, kwd[ikwd], kwv);
+			}
+		    }
 
 	    /* If character string is longer than 68 characters, split it */
 	    else {
@@ -397,7 +428,14 @@ char	*kwd[];		/* Names and values of those keywords */
 		    newkey[lroot+1] = ii;
 		    newkey[lroot+2] = (char) 0;
 		    ii++;
-		    hputs (header, newkey, value);
+		    if (hputs (header, newkey, value)) {
+			lhead = lhead + 28800;
+			if ((header =
+			  (char *)realloc(header,(unsigned int)lhead))!=NULL) {
+			    hlength (header, lhead);
+			    hputs (header, newkey, value);
+			    }
+			}
 		    value[lv] = ctemp;
 		    kwv = kwv + lv;
 		    lkwv = lkwv - lv;
@@ -583,4 +621,5 @@ char	*kwd[];		/* Names and values of those keywords */
  * Jul 14 1999  Reallocate keyword array if too many in file
  * Jul 15 1999	Add capability of writing multi-line keywords a la IRAF
  * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
+ * Oct 14 1999	Reallocate header if length is exceeded
  */
