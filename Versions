@@ -1,9 +1,28 @@
+Version 2.6.9 (December 1, 1999)
+edhead:  Added -e option to select an editor and none editor option to
+         simply filter a header, removing control characters without editing
+gethead: Added -u option to always print underscores if keyword not found
+         and -f option to never print filenames
+imwcs:   Now copies images without reading them to memory if image catalogs
+         computed externally; fixed bug which broke iterations, and handle
+         dataless headers with separate image catalogs
+getcol:  Add -a, -c, and -m options to get sums, counts, and means of columns
+imhead:  Add options to output exact FITS header and set BITPIX to 0
+sethead: Fixed bug which wrote character string keyword values twice
+remap:   Added galactic coordinate output option
+scat, skycoor:    Fixed bug when setting epoch or equinox on command line
+imhfile.c: Delete all keywords read from binary part of header before writing
+           a new .imh file
+wcs.c:   Fixed bug which caused NCP to be ignored in wcstype()
+findstar.c: Allow image catalog filename to be up to 256 characters
+tabread.c: Improve error checking; istab() returns 1 only if column headers
+
 Version 2.6.8 (November 5, 1999)
 immatch, imstar, and imwcs now read Starbase files as well as DAOPHOT-format
 files for star x-y input (-d).
 sumpix: Add options to compute means, variances, and standard deviations
 newfits: bugs fixed
-getcol is a new task for gettting information from ASCII space-delimited tables.
+getcol is a new task for getting information from ASCII space-delimited tables.
 lint was run on all source code, and it was cleaned up
 iraf2fits:  Add keyword DATE-MOD with binary time translated to FITS date
 imhfile.c: A major memory leak fixed after Jean-Baptiste Marquette ran

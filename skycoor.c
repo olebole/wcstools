@@ -1,5 +1,5 @@
 /* File skycoor.c
- * October 22, 1999
+ * November 29, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -13,6 +13,7 @@
 #include <math.h>
 #include "libwcs/wcs.h"
 #include "libwcs/wcscat.h"
+#include "libwcs/fitsfile.h"
 
 static void usage();
 static void skycons();
@@ -165,7 +166,7 @@ char **av;
 		    rastr0, decstr0, r);
 	    break;
 
-	case 'y':
+	case 'y':	/* Epoch of coordinates */
 	    if (ac < 2)
 		usage();
 	    epoch = fd2ep (*++av);
@@ -363,4 +364,5 @@ usage ()
  * Jul  1 1999	Allow any legal FITS date format for epoch
  * Jul  8 1999	Fix bug in computing difference in arcseconds
  * Oct 22 1999	Drop unused variables after lint; fix 2 == bugs
+ * Nov 29 1999	Include fitsfile.h for date conversion
  */

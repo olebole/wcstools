@@ -1,5 +1,5 @@
 /* File keyhead.c
- * October 22, 1999
+ * November 30, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -109,7 +109,7 @@ char **av;
 		nkwd = getfilelines (klistfile);
 		if (nkwd > 0) {
 		    if (nkwd > maxnkwd) {
-			kwd = realloc ((void *)kwd, nkwd);
+			kwd = (char **) realloc ((void *)kwd, nkwd);
 			maxnkwd = nkwd;
 			}
 		    if ((fdk = fopen (klistfile, "r")) == NULL) {
@@ -132,7 +132,7 @@ char **av;
 	else if (isfits (*av) || isiraf (*av)) {
 	    if (nfile >= maxnfile) {
 		maxnfile = maxnfile * 2;
-		fn = realloc ((void *)fn, maxnfile);
+		fn = (char **) realloc ((void *)fn, maxnfile);
 		}
 	    fn[nfile] = *av;
 	    nfile++;
@@ -142,7 +142,7 @@ char **av;
 	else {
 	    if (nkwd >= maxnkwd) {
 		maxnkwd = maxnkwd * 2;
-		kwd = realloc ((void *)kwd, maxnkwd);
+		kwd = (char **) realloc ((void *)kwd, maxnkwd);
 		}
 	    kwd[nkwd] = *av;
 	    nkwd++;
@@ -492,4 +492,5 @@ char	*kwd[];		/* Names and values of those keywords */
  * Jul 14 1999  Reallocate keyword array if too many in file
  * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
  * Oct 22 1999	Drop unused variables after lint
+ * Nov 30 1999	Cast realloc's
  */

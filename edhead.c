@@ -1,5 +1,5 @@
 /* File edhead.c
- * December 30, 1998
+ * November 29, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -21,6 +21,7 @@ static void EditHead();
 
 static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
+static char *editcom0;		/* Editor command from command line */
 static int version = 0;		/* If 1, print only program name and version */
 
 
@@ -29,6 +30,8 @@ int ac;
 char **av;
 {
     char *str;
+
+    editcom0 = NULL;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -47,9 +50,18 @@ char **av;
 	case 'v':	/* more verbosity */
 	    verbose++;
 	    break;
+
 	case 'n':	/* ouput new file */
 	    newimage++;
 	    break;
+
+	case 'e':	/* Specify editor */
+	    if (ac < 2)
+		usage ();
+	    editcom0 = *++av;
+	    ac--;
+	    break;
+
 	default:
 	    usage();
 	    break;
@@ -76,7 +88,8 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Edit header of FITS or IRAF image file\n");
-    fprintf(stderr,"usage: edhead [-nv] file.fits file.imh...\n");
+    fprintf(stderr,"usage: edhead [-nv] [-e editor] file.fits file.imh...\n");
+    fprintf(stderr,"  -e: Set editor, overiding environment EDITOR \n");
     fprintf(stderr,"  -n: write new file, else overwrite \n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
@@ -101,6 +114,7 @@ char	*filename;	/* FITS or IRAF file filename */
     char *head, *headend, *hlast;
     char headline[160];
     char newname[128];
+    char space;
     char *temphead;
     FILE *fd;
     char *ext, *fname, *imext, *imext1;
@@ -109,6 +123,7 @@ char	*filename;	/* FITS or IRAF file filename */
     char echar;
 
     newline[0] = 10;
+    space = (char) 32;
 
     /* Open IRAF image and header if .imh extension is present */
     if (isiraf (filename)) {
@@ -154,6 +169,10 @@ char	*filename;	/* FITS or IRAF file filename */
 	    for (i = 0; i< 80; i++)
 		headline[i] = 0;
 	    strncpy (headline,head,80);
+	    for (i = 0; i < 80; i++) {
+		if (headline[i] < space)
+		    headline[i] = space;
+		}
 	    for (i = 79; i > 0; i--) {
 		if (headline[i] == ' ')
 		    headline[i] = 0;
@@ -177,21 +196,28 @@ char	*filename;	/* FITS or IRAF file filename */
 	}
 
     /* Run an editor on the temporary header file */
-    if (!(editcom = getenv ("EDITOR"))) {
-	editcom = (char *)malloc (32);
+    editcom = (char *)calloc (1, 256);
+    if (editcom0 != NULL)
+	strcpy (editcom, editcom0);
+    else if ((editcom0 = getenv ("EDITOR")))
+	strcpy (editcom, editcom0);
+    else
 	strcpy (editcom,"vi");
-	}
     strcat (editcom," ");
     strcat (editcom,temphead);
     if (verbose)
 	printf ("Edit command is '%s'\n",editcom);
-    if (system (editcom)) {
-	free (header);
-	if (iraffile)
-	    free (irafheader);
-	free (image);
-	unlink (temphead);
-	return;
+    if (strncmp (editcom, "none", 4) &&
+	strncmp (editcom, "NONE", 4)) {
+	if (system (editcom)) {
+	    free (header);
+	    if (iraffile)
+		free (irafheader);
+	    free (image);
+	    unlink (temphead);
+	    free (editcom);
+	    return;
+	    }
 	}
 
     /* Read the new header from the temporary file */
@@ -230,6 +256,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	if (iraffile)
 	    free (irafheader);
 	free (image);
+	free (editcom);
 	return;
 	}
 
@@ -315,6 +342,7 @@ char	*filename;	/* FITS or IRAF file filename */
 
     free (header);
     unlink (temphead);
+    free (editcom);
     return;
 }
 
@@ -339,4 +367,8 @@ char	*filename;	/* FITS or IRAF file filename */
  * Dec 30 1998	Write header without image if no image is present
  *
  * Oct 21 1999	Drop unused variables after lint
+ * Nov 24 1999	Do not invoke editor if it is none or NONE
+ * Nov 24 1999	Add -e to set editor on command line
+ * Nov 24 1999	Set characters less than 32 in header string to space
+ * Nov 29 1999	Fix bug so environment editor is used correctly
  */

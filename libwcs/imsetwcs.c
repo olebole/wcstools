@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * October 22, 1999
+ * November 23, 1999
  * By Doug Mink, based on UIowa code
  */
 
@@ -546,15 +546,16 @@ getfield:
     if (gy) free ((char *)gy);
     if (gc) free ((char *)gc);
 
-    if (wcs) free (wcs);
     if (iterate) {
 	setdcenter (wcs->xref, wcs->yref);
+	setsys (wcs->syswcs);
 	setrefpix (wcs->xrefpix, wcs->yrefpix);
 	setsecpix (-3600.0 * wcs->xinc);
 	setsecpix2 (3600.0 * wcs->yinc);
 	setrot (wcs->rot);
 	iterate = 0;
 	imfrac = 0.0;
+	free (wcs);
 	goto getfield;
 	}
     if (recenter) {
@@ -563,14 +564,17 @@ getfield:
 	y = 0.5*wcs->nypix;
 	pix2wcs (wcs, x, y, &ra, &dec);
 	setdcenter (ra, dec);
+	setsys (wcs->syswcs);
 	setrefpix (x, y);
 	setsecpix (-3600.0 * wcs->xinc);
 	setsecpix2 (3600.0 * wcs->yinc);
 	setrot (wcs->rot);
 	recenter = 0;
 	imfrac = 0.0;
+	free (wcs);
 	goto getfield;
 	}
+    if (wcs) free (wcs);
 
     /* Free image source arrays */
     if (sx) free ((char *)sx);
@@ -873,4 +877,5 @@ int recenter;
  * Sep 16 1999	Add zero distsort argument to catread() call
  * Sep 29 1999	Add option to start with pre-matched stars
  * Oct 22 1999	Change catread() to ctgread() to avoid system conflict
+ * Nov 23 1999	Free wcs only after it is used to set up iterate or recenter
  */

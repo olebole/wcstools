@@ -1,5 +1,5 @@
 /* File wcshead.c
- * October 22, 1999
+ * November 30, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -134,7 +134,7 @@ usage ()
     exit (1);
 }
 
-void
+static void
 ListWCS (filename)
 
 char	*filename;	/* FITS or IRAF image file name */
@@ -255,4 +255,5 @@ char	*filename;	/* FITS or IRAF image file name */
  * Jun  3 1999	Change PrintWCS to ListWCS to avoid name conflict
  * Oct 15 1999	Free wcs using wcsfree()
  * Oct 22 1999	Drop unused variables after lint
+ * Nov 30 1999	Fix declaration of ListWCS()
  */

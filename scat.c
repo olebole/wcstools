@@ -1,5 +1,5 @@
 /* File scat.c
- * October 22, 1999
+ * November 29, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,6 +14,7 @@
 #include "libwcs/wcs.h"
 #include "libwcs/lwcs.h"
 #include "libwcs/wcscat.h"
+#include "libwcs/fitsfile.h"
 
 #define MAXREF 100
 
@@ -830,22 +831,6 @@ double	eqout;		/* Equinox for output coordinates */
 		    if (gnum[i] > gnmax) gnmax = gnum[i];
 		    }
 		for (i = 0; i < ns; i++ ) {
-		    if (printobj && gobj1 != NULL)
-			printf ("%s ", gobj[i]);
-		    else if (nndec > 0) {
-			sprintf (nform, "%%s_%%%d.%d ", nndec+5, nndec);
-			printf (nform, refcatname[icat], gnum[i]);
-			}
-		    else if (gnmax < 1000.0)
-			printf ("%s_%03d ",refcatname[icat], (int)gnum[i]);
-		    else if (gnmax < 10000.0)
-			printf ("%s_%04d ",refcatname[icat], (int)gnum[i]);
-		    else if (gnmax < 100000.0)
-			printf ("%s_%05d ",refcatname[icat], (int)gnum[i]);
-		    else if (gnmax < 1000000.0)
-			printf ("%s_%06d ",refcatname[icat], (int)gnum[i]);
-		    else
-			printf ("%s_%d ",refcatname[icat], (int)gnum[i]);
 		    if (degout) {
 			deg2str (rastr, 32, gra[i], 6);
 			deg2str (decstr, 32, gdec[i], 6);
@@ -855,7 +840,14 @@ double	eqout;		/* Equinox for output coordinates */
 			dec2str (decstr, 32, gdec[i], 2);
 			}
 		    wcscstr (cstr, sysout, eqout, epout);
-		    printf ("%s %s %s\n", rastr, decstr, cstr);
+		    if (printobj && gobj1 != NULL)
+			printf ("%s %s %s %s\n",
+				gobj[i], rastr, decstr, cstr);
+		    else {
+			CatNum (refcat, nndec, gnum[i], numstr);
+			printf ("%s_%s %s %s %s\n",
+				refcatname[icat],numstr,rastr,decstr,cstr);
+			}
 		    }
 		return (ns);
 		}
@@ -2054,4 +2046,6 @@ int	ndec;	/* Number of decimal places in output */
  * Oct 22 1999	Drop unused variables after lint
  * Oct 22 1999	Change catread() to ctgread() to avoid system conflict
  * Oct 22 1999	Increase default r for closest search to 1800 arcsec
+ * Nov 19 1999	Use CatNum when concocting names from numbers
+ * Nov 29 1999	Include fitsfile.h for date conversion
  */

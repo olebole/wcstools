@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** October 29, 1999
+ *** November 23, 1999
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -25,7 +25,7 @@ static void mean2d();
 static void mean1d();
 
 /* Set input catalog for image stars */
-static char imcatname[32] = "";
+static char imcatname[256] = "";
 void setimcat (cat)
 char *cat;
 {strcpy (imcatname, cat); return; }
@@ -786,4 +786,5 @@ char *parstring;
  * Oct 21 1999	Drop unused variables and fix sigma usage after lint
  * Oct 25 1999	Fix mean loop to avoid bad pointer creation
  * Oct 29 1999	Read image star positions from tab table or DAOPHOT table
+ * Nov 23 1999	Lengthen imcatname from 32 to 256 for long pathnames
  */

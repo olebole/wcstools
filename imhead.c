@@ -20,6 +20,8 @@ extern char *GetFITShead();
 
 static int nfiles = 0;		/* Nuber of files for headers */
 static int verbose = 0;		/* verbose/debugging flag */
+static int fitsout = 0;		/* If 1, write exact FITS header */
+static int zbitpix = 0;		/* If 1, set BITPIX to 0 for dataless header */
 static int version = 0;		/* If 1, print only program name and version */
 
 main (ac, av)
@@ -50,8 +52,16 @@ char **av;
 	while (c = *++str)
 	switch (c) {
 
+	case 'f':	/* Write FITS header only */
+	    fitsout++;
+	    break;
+
 	case 'v':	/* more verbosity */
 	    verbose++;
+	    break;
+
+	case 'z':	/* Write header with BITPIX = 0 */
+	    zbitpix++;
 	    break;
 
 	case '@':	/* List of files to be read */
@@ -105,8 +115,10 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF image header\n");
-    fprintf(stderr,"usage: imhead [-v] file.fit ...\n");
+    fprintf(stderr,"usage: imhead [-fvz] file.fit ...\n");
+    fprintf(stderr,"  -f: Write exact FITS header\n");
     fprintf(stderr,"  -v: verbose\n");
+    fprintf(stderr,"  -z: Set BITPIX to 0 for dataless header\n");
     exit (1);
 }
 
@@ -118,6 +130,8 @@ char *name;
 
 {
     char *header;	/* FITS image header */
+    int nw, nbytes, lhead, nblk;
+    char *endhead;
 
     if ((header = GetFITShead (name)) == NULL)
 	return;
@@ -131,7 +145,19 @@ char *name;
 	    printf ("%s FITS file header:\n", name);
 	}
 
-    if (PrintFITSHead (header) && verbose)
+    if (fitsout) {
+	if (zbitpix)
+	    hputi4 (header, "BITPIX", 0);
+	endhead = ksearch (header,"END");
+	lhead = endhead + 80 - header;
+	nblk = lhead / 2880;
+	if (lhead < nblk * 2880)
+	   nbytes = nblk * 2880;
+	else
+	    nbytes = (nblk + 1) * 2880;
+	nw = write (1, header, nbytes);
+	}
+    else if (PrintFITSHead (header) && verbose)
 	printf ("%s: no END of header found\n", name);
 
     free (header);
@@ -198,4 +224,5 @@ char	*header;	/* Image FITS header */
  * Nov 30 1998	Add version and help commands for consistency
  *
  * Oct 22 1999	Drop unused variables after lint
+ * Nov 24 1999	Add options to output entire FITS header and set BITPIX to 0
  */

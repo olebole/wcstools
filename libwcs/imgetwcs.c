@@ -1,5 +1,5 @@
 /* File libwcs/imgetwcs.c
- * November 1, 1999
+ * November 16, 1999
  * By Doug Mink, remotely based on UIowa code
  */
 
@@ -102,7 +102,12 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	else {
 	    hputi4 (header, "EPOCH", 2000);
 	    hputi4 (header, "EQUINOX", 2000);
-	    hputs (header, "RADECSYS", "FK5");
+	    if (comsys == WCS_GALACTIC)
+		hputs (header, "RADECSYS", "GALACTIC");
+	    else if (comsys == WCS_ECLIPTIC)
+		hputs (header, "RADECSYS", "ECLIPTIC");
+	    else
+		hputs (header, "RADECSYS", "FK5");
 	    }
 	if (hgetr8 (header, "SECPIX", secpix)) {
 	    degpix = *secpix / 3600.0;
@@ -174,8 +179,14 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	    hputnr8 (header, "CRPIX2", 3, yref);
 	    }
 	if (!ksearch (header,"CTYPE1")) {
-	    hputc (header, "CTYPE1", "RA---TAN");
-	    hputc (header, "CTYPE2", "DEC--TAN");
+	    if (comsys == WCS_GALACTIC) {
+		hputc (header, "CTYPE1", "GLON-TAN");
+		hputc (header, "CTYPE2", "GLAT-TAN");
+		}
+	    else {
+		hputc (header, "CTYPE1", "RA---TAN");
+		hputc (header, "CTYPE2", "DEC--TAN");
+		}
 	    }
 	}
 
@@ -482,4 +493,6 @@ char*	ptype;
  * Oct 21 1999	Fix declarations after lint
  * Nov  1 1999	Add option to write CD matrix
  * Nov  1 1999	If CDELTn set from command line delete previous header CD matrix
+ * Nov 12 1999	Add galactic coordinates as command line option
+ * Nov 16 1999	Set radecsys correctly for command line galactic
  */

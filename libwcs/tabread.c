@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** October 29, 1999
+ *** November 30, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -786,27 +786,28 @@ char *tabfile;	/* Tab table catalog file name */
 	lfile = tabsize (tabfile);
 	if (lfile < 1) {
 	    fprintf (stderr,"TABOPEN: Tab table catalog %s has no entries\n",tabfile);
-	    return (0);
+	    return (NULL);
 	    }
 
 	/* Open tab table catalog */
 	if (!(fcat = fopen (tabfile, "r"))) {
 	    fprintf (stderr,"TABOPEN: Tab table catalog %s cannot be read\n",tabfile);
-	    return (0);
+	    return (NULL);
 	    }
 	}
 
     /* Allocate tab table structure */
     if ((tabtable=(struct TabTable *) calloc(1,sizeof(struct TabTable)))==NULL){
 	fprintf (stderr,"TABOPEN: cannot allocate Tab Table structure\n");
-	return (0);
+	return (NULL);
 	}
 
     /* Allocate space in structure for filename and save it */
     lfname = strlen (tabfile) + 1;
     if ((tabtable->filename = (char *)calloc (1, lfname)) == NULL) {
-	fprintf (stderr,"TABOPEN: cannot allocate filename in sructure\n");
-	return (0);
+	fprintf (stderr,"TABOPEN: cannot allocate filename in structure\n");
+	tabclose (tabtable);
+	return (NULL);
 	}
     strncpy (tabtable->filename, tabfile, lfname);
 
@@ -817,16 +818,21 @@ char *tabfile;	/* Tab table catalog file name */
 	    fprintf (stderr,"TABOPEN: read only %d / %d bytes of file %s\n",
 		     nr, lfile, tabfile);
 	    (void) fclose (fcat);
-	    return (0);
+	    tabclose (tabtable);
+	    return (NULL);
 	    }
 	tabtable->tabhead = tabtable->tabbuff;
 	headend[0] = '-';
 	headend[1] = '-';
 	headend[2] = 0;
 	tabline = tabtable->tabbuff;
-	while (strncmp (tabline,headend, 2)) {
+	while (strncmp (tabline,headend, 2) && tabline < tabtable->tabbuff+lfile) {
 	    lastline = tabline;
 	    tabline = strchr (tabline,newline) + 1;
+	    }
+	if (strncmp (lastline,headend, 2)) {
+	    tabclose (tabtable);
+	    return (NULL);
 	    }
 	tabtable->tabhead = lastline;
 	tabtable->tabdata = strchr (tabline, newline) + 1;
@@ -834,7 +840,8 @@ char *tabfile;	/* Tab table catalog file name */
 	/* Extract positions of keywords we will want to use */
 	if (!tabparse (tabtable)) {
 	    fprintf (stderr,"TABOPEN: No columns in tab table %s\n",tabfile);
-	    return (0);
+	    tabclose (tabtable);
+	    return (NULL);
 	    }
 
     /* Enumerate entries in tab table catalog by counting newlines */
@@ -1094,7 +1101,7 @@ int	*result;
 
 /* TABHGETC -- read a string from a tab table header */
 
-int
+static int
 tabhgetc (tabtable, keyword, result)
 
 struct TabTable *tabtable;	/* Tab table structure */
@@ -1179,7 +1186,7 @@ struct TabTable *tabtable;	/* Tab table structure */
 
     /* Tabulate column names */
     tabtable->colname = (char **)calloc (tabtable->ncols, sizeof (char *));
-    tabtable->lcol = calloc (tabtable->ncols, sizeof (int));
+    tabtable->lcol = (int *) calloc (tabtable->ncols, sizeof (int));
     colhead = tabtable->tabhead;
     while (colhead) {
 	nextab = strchr (colhead, tab);
@@ -1282,6 +1289,7 @@ char    *filename;      /* Name of file to check */
     char line[1025];
     char *endline;
     int nbr;
+    struct TabTable *tabtable;
 
     /* First check file extension */
     if (strsrch (filename, ".tab"))
@@ -1289,23 +1297,12 @@ char    *filename;      /* Name of file to check */
 
     /* If no .tab file extension, try opening the file */
     else {
-	if ((diskfile = fopen (filename, "r")) == NULL)
-	    return (0);
-	else {
-	    nbr = fread (line, 1, 1024, diskfile);
-	    if (nbr < 8)
-		return (0);
-	    line[nbr] = (char) 0;
-	    if ((endline = strchr (line, newline)) == NULL)
-		return (0);
-	    else
-		*endline = (char) 0 ;
-	    fclose (diskfile);
-	    if (strchr (line, tab))
-		return (1);
-	    else
-		return (0);
+	if ((tabtable = tabopen (filename)) != NULL) {
+	    tabclose (tabtable);
+	    return (1);
 	    }
+	else
+	    return (0);
 	}
 }
 
@@ -1359,4 +1356,6 @@ char    *filename;      /* Name of file to check */
  * Oct 25 1999	Fix subroutine declaration inconsistency
  * Oct 25 1999	Replace malloc() calls with calloc()
  * Oct 29 1999	Add tabxyread() for image catalogs
+ * Nov 23 1999	Improve error checking on Starbase tables; istab() opens file
+ * Nov 30 1999	Fix bugs found when compiling under SunOS 4.1.3
  */

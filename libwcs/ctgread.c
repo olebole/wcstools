@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** October 22, 1999
+ *** November 16, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -894,9 +894,12 @@ struct Star *st; /* Star data structure, updated on return */
     /* Translate 3-token Dec (hh mm ss.ss) */
     if (sc->inform == 'T') {
 	int deg, min;
+	int decsgn = 0;
 	double sec;
 
 	deg = (int) (atof (token) + 0.5);
+	if (strchr (token, '-') != NULL)
+	    decsgn = 1;
 	ltok = nextoken (&tokens, token);
 	if (ltok < 1)
 	    return (-1);
@@ -906,6 +909,8 @@ struct Star *st; /* Star data structure, updated on return */
 	    return (-1);
 	sec = atof (token);
 	st->dec = (double) deg + ((double) min / 60.0) + (sec / 3600.0);
+	if (deg > 0 && decsgn)
+	    st->dec = -st->dec;
 	}
 
     /* Translate single-token Dec (dd:mm:ss.ss or dd.mmssss) */
@@ -1119,4 +1124,5 @@ char	*in;	/* Character string */
  * Oct 15 1999	Fix calls to catclose(); eliminate dno in catstar()
  * Oct 22 1999	Fix declarations after lint
  * Oct 22 1999	Rename subroutines from cat* to ctg* to avoid system conflict
+ * Nov 16 1999	Transfer dec degree sign if table format
  */

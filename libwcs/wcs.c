@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** October 25, 1999
+ *** November 17, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -413,7 +413,8 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	    wcs->prjcode != WCS_ARC && wcs->prjcode != WCS_TAN &&
 	    wcs->prjcode != WCS_TNX && wcs->prjcode != WCS_SIN &&
 	    wcs->prjcode != WCS_PIX && wcs->prjcode != WCS_LIN &&
-	    wcs->prjcode != WCS_CAR && wcs->prjcode != WCS_COE))
+	    wcs->prjcode != WCS_CAR && wcs->prjcode != WCS_COE &&
+	    wcs->prjcode != WCS_NCP))
 	    wcs->oldwcs = 0;
 
 	/* Handle NOAO corrected TNX as TAN if oldwcs is set */
@@ -2553,4 +2554,5 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Oct 15 1999	Free wcs using wcsfree()
  * Oct 21 1999	Drop declarations of unused functions after lint
  * Oct 25 1999	Drop out of wcsfree() if wcs is null pointer
+ * Nov 17 1999	Fix bug which caused software to miss NCP projection
  */

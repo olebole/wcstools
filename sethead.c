@@ -1,5 +1,5 @@
 /* File sethead.c
- * October 22, 1999
+ * November 30, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -120,7 +120,7 @@ char **av;
 		nkwd = getfilelines (klistfile);
 		if (nkwd > 0) {
 		    if (nkwd > maxnkwd) {
-			kwd = realloc ((void *)kwd, nkwd);
+			kwd = (char **) realloc ((void *)kwd, nkwd);
 			maxnkwd = nkwd;
 			}
 		    keybuff = getfilebuff (klistfile);
@@ -144,7 +144,7 @@ char **av;
 	else if (isfits (*av) || isiraf (*av)) {
 	    if (nfile >= maxnfile) {
 		maxnfile = maxnfile * 2;
-		fn = realloc ((void *)fn, maxnfile);
+		fn = (char **) realloc ((void *)fn, maxnfile);
 		}
 	    fn[nfile] = *av;
 	    nfile++;
@@ -154,7 +154,7 @@ char **av;
 	else {
 	    if (nkwd >= maxnkwd) {
 		maxnkwd = maxnkwd * 2;
-		kwd = realloc ((void *)kwd, maxnkwd);
+		kwd = (char **) realloc ((void *)kwd, maxnkwd);
 		}
 	    kwd[nkwd] = *av;
 	    nkwd++;
@@ -324,7 +324,7 @@ char	*kwd[];		/* Names and values of those keywords */
 		*kw = *kw - 32;
 	    }
 
-	/* If keyword is already in header, krename it if requested */
+	/* If keyword is already in header, rename it if requested */
 	if (krename && ksearch (header, kwd[ikwd])) {
 	    strcpy (newkey, prefix);
 	    strcat (newkey, kwd[ikwd]);
@@ -392,7 +392,7 @@ char	*kwd[];		/* Names and values of those keywords */
 		    }
 		}
 	    lval = strlen (kwv);
-	    if (lval < 69)
+	    if (lval < 69) {
 		if (hputs (header, kwd[ikwd], kwv)) {
 		    lhead = lhead + 14400;
 		    if ((header =
@@ -401,6 +401,7 @@ char	*kwd[];		/* Names and values of those keywords */
 			hputs (header, kwd[ikwd], kwv);
 			}
 		    }
+		}
 
 	    /* If character string is longer than 68 characters, split it */
 	    else {
@@ -620,4 +621,5 @@ char	*kwd[];		/* Names and values of those keywords */
  * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
  * Oct 14 1999	Reallocate header if length is exceeded
  * Oct 22 1999	Drop unused variables after lint
+ * Nov 17 1999	Fix bug which wrote a second entry for character values
  */

@@ -1,5 +1,5 @@
 /* File gethead.c
- * October 22, 1999
+ * November 30, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -33,6 +33,7 @@ static int tabout = 0;
 static int printhead = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int printfill=0;		/* If 1, print ___ for unfound keyword values */
+static int printfile=1;		/* If 1, print ___ for unfound keyword values */
 static char *rootdir=NULL;	/* Root directory for input files */
 
 main (ac, av)
@@ -89,6 +90,10 @@ char **av;
 		    ac--;
 		    break;
 	
+		case 'f': /* Do not print file names */
+		    printfile = 0;
+		    break;
+	
 		case 'h': /* Output column headings */
 		    printhead++;
 		    break;
@@ -100,12 +105,16 @@ char **av;
 		    ac--;
 		    break;
 	
-		case 'p': /* Output column headings */
+		case 'p': /* List file pathnames, not just file names */
 		    listpath++;
 		    break;
 	
 		case 't': /* Output tab table */
 		    tabout++;
+		    break;
+
+		case 'u': /* Always print ___ if keyword not found */
+		    printfill++;
 		    break;
 	
 		case 'v': /* More verbosity */
@@ -130,7 +139,7 @@ char **av;
 		nkwd = getfilelines (klistfile);
 		if (nkwd > 0) {
 		    if (nkwd > maxnkwd) {
-			kwd = realloc ((void *)kwd, nkwd);
+			kwd = (char **) realloc ((void *)kwd, nkwd);
 			maxnkwd = nkwd;
 			}
 		    if ((fdk = fopen (klistfile, "r")) == NULL) {
@@ -153,7 +162,7 @@ char **av;
 	else if (isfits (*av) || isiraf (*av)) {
 	    if (nfile >= maxnfile) {
 		maxnfile = maxnfile * 2;
-		fn = realloc ((void *)fn, maxnfile);
+		fn = (char **) realloc ((void *)fn, maxnfile);
 		}
 	    fn[nfile] = *av;
 
@@ -171,7 +180,7 @@ char **av;
 	else {
 	    if (nkwd >= maxnkwd) {
 		maxnkwd = maxnkwd * 2;
-		kwd = realloc ((void *)kwd, maxnkwd);
+		kwd = (char **) realloc ((void *)kwd, maxnkwd);
 		}
 	    kwd[nkwd] = *av;
 	    nkwd++;
@@ -183,10 +192,12 @@ char **av;
 
     if (nkwd > 1)
 	printfill = 1;
+    if (nfile < 2 && !listall)
+	printfile = 0;
 
     /* Print column headings if tab table or headings requested */
     if (printhead) {
-	if (nfile > 1 || listall) {
+	if (printfile) {
 	    printf ("FILENAME");
 	    if (maxlfn > 8) {
 		for (i = 8; i < maxlfn; i++)
@@ -216,7 +227,7 @@ char **av;
 	    }
 
 	/* Print field-defining hyphens if tab table output requested */
-	if (nfile > 1 || listall) {
+	if (printfile) {
 	    if (tabout) {
 		printf ("--------");
 		if (maxlfn > 8) {
@@ -280,10 +291,12 @@ usage ()
     fprintf(stderr,"       gethead [-ahptv][-d dir][-f num][-m num][-n num] @filelist kw1 kw2 ... kwn\n");
     fprintf(stderr,"  -a: List file even if keywords are not found\n");
     fprintf(stderr,"  -d: Root directory for input files (default is cwd)\n");
+    fprintf(stderr,"  -f: Never print filenames (default is print if >1)\n");
     fprintf(stderr,"  -h: Print column headings\n");
     fprintf(stderr,"  -n: Number of decimal places in numeric output\n");
     fprintf(stderr,"  -p: Print full pathnames of files\n");
     fprintf(stderr,"  -t: Output in tab-separated table format\n");
+    fprintf(stderr,"  -u: Always print ___ if keyword not found\n");
     fprintf(stderr,"  -v: Verbose\n");
     exit (1);
 }
@@ -338,7 +351,7 @@ char	*kwd[];	/* Names of keywords for which to print values */
     else
 	filename = filename + 1;
 
-    if (nfile > 1 || listall) {
+    if (printfile) {
 	if (tabout)
 	    sprintf (fnform, "%%-%ds	", maxlfn);
 	else
@@ -483,4 +496,8 @@ char *string;
  * Jul 14 1999	Read lists of BOTH keywords and files simultaneously
  * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
  * Oct 22 1999	Drop unused variables after lint
+ * Nov 16 1999	Add -u to always print underscores if keyword not found
+ * Nov 19 1999	Add -f to never print filenames
+ * Nov 30 1999	Fix so no file name is printed if only one file unless -a
+ * Nov 30 1999	Cast realloc's
  */

@@ -1,5 +1,5 @@
 /* File imstar.c
- * October 26, 1999
+ * November 19, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,6 +14,11 @@
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcs.h"
 #include "libwcs/wcscat.h"
+
+#define CAT_DEFAULT	0
+#define CAT_ASCII	1
+#define CAT_STARBASE	2
+#define CAT_DAOFIND	3
 
 static int verbose = 0;		/* verbose flag */
 static int debug = 0;		/* debugging flag */
@@ -40,16 +45,14 @@ extern void setsecpix2();
 extern void setrefpix();
 extern struct WorldCoor *GetFITSWCS();
 
+static int wfile = 0;		/* True to print output file */
 static double magoff = 0.0;
 static int rasort = 0;
 static int printhead = 0;
-static int tabout = 0;
-static int tabfile = 1;
 static int nstar = 0;
 static double eqout = 0.0;
 static int sysout = -1;
-static int daofile = 0;
-static int ascfile = 0;
+static int outform = 0;		/* Output catalog format */
 static int setuns = 0;		/* Change to unsigned integer flag */
 static int imsearch = 1;	/* If 1, search for stars in image */
 static int region_char;
@@ -137,16 +140,6 @@ char **av;
 		    sysout = WCS_B1950;
 		    break;
 	
-		case 'c':	/* Set center RA and Dec */
-		    if (ac < 3)
-			usage();
-		    strcpy (rastr, *++av);
-		    ac--;
-		    strcpy (decstr, *++av);
-		    ac--;
-		    setcenter (rastr, decstr);
-		    break;
-	
 		case 'd':	/* Read image star positions from DAOFIND file */
 		    if (ac < 2)
 			usage();
@@ -163,8 +156,7 @@ char **av;
 		    break;
 	
 		case 'f':	/* Write ASCII catalog format for SKYMAP */
-		    ascfile = 1;
-		    tabfile = 0;
+		    outform = CAT_ASCII;
 		    break;
 	
 		case 'h':	/* ouput descriptive header */
@@ -207,6 +199,10 @@ char **av;
 			usage();
 		    nstar = atoi (*++av);
 		    ac--;
+		    break;
+
+		case 'o':	/* Output DAOFIND format */
+		    outform = CAT_DAOFIND;
 		    break;
 	
     		case 'p':	/* Plate scale in arcseconds per pixel */
@@ -253,6 +249,7 @@ char **av;
 		    if (region_radius == 0)
 			region_radius = 10;
     		    ac--;
+		    wfile = 1;
 		    break;
 	
 		case 'r':	/* Maximum acceptable radius for a star */
@@ -268,17 +265,16 @@ char **av;
 		    rasort = 1;
 		    break;
 	
-		case 't':	/* tab table to stdout */
-		    tabout = 1;
+		case 't':	/* Output Starbase tab table */
+		    outform = CAT_STARBASE;
 		    break;
 	
 		case 'u':	/* Set 16-bit int image file to unsigned */
 		    setuns = 1;
 		    break;
 	
-		case 'w':	/* Write DAOFIND-format output file */
-		    daofile = 1;
-		    tabfile = 0;
+		case 'w':	/* Write output to file */
+		    wfile = 1;
 		    break;
 
 		case 'x':	/* X and Y coordinates of reference pixel */
@@ -332,13 +328,12 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Find stars in FITS and IRAF image files\n");
-    fprintf(stderr,"usage: imstar [-vbsjt] [-m mag_off] [-n num] [-c ra dec][ra dec sys]file.fits ...\n");
-    fprintf(stderr,"  -a: initial rotation angle in degrees (default 0)\n");
+    fprintf(stderr,"usage: imstar [-vbsjt] [-m mag_off] [-n num] [-d file][ra dec sys] file.fits ...\n");
+    fprintf(stderr,"  -a: Rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: Output B1950 (FK4) coordinates \n");
-    fprintf(stderr,"  -c: Use following RA and Dec as center \n");
-    fprintf(stderr,"  -d: Use following DAOFIND output catalog instead of search \n");
+    fprintf(stderr,"  -d: Read following DAOFIND output catalog instead of search \n");
     fprintf(stderr,"  -e: Number of pixels to ignore around image edge \n");
-    fprintf(stderr,"  -f: Write simple ASCII catalog file, not tab table \n");
+    fprintf(stderr,"  -f: Output simple ASCII catalog format\n");
     fprintf(stderr,"  -h: Print heading, else do not \n");
     fprintf(stderr,"  -i: Minimum peak value for star in image (<0=-sigma)\n");
     fprintf(stderr,"  -j: Output J2000 (FK5) coordinates \n");
@@ -346,14 +341,15 @@ usage ()
     fprintf(stderr,"  -l: reflect left<->right before rotating and searching\n");
     fprintf(stderr,"  -m: Magnitude offset (set brightest to abs(offset) if < 0)\n");
     fprintf(stderr,"  -n: Number of brightest stars to print \n");
+    fprintf(stderr,"  -o: Output DAOFIND format star list\n");
     fprintf(stderr,"  -p: Plate scale in arcsec per pixel (default 0)\n");
     fprintf(stderr,"  -q: Output region file shape for SAOimage (default o)\n");
     fprintf(stderr,"  -r: Maximum radius for star in pixels \n");
     fprintf(stderr,"  -s: Sort by RA instead of flux \n");
-    fprintf(stderr,"  -t: Tab table format star list\n");
+    fprintf(stderr,"  -t: Output Starbase tab table format star list\n");
     fprintf(stderr,"  -u: Set BITPIX to -16 for unsigned integer\n");
     fprintf(stderr,"  -v: Verbose; print star list to stdout\n");
-    fprintf(stderr,"  -w: write DAOFIND format star list to output file\n");
+    fprintf(stderr,"  -w: write star list to output file\n");
     fprintf(stderr,"  -x: X and Y coordinates of reference pixel (if not in header or center)\n");
     fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     fprintf(stderr,"  @listfile: file containing a list of filenames to search\n");
@@ -472,8 +468,8 @@ char	*filename;	/* FITS or IRAF file filename */
 
     wcs = GetFITSWCS (filename, header,verbose, &cra, &cdec, &dra, &ddec,
 		      &secpix, &wp, &hp, &sysout, &eqout);
-    if (wcs == NULL && !tabfile)
-	daofile = 1;
+    if (wcs == NULL)
+	outform = CAT_DAOFIND;
 
     /* Discover star-like things in the image, in pixels */
     ns = FindStars (header, image, &sx, &sy, &sb, &sp, debug);
@@ -555,34 +551,27 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	}
 
-    if (region_char)
-	strcat (outfile, ".reg");
-    else if (daofile || nowcs (wcs))
-	strcat (outfile,".dao");
-    else
-	strcat (outfile,".imstar");
-    if (verbose)
-	printf ("%s\n", outfile);
+    if (wfile) {
+	if (region_char)
+	    strcat (outfile, ".reg");
+	else if (outform == CAT_STARBASE)
+	    strcat (outfile,".tab");
+	else if (outform == CAT_DAOFIND)
+	    strcat (outfile,".dao");
+	else
+	    strcat (outfile,".imstar");
+	if (verbose)
+	    printf ("%s\n", outfile);
 		
-    fd = fopen (outfile, "w");
-    if (fd == NULL) {
-	fprintf (stderr, "IMSTAR:  cannot write file %s\n", outfile);
-	if (sx) free ((char *)sx);
-	if (sy) free ((char *)sy);
-	if (sb) free ((char *)sb);
-	if (sp) free ((char *)sp);
-	if (sra) free ((char *)sra);
-	if (sdec) free ((char *)sdec);
-	if (smag) free ((char *)smag);
-	wcsfree (wcs);
-	free (header);
-	if (imsearch)
-	    free (image);
-        return;
-        }
+	fd = fopen (outfile, "w");
+	if (fd == NULL) {
+	    fprintf (stderr, "IMSTAR:  cannot write file %s\n", outfile);
+            wfile = 0;
+            }
+	}
 
     /* Write file of positions for SAOimage regions */
-    if (region_char) {
+    if (wfile && region_char) {
 	int radius, ix, iy;
 	char rstr[16];
 	fprintf (fd, "# stars in %s\n", filename);
@@ -615,78 +604,124 @@ char	*filename;	/* FITS or IRAF file filename */
     else {
 
     /* Write header */
-    if (tabfile)
-	fprintf (fd,"%s\n", headline);
-    if (tabout)
-	printf ("%s\n", headline);
-    if (daofile)
-	fprintf (fd,"#%s\n", headline);
+    if (wfile) {
+	if (outform == CAT_STARBASE)
+	    fprintf (fd,"%s\n", headline);
+	else if (outform == CAT_DAOFIND)
+	    fprintf (fd,"#%s\n", headline);
+	}
+
+    if (verbose) {
+	if (outform == CAT_STARBASE)
+	    printf ("%s\n", headline);
+	else if (outform == CAT_DAOFIND)
+	    printf ("#%s\n", headline);
+	}
+
     if (iswcs (wcs)) {
-	if (rasort) {
-	    if (tabfile)
+	if (rasort && outform == CAT_STARBASE) {
+	    if (wfile)
 		fprintf (fd, "RASORT	T\n");
-	    if (tabout)
+	    if (verbose)
 		printf ("RASORT	T\n");
 	    }
 
-	if (wcs->sysout == WCS_B1950)
-	    sprintf (headline, "EQUINOX	1950.0");
-	else
-	    sprintf (headline, "EQUINOX	2000.0");
-	if (ascfile) {
+	if (outform == CAT_STARBASE) {
 	    if (wcs->sysout == WCS_B1950)
-		fprintf (fd, "%s.cat\n", filename);
+		sprintf (headline, "EQUINOX	1950.0");
 	    else
-		fprintf (fd, "%s.cat/j\n", filename);
+		sprintf (headline, "EQUINOX	2000.0");
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
 	    }
-	else if (tabfile)
-	    fprintf (fd, "%s\n", headline);
-	else if (daofile)
-	    fprintf (fd, "#%s\n", headline);
-	if (tabfile)
-	    fprintf (fd, "EPOCH	%9.4f\n", wcs->epoch);
-	if (tabout)
-	    printf ("%s\n", headline);
-	if (ascfile)
-	else if (daofile)
-	else if (tabfile)
-	if (tabout)
+	else if (outform == CAT_ASCII) {
+	    if (wcs->sysout == WCS_B1950)
+		sprintf (headline, "%s.cat\n", filename);
+	    else
+		sprintf (headline, "%s.cat/j\n", filename);
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
+	    }
+	else if (outform == CAT_DAOFIND) {
+	    if (wcs->sysout == WCS_B1950)
+		sprintf (headline, "#EQUINOX 1950.0");
+	    else
+		sprintf (headline, "#EQUINOX 2000.0");
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
+	    }
 
-	sprintf (headline,"ID 	RA      	DEC     	MAG   	X    	Y    	COUNTS   	PEAK");
-	if (tabfile)
-	    fprintf (fd, "%s\n", headline);
-	if (tabout)
-	    printf ("%s\n", headline);
-	sprintf (headline,"---	------------	------------	------	-----	-----	--------	------");
-	if (tabfile)
-	    fprintf (fd, "%s\n", headline);
-	if (tabout)
-	    printf ("%s\n", headline);
+	if (outform == CAT_STARBASE) {
+	    sprintf (headline, "EPOCH	%9.4f\n", wcs->epoch);
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
+	    sprintf (headline,"ID 	RA      	DEC     	MAG   	X    	Y    	COUNTS   	PEAK");
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
+	    sprintf (headline,"---	------------	------------	------	-----	-----	--------	------");
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
+	    }
+	else if (outform == CAT_ASCII) {
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
+	    }
+	else if (outform == CAT_DAOFIND) {
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
+	    }
 	}
 
     for (i = 0; i < ns; i++) {
 	ra2str (rastr, 32, sra[i], 3);
 	dec2str (decstr, 32, sdec[i], 2);
-	sprintf (headline, "%d	%s	%s	%.2f	%.2f	%.2f	%.2f	%d",
+	if (outform == CAT_STARBASE) {
+	    sprintf (headline, "%d	%s	%s	%.2f	%.2f	%.2f	%.2f	%d",
 		     i+1, rastr,decstr, smag[i], sx[i], sy[i], sb[i], sp[i]);
-	if (tabout)
-	    printf ("%s\n", headline);
-	if (tabfile)
-	    fprintf (fd, "%s\n", headline);
-	if (daofile) {
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
+	    }
+	else if (outform == CAT_DAOFIND) {
 	    sprintf (headline, "%7.2f %7.2f %6.2f  %d",
 		    sx[i],sy[i],smag[i],sp[i]);
 	    if (iswcs (wcs))
 		sprintf (headline, "%s %s %s", headline, rastr, decstr);
-	    fprintf (fd, "%s\n", headline);
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
 	    }
-	sprintf (headline, "%3d %s %s %.2f", i+1,rastr,decstr,smag[i]);
-	sprintf (headline, "%s  %.2f %.2f %.2f %d",
-	    headline, sx[i],sy[i],sb[i], sp[i]);
-	if (ascfile)
-	    fprintf (fd, "%s\n", headline);
-	if (verbose)
-	    printf ("%s\n", headline);
+	else {
+	    sprintf (headline, "%3d %s %s %.2f", i+1,rastr,decstr,smag[i]);
+	    sprintf (headline, "%s  %.2f %.2f %.2f %d",
+		headline, sx[i],sy[i],sb[i], sp[i]);
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    if (verbose)
+		printf ("%s\n", headline);
+	    }
 	}
 	}
 
@@ -768,4 +803,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Oct 22 1999	Drop unused variables after lint
  * Oct 22 1999	Add optional second plate scale arg
  * Oct 26 1999	Read reference pixel coordinate from command line without -c
+ * Nov 19 1999	Make display and file output formats identical
  */

@@ -1,5 +1,5 @@
 /* fitsfile.h  FITS and IRAF file access subroutines
- * November 2, 1999
+ * November 23, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -25,6 +25,7 @@ extern char *fitsrhead();
 extern char *fitsrimage();
 extern int fitswhead();
 extern int fitswimage();
+extern int fitscimage();
 extern int isfits();
 
 /* FITS table file access subroutines in fitsfile.c */
@@ -112,4 +113,5 @@ double ts2jd();	/* seconds since 1950.0 to Julian date */
  * Sep 28 1999	Add (1,1)-based image access subroutines
  * Oct 21 1999	Add fitswhead()
  * Nov  2 1999	Add date utilities from wcscat.h
+ * Nov 23 1999	Add fitscimage()
  */

@@ -1,5 +1,5 @@
 /* File delhead.c
- * October 21, 1999
+ * November 30, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -91,7 +91,7 @@ char **av;
 		nkwd = getfilelines (klistfile);
 		if (nkwd > 0) {
 		    if (nkwd > maxnkwd) {
-			kwd = realloc ((void *)kwd, nkwd);
+			kwd = (char **) realloc ((void *)kwd, nkwd);
 			maxnkwd = nkwd;
 			}
 		    if ((fdk = fopen (klistfile, "r")) == NULL) {
@@ -114,7 +114,7 @@ char **av;
 	else if (isfits (*av) || isiraf (*av)) {
 	    if (nfile >= maxnfile) {
 		maxnfile = maxnfile * 2;
-		fn = realloc ((void *)fn, maxnfile);
+		fn = (char **) realloc ((void *)fn, maxnfile);
 		}
 	    fn[nfile] = *av;
 	    nfile++;
@@ -124,7 +124,7 @@ char **av;
 	else {
 	    if (nkwd >= maxnkwd) {
 		maxnkwd = maxnkwd * 2;
-		kwd = realloc ((void *)kwd, maxnkwd);
+		kwd = (char **) realloc ((void *)kwd, maxnkwd);
 		}
 	    kwd[nkwd] = *av;
 	    nkwd++;
@@ -166,10 +166,10 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Delete FITS or IRAF header keyword entries\n");
-    fprintf(stderr,"Usage: [-nv][-f num][-m num] file1.fits [ ... filen.fits] kw1 [... kwn]\n");
-    fprintf(stderr,"  or : [-nv][-f num][-m num] @listfile kw1 [... kwn]\n");
-    fprintf(stderr,"  or : [-nv][-f num][-m num] file1.fits [ ... filen.fits] @keylistfile\n");
-    fprintf(stderr,"  or : [-nv][-f num][-m num] @listfile @keylistfile\n");
+    fprintf(stderr,"Usage: [-nv] file1.fits [ ... filen.fits] kw1 [... kwn]\n");
+    fprintf(stderr,"  or : [-nv] @listfile kw1 [... kwn]\n");
+    fprintf(stderr,"  or : [-nv] file1.fits [ ... filen.fits] @keylistfile\n");
+    fprintf(stderr,"  or : [-nv] @listfile @keylistfile\n");
     fprintf(stderr,"  -n: write new file\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
@@ -369,4 +369,6 @@ char	*kwd[];		/* Names of those keywords */
  * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
  * Sep 29 1999	Change maximum number of keywords from 100 to 500
  * Oct 21 1999	Drop unused variables after lint
+ * Nov 29 1999	Fix usage command list
+ * Nov 30 1999	Cast realloc's
  */

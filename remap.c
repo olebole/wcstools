@@ -1,5 +1,5 @@
 /* File remap.c
- * October 22, 1999
+ * November 19, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -37,7 +37,7 @@ static FILE *fstack = NULL;
 static int RemapImage();
 extern struct WorldCoor *GetFITSWCS();
 static struct WorldCoor *wcsout = NULL;
-static int eqsys = -1;
+static int eqsys = 0;
 static double equinox = 0.0;
 static int version = 0;		/* If 1, print only program name and version */
 static int remappix=0;		/* Number of samples of input pixels */
@@ -106,6 +106,17 @@ char **av;
 	    fitsout++;
 	    break;
 	    
+    	case 'g':	/* Output image center on command line in galactic */
+    	    if (ac < 3)
+    		usage();
+	    setsys (WCS_GALACTIC);
+	    strcpy (rastr, *++av);
+	    ac--;
+	    strcpy (decstr, *++av);
+	    ac--;
+	    setcenter (rastr, decstr);
+    	    break;
+
     	case 'j':	/* Output image center on command line in J2000 */
     	    if (ac < 3)
     		usage();
@@ -282,6 +293,7 @@ usage ()
     fprintf(stderr,"       remap [-vf][-a rot][-b ra dec][-j ra dec][-l num] @filelist\n");
     fprintf(stderr,"  -a: Output rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: Output center in B1950 (FK4) RA and Dec\n");
+    fprintf(stderr,"  -g: Output center in galactic longitude and latitude\n");
     fprintf(stderr,"  -j: Output center in J2000 (FK5) RA and Dec\n");
     fprintf(stderr,"  -l: Log every num rows of input image\n");
     fprintf(stderr,"  -n: Number of samples per linear input pixel\n");
@@ -430,6 +442,10 @@ char	*filename;	/* FITS or IRAF file filename */
 		 pixratio, remappix);
 	}
 
+    /* Set output coordinate system from input WCS to output coordinate system*/
+    wcsin->sysout = wcsout->syswcs;
+    strcpy (wcsin->radecout, wcsout->radecsys);
+
     /* Allocate space for output image */
     hgeti4 (headout, "BITPIX", &bitpix);
     npout = hpout * wpout;
@@ -522,4 +538,5 @@ char	*filename;	/* FITS or IRAF file filename */
 /* Sep 28 1999	New program
  * Oct 22 1999	Drop unused variables after lint
  * Oct 22 1999	Add optional second plate scale argument
+ * Nov 19 1999	Add galactic coordinate output option
  */

@@ -1,5 +1,5 @@
 /* File getcol.c
- * November 3, 1999
+ * December 1, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -18,10 +18,12 @@ static void usage();
 static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
 static int debug = 0;		/* True for extra information */
+static int sumcol = 0;		/* True to sum columns */
+static int meancol = 0;		/* True to compute mean of columns */
+static int countcol = 0;	/* True to count entries in columns */
 static char *objname = NULL;	/* Object name for output */
 static char *keyword = NULL;	/* Column to add to tab table output */
 static char progpath[128];
-static int printhead = 0;	/* If 1, print program heading */
 static int ncat = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int nread = 0;		/* Number of lines to read (0=all) */
@@ -95,12 +97,16 @@ char **av;
 	    while (c = *++str)
 	    switch (c) {
 
-	    case 'v':	/* more verbosity */
-		verbose++;
+	    case 'a':	/* Sum values in each numeric column */
+		sumcol++;
 		break;
 
-	    case 'h':	/* ouput descriptive header */
-		printhead++;
+	    case 'c':	/* Count entries in each column */
+		countcol++;
+		break;
+
+	    case 'm':	/* Compute mean of each numeric column */
+		meancol++;
 		break;
 
 	    case 'r':	/* Number of lines to read */
@@ -115,6 +121,10 @@ char **av;
 		    usage ();
 		nskip = atoi (*++av);
 		ac--;
+		break;
+
+	    case 'v':	/* more verbosity */
+		verbose++;
 		break;
 
 	    default:
@@ -139,6 +149,8 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Extract specified columns from an ASCII table file\n");
     fprintf (stderr,"Usage: [-rsv] filename [column number range]\n");
+    fprintf(stderr,"  -a: Sum numeric colmuns\n");
+    fprintf(stderr,"  -m: Compute mean of numeric colmuns\n");
     fprintf(stderr,"  -r: Number of lines to read, if not all\n");
     fprintf(stderr,"  -s: Number of lines to skip\n");
     fprintf(stderr,"  -v: Verbose\n");
@@ -158,6 +170,9 @@ char	*ranges;	/* String with range of column numbers to list */
     int nlog;
     struct Tokens tokens;  /* Token structure */
     struct Range *range;
+    double *sum;
+    int *nsum;
+    int *nent;
     int lline;
     int nfind, ntok, nt;
     int *inum;
@@ -166,7 +181,7 @@ char	*ranges;	/* String with range of column numbers to list */
 
     cwhite = NULL;
 
-    if (verbose || printhead)
+    if (verbose)
 
     if (debug)
 	nlog = 1;
@@ -209,9 +224,22 @@ char	*ranges;	/* String with range of column numbers to list */
 	int nfdef = 9;
 	range = RangeInit (ranges, nfdef);
 	nfind = rgetn (range);
+	nbytes = nfind * sizeof (double);
+	if (!(sum = (double *) calloc (nfind, sizeof (double))) ) {
+	    fprintf (stderr, "Could not calloc %d bytes for sum\n", nbytes);
+	    return;
+	    }
 	nbytes = nfind * sizeof (int);
+	if (!(nsum = (int *) calloc (nfind, sizeof(int))) ) {
+	    fprintf (stderr, "Could not calloc %d bytes for nsum\n", nbytes);
+	    return;
+	    }
+	if (!(nent = (int *) calloc (nfind, sizeof(int))) ) {
+	    fprintf (stderr, "Could not calloc %d bytes for nent\n", nbytes);
+	    return;
+	    }
 	if (!(inum = (int *) calloc (nfind, sizeof(int))) ) {
-	    fprintf (stderr, "Could not calloc %d bytes for unum\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for inum\n", nbytes);
 	    return;
 	    }
 	else {
@@ -232,6 +260,11 @@ char	*ranges;	/* String with range of column numbers to list */
 		    else
 			printf ("%s", token);
 		    nt++;
+		    nent[i]++;
+		    if (isnum (token)) {
+			sum[i] = sum[i] + atof (token);
+			nsum[i]++;
+			}
 		    }
 		}
 	    if (nt > 0)
@@ -239,12 +272,66 @@ char	*ranges;	/* String with range of column numbers to list */
 	    }
         }
 
+    /* Print sums of numeric columns */
+    if (sumcol) {
+	for (i = 0; i < nfind; i++) {
+	    if (nsum[i] > 0) {
+		if (i < nfind-1)
+		    printf ("%f ", sum[i]);
+		else
+		    printf ("%f", sum[i]);
+		}
+	    else if (i < nfind-1)
+		printf ("___ ");
+	    else
+		printf ("___");
+	    }
+	if (nfind > 0)
+	    printf ("\n");
+	}
+
+    /* Print means of numeric columns */
+    if (meancol) {
+	for (i = 0; i < nfind; i++) {
+	    if (nsum[i] > 0) {
+		if (i < nfind-1)
+		    printf ("%f ", sum[i]/(double)nsum[i]);
+		else
+		    printf ("%f", sum[i]/(double)nsum[i]);
+		}
+	    else if (i < nfind-1)
+		printf ("___ ");
+	    else
+		printf ("___");
+	    }
+	if (nfind > 0)
+	    printf ("\n");
+	}
+
+    /* Print count for each column */
+    if (countcol) {
+	for (i = 0; i < nfind; i++) {
+	    if (nent[i] > 0) {
+		if (i < nfind-1)
+		    printf ("%d ", nent[i]);
+		else
+		    printf ("%d", nent[i]);
+		}
+	    }
+	if (nfind > 0)
+	    printf ("\n");
+	}
+
     /* Free memory used for search results */
     if (inum) free ((char *)inum);
+    if (nsum) free ((char *)nsum);
+    if (nent) free ((char *)nent);
+    if (sum) free ((char *)sum);
 
     return (nfind);
 }
 
 /* Nov  2 1999	New program
  * Nov  3 1999	Add option to read from stdin as input filename
+ * Dec  1 1999	Add options to print counts, means, and sums of columns
  */

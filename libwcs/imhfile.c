@@ -1,5 +1,5 @@
 /* File imhfile.c
- * November 2, 1999
+ * November 29, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
@@ -849,6 +849,15 @@ char	*image;		/* IRAF image */
     else
 	nbimage = naxis1 * naxis2 * bytepix;
 
+   /* Get rid of redundant header information */
+    hgeti4 (fitsheader, "PIXOFF", &lphead);
+    hdel (fitsheader, "PIXOFF");
+    hgeti4 (fitsheader, "PIXSWAP", &pixswap);
+    hdel (fitsheader, "PIXSWAP");
+    hdel (fitsheader, "HEADSWAP");
+    hdel (fitsheader, "IMHVER");
+    hdel (fitsheader, "DATE-MOD");
+
     /* Write IRAF header file */
     if (irafwhead (hdrname, lhead, irafheader, fitsheader))
         return (0);
@@ -870,17 +879,13 @@ char	*image;		/* IRAF image */
 	}
 
     /* Write header to IRAF pixel file */
-    hgeti4 (fitsheader, "PIXOFF", &lphead);
     if (imhver == 2)
 	irafputc ("impv2", irafheader, 0, 5);
     else
 	irafputc2 ("impix", irafheader, 0, 5);
     nbw = write (fd, irafheader, lphead);
-    hdel (fitsheader, "PIXOFF");
 
     /* Byte-reverse image, if necessary */
-    hgeti4 (fitsheader, "PIXSWAP", &pixswap);
-    hdel (fitsheader, "PIXSWAP");
     if (pixswap)
 	irafswap (bitpix, image, nbimage);
 
@@ -1055,6 +1060,8 @@ int	*nbiraf;	/* Length of returned IRAF header */
 	irafputr4 (irafheader, immax, rmax);
 	irafputr4 (irafheader, immin, rmin);
 	}
+    hdel (fitsheader, "IRAFMIN");
+    hdel (fitsheader, "IRAFMAX");
 
     /* Replace pixel file name, if it is in the FITS header */
     if (hgets (fitsheader, "PIXFILE", SZ_IM2PIXFILE, pixfile)) {
@@ -1739,4 +1746,6 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * Oct 20 1999	Allocate 5000 extra bytes for IRAF header
  * Nov  2 1999	Fix getclocktime() to use only time.h subroutines
  * Nov  2 1999	Add modification date and time to FITS header in iraf2fits()
+ * Nov 24 1999	Delete HEADSWAP, IMHVER, DATE-MOD from header before writing
+ * Nov 29 1999	Delete PIXSWAP, IRAF-MIN, IRAF-MAX from header before writing
  */
