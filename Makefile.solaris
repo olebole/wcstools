@@ -128,8 +128,8 @@ sumpix: sumpix.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
 wcshead: wcshead.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/wcshead wcshead.c $(LIBS)
 
-xy2sky: xy2sky.c $(LIBWCS) libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $(BIN)/xy2sky xy2sky.c $(LIBS)
+xy2sky: xy2sky.c $(LIBWCS) libwcs/wcs.h libwcs/wcscat.h
+	$(CC) $(CFLAGS) -o $(BIN)/xy2sky xy2sky.c $(CATLIBS)
 
 $(LIBWCS): libwcs/*.c libwcs/fitshead.h libwcs/wcs.h
 	cd libwcs; make

@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * July 12, 2001
+ * August 8, 2001
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -48,6 +48,8 @@ void SearchLim();	/* Compute limiting RA and Dec */
 void RefLim();		/* Compute limiting RA and Dec in new system */
 int isfile();		/* Return 1 if string is name of readable file */
 int isacat();		/* Return 1 if string is name of ASCII catalog file */
+int ageti4();		/* Extract int value from keyword= value in string */
+int agetr8();		/* Extract double value from keyword= value in string */
 int agets();		/* Extract value from keyword= value in string */
 void bv2sp();		/* Approximate main sequence spectral type from B - V */
 
@@ -145,6 +147,7 @@ struct StarCat {
 			   4: Integer*4 <nnnnnnnnn>
 			   5: Character ID instead of number in ASCII files */
     int mprop;		/* 1 if proper motion is included */
+			/* 2 if radial velocity is included */
     int nmag;		/* Number of magnitudes present
 			   Negative for J2000 catalog */
     int nbent;		/* Number of bytes per star entry */
@@ -206,6 +209,7 @@ struct StarCat {
     char keydpm[16];	/* Entry name for declination proper motion */
     char keypeak[16];	/* Entry name for integer code */
     char keytype[16];	/* Entry name for spectral type */
+    char keyrv[16];	/* Entry name for radial velocity */
     char keyadd[16];	/* Entry name for additional keyword */
 };
 
@@ -293,7 +297,7 @@ void rstart();		/* Restart range */
 #define WCS_PEX 15	/* pixel ex shape for SAOimage plotting */
 #define WCS_PVAR 16	/* pixel variable (+ and x) shape for HSTGSC plotting */
 
-/* Structire and subroutines for access to tokens within a string */
+/* Structure and subroutines for access to tokens within a string */
 #define MAXTOKENS 100    /* Maximum number of tokens to parse */
 #define MAXWHITE 20     /* Maximum number of whitespace characters */
 struct Tokens {
@@ -309,6 +313,10 @@ struct Tokens {
 int setoken();		/* Tokenize a string for easy decoding */
 int nextoken();		/* Get next token from tokenized string */
 int getoken();		/* Get specified token from tokenized string */
+
+/* Subroutines for fitting and evaluating polynomials */
+void polfit();		/* Fit polynomial coefficients */
+double polcomp();	/* Evaluate polynomial from polfit coefficients */
 
 /* Sep 22 1998  New header file (star.h)
  * Oct 16 1998  Add more options for ASCII catalogs
@@ -382,4 +390,7 @@ int getoken();		/* Get specified token from tokenized string */
  * Jun 19 2001	Add parallax error to catalog and star structures
  * Jun 20 2001	Add webopen(), GSC2, fourth magnitude to star and starcat
  * Jul 12 2001	Add separate web access subroutine, webbuff()
+ * Jul 23 2001	Add ageti4() and agetr8()
+ * Jul 24 2001	Add polfit() and polcomp()
+ * Aug  8 2001	Add keyrv and option to set mprop to 2 to include rv/cz
  */

@@ -1,5 +1,5 @@
 /* File scat.c
- * July 5, 2001
+ * August 24, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -16,7 +16,7 @@
 #include "libwcs/wcscat.h"
 #include "libwcs/fitsfile.h"
 
-static void usage();
+static void PrintUsage();
 static int scatparm();
 static void scatcgi();
 
@@ -24,6 +24,9 @@ static int ListCat ();
 extern void setcenter();
 static void SearchHead();
 static int GetArea();
+static void PrintGSClass();
+static void PrintGSCBand();
+static void PrintWebHelp();
 
 static int verbose = 0;		/* Verbose/debugging flag */
 static int afile = 0;		/* True to append output file */
@@ -43,6 +46,7 @@ static double epoch0 = 0.0;	/* Epoch for coordinates */
 static int syscoor = 0;		/* Input search coordinate system */
 static int nstars = 0;		/* Number of brightest stars to list */
 static int printhead = 0;	/* 1 to print table heading */
+static int printprog = 0;	/* 1 to print program name and version */
 static int nohead = 1;		/* 1 to print table heading */
 static searchcenter = 0;	/* 1 to print simpler format */
 static int tabout = 0;		/* 1 for tab table to standard output */
@@ -51,7 +55,6 @@ static int debug = 0;		/* True for extra information */
 static char *objname;		/* Object name for output */
 static char *keyword;		/* Column to add to tab table output */
 static char *progname;		/* Name of program as executed */
-static int version = 0;		/* If 1, print only program name and version */
 static int match = 0;		/* If 1, match num exactly in BIN or ASC cats*/
 static int printobj = 0;	/* If 1, print object name instead of number */
 static char cpname[16];		/* Name of program for error messages */
@@ -134,7 +137,7 @@ char **av;
     gobj = NULL;
     gobj1 = NULL;
 
-    /* Check name used to execute programe and set catalog name accordingly */
+    /* Check name used to execute program and set catalog name accordingly */
     progname = ProgName (av[0]);
     for (i = 0; i < strlen (progname); i++) {
 	if (progname[i] > 95 && progname[i] < 123)
@@ -154,57 +157,33 @@ char **av;
 
     /* Set parameters from keyword=value arguments */
     if ((query = getenv ("QUERY_STRING")) != NULL) {
-        scatcgi (query);
-	http++;
+	if (ac < 3) {
+	    http++;
+            scatcgi (query);
+	    tabout++;
+	    }
+	else
+	    fprintf (stderr, "SCAT: ac=%d, argument %s with query string %s\n",
+		     ac, *(av+1), query);
 	}
 
     /* If not http and no arguments, print command list */
     else if (ac == 1)
-        usage (progname, NULL);
+        PrintUsage (NULL);
 
     /* Check for help or version command first */
     if (!http) {
 	str = *(av+1);
 	if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
-	    usage (progname, NULL);
-	if (!strcmp (str, "version") || !strcmp (str, "-version")) {
-	    version = 1;
-	    usage (progname, NULL);
-	    }
-	if (!strncmp (str, "band", 4) || !strncmp (str, "filt", 4)) {
-	    fprintf (stderr, "HST Guide Star Catalog Bandpass Codes\n");
-	    fprintf (stderr, "Code Bandpass Emulsion/Filter Notes\n");
-	    fprintf (stderr, " 0      J     IIIaJ+GG395     SERC-J/EJ\n");
-	    fprintf (stderr, " 1      V     IIaD+W12        Pal Quick-V\n");
-	    fprintf (stderr, " 3      B     -               Johnson\n");
-	    fprintf (stderr, " 4      V     -               Johnson\n");
-	    fprintf (stderr, " 5      R     IIIaF+RG630     -\n");
-	    fprintf (stderr, " 6      V495  IIaD+GG495      Pal QV/AAO XV\n");
-	    fprintf (stderr, " 7      O     103aO+no filt   POSS-I Blue\n");
-	    fprintf (stderr, " 8      E     103aE+redplex   POSS-I Red\n");
-	    fprintf (stderr, " 9      R     IIIaF+RG630     -\n");
-	    fprintf (stderr, "10      -     IIaD+GG495+yel  GPO Astrograph\n");
-	    fprintf (stderr, "11      -     103aO+blue      Black Birch Astrograph\n");
-	    fprintf (stderr, "12      -     103aO+blue      Black Birch Astrograph (GSC cal)\n");
-	    fprintf (stderr, "13      -     103aG+GG495+yel Black Birch Astrograph\n");
-	    fprintf (stderr, "14      -     103aG+GG495+yel Black Birch Astrograph (GSC cal)\n");
-	    fprintf (stderr, "16      J     IIIaJ+GG495     -\n");
-	    fprintf (stderr, "18      V     IIIaJ+GG385     POSS-II Blue\n");
-	    fprintf (stderr, "19      U     -               Johnson\n");
-	    fprintf (stderr, "20      R     -               Johnson\n");
-	    fprintf (stderr, "21      I     -               Johnson\n");
-	    fprintf (stderr, "22      U     -               Cape\n");
-	    fprintf (stderr, "23      R     -               Kron\n");
-	    fprintf (stderr, "24      I     -               Kron\n");
-	    exit (1);
-	    }
-	if (!strncmp (str, "clas", 4) || !strncmp (str, "obje", 4)) {
-	    fprintf (stderr, "HST Guide Star Catalog Object Classes\n");
-	    fprintf (stderr, "0: Stellar\n");
-	    fprintf (stderr, "3: Non-Stellar\n");
-	    fprintf (stderr, "5: Not really an object\n");
-	    exit (1);
-	    }
+	    PrintUsage (NULL);
+	if (!strcmp (str, "version") || !strcmp (str, "-version"))
+	    PrintUsage ("version");
+	if (!strcasecmp (str, "webhelp"))
+	    PrintWebHelp ();
+	if (!strncasecmp (str, "band", 4) || !strncasecmp (str, "filt", 4))
+	    PrintGSCBand ();
+	if (!strncasecmp (str, "clas", 4) || !strncasecmp (str, "obje", 4))
+	    PrintGSClass ();
 	}
 
     /* crack arguments */
@@ -212,6 +191,7 @@ char **av;
 
 	/* Set parameters from keyword=value& arguments */
 	if (strchr (*av, '&')) {
+	    tabout++;
             scatcgi (*av);
 	    }
 
@@ -224,7 +204,7 @@ char **av;
 	/* Set search RA, Dec, and equinox if colon in argument */
 	else if (strsrch (*av,":") != NULL) {
 	    if (ac < 2)
-		usage(progname, *av);
+		PrintUsage (*av);
 	    else {
 		strcpy (rastr, *av);
 		ac--;
@@ -365,7 +345,7 @@ char **av;
 
 	    case 'c':       /* Set reference catalog */
 		if (ac < 2)
-		    usage(progname, *av);
+		    PrintUsage (*av);
 		lcat = strlen (*++av);
 		refcatn = (char *) calloc (1, lcat + 2);
 		strcpy (refcatn, *av);
@@ -405,7 +385,7 @@ char **av;
 
 	    case 'k':	/* Keyword (column) to add to output from tab table */
 		if (ac < 2)
-		    usage (progname, *av);
+		    PrintUsage (*av);
 		keyword = *++av;
 		settabkey (keyword);
 		ac--;
@@ -420,7 +400,7 @@ char **av;
 
 	    case 'm':	/* Magnitude limit */
 		if (ac < 2)
-		    usage (progname, *av);
+		    PrintUsage (*av);
 		maglim2 = atof (*++av);
 		ac--;
 		if (ac > 1 && isnum (*(av+1))) {
@@ -434,32 +414,33 @@ char **av;
 
 	    case 'n':	/* Number of brightest stars to read */
 		if (ac < 2)
-		    usage (progname, *av);
+		    PrintUsage (*av);
 		nstars = atoi (*++av);
 		ac--;
 		break;
 
 	    case 'o':	/* Object name */
 		if (ac < 2)
-		    usage (progname, *av);
+		    PrintUsage (*av);
 		objname = *++av;
 		ac--;
 		break;
 
 	    case 'p':	/* Sort by distance from center */
 		catsort = SORT_DIST;
+		printprog++;
 		break;
 
     	    case 'q':	/* Output equinox in years */
     		if (ac < 2)
-    		    usage(progname, *av);
+    		    PrintUsage (*av);
     		eqout = fd2ep (*++av);
     		ac--;
     		break;
 
     	    case 'r':	/* Box radius in arcseconds */
     		if (ac < 2)
-    		    usage(progname, *av);
+    		    PrintUsage (*av);
 		av++;
 		if ((dstr = strchr (*av, ',')) != NULL) {
 		    *dstr = (char) 0;
@@ -544,7 +525,7 @@ char **av;
 
 	    case 'x':       /* Guide Star object class */
 		if (ac < 2)
-		    usage(progname, *av);
+		    PrintUsage (*av);
 		classd = (int) atof (*++av);
 		setgsclass (classd);
 		ac--;
@@ -552,7 +533,7 @@ char **av;
 
 	    case 'y':	/* Set output coordinate epoch */
 		if (ac < 2)
-		    usage(progname, *av);
+		    PrintUsage (*av);
 		epoch0 = fd2ep (*++av);
 		ac--;
 		break;
@@ -563,7 +544,7 @@ char **av;
 		break;
 
 	    default:
-		usage (progname, *av);
+		PrintUsage (*av);
 		break;
 	    }
 	    }
@@ -738,18 +719,23 @@ char **av;
 }
 
 static void
-usage (progname, command)
-char *progname;
-char *command;
-{
-    FILE *dev;
+PrintUsage (command)
 
-    if (http)
+char	*command;	/* Command where error occurred or NULL */
+{
+    FILE *dev;	/* Output, stderr for command line, stdout for web */
+
+    if (http) {
 	dev = stdout;
+	fprintf (dev, "Content-type: text/plain\n\n");
+	}
     else
 	dev = stderr;
-    if (version)
-	exit (-1);
+
+    /* Print program name and version */
+    if (command != NULL && !strncasecmp (command, "ver", 3))
+	exit (0);
+
     if (strsrch (progname,"gsc2") != NULL)
 	fprintf (dev,"Find GSC II Stars in a region on the sky\n");
     else if (strsrch (progname,"gsca") != NULL)
@@ -792,8 +778,8 @@ char *command;
     else
 	fprintf (dev,"Find catalog stars in a region on the sky\n");
 
-    if (command)
-	fprintf (dev, "Bad command: %s\n", command);
+    if (command != NULL)
+	fprintf (dev, "\nBad command: %s\n\n", command);
     fprintf (dev,"Usage: %s [arguments] ra dec system (J2000, B1950, etc.)\n",
 	progname);
     fprintf (dev,"  or : %s [arguments] list of catalog number ranges\n",
@@ -827,7 +813,10 @@ char *command;
 	fprintf(dev,"  -x type: GSC object type (0=stars 3=galaxies -1=all -2=bands)\n");
     fprintf(dev,"  -y year: Epoch of output positions in years\n");
     fprintf(dev,"  -z: Append to output file search[objname].[catalog]\n");
-    exit (1);
+    if (command != NULL)
+	exit (1);
+    else
+	exit (0);
 }
 
 #define TABMAX 64
@@ -873,12 +862,15 @@ double	eqout;		/* Equinox for output coordinates */
     char temp[80];
     char isp[4];
     int ngsc;
+    int smag;
     int refcat;		/* reference catalog switch */
     int icat, nndec, nnfld, nsfld;
     double date, time;
     int gcset;
     int ndist;
     int distsort;
+    int lrv;
+    char tstr[32];
     double flux1, flux2, flux3, flux4;
     char lim1, lim2, lim3, lim4;
     double pra, pdec;
@@ -1027,7 +1019,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    continue;
 	    }
 
-        if (verbose || (printhead && notprinted)) {
+        if (verbose || (printprog && notprinted)) {
 	    if (closest)
 	    else
 	    }
@@ -1071,7 +1063,7 @@ double	eqout;		/* Equinox for output coordinates */
 		epout = 2000.0;
 	    else if (sysout0 == WCS_B1950)
 		epout = 1950.0;
-	    else if (!mprop)
+	    else if (mprop != 1)
 		epout = epref;
 	    else {
 		if (sysout == WCS_B1950)
@@ -1124,18 +1116,35 @@ double	eqout;		/* Equinox for output coordinates */
 	    else */
 		ns = ng;
 
+	    /* Set flag if any proper motions are non-zero */
+	    if (mprop == 1) {
+		mprop = 0;
+		for (i = 0; i < ng; i++) {
+		    if (gpra[i] != 0.0 || gpdec[i] != 0.0) {
+			mprop = 1;
+			break;
+			}
+		    }
+		}
+	    if (mprop == 0 && starcat[icat] != NULL && starcat[icat]->entrv > 0)
+		mprop = 2;
+
 	    for (i = 0; i < ns; i++ ) {
 		gx[i] = 0.0;
 		gy[i] = 1.0;
 		}
 
 	    /* Find largest catalog number printed */
-	    maxnum = 0.0;
-	    for (i = 0; i < ns; i++ ) {
-		if (gnum[i] > maxnum)
-		    maxnum = gnum[i];
+	    if (starcat[icat] != NULL && starcat[icat]->nnfld != 0)
+		nnfld = starcat[icat]->nnfld;
+	    else {
+		maxnum = 0.0;
+		for (i = 0; i < ns; i++ ) {
+		    if (gnum[i] > maxnum)
+			maxnum = gnum[i];
+		    }
+		nnfld = CatNumLen (refcat, maxnum, nndec);
 		}
-	    nnfld = CatNumLen (refcat, maxnum, nndec);
 
 	    /* Check to see whether gc is set at all */
 	    gcset = 0;
@@ -1222,8 +1231,7 @@ double	eqout;		/* Equinox for output coordinates */
 		return (0);
 
 	    if (srch != NULL) {
-		if ((srchcat->stnum == 0 || srchcat->stnum > 4) &&
-		    strlen (srch->objname) > 0) {
+		if (srchcat->stnum <= 0 && strlen (srch->objname) > 0) {
 		    if (objname == NULL)
 			objname = (char *) malloc (32);
 		    strcpy (objname, srch->objname);
@@ -1273,14 +1281,16 @@ double	eqout;		/* Equinox for output coordinates */
 	    if (ngmax < 1)
 		return (ng);
 
-	    /* Set flag if any proper motions are non-zero
+	    /* Set flag if any proper motions are non-zero */
 	    mprop = 0;
 	    for (i = 0; i < ng; i++) {
 		if (gpra[i] != 0.0 || gpdec[i] != 0.0) {
 		    mprop = 1;
 		    break;
 		    }
-		} */
+		}
+	    if (mprop == 0 && starcat[icat] != NULL && starcat[icat]->entrv > 0)
+		mprop = 2;
 
 	    if ((verbose || printhead) && ncat == 1 && ng < 1) {
 		fprintf (stderr, "No stars found in %s\n",refcatname[icat]);
@@ -1297,12 +1307,16 @@ double	eqout;		/* Equinox for output coordinates */
 		ns = ng;
 
 	    /* Find largest catalog number to be printed */
-	    maxnum = 0.0;
-	    for (i = 0; i < ns; i++ ) {
-		if (gnum[i] > maxnum)
-		    maxnum = gnum[i];
+	    if (starcat[icat] != NULL && starcat[icat]->nnfld != 0)
+		nnfld = starcat[icat]->nnfld;
+	    else {
+		maxnum = 0.0;
+		for (i = 0; i < ns; i++ ) {
+		    if (gnum[i] > maxnum)
+			maxnum = gnum[i];
+		    }
+		nnfld = CatNumLen (refcat, maxnum, nndec);
 		}
-	    nnfld = CatNumLen (refcat, maxnum, nndec);
 
 	    /* Check to see whether gc is set at all */
 	    gcset = 0;
@@ -1365,7 +1379,13 @@ double	eqout;		/* Equinox for output coordinates */
 			das = drs;
 			dds = drs;
 			}
-		    if (nohead & tabout) {
+		    if (srchcat != NULL) {
+			if (srchcat->entrv > 0)
+			    smag = srchcat->nmag - 1;
+			else
+			    smag = srchcat->nmag;
+			}
+		    if (nohead && tabout) {
 
 			/* Write tab table heading */
 			catalog = CatName (refcat, refcatname[icat]);
@@ -1382,7 +1402,7 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("radsec	%.2f\n", drs);
 			else if (rad0 < 0)
 			    printf ("boxsec	%.2f\n", dds);
-			if (mprop) {
+			if (mprop == 1) {
 			    printf ("pmunit	mas/yr\n");
 			    }
 
@@ -1404,7 +1424,7 @@ double	eqout;		/* Equinox for output coordinates */
 			    }
 		        printf ("srch_ra     	srch_dec    	");
 		        if (srchcat != NULL) {
-			    if (srchcat->nmag > 1) {
+			    if (smag > 1) {
 				if (strlen (srchcat->keymag1) >0)
 				    printf ("%s	", srchcat->keymag1);
 				else
@@ -1420,7 +1440,7 @@ double	eqout;		/* Equinox for output coordinates */
 					printf ("smag3	");
 				    }
 				}
-			    else if (srchcat->nmag > 0) {
+			    else if (smag > 0) {
 				if (strlen (srchcat->keymag1) >0)
 				    printf ("%s	", srchcat->keymag1);
 				else
@@ -1438,6 +1458,17 @@ double	eqout;		/* Equinox for output coordinates */
 				    printf ("sspt	");
 				    }
 				}
+			    if (srchcat->entrv > 0) {
+				if ((lrv = strlen (srchcat->keyrv)) >0) {
+				    sprintf (tstr, "%s	            ",
+					     srchcat->keyrv);
+				    tstr[9] = (char)0;
+				    printf ("%s	", tstr);
+				    }
+				else
+				    printf ("s_vel    	");
+				}
+				
 			    }
 			if (refcat == TABCAT && starcat[icat]->keyid[0] >0) {
 			    strcpy (headline, starcat[icat]->keyid);
@@ -1480,6 +1511,12 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("f10m 	f25m 	f60m 	f100m	");
 			else if (refcat == TMPSC)
 			    printf ("magj  	magh  	magk  	");
+			else if (starcat[icat]!=NULL && starcat[icat]->entrv>0){
+			    if (nmag > 1)
+				printf ("magb  	velocity 	");
+			    else
+				printf ("velocity 	");
+			    }
 			else if (nmag > 1)
 			    printf ("magb  	magr  	");
 			else
@@ -1507,11 +1544,11 @@ double	eqout;		/* Equinox for output coordinates */
 			    }
 			printf ("------------	------------	");
 			if (srchcat != NULL) {
-			    if (srchcat->nmag > 0)
+			    if (smag > 0)
 				printf ("-----	");
-			    if (srchcat->nmag > 1)
+			    if (smag > 1)
 				printf ("-----	");
-			    if (srchcat->nmag > 2)
+			    if (smag > 2)
 				printf ("-----	");
 			    if (srchcat->nepoch)
 				printf ("---------	");
@@ -1521,8 +1558,10 @@ double	eqout;		/* Equinox for output coordinates */
 				else
 				    printf ("----	");
 				}
+			    if (srchcat->entrv > 0)
+				printf ("---------	");
 			    }
-			strcpy (headline,"--------------------");
+			strcpy (headline,"----------------------");
 			headline[nnfld] = (char) 0;
 			printf ("%s", headline);
 			printf ("	------------	------------	");
@@ -1532,6 +1571,12 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("-----	-----	-----	-----	");
 			else if (refcat == TMPSC)
 			    printf ("------	------	------	");
+			else if (starcat[icat]!=NULL && starcat[icat]->entrv>0){
+			    if (nmag > 1)
+				printf ("----- 	---------	");
+			    else
+				printf ("---------	");
+			    }
 			else if (nmag > 1)
 			    printf ("-----	-----	");
 			else
@@ -1551,7 +1596,9 @@ double	eqout;		/* Equinox for output coordinates */
 			nohead = 0;
 			}
 		    if (srch != NULL) {
-			if ((srchcat->stnum == 0 || srchcat->stnum > 4) &&
+			if (srchcat->keyid[0] > 0)
+			    strcat (numstr, srch->objname);
+			else if (srchcat->stnum <= 0 &&
 			    strlen (srch->objname) > 0)
 			    strcat (numstr, srch->objname);
 			else
@@ -1574,20 +1621,20 @@ double	eqout;		/* Equinox for output coordinates */
 			printf ("%s	%s", rastr, decstr);
 		    else
 			printf ("%s %s", rastr, decstr);
-		    if (srch != NULL) {
-			if (srchcat->nmag > 0) {
+		    if (srchcat != NULL && srch != NULL) {
+			if (smag > 0) {
 			    if (tabout)
 				printf ("	%5.2f", srch->xmag[0]);
 			    else
 				printf (" %5.2f", srch->xmag[0]);
 			    }
-			if (srchcat->nmag > 1) {
+			if (smag > 1) {
 			    if (tabout)
 				printf ("	%5.2f", srch->xmag[1]);
 			    else
 				printf (" %5.2f", srch->xmag[1]);
 			    }
-			if (srchcat->nmag > 2) {
+			if (smag > 2) {
 			    if (tabout)
 				printf ("	%5.2f", srch->xmag[2]);
 			    else
@@ -1617,12 +1664,15 @@ double	eqout;		/* Equinox for output coordinates */
 			    else
 				printf ("  %s ", srch->isp);
 			    }
+			if (srchcat->entrv > 0) {
+			    printf ("	%9.2f", srch->radvel);
+			    }
 			}
 		    if (gobj1 != NULL) {
 			if (strlen (gobj1[0]) > 0)
 			    strcpy (numstr, gobj1[0]);
 			}
-		    else if (starcat[icat] != NULL)
+		    if (starcat[icat] != NULL)
 			CatNum (refcat,-nnfld,starcat[icat]->nndec,gnum[0],numstr);
 		    else
 			CatNum (refcat,-nnfld,nndec,gnum[0],numstr);
@@ -1696,6 +1746,20 @@ double	eqout;		/* Equinox for output coordinates */
 			else
 			    printf (" %6.3f %6.3f %6.3f",
 				    gm[0], gmb[0], xmag);
+			}
+		    else if (starcat[icat] != NULL && starcat[icat]->entrv>0) {
+			if (nmag > 1) {
+			    if (tabout)
+				printf ("	%5.2f	%9.2f", gm[0], gmb[0]);
+			    else
+				printf (" %5.2f %5.2f", gmb[0], gm[0]);
+			    }
+			else {
+			    if (tabout)
+				printf ("	%9.2f", gm[0]);
+			    else
+				printf (" %9.2f", gm[0]);
+			    }
 			}
 		    else if (nmag > 1) {
 			if (tabout)
@@ -1864,7 +1928,7 @@ double	eqout;		/* Equinox for output coordinates */
 	else
 	    printf ("epoch	%.1f\n", epout);
 
-	if (mprop) {
+	if (mprop == 1) {
 	    if (degout) {
 		if (wfile)
 		    fprintf (fd, "rpmunit	arcsec/century\n");
@@ -1894,12 +1958,12 @@ double	eqout;		/* Equinox for output coordinates */
 	    }
  	if (dra0 > 0.0) {
 	    if (wfile) {
-		printf ("drasec	%.2f\n", dra0);
-		printf ("ddecsec	%.2f\n", ddec0);
-		}
-	    else {
 		fprintf (fd, "drasec	%.2f\n", dra0);
 		fprintf (fd, "ddecsec	%.2f\n", ddec0);
+		}
+	    else {
+		printf ("drasec	%.2f\n", dra0);
+		printf ("ddecsec	%.2f\n", ddec0);
 		}
 	    }
 	else if (rad0 > 0) {
@@ -1989,11 +2053,21 @@ double	eqout;		/* Equinox for output coordinates */
 	    strcat (headline,"	mag	class	band	N");
 	else if (refcat == UJC)
 	    strcat (headline,"	mag	plate");
-	else
-	    strcat (headline,"	mag");
+	else if (nmag == 2) {
+	    if (mprop == 2)
+		strcat (headline,"	mag  	velocity");
+	    else
+		strcat (headline,"	mag1 	mag2 ");
+	    }
+	else {
+	    if (mprop == 2)
+		strcat (headline,"	velocity");
+	    else
+		strcat (headline,"	mag  ");
+	    }
 	if (typecol == 1)
 	    strcat (headline,"	type");
-	if (mprop)
+	if (mprop == 1)
 	    strcat (headline,"	Ura    	Udec  ");
 	if (ranges == NULL)
 	    strcat (headline,"	arcsec");
@@ -2001,8 +2075,11 @@ double	eqout;		/* Equinox for output coordinates */
 	    strcat (headline,"	");
 	    strcat (headline, keyword);
 	    }
-	if (gobj1 != NULL)
-	    strcat (headline,"	object");
+	if (gobj1 != NULL) {
+	    if (starcat[icat] == NULL ||
+		starcat[icat]->stnum > 0)
+		strcat (headline,"	object");
+	    }
 	if (printxy)
 	    strcat (headline, "	X      	Y      ");
 
@@ -2020,8 +2097,14 @@ double	eqout;		/* Equinox for output coordinates */
 	    strcat (headline,"	-----	-----	-----	-----");
 	else if (refcat==HIP || refcat == GSC2)
 	    strcat (headline,"	-----	-----	-----	-----");
-	else if (nmag == 2)
-	    strcat (headline,"	-----	-----");
+	else if (nmag == 2) {
+	    if (mprop == 2)
+		strcat (headline,"	-----	--------");
+	    else
+		strcat (headline,"	-----	-----");
+	    }
+	else if (mprop == 2)
+	    strcat (headline,"	--------");
 	else
 	    strcat (headline,"	-----");
 	if (refcat == GSC || refcat == GSCACT)
@@ -2030,12 +2113,17 @@ double	eqout;		/* Equinox for output coordinates */
 	    strcat (headline,"	----");
 	else if (typecol == 2)
 	    strcat (headline,"	-----");
-	if (mprop)
+	if (mprop == 1)
 	    strcat (headline,"	-------	------");
 	if (ranges == NULL)
 	    strcat (headline, "	------");
 	if (refcat == TABCAT && keyword != NULL)
 	    strcat (headline,"	------");
+	if (gobj1 != NULL) {
+	    if (starcat[icat] == NULL ||
+		starcat[icat]->stnum > 0)
+		strcat (headline,"	------");
+	    }
 	if (printxy)
 	    strcat (headline, "	-------	-------");
 
@@ -2089,23 +2177,29 @@ double	eqout;		/* Equinox for output coordinates */
 		    strcpy (headline, "Hip num ");
 		else if (refcat == ACT)
 		    strcpy (headline, "ACT number  ");
-		else
-		    strcpy (headline, "Number   ");
+		else if (nnfld > 5) {
+		    strcpy (headline, "Number      ");
+		    headline[nnfld+3] = (char) 0;
+		    }
+		else {
+		    strcpy (headline, "ID       ");
+		    headline[nnfld+3] = (char) 0;
+		    }
 		}
 	    if (sysout == WCS_B1950) {
 		if (degout) {
 		    if (eqout == 1950.0)
 			strcat (headline, "  RA1950   Dec1950  ");
 		    else {
-			sprintf (temp, "RAB%7.2f DecB%7.2f  ", eqout, eqout);
+			sprintf (temp, "RAB%7.2f DecB%7.2f ", eqout, eqout);
 			strcat (headline, temp);
 			}
 		    }
 		else {
 		    if (eqout == 1950.0)
-			strcat (headline, "RAB1950      DecB1950    ");
+			strcat (headline, "RA1950      Dec1950    ");
 		    else {
-			sprintf (temp, "RAB%7.2f   DecB%7.2f  ", eqout, eqout);
+			sprintf (temp, "RAB%7.2f  DecB%7.2f ", eqout, eqout);
 			strcat (headline, temp);
 			}
 		    }
@@ -2171,10 +2265,24 @@ double	eqout;		/* Equinox for output coordinates */
 		if (gcset)
 		    strcat (headline, "     Peak");
 		}
-	    else
-		strcat (headline, "  Mag");
+	    else if (nmag > 1) {
+		if (mprop == 2)
+		    strcat (headline, "  Mag   Velocity");
+		else
+		    strcat (headline, "  Mag1  Mag2");
+		}
+	    else {
+		if (mprop == 2)
+		    strcat (headline, " Velocity");
+		else
+		    strcat (headline, "  Mag1");
+		}
 	    if (ranges == NULL)
 		strcat (headline, "  Arcsec");
+	    if (gobj1 != NULL) {
+		if (starcat[icat] == NULL || starcat[icat]->stnum > 0)
+		    strcat (headline,"  Object");
+		}
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
 	    else
@@ -2265,15 +2373,19 @@ double	eqout;		/* Equinox for output coordinates */
 		gdist = 0.0;
 
 	    /* Convert proper motion to milliarcsec/year from deg/year */
-	    if (mprop) {
+	    if (mprop == 1) {
 		if (degout)
 		    pra = (gpra[i] * 3600.0 * 100.0);
 		else
 		    pra = (gpra[i] * 240.0 * 100.0);
 		pdec = gpdec[i] * 3600.0 * 100.0;
 		}
-	    if (starcat[icat] != NULL)
-		CatNum (refcat,-nnfld,starcat[icat]->nndec,gnum[i],numstr);
+	    if (starcat[icat] != NULL) {
+		if (starcat[icat]->stnum < 0 && gobj1 != NULL)
+		    strncpy (numstr, gobj1[i], 32);
+		else
+		    CatNum (refcat,-nnfld,starcat[icat]->nndec,gnum[i],numstr);
+		}
 	    else
 		CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
 
@@ -2310,17 +2422,38 @@ double	eqout;		/* Equinox for output coordinates */
 	        sprintf (headline, "%s	%s	%s	%.2f	%.2f",
 		 numstr, rastr, decstr, gmb[i], gm[i]);
 		}
-	    else if (refcat == TABCAT)
-		sprintf (headline, "%s	%s	%s	%.2f",
+	    else if (refcat == TABCAT) {
+		if (mprop == 2)
+		    sprintf (headline, "%s	%s	%s	%.2f	%8.2f",
+			 numstr, rastr, decstr, gm[i], gmb[i]);
+		else
+		    sprintf (headline, "%s	%s	%s	%.2f",
 			 numstr, rastr, decstr, gm[i]);
+		}
 	    else if (refcat == BINCAT) {
 		sprintf (headline, "%s	%s	%s	%.2f	%2s",
 			 numstr, rastr, decstr, gm[i], isp);
 		}
+	    else if (nmag > 1) {
+		if (mprop == 2)
+		    sprintf (headline, "%s	%s	%s	%.2f	%8.2f",
+			 numstr, rastr, decstr, gm[i], gmb[i]);
+		else
+		    sprintf (headline, "%s	%s	%s	%.2f	%.2f",
+			 numstr, rastr, decstr, gm[i], gmb[i]);
+		}
+	    else if (nmag == 1) {
+		if (mprop == 2)
+		    sprintf (headline, "%s	%s	%s	%8.2f",
+			 numstr, rastr, decstr, gm[i]);
+		else
+		    sprintf (headline, "%s	%s	%s	%.2f",
+			 numstr, rastr, decstr, gm[i]);
+		}
 	    else
-	        sprintf (headline, "%s	%s	%s	%.2f",
-		 numstr, rastr, decstr, gm[i]);
-	    if (mprop) {
+	        sprintf (headline, "%s	%s	%s",
+		 numstr, rastr, decstr);
+	    if (mprop == 1) {
 	        sprintf (temp, "	%7.3f	%6.2f", pra, pdec);
 	        strcat (headline, temp);
 		}
@@ -2339,8 +2472,10 @@ double	eqout;		/* Equinox for output coordinates */
 		}
 	    if ((refcat == BINCAT || refcat == TXTCAT) &&
 		 gobj1 != NULL && gobj[i] != NULL) {
-		strcat (headline, "	");
-		strcat (headline, gobj[i]);
+		if (starcat[icat] == NULL || starcat[icat]->stnum > 0) {
+		    strcat (headline, "	");
+		    strcat (headline, gobj[i]);
+		    }
 		}
 	    if (printxy) {
 		strcat (headline, "	");
@@ -2393,6 +2528,9 @@ double	eqout;		/* Equinox for output coordinates */
 		    if (gcset)
 			sprintf (headline,"%s %s %s %6.2f %7d",
 				 numstr, rastr, decstr, gm[i],gc[i]);
+		    else if (mprop == 2)
+			sprintf (headline, "%s %s %s %6.2f %9.2f",
+			     numstr, rastr, decstr, gm[i], gmb[i]);
 		    else
 			sprintf (headline,"%s %s %s %6.2f",
 				 numstr, rastr, decstr, gm[i]);
@@ -2401,10 +2539,26 @@ double	eqout;		/* Equinox for output coordinates */
 		    sprintf (headline,"%s %s %s %6.2f %2s",
 			     numstr, rastr, decstr, gm[i], isp);
 		    }
-		else {
-		    sprintf (headline, "%s %s %s %6.2f",
+		else if (nmag > 1) {
+		    if (mprop == 2)
+			sprintf (headline, "%s %s %s %6.2f %9.2f",
+			     numstr, rastr, decstr, gm[i], gmb[i]);
+		    else
+			sprintf (headline, "%s %s %s %6.2f %6.2f",
+			     numstr, rastr, decstr, gm[i], gmb[i]);
+		    }
+		else if (nmag > 0) {
+		    if (mprop == 2)
+			sprintf (headline, "%s %s %s %9.2f",
+			     numstr, rastr, decstr, gm[i], gmb[i]);
+		    else
+			sprintf (headline, "%s %s %s %6.2f",
 			     numstr, rastr, decstr, gm[i]);
 		    }
+		else
+		    sprintf (headline, "%s %s %s", numstr, rastr, decstr);
+
+		/* Add distance from search center */
 		if (ranges == NULL) {
 		    if (gdmax < 100.0)
 			sprintf (temp, "  %5.2f", gdist);
@@ -2418,15 +2572,21 @@ double	eqout;		/* Equinox for output coordinates */
 			sprintf (temp, "  %.2f", gdist);
 		    strcat (headline, temp);
 		    }
+
+		/* Add specified keyword or object name */
 		if (refcat == TABCAT && keyword != NULL) {
-		    sprintf (temp, " %s", gobj[i]);
+		    sprintf (temp, "  %s", gobj[i]);
 		    strcat (headline, temp);
 		    }
 		else if ((refcat == BINCAT || refcat == TXTCAT) &&
 			 gobj1 != NULL && gobj[i] != NULL) {
-		    sprintf (temp, " %s", gobj[i]);
-		    strcat (headline, temp);
+		    if (starcat[icat] == NULL || starcat[icat]->stnum > 0) {
+			sprintf (temp, "  %s", gobj[i]);
+			strcat (headline, temp);
+			}
 		    }
+
+		/* Write to file or standard output */
 		if (wfile)
 		    fprintf (fd, "%s\n", headline);
 		else
@@ -2760,39 +2920,31 @@ char *parstring;
     char *refcatn;
     int lcat, lrange;
 
-    tabout = 1;
-
-    /* First, check for request for help */
+    /* Check for request for help */
     if (!strncasecmp (parstring,"help", 4)) {
-	printf ("Content-type: text/plain\n\n");
-	printf ("Results will be returned as a tab-separated Starbase table\n");
-	printf ("Enter a sequence of keyword=value, separated by & in one line\n");
-	printf ("\n");
-	printf ("keyword  value description\n");
-	printf ("catalog  gsc, ua2(-USNO-A2.0), gsc2(GSC II), etc\n");
-	printf ("ra       right ascension in degrees or hh:mm:ss.sss\n");
-	printf ("dec      declination in degrees or [+/-]dd:mm:ss.sss\n");
-	printf ("sys      coordinate system (B1950, J2000, Ecliptic, Galactic\n");
-	printf ("outsys   output coordinate system if not same as above\n");
-	printf ("nstar    maximum number of stars to be returned\n");
-	printf ("rad      search radius in arcseconds or dd:mm:ss.sss\n");
-	printf ("         (negate for square box)\n");
-	printf ("dra      search halfwidth in RA arcseconds or dd:mm:ss.sss\n");
-	printf ("ddec     search halfheight in Dec arcseconds or dd:mm:ss.sss\n");
-	printf ("sort     dist   distance from search center\n");
-	printf ("         ra     right ascension\n");
-	printf ("         dec    declination\n");
-	printf ("         mag    magnitude (brightest first)\n");
-	printf ("         none   no sort\n");
-	printf ("epoch    output epoch in fractional years\n");
-	printf ("equinox  output equinox in fractional years\n");
-	printf ("format   col    output coordinates hh:mm:ss dd:mm:ss\n");
-	printf ("         deg    output coordinates in degrees\n");
-	printf ("         rad    output coordinates in radians\n");
-	printf ("min      minimum magnitude\n");
-	printf ("max      maximum magnitude\n");
-	printf ("num      range of catalog numbers (n-nxn or n,n,n)\n");
-	exit (0);
+	PrintWebHelp ();
+	}
+
+    /* Check for request for command line help */
+    if (!strncasecmp (parstring,"comhelp", 7)) {
+	PrintUsage (NULL);
+	}
+
+    /* Check for request for GSC bandpasses */
+    if (!strncasecmp (parstring, "band", 4) ||
+	!strncasecmp (parstring, "filt", 4)) {
+	PrintGSCBand ();
+	}
+
+    /* Check for request for GSC object classes */
+    if (!strncasecmp (parstring, "clas", 4) ||
+	!strncasecmp (parstring, "obje", 4)) {
+	PrintGSClass ();
+	}
+
+    /* Check for scat version request */
+    if (!strcasecmp (parstring, "version")) {
+	PrintUsage ("version");
 	}
 
     /* Separate parameter name and value */
@@ -3006,6 +3158,114 @@ char *parstring;
     return (0);
 }
 
+
+static void
+PrintWebHelp ()
+
+{
+    FILE *out;	/* Output, stderr for command line, stdout for web */
+    if (http) {
+	out = stdout;
+	fprintf (out, "Content-type: text/plain\n\n");
+	}
+    else
+	out = stderr;
+    fprintf (out, "Results will be returned as a tab-separated Starbase table\n");
+    fprintf (out, "Enter a sequence of keyword=value, separated by &, in one line\n");
+    fprintf (out, "Help at http://tdc-www.harvard.edu/software/wcstools/scat/\n");
+    fprintf (out, "\n");
+    fprintf (out, "keyword  value description\n");
+    fprintf (out, "-------  ------------------------------------------------\n");
+    fprintf (out, "catalog  gsc (HST GSC),  ua2 (USNO-A2.0),  gsc2 (GSC II),\n");
+    fprintf (out, "         gsca (GSC-ACT), ty2 (Tycho-2),    tmc (2MASS PSC),\n");
+    fprintf (out, "         act (USNO ACT), usa2 (USNO-SA2.0), ppm, sao, etc.\n");
+    fprintf (out, "ra       right ascension in degrees or hh:mm:ss.sss\n");
+    fprintf (out, "dec      declination in degrees or [+/-]dd:mm:ss.sss\n");
+    fprintf (out, "sys      coordinate system (B1950, J2000, Ecliptic, Galactic\n");
+    fprintf (out, "outsys   output coordinate system if not same as above\n");
+    fprintf (out, "nstar    maximum number of stars to be returned\n");
+    fprintf (out, "rad      search radius in arcseconds or dd:mm:ss.sss\n");
+    fprintf (out, "         (negate for square box)\n");
+    fprintf (out, "dra      search halfwidth in RA arcseconds or dd:mm:ss.sss\n");
+    fprintf (out, "ddec     search halfheight in Dec arcseconds or dd:mm:ss.sss\n");
+    fprintf (out, "sort     dist   distance from search center\n");
+    fprintf (out, "         ra     right ascension\n");
+    fprintf (out, "         dec    declination\n");
+    fprintf (out, "         mag    magnitude (brightest first)\n");
+    fprintf (out, "         none   no sort\n");
+    fprintf (out, "epoch    output epoch in fractional years\n");
+    fprintf (out, "equinox  output equinox in fractional years\n");
+    fprintf (out, "format   col    output coordinates hh:mm:ss dd:mm:ss\n");
+    fprintf (out, "         deg    output coordinates in degrees\n");
+    fprintf (out, "         rad    output coordinates in radians\n");
+    fprintf (out, "min      minimum magnitude\n");
+    fprintf (out, "max      maximum magnitude\n");
+    fprintf (out, "num      range of catalog numbers (n-nxn or n,n,n)\n");
+    fprintf (out, "\n");
+    fprintf (out, "help     List scat web parameters (this list)\n");
+    fprintf (out, "version  Return scat version\n");
+    fprintf (out, "band     Return list of HST GSC bandpass codes\n");
+    fprintf (out, "class    Return list of HST GSC object class codes\n");
+    fprintf (out, "comhelp  Return list of scat command line arguments\n");
+    exit (0);
+}
+
+static void
+PrintGSCBand ()
+
+{
+    FILE *out;	/* Output, stderr for command line, stdout for web */
+    if (http) {
+	out = stdout;
+	fprintf (out, "Content-type: text/plain\n\n");
+	}
+    else
+	out = stderr;
+    fprintf (out, "HST Guide Star Catalog Bandpass Codes\n");
+    fprintf (out, "Code Bandpass Emulsion/Filter Notes\n");
+    fprintf (out, " 0      J     IIIaJ+GG395     SERC-J/EJ\n");
+    fprintf (out, " 1      V     IIaD+W12        Pal Quick-V\n");
+    fprintf (out, " 3      B     -               Johnson\n");
+    fprintf (out, " 4      V     -               Johnson\n");
+    fprintf (out, " 5      R     IIIaF+RG630     -\n");
+    fprintf (out, " 6      V495  IIaD+GG495      Pal QV/AAO XV\n");
+    fprintf (out, " 7      O     103aO+no filt   POSS-I Blue\n");
+    fprintf (out, " 8      E     103aE+redplex   POSS-I Red\n");
+    fprintf (out, " 9      R     IIIaF+RG630     -\n");
+    fprintf (out, "10      -     IIaD+GG495+yel  GPO Astrograph\n");
+    fprintf (out, "11      -     103aO+blue      Black Birch Astrograph\n");
+    fprintf (out, "12      -     103aO+blue      Black Birch Astrograph (GSC cal)\n");
+    fprintf (out, "13      -     103aG+GG495+yel Black Birch Astrograph\n");
+    fprintf (out, "14      -     103aG+GG495+yel Black Birch Astrograph (GSC cal)\n");
+    fprintf (out, "16      J     IIIaJ+GG495     -\n");
+    fprintf (out, "18      V     IIIaJ+GG385     POSS-II Blue\n");
+    fprintf (out, "19      U     -               Johnson\n");
+    fprintf (out, "20      R     -               Johnson\n");
+    fprintf (out, "21      I     -               Johnson\n");
+    fprintf (out, "22      U     -               Cape\n");
+    fprintf (out, "23      R     -               Kron\n");
+    fprintf (out, "24      I     -               Kron\n");
+    exit (0);
+}
+
+static void
+PrintGSClass ()
+
+{
+    FILE *out;	/* Output, stderr for command line, stdout for web */
+    if (http) {
+	out = stdout;
+	fprintf (out, "Content-type: text/plain\n\n");
+	}
+    else
+	out = stderr;
+    fprintf (out, "HST Guide Star Catalog Object Classes\n");
+    fprintf (out, "0: Stellar\n");
+    fprintf (out, "3: Non-Stellar\n");
+    fprintf (out, "5: Not really an object\n");
+    exit (0);
+}
+
 /* Oct 18 1996	New program based on imtab
  * Nov 13 1996	Set maximum nstar from command line if greater than default
  * Nov 14 1996	Set limits from subroutine
@@ -3158,4 +3418,7 @@ char *parstring;
  * Jun 26 2001	If nstars < 0, print from catalog subroutine
  * Jul  3 2001	Add help to CGI response
  * Jul  5 2001	Add hundredths digit to magnitude limit
+ * Jul 18 2001	Fix CGI help response; add web help to command line
+ * Aug  8 2001	Add support for radial velocities
+ * Aug 24 2001	Add support for radial velocities in one-line reports
  */

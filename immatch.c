@@ -1,5 +1,5 @@
 /* File immatch.c
- * May 25, 2000
+ * July 25, 2001
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -51,6 +51,7 @@ extern void setrefpix();
 extern void setwcsproj();
 extern void setfitwcs();
 extern void setirafout();
+extern void setmagfit();
 extern void setimfrac();
 
 main (ac, av)
@@ -145,17 +146,6 @@ char **av;
 	    setirafout();
 	    break;
 
-    	case 'j':	/* center coordinates on command line in J2000 */
-    	    if (ac < 3)
-    		usage (progname);
-	    setsys (WCS_J2000);
-	    strcpy (rastr, *++av);
-	    ac--;
-	    strcpy (decstr, *++av);
-	    ac--;
-	    setcenter (rastr, decstr);
-    	    break;
-
 	case 'g':	/* Guide Star object class */
     	    if (ac < 2)
     		usage (progname);
@@ -181,6 +171,17 @@ char **av;
 	    ac--;
 	    break;
 
+    	case 'j':	/* center coordinates on command line in J2000 */
+    	    if (ac < 3)
+    		usage (progname);
+	    setsys (WCS_J2000);
+	    strcpy (rastr, *++av);
+	    ac--;
+	    strcpy (decstr, *++av);
+	    ac--;
+	    setcenter (rastr, decstr);
+    	    break;
+
     	case 'l':	/* Left-right reflection before rotating */
 	    mirror = 1;
     	    break;
@@ -205,6 +206,10 @@ char **av;
     	    setsecpix (atof (*++av));
     	    ac--;
     	    break;
+
+	case 'q':	/* Set image to catalog magnitude fit */
+	    setmagfit();
+	    break;
 
     	case 'r':	/* Angle in degrees to rotate before fitting */
     	    if (ac < 2)
@@ -364,6 +369,7 @@ char	*progname;		/* Name of program being executed */
     fprintf(stderr,"  -l: reflect left<->right before rotating and fitting\n");
     fprintf(stderr,"  -m: initial reference catalog magnitude limits\n");
     fprintf(stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
+    fprintf(stderr,"  -q: fit image to catalog magnitude polynomial(s)\n");
     fprintf(stderr,"  -r: rotation angle in degrees before fitting (default 0)\n");
     fprintf(stderr,"  -s: use this fraction extra stars (default 1.0)\n");
     fprintf(stderr,"  -t: offset tolerance in pixels (default 20)\n");
@@ -514,5 +520,7 @@ char *
  *
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  * Mar  8 2000	Move catalog selection from executable name to subroutine
+ *
  * May 25 2001	Add GSC-ACT and 2MASS Point Source Catalogs
+ * Jul 25 2001	Add -q option to fit image to catalog magnitude polynoimial
  */

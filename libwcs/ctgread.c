@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** June 20, 2001
+ *** August 24, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -258,15 +258,23 @@ int	nlog;
 	rapm = star->rapm;
 	decpm = star->decpm;
 	if (sc->inform != 'X') {
-	    if (sc->mprop)
+	    if (sc->mprop == 1)
 		wcsconp (sysref, sysout, eqref, eqout, epref, epout,
 		         &ra, &dec, &rapm, &decpm);
 	    else
 		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 	    }
+
 	mag = star->xmag[0];
 	if (sc->nmag > 1)
 	    magb = star->xmag[1];
+	if (sc->entrv > 0) {
+	    if (sc->nmag > 1)
+		magb = star->radvel;
+	    else
+		mag = star->radvel;
+	    }
+
 	peak = 0;
 	if (drad > 0 || distsort) {
 	    if (sc->inform == 'X')
@@ -538,7 +546,7 @@ int	nlog;
 
 	/* Loop through catalog to star */
 	starfound = 0;
-	if (match && sc->stnum > 0 && sc->stnum < 5) {
+	if (match && sc->stnum > 0) {
 	    for (istar = 1; istar <= sc->nstars; istar++) {
 		if (ctgstar (istar, sc, star)) {
 		    fprintf (stderr,"CTGRNUM: Cannot read star %d\n", istar);
@@ -574,7 +582,7 @@ int	nlog;
 	    epref = star->epoch;
     
 	    if (sc->inform != 'X') {
-		if (sc->mprop)
+		if (sc->mprop == 1)
 		    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
 			     &ra, &dec, &rapm, &decpm);
 		else
@@ -589,6 +597,12 @@ int	nlog;
 	    tmag[jnum] = star->xmag[0];
 	    if (sc->nmag > 1)
 		tmagb[jnum] = star->xmag[1];
+	    if (sc->entrv > 0) {
+		if (sc->nmag > 1)
+		    tmagb[jnum] = star->radvel;
+		else
+		    tmag[jnum] = star->radvel;
+		}
 
 	    /* Spectral type */
 	    if (sc->sptype)
@@ -732,6 +746,7 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     sc->sptype = 0;
     sc->stnum = 1;
     sc->entepoch = 0;
+    sc->entrv = 0;
 
     catdesc = strchr (sc->catbuff, newline) + 1;
     lhead = catdesc - sc->catbuff;
@@ -757,6 +772,10 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	sc->equinox = 1950.0;
 	}
 
+    /* Catalog positions are in degrees */
+    if (strsrch (header, "/d") || strsrch (header, "/D"))
+	sc->inform = 'D';
+
     /* Catalog positions are in ecliptic coordinates */
     if (strsrch (header, "/e") || strsrch (header, "/E")) {
 	sc->coorsys = WCS_ECLIPTIC;
@@ -764,6 +783,10 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	sc->epoch = 2000.0;
 	sc->equinox = 2000.0;
 	}
+
+    /* Catalog positions are in hhmmss.s ddmmss.s */
+    if (strsrch (header, "/f") || strsrch (header, "/F"))
+	sc->inform = 'F';
 
     /* Catalog positions are galactic coordinates */
     if (strsrch (header, "/g") || strsrch (header, "/G")) {
@@ -777,10 +800,6 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     if (strsrch (header, "/h") || strsrch (header, "/H"))
 	sc->inform = 'H';
 
-    /* Catalog positions are in degrees */
-    if (strsrch (header, "/d") || strsrch (header, "/D"))
-	sc->inform = 'D';
-
     /* Ignore information after position and magnitude */
     if (strsrch (header, "/i") || strsrch (header, "/I"))
 	sc->ignore = 1;
@@ -793,19 +812,6 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	sc->epoch = 2000.0;
 	sc->equinox = 2000.0;
 	}
-    if (strsrch (header, "/q") || strsrch (header, "/Q")) {
-	sc->coorsys = 0;
-	sc->epoch = 0.0;
-	sc->equinox = 0.0;
-	}
-
-    /* No number in first column, RA or object name first */
-    if (strsrch (header, "/n") || strsrch (header, "/N"))
-	sc->stnum = 0;
-
-    /* Object name instead of number in first column */
-    if (strsrch (header, "/o") || strsrch (header, "/O"))
-	sc->stnum = 5;
 
     /* No magnitude */
     if (strsrch (header, "/m") || strsrch (header, "/M"))
@@ -819,9 +825,23 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     else
 	sc->nmag = 1;
 
+    /* No number in first column, RA or object name first */
+    if (strsrch (header, "/n") || strsrch (header, "/N"))
+	sc->stnum = 0;
+
+    /* Object name instead of number in first column */
+    if (strsrch (header, "/o") || strsrch (header, "/O"))
+	sc->stnum = -16;
+
     /* Proper motion */
     if (strsrch (header, "/p") || strsrch (header, "/P"))
 	sc->mprop = 1;
+
+    if (strsrch (header, "/q") || strsrch (header, "/Q")) {
+	sc->coorsys = 0;
+	sc->epoch = 0.0;
+	sc->equinox = 0.0;
+	}
 
     /* RA-sorted catalog */
     if (strsrch (header, "/r") || strsrch (header, "/R"))
@@ -834,6 +854,12 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     /* Table format (hh mm ss dd mm ss) */
     if (strsrch (header, "/t") || strsrch (header, "/T"))
 	sc->inform = 'T';
+
+    /* Radial velocity is included after magnitude(s) */
+    if (strsrch (header, "/v") || strsrch (header, "/V")) {
+	sc->mprop = 2;
+	sc->entrv = 1;
+	}
 
     /* X Y format (x.xxxxxx y.yyyyy) */
     if (strsrch (header, "/x") || strsrch (header, "/X")) {
@@ -863,6 +889,14 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     else {
 	strncpy (sc->isname, catdesc, ldesc);
 	sc->isname[ldesc] = (char) 0;
+	}
+
+    if (sc->entrv > 0 && sc->nmag < 2) {
+	sc->nmag = sc->nmag + 1;
+	if (sc->nmag == 2)
+	    strcpy (sc->keymag2, "velocity");
+	else
+	    strcpy (sc->keymag1, "velocity");
 	}
 
     /* Enumerate entries in ASCII catalog by counting newlines */
@@ -948,14 +982,14 @@ struct StarCat *sc; /* Star catalog data structure */
 struct Star *st; /* Star data structure, updated on return */
 {
     struct Tokens tokens;
-    double ydate;
+    double ydate, dtemp;
     char *line;
     char *nextline;
     char token[80];
     char ctemp, *linend;
     int ntok, itok;
     int ltok;
-    int imag;
+    int imag, nmag;
 
     /* Return error if requested number beyond catalog */
     if (istar > sc->nstars) {
@@ -1017,7 +1051,7 @@ struct Star *st; /* Star data structure, updated on return */
     ntok = setoken (&tokens, line, NULL);
 
     /* Source number */
-    if (sc->stnum > 0 && sc->stnum < 5) {
+    if (sc->stnum > 0) {
 	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok > 0) {
 	    st->num = atof (token);
@@ -1031,7 +1065,7 @@ struct Star *st; /* Star data structure, updated on return */
 	st->num = (double) sc->istar;
 
     /* Object name, if at start of line */
-    if (sc->stnum == 5) {
+    if (sc->stnum < 0) {
 	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok > 31) {
 	    strncpy (st->objname, token, 31);
@@ -1061,6 +1095,13 @@ struct Star *st; /* Star data structure, updated on return */
 	    return (-1);
 	sec = atof (token);
 	st->ra = 15.0 * ((double) hr + ((double) mn / 60.0) + (sec / 3600.0));
+	}
+
+    /* Translate single-token right ascension from hhmmss.ss */
+    else if (sc->inform == 'F') {
+	dtemp = 0.0001 * atof (token);
+	sprintf (token, "%.6f", dtemp);
+	st->ra = ctg2ra (token);
 	}
 
     /* Translate single-token right ascension as degrees */
@@ -1110,6 +1151,13 @@ struct Star *st; /* Star data structure, updated on return */
     else if (sc->inform == 'D')
 	st->dec = atof (token);
 
+    /* Translate single-token declination from ddmmss.ss */
+    else if (sc->inform == 'F') {
+	dtemp = 0.0001 * atof (token);
+	sprintf (token, "%.6f", dtemp);
+	st->dec = ctg2dec (token);
+	}
+
     /* Translate single-token declination (dd:mm:ss.ss or dd.mmssss) */
     else
 	st->dec = ctg2dec (token);
@@ -1133,11 +1181,17 @@ struct Star *st; /* Star data structure, updated on return */
 	}
 
     /* Magnitude, if present */
-    if (sc->nmag > 0) {
-	for (imag = 0; imag < sc->nmag; imag++) {
+    if (sc->nmag < 3 && sc->mprop == 2)
+	nmag = sc->nmag - 1;
+    else
+	nmag = sc->nmag;
+    if (nmag > 0) {
+	for (imag = 0; imag < nmag; imag++) {
 	    ltok = nextoken (&tokens, token, MAX_LTOK);
 	    if (ltok > 0)
 		st->xmag[imag] = atof (token);
+	    else
+		st->xmag[imag] = 0.0;
 	    }
 	}
 
@@ -1156,8 +1210,17 @@ struct Star *st; /* Star data structure, updated on return */
 	    }
 	}
 
+    /* Radial velocity, if present */
+    if (sc->entrv > 0) {
+	ltok = nextoken (&tokens, token, MAX_LTOK);
+	if (ltok > 0)
+	    st->radvel = atof (token);
+	else
+	    st->radvel = 0.0;
+	}
+
     /* Proper motion, if present */
-    if (sc->mprop) {
+    if (sc->mprop == 1) {
 	ltok = nextoken (&tokens, token, MAX_LTOK);
 	if (ltok > 1)
 	    st->rapm = atof (token) / 3600.0;
@@ -1175,7 +1238,7 @@ struct Star *st; /* Star data structure, updated on return */
 
     /* Object name */
     itok = tokens.itok;
-    if (sc->stnum < 5 && itok < ntok && !sc->ignore) {
+    if (sc->stnum > 0 && itok < ntok && !sc->ignore) {
 	itok = -(itok+1);
 	ltok = getoken (&tokens, itok, token, MAX_LTOK);
 	if (ltok > 31) {
@@ -1321,7 +1384,7 @@ char	*in;	/* Character string */
 	deg = (double)((int) (xnum + 0.000000001));
 	xnum = (xnum - deg) * 100.0;
 	min = (double)((int) (xnum + 0.000000001));
-	sec = (xnum - deg) * 100.0;
+	sec = (xnum - min) * 100.0;
 	dec = sign * (deg + (min / 60.0) + (sec / 3600.0));
 	}
 
@@ -1392,4 +1455,7 @@ char	*in;	/* Character string */
  * May 29 2001	Save length of star i.d. number in ctgopen()
  * Jun 18 2001	Add maximum length of returned string to getoken(), nextoken()
  * Jun 20 2001	Add GSC II to ctgread() and ctgrnum()
+ * Aug  8 2001	Add /v option to return radial velocity
+ * Aug  8 2001	Add /f option for hhmmss.s ddmmss.s coordinates
+ * Aug 24 2001	Use STNUM < 0 instead of STNUM ==5 for object name not number
  */

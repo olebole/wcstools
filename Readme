@@ -14,7 +14,7 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.0 of the WCSTools package developed by Doug Mink
+This is version 3.0.3 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 
@@ -55,6 +55,9 @@ in the WCSTools package, including SAOimage when used for WCS work:
      Douglas J. Mink (1998), in Astronomical Data Analysis Software and
      Systems VIII, A.S.P. Conference Series, Vol. 172, 1999, Dave Mehringer,
      Ray Plante, Doug Roberts, eds., pp.  498-501. 
+
+A paper will be presented at the 2001 ADASS conference describing how the
+WCSTools package uses the web, among other new features.
 
 Program Descriptions
 

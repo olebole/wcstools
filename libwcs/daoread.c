@@ -1,5 +1,5 @@
 /*** File libwcs/daoread.c
- *** March 20, 1997
+ *** July 20, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -28,7 +28,7 @@ daoread (daocat, xa, ya, ba, pa, nlog)
 
 char	*daocat;	/* Name of DAOFIND catalog file */
 double	**xa, **ya;	/* X and Y coordinates of stars, array returned */
-double	**ba;		/* Fluxes of stars in counts, array returned */
+double	**ba;		/* Instrumental magnitudes of stars, array returned */
 int	**pa;		/* Peak counts of stars in counts, array returned */
 int	nlog;		/* 1 to print each star's position */
 {
@@ -64,12 +64,12 @@ int	nlog;		/* 1 to print each star's position */
 		*pa= (int *) realloc(*pa, nstars*sizeof(int));
 		(*xa)[nstars-1] = xi;
 		(*ya)[nstars-1] = yi;
-		flux = 10000.0 * pow (10.0, (-magi / 2.5));
-		(*ba)[nstars-1] = flux;
-		(*pa)[nstars-1] = (int)(magi * 100.0);
+		(*ba)[nstars-1] = magi;
+		flux = pow (10.0, (-magi / 2.5));
+		(*pa)[nstars-1] = (int) flux;
 
 		if (nlog == 1)
-		    fprintf (stderr,"DAOREAD: %6d: %9.5f %9.5f %15.2f %6.2f\n",
+		    fprintf (stderr,"DAOREAD: %6d: %9.5f %9.5f %15.4f %6.2f\n",
 			   nstars,xi,yi,flux,magi);
 		}
 
@@ -176,4 +176,6 @@ char *line;	/* Pointer to iline'th entry (returned updated) */
 /* Dec 11 1996	New subroutines
  *
  * Mar 20 1997	Removed unused variables, fixed logging after lint
+ *
+ * Jul 20 2001	Return magnitude as well as flux
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/matchstar.c
- *** June 18, 2001
+ *** August 2, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -101,6 +101,7 @@ int	debug;
     char vpar[16];	/* List of parameters to fit */
     char *vi;
     char vc;
+    int ParamFit();
 
     /* Do coarse alignment assuming no rotation required.
      * This will allow us to collect a set of stars that correspond and
@@ -249,30 +250,7 @@ int	debug;
     nbin_p = nbin;
 
     /* Number of parameters to fit from command line or number of matches */
-    if (pfit0 != 0) {
-	if (pfit0 < 3)
-	    pfit = 12;
-	else if (pfit0 == 3)	/* Fit center and plate scale */
-	    pfit = 123;
-	else if (pfit0 == 4)	/* Fit center, plate scale, rotation */
-	    pfit = 1235;
-	else if (pfit0 == 5)	/* Fit center, x&y plate scales, rotation */
-	    pfit = 12345;
-	else if (pfit0 == 6)	/* Fit center, x&y plate scales, x&y rotations */
-	    pfit = 123456;
-	else if (pfit0 == 7)	/* Fit center, x&y plate scales, rotation, refpix */
-	    pfit = 1234578;
-	else if (pfit0 == 8)	/* Fit center, x&y plate scales, x&y rotation, refpix */
-	    pfit = 12345678;
-	else
-	    pfit = pfit0;
-	}
-    else if (nbin < 4)
-	pfit = 12;
-    else if (nbin < 6)
-	pfit = 123;
-    else
-	pfit = 12345;
+    pfit = ParamFit (nbin);
 
     /* Get parameters to fit from digits of pfit */
     sprintf (vpar, "%d", pfit);
@@ -443,6 +421,70 @@ int	debug;
 
     return (nmatch);
 }
+
+int
+ParamFit (nbin)
+
+int	nbin;	/* Number of point to be fit */
+{
+    int pfit;
+
+    if (pfit0 != 0) {
+	if (pfit0 < 3)
+	    pfit = 12;
+	else if (pfit0 == 3)	/* Fit center and plate scale */
+	    pfit = 123;
+	else if (pfit0 == 4)	/* Fit center, plate scale, rotation */
+	    pfit = 1235;
+	else if (pfit0 == 5)	/* Fit center, x&y plate scales, rotation */
+	    pfit = 12345;
+	else if (pfit0 == 6)	/* Fit center, x&y plate scales, x&y rotations */
+	    pfit = 123456;
+	else if (pfit0 == 7)	/* Fit center, x&y plate scales, rotation, refpix */
+	    pfit = 1234578;
+	else if (pfit0 == 8)	/* Fit center, x&y plate scales, x&y rotation, refpix */
+	    pfit = 12345678;
+	else
+	    pfit = pfit0;
+	}
+    else if (nbin < 4)
+	pfit = 12;
+    else if (nbin < 6)
+	pfit = 123;
+    else
+	pfit = 12345;
+    return (pfit);
+}
+
+
+int
+NParamFit (nbin)
+
+int	nbin;	/* Number of point to be fit */
+{
+    int pfit;
+
+    pfit = ParamFit (nbin);
+    if (pfit < 1)
+	return (0);
+    else if (pfit < 10)
+	return (1);
+    else if (pfit < 100)
+	return (2);
+    else if (pfit < 1000)
+	return (3);
+    else if (pfit < 10000)
+	return (4);
+    else if (pfit < 100000)
+	return (5);
+    else if (pfit < 1000000)
+	return (6);
+    else if (pfit < 10000000)
+	return (7);
+    else
+	return (8);
+}
+
 
 int
 ReadMatch (filename, sx, sy, sra, sdec, debug)
@@ -1567,4 +1609,5 @@ iscdfit ()
  * Jan 11 2001	All diagnostic printing goes to stderr
  * Feb 28 2001	Ignore coordinate system if present after match file coordinates
  * Jun 18 2001	Add maximum length of returned string to getoken()
+ * Aug  2 2001	Separate parameter listing and counting into subroutines
  */ 

@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** March 30, 2001
+ *** July 13, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -55,7 +55,7 @@ static int use_saolib=0;
 
 char *hgetc ();
 
-char val[VLENGTH+1];
+static char val[VLENGTH+1];
 
 static int lhead0 = 0;	/* Length of header string */
 
@@ -976,7 +976,7 @@ char *keyword;	/* character string containing the name of the variable
 		or '$'.  it is truncated to 8 characters. */
 {
     char *loc, *headnext, *headlast, *pval, *lc, *line;
-    int icol, nextchar, lkey, nleft, lhstr, lhead, lmax;
+    int icol, nextchar, lkey, nleft, lhead, lmax;
 
 #ifdef USE_SAOLIB
 	int iel=1, ip=1, nel, np, ier;
@@ -1365,4 +1365,5 @@ int set_saolib(hstring)
  *
  * Jan 19 2000	Return 0 from isnum(), str2ra(), and str2dec() if string is null
  * Mar 30 2001	Fix header length finding algorithm in ksearch()
+ * Jul 13 2001	Make val[] static int instead of int; drop unused variables
  */

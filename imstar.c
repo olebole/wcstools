@@ -1,5 +1,5 @@
 /* File imstar.c
- * January 22, 2001
+ * July 25, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -44,7 +44,7 @@ extern void setrefpix();
 extern struct WorldCoor *GetFITSWCS();
 
 static int wfile = 0;		/* True to print output file */
-static double magoff = 0.0;
+static double magoff = 90.0;
 static int rasort = 0;
 static int printhead = 0;
 static int nstar = 0;
@@ -469,7 +469,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	outform = CAT_DAOFIND;
 
     /* Discover star-like things in the image, in pixels */
-    ns = FindStars (header, image, &sx, &sy, &sb, &sp, debug);
+    ns = FindStars (header, image, &sx, &sy, &smag, &sp, debug);
     if (ns < 1) {
 	fprintf (stderr,"ListStars: no stars found in image %s\n", filename);
 	wcsfree (wcs);
@@ -479,19 +479,23 @@ char	*filename;	/* FITS or IRAF file filename */
 	return;
 	}
 
+    if (debug) printf ("\n");
+
     /* Save star positions */
     if (nstar > 0 && ns > nstar)
 	ns = nstar;
 
-    /* If no magnitude offset, set brightest star to 0 magnitude */
-    /* If magnitude offset is given < 0, set brightest star to abs(magoff) */
-    FluxSortStars (sx, sy, sb, sp, ns);
-    if (ns > 0 && magoff <= 0.0) {
-        magoff = 2.5 * log10 (sb[0]) - magoff;
-        }
+    /* Sort stars */
+    MagSortStars (NULL,NULL,NULL,NULL,NULL,sx, sy, smag, NULL, sp, NULL, ns);
+
+    /* Reset magnitude offset, if negative, so it is value for brightest star */
+    /* Default is instrument magnitude */
+    if (magoff <= 0.0)
+	magoff = -magoff - smag[0];
+    else if (magoff > 20.0)
+	magoff = 0.0;
 
     /* Compute right ascension and declination for all stars to be listed */
-    smag = (double *) malloc (ns * sizeof (double));
     sra = (double *) malloc (ns * sizeof (double));
     sdec = (double *) malloc (ns * sizeof (double));
     for (i = 0; i < ns; i++) {
@@ -501,12 +505,12 @@ char	*filename;	/* FITS or IRAF file filename */
 	    sra[i] = 0.0;
 	    sdec[i] = 0.0;
 	    }
-	smag[i] = -2.5 * log10 (sb[i]) + magoff;
+	smag[i] = smag[i] + magoff;
 	}
 
     /* Sort star-like objects in image by right ascension */
     if (rasort && iswcs (wcs))
-	RASortStars (0, sra, sdec, NULL, NULL, sx, sy, sb, 0, sp, ns);
+	RASortStars (0, sra, sdec, NULL, NULL, sx, sy, smag, 0, sp, ns);
     sprintf (headline, "IMAGE	%s", filename);
 
     /* Open plate catalog file */
@@ -603,36 +607,35 @@ char	*filename;	/* FITS or IRAF file filename */
     else {
 
     /* Write header */
-    if (wfile) {
-	if (outform == CAT_STARBASE)
+    if (outform == CAT_STARBASE) {
+	if (wfile)
 	    fprintf (fd,"%s\n", headline);
-	else if (outform == CAT_DAOFIND)
-	    fprintf (fd,"#%s\n", headline);
-	}
-
-    if (verbose) {
-	if (outform == CAT_STARBASE)
+	else
 	    printf ("%s\n", headline);
-	else if (outform == CAT_DAOFIND)
+	}
+    else if (outform == CAT_DAOFIND) {
+	if (wfile)
+	    fprintf (fd,"#%s\n", headline);
+	else
 	    printf ("#%s\n", headline);
 	}
 
     if (iswcs (wcs)) {
 	if (rasort && outform == CAT_STARBASE) {
 	    if (wfile)
-		fprintf (fd, "RASORT	T\n");
-	    if (verbose)
-		printf ("RASORT	T\n");
+		fprintf (fd, "rasort	T\n");
+	    else
+		printf ("rasort	T\n");
 	    }
 
 	if (outform == CAT_STARBASE) {
 	    if (wcs->sysout == WCS_B1950)
-		sprintf (headline, "EQUINOX	1950.0");
+		sprintf (headline, "equinox	1950.0");
 	    else
-		sprintf (headline, "EQUINOX	2000.0");
+		sprintf (headline, "equinox	2000.0");
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
-	    if (verbose)
+	    else
 		printf ("%s\n", headline);
 	    }
 	else if (outform == CAT_ASCII) {
@@ -642,64 +645,65 @@ char	*filename;	/* FITS or IRAF file filename */
 		sprintf (headline, "%s.cat/j\n", filename);
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
-	    if (verbose)
+	    else
 		printf ("%s\n", headline);
 	    }
 	else if (outform == CAT_DAOFIND) {
 	    if (wcs->sysout == WCS_B1950)
-		sprintf (headline, "#EQUINOX 1950.0");
+		sprintf (headline, "#equinox 1950.0");
 	    else
-		sprintf (headline, "#EQUINOX 2000.0");
+		sprintf (headline, "#equinox 2000.0");
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
-	    if (verbose)
+	    else
 		printf ("%s\n", headline);
 	    }
 
 	if (outform == CAT_STARBASE) {
-	    sprintf (headline, "EPOCH	%9.4f\n", wcs->epoch);
+	    sprintf (headline, "epoch	%9.4f", wcs->epoch);
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
-	    if (verbose)
+	    else
 		printf ("%s\n", headline);
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
-	    if (verbose)
+	    else
 		printf ("%s\n", headline);
-	    sprintf (headline,"ID 	RA      	DEC     	MAG   	X    	Y    	COUNTS   	PEAK");
+	    sprintf (headline,"id 	ra      	dec     	mag   	x    	y    	peak");
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
-	    if (verbose)
+	    else
 		printf ("%s\n", headline);
-	    sprintf (headline,"---	------------	------------	------	-----	-----	--------	------");
+	    sprintf (headline,"---	------------	------------	------	-----	-----	------");
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
-	    if (verbose)
+	    else
 		printf ("%s\n", headline);
 	    }
 	else if (outform == CAT_ASCII) {
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
-	    if (verbose)
+	    else
 		printf ("%s\n", headline);
 	    }
 	else if (outform == CAT_DAOFIND) {
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
-	    if (verbose)
+	    else
 		printf ("%s\n", headline);
 	    }
 	}
+
 
     for (i = 0; i < ns; i++) {
 	ra2str (rastr, 32, sra[i], 3);
 	dec2str (decstr, 32, sdec[i], 2);
 	if (outform == CAT_STARBASE) {
-	    sprintf (headline, "%d	%s	%s	%.2f	%.2f	%.2f	%.2f	%d",
-		     i+1, rastr,decstr, smag[i], sx[i], sy[i], sb[i], sp[i]);
+	    sprintf (headline, "%d	%s	%s	%.2f	%.2f	%.2f	%d",
+		     i+1, rastr,decstr, smag[i], sx[i], sy[i], sp[i]);
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
-	    if (verbose)
+	    else
 		printf ("%s\n", headline);
 	    }
 	else if (outform == CAT_DAOFIND) {
@@ -709,16 +713,23 @@ char	*filename;	/* FITS or IRAF file filename */
 		sprintf (headline, "%s %s %s", headline, rastr, decstr);
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
-	    if (verbose)
+	    else
 		printf ("%s\n", headline);
 	    }
 	else {
-	    sprintf (headline, "%3d %s %s %.2f", i+1,rastr,decstr,smag[i]);
-	    sprintf (headline, "%s  %.2f %.2f %.2f %d",
-		headline, sx[i],sy[i],sb[i], sp[i]);
+	    sprintf (headline, "%3d %s %s %6.2f", i+1,rastr,decstr,smag[i]);
+	    if (wcs->nxpix < 100.0 && wcs->nypix > 100.0)
+		sprintf (headline, "%s  %5.2f %5.2f %d",
+		headline, sx[i],sy[i], sp[i]);
+	    else if (wcs->nxpix < 1000.0 && wcs->nypix < 1000.0)
+		sprintf (headline, "%s  %6.2f %6.2f %d",
+		headline, sx[i],sy[i], sp[i]);
+	    else
+		sprintf (headline, "%s  %7.2f %7.2f %d",
+		headline, sx[i],sy[i], sp[i]);
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
-	    if (verbose)
+	    else
 		printf ("%s\n", headline);
 	    }
 	}
@@ -727,7 +738,6 @@ char	*filename;	/* FITS or IRAF file filename */
     if (fd) fclose (fd);
     if (sx) free ((char *)sx);
     if (sy) free ((char *)sy);
-    if (sb) free ((char *)sb);
     if (sp) free ((char *)sp);
     if (sra) free ((char *)sra);
     if (sdec) free ((char *)sdec);
@@ -809,4 +819,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  *
  * Jan 22 2001	Drop declaration of wcsinit()
+ * Jul 25 2001	FindStar() now returns magnitude instead of flux
+ * Jul 25 2001	Print to stdout unless writing to a file
  */

@@ -1,5 +1,5 @@
 /*** File imhfile.c
- *** January 11, 2001
+ *** August 24, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -1724,7 +1724,9 @@ isiraf (filename)
 
 char	*filename;	/* Name of file for which to find size */
 {
-    if (strsrch (filename, ".imh"))
+    if (strchr (filename, '='))
+	return (0);
+    else if (strsrch (filename, ".imh"))
 	return (1);
     else
 	return (0);
@@ -1828,4 +1830,5 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * Sep  6 2000	Use header directory if pixel file not found at its pathname
  *
  * Jan 11 2001	Print all messages to stderr
+ * Aug 24 2001	In isiraf(), return 0 if argument contains an equal sign
  */

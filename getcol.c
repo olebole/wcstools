@@ -1,5 +1,5 @@
 /* File getcol.c
- * June 19, 2001
+ * July 17, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -992,7 +992,7 @@ char *string;
 	strchr (string, 'm') != NULL || strchr (string, 'd') != NULL) {
 
 	/* Check to see if string is a file */
-	if (access(string,0))
+	if (access(string,0) && strcmp (string, "stdin"))
 	    return (1);
 	else
 	    return (0);
@@ -1024,4 +1024,5 @@ char *string;
  * Jan 17 2001	Add a, s, m, d for add, subtract, multiply, divide const or col
  * Mar 19 2001	Drop type declarations from intcompare argument list
  * Jun 18 2001	Add maximum length of returned string to getoken()
+ * Jul 17 2001	Check operations for stdin as well as file
  */

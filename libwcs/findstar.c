@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** January 18, 2001
+ *** July 25, 2001
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -114,7 +114,7 @@ int	verbose;	/* 1 to print each star's position */
     int nstars;
     double minll;
     int bitpix;
-    int w, h, ilp, irp;
+    int w, h, ilp, irp, i;
     int x, y, x1, x2, y1, y2;
     double xai, yai, bai;
     double minsig, sigma;
@@ -318,6 +318,16 @@ int	verbose;	/* 1 to print each star's position */
 			     nstars, sx, sy, r, maxrad);
 		    } */
 		}
+	    }
+	}
+
+    /* Turn fluxes into instrument magnitudes */
+    FluxSortStars (*xa, *ya, *ba, *pa, nstars);
+    if (nstars > 0) {
+	double *flux;
+	for (i = 0; i < nstars; i++) {
+	    flux = (*ba)+i;
+	    *flux = -2.5 * log10 (*flux);
 	    }
 	}
 
@@ -814,4 +824,5 @@ char *parstring;
  * Mar 27 2000	Drop unused variable imtab
  *
  * Jan 18 2001	Use trim section from image header, if not trimmed
+ * Jul 25 2001	Return plate magnitudes instead of fluxes
  */

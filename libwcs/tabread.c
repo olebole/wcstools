@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** July 2, 2001
+ *** August 21, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -203,7 +203,7 @@ int	nlog;
 	if (sc->entpx || sc->entrv)
 	    wcsconv (sysref, sysout, eqref, eqout, epref, epout,
 		     &ra, &dec, &rapm, &decpm, &parallax, &rv);
-	else if (sc->mprop)
+	else if (sc->mprop == 1)
 	    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
 		     &ra, &dec, &rapm, &decpm);
 	else
@@ -244,7 +244,7 @@ int	nlog;
 		tnum[nstar] = num;
 		tra[nstar] = ra;
 		tdec[nstar] = dec;
-		if (sc->mprop) {
+		if (sc->mprop == 1) {
 		    tpra[nstar] = rapm;
 		    tpdec[nstar] = decpm;
 		    }
@@ -253,9 +253,9 @@ int	nlog;
 		    tmagb[nstar] = magb;
 		tpeak[nstar] = peak;
 		tdist[nstar] = dist;
-		if (kwo != NULL) {
-		    lname = strlen (star->objname) + 1;
-		    objname = (char *)calloc (lname, 1);
+		lname = strlen (star->objname);
+		if (lname > 0) {
+		    objname = (char *)calloc (lname+1, 1);
 		    strcpy (objname, star->objname);
 		    tkey[nstar] = objname;
 		    }
@@ -275,7 +275,7 @@ int	nlog;
 		    tnum[farstar] = num;
 		    tra[farstar] = ra;
 		    tdec[farstar] = dec;
-		    if (sc->mprop) {
+		    if (sc->mprop == 1) {
 			tpra[farstar] = rapm;
 			tpdec[farstar] = decpm;
 			}
@@ -284,9 +284,9 @@ int	nlog;
 			tmagb[farstar] = magb;
 		    tpeak[farstar] = peak;
 		    tdist[farstar] = dist;
-		    if (kwo != NULL) {
-			lname = strlen (star->objname) + 1;
-			objname = (char *)calloc (lname, 1);
+		    lname = strlen (star->objname);
+		    if (lname > 0) {
+			objname = (char *)calloc (lname+1, 1);
 			strcpy (objname, star->objname);
 			tkey[farstar] = objname;
 			}
@@ -307,7 +307,7 @@ int	nlog;
 		tnum[faintstar] = num;
 		tra[faintstar] = ra;
 		tdec[faintstar] = dec;
-		if (sc->mprop) {
+		if (sc->mprop == 1) {
 		    tpra[faintstar] = rapm;
 		    tpdec[faintstar] = decpm;
 		    }
@@ -316,9 +316,9 @@ int	nlog;
 		    tmagb[faintstar] = magb;
 		tpeak[faintstar] = peak;
 		tdist[faintstar] = dist;
-		if (kwo != NULL) {
-		    lname = strlen (star->objname) + 1;
-		    objname = (char *)calloc (lname, 1);
+		lname = strlen (star->objname);
+		if (lname > 0) {
+		    objname = (char *)calloc (lname+1, 1);
 		    strcpy (objname, star->objname);
 		    tkey[faintstar] = objname;
 		    }
@@ -465,7 +465,8 @@ int	nlog;
 
 	    /* Check ID number first */
 	    (void) setoken (&startok, line, "tab");
-	    if ((num = tabgetr8 (&startok,sc->entid)) == 0.0)
+	    num = tabgetr8 (&startok,sc->entid);
+	    if (num == 0.0)
 		num = (double) istar;
 	    if (num == tnum[jnum])
 		break;
@@ -492,10 +493,13 @@ int	nlog;
 		decpm = star->decpm;
 		parallax = star->parallax;
 		rv = star->radvel;
+		if (sc->entrv > 0)
+		    star->xmag[sc->nmag-1] = rv;
+		
 		if (sc->entpx || sc->entrv)
 		    wcsconv (sysref, sysout, eqref, eqout, epref, epout,
 			     &ra, &dec, &rapm, &decpm, &parallax, &rv);
-		else if (sc->mprop)
+		else if (sc->mprop == 1)
 		    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
 			     &ra, &dec, &rapm, &decpm);
 		else
@@ -516,7 +520,7 @@ int	nlog;
 		tnum[jnum] = num;
 		tra[jnum] = ra;
 		tdec[jnum] = dec;
-		if (sc->mprop) {
+		if (sc->mprop == 1) {
 		    tpra[jnum] = rapm;
 		    tpdec[jnum] = decpm;
 		    }
@@ -524,9 +528,9 @@ int	nlog;
 		if (tmagb != NULL)
 		    tmagb[jnum] = magb;
 		tpeak[jnum] = peak;
-		if (kwo != NULL) {
-		    lname = strlen (star->objname) + 1;
-		    objname = (char *)calloc (lname, 1);
+		lname = strlen (star->objname);
+		if (lname > 0) {
+		    objname = (char *)calloc (lname+1, 1);
 		    strcpy (objname, star->objname);
 		    tkey[nstar] = objname;
 		    }
@@ -563,8 +567,8 @@ tabxyread (tabcatname, xa, ya, ba, pa, nlog)
 char	*tabcatname;	/* Name of reference star catalog file */
 double	**xa;		/* Array of x coordinates (returned) */
 double	**ya;		/* Array of y coordinates (returned) */
-double	**ba;		/* Array of fluxes (returned) */
-int	**pa;		/* Array of magnitudes*100 (returned) */
+double	**ba;		/* Array of magnitudes (returned) */
+int	**pa;		/* Array of fluxes (returned) */
 int	nlog;
 {
     double xi, yi, magi, flux;
@@ -630,13 +634,13 @@ int	nlog;
 
 	(*xa)[istar] = xi;
 	(*ya)[istar] = yi;
-	flux = 10000.0 * pow (10.0, (-magi / 2.5));
-	(*ba)[istar] = flux;
-	(*pa)[istar] = (int)(magi * 100.0);
+	(*ba)[istar] = magi;
+	flux = pow (10.0, (-magi / 2.5));
+	(*pa)[istar] = (int) flux;
 
 	if (nlog == 1)
-	    fprintf (stderr,"DAOREAD: %6d/%6d: %9.5f %9.5f %15.2f %6.2f\n",
-		     istar,nstars,xi,yi,flux,magi);
+	    fprintf (stderr,"DAOREAD: %6d/%6d: %9.5f %9.5f %6.2f %15.4f\n",
+		     istar,nstars,xi,yi,magi,flux);
 
 	/* Log operation */
 	if (nlog > 1 && istar%nlog == 0)
@@ -665,9 +669,10 @@ int	nlog;
 /* TABRKEY -- Read single keyword from tab table stars with specified numbers */
 
 int
-tabrkey (tabcatname, nnum, tnum, keyword, tval)
+tabrkey (tabcatname, starcat, nnum, tnum, keyword, tval)
 
 char	*tabcatname;	/* Name of reference star catalog file */
+struct StarCat **starcat; /* Star catalog data structure */
 int	nnum;		/* Number of stars to look for */
 double	*tnum;		/* Array of star numbers to look for */
 char	*keyword;	/* Keyword for which to return values */
@@ -681,17 +686,22 @@ char	**tval;		/* Returned values for specified keyword */
     char *tvalue;
     char value[TABMAX];
     struct TabTable *startab;
-    struct StarCat *starcat;
+    struct StarCat *sc;	/* Star catalog data structure */
 
     nstar = 0;
-    starcat = tabcatopen (tabcatname, NULL), 0;
-    if (starcat == NULL) {
+
+    /* Open star catalog */
+    sc = *starcat;
+    if (sc == NULL)
+	sc = tabcatopen (tabcatname, NULL, 0);
+    *starcat = sc;
+    if (sc == NULL || sc->nstars <= 0) {
 	if (taberr != NULL)
 	    fprintf (stderr,"%s\n", taberr);
-	fprintf (stderr,"%s\n", taberr);
+	fprintf (stderr,"TABRKEY: Cannot read catalog %s\n", tabcatname);
 	return (0);
 	}
-    startab = starcat->startab;
+    startab = sc->startab;
     if (startab == NULL || startab->nlines <= 0) {
 	fprintf (stderr,"TABRKEY: Cannot read catalog %s\n", tabcatname);
 	return (0);
@@ -710,7 +720,7 @@ char	**tval;		/* Returned values for specified keyword */
 		}
 
 	    /* Check ID number */
-	    if ((num = tabgetr8 (startab,line,starcat->entid)) == 0.0)
+	    if ((num = tabgetr8 (startab,line,sc->entid)) == 0.0)
 		num = (double) istar;
 	    if (num == tnum[jnum])
 		break;
@@ -733,7 +743,6 @@ char	**tval;		/* Returned values for specified keyword */
 	    }
 	}
 
-    tabclose (startab);
     return (nstars);
 }
 
@@ -980,7 +989,18 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 
     /* Find column for radial velocity */
     sc->entrv = 0;
-    sc->entrv = tabcol (startab, "rv");
+    sc->keyrv[0] = (char) 0;
+    if ((sc->entrv = tabcol (startab, "rv")))
+	strcpy (sc->keyrv, "rv");
+    else if ((sc->entrv = tabcol (startab, "cz")))
+	strcpy (sc->keyrv, "cz");
+    if (sc->entrv > 0 && sc->nmag < 2) {
+	if (sc->nmag == 0)
+	    strcpy (sc->keymag1, sc->keyrv);
+	else
+	    strcpy (sc->keymag2, sc->keyrv);
+	sc->nmag = sc->nmag + 1;
+	}
 
     /* Find column and name of object peak or plate number */
     sc->entpeak = -1;
@@ -1101,7 +1121,7 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	if (tabhgeti4 (startab, "ndec", &nndec)) {
 	    sc->nndec = nndec;
 	    if (!isnum (cstr))
-		sc->stnum = 5;
+		sc->stnum = -nndec;
 	    }
 	else if (isnum (cstr)) {
 	    dnum = tabgetr8 (&startok,sc->entid);
@@ -1120,7 +1140,7 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	    sc->nndec = nndec;
 	    }
 	else {
-	    sc->stnum = 5;
+	    sc->stnum = -strlen (cstr);
 	    sc->nndec = nndec;
 	    }
 	}
@@ -1172,6 +1192,7 @@ int	verbose;	/* 1 to print error messages */
 	}
 
     /* Extract ID  */
+    st->objname[0] = (char) 0;
     if (sc->entid) {
 	tabgetc (startok, sc->entid, cnum, 32);
 	if (isnum (cnum) || isnum (cnum+1)) {
@@ -1278,7 +1299,7 @@ int	verbose;	/* 1 to print error messages */
 	st->parallax = 0.0;
 
     /* Radial velocity */
-    if (sc->entpx)
+    if (sc->entrv)
 	st->radvel = tabgetr8 (&startok, sc->entrv);
     else
 	st->radvel = 0.0;
@@ -1296,8 +1317,6 @@ int	verbose;	/* 1 to print error messages */
     /* Extract selected field */
     if (kwo != NULL)
 	(void) tabgetk (startab, &startok, kwo, st->objname, 32);
-    else
-	st->objname[0] = (char) 0;
 
     st->coorsys = sc->coorsys;
     st->equinox = sc->equinox;
@@ -1710,8 +1729,10 @@ int	ientry;		/* sequence of entry on line */
 
     if (tabgetc (tabtok, ientry, str, 24))
 	return (0.0);
-    else
+    else if (isnum (str))
         return (atof (str));
+    else
+	return (0.0);
 }
 
 
@@ -1727,8 +1748,10 @@ int	ientry;		/* sequence of entry on line */
 
     if (tabgetc (tabtok, ientry, str, 24))
 	return (0);
-    else
+    else if (isnum (str))
         return ((int) atof (str));
+    else
+	return (0);
 }
 
 
@@ -2138,4 +2161,10 @@ char    *filename;      /* Name of file to check */
  * Jun 28 2001	If first magnitude is 99.90, sort by second magnitude
  * Jun 28 2001	Up default line limit from 1 million to 10 million
  * Jul  2 2001	Fix order of 3rd and 4th magnitudes
+ * Jul 20 2001	Return magnitude as well as flux from tabxyread()
+ * Aug  8 2001	Return radial velocity as additional magnitude
+ * Aug 17 2001	Fix bug reading radial velocity
+ * Aug 21 2001	Check numbers using isnum() in tabgetr8() and tabgeti4()
+ * Aug 21 2001	Add starcat to tabrkey() argument list
+ * Aug 21 2001	Read object name into tkey if it is present
  */

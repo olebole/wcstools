@@ -6,7 +6,7 @@ OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \
 	gscread.o gsc2read.o ujcread.o uacread.o tabread.o binread.o ctgread.o \
 	actread.o catutil.o imrotate.o fitsfile.o imhfile.o hget.o hput.o \
 	imio.o dateutil.o worldpos.o tnxpos.o dsspos.o platepos.o \
-	sortstar.o platefit.o tnxfit.o iget.o fileutil.o \
+	sortstar.o platefit.o tnxfit.o iget.o fileutil.o polfit.o \
 	wcslib.o lin.o cel.o proj.o sph.o wcstrig.o 
 
 libwcs.a:	$(OBJS)
@@ -38,6 +38,7 @@ lin.o:		wcslib.h
 matchstar.o:	fitshead.h wcs.h lwcs.h
 platefit.o:	wcs.h
 platepos.o:	wcs.h
+polfit.o:	
 proj.o:		wcslib.h
 sortstar.o:	wcscat.h
 sph.o:		wcslib.h

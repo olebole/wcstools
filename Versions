@@ -1,3 +1,22 @@
+Version 3.0.3 (August 24, 2001
+sethead: Fix bug which failed to assign FITS or IRAF filenames to keywords
+scat: Pass on velocities from TDC ASCII and Starbase catalogs
+ctgread.c, tabread.c: Deal with velocities and object names better
+
+Version 3.0.2 (August 2, 2001)
+imwcs: Allow less than three star matches if only 1 or 2 parameters fit
+
+Version 3.0.1 (July 25, 2001)
+xy2sky: Add -x argument to specify columns for x,y, -m for magnitude column,
+ and -c for file containing magnitude calibration polynomial
+immatch: Add -q argument to fit image magnitude to catalog magnitude polynomial
+imstar: Return image instrumental magnitudes instead of flux
+getcol: Fix bug so that stdin can be used for input file
+scat: Fix various web access bugs
+binread.c: Fix bug so that catalogs not in specified directories can be found
+imsetwcs.c: Add code to fit image magnitudes to catalog magnitudes
+polfit.c: New file with polynomial fitting and evaluation subroutines
+
 Version 3.0 (July 12, 2001)
 scat, imcat, imwcs, immatch: Add support for GSC II, GSC-ACT and 2MASS Point
  Source Catalogs

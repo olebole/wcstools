@@ -1,5 +1,5 @@
 /*** File libwcs/sortstar.c
- *** June 28, 2000
+ *** July 20, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -116,7 +116,7 @@ int	ns;		/* Number of stars to sort */
 
 {
     StarInfo *stars;
-    int i, hasnum, hasmagr, hasobj, haspm;
+    int i, hasnum, haspos, hasmagr, hasobj, haspm;
     static int StarMagSort ();
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
@@ -129,6 +129,10 @@ int	ns;		/* Number of stars to sort */
 	hasmagr = 0;
     else
 	hasmagr = 1;
+    if (sra != NULL && sdec != NULL)
+	haspos = 1;
+    else
+	haspos = 0;
     if (spra != NULL && spdec != NULL)
 	haspm = 1;
     else
@@ -141,8 +145,10 @@ int	ns;		/* Number of stars to sort */
     for (i = 0; i < ns; i++) {
 	if (hasnum)
 	    stars[i].n = sn[i];
-	stars[i].ra = sra[i];
-	stars[i].dec = sdec[i];
+	if (haspos) {
+	    stars[i].ra = sra[i];
+	    stars[i].dec = sdec[i];
+	    }
 	if (haspm) {
 	    stars[i].pra = spra[i];
 	    stars[i].pdec = spdec[i];
@@ -162,8 +168,10 @@ int	ns;		/* Number of stars to sort */
     for (i = 0; i < ns; i++) {
 	if (hasnum)
 	    sn[i] = stars[i].n;
-	sra[i] = stars[i].ra;
-	sdec[i] = stars[i].dec;
+	if (haspos) {
+	    sra[i] = stars[i].ra;
+	    sdec[i] = stars[i].dec;
+	    }
 	if (haspm) {
 	    spra[i] = stars[i].pra;
 	    spdec[i] = stars[i].pdec;
@@ -546,4 +554,5 @@ void *ssp1, *ssp2;
  *
  * May 22 2001	Add sort by declination
  * Jun 28 2001	In MagSort, if b mag is 99.9, try r mag
+ * Jul 20 2001	In MagSort, allow for absence of ra and dec
  */

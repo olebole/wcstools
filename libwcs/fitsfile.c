@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** June 27, 2001
+ *** August 24, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -1328,8 +1328,12 @@ char    *filename;      /* Name of file for which to find size */
     char keyword[16];
     int nbr;
 
-    /* First check file extension */
-    if (strsrch (filename, ".fit") ||
+    /* First check to see if this is an assignment */
+    if (strchr (filename, '='))
+	return (0);
+
+    /* Then check file extension */
+    else if (strsrch (filename, ".fit") ||
 	strsrch (filename, ".fits") ||
 	strsrch (filename, ".fts"))
 	return (1);
@@ -1449,4 +1453,5 @@ char	*header;	/* FITS header */
  * Mar 20 2001	Declare fitsheadsize() in fitschead()
  * Apr 24 2001	When matching column names, use longest length
  * Jun 27 2001	In fitsrthead(), allocate pw and lpnam only if more space needed
+ * Aug 24 2001	In isfits(), return 0 if argument contains an equal sign
  */

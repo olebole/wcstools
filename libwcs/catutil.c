@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** June 27, 2001
+ *** August 20, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -24,6 +24,8 @@
  *	Return number of decimal places in source number, if known
  * int StrNdec (string)
  *	Returns number of decimal places in a numeric string (-1=not number)
+ * int NumNdec (number)
+ *	Returns number of decimal places in a number
  * int CatMaxField (refcat, maxnum, nndec)
  *	Return Maximum field size for source numbers
  * void RefLim (cra,cdec,dra,ddec,sysc,sysr,eqc,eqr,epc,ramin,ramax,decmin,decmax,verbose)
@@ -48,6 +50,10 @@
  *	Get specified token from tokenized string
  * int isfile (filename)
  *	Return 1 if file is a readable file, else 0
+ * int ageti4 (string, keyword, ival)
+ *	Read int value from a file where keyword=value, anywhere on a line
+ * int agetr8 (string, keyword, dval)
+ *	Read double value from a file where keyword=value, anywhere on a line
  * int agets (string, keyword, lval, value)
  *	Read value from a file where keyword=value, anywhere on a line
  * void bv2sp (bv, b, v, isp)
@@ -407,11 +413,11 @@ char	*catid;		/* Catalog ID (returned) */
 int	refcat;		/* Catalog code */
 {
     if (refcat == ACT)
-	strcpy (catid, "act_id       ");
+	strcpy (catid, "act_id     ");
     else if (refcat == BSC)
-	strcpy (catid, "bsc_id       ");
+	strcpy (catid, "bsc_id    ");
     else if (refcat == GSC || refcat == GSCACT)
-	strcpy (catid, "gsc_id       ");
+	strcpy (catid, "gsc_id    ");
     else if (refcat == GSC2)
 	strcpy (catid, "gsc2_id       ");
     else if (refcat == USAC)
@@ -427,23 +433,23 @@ int	refcat;		/* Catalog code */
     else if (refcat == UA2)
 	strcpy (catid,"usnoa2_id     ");
     else if (refcat == UJC)
-	strcpy (catid,"usnoj_id      ");
+	strcpy (catid,"usnoj_id     ");
     else if (refcat == TMPSC)
 	strcpy (catid,"2mass_id      ");
     else if (refcat == SAO)
-	strcpy (catid,"sao_id        ");
+	strcpy (catid,"sao_id ");
     else if (refcat == PPM)
-	strcpy (catid,"ppm_id        ");
+	strcpy (catid,"ppm_id ");
     else if (refcat == IRAS)
-	strcpy (catid,"iras_id       ");
+	strcpy (catid,"iras_id");
     else if (refcat == TYCHO)
-	strcpy (catid,"tycho_id      ");
+	strcpy (catid,"tycho_id  ");
     else if (refcat == TYCHO2)
-	strcpy (catid,"tycho2_id     ");
+	strcpy (catid,"tycho2_id ");
     else if (refcat == HIP)
-	strcpy (catid,"hip_id        ");
+	strcpy (catid,"hip_id ");
     else
-	strcpy (catid,"id            ");
+	strcpy (catid,"id              ");
 
     return;
 }
@@ -737,8 +743,12 @@ int	nndec;		/* Number of decimal places ( >= 0) */
     else {
 	if (nndec > 0)
 	    ndp = 1;
-	else
-	    ndp = 0;
+	else {
+	    if ((nndec = NumNdec (maxnum)) > 0)
+		ndp = 1;
+	    else
+		ndp = 0;
+	    }
 	if (maxnum < 10.0)
 	    return (1 + nndec + ndp);
 	else if (maxnum < 100.0)
@@ -837,6 +847,80 @@ char *string;	/* Numeric string */
 	else
 	    return (lstr - (cdot - string));
 	}
+}
+
+
+/* Return number of decimal places in a number */
+
+int
+NumNdec (number)
+
+double number;	/* Floating point number */
+{
+    char nstring[16];
+    char format[16];
+    int fracpart;
+    int ndec, ndmax;
+    double shift;
+
+    if (number < 10.0) {
+	ndmax = 12;
+	shift = 1000000000000.0;
+	}
+    else if (number < 100.0) {
+	ndmax = 11;
+	shift = 100000000000.0;
+	}
+    else if (number < 1000.0) {
+	ndmax = 10;
+	shift = 10000000000.0;
+	}
+    else if (number < 10000.0) {
+	ndmax = 9;
+	shift = 1000000000.0;
+	}
+    else if (number < 100000.0) {
+	ndmax = 8;
+	shift = 100000000.0;
+	}
+    else if (number < 1000000.0) {
+	ndmax = 7;
+	shift = 10000000.0;
+	}
+    else if (number < 10000000.0) {
+	ndmax = 6;
+	shift = 1000000.0;
+	}
+    else if (number < 100000000.0) {
+	ndmax = 5;
+	shift = 100000.0;
+	}
+    else if (number < 1000000000.0) {
+	ndmax = 4;
+	shift = 10000.0;
+	}
+    else if (number < 10000000000.0) {
+	ndmax = 3;
+	shift = 1000.0;
+	}
+    else if (number < 100000000000.0) {
+	ndmax = 2;
+	shift = 100.0;
+	}
+    else if (number < 1000000000000.0) {
+	ndmax = 1;
+	shift = 10.0;
+	}
+    else
+	return (0);
+    fracpart = (int) (((number - floor (number)) * shift) + 0.5);
+    sprintf (format, "%%0%dd", ndmax);
+    sprintf (nstring, format, fracpart);
+    for (ndec = ndmax; ndec > 0; ndec--) {
+	if (nstring[ndec-1] != '0')
+	    break;
+	}
+    return (ndec);
 }
 
 
@@ -1479,6 +1563,51 @@ char    *filename;      /* Name of file for which to find size */
 }
 
 
+/* AGETI4 -- Read int value from a file where keyword=value, anywhere */
+
+int
+ageti4 (string, keyword, ival)
+
+char	*string;	/* character string containing <keyword>= <value> */
+char	*keyword;	/* character string containing the name of the keyword
+			   the value of which is returned.  hget searches for a
+                 	   line beginning with this string.  if "[n]" or ",n" is
+			   present, the n'th token in the value is returned. */
+int	*ival;		/* Integer value, returned */
+{
+    char value[32];
+
+    if (agets (string, keyword, 31, value)) {
+	*ival = atoi (value);
+	return (1);
+	}
+    else
+	return (0);
+}
+	
+
+/* AGETR8 -- Read double value from a file where keyword=value, anywhere */
+int
+agetr8 (string, keyword, dval)
+
+char	*string;	/* character string containing <keyword>= <value> */
+char	*keyword;	/* character string containing the name of the keyword
+			   the value of which is returned.  hget searches for a
+                 	   line beginning with this string.  if "[n]" or ",n" is
+			   present, the n'th token in the value is returned. */
+double	*dval;		/* Double value, returned */
+{
+    char value[32];
+
+    if (agets (string, keyword, 31, value)) {
+	*dval = atof (value);
+	return (1);
+	}
+    else
+	return (0);
+}
+
+
 /* AGETS -- Get keyword value from ASCII string with keyword=value anywhere */
 
 int
@@ -1901,4 +2030,5 @@ FILE	*fd;		/* Output file descriptor; none if NULL */
  * Jun 19 2001	Add refcatname as argument to CatName()
  * Jun 20 2001	Add GSC II
  * Jun 25 2001	Fix GSC II number padding
+ * Aug 20 2001	Add NumNdec() and guess number of decimal places if needed
  */

@@ -1,5 +1,5 @@
 /* File sethead.c
- * June 8, 2000
+ * August 24, 2001
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -671,4 +671,6 @@ char	*kwd[];		/* Names and values of those keywords */
  * May  1 2000	Drop -d option; it was unneeded for date-valued keywords
  * Jun  8 2000	Print revision message on only first of multiple files
  * Jun  8 2000	If no files or keywords specified, say so
+
+ * Aug 24 2001	If argument contains an equal sign, assume it not a file
  */

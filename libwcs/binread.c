@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** July 6, 2001
+ *** August 8, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -280,6 +280,12 @@ int	nlog;
 		}
 	    else
 		magb = 20.0;
+	    if (sc->entrv > 0) {
+		if (sc->nmag == 1)
+		    mag = star->radvel;
+		else
+		    magb = star->radvel;
+		}
 
 	    /* If there are four magnitudes, save them in place of type */
 	    if (sc->nmag > 3)
@@ -307,7 +313,7 @@ int	nlog;
 		    tnum[nstar] = num;
 		    tra[nstar] = ra;
 		    tdec[nstar] = dec;
-		    if (sc->mprop) {
+		    if (sc->mprop == 1) {
 			tpra[nstar] = rapm;
 			tpdec[nstar] = decpm;
 			}
@@ -338,7 +344,7 @@ int	nlog;
 			tnum[farstar] = num;
 			tra[farstar] = ra;
 			tdec[farstar] = dec;
-			if (sc->mprop) {
+			if (sc->mprop == 1) {
 			    tpra[farstar] = rapm;
 			    tpdec[farstar] = decpm;
 			    }
@@ -370,7 +376,7 @@ int	nlog;
 		    tnum[faintstar] = num;
 		    tra[faintstar] = ra;
 		    tdec[faintstar] = dec;
-		    if (sc->mprop) {
+		    if (sc->mprop == 1) {
 			tpra[faintstar] = rapm;
 			tpdec[faintstar] = decpm;
 			}
@@ -581,13 +587,19 @@ int	nlog;
 	tnum[jnum] = num;
 	tra[jnum] = ra;
 	tdec[jnum] = dec;
-	if (starcat->mprop) {
+	if (starcat->mprop == 1) {
 	    tpra[jnum] = rapm;
 	    tpdec[jnum] = decpm;
 	    }
 	tmag[jnum] = mag;
 	if (starcat->nmag > 1)
 	    tmagb[jnum] = magb;
+	if (starcat->entrv > 0) {
+	    if (starcat->nmag == 1)
+		tmag[jnum] = star->radvel;
+	    else
+		tmagb[jnum] = star->radvel;
+	    }
 	tpeak[jnum] = isp;
 	if (tobj != NULL) {
 	    lname = strlen (star->objname) + 1;
@@ -632,7 +644,7 @@ char *bincat;	/* Binary catalog file name */
     sc = (struct StarCat *) calloc (1, sizeof (struct StarCat));
 
     /* Find length of binary catalog, if in working directory */
-    lfile = binsize (binpath);
+    lfile = binsize (bincat);
 
     /* Set catalog directory; if pathname is a URL, return */
     binset = 0;
@@ -734,7 +746,7 @@ char *bincat;	/* Binary catalog file name */
 	}
 
     /* Check for byte reversal */
-    if (sc->nmag > 10 || sc->nmag < -10) {
+    if (sc->nbent > 50) {
 	sc->byteswapped = 1;
 	binswap4 (&sc->star0);
 	binswap4 (&sc->star1);
@@ -762,9 +774,13 @@ char *bincat;	/* Binary catalog file name */
     sc->entpeak = nb + 16;
     sc->entmag1 = nb + 18;
     nb = nb + 18 + (sc->nmag * 2);
-    if (sc->mprop) {
+    if (sc->mprop == 1) {
 	sc->entrpm = nb;
 	sc->entdpm = nb + 4;
+	nb = nb + 8;
+	}
+    else if (sc->mprop == 2) {
+	sc->entrv = nb;
 	nb = nb + 8;
 	}
     if (sc->ncobj)
@@ -939,8 +955,9 @@ struct StarCat *sc;	/* Star catalog descriptor */
 struct Star *st;	/* Current star entry */
 int istar;	/* Star sequence number in binary catalog */
 {
-    int ino, i;
+    int ino, i, nmag;
     long offset;
+    double radvel;
     float pm[2];
 
     /* Drop out if catalog pointer is not set */
@@ -1006,20 +1023,19 @@ int istar;	/* Star sequence number in binary catalog */
 	    break;
 	}
 
-    /* Extract RA and Dec from entry */
+    /* Right ascension and declination and convert to degrees */
     moveb (sc->catline, (char *) &st->ra, 8, sc->entra, 0);
     moveb (sc->catline, (char *) &st->dec, 8, sc->entdec, 0);
     if (sc->byteswapped) {
 	binswap8 (&st->ra);
 	binswap8 (&st->dec);
 	}
-
-    /* Convert position to degrees */
     st->ra = raddeg (st->ra);
     st->dec = raddeg (st->dec);
 
-    /* Read proper motion, if it is present, and convert it to degrees */
-    if (sc->mprop) {
+    /* Proper motion, if present, and convert to degrees/year */
+    nmag = sc->nmag;
+    if (sc->mprop == 1) {
 	moveb (sc->catline, (char *) &pm[0], 4, sc->entrpm, 0);
 	moveb (sc->catline, (char *) &pm[1], 4, sc->entdpm, 0);
 	if (sc->byteswapped) {
@@ -1030,11 +1046,20 @@ int istar;	/* Star sequence number in binary catalog */
 	st->decpm = raddeg ((double) pm[1]);
 	}
 
+    /* Radial velocity, if it is present */
+    else if (sc->mprop == 2) {
+	moveb (sc->catline, (char *) &radvel, 8, sc->entrv, 0);
+	if (sc->byteswapped)
+	    binswap4 (&radvel);
+	st->radvel = radvel;
+	nmag = nmag - 1;
+	}
+
     /* Spectral type */
     moveb (sc->catline, (char *) st->isp, 2, sc->entpeak, 0);
 
     /* Magnitudes (*100) */
-    for (i = 0; i < sc->nmag; i++) {
+    for (i = 0; i < nmag; i++) {
 	moveb (sc->catline, (char *) st->mag, 2, sc->entmag1+(i*2), i*2);
 	
 	if (sc->byteswapped)
@@ -1240,4 +1265,6 @@ char *from, *last, *to;
  * Jun 25 2001	Add HIP_PATH and IRAS_PATH; allow 5 digits for magnitudes
  * Jun 27 2001	Allocate separation array only when larger one is needed
  * Jul  6 2001	Fix bug in dealing with proper motions of excess stars
+ * Jul 17 2001	Fix bug which prevented use of full catalog pathname on CL
+ * Aug  8 2001	Add radial velocity if mprop is 2; return as magnitude
  */
