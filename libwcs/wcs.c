@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** September 6, 1996
+ *** October 8, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -397,15 +397,46 @@ struct WorldCoor *wcs;
     int ieq = 0;
     char wcstemp[16];
 
-    /* Set equinox from correct keyword or EPOCH */
-    if (hgetr8 (hstring,"EQUINOX",&wcs->equinox)) {
-	hgeti4 (hstring,"EQUINOX",&ieq);
+    /* Set equinox from EQUINOX, EPOCH, or RADECSYS; default to 2000 */
+    if (hgeti4 (hstring,"EQUINOX",&ieq))
+	hgetr8 (hstring,"EQUINOX",&wcs->equinox);
+
+    else if (hgeti4 (hstring,"EPOCH",&ieq))
+	if (ieq == 0) {
+	    ieq = 1950;
+	    wcs->equinox = 1950.0;
+	    }
+	else
+            hgetr8 (hstring,"EPOCH",&wcs->equinox);
+
+    else if (hgets (hstring,"RADECSYS", 16, wcstemp)) {
+	if (!strncmp (wcstemp,"FK4",3)) {
+	    wcs->equinox = 1950.0;
+	    ieq = 1950;
+	    }
+	else if (!strncmp (wcstemp,"FK5",3)) {
+	    wcs->equinox = 2000.0;
+	    ieq = 2000;
+	    }
+	else if (!strncmp (wcstemp,"GAL",3)) {
+	    wcs->equinox = 2000.0;
+	    ieq = 2000;
+	    }
 	}
-    else if (hgetr8 (hstring,"EPOCH",&wcs->equinox)) {
-	hgeti4 (hstring,"EPOCH",&ieq);
-        }
-    if (ieq == 0)
-	wcs->equinox = 0.0;
+
+    if (ieq == 0) {
+	wcs->equinox = 2000.0;
+	ieq = 2000;
+	}
+
+    /* Epoch of image (from observation date, if possible) */
+    if (!hgetdate (hstring,"DATE-OBS",&wcs->epoch)) {
+	if (!hgetr8 (hstring,"EPOCH",&wcs->epoch)) {
+	    wcs->epoch = wcs->equinox;
+	    }
+	}
+    if (wcs->epoch == 0.0)
+	wcs->epoch = wcs->equinox;
 
     /* Set coordinate system from keyword, if it is present */
     if (hgets (hstring,"RADECSYS", 16, wcstemp)) {
@@ -431,19 +462,10 @@ struct WorldCoor *wcs;
     /* Otherwise set coordinate system from equinox */
     /* Systemless coordinates cannot be translated using b, j, or g commands */
     else {
-	if (ieq == 0)
-	    wcs->radecsys[0] = 0;
-	else if (ieq > 1980)
+	if (ieq > 1980)
 	    strcpy (wcs->radecsys,"FK5");
 	else
 	    strcpy (wcs->radecsys,"FK4");
-	}
-
-    /* Epoch of image (from observation date, if possible) */
-    if (!hgetdate (hstring,"DATE-OBS",&wcs->epoch)) {
-	if (!hgetr8 (hstring,"EPOCH",&wcs->epoch)) {
-	    wcs->epoch = wcs->equinox;
-	    }
 	}
 
     return;
@@ -1145,4 +1167,6 @@ wcserr ()
  * Aug 28 1996	Explicitly set OFFSCL in WCS2PIX if coordinates outside image
  * Sep  3 1996	Return computed pixel values even if they are offscale
  * Sep  6 1996	Allow filename to be passed by WCSCOM
+ * Oct  8 1996	Default to 2000 for EQUINOX and EPOCH and FK5 for RADECSYS
+ * Oct  8 1996	If EPOCH is 0 and EQUINOX is not set, default to 1950 and FK4
  */

@@ -11,8 +11,9 @@ gethead.c
 i2f.c
   Read two-dimensional IRAF image file and write FITS image file
 imcat.c
-  List catalog sources which should be found in the area of the sky
-  covered by a specific image.
+  List sources from the HST Guide Star Catalog, the USNO UJ Catalog, or a
+  tab-table catalog which should be found in the area of the sky covered
+  by a specific image using its WCS.
 imgsc.c
   List Guide Star Catalog sources which should be found in the area of
   the sky covered by a specific image using its WCS.

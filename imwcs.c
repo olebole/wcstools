@@ -1,5 +1,5 @@
 /* File imwcs.c
- * September 17, 1996
+ * October 11, 1996
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -29,7 +29,7 @@ static int fitsout = 0; /* Output FITS file from IRAF input if 1 */
 
 extern int RotFITS ();
 extern int SetWCSFITS ();
-extern void DelWCSFITS();
+extern int DelWCSFITS();
 extern void settolerance ();
 extern void setreflim ();
 extern void setrot ();
@@ -309,7 +309,7 @@ char *name;
 
     /* Print existing WCS headers and check for permission to overwrite */
     if (PrintWCS (header) == 0)
-	DelWCSFITS (header, verbose);
+	(void) DelWCSFITS (header, verbose);
 
     /* Rotate and/or reflect image */
     if (rot != 0 || mirror) {
@@ -428,7 +428,6 @@ char *header;
 
     if (hgets (header,"CTYPE1",16,str)) {
 	if (verbose) printf ("CTYPE1 = %s\n", str);
-	free (str);
 	n++;
 	}
     if (hgetr8 (header, "CRVAL1", &v)) {
@@ -450,7 +449,6 @@ char *header;
 
     if (hgets (header,"CTYPE2",16,str)) {
 	if (verbose) printf ("CTYPE2 = %s\n", str);
-	free (str);
 	n++;
 	}
     if (hgetr8 (header, "CRVAL2", &v)) {
@@ -471,7 +469,6 @@ char *header;
 	}
     if (hgets (header,"IMWCS",80,str)) {
 	if (verbose) printf ("IMWCS = %s\n", str);
-	free (str);
 	n++;
 	}
 
@@ -501,4 +498,5 @@ char *
  * Sep  1 1996	Move parameter defaults to lwcs.h
  * Sep  3 1996	Fix star finding
  * Sep 17 1996	Fix bug in GSC reading
+ * Oct 11 1996	Fix DelWCS declaration and do not free strings in PrintWCS
  */
