@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** November 18, 2003
+ *** December 12, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -849,7 +849,7 @@ int	nlog;
 
 	    /* Save star in FITS image */
 	    if (pass) {
-		wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+		wcs2pix (wcs, ra, dec, &xpix, &ypix, &offscl);
 		if (!offscl) {
 		    if (magscale > 0.0)
 			flux = magscale * exp (logt * (-mag / 2.5));
@@ -1560,4 +1560,5 @@ char *from, *last, *to;
  * Sep 25 2003	Add binbin() to fill an image with sources
  * Oct  6 2003	Update binread() and binbin() for improved RefLim()
  * Nov 18 2003	Initialize image size and bits/pixel from header in binbin()
+ * Dec 12 2003	Fix bug in wcs2pix() call in binbin()
  */

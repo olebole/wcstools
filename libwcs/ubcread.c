@@ -1,5 +1,5 @@
 /*** File libwcs/ubcread.c
- *** December 3, 2003
+ *** December 12, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2003
@@ -47,7 +47,7 @@ static char ub1path[64]="/data/ub1";
  * This may also be a URL to a catalog search engine */
 static char yb6path[64]="/data/astrocat2/usnoyb6";
 
-static char *ubpath;
+static char *upath;
 
 typedef struct {
     int rasec, decsec, pm, pmerr, poserr, mag[5], magerr[5], index[5];
@@ -169,13 +169,13 @@ int	nlog;		/* Logging interval */
 	if ((str = getenv("UB1_PATH")) != NULL)
 	    strcpy (ub1path,str);
 	ucat = UB1;
-	ubpath = ub1path;
+	upath = ub1path;
 	}
     else if (strncasecmp (refcatname,"yb",2)==0) {
 	if ((str = getenv("YB6_PATH")) != NULL)
 	    strcpy (yb6path,str);
 	ucat = YB6;
-	ubpath = yb6path;
+	upath = yb6path;
 	}
     else {
 	fprintf (stderr, "UBCREAD:  %s not a USNO catalog\n", refcatname);
@@ -183,8 +183,8 @@ int	nlog;		/* Logging interval */
 	}
 
     /* If root pathname is a URL, search and return */
-    if (!strncmp (ubpath, "http:",5)) {
-	return (webread (ubpath,refcatname,distsort,cra,cdec,dra,ddec,drad,
+    if (!strncmp (upath, "http:",5)) {
+	return (webread (upath,refcatname,distsort,cra,cdec,dra,ddec,drad,
 			 dradi,sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			 unum,ura,udec,upra,updec,umag,upmni,nlog));
 	}
@@ -598,13 +598,13 @@ int	nlog;		/* Logging interval */
 	if ((str = getenv("UB1_PATH")) != NULL)
 	    strcpy (ub1path,str);
 	ucat = UB1;
-	ubpath = ub1path;
+	upath = ub1path;
 	}
     else if (strncasecmp (refcatname,"yb",2)==0) {
 	if ((str = getenv("YB6_PATH")) != NULL)
 	    strcpy (yb6path,str);
 	ucat = YB6;
-	ubpath = yb6path;
+	upath = yb6path;
 	}
     else {
 	fprintf (stderr, "UBCREAD:  %s not a USNO catalog\n", refcatname);
@@ -612,8 +612,8 @@ int	nlog;		/* Logging interval */
 	}
 
     /* If root pathname is a URL, search and return */
-    if (!strncmp (ubpath, "http:",5)) {
-	return (webrnum (ubpath,refcatname,nnum,sysout,eqout,epout,
+    if (!strncmp (upath, "http:",5)) {
+	return (webrnum (upath,refcatname,nnum,sysout,eqout,epout,
 			 unum,ura,udec,upra,updec,umag,upmni,nlog));
 	}
 
@@ -767,13 +767,13 @@ int	nlog;		/* Logging interval */
 	if ((str = getenv("UB1_PATH")) != NULL)
 	    strcpy (ub1path,str);
 	ucat = UB1;
-	ubpath = ub1path;
+	upath = ub1path;
 	}
     else if (strncasecmp (refcatname,"yb",2)==0) {
 	if ((str = getenv("YB6_PATH")) != NULL)
 	    strcpy (yb6path,str);
 	ucat = YB6;
-	ubpath = yb6path;
+	upath = yb6path;
 	}
     else {
 	fprintf (stderr, "UBCBIN:  %s not a USNO catalog\n", refcatname);
@@ -947,7 +947,7 @@ int	nlog;		/* Logging interval */
 
 			/* Save star in FITS image */
 			if (pass) {
-			    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+			    wcs2pix (wcs, ra, dec, &xpix, &ypix, &offscl);
 			    if (!offscl) {
 				if (magscale > 0.0)
 				    flux = magscale * exp (logt * (-mag / 2.5));
@@ -1082,7 +1082,9 @@ ubcmag (magetc)
 int magetc;	/* Magnitude 4 bytes from UB catalog entry */
 {
     double xmag;
-    if (magetc < 0)
+    if (ucat == YB6)
+	xmag =  0.001 * (double) magetc;
+    else if (magetc < 0)
 	xmag = (double) (-magetc % 10000) * 0.01;
     else
 	xmag = (double) (magetc % 10000) * 0.01;
@@ -1117,7 +1119,9 @@ ubcpdec (magetc)
 int magetc;	/* Proper motion field from UB catalog entry */
 {
     double pm;
-    if (magetc < 0)
+    if (ucat == YB6)
+	pm = (double) (magetc / 10000);
+    else if (magetc < 0)
 	pm = (double) ((-magetc % 100000000) / 10000);
     else
 	pm = (double) ((magetc % 100000000) / 10000);
@@ -1161,7 +1165,9 @@ ubcndet (magetc)
 
 int magetc;	/* Quality, plate, and magnitude from UB catalog entry */
 {
-    if (magetc < 0)
+    if (ucat == YB6)
+	return (0);
+    else if (magetc < 0)
 	return (-magetc / 100000000);
     else
 	return (magetc / 100000000);
@@ -1329,7 +1335,7 @@ char *path;	/* Pathname of UB zone file */
 	}
 
     /* Set path for USNO-B1.0 zone catalog */
-    sprintf (path,"%s/%03d/b%04d.cat", ubpath, zn/10, zn);
+    sprintf (path,"%s/%03d/b%04d.cat", upath, zn/10, zn);
 
     return (0);
 }
@@ -1402,5 +1408,6 @@ int nbytes = nbent; /* Number of bytes to reverse */
  * Sep 25 2003	Add ubcbin() to fill an image with sources
  * Oct  6 2003	Update ubcread() and ubcbin() for improved RefLim()
  * Dec  1 2003	Add missing tab to n=-1 header
- * Dec  3 2003	Add USNO YB6 catalog
+ * Dec  4 2003	Add USNO YB6 catalog
+ * Dec 12 2003	Fix bug in wcs2pix() call in ubcbin()
  */

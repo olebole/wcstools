@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** December 1, 2003
+ *** December 12, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -746,20 +746,22 @@ int	nlog;		/* Logging interval */
 /* USACBIN -- Fill a FITS WCS image with USNO SA Catalog stars */
 
 int
-usabin (wcs, header, image, mag1, mag2, sortmag, nlog)
+usabin (wcs, header, image, mag1, mag2, sortmag, magscale, nlog)
 
 struct WorldCoor *wcs;	/* World coordinate system for image */
 char	*header;	/* FITS header for output image */
 char	*image;		/* Output FITS image */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
+double	magscale;	/* Scaling factor for magnitude to pixel flux
+			 * (number of catalog objects per bin if 0) */
 int	nlog;		/* Logging interval */
 {
     int i;
     int uacbin();
 
     ucat = USA2;
-    i = uacbin ("usac", wcs, header, image, mag1, mag2, sortmag, nlog);
+    i = uacbin ("usac", wcs, header, image, mag1, mag2, sortmag, magscale, nlog);
     ucat = USA2;
     return (i);
 }
@@ -998,7 +1000,7 @@ int	nlog;		/* Logging interval */
 
 			    /* Save star in FITS image */
 			    if (pass) {
-				wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+				wcs2pix (wcs, ra, dec, &xpix, &ypix, &offscl);
 		    		if (!offscl) {
 				    if (magscale > 0.0)
 					flux = magscale * exp (logt * (-mag / 2.5));
@@ -1504,4 +1506,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Oct  6 2003	Update uacread() and uacbin() for improved RefLim()
  * Nov 18 2003	Initialize image size and bits/pixel from header in uacbin()
  * Dec  1 2003	Add missing tab to n=-1 header
+ * Dec 12 2003	Fix bug in wcs2pix() call in uacbin(); fix usacbin() subroutine
  */

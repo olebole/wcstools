@@ -1,5 +1,5 @@
 /* File gettab.c
- * April 10, 2002
+ * January 22, 2004
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,7 +14,7 @@
 #include "libwcs/wcs.h"
 #include "libwcs/wcscat.h"
 
-#define MAXCOL 100
+#define MAXCOL 200
 #define MAXCOND 10
 #define MAXFILES 1000
 #define MAXLINES 1000
@@ -864,4 +864,6 @@ char *string;
  *
  * Feb 21 2002	Improve line range implementation
  * Apr 10 2002	Fix bug dealing with ranges
+ *
+ * Jan 22 2004	Increase maximum number of columns from 100 to 200
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** December 1, 2003
+ *** December 12, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -994,7 +994,7 @@ int	nlog;		/* 1 for diagnostics */
 		if (pass) {
 		    class = class + (band * 100) + (npos * 10000);
 		    xnum = (double)rnum + (0.0001 * (double) num);
-		    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+		    wcs2pix (wcs, ra, dec, &xpix, &ypix, &offscl);
 		    if (!offscl) {
 			if (magscale > 0.0)
 			    flux = magscale * exp (logt * (-mag / 2.5));
@@ -1499,4 +1499,5 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Oct  6 2003	Update gscread() and gscbin() for improved RefLim()
  * Nov 18 2003	Initialize image size and bits/pixel from header in gscbin()
  * Dec  1 2003	Add missing tab to n=-1 header
+ * Dec 12 2003	Fix bug in wcs2pix() call in gscbin()
  */

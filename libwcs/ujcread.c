@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** November 18, 2003
+ *** December 12, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -664,7 +664,7 @@ int	verbose;	/* 1 for diagnostics */
 
 			/* Save star in FITS image */
 			if (pass) {
-			    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+			    wcs2pix (wcs, ra, dec, &xpix, &ypix, &offscl);
 			    if (!offscl) {
 				if (magscale > 0.0)
 				    flux = magscale * exp (logt * (-mag / 2.5));
@@ -1077,4 +1077,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Sep 25 2003	Add ujcbin() to fill an image with sources
  * Oct  6 2003	Update ujcread() and ujcbin() for improved RefLim()
  * Nov 18 2003	Initialize image size and bits/pixel from header in ujcbin()
+ * Dec 12 2003	Fix bug in wcs2pix() call in ujcbin()
  */

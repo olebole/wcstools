@@ -1,5 +1,5 @@
 /*** File webread.c
- *** November 22, 2003
+ *** January 14, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -250,7 +250,7 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 	}
 
     /* Open returned Starbase table as a catalog */
-    if ((starcat = tabcatopen (caturl, tabtable)) == NULL) {
+    if ((starcat = tabcatopen (caturl, tabtable, 0)) == NULL) {
 	if (nlog > 0)
 	    fprintf (stderr, "WEBREAD: Could not open Starbase table as catalog\n");
 	return (0);
@@ -318,7 +318,7 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 	/* Make list of catalog numbers */
 	refcat = RefCat (refcatname,title,&syscat,&eqcat,&epcat,&mprop,&nmag);
 	for (i = 0; i < nnum; i++) {
-	    nfld = CatNumLen (refcatname, unum[i], 0);
+	    nfld = CatNumLen (refcat, unum[i], 0);
 	    CatNum (refcat, -nfld, 0, unum[i], numstr);
 	    if (i > 0) {
 		strcat (numlist, ",");
@@ -376,7 +376,7 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 	}
 
     /* Open returned Starbase table as a catalog */
-    if ((starcat = tabcatopen (caturl, tabtable)) == NULL) {
+    if ((starcat = tabcatopen (caturl, tabtable, 0)) == NULL) {
 	if (nlog > 0)
 	    fprintf (stderr, "WEBRNUM: Could not open Starbase table as catalog\n");
 	return (0);
@@ -399,7 +399,7 @@ int	nlog;		/* 1 to print diagnostic messages */
     int lsrch;
     char *tabbuff;
     int	lbuff = 0;
-    char *tabnew, *tabline, *lastline;
+    char *tabnew, *tabline, *lastline, *tempbuff;
     int formfeed = (char) 12;
     struct TabTable *tabtable;
     int ltab, lname;
@@ -421,6 +421,18 @@ int	nlog;		/* 1 to print diagnostic messages */
     if ((tabbuff = webbuff (srchurl, diag, &lbuff)) == NULL) {
 	fprintf (stderr,"WEBOPEN: cannot read URL %s", srchurl);
 	return (NULL);
+	}
+    if (!strchr (tabbuff, '	') && !strchr (tabbuff, ',') && !strchr (tabbuff, '|')) {
+	fprintf (stderr,"Message returned from %s\n", srchurl);
+	fprintf (stderr,"%s\n", tabbuff);
+	return (NULL);
+	}
+
+    /* Transform SDSS return into tab table */
+    if (!strncmp (srchurl+7, "skyserver", 9)) {
+	tempbuff = tabbuff;
+	tabbuff = sdssc2t (tempbuff);
+	free (tempbuff);
 	}
     
     /* Allocate tab table structure */
@@ -517,7 +529,7 @@ int	*lbuff;	/* Length of buffer (returned) */
     int chunked = 0;
     int lread;
     int lchunk, lline;
-    int nbcont;
+    int nbcont = 0;
     int lcbuff;
     int lb;
     char *cbcont;
@@ -810,4 +822,9 @@ FileINetParse(file, port, adrinet)
  * Mar 12 2003	Fix bug in USNO-A2 server code
  * Aug 22 2003	Add radi argument for inner edge of search annulus
  * Nov 22 2003	Increase buffer size faster than reading in webbuff()
+ * Dec 12 2003	Fix calls to CatNumLen() and tabcatopen()
+ *
+ * Jan  5 2004	Convert SDSS table from comma-separated to tab-separated
+		in webopen(); initialize nbcont to 0 in webbuff()
+ * Jan 14 2004	Return error if data but no objects returned in webopen()
  */

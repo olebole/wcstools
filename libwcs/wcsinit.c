@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** December 3, 2003
+ *** December 12, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -233,8 +233,8 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     /*
     int ix1, ix2, iy1, iy2, idx1, idx2, idy1, idy2;
     double dxrefpix, dyrefpix;
-    char temp[48];
     */
+    char temp[80];
     char wcsname[64];	/* Name of WCS depended on by current WCS */
     double mjd;
     double rot;
@@ -751,7 +751,8 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	}
 
     else if (mchar != (char) 0) {
-	setwcserr ("WCSINITC: No image scale for WCS %c", mchar);
+	(void) sprintf (temp, "WCSINITC: No image scale for WCS %c", mchar);
+	setwcserr (temp);
 	wcsfree (wcs);
 	return (NULL);
 	}
@@ -1279,4 +1280,5 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Dec  1 2003	Change p[0,1,2] initializations to p[1,2,3]
  * Dec  3 2003	Add back wcs->naxes for backward compatibility
  * Dec  3 2003	Remove unused variables j,m in wcsinitc()
+ ( Dec 12 2003	Fix call to setwcserr() with format in it
  */

@@ -1,5 +1,5 @@
 /* File imrot.c
- * February 13, 2001
+ * January 28, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,6 +17,9 @@ static void usage();
 static void imRot ();
 extern char *RotFITS();
 
+#define MAXFILES 1000
+static int maxnfile = MAXFILES;
+
 static int verbose = 0;	/* verbose/debugging flag */
 static int mirror = 0;	/* reflect image across vertical axis */
 static int automirror = 0;	/* reflect image if IRAF header says to */
@@ -27,20 +30,28 @@ static int fitsout = 0;	/* Output FITS file from IRAF input if 1 */
 static int nsplit = 0;	/* Output multiple FITS files from n-extension file */
 static int overwrite = 0;	/* allow overwriting of input image file */
 static int version = 0;		/* If 1, print only program name and version */
+static int xshift = 0;
+static int yshift = 0;
+static int shifted = 0;
 
 main (ac, av)
 int ac;
 char **av;
 {
     char *str;
+    char c;
     int readlist = 0;
     char *lastchar;
     char filename[128];
     FILE *flist;
+    char **fn, *fname;
     char *listfile;
     char *fni;
-    int lfn, i;
+    int lfn, i, ifile, nfile;
+    double dx, dy;
 
+    nfile = 0;
+    fn = (char **)calloc (maxnfile, sizeof(char *));
     outname[0] = 0;
 
     /* Check for help or version command first */
@@ -52,74 +63,115 @@ char **av;
 	usage();
 	}
 
-    /* crack arguments */
-    for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
-	char c;
-	if (*str == '@')
-	    str = str - 1;
-	while (c = *++str)
-    	switch (c) {
-    	case 'f':	/* FITS file output */
-    	    fitsout++;
-    	    break;
+    /* Loop through the arguments */
+    for (av++; --ac > 0; av++) {
+	str = *av;
 
-    	case 'a':	/* Flip image around N-S axis if IRAF header says to */
-	    automirror = 1;
-    	    break;
-
-    	case 'l':	/* image flipped around N-S axis */
-	    mirror = 1;
-    	    break;
-
-    	case 'o':	/* Specifiy output image filename */
-    	    if (ac < 2)
-    		usage ();
-	    if (*(av+1)[0] == '-' || *(str+1) != (char)0)
-		overwrite++;
-	    else {
-		strcpy (outname, *(av+1));
-		overwrite = 0;
-		av++;
-		ac--;
-		}
-	    break;
-
-    	case 'r':	/* Rotation angle in degrees */
-    	    if (ac < 2)
-    		usage ();
-    	    rotate = (int) atof (*++av);
-    	    ac--;
-    	    break;
-
-	case 's':	/* split input FITS multiextension image file */
-    	    if (ac < 2)
-    		usage ();
-	    nsplit = atoi (*++av);
-	    ac--;
-	    break;
-
-    	case 'x':	/* Number of bits per pixel */
-    	    if (ac < 2)
-    		usage ();
-    	    bitpix = (int) atof (*++av);
-    	    ac--;
-    	    break;
-
-    	case 'v':	/* more verbosity */
-    	    verbose++;
-    	    break;
-
-	case '@':	/* List of files to be read */
+	/* List of files to be read */
+	if (*str == '@') {
 	    readlist++;
 	    listfile = ++str;
 	    str = str + strlen (str) - 1;
 	    av++;
 	    ac--;
+	    str = str - 1;
+	    }
 
-    	default:
-    	    usage();
-    	    break;
-    	}
+	/* Set image shifts */
+	else if (isnum (str)) {
+	    if (shifted) {
+		dy = atof (str);
+		if (dy < 0)
+		    yshift = (int) (dy - 0.5);
+		else
+		    yshift = (int) (dy + 0.5);
+		}
+	    else {
+		shifted = 1;
+		dx = atof (str);
+		if (dx < 0)
+		    xshift = (int) (dx - 0.5);
+		else
+		    xshift = (int) (dx + 0.5);
+		}
+	    }
+
+	/* Parameters */
+	else if (str[0] == '-') {
+	    while ((c = *++str) != 0) {
+		switch (c) {
+ 	   	case 'f':	/* FITS file output */
+		    fitsout++;
+		    break;
+
+		case 'a': /* Flip image around N-S axis if IRAF header says */
+		    automirror = 1;
+		    break;
+
+		case 'l':	/* image flipped around N-S axis */
+		    mirror = 1;
+		    break;
+
+		case 'o':	/* Specifiy output image filename */
+		    if (ac < 2)
+			usage ();
+		    if (*(av+1)[0] == '-' || *(str+1) != (char)0)
+			overwrite++;
+		    else {
+			strcpy (outname, *(av+1));
+			overwrite = 0;
+			av++;
+			ac--;
+			}
+		    break;
+
+		case 'r':	/* Rotation angle in degrees */
+		    if (ac < 2)
+			usage ();
+		    rotate = (int) atof (*++av);
+		    ac--;
+		    break;
+
+		case 's':	/* split input FITS multiextension image file */
+		    if (ac < 2)
+			usage ();
+		    nsplit = atoi (*++av);
+		    ac--;
+		    break;
+
+		case 'x':	/* Number of bits per pixel */
+		    if (ac < 2)
+			usage ();
+		    bitpix = (int) atof (*++av);
+		    ac--;
+		    break;
+
+		case 'v':	/* more verbosity */
+		    verbose++;
+		    break;
+
+		default:
+		    usage();
+		    break;
+		}
+		}
+	    }
+
+        /* Image file */
+        else if (isfits (str) || isiraf (str)) {
+            if (nfile >= maxnfile) {
+                maxnfile = maxnfile * 2;
+                fn = (char **) realloc ((void *)fn, maxnfile);
+                }
+            fn[nfile] = str;
+            nfile++;
+            }
+
+        else {
+	    fprintf (stderr,"IMROT: %s is not a FITS or IRAF file \n",str);
+            usage();
+            }
+
     }
 
     /* Process files in file of filenames */
@@ -139,26 +191,19 @@ char **av;
 	fclose (flist);
 	}
 
-    /* If no arguments left, print usage */
-    if (ac == 0)
-	usage ();
-
     /* Process files on command line */
-    else {
-	while (ac-- > 0) {
-    	    char *fn = *av++;
-	    lfn = strlen (fn);
+    else if (nfile > 0) {
+	for (ifile = 0; ifile < nfile; ifile++) {
+	    fname = fn[ifile];
+	    lfn = strlen (fname);
 	    if (lfn < 8)
 		lfn = 8;
 	    if (nsplit > 0) {
-		lfn = strlen (fn);
-		if (lfn < 8)
-		    lfn = 8;
 		fni = (char *)calloc (lfn+4, 1);
 		for (i = 1; i <= nsplit; i++) {
-		    sprintf (fni, "%s,%d", fn, i);
-    		    if (verbose)
-    			printf ("%s:\n", fni);
+		    sprintf (fni, "%s,%d", fname, i);
+		    if (verbose)
+			printf ("%s:\n", fni);
 		    imRot (fni);
 		    if (verbose)
   			printf ("\n");
@@ -166,14 +211,18 @@ char **av;
 		free (fni);
 		}
 	    else {
-    		if (verbose)
-    		    printf ("%s:\n", fn);
-    		imRot (fn);
+		if (verbose)
+		    printf ("%s:\n", fname);
+		imRot (fname);
 		if (verbose)
   		    printf ("\n");
 		}
 	    }
 	}
+
+    /* If no files processed, print usage */
+    else
+	usage ();
 
     return (0);
 }
@@ -183,8 +232,10 @@ usage ()
 {
     if (version)
 	exit (-1);
-    fprintf (stderr,"Rotate and/or Reflect FITS and IRAF image files\n");
-    fprintf(stderr,"Usage: [-vm][-r rot][-s num] file.fits ...\n");
+    fprintf (stderr,"Shift, Rotate, and/or Reflect FITS and IRAF image files\n");
+    fprintf(stderr,"Usage: [-vm][-r rot][-s num] [xshift yshift] file.fits ...\n");
+    fprintf(stderr,"  xshift: integer horizontal pixel shift, applied first\n");
+    fprintf(stderr,"  yshift: integer vertical pixel shift, applied first\n");
     fprintf(stderr,"  -a: mirror if IRAF image WCS says to\n");
     fprintf(stderr,"  -f: write FITS image from IRAF input\n");
     fprintf(stderr,"  -l: reflect image across vertical axis\n");
@@ -314,6 +365,8 @@ char *name;
 		strcat (newname, imext+1);
 		}
 	    }
+	if (shifted)
+	    strcat (newname, "s");
 	if (mirror)
 	    strcat (newname, "m");
 	if (rotate != 0) {
@@ -359,7 +412,7 @@ char *name;
 	strcpy (newname, name);
 
     if (verbose) {
-	fprintf (stderr,"Rotate and/or reflect ");
+	fprintf (stderr,"Shift, rotate, and/or reflect ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s", name);
 	else
@@ -379,8 +432,8 @@ char *name;
 	sprintf (history,"New copy of image %s", name);
     hputc (header,"HISTORY",history);
 
-    if ((newimage = RotFITS (name,header,image,rotate,mirror,bitpix,verbose))
-	== NULL) {
+    if ((newimage = RotFITS (name,header,image,xshift,yshift,rotate,mirror,
+			     bitpix,verbose)) == NULL) {
 	fprintf (stderr,"Cannot rotate image %s; file is unchanged.\n",name);
 	}
     else {
@@ -449,4 +502,6 @@ char *name;
  *
  * Jan 18 2001	Add automirror -a option
  * Feb 13 2001	Add -o name option to -o argument (from imwcs)
+ *
+ * Jan 28 2004	Add option to shift file data within file (before rotating)
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** August 30, 2002
+ *** December 9, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2002
@@ -1568,7 +1568,7 @@ char *string;   /* Numeric string */
         if ((cdot = strchr (string, '.')) == NULL)
             return (0);
         else
-            return (lstr - (cdot - string));
+            return (lstr - (cdot - string) - 1);
         }
 }
 
@@ -1667,4 +1667,5 @@ int set_saolib(hstring)
  * Aug  6 2002	Add strcsrch() and strncsrch() for case-insensitive searches
  * Aug 30 2002	Fix bug so strcsrch() really is case-insensitive
  * Oct 20 2003	Add numdec() to return number of decimal places in a string
+ * Dec  9 2003	Fix numdec() to return 0 if no digits after decimal point
  */

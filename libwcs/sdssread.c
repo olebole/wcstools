@@ -1,8 +1,8 @@
-/*** File libwcs/gsc2read.c
- *** December 12, 2003
+/*** File libwcs/sdssread.c
+ *** January 5, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2003
+ *** Copyright (C) 2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -40,15 +40,18 @@
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 #define LINE    1024
 
-/* GSC II search engine URL */
-char gsc22url[64]="http://www-gsss.stsci.edu/cgi-bin/gsc22query.exe";
-char gsc23url[64]="http://www-gsss.stsci.edu/cgi-bin/gsc23query.exe";
+/* SDSS search engine URL */
+char sdssrurl[64]="http://skyserver.sdss.org/cas/en/tools/search/x_radial.asp";
+char sdssburl[64]="http://skyserver.sdss.org/cas/en/tools/search/x_rect.asp";
 
-/* GSC2READ -- Read GSC II catalog stars over the web */
+/* SDSS magnitudes */
+char sdssmag[6]="ugriz";
+
+/* SDSSREAD -- Read Sloan Digital Sky Survey catalog stars over the web */
 
 int
-gsc2read (refcatname,cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
-	  mag1,mag2,sortmag,nstarmax,gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
+sdssread (refcatname,cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
+	  mag1,mag2,sortmag,nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
 
 char	*refcatname;	/* Name of catalog (UB1 only, for now) */
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -67,26 +70,24 @@ int	nstarmax;	/* Maximum number of stars to be returned */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
-double	*gpra;		/* Array of right ascension proper motions (returned) */
-double	*gpdec;		/* Array of declination proper motions (returned) */
 double	**gmag;		/* 2-D array of magnitudes (returned) */
 int	*gtype;		/* Array of object classes (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
     char srchurl[LINE];
     char temp[64];
+    char cmag;
     struct TabTable *tabtable;
     double dtemp, r2;
+    double *gpra, *gpdec;
     struct StarCat *starcat;
     int nstar, i;
     double ra, dec, mag;
     char rastr[32], decstr[32];
-    char *gsc2url;
+    char *sdssurl;
 
-    if (strchr (refcatname, '3'))
-	gsc2url = gsc23url;
-    else
-	gsc2url = gsc22url;
+    gpra = NULL;
+    gpdec = NULL;
 
     if (nstarmax < 1)
 	nlog = -1;
@@ -97,43 +98,49 @@ int	nlog;		/* 1 for diagnostics */
 	mag2 = mag1;
 	mag1 = mag;
 	}
+    if (mag1 < 0)
+	mag1 = 0.0;
 
     /* Set up query for STScI GSC II server */
     ra = cra;
     dec = cdec;
     if (sysout != WCS_J2000)
 	wcscon (sysout, WCS_J2000, eqout, 2000.0, &ra, &dec, epout);
-    ra2str (rastr, 32, ra, 3);
-    dec2str (decstr, 32, dec, 2);
-    sprintf (srchurl, "?ra=%s&dec=%s&", rastr, decstr);
+
+    sdssurl = sdssrurl;
+    deg2str (rastr, 32, ra, 5);
+    deg2str (decstr, 32, dec, 5);
+
+    /* Radius or box size */
     if (drad != 0.0) {
 	dtemp = drad * 60.0;
-	sprintf (temp, "r2=%.3f&",dtemp);
+	sprintf (srchurl, "?ra=%.5f&dec=%.5f&radius=%.3f",
+		 ra, dec, dtemp);
 	}
     else {
-	r2 = sqrt (dra*dra + ddec*ddec) * 60.0;
-	sprintf (temp, "r2=%.3f&",r2);
+	dtemp = sqrt (dra*dra + ddec*ddec) * 60.0;
+	sprintf (srchurl, "?ra=%.5f&dec=%.5f&radius=%.3f",
+		 ra, dec, dtemp);
 	}
-    strcat (srchurl, temp);
-    if (mag1 < mag2) {
-	sprintf (temp, "m1=%.2f&m2=%.2f&", mag1, mag2);
-	strcat (srchurl, temp);
-	}
-    else if (mag1 > mag2) {
-	sprintf (temp, "m1=%.2f&m2=%.2f&", mag2, mag1);
-	strcat (srchurl, temp);
-	}
-    if (gsc2url == gsc23url)
-	nstar = 50000;
+
+    /* Magnitude limit, if any */
+    if (sortmag < 1)
+	cmag = 'g';
     else
-	nstar = 100000;
-    sprintf (temp, "n=%d",nstar);
+	cmag = sdssmag[sortmag - 1];
+    if (mag1 < mag2) {
+	sprintf (temp, "&check_%c=%c&min_%c=%.2f&max_%c=%.2f",
+		 cmag, cmag, cmag, mag1, cmag, mag2);
+	strcat (srchurl, temp);
+	}
+    nstar = 50000;
+    sprintf (temp, "&entries=top&topnum=%d&format=csv",nstar);
     strcat (srchurl, temp);
     if (nlog > 0)
-	fprintf (stderr,"%s%s\n", gsc2url, srchurl);
+	fprintf (stderr,"%s%s\n", sdssurl, srchurl);
 
     /* Run search across the web */
-    if ((tabtable = webopen (gsc2url, srchurl, nlog)) == NULL) {
+    if ((tabtable = webopen (sdssurl, srchurl, nlog)) == NULL) {
 	if (nlog > 0)
 	    fprintf (stderr, "WEBREAD: %s failed\n", srchurl);
 	return (0);
@@ -154,62 +161,63 @@ int	nlog;		/* 1 for diagnostics */
 	}
 
     /* Open returned Starbase table as a catalog */
-    if ((starcat = tabcatopen (gsc2url, tabtable,0)) == NULL) {
+    if ((starcat = tabcatopen (sdssurl, tabtable,0)) == NULL) {
 	if (nlog > 0)
 	    fprintf (stderr, "WEBREAD: Could not open Starbase table as catalog\n");
 	return (0);
 	}
 
     /* Set reference frame, epoch, and equinox of catalog */
-    /* starcat->rpmunit = PM_MASYR;
-    starcat->dpmunit = PM_MASYR; */
-    starcat->rpmunit = 0;
-    starcat->dpmunit = 0;
     starcat->coorsys = WCS_J2000;
     starcat->epoch = 2000.0;
     starcat->equinox = 2000.0;
     starcat->nmag = 5;
 
     /* Extract desired sources from catalog  and return them */
-    nstar = tabread (gsc2url,distsort,cra,cdec,dra,ddec,drad,dradi,
+    nstar = tabread (sdssurl,distsort,cra,cdec,dra,ddec,drad,dradi,
 	     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,&starcat,
 	     gnum,gra,gdec,gpra,gpdec,gmag,gtype,NULL,nlog);
 
     tabcatclose (starcat);
-
-    /* Zero out any proper motions for GSC 2.2 */
-    if (!strchr (refcatname, '3')) {
-	for (i = 0; i < nstar; i++) {
-	    if (i < nstarmax) {
-		gpra[i] = 0.0;
-		gpdec[i] = 0.0;
-		}
-	    }
-	}
 
     starcat = NULL;
 
     return (nstar);
 }
 
-/* Jun 22 2001	New program
- * Jun 28 2001	Set proper motion to milliarcseconds/year
- * Jun 29 2001	Always set maximum magnitude to 99.9 to get Tycho-2 stars, too
- * Sep 13 2001	Pass array of magnitudes, not vector
- * Sep 14 2001	Add option to print entire returned file if nlog < 0
- * Sep 20 2001	Make argument starcat, not *starcat in tabcatclose()
- *
- * Apr  8 2002	Fix bugs in null subroutine gsc2rnum()
- * Oct  3 2002	If nstarmax is less than 1, print everything returned
- *
- * Feb  6 2003	Reset nmag to 4 because there is an epoch column
- * Mar 11 2003	Fix URL for search
- * Apr  3 2003	Drop unused variables after lint; drop gsc2rnum()
- * Apr 24 2003	Set nmag to 5 to include epoch, which is not printed
- * Aug 22 2003	Add radi argument for inner edge of search annulus
- * Nov 22 2003	Return object class (c column) as gtype
- * Dec  3 2003	Add option to access GSC 2.3 over the Web
- * Dec  4 2003	Add proper motions for GSC 2.3
- * Dec 11 2003	Search to corners of rectangle, not to longest edge
- * Dec 12 2003	Fix call to tabcatopen()
+char *
+sdssc2t (csvbuff)
+
+    char *csvbuff;	/* Input comma-separated table */
+
+{
+    char colhead[180]="objID             	run	rerun	camcol	field	obj	type	ra        	dec      	umag	gmag	rmag	imag	zmag	uerr    	gerr   	rerr    	ierr    	zerr   \n";
+    char colsep[180]="------------------	---	-----	------	-----	---	----	----------	---------	------	------	------	------	------	--------	------	--------	--------	-------\n";
+    char *tabbuff;	/* Output tab-separated table */
+    char *databuff;
+    int lbuff, ltbuff, i;
+
+    /* Convert commas in table to tabs */
+    lbuff = strlen (csvbuff);
+    for (i = 0; i < lbuff; i++) {
+	if (csvbuff[i] == ',')
+	    csvbuff[i] = (char) 9;
+	}
+
+    /* Skip first line of returned header */
+    databuff = strchr (csvbuff, '\n') + 1;
+
+    /* Allocate buffer for tab-separated table with header */
+    lbuff = strlen (databuff) + strlen (colhead) + strlen (colsep);
+    tabbuff = (char *) calloc (lbuff, 1);
+
+    /* Copy column headings, separator, and data to output buffer */
+    strcpy (tabbuff, colhead);
+    strcat (tabbuff, colsep);
+    strcat (tabbuff, databuff);
+
+    return (tabbuff);
+}
+
+/* Jan  5 2004	New program
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/distort.c
- *** November 18, 2003
+ *** January 9, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu, 
  *** Based on code written by Jing Li, IPAC
  *** Harvard-Smithsonian Center for Astrophysics
@@ -30,6 +30,7 @@
  * Module:	distort.c (World Coordinate Systems)
  * Purpose:	Convert focal plane coordinates to pixels and vice versa:
  * Subroutine:  distortinit (wcs, hstring) set distortion coefficients from FITS header
+ * Subroutine:  DelDistort (header, verbose) delete distortion coefficients in FITS header
  * Subroutine:	pix2foc (wcs, x, y, u, v) pixel coordinates -> focal plane coordinates
  * Subroutine:	foc2pix (wcs, u, v, x, y) focal plane coordinates -> pixel coordinates
  * Subroutine:  setdistcode (wcs,ctype) sets distortion code from CTYPEi
@@ -132,6 +133,95 @@ char	*hstring;	/* character string containing FITS header information
 	    }
 	}
     return;
+}
+
+
+/* Delete all distortion-related fields.
+ * return 0 if at least one such field is found, else -1.  */
+
+int
+DelDistort (header, verbose)
+
+char *header;
+int verbose;
+
+{
+    char keyword[16];
+    char str[32];
+    int i, j, m;
+    int lctype;
+    int n;
+
+    n = 0;
+
+    if (hgeti4 (header, "A_ORDER", &m)) {
+	for (i = 0; i <= m; i++) {
+	    for (j = 0; j <= m-i; j++) {
+		sprintf (keyword, "A_%d_%d", i, j);
+		hdel (header, keyword);
+		n++;
+		}
+	    }
+	hdel (header, "A_ORDER");
+	n++;
+	}
+
+    if (hgeti4 (header, "AP_ORDER", &m)) {
+	for (i = 0; i <= m; i++) {
+	    for (j = 0; j <= m-i; j++) {
+		sprintf (keyword, "AP_%d_%d", i, j);
+		hdel (header, keyword);
+		n++;
+		}
+	    }
+	hdel (header, "AP_ORDER");
+	n++;
+	}
+
+    if (hgeti4 (header, "B_ORDER", &m)) {
+	for (i = 0; i <= m; i++) {
+	    for (j = 0; j <= m-i; j++) {
+		sprintf (keyword, "B_%d_%d", i, j);
+		hdel (header, keyword);
+		n++;
+		}
+	    }
+	hdel (header, "B_ORDER");
+	n++;
+	}
+
+    if (hgeti4 (header, "BP_ORDER", &m)) {
+	for (i = 0; i <= m; i++) {
+	    for (j = 0; j <= m-i; j++) {
+		sprintf (keyword, "BP_%d_%d", i, j);
+		hdel (header, keyword);
+		n++;
+		}
+	    }
+	hdel (header, "BP_ORDER");
+	n++;
+	}
+
+    if (n > 0 && verbose)
+	fprintf (stderr,"%d keywords deleted\n", n);
+
+    /* Remove WCS distortion code from CTYPEi in FITS header */
+    if (hgets (header, "CTYPE1", str)) {
+	lctype = strlen (str);
+	if (lctype > 8) {
+	    str[8] = (char) 0;
+	    hputs (header, "CTYPE1", str);
+	    }
+	}
+    if (hgets (header, "CTYPE2", str)) {
+	lctype = strlen (str);
+	if (lctype > 8) {
+	    str[8] = (char) 0;
+	    hputs (header, "CTYPE2", str);
+	    }
+	}
+
+    return (n);
 }
 
 void
@@ -308,4 +398,6 @@ struct WorldCoor *wcs;  /* World coordinate system structure */
  * Nov  3 2003	Add getdistcode to return distortion code string
  * Nov 10 2003	Include unistd.h to get definition of NULL
  * Nov 18 2003	Include string.h to get strlen()
+ *
+ * Jan  9 2003	Add DelDistort() to delete distortion keywords
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/tabread.c
- *** November 22, 2003
+ *** January 5, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -850,7 +850,7 @@ int	nlog;
 
 	/* Save star in FITS image */
 	if (pass) {
-	    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+	    wcs2pix (wcs, ra, dec, &xpix, &ypix, &offscl);
 	    if (!offscl) {
 		if (magscale > 0.0)
 		    flux = magscale * exp (logt * (-mag / 2.5));
@@ -1289,8 +1289,10 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
     cstr[0] = 0;
     if (!tabhgetc (startab,"RPMUNIT", cstr)) {
 	if (!tabhgetc (startab,"rpmunit", cstr)) {
-	    if (!tabhgetc (startab,"pmunit", cstr))
-		tabhgetc (startab,"pmunit", cstr);
+	    if (!tabhgetc (startab,"pmunit", cstr)) {
+		if (sc->entdpm > 0 && sc->entrpm > 0)
+		    strcpy (cstr,"mas/yr");
+		}
 	    }
 	}
     if (strlen (cstr) > 0) {
@@ -1570,9 +1572,11 @@ int	verbose;	/* 1 to print error messages */
     char temp[32];
     double ydate;
     char *cn;
-    int ndec, i, imag;
+    int ndec, i, imag, ltok;
     int lnum, ireg, inum;
     int pmq, nid;
+    int lcn;
+    char str[24];
 
     if ((line = gettabline (startab, istar)) == NULL) {
 	if (verbose)
@@ -1600,8 +1604,13 @@ int	verbose;	/* 1 to print error messages */
 	else
 	    cn = cnum;
 	if (isnum (cn) || isnum (cn+1)) {
-	    if (isnum(cnum))
-		st->num = atof (cn);
+	    if (isnum(cnum)) {
+		lcn = strlen (cn);
+		if (lcn > 15)
+		    st->num = atof (cn + lcn - 15);
+		else
+		    st->num = atof (cn);
+		}
 	    else {
 		if (cnum[0] == 'S')
 		    st->num = -atof (cn+1);
@@ -1656,8 +1665,20 @@ int	verbose;	/* 1 to print error messages */
 
     /* Magnitudes */
     for (imag = 0; imag < sc->nmag; imag++) {
-	if (sc->entmag[imag])
-	    st->xmag[imag] = tabgetr8 (&startok, sc->entmag[imag]);
+	if (sc->entmag[imag]) {
+	    if (tabgetc (&startok, sc->entmag[imag], str, 24))
+		return (0.0);
+	    ltok = strlen (str);
+	    if (str[ltok-1] == 'L') {
+		str[ltok-1] = (char) 0;
+		if (isnum (str))
+		    st->xmag[imag] = 100.0 + atof (str);
+		else
+		    st->xmag[imag] = 0.0;
+		}
+	    else
+		st->xmag[imag] = tabgetr8 (&startok, sc->entmag[imag]);
+	    }
 	else
 	    st->xmag[imag] = 0.0;
 	}
@@ -2625,4 +2646,9 @@ char    *filename;      /* Name of file to check */
  * Oct  6 2003	Update tabread() and tabbin() for improved RefLim()
  * Nov 18 2003	Initialize image size and bits/pixel from header in tabbin()
  * Nov 22 2003	Add GSC II object class (c) as possible content for tpeak
+ * Dec  4 2003	Add default of arcsec/century as proper motion unit
+ * Dec 10 2003	If magnitude ends in L and is a number, add 100.0
+ * Dec 12 2003	Fix bug in wcs2pix() call in tabbin()
+ *
+ * Jan  5 2003	If more than 15 digits in numberic ID, drop excess off front
  */

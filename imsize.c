@@ -1,5 +1,5 @@
 /* File imsize.c
- * April 11, 2003
+ * December 18, 2003
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -386,12 +386,14 @@ char *name;
 	}
 
     /* Convert to desired output coordinates */
-    if (sysim < 5) {
+    if ((sysout == 0 && sysim < 3) || (sysout > 0 && sysout < 3)) {
 	wcscon (sysim, sysout, eqim, eqout, &cra, &cdec, wcs->epoch);
 	ra2str (rstr, 16, cra, ndec);
 	dec2str (dstr, 16, cdec, ndec-1);
 	}
     else {
+	if (sysout != 0 && sysim != sysout)
+	    wcscon (sysim, sysout, eqim, eqout, &cra, &cdec, wcs->epoch);
 	num2str (rstr, cra, 0, ndec);
 	num2str (dstr, cdec, 0, ndec);
 	}
@@ -438,7 +440,7 @@ char *name;
     /* Print coverage of image in right ascension and declination */
     if (printrange) {
 	wcsrange (wcs, &xmin, &xmax, &ymin, &ymax);
-	if (sysim < 5) {
+	if (sysim < 3) {
 	    ra2str (ramin, 32, xmin, ndec);
 	    ra2str (ramax, 32, xmax, ndec);
 	    dec2str (decmin, 32, ymin, ndec-1);
@@ -457,7 +459,7 @@ char *name;
 	strcpy (blanks, "                                       ");
 	lfroot = strlen (fileroot);
 	blanks[lfroot-1] = 0;
-	if (sysim < 5) {
+	if (sysim < 3) {
 	    printf ("%s%s RA:  %s -  %s %.4f arcsec/pix \n",
 		    filename, ext, ramin, ramax, dx);
 	    printf ("%s Dec: %s - %s %.4f arcsec/pix %s\n",
@@ -574,5 +576,6 @@ char *name;
  * Jun 19 2002	Add verbose argument to GetFITShead()
  * Oct  3 2002	Initialize uninitialized switch nfext
  *
- * APr 11 2003	Add -d option for degree center
+ * Apr 11 2003	Add -d option for degree center
+ * Dec 18 2003	Print decimal degrees for longitude/latitude output
  */

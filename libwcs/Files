@@ -90,6 +90,9 @@ platepos.c
   intermediate plate coordinate.
 proj.c
   WCSLIB spherical map projection subroutines
+sdssread.c
+  Return Sloan Digital Sky Survey Photometry Catalog sources using an
+  HTTP query over the web for a given RA, Dec, and magnitude range.
 slasubs.c
   Starlink SLA_Lib subroutines used by coordinate conversion subroutines
 sortstars.c

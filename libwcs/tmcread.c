@@ -1,5 +1,5 @@
 /*** File libwcs/tmcread.c
- *** November 18, 2003
+ *** January 23, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2003
@@ -42,6 +42,10 @@
 #define IDR1 1
 #define IDR2 2
 #define ALLSKY 3
+#define XSC 4
+
+#define MINRA 1
+#define MAXRA 2
 
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 
@@ -49,6 +53,7 @@
    or catalog search engine URL */
 char tmc2path[64]="/data/astrocat/2MASS";
 char tmcapath[64]="/data/astrocat/tmc";
+char tmxpath[64]="/data/astrocat/tmx";
 char *tmcpath;
 
 static double *gdist;	/* Array of distances to stars */
@@ -63,13 +68,13 @@ static int tmcstar();
 static int tmcsdec();
 static int tmcsra();
 
-/* TMCREAD -- Read 2MASS point source catalog stars from CDROM */
+/* TMCREAD -- Read 2MASS catalog stars from disk files */
 
 int
 tmcread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
 	 mag1,mag2,sortmag,nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
 
-char	*catfile;	/* Name of catalog file (tmc or tmidr2) */
+char	*catfile;	/* Name of catalog file (tmc, tmx, or tmidr2) */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
@@ -103,6 +108,7 @@ int	nlog;		/* 1 for diagnostics */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
+    double size = 0.0;		/* Semi-major axis of extended source */
     struct StarCat *starcat;
     struct Star *star;
     int verbose;
@@ -128,6 +134,11 @@ int	nlog;		/* 1 for diagnostics */
 	tmcrel = IDR2;
 	tmcpath = tmc2path;
 	strcpy (tmcenv, "TMCIDR2_PATH");
+	}
+    else if (strcsrch (catfile, "tmx") || strcsrch (catfile, "2mx")) {
+	tmcrel = XSC;
+	tmcpath = tmxpath;
+	strcpy (tmcenv, "TMX_PATH");
 	}
     else {
 	tmcrel = ALLSKY;
@@ -229,9 +240,15 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("epoch	%.3f\n", epout);
 	printf ("program	stmc %s\n", revmessage);
 	printf ("2mass_id  	ra          	dec         	");
-	printf ("magj  	magh  	magk  	arcmin\n");
+	printf ("magj  	magh  	magk  ");
+	if (tmcrel == XSC)
+	    printf (" 	size  ");
+	printf (" 	arcmin\n");
 	printf ("----------	------------	------------	");
-	printf ("------	------	------	------\n");
+	printf ("------	------	------");
+	if (tmcrel == XSC)
+	    printf ("	------");
+	printf ("	------\n");
 	}
 
     /* If searching through RA = 0:00, split search in two */
@@ -257,16 +274,22 @@ int	nlog;		/* 1 for diagnostics */
 
 	    /* Find first and last stars in this region */
 	    if (tmcrel == ALLSKY) {
-		istar1 = tmcsra (starcat, star, zone, rra1);
-		istar2 = tmcsra (starcat, star, zone, rra2);
+		istar1 = tmcsra (starcat, star, zone, rra1, MINRA);
+		istar2 = tmcsra (starcat, star, zone, rra2, MAXRA);
+		}
+	    else if (tmcrel == XSC) {
+		istar1 = tmcsra (starcat, star, zone, rra1, MINRA);
+		istar2 = tmcsra (starcat, star, zone, rra2, MAXRA);
+		/* istar1 = 1;
+		istar2 = starcat->nstars; */
 		}
 	    else {
 		istar1 = tmcsdec (starcat, star, zone, rdec1);
 		istar2 = tmcsdec (starcat, star, zone, rdec2);
 		}
 	    if (verbose)
-		fprintf (stderr,"TMCREAD: Searching stars %d through %d\n",
-			istar1, istar2-1);
+		fprintf (stderr,"TMCREAD: Searching stars %d through %d in region %d\n",
+			istar1, istar2-1, zone);
 
 	    /* Loop through catalog for this region */
 	    for (istar = istar1; istar < istar2; istar++) {
@@ -280,6 +303,10 @@ int	nlog;		/* 1 for diagnostics */
 
 		/* Magnitude */
 		mag = star->xmag[0];
+
+		/* Semi-major axis of extended source */
+		if (tmcrel == XSC)
+		    size = star->size;
 
 		/* Check magnitude limits */
 		pass = 1;
@@ -333,6 +360,8 @@ int	nlog;		/* 1 for diagnostics */
 			    else
 				printf ("	%.3f ", star->xmag[imag]);
 			    }
+			if (tmcrel == XSC)
+			    printf ("	%.1f", size);
 			printf ("	%.2f\n", dist);
 			}
 
@@ -345,7 +374,10 @@ int	nlog;		/* 1 for diagnostics */
 			    if (gmag[imag] != NULL)
 				gmag[imag][nstar] = star->xmag[imag];
 			    }
-			gtype[nstar] = 0;
+			if (tmcrel == XSC)
+			    gtype[nstar] = (int) ((size + 0.05) * 10.0);
+			else
+			    gtype[nstar] = 0;
 			gdist[nstar] = dist;
 			if (dist > maxdist) {
 			    maxdist = dist;
@@ -368,7 +400,10 @@ int	nlog;		/* 1 for diagnostics */
 				if (gmag[imag] != NULL)
 				    gmag[imag][farstar] = star->xmag[imag];
 				}
-			    gtype[farstar] = 0;
+			    if (tmcrel == XSC)
+				gtype[farstar] = (int) ((size + 0.05) * 10.0);
+			    else
+				gtype[farstar] = 0;
 			    gdist[farstar] = dist;
 
 			    /* Find new farthest star */
@@ -391,7 +426,10 @@ int	nlog;		/* 1 for diagnostics */
 			    if (gmag[imag] != NULL)
 				gmag[imag][faintstar] = star->xmag[imag];
 			    }
-			gtype[faintstar] = 0;
+			if (tmcrel == XSC)
+			    gtype[faintstar] = (int) ((size + 0.05) * 10.0);
+			else
+			    gtype[faintstar] = 0;
 			gdist[faintstar] = dist;
 			faintmag = 0.0;
 
@@ -467,6 +505,7 @@ int	nlog;		/* 1 for diagnostics */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
+    double size = 0.0;		/* Semi-major axis of extended source */
     struct StarCat *starcat;
     struct Star *star;
     char *str;
@@ -482,6 +521,11 @@ int	nlog;		/* 1 for diagnostics */
 	tmcrel = IDR2;
 	tmcpath = tmc2path;
 	strcpy (tmcenv, "TMCIDR2_PATH");
+	}
+    else if (strcsrch (catfile, "tmx") || strcsrch (catfile, "2mx")) {
+	tmcrel = XSC;
+	tmcpath = tmxpath;
+	strcpy (tmcenv, "TMX_PATH");
 	}
     else {
 	tmcrel = ALLSKY;
@@ -550,7 +594,10 @@ int	nlog;		/* 1 for diagnostics */
 	gmag[0][jstar] = star->xmag[0];
 	gmag[1][jstar] = star->xmag[1];
 	gmag[2][jstar] = star->xmag[2];
-	gtype[jstar] = 0;
+	if (tmcrel == XSC)
+	    gtype[jstar] = (int) ((star->size * 10.0) + 0.5);
+	else
+	    gtype[jstar] = 0;
 	if (nlog == 1)
 	    fprintf (stderr,"TMCRNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %5.2f\n",
 		     num, ra, dec, star->xmag[0],star->xmag[1],star->xmag[2]);
@@ -626,6 +673,11 @@ int	nlog;		/* 1 for diagnostics */
 	tmcrel = IDR2;
 	tmcpath = tmc2path;
 	strcpy (tmcenv, "TMCIDR2_PATH");
+	}
+    else if (strcsrch (catfile, "tmx") || strcsrch (catfile, "2mx")) {
+	tmcrel = XSC;
+	tmcpath = tmxpath;
+	strcpy (tmcenv, "TMX_PATH");
 	}
     else {
 	tmcrel = ALLSKY;
@@ -720,9 +772,9 @@ int	nlog;		/* 1 for diagnostics */
 		}
 
 	    /* Find first and last stars in this region */
-	    if (tmcrel == ALLSKY) {
-		istar1 = tmcsra (starcat, star, zone, rra1);
-		istar2 = tmcsra (starcat, star, zone, rra2);
+	    if (tmcrel == ALLSKY || tmcrel == XSC) {
+		istar1 = tmcsra (starcat, star, zone, rra1, MINRA);
+		istar2 = tmcsra (starcat, star, zone, rra2, MAXRA);
 		}
 	    else {
 		istar1 = tmcsdec (starcat, star, zone, rdec1);
@@ -768,7 +820,7 @@ int	nlog;		/* 1 for diagnostics */
 
 		/* Save star in FITS image */
 		if (pass) {
-		    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+		    wcs2pix (wcs, ra, dec,&xpix,&ypix,&offscl);
 		    if (!offscl) {
 			if (magscale > 0.0)
 			    flux = magscale * exp (logt * (-mag / 2.5));
@@ -969,7 +1021,7 @@ int	zone;	/* RA zone (hours) to read */
     char *zonepath;	/* Full pathname for catalog file */
 
     /* Set path to 2MASS Point Source Catalog zone */
-    if (tmcrel == ALLSKY) {
+    if (tmcrel == ALLSKY || tmcrel == XSC) {
 	izone = zone / 10;
 	ireg = zone % 10;
 	lpath = strlen (tmcpath) + 18;
@@ -1012,6 +1064,16 @@ int	zone;	/* RA zone (hours) to read */
 	sc->entmag[2] = 53;
 	sc->entadd = 61;
 	sc->nbent = 69;
+	}
+    else if (tmcrel == XSC) {
+	sc->entra = 0;
+	sc->entdec = 10;
+	sc->entname = 0;
+	sc->entmag[0] = 39;
+	sc->entmag[1] = 46;
+	sc->entmag[2] = 53;
+	sc->entsize = 60;
+	sc->nbent = 68;
 	}
     else {
 	sc->entra = 0;
@@ -1140,70 +1202,104 @@ double	decx0;		/* Declination in degrees for which to search */
 /* TMCSRA -- Find 2MASS star closest to specified right ascension */
 
 static int
-tmcsra (starcat, star, zone, rax0)
+tmcsra (starcat, star, zone, rax0, minmax)
 
 struct StarCat *starcat; /* Star catalog descriptor */
 struct Star *star;	/* Current star entry */
 int	zone;		/* Declination zone in which search is occurring */
 double	rax0;		/* Right ascension in degrees for which to search */
+int	minmax;		/* Flag to say whether this is a min or max RA */
 {
-    int istar, istar1, istar2, nrep;
-    double rax, ra1, ra, rdiff, rdiff1, rdiff2, sdiff;
+    int istar, istar0, istar1, istar2, nrep, i;
+    double rax, ra0, ra1, ra, rdiff, rdiff1, rdiff2, sdiff;
     char rastrx[16];
+    char rastr[16];
     int debug = 0;
 
     rax = rax0;
-    if (debug)
+    ra0 = -1.0;
+    ra1 = star->ra;
+    if (debug) {
 	ra2str (rastrx, 16, rax, 3);
-    istar1 = 1;
-    istar1 = 1;
+	ra2str (rastr, 16, ra1, 3);
+	nrep = -1;
+	fprintf (stderr,"TMCSRA %d %d: %s (%s)\n",
+		 nrep,istar1,rastr,rastrx);
+	}
+    istar0 = 1;
+    if (tmcstar (starcat, star, zone, istar0))
+	return (0);
+    ra0 = star->ra;
+    istar1 = starcat->nstars;
     if (tmcstar (starcat, star, zone, istar1))
 	return (0);
     ra1 = star->ra;
-    istar = starcat->nstars;
+    istar = starcat->nstars / 2;
+    if (tmcstar (starcat, star, zone, istar))
+	return (0);
+    ra = star->ra;
     nrep = 0;
     while (istar != istar1 && nrep < 20) {
+	if (ra < rax) {
+	    sdiff = 0.5 * (double) (istar1 - istar);
+	    if (sdiff < 1.0)
+		break;
+	    istar0 = istar;
+	    istar = istar + (int) (sdiff + 0.5);
+	    }
+	else if (ra > rax) {
+	    sdiff = 0.5 * (double) (istar - istar0);
+	    if (sdiff < 1.0)
+		break;
+	    istar1 = istar;
+	    istar = istar - (int) (sdiff + 0.5);
+	    }
+	else
+	    break;
+	if (debug) {
+	    fprintf (stderr," istar0= %d istar1= %d istar= %d\n",
+		     istar0, istar1,istar);
+	    fprintf (stderr," ra1=    %.5f ra=     %.5f rax=    %.5f\n",
+			 ra0,ra,rax);
+	    }
+	if (istar == istar1 || istar == istar2)
+	    break;
 	if (tmcstar (starcat, star, zone, istar))
 	    break;
-	else {
-	    ra = star->ra;
-	    if (ra == ra1)
+	ra = star->ra;
+	}
+
+    /* For small catalogs, linear projection of RA's doesn't work */
+    /* Check lower numbers if low end of range is being set */
+    if (minmax == MINRA) {
+	for (i = 1; i < 5; i++) {
+	    istar0 = istar - 1;
+	    if (istar0 < 1)
 		break;
-	    if (debug) {
-		char rastr[16];
-		ra2str (rastr, 16, ra, 3);
-		fprintf (stderr,"TMCSRA %d %d: %s (%s)\n",
-			 nrep,istar,rastr,rastrx);
-		}
-	    rdiff = ra1 - ra;
-	    rdiff1 = ra1 - rax;
-	    rdiff2 = ra - rax;
-	    if (nrep > 20 && ABS(rdiff2) > ABS(rdiff1)) {
-		istar = istar1;
+	    if (tmcstar (starcat, star, zone, istar0))
+		    break;
+	    if (star->ra < rax)
 		break;
-		}
-	    nrep++;
-	    sdiff = (double)(istar - istar1) * rdiff1 / rdiff;
-	    istar2 = istar1 + (int) (sdiff + 0.5);
-	    ra1 = ra;
-	    istar1 = istar;
-	    istar = istar2;
-	    if (debug) {
-		fprintf (stderr," ra1=    %.5f ra=     %.5f rax=    %.5f\n",
-			 ra1,ra,rax);
-		fprintf (stderr," rdiff=  %.5f rdiff1= %.5f rdiff2= %.5f\n",
-			 rdiff,rdiff1,rdiff2);
-		fprintf (stderr," istar1= %d istar= %d istar1= %d\n",
-			 istar1,istar,istar2);
-		}
-	    if (istar < 1)
-		istar = 1;
-	    if (istar > starcat->nstars)
-		istar = starcat->nstars;
-	    if (istar == istar1)
-		break;
+	    else
+		istar = istar0;
 	    }
 	}
+
+    /* Check higher numbers if top end of range is being set */
+    else {
+	for (i = 1; i < 5; i++) {
+	    istar0 = istar + 1;
+	    if (istar0 > starcat->nstars)
+		break;
+	    if (tmcstar (starcat, star, zone, istar0))
+		break;
+	    if (star->ra > rax)
+		break;
+	    else
+		istar = istar0;
+	    }
+	}
+    
     return (istar);
 }
 
@@ -1271,7 +1367,7 @@ int	istar;		/* Star sequence in 2MASS zone file */
     st->xmag[2] = atof (line+sc->entmag[2]);
 
     /* Add 100 to magnitude if it isn't a good one */
-    if (tmcrel == ALLSKY) {
+    if (tmcrel == ALLSKY || tmcrel == XSC) {
 	if (line[sc->entadd] == 'U')
 	    st->xmag[0] = st->xmag[0] + 100.0;
 	if (line[sc->entadd + 1] == 'U')
@@ -1292,6 +1388,10 @@ int	istar;		/* Star sequence in 2MASS zone file */
 	if (iflag < 1 || iflag == 3 || iflag > 4)
 	    st->xmag[2] = st->xmag[2] + 100.0;
 	}
+    if (tmcrel == XSC)
+	st->size = atof (line+sc->entsize);
+    else
+	st->size = 0.0;
 
     if (linedump)
 	printf ("%s\n",line);
@@ -1326,4 +1426,8 @@ int	istar;		/* Star sequence in 2MASS zone file */
  * Sep 25 2003	Add tmcbin() to fill an image with sources
  * Oct  6 2003	Update tmcread() and tmcbin() for improved RefLim()
  * Nov 18 2003	Initialize image size and bits/pixel from header in tmcbin()
+ *
+ * Jan 13 2004	Add support for 2MASS Extended Source Catalog
+ * Jan 14 2004	Add code to fix convergence in tmcsra()
+ * Jan 23 2004	Fix search algorith in tmcsra()
  */

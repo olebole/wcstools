@@ -1,8 +1,8 @@
 /*** File libwcs/ctgread.c
- *** December 3, 2003
+ *** January 12, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2003
+ *** Copyright (C) 1998-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -135,26 +135,29 @@ int	nlog;
         else if (refcat == GSC2)
             nstar = gsc2read (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
+        else if (refcat == SDSS)
+            nstar = sdssread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
                  refcat == UAC  || refcat == UA1  || refcat == UA2)
-            nstar = uacread (catfile,distsort,
-                          cra,cdec,dra,ddec,drad,dradi,sysout,eqout,epout,mag1,
-                          mag2,sortmag,nsmax,tnum,tra,tdec,tmag,tc,nlog);
+            nstar = uacread (catfile,distsort,cra,cdec,dra,ddec,drad,dradi,
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,tnum,
+			     tra,tdec,tmag,tc,nlog);
         else if (refcat == UJC || refcat == USNO)
-            nstar = ujcread (catfile,cra,cdec,dra,ddec,drad,distsort,
+            nstar = ujcread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == UB1 || refcat == YB6)
-            nstar = ubcread (catfile,distsort,
-                          cra,cdec,dra,ddec,drad,dradi,sysout,eqout,epout,mag1,
-                          mag2,sortmag,nsmax,tnum,tra,tdec,tpra,tpdec,tmag,
-			  tc,nlog);
+            nstar = ubcread (catfile,distsort,cra,cdec,dra,ddec,drad,dradi,
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,tnum,
+			     tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == UCAC1 || refcat == UCAC2)
             nstar = ucacread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
-        else if (refcat == TMPSC || refcat == TMIDR2)
+        else if (refcat == TMPSC || refcat == TMIDR2 || refcat == TMXSC)
             nstar = tmcread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
@@ -555,7 +558,7 @@ int	nlog;
         else if (refcat == UCAC1 || refcat == UCAC2)
 	    nstar = ucacrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
-        else if (refcat == TMPSC || refcat == TMIDR2)
+        else if (refcat == TMPSC || refcat == TMIDR2 || refcat == TMXSC)
 	    nstar = tmcrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
 	else if (refcat == SAO)
@@ -783,14 +786,14 @@ int	nlog;
             nstar = ubcbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == UCAC1 || refcat == UCAC2)
             nstar = ucacbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
-        else if (refcat == TMPSC || refcat == TMIDR2)
+        else if (refcat == TMPSC || refcat == TMIDR2 || refcat == TMXSC)
             nstar = tmcbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == ACT)
             nstar = actbin (wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == TYCHO2)
             nstar = ty2bin (wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == SAO)
-            nstar = binread ("SAOra",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+            nstar = binbin ("SAOra",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == PPM)
             nstar = binbin ("PPMra",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == IRAS)
@@ -940,7 +943,7 @@ int	nlog;
 
 	/* Save star in FITS image */
 	if (pass) {
-	    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+	    wcs2pix (wcs, ra, dec, &xpix, &ypix, &offscl);
 	    if (!offscl) {
 		if (magscale > 0.0)
 		    flux = magscale * exp (logt * (-mag / 2.5));
@@ -1853,4 +1856,8 @@ char	*in;	/* Character string */
  * Sep 25 2003	Add ctgbin() to fill an image with sources
  * Nov 18 2003	Initialize image size and bits/pixel from header in ctgbin()
  * Dec  3 2003	Add filename to gsc2read() call; add USNO YB6 Catalog
+ * Dec 12 2003	Fix bug in wcs2pix() call in ctgbin(); fix ujcread() call
+ *
+ * Jan  5 2004	Add SDSS catalog to ctgread()
+ * Jan 12 2004	Add 2MASS Extended Source Catalog to ctgread() and ctgrnum()
  */

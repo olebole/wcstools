@@ -1,5 +1,5 @@
 /*** File libwcs/ucacread.c
- *** December 1, 2003
+ *** December 12, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2003
@@ -849,7 +849,7 @@ int	nlog;		/* 1 for diagnostics */
 
 		    /* Save star in FITS image */
 		    if (pass) {
-			wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+			wcs2pix (wcs, ra, dec, &xpix, &ypix, &offscl);
 			if (!offscl) {
 			    if (magscale > 0.0)
 				flux = magscale * exp (logt * (-mag / 2.5));
@@ -1283,4 +1283,5 @@ char *string;	/* Address of Integer*4 or Real*4 vector */
  * Nov 10 2003	Fix byte-swapping test in ucacopen() found by Ed Beshore
  * Nov 18 2003	Initialize image size and bits/pixel from header in ucacbin()
  * Dec  1 2003	Add missing tab to n=-1 header
+ * Dec 12 2003	Fix bug in wcs2pix() call in ucacbin()
  */

@@ -1,7 +1,7 @@
 /*** File libwcs/wcscat.h
- *** December 3, 2003
+ *** January 22, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
- *** Copyright (C) 1998-2003
+ *** Copyright (C) 1998-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -54,16 +54,19 @@
 #define UCAC2		23	/* USNO CCD Astrograph Catalog 2.0 */
 #define TMIDR2		24	/* 2MASS IDR2 Point Source Catalog */
 #define YB6		25	/* USNO YB6 Catalog */
+#define SDSS		26	/* Sloan Digital Sky Survey Catalog */
+#define TMXSC		27	/* 2MASS Extended Source Catalog */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */
 #define WEBCAT		-4	/* Tab catalog via the web */
-#define NUMCAT		21	/* Number of predefined catalogs */
+#define NUMCAT		27	/* Number of predefined catalogs */
 
 /* Subroutines for dealing with catalogs */
 int CatCode();		/* Return catalog type code */
 int RefCat();		/* Return catalog type code, title, coord. system */
 char *CatName();	/* Return catalog name given catalog type code */
+char *CatSource();	/* Return catalog source description given catalog type code */
 char *ProgCat();	/* Return catalog name given program name used */
 char *ProgName();	/* Return program name given program path used */
 char *CatName();	/* Return catalog name given catalog type code */
@@ -87,6 +90,7 @@ void bv2sp();		/* Approximate main sequence spectral type from B - V */
 /* Subroutines for extracting sources from catalogs by sky region */
 int gscread();		/* Read sources from HST Guide Star Catalog */
 int gsc2read();		/* Read sources from GSC II Catalog */
+int sdssread();		/* Read sources from SDSS Catalog */
 int tmcread();		/* Read sources from 2MASS Point Source Catalog */
 int uacread();		/* Read sources from USNO A or SA Catalog */
 int ubcread();		/* Read sources from USNO B Catalog */
@@ -126,6 +130,7 @@ int ctgbin();		/* Read sources from SAO TDC ASCII format catalog */
 int actbin();		/* Read sources from USNO ACT Catalog */
 int ty2bin();		/* Read sources from Tycho 2 Catalog */
 
+char *sdssc2t();	/* Convert SDSS buffer from comma- to tab-separated */
 void setgsclass();	/* Set GSC object class */
 void setuplate();	/* Set USNO catalog plate number to search */
 int getuplate();	/* Get USNO catalog plate number to search */
@@ -135,6 +140,7 @@ int binstar();		/* Read one star entry from binary catalog, 0 if OK */
 int tabstar();		/* Read one star entry from tab table catalog, 0 if OK */
 struct TabTable *webopen();	/* Open tab table across the web */
 char *webbuff();	/* Read URL into buffer across the web */
+void setlimdeg();	/* Limit output in degrees (1) or hh:mm:ss dd:mm:ss (0) */
 
 /* Subroutines for sorting tables of star positions and magnitudes */
 #define SORT_UNSET	-1	/* Catalog sort flag not set yet */
@@ -172,6 +178,7 @@ struct Star {
     double pxerror;	/* Parallax error in arcseconds */
     double radvel;	/* Radial velocity in km/sec, positive away */
     double dist;	/* Distance from search center in arcseconds */
+    double size;	/* Semi-major axis in arcseconds */
     char *entry;	/* Line copied from input catalog */
     char objname[80];	/* Object name */
     int peak;		/* Peak flux per pixel in star image */
@@ -247,6 +254,7 @@ struct StarCat {
     int entpxe;		/* Entry number for parallax error */
     int entrv;		/* Entry number for radial velocity */
     int enttype;	/* Entry number for spectral type */
+    int entsize;	/* Entry number for size of object */
     int rpmunit;	/* Units for RA proper motion (PM_x) */
     int dpmunit;	/* Units for DEC proper motion (PM_x) */
     char *caturl;	/* set if web search, else NULL */
@@ -477,4 +485,9 @@ char *getrevmsg();	/* Return version/date string */
  * Sep 16 2003	Add SORT_MERGE for scat
  * Sep 25 2003	Add *bin() subroutines for catalog binning
  * Dec  3 2003	Add USNO YB6 catalog
+ *
+ * Jan  5 2004	Add SDSS catalog
+ * Jan 12 2004	Add 2MASS Extended Source catalog and size to star structure
+ * Jan 14 2004	Add CatSource() subroutine to simplify help message creation
+ * Jan 22 2004	Add setlimdeg() to print limit coordinates in degrees
  */

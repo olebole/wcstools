@@ -1,5 +1,5 @@
 /* File imcat.c
- * December 4, 2003
+ * January 22, 2004
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -545,6 +545,10 @@ static void
 PrintUsage (command)
 char	*command;
 {
+    int catcode;
+    char *srcname;
+    char *catname;
+
     if (version)
 	exit (0);
 
@@ -556,83 +560,20 @@ char	*command;
 	exit (1);
 	}
 
-    if (strsrch (progname,"gsca") != NULL) {
-	fprintf (stderr,"List GSC-ACT Stars in FITS and IRAF image files\n");
+    catname = ProgCat (progname);
+    catcode = CatCode (catname);
+    srcname = CatSource (catcode, NULL);
+    fprintf (stderr,"List %s in FITS and IRAF image files\n", srcname);
+
+    if (refcat == GSC || refcat == GSCACT || refcat == GSC2)
 	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-g class]\n");
-	}
-    else if (strsrch (progname,"gsc2") != NULL) {
-	fprintf (stderr,"List GSC II Stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-g class]\n");
-	}
-    else if (strsrch (progname,"gsc") != NULL) {
-	fprintf (stderr,"List HST Guide Stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-g class]\n");
-	}
-    else if (strsrch (progname,"tmc") != NULL ||
-	strsrch (progname,"2mp") != NULL) {
-	fprintf (stderr,"List 2MASS Point Sources in FITS and IRAF image files\n");
+    else if (refcat > 0)
 	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2]\n");
-	}
-    else if (strsrch (progname,"ujc") != NULL) {
-	fprintf (stderr,"List USNO J Catalog stars in FITS and IRAF image files\n");
+    else if (refcat == UJC|| refcat == UAC || refcat == UA1 || refcat == UA2 ||
+	     refcat == USAC || refcat == USA1 || refcat == USA2)
 	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-u plate]\n");
-	}
-    else if (strsrch (progname,"uac") != NULL) {
-	fprintf (stderr,"List USNO A stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-u plate]\n");
-	}
-    else if (strsrch (progname,"ub1") != NULL) {
-	fprintf (stderr,"List USNO B-1.0 stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-mn [mag1] mag2]\n");
-	}
-    else if (strsrch (progname,"ua1") != NULL) {
-	fprintf (stderr,"List USNO A-1.0 stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-u plate]\n");
-	}
-    else if (strsrch (progname,"ua2") != NULL) {
-	fprintf (stderr,"List USNO A-2.0 stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-u plate]\n");
-	}
-    else if (strsrch (progname,"usac") != NULL) {
-	fprintf (stderr,"List USNO SA stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-u plate]\n");
-	}
-    else if (strsrch (progname,"usa1") != NULL) {
-	fprintf (stderr,"List USNO SA-1.0 stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-u plate]\n");
-	}
-    else if (strsrch (progname,"usa2") != NULL) {
-	fprintf (stderr,"List USNO SA-2.0 stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-u plate]\n");
-	}
-    else if (strsrch (progname,"ub1") != NULL) {
-	fprintf (stderr,"List USNO B-1.0 stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-u plate]\n");
-	}
-    else if (strsrch (progname,"act") != NULL) {
-	fprintf (stderr,"List ACT Catalog Stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2]\n");
-	}
-    else if (strsrch (progname,"iras") != NULL) {
-	fprintf (stderr,"List IRAS Point Sources in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2]\n");
-	}
-    else if (strsrch (progname,"sao") != NULL) {
-	fprintf (stderr,"List SAO Catalog stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2]\n");
-	}
-    else if (strsrch (progname,"ppm") != NULL) {
-	fprintf (stderr,"List PPM Catalog stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2]\n");
-	}
-    else if (strsrch (progname,"tycho") != NULL) {
-	fprintf (stderr,"List Tycho Catalog stars in FITS and IRAF image files\n");
-	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2]\n");
-	}
-    else {
-	fprintf (stderr,"List catalog stars in FITS and IRAF image files\n");
+    else
 	fprintf (stderr,"Usage: [-vwhst][-a deg][-m [mag1] mag2][-c catalog][-x x y]\n");
-	}
     fprintf (stderr,"       [-p scale][-q osd+x][-b ra dec][-j ra dec][-r arcsec] FITS or IRAF file(s)\n");
     fprintf (stderr,"  -a: initial rotation angle in degrees (default 0)\n");
     fprintf (stderr,"  -b [RA Dec]: Output, (center) in B1950 (FK4) RA and Dec\n");
@@ -898,7 +839,8 @@ int	*region_char;	/* Character for SAOimage region file output */
     else if (verbose) {
 	if (refcat==UAC  || refcat==UA1  || refcat==UA2 || refcat==UB1 ||
 	    refcat==USAC || refcat==USA1 || refcat==USA2 || refcat==GSC  ||
-	    refcat==GSCACT || refcat==TMPSC || refcat==TMIDR2 || refcat == YB6)
+	    refcat==GSCACT || refcat==TMPSC || refcat==TMIDR2 ||
+	    refcat== SDSS || refcat == YB6)
 	    nlog = 1000;
 	else
 	    nlog = 100;
@@ -933,7 +875,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 
     /* Set flag if spectral type is present */
     if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==TYCHO ||
-	refcat==HIP || refcat==BSC)
+	refcat==HIP || refcat==BSC || refcat==SDSS)
 	sptype = 1;
     else if (refcat == TMPSC || refcat == TMIDR2)
 	sptype = 2;
@@ -1225,6 +1167,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 	degout = 1;
     else
 	degout = degout0;
+    setlimdeg (degout);
 
     catalog = CatName (refcat, refcatname[icat]);
     if (wfile)
@@ -1346,6 +1289,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"magb  	magr 	magj 	magh 	magk 	");
     else if (refcat == TMPSC || refcat == TMIDR2)
 	strcat (headline,"magj   	magh   	magk   	");
+    else if (refcat == TMXSC)
+	strcat (headline,"magj   	magh   	magk  	");
+    else if (refcat == SDSS)
+	printf ("magu       magg    magr    magi    magz    ");
     else {
 	for (imag = 0; imag < nmag; imag++) {
 	    if (starcat[icat] != NULL &&
@@ -1370,6 +1317,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"class 	band	N	");
     else if (refcat == UB1)
 	strcat (headline,"pm 	ni	");
+    else if (refcat == TMXSC)
+	strcat (headline,"size  	");
     else if (sptype == 1)
 	strcat (headline,"type	");
     else if (gcset)
@@ -1397,6 +1346,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"	-----");		/* Second magnitude */
     else if (refcat == TMPSC || refcat == TMIDR2)
 	strcat (headline,"--	-------	-------"); /* JHK Magnitudes */
+    else if (refcat == TMXSC)
+	strcat (headline,"--	-------	-------"); /* JHK Magnitudes + size */
     else if (refcat == IRAS)
 	strcat (headline,"-	------	------	------"); /* 4 fluxes */
     else if (refcat == GSC2)
@@ -1416,6 +1367,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"	-----	----	-");	/* class, band, n */
     else if (refcat == UB1)
 	strcat (headline,"	--	--");
+    else if (refcat == TMXSC)
+	strcat (headline,"	------");
     else if (gcset)
 	strcat (headline, "	-----");		/* plate or peak */
     if (mprop)
@@ -1487,12 +1440,16 @@ int	*region_char;	/* Character for SAOimage region file output */
 		printf ("MagB1 MagR1 MagB2 MagR2 MagN  PM NI    X       Y   \n");
 	    else if (refcat == YB6)
 		printf ("MagB  MagR  MagJ  MagH  MagK    X       Y   \n");
+	    else if (refcat == SDSS)
+		printf ("Magu  Magg  Magr  Magi  Magz    X       Y   \n");
 	    else if (refcat == IRAS)
 		printf ("f10m  f25m  f60m  f100m   X       Y   \n");
 	    else if (refcat == HIP)
 		printf ("MagB  MagV  parlx parer   X       Y   \n");
 	    else if (refcat == TMPSC || refcat == TMIDR2)
 		printf ("MagJ    MagH    MagK      X       Y   \n");
+	    else if (refcat == TMXSC)
+		printf ("MagJ    MagH    MagK     Size     X       Y   \n");
 	    else if (refcat == SAO || refcat == PPM || refcat == BSC)
 		printf ("  Mag  Type   X       Y     \n");
 	    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
@@ -1561,17 +1518,21 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%5.2f	%2d	%2d",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],
 		     gm[4][i],gc[i]/100,gc[i]%100);
-		else if (refcat == YB6)
+		else if (refcat == YB6 || refcat == SDSS)
 		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%5.2f",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],
 		     gm[4][i]);
-		else if (refcat == TMPSC || refcat == TMIDR2) {
+		else if (refcat == TMPSC || refcat == TMIDR2 || refcat == TMXSC) {
 		    sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
 		    for (imag = 0; imag < 3; imag++) {
 			if (gm[imag][i] > 100.0)
 			    sprintf (temp, "	%6.3fL", gm[imag][i]-100.0);
 			else
 			    sprintf (temp, "	%6.3f ", gm[imag][i]);
+			strcat (headline, temp);
+			}
+		    if (refcat == TMXSC) {
+			sprintf (temp,"	%6.1f", ((double)gc[i])* 0.1);
 			strcat (headline, temp);
 			}
 		    }
@@ -1608,7 +1569,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline, "%s	%s	%s",
 			     numstr, rastr, decstr);
 		    for (imag = 0; imag < nmag; imag++) {
-			sprintf (temp, "	%5.2f",gm[imag][i]);
+			if (gm[imag][i] > 100.0)
+			    sprintf (temp, "	%5.2fL",gm[imag][i]-100.0);
+			else
+			    sprintf (temp, "	%5.2f",gm[imag][i]);
 			strcat (headline, temp);
 			}
 		    if (gcset) {
@@ -1645,13 +1609,17 @@ int	*region_char;	/* Character for SAOimage region file output */
 		else if (refcat == GSC || refcat == GSCACT)
 		    sprintf (headline,"%s %s %s %6.2f %4d %4d %2d",
 			numstr, rastr, decstr, gm[0][i], gc[i], band, ngsc);
-		else if (refcat == TMPSC || refcat == TMIDR2) {
+		else if (refcat == TMPSC || refcat == TMIDR2 || refcat == TMXSC) {
 		    sprintf (headline, "%s %s %s", numstr, rastr, decstr);
 		    for (imag = 0; imag < 3; imag++) {
 			if (gm[imag][i] > 100.0)
 			    sprintf (temp, " %6.3fL", gm[imag][i]-100.0);
 			else
 			    sprintf (temp, " %6.3f ", gm[imag][i]);
+			strcat (headline, temp);
+			}
+		    if (refcat == TMXSC) {
+			sprintf (temp," %6.1f", ((double)gc[i])* 0.1);
 			strcat (headline, temp);
 			}
 		    }
@@ -1669,6 +1637,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline,"%s %s %s %5.2f %5.2f %5.2f %5.2f %5.2f",
 			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],
 			     gm[3][i],gm[4][i]);
+		else if (refcat == SDSS)
+		    sprintf (headline,"%s %s %s %5.2f %5.2f %5.2f %5.2f %5.2f %2d",
+			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],
+			     gm[3][i],gm[4][i],gc[i]);
 		else if (refcat==IRAS) {
 		    sprintf (headline, "%s %s %s", numstr, rastr, decstr);
 		    for (imag = 0; imag < 3; imag++) {
@@ -1693,7 +1665,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline,"%s %s %s",
 			     numstr,rastr,decstr);
 		    for (imag = 0; imag < nmag; imag++) {
-			sprintf (temp, " %5.2f",gm[imag][i]);
+			if (gm[imag][i] > 100.0)
+			    sprintf (temp, " %5.2fL",gm[imag][i]-100.0);
+			else
+			    sprintf (temp, " %5.2f ",gm[imag][i]);
 			strcat (headline, temp);
 			}
 		    if (sptype == 1) {
@@ -1970,4 +1945,9 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Oct  7 2003	Add -f to print only number of catalog stars in image
  * Nov 22 2003	Add class to GSC II output
  * Dec  4 2003	Add support for USNO YB6 catalog and GSC 2.3
+ * Dec 10 2003	Add L for limiting magnitude (>100.0) in default catalog
+ *
+ * Jan 14 2004	Add support for Sloan Digital Sky Survey Photometric Catalog
+ * Jan 22 2004	Add support for 2MASS Extended Source Catalog
+ * Jan 22 2004	Call setlimdeg() to optionally print limits in degrees
  */

@@ -161,10 +161,8 @@ int	nlog;		/* 1 for diagnostics */
 	}
 
     /* Set reference frame, epoch, and equinox of catalog */
-    /* starcat->rpmunit = PM_MASYR;
-    starcat->dpmunit = PM_MASYR; */
-    starcat->rpmunit = 0;
-    starcat->dpmunit = 0;
+    starcat->rpmunit = PM_MASYR;
+    starcat->dpmunit = PM_MASYR;
     starcat->coorsys = WCS_J2000;
     starcat->epoch = 2000.0;
     starcat->equinox = 2000.0;

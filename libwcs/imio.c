@@ -1,8 +1,8 @@
 /*** File wcslib/imio.c
- *** May 20, 2003
+ *** January 28, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -394,6 +394,11 @@ int	x2, y2;		/* Row and column for output pixel */
     unsigned short *imu1, *imu2;
     float rpix, *imr1, *imr2;
     double dpix, *imd1, *imd2;
+
+    if (x1 < 0 || x2 < 0 || x1 >= w1 || x2 >= w2)
+	return;
+    if (y1 < 0 || y2 < 0)
+	return;
 
     switch (bitpix1) {
 
@@ -965,4 +970,6 @@ imswapped ()
  * Jul 19 2002	Fix getvec() bug rescaling scaled numbers
  *
  * May 20 2003	Declare scale0 in setscale()
+ *
+ * Jan 28 2004	Add image limit check to movepix()
  */

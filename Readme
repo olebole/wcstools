@@ -14,13 +14,13 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.5.1 of the WCSTools package developed by Doug Mink
+This is version 3.5.2 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 
 Bill Cotton of NRAO (projection),
 Mark Calabretta of CSIRO (projection),
-Pat Wallace of Cambridge University (coordinate conversion),
+Pat Wallace of Rutherford Appleton Laboratory, UK (coordinate conversion),
 Elwood Downey of the University of Iowa (WCS fitting procedure),
 John Roll of SAO for (network access), and
 Jing Li of IPAC (distortion).
@@ -159,4 +159,4 @@ wcshead	Print basic world coordinate system information on one line per image
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
 
--Doug Mink, SAO, 2003-08-22
+-Doug Mink, SAO, 2003-12-12

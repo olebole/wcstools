@@ -1,5 +1,8 @@
 WCSTools subroutine release history
 
+December 12, 2003 - Release 3.5.2 (Doug Mink, SAO)
+Fix error message in wcsinit()
+
 December 3, 2003 - Release 3.5.1 (Doug Mink, SAO)
 Change p[0,1,2] initializations to p[1,2,3] in wcsinit.c to match proj.c
 (This affects constants for AZP,SIN,COP,COE,COD,COO,SZP,CEA,CYP,AIR,BON)

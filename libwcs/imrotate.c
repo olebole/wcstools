@@ -1,8 +1,8 @@
 /*** File libwcs/imrotate.c
- *** November 27, 2001
+ *** January 28, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -43,11 +43,13 @@ static void RotWCSFITS();
  */
 
 char *
-RotFITS (pathname, header, image, rotate, mirror, bitpix2, verbose)
+RotFITS (pathname,header,image0,xshift,yshift,rotate,mirror,bitpix2,verbose)
 
 char	*pathname;	/* Name of file which is being changed */
 char	*header;	/* FITS header */
-char	*image;		/* Image pixels */
+char	*image0;		/* Image pixels */
+int	xshift;		/* Number of pixels to shift image horizontally, +=right */
+int	yshift;		/* Number of pixels to shift image vertically, +=right */
 int	rotate;		/* Angle to by which to rotate image (90, 180, 270) */
 int	mirror;		/* 1 to reflect image around vertical axis */
 int	bitpix2;	/* Number of bits per pixel in output image */
@@ -57,8 +59,13 @@ int	verbose;
     int bitpix1, ny, nx, nax;
     int x1, y1, x2, y2, nbytes;
     char *rotimage;
+    char *image;
     char history[128];
     char *filename;
+    double crpix;
+
+    image = NULL;
+    rotimage = NULL;
 
     if (rotate == 1)
 	rotate = 90;
@@ -101,7 +108,17 @@ int	verbose;
     if (bitpix2 == 0)
 	bitpix2 = bitpix1;
 
-    /* Delete WCS fields in header */
+    /* Shift WCS fields in header */
+    if (hgetr8 (header, "CRPIX1", crpix)) {
+	crpix = crpix + xshift;
+	hputr8 (header, "CRPIX1", crpix);
+	}
+    if (hgetr8 (header, "CRPIX2", crpix)) {
+	crpix = crpix + yshift;
+	hputr8 (header, "CRPIX2", crpix);
+	}
+
+    /* Rotate WCS fields in header */
     if (rotate != 0 || mirror)
 	RotWCSFITS (header, rotate, mirror, verbose);
 
@@ -131,14 +148,6 @@ int	verbose;
 	    return (NULL);
 	}
 
-    /* Allocate buffer for rotated image */
-    rotimage = (char *) malloc (nbytes);
-    if (rotimage == NULL) {
-	if (verbose)
-	    printf ("RotFITS: Cannot allocate %d bytes for new image\n", nbytes);
-	return (NULL);
-	}
-
     if (bitpix1 != bitpix2) {
 	sprintf (history,"Copy of image %s bits per pixel %d -> %d",
 		filename, bitpix1, bitpix2);
@@ -147,8 +156,44 @@ int	verbose;
 	    fprintf (stderr,"%s\n",history);
 	}
 
+    /* Shift image first */
+    if (xshift != 0 && yshift != 0) {
+
+	/* Allocate buffer for shifted image */
+	image = (char *) calloc (nbytes, 1);
+	if (image == NULL) {
+	    if (verbose)
+		printf ("RotFITS: Cannot allocate %d bytes for shifted image\n", nbytes);
+	    return (NULL);
+	    }
+
+	for (x1 = 0; x1 < nx; x1++) {
+	    for (y1 = 0; y1 < ny; y1++) {
+		x2 = x1 + xshift;
+		y2 = y1 + yshift;
+		if (y2 < ny)
+		    movepix (image0,bitpix1,nx,x1,y1,image,bitpix2,nx,x2,y2);
+		}
+	    }
+	sprintf (history,"Copy of image %s shifted by dx=%d dy=%d",
+		 filename, xshift, yshift);
+	hputc (header,"HISTORY",history);
+	if (rotate == 0 && !mirror)
+	    return (image);
+	}
+    else
+	image = image0;
+
+    /* Allocate buffer for rotated image */
+    rotimage = (char *) calloc (nbytes, 1);
+    if (rotimage == NULL) {
+	if (verbose)
+	    printf ("RotFITS: Cannot allocate %d bytes for new image\n", nbytes);
+	return (NULL);
+	}
+
     /* Mirror image without rotation */
-    if (rotate < 45.0 && rotate > -45.0) {
+    if (rotate < 45 && rotate > -45) {
 	if (mirror) {
 	    for (y1 = 0; y1 < ny; y1++) {
 		for (x1 = 0; x1 < nx; x1++) {
@@ -577,4 +622,6 @@ int	verbose;	/* Print progress if 1 */
  * Jan 18 2001	Reset WCS scale if image is binned
  * Nov 27 2001	Add error messages for all null returns
  * Nov 27 2001	Add bitpix=8
+ *
+ * Jan 28 2004	Add xshift and yshift arguments to shift image
  */

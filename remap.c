@@ -1,5 +1,5 @@
 /* File remap.c
- * November 18, 2003
+ * January 23, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -57,6 +57,7 @@ static double blankpix = 0.0;	/* image value for blank pixel */
 static int nx = 0;
 static int ny = 0;
 static int nlog = 0;
+static int undistort = 0;
 
 main (ac, av)
 int ac;
@@ -212,6 +213,10 @@ char **av;
     	    ac--;
     	    break; */
 
+	case 'u':	/* Delete distortion keywords */
+	    undistort++;
+	    break;
+
 	case 'v':	/* more verbosity */
 	    verbose++;
 	    break;
@@ -363,6 +368,7 @@ char	*message;	/* Error message */
     fprintf(stderr,"  -o name: Name for output image\n");
     fprintf(stderr,"  -p secpix: Output plate scale in arcsec/pixel (default =input)\n");
     /* fprintf(stderr,"  -s: Number of samples per linear input pixel\n"); */
+    fprintf(stderr,"  -u: Delete distortion keywords from output file\n");
     fprintf(stderr,"  -v: Verbose\n");
     fprintf(stderr,"  -w type: Output WCS type (input is default)\n");
     fprintf(stderr,"  -x x y: Output image reference X and Y coordinates (default is center)\n");
@@ -394,7 +400,7 @@ char	*filename;	/* FITS or IRAF file filename */
     struct WorldCoor *wcsin;
     double bzin, bsin, bzout, bsout;
     double dx, dy, dx0, dy0, secpixin1, secpixin2, secpix1;
-    double xout, yout, xin, yin, xpos, ypos, dpixi;
+    double xout, yout, xin, yin, xpos, ypos, dpixi, dpixo;
     double xmin, xmax, ymin, ymax;
     double pixratio;
     char history[80];
@@ -546,6 +552,10 @@ char	*filename;	/* FITS or IRAF file filename */
 		    }
 		}
 
+	    /* Delete distortion keywords from header if requested */
+	    if (undistort)
+		DelDistort (headout, verbose);
+
 	    /* Set output WCS from command line and first image header */
 	    wcsout = GetFITSWCS (filename, headout, verbose, &cra, &cdec, &dra,
 			 &ddec, &secpix, &wpout, &hpout, &eqsys, &equinox);
@@ -585,25 +595,39 @@ char	*filename;	/* FITS or IRAF file filename */
 	bzout = 0.0;
 	hgetr8 (header, "BZERO", &bzout);
 
-	/* Fill output image with value of blank pixels if not zero */
-	if (blankpix != 0.0) {
-	    if (!(imvec = (double *) calloc (wpout, sizeof (double)))) {
-		fprintf (stderr, "REMAP: cannot allocate blank pixel vector\n");
-        	return (1);
-		}
-	    endvec = imvec + wpout;
-	    for (dvec = imvec; dvec < endvec; dvec++)
-		*dvec = blankpix;
-	    for (y = 0; y < hpout; y++)
-		putvec (image,bitpixout,bzout,bsout,0,wpout,(char *)imvec);
-	    }
-	hputi4 (header, "BLANK", (int) blankpix);
-
 	/* Add source of WCS if not from command line */
 	if (wcsfile) {
 	    sprintf (history, "REMAP WCS from file %s", wcsfile);
 	    hputc (headout, "HISTORY", history);
 	    }
+	}
+
+    /* Fill output image with value of blank pixels if not zero */
+    if (blankpix != 0.0) {
+	if (!(imvec = (double *) calloc (wpout, sizeof (double)))) {
+	    fprintf (stderr, "REMAP: cannot allocate blank pixel vector\n");
+            return (1);
+	    }
+	endvec = imvec + wpout;
+	for (dvec = imvec; dvec < endvec; dvec++)
+	    *dvec = blankpix;
+	for (y = 0; y < hpout; y++)
+	    putvec (image,bitpixout,bzout,bsout,0,wpout,(char *)imvec);
+	}
+
+    /* Save blank pixel value in the image header */
+    if (bitpixout > 0) {
+	int iblank;
+	if (blankpix > 0.0)
+	    iblank = (int) (blankpix + 0.5);
+	else if (blankpix < 0.0)
+	    iblank = (int) (blankpix - 0.5);
+	else
+	    iblank = 0;
+	hputi4 (header, "BLANK", iblank);
+	}
+    else {
+	hputnr8 (header, "BLANK", 1, blankpix);
 	}
 
     /* Set input WCS output coordinate system to output coordinate system */
@@ -676,8 +700,19 @@ char	*filename;	/* FITS or IRAF file filename */
 		/* Read pixel from input file */
 		dpixi = getpix1 (image,bitpix,wpin,hpin,bzin,bsin,jin,iin);
 
-		/* Write pixel to output file */
-		addpix1 (imout,bitpixout,wpout,hpout,bzout,bsout,jout,iout,dpixi);
+		/* Read pixel from output file */
+		dpixo = getpix1 (image,bitpixout,wpout,hpout,bzout,bsout,jout,iout);
+
+		/* If output pixel is blank, set rather than add */
+		if (dpixo == blankpix) {
+		    putpix1 (imout,bitpixout,wpout,hpout,bzout,bsout,jout,iout,dpixi);
+		    }
+
+		/* Otherwise add to current pixel value and write to output image */
+		else {
+		    dpixo = dpixo + dpixi;
+		    putpix1 (imout,bitpixout,wpout,hpout,bzout,bsout,jout,iout,dpixo);
+		    }
 		}
 	    }
 
@@ -726,4 +761,7 @@ char	*filename;	/* FITS or IRAF file filename */
  * Aug 14 2003	Add option to read WCS from FITS or IRAF image file using -f
  * Aug 18 2003	Add -n option to set BLANK pixel value
  * Nov 18 2003	Fix error returns in RemapImage() to always return 1
+ *
+ * Jan 15 2004	Add -u to delete distortion keywords from output file
+ * Jan 23 2004	Finish implementing blank pixel setting
  */

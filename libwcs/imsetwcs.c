@@ -1,5 +1,5 @@
 /*** File libwcs/imsetwcs.c
- *** August 22, 2003
+ *** December 12, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu (based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -260,7 +260,7 @@ getfield:
 	}
 
     if (refcatname == NULL) {
-	refcatname = CatName (refcat);
+	refcatname = CatName (refcat, refcatname);
 	if (refcatname == NULL) {
 	    ret = 0;
 	    goto out;
@@ -1209,4 +1209,5 @@ setmagfit ()
  * Sep  4 2002	Don't iterate if there is no catalog
  *
  * Aug 22 2003	Add inner radius =0.0 argument to ctgread call
+ * Dec 12 2003	Add second argument to CatName()
  */

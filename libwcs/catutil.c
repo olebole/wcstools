@@ -1,8 +1,8 @@
 /*** File libwcs/catutil.c
- *** December 3, 2003
+ *** January 22, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2003
+ *** Copyright (C) 1998-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -31,6 +31,8 @@
  *	Return catalog type code, title, coord. system, proper motion, num mags
  * char *CatName (refcat, refcatname)
  *	Return catalog name given catalog type code
+ * char *CatSource (refcat, refcatname)
+ *	Return name for catalog sources given catalog type code
  * void CatID (catid, refcat)
  *	Return ID column heading for given catalog
  * char *ProgCat (progname)
@@ -112,6 +114,13 @@ getrevmsg ()			/* Return version and date string */
 { if (revmessage == NULL) return (revmsg0);
   else return (revmessage); }
 
+static int degout = 0;	/* Set to 1 to print coordinates in degrees */
+void
+setlimdeg (degoutx)		/* Set degree output flag */
+int degoutx;
+{ degout = degoutx; return; }
+
+
 /* Return code for reference catalog or its type */
 
 int
@@ -142,14 +151,15 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
     else if (refcat == GSC2) {
 	if (strchr (refcatname, '3')) {
 	    strcpy (title, "GSC 2.3");
+	    *catprop = 1;
 	    }
 	else {
 	    strcpy (title, "GSC 2.2");
+	    *catprop = 0;
 	    }
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
-	*catprop = 0;
 	*nmag = 5;
 	refcat = GSC2;
 	}
@@ -160,6 +170,14 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	*epcat = 2000.0;
 	*catprop = 0;
 	*nmag = 1;
+	}
+    else if (refcat == SDSS) {
+	strcpy (title, "SDSS Catalog");
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	*catprop = 0;
+	*nmag = 5;
 	}
     else if (refcat == UB1) {
 	strcpy (title, "USNO-B1.0 Catalog");
@@ -333,6 +351,14 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	*catprop = 0;
 	*nmag = 3;
 	}
+    else if (refcat == TMXSC) {
+	strcpy (title, "2MASS Extended Sources");
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	*catprop = 0;
+	*nmag = 3;
+	}
     else if (refcat == USNO) {
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
@@ -369,7 +395,7 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	    ctgclose (starcat);
 	    }
 	}
-    else {
+    else if (refcat != 0) {
 	strcpy (title, refcatname);
 	strcat (title, " Catalog Sources");
 	if ((starcat = ctgopen (refcatname, TXTCAT))) {
@@ -395,12 +421,20 @@ char	*refcatname;	/* Name of reference catalog */
     struct StarCat *starcat;
     int refcat, nbuff;
 
-    if (strncasecmp(refcatname,"gsca",4)==0 &&
+    refcat = 0;
+    if (refcatname == NULL)
+	refcat = 0;
+    else if (strlen (refcatname) < 1)
+	refcat = 0;
+    else if (strncasecmp(refcatname,"gsca",4)==0 &&
 	strcsrch(refcatname, ".tab") == NULL)
 	refcat = GSCACT;
     else if (strncasecmp(refcatname,"gsc2",4)==0 &&
 	     strsrch(refcatname, ".tab") == NULL)
 	refcat = GSC2;
+    else if (strncasecmp(refcatname,"sdss",4)==0 &&
+	     strsrch(refcatname, ".tab") == NULL)
+	refcat = SDSS;
     else if (strncasecmp(refcatname,"gs",2)==0 &&
 	     strcsrch(refcatname, ".tab") == NULL)
 	refcat = GSC;
@@ -500,9 +534,15 @@ char	*refcatname;	/* Name of reference catalog */
 	refcat = TMIDR2;
 	}
     else if ((strncasecmp(refcatname,"2mp",3)==0 ||
+	     strncasecmp(refcatname,"2mc",3)==0 ||
 	     strncasecmp(refcatname,"tmc",3)==0) &&
 	     strsrch(refcatname, ".tab") == NULL) {
 	refcat = TMPSC;
+	}
+    else if ((strncasecmp(refcatname,"2mx",3)==0 ||
+	     strncasecmp(refcatname,"tmx",3)==0) &&
+	     strsrch(refcatname, ".tab") == NULL) {
+	refcat = TMXSC;
 	}
     else if (strsrch (refcatname, ".usno")) {
 	refcat = USNO;
@@ -512,6 +552,8 @@ char	*refcatname;	/* Name of reference catalog */
 	    binclose (starcat);
 	    refcat = BINCAT;
 	    }
+	else
+	    refcat = 0;
 	}
     else if (istab (refcatname)) {
 	if (strchr (refcatname, ','))
@@ -522,15 +564,22 @@ char	*refcatname;	/* Name of reference catalog */
 	    ctgclose (starcat);
 	    refcat = TABCAT;
 	    }
+	else
+	    refcat = 0;
 	}
-    else {
+    else if (refcatname != NULL) {
 	if ((starcat = ctgopen (refcatname, TXTCAT))) {
 	    ctgclose (starcat);
 	    refcat = TXTCAT;
 	    }
+	else
+	    refcat = 0;
 	}
+    else
+	refcat = 0;
     return refcat;
 }
+
 
 char *
 CatName (refcat, refcatname)
@@ -570,6 +619,8 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "SAO");
     else if (refcat ==  IRAS)	/* IRAS Point Source Catalog */
 	strcpy (catname, "IRAS PSC");
+    else if (refcat ==  SDSS)	/* Sloan Digital Sky Survey */
+	strcpy (catname, "SDSS");
     else if (refcat ==  PPM)	/* PPM Star Catalog */
 	strcpy (catname, "PPM");
     else if (refcat ==  TYCHO)	/* Tycho Star Catalog */
@@ -598,8 +649,97 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "TYCHO-2");
     else if (refcat ==  TMPSC)	/* 2MASS Point Source Catalog */
 	strcpy (catname, "2MASS PSC");
+    else if (refcat ==  TMXSC)	/* 2MASS Extended Source Catalog */
+	strcpy (catname, "2MASS XSC");
     else if (refcat ==  TMIDR2)	/* 2MASS Point Source Catalog */
 	strcpy (catname, "2MASS PSC IDR2");
+    return (catname);
+}
+
+
+char *
+CatSource (refcat, refcatname)
+
+int	refcat;		/* Catalog code */
+char	*refcatname;	/* Catalog file name */
+{
+    char *catname;
+    int lname;
+
+    if (refcat < 1 || refcat > NUMCAT) {
+	if (refcatname == NULL)
+	    lname = 0;
+	else
+	    lname = strlen (refcatname);
+	catname = (char *)calloc (lname + 16, 1);
+	if (lname > 0)
+	    sprintf (catname, "%s sources", refcatname);
+	else
+	    sprintf (catname, "catalog sources");
+	return (catname);
+	}
+
+    /* Allocate string in which to return a catalog name */
+    catname = (char *)calloc (32, 1);
+
+    if (refcat ==  GSC)		/* HST Guide Star Catalog */
+	strcpy (catname, "HST Guide Stars");
+    else if (refcat ==  GSCACT)	/* HST GSC revised with ACT */
+	strcpy (catname, "GSC-ACT Stars");
+    else if (refcat ==  GSC2) {	/* GSC II */
+	if (strchr (refcatname, '3')) {
+	    strcpy (catname, "GSC 2.3 Stars");
+	    }
+	else {
+	    strcpy (catname, "GSC 2.2 Stars");
+	    }
+	}
+    else if (refcat == YB6)	/* USNO YB6 Star Catalog */
+	strcpy (catname, "USNO-YB6 Stars");
+    else if (refcat ==  UJC)	/* USNO UJ Star Catalog */
+	strcpy (catname, "USNO J Catalog Stars");
+    else if (refcat ==  UAC)	/* USNO A Star Catalog */
+	strcpy (catname, "USNO-A2.0 Stars");
+    else if (refcat ==  USAC)	/* USNO SA Star Catalog */
+	strcpy (catname, "USNO-SA2.0 Stars");
+    else if (refcat ==  SAO)	/* SAO Star Catalog */
+	strcpy (catname, "SAO Catalog Stars");
+    else if (refcat ==  IRAS)	/* IRAS Point Source Catalog */
+	strcpy (catname, "IRAS Point Sources");
+    else if (refcat ==  SDSS)	/* Sloan Digital Sky Survey */
+	strcpy (catname, "SDSS Photmetric Catalog Sources");
+    else if (refcat ==  PPM)	/* PPM Star Catalog */
+	strcpy (catname, "PPM Catalog Stars");
+    else if (refcat ==  TYCHO)	/* Tycho Star Catalog */
+	strcpy (catname, "Tycho Catalog Stars");
+    else if (refcat ==  TYCHO2)	/* Tycho-2 Star Catalog */
+	strcpy (catname, "Tycho-2 Catalog Stars");
+    else if (refcat ==  UA1)	/* USNO A-1.0 Star Catalog */
+	strcpy (catname, "USNO-A1.0 Stars");
+    else if (refcat ==  UB1)	/* USNO B-1.0 Star Catalog */
+	strcpy (catname, "USNO-B1.0 Stars");
+    else if (refcat ==  UCAC1)	/* USNO UCAC1 Star Catalog */
+	strcpy (catname, "USNO-UCAC1 Stars");
+    else if (refcat ==  UCAC2)	/* USNO UCAC2 Star Catalog */
+	strcpy (catname, "USNO-UCAC2 Stars");
+    else if (refcat ==  UA2)	/* USNO A-2.0 Star Catalog */
+	strcpy (catname, "USNO-A2.0 Stars");
+    else if (refcat ==  USA1)	/* USNO SA-1.0 Star Catalog */
+	strcpy (catname, "USNO-SA1.0 Stars");
+    else if (refcat ==  USA2)	/* USNO SA-2.0 Star Catalog */
+	strcpy (catname, "USNO-SA2.0 Stars");
+    else if (refcat ==  HIP)	/* Hipparcos Star Catalog */
+	strcpy (catname, "Hipparcos Catalog Stars");
+    else if (refcat ==  ACT)	/* USNO ACT Star Catalog */
+	strcpy (catname, "ACT Catalog Stars");
+    else if (refcat ==  BSC)	/* Yale Bright Star Catalog */
+	strcpy (catname, "Bright Star Catalog Stars");
+    else if (refcat ==  TMPSC)	/* 2MASS Point Source Catalog */
+	strcpy (catname, "2MASS Point Sources");
+    else if (refcat ==  TMXSC)	/* 2MASS Extended Source Catalog */
+	strcpy (catname, "2MASS Extended Sources");
+    else if (refcat ==  TMIDR2)	/* 2MASS Point Source Catalog */
+	strcpy (catname, "2MASS-IDR2 Point Sources");
     return (catname);
 }
 
@@ -618,6 +758,8 @@ int	refcat;		/* Catalog code */
 	strcpy (catid, "gsc_id    ");
     else if (refcat == GSC2)
 	strcpy (catid, "gsc2_id        ");
+    else if (refcat == SDSS)
+	strcpy (catid, "sdss_id            ");
     else if (refcat == USAC)
 	strcpy (catid,"usac_id       ");
     else if (refcat == USA1)
@@ -641,6 +783,8 @@ int	refcat;		/* Catalog code */
     else if (refcat == UJC)
 	strcpy (catid,"usnoj_id     ");
     else if (refcat == TMPSC)
+	strcpy (catid,"2mass_id      ");
+    else if (refcat == TMXSC)
 	strcpy (catid,"2mass_id      ");
     else if (refcat == SAO)
 	strcpy (catid,"sao_id ");
@@ -705,6 +849,10 @@ char *progname;	/* Program name which might contain catalog code */
     else if (strsrch (progname,"gsc") != NULL) {
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "gsc");
+	}
+    else if (strsrch (progname,"sdss") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "sdss");
 	}
     else if (strsrch (progname,"uac") != NULL) {
 	refcatname = (char *) calloc (1,8);
@@ -786,6 +934,13 @@ char *progname;	/* Program name which might contain catalog code */
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "tmc");
 	}
+    else if (strsrch (progname,"2mx") != NULL ||
+	strsrch (progname,"tmx") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "tmx");
+	}
+    else
+	refcatname = NULL;
 
     return (refcatname);
 }
@@ -839,6 +994,11 @@ char	*numstr;	/* Formatted number (returned) */
 	    sprintf (numstr, "%10.6f", dnum);
 	}
 
+    /* SDSS */
+    else if (refcat == SDSS) {
+	sprintf (numstr, "582%015.0f", dnum);
+	}
+
     /* GSC II */
     else if (refcat == GSC2) {
 	if (nnfld < 0) {
@@ -862,6 +1022,14 @@ char	*numstr;	/* Formatted number (returned) */
 
     /* 2MASS Point Source Catalogs */
     else if (refcat == TMPSC) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%011.6f", dnum);
+	else
+	    sprintf (numstr, "%11.6f", dnum);
+	}
+
+    /* 2MASS Extended Source Catalog */
+    else if (refcat == TMXSC) {
 	if (nnfld < 0)
 	    sprintf (numstr, "%011.6f", dnum);
 	else
@@ -978,6 +1146,10 @@ int	nndec;		/* Number of decimal places ( >= 0) */
     else if (refcat == TMIDR2)
 	return (10);
 
+    /* 2MASS Extended Source Catalog */
+    else if (refcat == TMXSC)
+	return (11);
+
     /* UCAC1 Catalog */
     else if (refcat == UCAC1)
 	return (10);
@@ -993,6 +1165,10 @@ int	nndec;		/* Number of decimal places ( >= 0) */
     /* USNO UJ 1.0 Catalog */
     else if (refcat == UJC)
 	return (12);
+
+    /* SDSS Catalog */
+    else if (refcat == SDSS)
+	return (18);
 
     /* HST Guide Star Catalog */
     else if (refcat == GSC || refcat == GSCACT)
@@ -1069,8 +1245,16 @@ int	refcat;		/* Catalog code */
     else if (refcat == GSC2)
 	return (0);
 
+    /* SDSS */
+    else if (refcat == SDSS)
+	return (0);
+
     /* 2MASS Point Source Catalog */
     else if (refcat == TMPSC)
+	return (6);
+
+    /* 2MASS Extended Source Catalog */
+    else if (refcat == TMXSC)
 	return (6);
 
     /* 2MASS Point Source Catalog */
@@ -1151,6 +1335,18 @@ char	*magname;	/* Name of magnitude, returned */
 	else
 	    strcpy (magname, "MagB");
 	}
+    else if (refcat == SDSS) {
+	if (imag == 5)
+	    strcpy (magname, "Magz");
+	else if (imag == 4)
+	    strcpy (magname, "Magi");
+	else if (imag == 3)
+	    strcpy (magname, "Magr");
+	else if (imag == 2)
+	    strcpy (magname, "Magg");
+	else
+	    strcpy (magname, "Magu");
+	}
     else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT) {
 	if (imag == 2)
 	    strcpy (magname, "MagV");
@@ -1167,7 +1363,7 @@ char	*magname;	/* Name of magnitude, returned */
 	else
 	    strcpy (magname, "MagF");
 	}
-    else if (refcat==TMPSC) {
+    else if (refcat==TMPSC || refcat == TMXSC) {
 	if (imag == 1)
 	    strcpy (magname, "MagJ");
 	else if (imag == 2)
@@ -1223,6 +1419,20 @@ int	refcat;		/* Catalog code */
 	else
 	    return (3);	/* J */
 	}
+    else if (refcat == SDSS) {
+	if (cmag == 'Z')
+	    return (5);
+	else if (cmag == 'I')
+	    return (4);
+	else if (cmag == 'R')
+	    return (3);
+	else if (cmag == 'G')
+	    return (2);
+	else if (cmag == 'B')
+	    return (1);
+	else
+	    return (2);	/* G */
+	}
     else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT) {
 	if (cmag == 'B')
 	    return (1);
@@ -1239,7 +1449,7 @@ int	refcat;		/* Catalog code */
 	else
 	    return (1);	/* F */
 	}
-    else if (refcat==TMPSC) {
+    else if (refcat==TMPSC || refcat == TMXSC) {
 	if (cmag == 'J')
 	    return (1);
 	else if (cmag == 'H')
@@ -1406,6 +1616,12 @@ int	verbose;	/* 1 to print limits, else 0 */
             num2str (dstr1, *dec1, 10, 5);
 	    num2str (rstr2, *ra2, 10, 5);
             num2str (dstr2, *dec2, 10, 5);
+	    }
+	else if (degout) {
+	    deg2str (rstr1, 16, *ra1, 6);
+            deg2str (dstr1, 16, *dec1, 6);
+	    deg2str (rstr2, 16, *ra2, 6);
+            deg2str (dstr2, 16, *dec2, 6);
 	    }
 	else {
 	    ra2str (rstr1, 16, *ra1, 3);
@@ -1596,10 +1812,18 @@ int	verbose;	/* 1 to print limits, else 0 */
 	}
     if (verbose) {
 	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
-	ra2str (rstr1, 16, *ramin, 3);
-        dec2str (dstr1, 16, *decmin, 2);
-	ra2str (rstr2, 16, *ramax, 3);
-        dec2str (dstr2, 16, *decmax, 2);
+	if (degout) {
+	    deg2str (rstr1, 16, *ramin, 6);
+            deg2str (dstr1, 16, *decmin, 6);
+	    deg2str (rstr2, 16, *ramax, 6);
+            deg2str (dstr2, 16, *decmax, 6);
+	    }
+	else {
+	    ra2str (rstr1, 16, *ramin, 3);
+            dec2str (dstr1, 16, *decmin, 2);
+	    ra2str (rstr2, 16, *ramax, 3);
+            dec2str (dstr2, 16, *decmax, 2);
+	    }
 	fprintf (stderr,"RefLim: RA: %s - %s  Dec: %s - %s",
 		 rstr1,rstr2,dstr1,dstr2);
 	if (*wrap)
@@ -2730,5 +2954,11 @@ vottail ()
  * Sep 29 2003	Add proper motion margins and wrap arguments to RefLim()
  * Oct  1 2003	Add code in RefLim() for all-sky images
  * Oct  6 2003	Add code in RefLim() to cover near-polar searches
- * Dec  3 2003	Implement GSC 2.3 and USNO-YB6
+ * Dec  4 2003	Implement GSC 2.3 and USNO-YB6
+ * Dec 15 2003	Set refcat to 0 if no catalog name and refcatname to NULL
+ *
+ * Jan  5 2004	Add SDSS catalog
+ * Jan 12 2004	Add 2MASS Extended Source Catalog
+ * Jan 14 2004	Add CatSource()
+ * Jan 22 2004	Add global flag degout to print limits in degrees
  */

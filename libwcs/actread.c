@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** December 1, 2003
+ *** December 12, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1999-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -138,7 +138,7 @@ int	nlog;		/* 1 for diagnostics */
 
     wcscstr (cstr, sysout, eqout, epout);
 
-    SearchLim (cra, cdec, dra, ddec, sysout, &ra1, &ra2, &dec1, &dec2, verbose);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
 
 /* make mag1 always the smallest magnitude */
     if (mag2 < mag1) {
@@ -712,7 +712,7 @@ int	nlog;		/* 1 for diagnostics */
 
 		/* Save star in FITS image */
 		if (pass) {
-		    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+		    wcs2pix (wcs, ra, dec, &xpix, &ypix, &offscl);
 		    if (!offscl) {
 			if (magscale > 0.0)
 			    flux = magscale * exp (logt * (-mag / 2.5));
@@ -1172,4 +1172,5 @@ char	*filename;	/* Name of file for which to find size */
  * Oct  6 2003	Update actread() and actbin() for improved RefLim()
  * Nov 18 2003	Initialize image size and bits/pixel from header in actbin()
  * Dec  1 2003	Add missing tab to n=-1 header
+ * Dec 12 2003	Fix bug in wcs2pix() call in actbin()
  */

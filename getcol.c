@@ -1,5 +1,5 @@
 /* File getcol.c
- * June 10, 2003
+ * December 17, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -29,7 +29,6 @@ static double median();
 static int maxnfile = MAXFILES;
 
 static double badval = 0.0;	/* Value to ignore */
-static int nocomment = 0;	/* 1 if comments to be dropped */
 static int isbadval = 0;	/* 1 if badval is set */
 static int maxlfn = 0;
 static int maxncond = 100;
@@ -342,10 +341,6 @@ char **av;
 		ac--;
 		break;
 
-	    case 'z':	/* Totally ignore comments */
-		nocomment++;
-		break;
-
 	    default:
 		usage ();
 		break;
@@ -353,7 +348,7 @@ char **av;
 	    }
 
 	/* Operation */
-	else if (iscolop (*av) && isnum (*av+1)) {
+	else if (iscolop (*av)) {
 	    if (nop >= maxnop) {
 		maxnop = maxnop * 2;
 		op = (char **)realloc((void *)op, maxncond*sizeof(void *));
@@ -364,14 +359,19 @@ char **av;
 	    if (cop[nop] == NULL)
 		cop[nop] = strchr (*av, '+');
 	    if (cop[nop] == NULL)
+		cop[nop] = strchr (*av, '-');
+	    if (cop[nop] == NULL)
 		cop[nop] = strchr (*av, '/');
 	    if (cop[nop] == NULL)
 		cop[nop] = strchr (*av, 's');
 	    if (cop[nop] == NULL)
 		cop[nop] = strchr (*av, 'm');
 	    if (cop[nop] == NULL)
-		cop[nop] = strchr (*av, 'p');
-	    nop++;
+		cop[nop] = strchr (*av, 'a');
+	    if (cop[nop] == NULL)
+		cop[nop] = strchr (*av, 'd');
+	    if (cop[nop] != NULL && isnum (cop[nop]+1))
+		nop++;
 	    }
 
 	/* File to read */
@@ -407,7 +407,7 @@ usage ()
     fprintf(stderr,"  -e: Median values of selected numeric column(s)\n");
     fprintf(stderr,"  -f: Print range of values in selected column(s)\n");
     fprintf(stderr,"  -g: Median absolute values of selected column(s)\n");
-    fprintf(stderr,"  -h: Print Starbase tab table header\n");
+    fprintf(stderr,"  -h: Print Starbase tab table header and # comments\n");
     fprintf(stderr,"  -i: Input is tab-separate table file\n");
     fprintf(stderr,"  -j: Print means of absolute values of selected column(s)\n");
     fprintf(stderr,"  -k: Print number of columns on first line\n");
@@ -423,7 +423,6 @@ usage ()
     fprintf(stderr,"  -v: Verbose\n");
     fprintf(stderr,"  -w: Print file pathnames\n");
     fprintf(stderr,"  -x num: Set value to ignore\n");
-    fprintf(stderr,"  -x: Drop comments\n");
     exit (1);
 }
 
@@ -436,7 +435,7 @@ char	*lranges;	/* String with range of lines to list */
 char	*lfile;		/* Name of file with lines to list */
 
 {
-    int i, j, il, ir, nbytes;
+    int i, j, il, ir, nbytes, ncol;
     char line[1024];
     char *nextline;
     char *lastchar;
@@ -460,7 +459,7 @@ char	*lfile;		/* Name of file with lines to list */
     int *limset;	/* Flag for range initialization */
     int nlmax;
     double dtok, dnum;
-    int nfind, ntok, nt, ltok,iop;
+    int nfind, ntok, nt, ltok,iop, ndtok, ndnum, nd;
     int *inum;
     int icond, itok;
     char tcond, *cstr, *cval, top;
@@ -534,7 +533,7 @@ char	*lfile;		/* Name of file with lines to list */
 
 	    /* Skip lines with comments */
 	    if (nextline[0] == '#') {
-		if (nocomment) {
+		if (!printhead) {
 		    while (line[0] == '#') {
 			if (fgets (nextline, 1023, lfd) == NULL)
 			    break;
@@ -599,7 +598,7 @@ char	*lfile;		/* Name of file with lines to list */
 	for (i = 0; i < nskip; i++) {
 	    if (fgets (line, 1023, fd) == NULL)
 		break;
-	    if (nocomment) {
+	    if (!printhead) {
 		while (line[0] == '#') {
 		    if (fgets (line, 1023, fd) == NULL)
 			break;
@@ -609,7 +608,7 @@ char	*lfile;		/* Name of file with lines to list */
 	}
 
     /* Print entire selected lines */
-    if (ranges == NULL) {
+    if (ranges == NULL && nop == 0) {
 	iln = 0;
 	il = 0;
 	iapp = 0;
@@ -621,7 +620,7 @@ char	*lfile;		/* Name of file with lines to list */
 
 	    /* Skip lines with comments */
 	    if (nextline[0] == '#') {
-		if (nocomment) {
+		if (!printhead) {
 		    while (nextline[0] == '#') {
 			if (fgets (nextline, 1023, lfd) == NULL)
 			    break;
@@ -670,7 +669,7 @@ char	*lfile;		/* Name of file with lines to list */
 		*lastchar = (char) 0;
 
 	    /* Echo line if it is a comment */
-	    if (line[0] == '#' && !nocomment) {
+	    if (line[0] == '#' && printhead) {
 		printf ("%s\n", line);
 		continue;
 		}
@@ -756,35 +755,41 @@ char	*lfile;		/* Name of file with lines to list */
 
     /* Find columns specified by number */
     else {
-	range = RangeInit (ranges, nfdef);
-	nfind = rgetn (range);
-	nbytes = nfind * sizeof (double);
-	if (!(sum = (double *) calloc (nfind, sizeof (double))) ) {
+	if (ranges || nop > 0) {
+	    if (ranges) {
+		range = RangeInit (ranges, nfdef);
+		nfind = rgetn (range);
+		}
+	    else
+		nfind = 0;
+	ncol = nfind + nop;
+	nbytes = ncol * sizeof (double);
+	if (!(sum = (double *) calloc (ncol, sizeof (double))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for sum\n", nbytes);
 	    if (fd != stdin) fclose (fd);
 	    return (-1);
 	    }
-	if (!(asum = (double *) calloc (nfind, sizeof (double))) ) {
+	if (!(asum = (double *) calloc (ncol, sizeof (double))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for asum\n", nbytes);
 	    if (fd != stdin) fclose (fd);
 	    return (-1);
 	    }
-	if (!(colmin = (double *) calloc (nfind, sizeof (double))) ) {
+	if (!(colmin = (double *) calloc (ncol, sizeof (double))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for colmin\n", nbytes);
 	    if (fd != stdin) fclose (fd);
 	    return (-1);
 	    }
-	if (!(colmax = (double *) calloc (nfind, sizeof (double))) ) {
+	if (!(colmax = (double *) calloc (ncol, sizeof (double))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for colmax\n", nbytes);
 	    if (fd != stdin) fclose (fd);
 	    return (-1);
 	    }
-	if (!(med = (double **) calloc (nfind, sizeof (double *))) ) {
+	if (!(med = (double **) calloc (ncol, sizeof (double *))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for med\n", nbytes);
 	    if (fd != stdin) fclose (fd);
 	    return (-1);
 	    }
-	if (!(amed = (double **) calloc (nfind, sizeof (double *))) ) {
+	if (!(amed = (double **) calloc (ncol, sizeof (double *))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for amed\n", nbytes);
 	    if (fd != stdin) fclose (fd);
 	    return (-1);
@@ -796,7 +801,7 @@ char	*lfile;		/* Name of file with lines to list */
 		if (fd != stdin) fclose (fd);
 		return (-1);
 		}
-	    for (i = 0; i < nfind; i++) {
+	    for (i = 0; i < ncol; i++) {
 		if (!(med[i] = calloc (nread, sizeof(double)))) {
 		    fprintf (stderr, "Could not calloc %d bytes for med%d\n",
 			     nbytes, i);
@@ -811,28 +816,28 @@ char	*lfile;		/* Name of file with lines to list */
 		    }
 		}
 	    }
-	nbytes = nfind * sizeof (int);
-	if (!(nsum = (int *) calloc (nfind, sizeof(int))) ) {
+	nbytes = ncol * sizeof (int);
+	if (!(nsum = (int *) calloc (ncol, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for nsum\n", nbytes);
 	    if (fd != stdin) fclose (fd);
 	    return (-1);
 	    }
-	if (!(hms = (int *) calloc (nfind, sizeof(int))) ) {
+	if (!(hms = (int *) calloc (ncol, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for hms\n", nbytes);
 	    if (fd != stdin) fclose (fd);
 	    return (-1);
 	    }
-	if (!(limset = (int *) calloc (nfind, sizeof(int))) ) {
+	if (!(limset = (int *) calloc (ncol, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for limset\n", nbytes);
 	    if (fd != stdin) fclose (fd);
 	    return (-1);
 	    }
-	if (!(nent = (int *) calloc (nfind, sizeof(int))) ) {
+	if (!(nent = (int *) calloc (ncol, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for nent\n", nbytes);
 	    if (fd != stdin) fclose (fd);
 	    return (-1);
 	    }
-	if (!(inum = (int *) calloc (nfind, sizeof(int))) ) {
+	if (!(inum = (int *) calloc (ncol, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for inum\n", nbytes);
 	    if (fd != stdin) fclose (fd);
 	    return (-1);
@@ -841,6 +846,7 @@ char	*lfile;		/* Name of file with lines to list */
 	    for (i = 0; i < nfind; i++)
 		inum[i] = rgeti4 (range);
 	    }
+	    }
 	iln = 0;
 	iapp = 0;
 	nextline = line;
@@ -848,8 +854,8 @@ char	*lfile;		/* Name of file with lines to list */
 	    if (fgets (nextline, 1023, fd) == NULL)
 		break;
 
-	    /* Ignore line if it is a comment and nocomment flag is set */
-	    if (line[0] == '#' && nocomment) {
+	    /* Ignore line if it is a comment and printhead flag is not set */
+	    if (line[0] == '#' && !printhead) {
 		while (line[0] == '#') {
 		    if (fgets (nextline, 1023, fd) == NULL)
 			break;
@@ -893,7 +899,7 @@ char	*lfile;		/* Name of file with lines to list */
 
 	    /* Echo line if it is a comment */
 	    if (line[0] == '#') {
-		if (!nocomment)
+		if (printhead)
 		    printf ("%s\n", line);
 		continue;
 		}
@@ -1119,12 +1125,16 @@ char	*lfile;		/* Name of file with lines to list */
 		top = *cop[iop];
 		*cop[iop] = (char) 0;
 		cstr = cop[iop]+1;
-		if (isnum (cstr) > 1)
+		if (isnum (cstr) > 1) {
 		    dnum = atof (cstr);
+		    ndnum = numdec (cstr);
+		    }
 		else {
 		    itok = atoi (cstr);
-		    if (getoken (tokens, itok, token, MAX_LTOK))
+		    if (getoken (tokens, itok, token, MAX_LTOK)) {
 			dnum = atof (token);
+			ndnum = numdec (token);
+			}
 		    else {
 			printf ("___");
 			continue;
@@ -1136,16 +1146,57 @@ char	*lfile;		/* Name of file with lines to list */
 		itok = atoi (op[iop]);
 		if (getoken (tokens, itok, token, MAX_LTOK)) {
 		    dtok = atof (token);
-		    if (top == '+' || top == 'a')
-			printf ("%f", dtok + dnum);
-		    else if (top == '-' || top == 's')
-			printf ("%f", dtok - dnum);
-		    else if (top == '*' || top == 'm')
-			printf ("%f", dtok * dnum);
-		    else if (top == '/' || top == 'd')
-			printf ("%f", dtok / dnum);
+		    ndtok = numdec (token);
+		    nd = ndtok;
+		    if (ndec > -1)
+			nd = ndec;
+		    if (ndnum > nd)
+			nd = ndnum;
+		    if (top == '+' || top == 'a') {
+			num2str (numstr, dtok+dnum, 0, nd);
+			dval = dtok + dnum;
+			}
+		    else if (top == '-' || top == 's') {
+			num2str (numstr, dtok-dnum, 0, nd);
+			dval = dtok - dnum;
+			}
+		    else if (top == '*' || top == 'm') {
+			num2str (numstr, dtok*dnum, 0, nd);
+			dval = dtok * dnum;
+			}
+		    else if (top == '/' || top == 'd') {
+			num2str (numstr, dtok/dnum, 0, nd);
+			dval = dtok / dnum;
+			}
 		    else
-			printf ("___");
+			strcpy (numstr,"___");
+		    if (printcol)
+			printf ("%s", numstr);
+		    if (!isbadval || (isbadval && dval != badval) &&
+			strcmp (numstr,"___")) {
+			qsum1 = qsum1 + dval * dval;
+			nq++;
+			sum[i] = sum[i] + dval;
+			asum[i] = asum[i] + fabs (dval);
+			if (!limset[i]) {
+			    colmin[i] = dval;
+			    colmax[i] = dval;
+			    limset[i]++;
+			    }
+			else if (dval < colmin[i])
+			    colmin[i] = dval;
+			else if (dval > colmax[i])
+			    colmax[i] = dval;
+			med[i][nsum[i]] = dval;
+			amed[i][il] = fabs (dval);
+			nsum[i]++;
+			}
+		    }
+		nt++;
+		if (nq > 1) {
+		    qmed[nqsum] = sqrt (qsum1);
+		    nqsum++;
+		    qsum = qsum + sqrt (qsum1);
 		    }
 		}
 	    if (nt > 0 && printcol)
@@ -1154,26 +1205,27 @@ char	*lfile;		/* Name of file with lines to list */
         }
 
     /* Print sums of values in numeric columns */
+    ncol = nfind + nop;
     if (sumcol) {
-	for (i = 0; i < nfind; i++) {
+	for (i = 0; i < ncol; i++) {
 	    if (nsum[i] > 0) {
-		if (i < nfind-1)
+		if (i < ncol-1)
 		    printf ("%f ", sum[i]);
 		else
 		    printf ("%f", sum[i]);
 		}
-	    else if (i < nfind-1)
+	    else if (i < ncol-1)
 		printf ("___ ");
 	    else
 		printf ("___");
 	    }
-	if (nfind > 0)
+	if (ncol > 0)
 	    printf ("\n");
 	}
 
     /* Print means of absolute values in numeric columns */
     if (ameancol) {
-	for (i = 0; i < nfind; i++) {
+	for (i = 0; i < ncol; i++) {
 	    if (nsum[i] > 0) {
 		dval = asum[i] / (double)nsum[i];
 		if (hms[i])
@@ -1181,23 +1233,23 @@ char	*lfile;		/* Name of file with lines to list */
 		else
 		    sprintf (numstr, "%f", dval);
 		strclean (numstr);
-		if (i < nfind-1)
+		if (i < ncol-1)
 		    printf ("%s ", numstr);
 		else
 		    printf ("%s", numstr);
 		}
-	    else if (i < nfind-1)
+	    else if (i < ncol-1)
 		printf ("___ ");
 	    else
 		printf ("___");
 	    }
-	if (nfind > 0)
+	if (ncol > 0)
 	    printf ("\n");
 	}
 
     /* Print means of values in numeric columns */
     if (meancol) {
-	for (i = 0; i < nfind; i++) {
+	for (i = 0; i < ncol; i++) {
 	    if (nsum[i] > 0) {
 		dval = sum[i] / (double)nsum[i];
 		if (hms[i])
@@ -1205,23 +1257,23 @@ char	*lfile;		/* Name of file with lines to list */
 		else
 		    sprintf (numstr, "%f", dval);
 		strclean (numstr);
-		if (i < nfind-1)
+		if (i < ncol-1)
 		    printf ("%s ", numstr);
 		else
 		    printf ("%s", numstr);
 		}
-	    else if (i < nfind-1)
+	    else if (i < ncol-1)
 		printf ("___ ");
 	    else
 		printf ("___");
 	    }
-	if (nfind > 0)
+	if (ncol > 0)
 	    printf ("\n");
 	}
 
     /* Print medians of absolute values in numeric columns */
     if (amedcol) {
-	for (i = 0; i < nfind; i++) {
+	for (i = 0; i < ncol; i++) {
 	    if (nsum[i] > 0) {
 		dval = median (amed[i], nsum[i]);
 		if (hms[i])
@@ -1229,23 +1281,23 @@ char	*lfile;		/* Name of file with lines to list */
 		else
 		    sprintf (numstr, "%f", dval);
 		strclean (numstr);
-		if (i < nfind-1)
+		if (i < ncol-1)
 		    printf ("%s ", numstr);
 		else
 		    printf ("%s", numstr);
 		}
-	    else if (i < nfind-1)
+	    else if (i < ncol-1)
 		printf ("___ ");
 	    else
 		printf ("___");
 	    }
-	if (nfind > 0)
+	if (ncol > 0)
 	    printf ("\n");
 	}
 
     /* Print medians of values in numeric columns */
     if (medcol) {
-	for (i = 0; i < nfind; i++) {
+	for (i = 0; i < ncol; i++) {
 	    if (nsum[i] > 0) {
 		dval = median (med[i], nsum[i]);
 		if (hms[i])
@@ -1253,23 +1305,23 @@ char	*lfile;		/* Name of file with lines to list */
 		else
 		    sprintf (numstr, "%f", dval);
 		strclean (numstr);
-		if (i < nfind-1)
+		if (i < ncol-1)
 		    printf ("%s ", numstr);
 		else
 		    printf ("%s", numstr);
 		}
-	    else if (i < nfind-1)
+	    else if (i < ncol-1)
 		printf ("___ ");
 	    else
 		printf ("___");
 	    }
-	if (nfind > 0)
+	if (ncol > 0)
 	    printf ("\n");
 	}
 
     /* Print ranges of values in numeric columns */
     if (rangecol) {
-	for (i = 0; i < nfind; i++) {
+	for (i = 0; i < ncol; i++) {
 	    if (hms[i])
 		dec2str (numstr, 32, colmin[i], 3);
 	    else
@@ -1281,26 +1333,26 @@ char	*lfile;		/* Name of file with lines to list */
 	    else
 		sprintf (numstr, "%f", colmax[i]);
 	    strclean (numstr);
-	    if (i < nfind-1)
+	    if (i < ncol-1)
 		printf ("%s ", numstr);
 	    else
 		printf ("%s", numstr);
 	    }
-	if (nfind > 0)
+	if (ncol > 0)
 	    printf ("\n");
 	}
 
     /* Print count for each column */
     if (countcol) {
-	for (i = 0; i < nfind; i++) {
+	for (i = 0; i < ncol; i++) {
 	    if (nent[i] > 0) {
-		if (i < nfind-1)
+		if (i < ncol-1)
 		    printf ("%d ", nent[i]);
 		else
 		    printf ("%d", nent[i]);
 		}
 	    }
-	if (nfind > 0)
+	if (ncol > 0)
 	    printf ("\n");
 	}
 
@@ -1325,7 +1377,7 @@ char	*lfile;		/* Name of file with lines to list */
     if (sum) free ((char *)sum);
 
     if (fd != stdin) fclose (fd);
-    return (nfind);
+    return (ncol);
 }
 
 static int
@@ -1543,4 +1595,8 @@ void *pd1, *pd2;
  * Jul 19 2002	Ignore commented lines completely if -z
  *
  * Jun 10 2003	Print default number of lines in command list
+ * Dec  9 2003	Allow operation on column if only argument
+ * Dec 10 2003	Fix number of decimal places in output
+ * Dec 15 2003	Fix column operation option
+ * Dec 17 2003	Drop undocumented -z option; print # comments if -h is set
  */
