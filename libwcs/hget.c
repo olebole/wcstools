@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** April 28, 2004
+ *** July 13, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2004
@@ -153,7 +153,8 @@ int *ival;
     char *value;
     double dval;
     int minint;
-    int lval;
+    int lval, id;
+    char *dchar;
 
     /* Get value and comment from header string */
     value = hgetc (hstring,keyword);
@@ -169,6 +170,14 @@ int *ival;
 	    }
 	else
 	    strcpy (val, value);
+	if (isnum (val) == 2) {
+	    if ((dchar = strchr (val, 'D')))
+		*dchar = 'e';
+	    if ((dchar = strchr (val, 'd')))
+		*dchar = 'e';
+	    if ((dchar = strchr (val, 'E')))
+		*dchar = 'e';
+	    }
 	dval = atof (val);
 	if (dval+0.001 > INT_MAX)
 	    *ival = INT_MAX;
@@ -204,6 +213,7 @@ short *ival;
     double dval;
     int minshort;
     int lval;
+    char *dchar;
 
     /* Get value and comment from header string */
     value = hgetc (hstring,keyword);
@@ -218,6 +228,14 @@ short *ival;
 	    }
 	else
 	    strcpy (val, value);
+	if (isnum (val) == 2) {
+	    if ((dchar = strchr (val, 'D')))
+		*dchar = 'e';
+	    if ((dchar = strchr (val, 'd')))
+		*dchar = 'e';
+	    if ((dchar = strchr (val, 'E')))
+		*dchar = 'e';
+	    }
 	dval = atof (val);
 	minshort = -SHRT_MAX - 1;
 	if (dval+0.001 > SHRT_MAX)
@@ -251,6 +269,7 @@ float *rval;
 {
     char *value;
     int lval;
+    char *dchar;
 
     /* Get value and comment from header string */
     value = hgetc (hstring,keyword);
@@ -265,6 +284,14 @@ float *rval;
 	    }
 	else
 	    strcpy (val, value);
+	if (isnum (val) == 2) {
+	    if ((dchar = strchr (val, 'D')))
+		*dchar = 'e';
+	    if ((dchar = strchr (val, 'd')))
+		*dchar = 'e';
+	    if ((dchar = strchr (val, 'E')))
+		*dchar = 'e';
+	    }
 	*rval = (float) atof (val);
 	return (1);
 	}
@@ -379,6 +406,7 @@ double *dval;
 {
     char *value;
     int lval;
+    char *dchar;
 
     /* Get value and comment from header string */
     value = hgetc (hstring,keyword);
@@ -393,6 +421,14 @@ double *dval;
 	    }
 	else
 	    strcpy (val, value);
+	if (isnum (val) == 2) {
+	    if ((dchar = strchr (val, 'D')))
+		*dchar = 'e';
+	    if ((dchar = strchr (val, 'd')))
+		*dchar = 'e';
+	    if ((dchar = strchr (val, 'E')))
+		*dchar = 'e';
+	    }
 	*dval = atof (val);
 	return (1);
 	}
@@ -1223,6 +1259,7 @@ char	*in;	/* Character string of sexigesimal or decimal degrees */
     double deg, min, sec, sign;
     char *value, *c1, *c2;
     int lval;
+    char *dchar;
 
     dec = 0.0;
 
@@ -1280,8 +1317,15 @@ char	*in;	/* Character string of sexigesimal or decimal degrees */
 		}
 	    dec = sign * (deg + (min / 60.0) + (sec / 3600.0));
 	    }
-	else if ((c1 = strsrch (value,".")) != NULL)
+	else if (isnum (value) == 2) {
+	    if ((dchar = strchr (value, 'D')))
+		*dchar = 'e';
+	    if ((dchar = strchr (value, 'd')))
+		*dchar = 'e';
+	    if ((dchar = strchr (value, 'E')))
+		*dchar = 'e';
 	    dec = sign * atof (value);
+	    }
 	else 
 	    dec = sign * (double) atoi (value);
 	}
@@ -1692,4 +1736,5 @@ int set_saolib(hstring)
  * Feb 26 2004	Extract value from keyword=value strings within a keyword value
  * Apr  9 2004	Use strncsrch() in ksearch() to find differently-cased keywords
  * Apr 28 2004	Free os2 in strncsrch() only if it is allocated
+ * Jul 13 2004	Accept D, d, E, or e as exponent delimiter in floating points
  */

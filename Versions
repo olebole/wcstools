@@ -1,3 +1,14 @@
+Version 3.5.5 (July 19, 2004)
+delhead, delwcs, imwcs: keep blank lines when deleting keywords from
+multi-extension FITS headers
+sethead,delhead,keyhead,edhead: Change first image extension if multiple
+extensions and no extension is specified.
+wcshead: Print header when first line printed, not only if first file, and
+print ___ for missing WCS information
+hget.c: Read D, d, E, and e as exponent delimiters in floating point values
+hput.c: Add setheadshrink() and change hdel() to optionally keep a blank
+line at the end of a FITS header when a keyword is deleted.
+
 Version 3.5.4 (May 19, 2004)
 delhead, keyhead, sethead: Add ability to overwrite multi-extension headers.
 scat: Exit with error message and menu if no cataog is given

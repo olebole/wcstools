@@ -270,6 +270,8 @@ extern "C" {
         const double  num,	/* Number */
 	const int field,	/* Total field size in characters */
         const int ndec);	/* Number of decimal places */
+    void setheadshrink(		/* 0 to keep blank line when keyword deleted */
+	const int hsh);		/* 1 to shrink  header by one line */
 };
 #else /* __cplusplus */
 
@@ -348,6 +350,7 @@ extern int hputcom();	/* Comment after keyword=value (returns 0 if OK) */
 extern int hdel();	/* Delete a keyword line from a FITS header */
 extern int hadd();	/* Add a keyword line to a FITS header */
 extern int hchange();	/* Change a keyword name in a FITS header */
+extern void setheadshrink(); /* Set flag for deleted keyword space disposition*/
 
 /* Subroutines to convert RA and Dec in degrees to strings */
 extern void ra2str();
@@ -406,4 +409,5 @@ extern char *getutime(); /* Return current UT as an ISO-format string */
  * Oct 20 2003	Add numdec() to return the number of decimal places in a string
  *
  * Feb 26 2004	Add igetc(), formerly internal to iget.c
+ * Jul  1 2004	Add setheadshrink() for hdel()
  */

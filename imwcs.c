@@ -1,5 +1,5 @@
 /* File imwcs.c
- * January 23, 2003
+ * July 1, 2004
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -661,8 +661,11 @@ char	*name;		/* FITS or IRAF image filename */
     /* Print existing WCS keywords and optionally erase them */
     if (verbose)
 	(void) PrintWCS (header, verbose);
-    if (erasewcs)
+    if (erasewcs) {
+	if (strchr (name, ',') || strchr (name,'['))
+	    setheadshrink (0);
 	(void) DelWCSFITS (header, verbose);
+	}
 
     /* Rotate and/or reflect image */
     if ((imsearch || writeheader) && (rot != 0 || mirror)) {
@@ -939,4 +942,6 @@ char	*name;		/* FITS or IRAF image filename */
  *
  * Jan 23 2003	Add USNO-B1.0 Catalog
  * Apr 13 2003	Set revision message for subroutines using setrevmsg()
+ *
+ * Jul  1 2004	If working on FITS extension, keep blank lines in header
  */

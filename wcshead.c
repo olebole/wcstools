@@ -1,5 +1,5 @@
 /* File wcshead.c
- * June 19, 2002
+ * July 19, 2004
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -26,6 +26,7 @@ static int nf = 0;		/* Number of files */
 static int version = 0;		/* If 1, print only program name and version */
 static int wave = 0;		/* If 1, print first dimension limits */
 static int restwave = 0;	/* If 1, print first dimension limits */
+static int printhead = 1;	/* 1 until header has been printed */
 
 
 main (ac, av)
@@ -34,8 +35,9 @@ char **av;
 {
     char *str;
     int readlist = 0;
+    int lfile;
     char *lastchar;
-    char filename[128];
+    char filename[256];
     FILE *flist;
     char *listfile;
 
@@ -98,16 +100,31 @@ char **av;
 	}
     }
 
-    /* Find number of images to search and leave listfile open for reading */
+    /* Read filenames of images from listfile */
     if (readlist) {
+
+	/* Find maximimum filename length */
 	if ((flist = fopen (listfile, "r")) == NULL) {
-	    fprintf (stderr,"IMHEAD: List file %s cannot be read\n",
+	    fprintf (stderr,"WCSHEAD: List file %s cannot be read\n",
 		     listfile);
 	    usage();
 	    }
-	while (fgets (filename, 128, flist) != NULL) {
+	nchar = 8;
+	while (fgets (filename, 256, flist) != NULL) {
+	    lfile = strlen (filename) - 1;
+	    if (lfile > nchar) nchar = lfile;
+	    }
+	fclose (flist);
+
+	/* Process files */
+	if ((flist = fopen (listfile, "r")) == NULL) {
+	    fprintf (stderr,"WCSHEAD: List file %s cannot be read\n",
+		     listfile);
+	    usage();
+	    }
+	while (fgets (filename, 256, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
-	    if (*lastchar < 32) *lastchar = 0;
+	    *lastchar = 0;
 	    ListWCS (filename);
 	    if (verbose)
 		printf ("\n");
@@ -152,9 +169,10 @@ ListWCS (filename)
 
 char	*filename;	/* FITS or IRAF image file name */
 {
-    double w1, w2;
-    int i;
-    char str[256], temp[80];
+    double w1, w2, dx, dy;
+    int i, nxpix, nypix;
+    char str[256], temp[256], *header;
+    char *GetFITShead();
     char rastr[32], decstr[32], fform[8];
     struct WorldCoor *wcs, *GetWCSFITS();
     double wlast;
@@ -163,50 +181,64 @@ char	*filename;	/* FITS or IRAF image file name */
     if (nowcs (wcs)) {
 	wcsfree (wcs);
 	wcs = NULL;
-	return;
+	header = GetFITShead (filename, verbose);
 	}
 
-    if (wcs->ctype[0][0] == (char) 0) {
+    if (wcs && wcs->ctype[0][0] == (char) 0) {
 	wcsfree (wcs);
 	wcs = NULL;
-	return;
+	header = GetFITShead (filename, verbose);
 	}
-    if (tabout && nf == 1) {
+    if (tabout && printhead) {
 	strcpy (str, "filename");
 	for (i = 1; i < nchar - 7; i++) strcat (str, " ");
 	if (wave || restwave) {
 	    strcat (str, "	naxis1	ctype1	first    ");
 	    strcat (str, "	last     	delt   \n");
-	    strcat (str, "--------");
-	    for (i = 1; i < nchar - 7; i++) strcat (str, "-");
+	    for (i = 0; i < nchar; i++) strcat (str, "-");
 	    strcat (str, "	------	------");
 	    strcat (str, "	---------	---------	-------\n");
 	    }
 	else {
 	    strcat (str, "	naxis1	naxis2");
 	    strcat (str, "	ctype1  	ctype2  ");
-	    strcat (str, "	crval1	crval2	radecsys");
+	    strcat (str, "	crval1 	crval2 	system  ");
 	    strcat (str, "	crpix1	crpix2");
 	    strcat (str, "	cdelt1	cdelt2");
 	    strcat (str, "	crota2\n");
-	    strcat (str, "--------");
-	    for (i = 1; i < nchar - 8; i++) strcat (str, "-");
+	    for (i = 0; i < nchar; i++) strcat (str, "-");
 	    strcat (str, "	------	------");
-	    strcat (str, "	------	------	--------");
+	    strcat (str, "	--------	--------");
 	    strcat (str, "	-------	-------");
-	    strcat (str, "	------	------");
-	    strcat (str, "	------	------");
-	    strcat (str, "	--------\n");
+	    strcat (str, "	--------	-------");
+	    strcat (str, "	-------	-------");
+	    strcat (str, "	-------	-------\n");
 	    }
 	printf ("%s", str);
+	printhead = 0;
 	}
 
     sprintf (fform,"%%%d.%ds",nchar, nchar);
     if (tabout) {
 	sprintf (str, fform, filename);
-	if (wave) {
+	if (!wcs) {
+	    if (wave) {
+		strcat (str, "	___	___	_________	_________	_______");
+		}
+	    else if (restwave) {
+		strcat (str, "	___	___	_________	_________	_______");
+		}
+	    else {
+		hgeti4 (header, "NAXIS1", &nxpix);
+		hgeti4 (header, "NAXIS2", &nypix);
+		sprintf (temp, "	%d	%d", nxpix, nypix);
+		strcat (str, temp);
+		strcat (str, "	________	________	_______	_______	________	_______	_______	_______	_______	_______");
+		}
+	    }
+	else if (wave) {
 	    wlast = wcs->xref + ((wcs->nxpix - 1.0) * wcs->cdelt[0]);
-	    sprintf (temp, "	%.0f	%s	%9.4f	%9.4f	%7.4f\n",
+	    sprintf (temp, "	%.0f	%s	%9.4f	%9.4f	%7.4f",
 		     wcs->nxpix, wcs->ctype[0], wcs->xref, wlast, wcs->xinc);
 	    strcat (str, temp);
 	    }
@@ -214,41 +246,69 @@ char	*filename;	/* FITS or IRAF image file name */
 	    w1 = wcs->xref / (1.0 + wcs->zvel);
 	    wlast = wcs->xref + ((wcs->nxpix - 1.0) * wcs->cdelt[0]);
 	    w2 = wlast / (1.0 + wcs->zvel);
-	    sprintf (temp, "	%.0f	%s	%9.4f	%9.4f	%7.4f\n",
+	    sprintf (temp, "	%.0f	%s	%9.4f	%9.4f	%7.4f",
 		     wcs->nxpix, wcs->ctype[0], w1, w2, wcs->xinc);
 	    strcat (str, temp);
 	    }
 	else {
 	    sprintf (temp, "	%.0f	%.0f", wcs->nxpix, wcs->nypix);
 	    strcat (str, temp);
-	    sprintf (temp, "	%s	%s", wcs->ctype[0], wcs->ctype[1]);
+	    if (strlen (wcs->ctype[0]) < 8)
+		sprintf (temp, "	%8.8s	%8.8s", wcs->ctype[0], wcs->ctype[1]);
+	    else
+		sprintf (temp, "	%s	%s", wcs->ctype[0], wcs->ctype[1]);
 	    strcat (str, temp);
 	    if (hms) {
 		if (wcs->coorflip) {
-		    ra2str (rastr, 32, wcs->yref, ndec);
-		    dec2str (decstr, 32, wcs->xref, ndec-1);
-		    }
+			ra2str (rastr, 32, wcs->yref, ndec);
+			dec2str (decstr, 32, wcs->xref, ndec-1);
+			}
 		else {
-		    ra2str (rastr, 32, wcs->xref, ndec);
-		    dec2str (decstr, 32, wcs->yref, ndec-1);
-		    }
+			ra2str (rastr, 32, wcs->xref, ndec);
+			dec2str (decstr, 32, wcs->yref, ndec-1);
+			}
 		sprintf (temp, " %s %s %s", rastr, decstr, wcs->radecsys);
 		}
 	    else
-		sprintf (temp, "	%7.2f	%7.2f	%s",
+		sprintf (temp, "	%7.2f	%7.2f	%8s",
 			 wcs->xref, wcs->yref, wcs->radecsys);
 	    strcat (str, temp);
 	    sprintf (temp, "	%7.2f	%7.2f", wcs->xrefpix, wcs->yrefpix);
 	    strcat (str, temp);
-	    sprintf (temp, "	%7.4f	%7.4f", 3600.0*wcs->xinc, 3600.0*wcs->yinc);
+	    dx = 3600.0 * wcs->xinc;
+	    dy = 3600.0 * wcs->yinc;
+	    if (dx >= 10000.0 || dx <= -1000.0)
+		sprintf (temp, "	%7.1f	%7.1f", dx, dy);
+	    else if (dx >= 1000.0 || wcs->xinc <= -100.0)
+		sprintf (temp, "	%7.2f	%7.2f", dx, dy);
+	    else if (dx >= 100.0 || dx <= -10.0)
+		sprintf (temp, "	%7.3f	%7.3f", dx, dy);
+	    else
+		sprintf (temp, "	%7.4f	%7.4f", dx, dy);
 	    strcat (str, temp);
-	    sprintf (temp, "	%7.4f\n", wcs->rot);
+	    sprintf (temp, "	%7.4f", wcs->rot);
 	    strcat (str, temp);
 	    }
 	}
     else {
 	sprintf (str, fform, filename);
-	if (wave) {
+	if (!wcs) {
+	    if (wave) {
+		strcpy (temp, " ___ ___ _________ _________ _______");
+		}
+	    else if (restwave) {
+		strcpy (temp, " ___ ___ _________ _________ _______");
+		}
+	    else {
+		hgeti4 (header, "NAXIS1", &nxpix);
+		hgeti4 (header, "NAXIS2", &nypix);
+		sprintf (temp, " %4d %4d", nxpix, nypix);
+		strcat (str, temp);
+		strcpy (temp, " ________ ________ _______ _______ ________ _______ _______ _______ _______ _______");
+		}
+	    strcat (str, temp);
+	    }
+	else if (wave) {
 	    sprintf (temp, " %.0f %s", wcs->nxpix, wcs->ctype[0]);
 	    strcat (str, temp);
 	    wlast = wcs->xref + ((wcs->nxpix - 1.0) * wcs->cdelt[0]);
@@ -261,14 +321,17 @@ char	*filename;	/* FITS or IRAF image file name */
 	    w1 = wcs->xref / (1.0 + wcs->zvel);
 	    wlast = wcs->xref + ((wcs->nxpix - 1.0) * wcs->cdelt[0]);
 	    w2 = wlast / (1.0 + wcs->zvel);
-	    sprintf (temp, " %.0f %s %9.4f %9.4f %7.4f\n",
+	    sprintf (temp, " %.0f %s %9.4f %9.4f %7.4f",
 		     wcs->nxpix, wcs->ctype[0], w1, w2, wcs->xinc);
 	    strcat (str, temp);
 	    }
 	else {
 	    sprintf (temp, " %4.0f %4.0f", wcs->nxpix, wcs->nypix);
 	    strcat (str, temp);
-	    sprintf (temp, " %s %s", wcs->ctype[0], wcs->ctype[1]);
+	    if (strlen (wcs->ctype[0]) < 8)
+		sprintf (temp, " %8.8s %8.8s", wcs->ctype[0], wcs->ctype[1]);
+	    else
+		sprintf (temp, " %s %s", wcs->ctype[0], wcs->ctype[1]);
 	    strcat (str, temp);
 	    if (hms) {
 		if (wcs->coorflip) {
@@ -279,17 +342,26 @@ char	*filename;	/* FITS or IRAF image file name */
 		    ra2str (rastr, 32, wcs->xref, ndec);
 		    dec2str (decstr, 32, wcs->yref, ndec-1);
 		    }
-		sprintf (temp, " %s %s %s", rastr, decstr, wcs->radecsys);
+		sprintf (temp, " %s %s %8s", rastr, decstr, wcs->radecsys);
 		}
 	    else
-		sprintf (temp, " %7.2f %7.2f %s",
+		sprintf (temp, " %7.2f %7.2f %8s",
 			 wcs->xref, wcs->yref, wcs->radecsys);
 	    strcat (str, temp);
 	    sprintf (temp, " %7.2f %7.2f", wcs->xrefpix, wcs->yrefpix);
 	    strcat (str, temp);
-	    sprintf (temp, " %7.4f %7.4f", 3600.0*wcs->xinc, 3600.0*wcs->yinc);
+	    dx = 3600.0 * wcs->xinc;
+	    dy = 3600.0 * wcs->yinc;
+	    if (dx >= 10000.0 || dx <= -1000.0)
+		sprintf (temp, " %7.1f %7.1f", dx, dy);
+	    else if (dx >= 1000.0 || wcs->xinc <= -100.0)
+		sprintf (temp, " %7.2f %7.2f", dx, dy);
+	    else if (dx >= 100.0 || dx <= -10.0)
+		sprintf (temp, " %7.3f %7.3f", dx, dy);
+	    else
+		sprintf (temp, " %7.4f %7.4f", dx, dy);
 	    strcat (str, temp);
-	    sprintf (temp, " %7.4f\n", wcs->rot);
+	    sprintf (temp, " %7.4f", wcs->rot);
 	    strcat (str, temp);
 	    }
 	}
@@ -322,4 +394,7 @@ char	*filename;	/* FITS or IRAF image file name */
  * May  9 2002	Add option to print rest wavelength limits
  * May 13 2002	Set wcs pointer to NULL after freeing data structure
  * Jun 19 2002	Add verbose argument to GetWCSFITS()
+ *
+ * Jul 19 2004	Print header if flag is set, not if first file
+ * Jul 19 2004	Print underscores to fill lines if no WCS
  */

@@ -1,5 +1,5 @@
 /* File immatch.c
- * April 13, 2003
+ * July 1, 2004
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -35,7 +35,6 @@ static char *progname;		/* Name of program as executed */
 
 extern char *RotFITS();
 extern int SetWCSFITS();
-extern int DelWCSFITS();
 extern int PrintWCS();
 extern void settolerance();
 extern void setreflim();
@@ -608,4 +607,6 @@ char	*name;			/* Name of FITS or IRAF image file */
  *
  * Jan 23 2003	Add USNO-B1.0 Catalog
  * Apr 13 2003	Set revision message for subroutines using setrevmsg()
+ *
+ * Jul  1 2004	Drop unused declaration of DelWCSFITS()
  */

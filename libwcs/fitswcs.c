@@ -1,8 +1,8 @@
 /*** File libwcs/fitswcs.c
- *** December 5, 2003
+ *** July 19, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -71,7 +71,8 @@ int verbose;	/* Print extra information if nonzero */
     wcs = wcsinitn (header, cwcs);
     if (wcs == NULL) {
 	setwcsfile (filename);
-	wcserr ();
+	if (verbose)
+	    wcserr ();
 	}
     free (header);
 
@@ -610,4 +611,6 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Oct 23 2003	Add PCi_j to DelWCSFITS()
  * Nov  3 2003	In SetFITSWCS(), add distortion code if in WCS
  * Dec  5 2003	Fix bug, delete projection parameters in DelWCSFITS()
+ *
+ * Jul 19 2004	Print error message in verbose mode only
  */

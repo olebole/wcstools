@@ -1,5 +1,5 @@
 /* File getcol.c
- * April 15, 2004
+ * July 14, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -412,9 +412,9 @@ usage ()
     fprintf (stderr,"Extract specified columns from an ASCII table file\n");
     fprintf (stderr,"Usage: [-abcefghijkmopqtv][-d num][-l num][-n num][-r lines][-s num] filename [col] [col] ...\n");
     fprintf(stderr," col: Number range (n1-n2,n3-n4...) or col.c1:c2\n");
-    fprintf(stderr," %f.dx: C output format for last column specified\n");
+    fprintf(stderr," %%f.dx: C output format for last column specified\n");
     fprintf(stderr,"  -a: Sum selected numeric column(s)\n");
-    fprintf(stderr,"  -b: Input is bar-separate table file\n");
+    fprintf(stderr,"  -b: Input columns are delimited by vertical bars\n");
     fprintf(stderr,"  -c: Add count of number of lines in each column at end\n");
     fprintf(stderr,"  -d num: Number of decimal places in f.p. output\n");
     fprintf(stderr,"  -e: Median values of selected numeric column(s)\n");
@@ -1633,4 +1633,5 @@ void *pd1, *pd2;
  *
  * Apr 15 2004	Add % output format option
  * Apr 15 2004	Avoid removing trailing zeroes from exponents
+ * Jul 14 2004	Fix bug in online help message
  */

@@ -1,5 +1,5 @@
 /* File edhead.c
- * August 21, 2003
+ * July 1, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -106,10 +106,14 @@ char	*filename;	/* FITS or IRAF file filename */
     char *header;		/* FITS header */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
+    int nbold, nbnew;
     int iraffile;		/* 1 if IRAF image */
     char *irafheader;		/* IRAF image header */
     int i, nbytes, nhb, nhblk, lext, lroot;
+    int fdr, ipos, nbr, nbw;
     int fdw;
+    int naxis = 0;
+    int bitpix = 0;
     int imageread = 0;
     char *head, *headend, *hlast;
     char headline[160];
@@ -124,6 +128,7 @@ char	*filename;	/* FITS or IRAF file filename */
 
     newline[0] = 10;
     space = (char) 32;
+    image = NULL;
 
     /* Open IRAF image and header if .imh extension is present */
     if (isiraf (filename)) {
@@ -146,6 +151,8 @@ char	*filename;	/* FITS or IRAF file filename */
     else {
 	iraffile = 0;
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
+	    hgeti4 (header,"NAXIS",&naxis);
+	    hgeti4 (header,"BITPIX",&bitpix);
 	    if ((image = fitsrfull (filename, nbhead, header)) == NULL) {
 		fprintf (stderr, "Cannot read FITS image %s\n", filename);
 		imageread = 0;
@@ -159,6 +166,8 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	}
     if (verbose)
+
+    nbold = fitsheadsize (header);
 
     /* Write current header to temporary file */
     temphead = tempnam ("/tmp","edhead");
@@ -259,6 +268,15 @@ char	*filename;	/* FITS or IRAF file filename */
 	return;
 	}
 
+    /* Compare size of output header to size of input header */
+    nbnew = fitsheadsize (header);
+    if (nbnew > nbold  && naxis == 0 && bitpix != 0) {
+	if (verbose)
+	    fprintf (stderr, "Rewriting primary header, copying rest of file\n");
+	newimage = 1;
+	}
+
+
     /* Make up name for new FITS or IRAF output file */
     if (newimage) {
 
@@ -311,8 +329,13 @@ char	*filename;	/* FITS or IRAF file filename */
 		strcat (newname, ext);
 	    }
 	}
-    else
+    else {
 	strcpy (newname, filename);
+	if (!imext && ksearch (header,"XTENSION")) {
+	    strcat (newname, ",1");
+	    imext = strchr (newname,',');
+	    }
+	}
 
     /* Write fixed header to output file */
     if (iraffile) {
@@ -322,24 +345,53 @@ char	*filename;	/* FITS or IRAF file filename */
 	    printf ("%s could not be written.\n", newname);
 	free (irafheader);
 	}
-    else if (imageread) {
+
+    /* If there is no data, write header by itself */
+    else if (bitpix == 0) {
+	if ((fdw = fitswhead (newname, header)) > 0) {
+	    if (verbose)
+		printf ("%s: rewritten successfully.\n", newname);
+	    close (fdw);
+	    }
+	}
+
+    /* Rewrite only header if it fits into the space from which it was read */
+    else if (nbnew <= nbold && !newimage) {
+	if (!fitswexhead (newname, header)) {
+	    if (verbose)
+		printf ("%s: rewritten successfully.\n", newname);
+	    }
+	}
+
+    /* Rewrite header and data to a new image file */
+    else if (naxis > 0 && imageread) {
 	if (fitswimage (newname, header, image) > 0 && verbose)
 	    printf ("%s: rewritten successfully.\n", newname);
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
 	free (image);
 	}
+
     else {
 	if ((fdw = fitswhead (newname, header)) > 0) {
+	    fdr = fitsropen (filename);
+	    ipos = lseek (fdr, nbhead, SEEK_SET);
+	    image = (char *) calloc (2880, 1);
+	    while ((nbr = read (fdr, image, 2880)) > 0) {
+		nbw = write (fdw, image, nbr);
+		if (nbw < nbr)
+		    fprintf (stderr,"SETHEAD: %d / %d bytes written\n",nbw,nbr);
+		}
+	    close (fdr);
+	    close (fdw);
 	    if (verbose)
 		printf ("%s: rewritten successfully.\n", newname);
-	    close (fdw);
 	    }
-	else if (verbose)
-	    printf ("%s could not be written.\n", newname);
 	}
 
     free (header);
+    if (image)
+	free (image);
     unlink (temphead);
     free (editcom);
     return;
@@ -374,4 +426,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Apr  9 2002	Do not free unallocated header
  *
  * Aug 21 2003	Use fitsrfull() to handle any simple FITS image
+ * Jul  1 2004	Change first extension if no extension specified
+ * Jul  1 2004	Overwrite edited header, if new header fits
  */

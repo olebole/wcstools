@@ -1,5 +1,5 @@
 /* File delhead.c
- * May 6, 2004
+ * July 1, 2004
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,6 +17,7 @@
 #define MAXFILES 1000
 static int maxnkwd = MAXKWD;
 static int maxnfile = MAXFILES;
+#define MAXNEW 1024
 
 static void usage();
 static void DelKeywords();
@@ -25,6 +26,8 @@ extern char *fitserrmsg;
 static int verbose = 0;		/* verbose/debugging flag */
 static int newimage = 0;
 static int version = 0;		/* If 1, print only program name and version */
+static int logfile = 0;
+static int nproc = 0;
 
 main (ac, av)
 int ac;
@@ -66,6 +69,10 @@ char **av;
 	    char c;
 	    while (c = *++str)
 	    switch (c) {
+	
+		case 'l':	/* Log files changed */
+		    logfile++;
+		    break;
 
 		case 'n':	/* write new file */
 		    newimage++;
@@ -202,19 +209,22 @@ char	*kwd[];		/* Names of those keywords */
 
 {
     char *header;	/* FITS image header */
+    char *image;	/* FITS image */
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
     char *irafheader;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
     int lext, lroot, naxis;
-    char *image;
-    char newname[128];
+    char newname[MAXNEW];
     char *ext, *fname, *imext, *imext1;
     char *kw, *kwl;
     char echar;
     int ikwd;
     int ibhead;		/* Number of bytes to skip to header */
-    int fdr, fdw, ipos, nbr, nbw;
+    int fdr, fdw, ipos, nbr, nbw, bitpix, imageread;
+    int nbold, nbnew;
+
+    image = NULL;
 
     /* Open IRAF image if .imh extension is present */
     if (isiraf (filename)) {
@@ -237,8 +247,17 @@ char	*kwd[];		/* Names of those keywords */
 	iraffile = 0;
 	setfitsinherit (0);
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
-	    if (verbose)
-		fprintf (stderr, "Rewriting only header\n");
+	    hgeti4 (header,"NAXIS",&naxis);
+	    hgeti4 (header,"BITPIX",&bitpix);
+	    if (naxis > 0 && bitpix != 0) {
+		if ((image = fitsrfull (filename, nbhead, header)) == NULL) {
+		    if (verbose)
+			fprintf (stderr, "No FITS image in %s\n", filename);
+		    imageread = 0;
+		    }
+		else
+		    imageread = 1;
+		}
 	    }
 	else {
 	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
@@ -256,6 +275,18 @@ char	*kwd[];		/* Names of those keywords */
     if (nkwd < 1)
 	return;
 
+    nbold = fitsheadsize (header);
+
+    /* Remove directory path and extension from file name */
+    fname = strrchr (filename, '/');
+    if (fname)
+	fname = fname + 1;
+    else
+	fname = filename;
+
+    if (strchr (fname, ',') || strchr (fname,'['))
+	setheadshrink (0);
+
     /* Delete keywords one at a time */
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
 
@@ -271,22 +302,12 @@ char	*kwd[];		/* Names of those keywords */
 	    printf ("%s: %s deleted\n", filename, kwd[ikwd]);
 	}
 
-    /* Remove directory path and extension from file name */
-    fname = strrchr (filename, '/');
-    if (fname)
-	fname = fname + 1;
-    else
-	fname = filename;
-
-    /* Set image extension if there is one */
-    imext = strchr (fname, ',');
-    imext1 = NULL;
-    if (imext == NULL) {
-	imext = strchr (fname, '[');
-	if (imext != NULL) {
-	    imext1 = strchr (fname, ']');
-	    *imext1 = (char) 0;
-	    }
+    /* Compare size of output header to size of input header */
+    nbnew = fitsheadsize (header);
+    if (nbnew > nbold && naxis == 0 && bitpix != 0) {
+	if (verbose)
+	    fprintf (stderr, "Rewriting primary header, copying rest of file\n");
+	newimage = 1;
 	}
 
     /* Make up name for new FITS or IRAF output file */
@@ -295,13 +316,18 @@ char	*kwd[];		/* Names of those keywords */
 	if (ext != NULL) {
 	    lext = (fname + strlen (fname)) - ext;
 	    lroot = ext - fname;
+	    if (lroot > MAXNEW)
+		lroot = MAXNEW - 1;
 	    strncpy (newname, fname, lroot);
-	    *(newname + lroot) = 0;
+	    newname[lroot] = (char) 0;
 	    }
 	else {
 	    lext = 0;
 	    lroot = strlen (fname);
-	    strcpy (newname, fname);
+	    if (lroot > MAXNEW)
+		lroot = MAXNEW - 1;
+	    strncpy (newname, fname, lroot);
+	    newname[lroot] = (char) 0;
 	    }
 	imext = strchr (fname, ',');
 	imext1 = NULL;
@@ -335,8 +361,22 @@ char	*kwd[];		/* Names of those keywords */
 	    }
 	}
 
-    else
+    else {
+
+	/* Keep name */
 	strcpy (newname, filename);
+
+	/* Set image extension if there is one */
+	imext = strchr (filename, ',');
+	if (imext == NULL)
+	    imext = strchr (filename, '[');
+
+	/* Add extension if modifying extension header */
+	if (imext == NULL && ksearch (header,"XTENSION")) {
+	    strcat (newname, ",1");
+	    imext = strchr (newname,',');
+	    }
+	}
 
     /* Write fixed header to output file */
     if (iraffile) {
@@ -346,20 +386,60 @@ char	*kwd[];		/* Names of those keywords */
 	    printf ("%s could not be written.\n", newname);
 	free (irafheader);
 	}
-    else if (imext == NULL) {
+
+    /* If there is no data, write header by itself */
+    else if (bitpix == 0) {
+	if ((fdw = fitswhead (newname, header)) > 0) {
+	    if (verbose)
+		printf ("%s: rewritten successfully.\n", newname);
+	    close (fdw);
+	    }
+	}
+
+    /* Rewrite only header if it fits into the space from which it was read */
+    else if (nbnew <= nbold && !newimage) {
+	if (!fitswexhead (newname, header)) {
+	    if (verbose)
+		printf ("%s: rewritten successfully.\n", newname);
+	    }
+	}
+
+    /* Rewrite header and data to a new image file */
+    else if (naxis > 0 && imageread) {
 	if (fitswimage (newname, header, image) > 0 && verbose)
 	    printf ("%s: rewritten successfully.\n", newname);
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
 	free (image);
 	}
+
     else {
-	if (!fitswexhead (filename, header)) {
+	if ((fdw = fitswhead (newname, header)) > 0) {
+	    fdr = fitsropen (filename);
+	    ipos = lseek (fdr, nbhead, SEEK_SET);
+	    image = (char *) calloc (2880, 1);
+	    while ((nbr = read (fdr, image, 2880)) > 0) {
+		nbw = write (fdw, image, nbr);
+		if (nbw < nbr)
+		    fprintf (stderr,"SETHEAD: %d / %d bytes written\n",nbw,nbr);
+		}
+	    close (fdr);
+	    close (fdw);
 	    if (verbose)
-		printf ("%s header rewritten successfully.\n", filename);
+		printf ("%s: rewritten successfully.\n", newname);
+	    free (image);
 	    }
 	}
+
+    /* Log the processing of this file, if requested */
+    if (logfile) {
+	nproc++;
+	fprintf (stderr, "%d: %s processed.\r", nproc, newname);
+	}
+
     free (header);
+    if (image != NULL)
+	free (image);
     return;
 }
 
@@ -389,4 +469,6 @@ char	*kwd[];		/* Names of those keywords */
  * Oct 29 2003	Keep count of keywords correctly when reading them from file
  *
  * May  6 2004	Allow keywords to be deleted from extension headers
+ * Jul  1 2004	Do not drop lines from multi-extension headers
+ * Jul  1 2004	Change first extension if no extension specified
  */

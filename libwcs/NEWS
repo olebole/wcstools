@@ -1,5 +1,14 @@
 WCSTools subroutine release history
 
+July 13, 2004 - Release 3.5.5 (Doug Mink, SAO)
+Add headshrink to hput.c to optionally keep blank lines after
+keywords are deleted.
+Read D, d, E, and e as exponent delimiters in floating point values in hget.c
+
+
+May 6, 2004 - Release 3.5.4 (Doug Mink, SAO)
+Add fitswexhead() to fitsfile.c to overwrite FITS extension headers
+
 April 16, 2004 - Release 3.5.3 (Doug Mink, SAO)
 Use strncsrch() in hget.c to get differently-cased keywords.
 

@@ -1,8 +1,8 @@
 /*** File libwcs/hput.c
- *** January 4, 2002
+ *** July 1, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1995-2002
+ *** Copyright (C) 1995-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -58,6 +58,12 @@
 #include "fitshead.h"
 
 static int verbose=0;	/* Set to 1 to print error messages and other info */
+
+static int headshrink=1; /* Set to 1 to drop line after deleting keyword */
+void
+setheadshrink (hsh)
+int hsh;
+{headshrink = hsh; return;}
 
 
 /*  HPUTI4 - Set int keyword = ival in FITS header string */
@@ -654,6 +660,10 @@ char *keyword;		/* Keyword of entry to be deleted */
     /*  Find end of header */
     ve = ksearch (hstring,"END");
 
+    /* If headshrink is 0, leave END where it is */
+    if (!headshrink)
+	ve = ve - 80;
+
     /* Shift rest of header up one line */
     for (v = v1; v < ve; v = v + 80) {
 	v2 = v + 80;
@@ -1178,4 +1188,6 @@ int	ndec;		/* Number of decimal places in degree string */
  * Jan 18 2001	Drop declaration of blsearch(); it is in fitshead.h
  *
  * Jan  4 2002	Fix placement of comments
+ *
+ * Jul  1 2004	Add headshrink to optionally keep blank lines in header
  */

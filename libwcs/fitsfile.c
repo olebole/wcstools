@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** May 19, 2004
+ *** July 1, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2004
@@ -89,7 +89,7 @@ static fitsinherit = 1;		/* Append primary header to extension header */
 void
 setfitsinherit (inh)
 int inh;
-{fitsinherit = inh;}
+{fitsinherit = inh; return;}
 
 static int ibhead = 0;		/* Number of bytes read before header starts */
 
@@ -129,7 +129,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     char *mwcs;		/* Pointer to WCS name separated by % */
     char *endnext;
     char *pheadend;
-    int inherit;	/* Value of INHERIT keyword in FITS extension header */
+    int inherit = 1;	/* Value of INHERIT keyword in FITS extension header */
 
     pheader = NULL;
     lprim = 0;
@@ -1872,4 +1872,5 @@ fitserr ()
  * May  3 2004	Do not always append primary header to extension header
  * May  3 2004	Add ibhead as position of header read in file
  * May 19 2004	Do not reset ext if NULL in fitswexhead()
+ * Jul  1 2004	Initialize INHERIT to 1
  */

@@ -1,5 +1,5 @@
 /* File delwcs.c
- * March 23, 2000
+ * July 1, 2004
  * By Doug Mink, after University of Iowa code
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -190,8 +190,11 @@ char *filename;
 		strcat (newname, ext);
 	    }
 	}
-    else
+    else {
+	if (strchr (filename, ',') || strchr (filename,'['))
+	    setheadshrink (0);
 	strcpy (newname, filename);
+	}
 
     if (verbose) {
 	fprintf (stderr,"Remove World Coordinate System from ");
@@ -249,4 +252,6 @@ char *filename;
  * Oct 21 1999	Drop unused variables after lint
  *
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
+
+ * Jul  1 2004	Call setheadshrink() to keep blank lines if FITS extension
  */

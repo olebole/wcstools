@@ -1,5 +1,5 @@
 /* File sethead.c
- * May 6, 2004
+ * July 1, 2004
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -288,26 +288,10 @@ char **av;
     for (ifile = 0; ifile < nfile; ifile++) {
 	if (ilistfile != NULL) {
 	    first_token (flist, 254, filename);
-
-	    /* If multispec, always write a new image
-	    newimage1 = newimage0;
-	    if (strchr (filename, ',') || strchr (filename, '[')) {
-		newimage1 = newimage0;
-		newimage0 = 1;
-		} */
-
 	    SetValues (filename, nkwd, kwd, comment);
 	    newimage0 = newimage1;
 	    }
 	else
-
-	    /* If multispec, always write a new image
-	    newimage1 = newimage0;
-	    if (strchr (fn[ifile], ',') || strchr (fn[ifile], '[')) {
-		newimage1 = newimage0;
-		newimage0 = 1;
-		} */
-
 	    SetValues (fn[ifile], nkwd, kwd, comment);
 	    newimage0 = newimage1;
 	}
@@ -331,7 +315,6 @@ usage ()
     fprintf(stderr,"  or : [-hknv][-r [char]][-s char] @listfile kw1=val1 [ ... kwn=valuen]\n");
     fprintf(stderr,"  or : [-hknv][-r [char]][-s char] @listfile @keywordfile\n");
     fprintf(stderr,"  -h: Write HISTORY line\n");
-    fprintf(stderr,"  -i: Log files as processed (on one line)\n");
     fprintf(stderr,"  -k: Write SETHEAD keyword\n");
     fprintf(stderr,"  -l: Log files as processed (on one line)\n");
     fprintf(stderr,"  -n: Write a new file (add e before the extension)\n");
@@ -370,7 +353,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     int fdr, fdw, ipos, nbr, nbw;
     int squote = 39;
     int dquote = 34;
-    int naxis = 1;
+    int naxis = 0;
     int nbold, nbnew;
     int imageread = 0;
     char cval[24];
@@ -382,7 +365,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     char keyroot[8];
     char ctemp;
     int lval, ii, lv, lnl;
-    int bitpix;
+    int bitpix = 0;
     char newline = 10;
 
     newimage = newimage0;
@@ -418,11 +401,6 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		    }
 		else
 		    imageread = 1;
-		}
-	    else if (bitpix != 0) {
-		if (verbose)
-		    fprintf (stderr, "Rewriting primary header, copying rest\n");
-		newimage = 1;
 		}
 	    }
 	else {
@@ -655,6 +633,65 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    }
 	}
 
+    /* Add history to header */
+    if (keyset || histset) {
+	if (hgets (header, "SETHEAD", 72, history))
+	    hputc (header, "HISTORY", history);
+	endchar = strchr (history, ',');
+	*endchar = (char) 0;
+	strcat (history, " ");
+	ltime = lt2fd ();
+	strcat (history, ltime);
+	endchar = strrchr (history,':');
+	*endchar = (char) 0;
+	strcat (history, " ");
+	for (ikwd = 0; ikwd < nkwd; ikwd++) {
+	    kwv0 = strchr (kwd[ikwd],'=');
+	    if (kwv0)
+		*kwv0 = (char) 0;
+	    lhist = strlen (history);
+	    lkwd = strlen (kwd[ikwd]);
+
+	    /* If too may keywords, start a second history line */
+	    if (lhist + lkwd + 10 > 71) {
+		if (histset) {
+		    strcat (history, " updated");
+		    hputc (header, "HISTORY", history);
+		    endchar = strchr (history, ',');
+		    *endchar = (char) 0;
+		    strcat (history, " ");
+		    ltime = lt2fd ();
+		    strcat (history, ltime);
+		    endchar = strrchr (history,':');
+		    *endchar = (char) 0;
+		    strcat (history, " ");
+		    }
+		else
+		    break;
+		}
+	    strcat (history, kwd[ikwd]);
+	    if (kwv0)
+		*kwv0 = '=';
+	    if (nkwd == 2 && ikwd < nkwd-1)
+		strcat (history, " and ");
+	    else if (ikwd < nkwd-1)
+		strcat (history, ", ");
+	    }
+	strcat (history, " updated");
+	if (keyset)
+	    hputs (header, "SETHEAD", history);
+	if (histset)
+	    hputc (header, "HISTORY", history);
+	}
+
+    /* Compare size of output header to size of input header */
+    nbnew = fitsheadsize (header);
+    if (nbnew > nbold  && naxis == 0 && bitpix != 0) {
+	if (verbose)
+	    fprintf (stderr, "Rewriting primary header, copying rest of file\n");
+	newimage = 1;
+	}
+
     /* Make up name for new FITS or IRAF output file */
     if (newimage) {
 
@@ -712,62 +749,15 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		strcat (newname, ext);
 	    }
 	}
-    else
+    else {
 	strcpy (newname, filename);
-
-    /* Add history to header */
-    if (keyset || histset) {
-	if (hgets (header, "SETHEAD", 72, history))
-	    hputc (header, "HISTORY", history);
-	endchar = strchr (history, ',');
-	*endchar = (char) 0;
-	strcat (history, " ");
-	ltime = lt2fd ();
-	strcat (history, ltime);
-	endchar = strrchr (history,':');
-	*endchar = (char) 0;
-	strcat (history, " ");
-	for (ikwd = 0; ikwd < nkwd; ikwd++) {
-	    kwv0 = strchr (kwd[ikwd],'=');
-	    if (kwv0)
-		*kwv0 = (char) 0;
-	    lhist = strlen (history);
-	    lkwd = strlen (kwd[ikwd]);
-
-	    /* If too may keywords, start a second history line */
-	    if (lhist + lkwd + 10 > 71) {
-		if (histset) {
-		    strcat (history, " updated");
-		    hputc (header, "HISTORY", history);
-		    endchar = strchr (history, ',');
-		    *endchar = (char) 0;
-		    strcat (history, " ");
-		    ltime = lt2fd ();
-		    strcat (history, ltime);
-		    endchar = strrchr (history,':');
-		    *endchar = (char) 0;
-		    strcat (history, " ");
-		    }
-		else
-		    break;
-		}
-	    strcat (history, kwd[ikwd]);
-	    if (kwv0)
-		*kwv0 = '=';
-	    if (nkwd == 2 && ikwd < nkwd-1)
-		strcat (history, " and ");
-	    else if (ikwd < nkwd-1)
-		strcat (history, ", ");
+	if (!imext && ksearch (header,"XTENSION")) {
+	    strcat (newname, ",1");
+	    imext = strchr (newname,',');
 	    }
-	strcat (history, " updated");
-	if (keyset)
-	    hputs (header, "SETHEAD", history);
-	if (histset)
-	    hputc (header, "HISTORY", history);
 	}
 
     /* Write fixed header to output file */
-    nbnew = fitsheadsize (header);
     if (iraffile) {
 	if (irafwhead (newname, lhead, irafheader, header) > 0 && verbose)
 	    printf ("%s rewritten successfully.\n", newname);
@@ -775,6 +765,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    printf ("%s could not be written.\n", newname);
 	free (irafheader);
 	}
+
+    /* If there is no data, write header by itself */
     else if (bitpix == 0) {
 	if ((fdw = fitswhead (newname, header)) > 0) {
 	    if (verbose)
@@ -784,8 +776,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	}
 
     /* Rewrite only header if it fits into the space from which it was read */
-    else if (nbnew <= nbnew && !newimage) {
-	if (!fitswexhead (filename, header)) {
+    else if (nbnew <= nbold && !newimage) {
+	if (!fitswexhead (newname, header)) {
 	    if (verbose)
 		printf ("%s: rewritten successfully.\n", newname);
 	    }
@@ -814,7 +806,6 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    close (fdw);
 	    if (verbose)
 		printf ("%s: rewritten successfully.\n", newname);
-	    free (image);
 	    }
 	}
 
@@ -825,6 +816,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	}
 
     free (header);
+    if (image != NULL)
+	free (image);
     return;
 }
 
@@ -886,4 +879,6 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Oct 29 2003	Clean up command line and list file keyword input
  *
  * May  3 2004	Add code to overwrite header if revised one fits
+ * Jul  1 2004	Fix bug deciding when to write extension header in place
+ * Jul  1 2004	Change first extension if no extension specified
  */
