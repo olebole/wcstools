@@ -1,7 +1,11 @@
-Version 3.5.7 (October 5, 2004)
+Version 3.5.8 (November 01, 2004)
+wcs.c: Keep wcs->rot between 0 and 360 degrees
+
+Version 3.5.7 (October 20, 2004)
 imwcs, immatch, imcat: Fix catalog search problems when working around RA=0:00
 imwcs, immatch, imstar: Add 0 shift arguments to RotFITS call
 newfits: Add -w option to transfer WCS from one FITS file to a new one
+remap: Fix (now) verbose mode message if writing, not overwriting, to named file
 scat: do not print anything if no stars are found unless in verbose mode or
 providing VOTable output.
 webread.c: Do not print server messages unless in verbose mode
@@ -9,6 +13,7 @@ imrotate.c: Fix bug when reading CRPIX from header to reset WCS
 hput.c: Avoid writing negative zero values into image headers
 wcs.c: Keep RA/Long between 0 and 360 in pix2wcs() and fix bug in wcsfull()
 fitsutil.c: Drop next_token() to avoid name conflict
+gsc2read.c: Fix bug converting search box to search radius for web query
 
 Version 3.5.6 (September 3, 2004)
 remap: Add -t num option to split each output pixel in num in each dimension,

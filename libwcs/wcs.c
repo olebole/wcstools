@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** September 17, 2004
+ *** November 1, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2004
@@ -775,6 +775,10 @@ double crota;		/* Rotation counterclockwise in degrees */
 
     /* If image is reversed, value of CROTA is flipped, too */
     wcs->rot = crota;
+    if (wcs->rot < 0.0)
+	wcs->rot = wcs->rot + 360.0;
+    if (wcs->rot >= 360.0)
+	wcs->rot = wcs->rot - 360.0;
     crot = cos (degrad(wcs->rot));
     if (cdelt1 * cdelt2 > 0)
 	srot = sin (-degrad(wcs->rot));
@@ -1056,11 +1060,15 @@ struct WorldCoor *wcs;	/* World coordinate system structure */
     /* Compute CROTA */
     if (wcs->coorflip) {
 	wcs->rot = wcs->imrot + 90.0;
-	if (wcs->rot > 180)
-	    wcs->rot = wcs->rot - 360.0;
+	if (wcs->rot < 0.0)
+	    wcs->rot = wcs->rot + 360.0;
 	}
     else
 	wcs->rot = wcs->imrot;
+    if (wcs->rot < 0.0)
+	wcs->rot = wcs->rot + 360.0;
+    if (wcs->rot >= 360.0)
+	wcs->rot = wcs->rot = 360.0;
 
     /* Set image mirror flag based on axis orientation */
     wcs->imflip = 0;
@@ -2740,4 +2748,5 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  *
  * Sep 17 2004	If spherical coordinate output, keep 0 < long/RA < 360
  * Sep 17 2004	Fix bug in wcsfull() when wrapping around RA=0:00
+ * Nov  1 2004	Keep wcs->rot between 0 and 360
  */

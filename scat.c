@@ -1,5 +1,5 @@
 /* File scat.c
- * September 17, 2004
+ * October 20, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -978,9 +978,9 @@ char	*command;	/* Command where error occurred or NULL */
     fprintf(dev,"  -o name: Object name \n");
     fprintf(dev,"  -q year: Equinox of output positions in FITS date format or years\n");
     fprintf(dev,"  -r rad: Search radius (<0=-half-width) in arcsec\n");
-    fprintf(dev,"  -r dx,dy: Search halfwidths in ra,dec in arcsec on sky\n");
     fprintf(dev,"  -r radi-rado: Inner and outer edges of search annulus in arcsec\n");
-    fprintf(dev,"  -rr dra,ddec: Search halfwidths in ra,dec in arcsec\n");
+    fprintf(dev,"  -r dx,dy: Search halfwidths in ra,dec in great circle arcseconds\n");
+    fprintf(dev,"  -rr dra,ddec: Search halfwidths in ra,dec in arcsec of RA and Dec\n");
     fprintf(dev,"  -s d|e|mx|n|p|r: Sort by r=RA d=Dec mx=Mag#x n=none p=distance e=merge\n");
     fprintf(dev,"  -t: Tab table to standard output as well as file\n");
     fprintf(dev,"  -u x y: Print x y instead of number in front of non-tab entry\n");
@@ -4397,4 +4397,5 @@ PrintGSClass ()
  * Sep 10 2004	Do not print anything if no stars found and not in verbose
  *		or tab table output mode
  * Sep 17 2004	Use -h to turn off header if no stars found in tab table mode
+ * Oct 20 2004	Fix -rr and -r two argument definitions to match reality
  */

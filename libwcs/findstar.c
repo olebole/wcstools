@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** August 3, 2004
+ *** September 24, 2004
  *** By Doug Mink, after Elwood Downey
  *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -929,6 +929,7 @@ int	reflect; /* 1 if image is reflected, else 0 */
 
 {
     int istar;
+    double x2, y2;
     double xn = (double) w;
     double yn = (double) h;
 
@@ -943,53 +944,60 @@ int	reflect; /* 1 if image is reflected, else 0 */
     else if (rot > 360)
 	rot = rot - 360;
 
+    x2 = *x;
+    y2 = *y;
+
     /* Rotate star postions one at a time */
 
     /* Mirror coordinates without rotation */
     if (rotate < 45.0 && rotate > -45.0) {
 	if (reflect)
-	    *x = xn - *x - 1.0;
+	    x2 = xn - *x - 1.0;
 	}
 
     /* Rotate by 90 degrees */
     else if (rotate >= 45 && rotate < 135) {
 	if (reflect) {
-	    *x = yn - *y - 1.0;
-	    *y = xn - *x - 1.0;
+	    x2 = yn - *y - 1.0;
+	    y2 = xn - *x - 1.0;
 	    }
 	else {
-	    *x = yn - *y - 1.0;
-	    *y = *x;
+	    x2 = yn - *y - 1.0;
+	    y2 = *x;
 	    }
 	}
 
     /* Rotate by 180 degrees */
     else if (rotate >= 135 && rotate < 225) {
 	if (reflect)
-	    *y = yn - *y - 1.0;
+	    y2 = yn - *y - 1.0;
 	else {
-	    *x = xn - *x - 1.0;
-	    *y = yn - *y - 1.0;
+	    x2 = xn - *x - 1.0;
+	    y2 = yn - *y - 1.0;
 	    }
 	}
 
     /* Rotate by 270 degrees */
     else if (rotate >= 225 && rotate < 315) {
 	if (reflect) {
-	    *x = *y;
-	    *y = *x;
+	    x2 = *y;
+	    y2 = *x;
 	    }
 	else {
-	    *x = *y;
-	    *y = xn - *x - 1.0;
+	    x2 = *y;
+	    y2 = xn - *x - 1.0;
 	    }
 	}
 
     /* If rotating by more than 315 degrees, assume top-bottom reflection */
     else if (rotate >= 315 && mirror) {
-	*x = *y;
-	*y = *x;
+	x2 = *y;
+	y2 = *x;
 	}
+
+    *x = x2;
+    *y = y2;
+
     return;
 }
 
@@ -1043,4 +1051,5 @@ int	reflect; /* 1 if image is reflected, else 0 */
  *
  * Aug  3 2004	Move single star image position rotation into rotstar()
  * Aug  3 2004	Move daoread() declaration to wcscat.h
+ * Sep 24 2004	Fix rotstar() to separate output values from input values
  */

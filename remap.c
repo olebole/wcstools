@@ -1,5 +1,5 @@
 /* File remap.c
- * August 30, 2004
+ * October 12, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -471,8 +471,8 @@ char	*filename;	/* FITS or IRAF file filename */
 		if ((imout = fitsrimage (outname, nbhead, headout)) == NULL)
 		    fprintf (stderr, "REMAP: Overwriting file %s\n", outname);
 		}
-	    else{
-		fprintf (stderr, "REMAP: Overwriting file %s\n", outname);
+	    else if (verbose) {
+		fprintf (stderr, "REMAP: Writing file %s\n", outname);
 		}
 	    }
 	else
@@ -890,4 +890,5 @@ double	*y2;		/* Upper right y coordinate (returned) */
  * Mar  1 2004	Do not rescale pixels if unnecessary
  * Apr 28 2004	Return error on failure of any memory allocation
  * Aug 30 2004	Add multiple samples from output to input images
+ * Oct 12 2004	Fix message if writing to named file and print only if verbose
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/gsc2read.c
- *** December 12, 2003
+ *** October 18, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2003
+ *** Copyright (C) 2001-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -79,7 +79,7 @@ int	nlog;		/* 1 for diagnostics */
     double dtemp, r2;
     struct StarCat *starcat;
     int nstar, i;
-    double ra, dec, mag;
+    double ra, dec, mag, ddra;
     char rastr[32], decstr[32];
     char *gsc2url;
 
@@ -111,7 +111,8 @@ int	nlog;		/* 1 for diagnostics */
 	sprintf (temp, "r2=%.3f&",dtemp);
 	}
     else {
-	r2 = sqrt (dra*dra + ddec*ddec) * 60.0;
+	ddra = dra * cos (degrad (cdec));
+	r2 = sqrt (ddra*ddra + ddec*ddec) * 60.0;
 	sprintf (temp, "r2=%.3f&",r2);
 	}
     strcat (srchurl, temp);
@@ -212,4 +213,6 @@ int	nlog;		/* 1 for diagnostics */
  * Dec  4 2003	Add proper motions for GSC 2.3
  * Dec 11 2003	Search to corners of rectangle, not to longest edge
  * Dec 12 2003	Fix call to tabcatopen()
+ *
+ * Oct 18 2004	Divide RA by cos(Dec) when computing radius for rect. input
  */

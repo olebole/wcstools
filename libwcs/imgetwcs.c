@@ -1,5 +1,5 @@
 /*** File libwcs/imgetwcs.c
- *** September 16, 2004
+ *** October 29, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2004
@@ -321,12 +321,20 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	dra1 = -(dra1 - 360.0);
 	dra2 = -(dra2 - 360.0);
 	}
+    if (dra1 < 0.0)
+	dra1 = -dra1;
+    if (dra2 < 0.0)
+	dra2 = -dra2;
     dra3 = *cra - ra3;
     dra4 = *cra - ra4;
     if (*cra > 0 && *cra - dra0 < 0.0) {
 	dra3 = -(dra3 - 360.0);
 	dra4 = -(dra4 - 360.0);
 	}
+    if (dra3 < 0.0)
+	dra3 = -dra3;
+    if (dra4 < 0.0)
+	dra4 = -dra4;
     *dra = dra1;
     if (dra2 > *dra)
 	*dra = dra2;
@@ -679,4 +687,5 @@ char *dateobs;
  *
  * Jul 26 2004	Fix image size when wrapping around RA=0:00
  * Sep 16 2004	Fix verbose mode search size in GetFITSWCS()
+ * Oct 29 2004	Fix problem setting RA size from limits
  */

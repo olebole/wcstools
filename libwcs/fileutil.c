@@ -1,8 +1,8 @@
 /*** File libwcs/fileutil.c
- *** July 17, 2003
+ *** September 29, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1999-2003
+ *** Copyright (C) 1999-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -42,6 +42,8 @@
  *		Return 1 if file is list of readable files, else 0
  * Subroutine:	isfile (filename)
  *		Return 1 if file is a readable file, else 0
+ * Subroutine:	first_token (diskfile, ncmax, token)
+ *		Return first token from the next line of an ASCII file
  * Subroutine:  stc2s (spchar, string)
  *		Replace character in string with space
  * Subroutine:  sts2c (spchar, string)
@@ -354,13 +356,6 @@ char	*token;			/* First token on next line (returned) */
 	return (0);
 }
 
-char *
-next_token ()
-
-{
-    return (token1);
-}
-
 
 /* Replace character in string with space */
 
@@ -422,4 +417,6 @@ char	*string;
  * Mar  5 2003	Add isimlistd() to check image lists with root directory
  * May 27 2003	Use file stat call in getfilesize() instead of opening file
  * Jul 17 2003	Add root directory argument to isfilelist()
+ *
+ * Sep 29 2004	Drop next_token() to avoid conflict with subroutine in catutil.c
  */
