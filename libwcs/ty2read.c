@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** April 10, 2002
+ *** October 3, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2000-2002
@@ -106,7 +106,7 @@ int	nlog;		/* 1 for diagnostics */
     int istar, istar1, istar2, isp;
     double num, ra, dec, rapm, decpm, mag, magb, magv;
     double rra1, rra2, rra2a, rdec1, rdec2;
-    char cstr[32];
+    char cstr[32], rastr[32], decstr[32];
     char *str;
 
     ntot = 0;
@@ -187,6 +187,30 @@ int	nlog;		/* 1 for diagnostics */
 	if (!wrap) wrap = 1;
 	}
 
+    /* Write header if printing star entries as found */
+    if (nstarmax < 1) {
+	printf ("catalog	Tycho-2\n");
+	ra2str (rastr, 31, cra, 3);
+	printf ("ra	%s\n", rastr);
+	dec2str (decstr, 31, cdec, 2);
+	printf ("dec	%s\n", decstr);
+	printf ("rpmunit	tsec/century\n");
+	printf ("dpmunit	arcsec/century\n");
+	if (drad != 0.0)
+	    printf ("radmin	%.1f\n", drad*60.0);
+	else {
+	    printf ("dramin	%.1f\n", dra*60.0* cosdeg (cdec));
+	    printf ("ddecmin	%.1f\n", ddec*60.0);
+	    }
+	printf ("radecsys	%s\n", cstr);
+	printf ("equinox	%.3f\n", eqout);
+	printf ("epoch	%.3f\n", epout);
+	printf ("tycho2_id	ra          	dec         	");
+	printf ("magb 	magv 	ura   	udec  	arcmin\n");
+	printf ("----------	------------	------------    ");
+	printf ("-----	-----	------	------	------\n");
+	}
+
     /* If searching through RA = 0:00, split search in two */
     for (iw = 0; iw <= wrap; iw++) {
 
@@ -255,6 +279,17 @@ int	nlog;		/* 1 for diagnostics */
 		    (!wrap && (ra >= ra1 && ra <= ra2))) &&
 		    ((drad > 0.0 && dist <= drad) ||
      		    (drad == 0.0 && dec >= dec1 && dec <= dec2))) {
+
+		/* Write star position and magnitudes to stdout */
+		    if (nstarmax < 1) {
+			ra2str (rastr, 31, ra, 3);
+			dec2str (decstr, 31, dec, 2);
+			dist = wcsdist (cra,cdec,ra,dec) * 60.0;
+			printf ("%010.5f	%s	%s", num,rastr,decstr);
+			printf ("	%5.2f	%5.2f	%6.3f	%6.2f	%.2f\n",
+				magb, magv, rapm*240000.0, decpm*3600000.0,
+				dist / 60.0);
+			}
 
 		    /* Save star position and magnitude in table */
 		    if (nstar < nstarmax) {
@@ -1022,4 +1057,5 @@ char	*filename;	/* Name of file for which to find size */
  * Apr  3 2002	Fix bug so magnitude filtering is actually done (all passed)
  * Apr  8 2002	Fix uninitialized variable
  * Apr 10 2002	Separate catalog and output sort mags (in:vb out: bv)
+ * Oct  3 2002	Print stars as found in ty2read() if nstarmax < 1
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** August 1, 2002
+ *** October 26, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2002
@@ -83,6 +83,10 @@
  *	approximate spectral type given B - V or B and V magnitudes
  * void br2sp (br, b, r, isp)
  *	approximate spectral type given B - R or B and R magnitudes
+ * void vothead (refcat, refcatname, mprop, typecol)
+ *	Print heading for VOTable format catalog search return
+ * void vottail ()
+ *	Print end of VOTable format catalog search return
  */
 
 #include <unistd.h>
@@ -2083,7 +2087,113 @@ FILE	*fd;		/* Output file descriptor; none if NULL */
 	if (fd != NULL)
 	    fprintf (fd, "%s\n", headline);
 	}
-    }
+}
+
+
+void
+vothead (refcat, refcatname, mprop, typecol, ns, cra, cdec, drad)
+
+int	refcat;		/* Catalog code */
+char	*refcatname;	/* Name of catalog */
+int	mprop;		/* Proper motion flag */
+int	typecol;	/* Flag for spectral type */
+int	ns;		/* Number of sources found in catalog */
+double	cra;		/* Search center right ascension */
+double	cdec;		/* Search center declination */
+double	drad;		/* Radius to search in degrees */
+
+{
+    char *catalog = CatName (refcat, refcatname);
+
+    printf ("<!DOCTYPE VOTABLE SYSTEM \"http://us-vo.org/xml/VOTable.dtd\">\n");
+    printf ("<VOTABLE version=\"v1.0\">\n");
+    printf (" <DESCRIPTION>SAO/TDC %s Cone Search Response</DESCRIPTION>\n", catalog);
+    printf ("  <DEFINITIONS>\n");
+    printf ("   <COOSYS  ID=\"J2000\" equinox=\"2000.0\" epoch=\"2000.0\" system=\"ICRS\" >\n");
+    printf ("  </COOSYS>\n");
+    printf ("  </DEFINITIONS>\n");
+    printf ("  <RESOURCE>\n");
+    printf ("   <TABLE>\n");
+    printf ("    <DESCRIPTION>\n");
+    printf ("     %d objects within %.6f degrees of ra=%010.6f dec=%09.6f\n",
+	    ns, drad, cra, cdec);
+    printf ("    </DESCRIPTION>\n");
+    printf ("<FIELD ucd=\"ID_MAIN\" datatype=\"char\" name=\"Catalog Name\">\n");
+    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
+	refcat == UAC  || refcat == UA1  || refcat == UA2)
+	printf ("  <DESCRIPTION>USNO Object Identifier</DESCRIPTION>\n");
+    else if (refcat == TYCHO2)
+	printf ("  <DESCRIPTION>Tycho-2 Object Identifier</DESCRIPTION>\n");
+    else if (refcat == GSC2)
+	printf ("  <DESCRIPTION>GSC II Object Identifier</DESCRIPTION>\n");
+    else if (refcat == GSC || refcat == GSCACT)
+	printf ("  <DESCRIPTION>GSC Object Identifier</DESCRIPTION>\n");
+    else if (refcat == SAO)
+	printf ("  <DESCRIPTION>SAO Catalog Number</DESCRIPTION>\n");
+    else if (refcat == PPM)
+	printf ("  <DESCRIPTION>PPM Catalog Number</DESCRIPTION>\n");
+    else
+	printf ("  <DESCRIPTION>Object Identifier</DESCRIPTION>\n");
+    printf ("</FIELD>\n");
+
+    printf ("<FIELD ucd=\"POS_EQ_RA_MAIN\" datatype=\"float\" name=\"RA\" unit=\"degrees\" ref=\"J2000\">\n");
+    printf ("  <DESCRIPTION>Right Ascension of Object (J2000)</DESCRIPTION>\n");
+    printf ("</FIELD>\n");
+
+    printf ("<FIELD ucd=\"POS_EQ_DEC_MAIN\" datatype=\"float\" name=\"DEC\" unit=\"degrees\" ref=\"J2000\">\n");
+    printf ("   <DESCRIPTION>Declination of Object (J2000)</DESCRIPTION>\n");
+    printf ("</FIELD>\n");
+
+    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
+	refcat == UAC  || refcat == UA1  || refcat == UA2) {
+	printf ("<FIELD ucd=\"PHOT_PHG_B\" datatype=\"float\" name=\"B Magnitude\" unit=\"mag\">\n");
+	printf ("  <DESCRIPTION>Photographic B Magnitude of Object</DESCRIPTION>\n");
+	printf ("</FIELD>\n");
+	printf ("<FIELD ucd=\"PHOT_PHG_R\" datatype=\"float\" name=\"R Magnitude\" unit=\"mag\">\n");
+	printf ("  <DESCRIPTION>Photographic R Magnitude of Object</DESCRIPTION>\n");
+	printf ("</FIELD>\n");
+	printf ("<FIELD ucd=\"INST_PLATE_NUMBER\" datatype=\"int\" name=\"PlateID\">\n");
+	printf ("  <DESCRIPTION>USNO Plate ID of star</DESCRIPTION>\n");
+	printf ("</FIELD>\n");
+	}
+    else if (refcat == TYCHO2) {
+	printf ("<FIELD name=\"BTmag\" ucd=\"PHOT_TYCHO_B\" datatype=\"float\" unit=\"mag\">\n");
+	printf ("  <DESCRIPTION> Tycho-2 BT magnitude </DESCRIPTION>\n");
+	printf ("</FIELD>\n");
+	printf ("<FIELD name=\"VTmag\" ucd=\"PHOT_TYCHO_V\" datatype=\"float\" unit=\"mag\">\n");
+	printf ("  <DESCRIPTION> Tycho-2 VT magnitude </DESCRIPTION>\n");
+	}
+    else if (refcat == GSC || refcat == GSCACT) {
+	}
+    else if (refcat == GSC2) {
+	}
+    else if (refcat == SAO) {
+	printf ("<FIELD name=\"Vmag\" ucd=\"PHOT_MAG_V\" datatype=\"float\" unit=\"mag\">\n");
+	printf ("  <DESCRIPTION> SAO Catalog V magnitude (7)</DESCRIPTION>\n");
+	} 
+    else if (refcat == PPM) {
+	printf ("<FIELD name=\"Vmag\" ucd=\"PHOT_MAG_V\" datatype=\"float\" unit=\"mag\">\n");
+	printf ("  <DESCRIPTION> PPM Catalog V magnitude (7)</DESCRIPTION>\n");
+	} 
+    if (typecol == 1) {
+	printf ("<FIELD ucd=\"SPECT_TYPE_GENERAL\" name=\"Spectral Type\">\n");
+	printf ("  <DESCRIPTION>Spectral Type from catalog</DESCRIPTION>\n");
+	}
+    printf ("<FIELD ucd=\"POS_ANG_DIST_GENERAL\" datatype=\"float\" name=\"Offset\" unit=\"degrees\">\n");
+    printf ("  <DESCRIPTION>Radial distance from requested position</DESCRIPTION>\n");
+    printf ("</FIELD>\n");
+    printf ("<DATA> <TABLEDATA>\n");
+}
+
+
+void
+vottail ()
+{
+    printf ("        </TABLEDATA> </DATA>\n");
+    printf ("      </TABLE>\n");
+    printf ("    </RESOURCE>\n");
+    printf ("</VOTABLE>\n");
+}
 
 /* Mar  2 1998	Make number and second magnitude optional
  * Oct 21 1998	Add RefCat() to set reference catalog code
@@ -2171,4 +2281,6 @@ FILE	*fd;		/* Output file descriptor; none if NULL */
  * May 13 2002	In agets(), allow arbitrary number of spaces around : or =
  * Jun 10 2002	In isrange(), return 0 if string is null or empty
  * Aug  1 2002	In agets(), read through / if reading to end of line
+ * Sep 18 2002	Add vothead() and vottail() for VOTable output from scat
+ * Oct 26 2002	Fix bugs in vothead()
  */

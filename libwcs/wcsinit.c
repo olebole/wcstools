@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** May 31, 2002
+ *** December 6, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2002
@@ -325,9 +325,9 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     wcs->radvel = 0.0;
     wcs->zvel = 0.0;
     cvel = 299792.5;
-    if (hgetr8c (hstring, "VSOURCE", &wcs->radvel))
+    if (hgetr8c (hstring, "VSOURCE", mchar, &wcs->radvel))
 	wcs->zvel = wcs->radvel / cvel;
-    else if (hgetr8c (hstring, "ZSOURCE", &wcs->zvel))
+    else if (hgetr8c (hstring, "ZSOURCE", mchar, &wcs->zvel))
 	wcs->radvel = wcs->zvel * cvel;
     else if (hgetr8 (hstring, "VELOCITY", &wcs->radvel))
 	wcs->zvel = wcs->radvel / cvel;
@@ -406,7 +406,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	hgetr8c (hstring, "LONPOLE", mchar, &wcs->longpole);
 	wcs->cel.ref[2] = wcs->longpole;
 	wcs->latpole = 999.0;
-	hgetr8 (hstring, "LATPOLE", mchar, &wcs->latpole);
+	hgetr8c (hstring, "LATPOLE", mchar, &wcs->latpole);
 	wcs->cel.ref[3] = wcs->latpole;
 	wcs->lin.crpix = wcs->crpix;
 	wcs->lin.cdelt = wcs->cdelt;
@@ -875,8 +875,8 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	wcsdeltset (wcs, cdelt1, cdelt2, rot);
 
 	/* By default, set reference pixel to center of image */
-	wcs->crpix[0] = wcs->nxpix * 0.5;
-	wcs->crpix[1] = wcs->nypix * 0.5;
+	wcs->crpix[0] = 1.0 + ((wcs->nxpix - 1.0) * 0.5);
+	wcs->crpix[1] = 1.0 + ((wcs->nypix - 1.0) * 0.5);
 
 	/* Get reference pixel from the header, if it's there */
 	if (ksearch (hstring,"CRPIX1") != NULL) {
@@ -1238,4 +1238,6 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * May 28 2002	Read 10 prj.p instead of maximum of 100
  * May 31 2002	Fix bugs with PV reading
  * May 31 2002	Initialize syswcs, sysin, sysout in wcsioset()
+ * Sep 25 2002	Fix subroutine calls for radvel and latpole
+ * Dec  6 2002	Correctly compute pixel at center of image for default CRPIX
  */

@@ -24,6 +24,7 @@ static void PrintValues();
 static char *strclean();
 static int maxncond = 100;
 
+
 static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;
 static int ndec = -9;

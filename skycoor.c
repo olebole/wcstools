@@ -1,5 +1,5 @@
 /* File skycoor.c
- * August 7, 2002
+ * November 15, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -265,7 +265,7 @@ char **av;
     	}
     }
 
-    if (ac > 1 || verbose)
+    if (verbose)
 
     while (ac-- > 0) {
 	listname = *av;
@@ -296,11 +296,19 @@ char **av;
 			    sys1 = WCS_J2000;
 			}
 		    
-		    skycons (rastr0,decstr0,sys0,rastr1,decstr1,sys1,lstr,ndec);
+		    if (strncmp (rastr0, "99", 2))
+			skycons (rastr0,decstr0,sys0,rastr1,decstr1,sys1,lstr,ndec);
+		    else {
+			strcpy (rastr1, rastr0);
+			strcpy (decstr1, decstr0);
+			}
 		    wcscstr (csys0, sys0, 0.0, 0.0);
 		    wcscstr (csys1, sys1, 0.0, 0.0);
 		    if (degout) {
-			ra = str2ra (rastr1);
+			if (strncmp (rastr0, "99", 2))
+			    ra = str2ra (rastr1);
+			else
+			    ra = 99.0 * 15.0;
 			dec = str2dec (decstr1);
 			deg2str (rastr1, 32, ra, 5);
 			deg2str (decstr1, 32, dec, 5);
@@ -543,4 +551,5 @@ char *errstring;
  *
  * Apr 23 2002	If verbose, print differences in RA and Dec for -r, too.
  * Aug  7 2002	If no i/o coordinate system set, assume in and out J2000
+ * Nov 15 2002	If ra is 99 in list file, pass it through unchanged
  */

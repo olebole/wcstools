@@ -1,5 +1,5 @@
 /* File sumpix.c
- * March 23, 2000
+ * December 6, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,8 +17,10 @@
 static void usage();
 static void SumPix ();
 
+
 static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;	/* If 1, print only program name and version */
+static int complim = 0;	/* If 1, compute limiting values over range */
 static int compsum = 0;	/* If 1, compute sum over range */
 static int compmean = 0;/* If 1, compute mean over range */
 static int compvar = 0;	/* If 1, compute variance over range */
@@ -57,6 +59,10 @@ char **av;
 
 		case 'd':	/* Compute standard deviation */
 		    compstd++;
+		    break;
+
+		case 'l':	/* Compute limits */
+		    complim++;
 		    break;
 
 		case 'm':	/* Compute mean */
@@ -99,8 +105,16 @@ char **av;
 
 	if (!compmean && !compvar && !compstd)
 	    compsum++;
-	if (fn && crange && rrange)
-            SumPix (fn, crange, rrange);
+	if (fn) {
+	    if (crange && rrange)
+		SumPix (fn, crange, rrange);
+	    else if (crange)
+		SumPix (fn, crange, "0");
+	    else if (rrange)
+		SumPix (fn, "0", rrange);
+	    else
+		SumPix (fn, "0", "0");
+	    }
         }
 
     return (0);
@@ -114,12 +128,14 @@ usage ()
     fprintf (stderr,"Sum row, column, or region of a FITS or IRAF image\n");
     fprintf(stderr,"Usage: sumpix [-dmrsv][-n num] x_range  y_range file.fit ...\n");
     fprintf(stderr,"  -d: compute and print standard deviation\n");
+    fprintf(stderr,"  -l: compute and print min and max values\n");
     fprintf(stderr,"  -m: compute and print mean\n");
     fprintf(stderr,"  -n: number of decimal places in output\n");
     fprintf(stderr,"  -r: compute and print variance (sum of squares)\n");
     fprintf(stderr,"  -s: compute and print sum (default)\n");
     fprintf(stderr,"  -v: verbose\n");
     fprintf(stderr,"  a range of 0 implies the full dimension\n");
+    fprintf(stderr,"  an absence of ranges uses the entire image\n");
     exit (1);
 }
 
@@ -144,7 +160,7 @@ char *rrange;	/* Row range string */
     int bitpix,xdim,ydim;
     int nx, ny, ix, iy, x, y;
     int np;
-    double dnp, mean, variance, std, sumsq;
+    double dnp, mean, variance, std, sumsq, dmin, dmax;
     char pixname[256];
     char numform[8];
     char numforme[8];
@@ -223,8 +239,51 @@ char *rrange;	/* Row range string */
     bscale = 1.0;
     hgetr8 (header,"BSCALE",&bscale);
 
+    /* Sum entire image */
+    if (!strcmp (crange, "0") && !strcmp (rrange, "0")) {
+	nx = xdim;
+	ny = ydim;
+	sum = 0.0;
+	sumsq = 0.0;
+	np = 0;
+	dmin = 1000000000000000.0;
+	dmax = -10000000000000000.0;
+	for (x = 0; x < nx; x++) {
+	    for (y = 0; y < ny; y++) {
+        	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
+		sum = sum + dpix;
+		sumsq = sumsq + (dpix * dpix);
+		if (dpix < dmin)
+		    dmin = dpix;
+		if (dpix > dmax)
+		    dmax = dpix;
+		np++;
+		}
+	    }
+	dnp = (double) np;
+	if (compsum)
+	    printf (numform, sum);
+	mean = sum / dnp;
+	if (compmean)
+	    printf (numform, mean);
+	variance = sumsq;
+	if (compvar)
+	    printf (numform, variance);
+	if (compstd) {
+	    std = sqrt ((sumsq / dnp) - (mean * mean));
+	    printf (numforme, std);
+	    }
+	if (complim) {
+	    printf (" ");
+	    printf (numform, dmin);
+	    printf ("- ");
+	    printf (numform, dmax);
+	    }
+	printf ("\n");
+	}
+
     /* Sum entire columns */
-    if (!strcmp (rrange, "0")) {
+    else if (!strcmp (rrange, "0")) {
 	xrange = RangeInit (crange, xdim);
 	nx = rgetn (xrange);
 	ny = ydim;
@@ -232,11 +291,17 @@ char *rrange;	/* Row range string */
 	    x = rgeti4 (xrange) - 1;
 	    sum = 0.0;
 	    sumsq = 0.0;
+	    dmin = 1000000000000000.0;
+	    dmax = -10000000000000000.0;
 	    np = 0;
 	    for (y = 0; y < ny; y++) {
         	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
 		sum = sum + dpix;
 		sumsq = sumsq + (dpix * dpix);
+		if (dpix < dmin)
+		    dmin = dpix;
+		if (dpix > dmax)
+		    dmax = dpix;
 		np++;
 		}
 	    dnp = (double) np;
@@ -251,6 +316,12 @@ char *rrange;	/* Row range string */
 	    if (compstd) {
 		std = sqrt ((sumsq / dnp) - (mean * mean));
 		printf (numforme, std);
+		}
+	    if (complim) {
+		printf (" ");
+		printf (numform, dmin);
+		printf ("- ");
+		printf (numform, dmax);
 		}
 	    printf ("\n");
 	    }
@@ -266,11 +337,17 @@ char *rrange;	/* Row range string */
 	    y = rgeti4 (yrange) - 1;
 	    sum = 0.0;
 	    sumsq = 0.0;
+	    dmin = 1000000000000000.0;
+	    dmax = -10000000000000000.0;
 	    np = 0;
 	    for (x = 0; x < nx; x++) {
         	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
 		sum = sum + dpix;
 		sumsq = sumsq + (dpix * dpix);
+		if (dpix < dmin)
+		    dmin = dpix;
+		if (dpix > dmax)
+		    dmax = dpix;
 		np++;
 		}
 	    dnp = (double) np;
@@ -286,6 +363,12 @@ char *rrange;	/* Row range string */
 		std = sqrt ((sumsq / dnp) - (mean * mean));
 		printf (numforme, std);
 		}
+	    if (complim) {
+		printf (" ");
+		printf (numform, dmin);
+		printf ("- ");
+		printf (numform, dmax);
+		}
 	    printf ("\n");
 	    }
 	free (yrange);
@@ -298,6 +381,8 @@ char *rrange;	/* Row range string */
 	sum = 0.0;
 	sumsq = 0.0;
 	np = 0;
+	dmin = 1000000000000000.0;
+	dmax = -10000000000000000.0;
 	for (iy = 0; iy < ny; iy++) {
 	    y = rgeti4 (yrange) - 1;
 	    xrange = RangeInit (crange, xdim);
@@ -307,6 +392,10 @@ char *rrange;	/* Row range string */
         	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
 		sum = sum + dpix;
 		sumsq = sumsq + (dpix * dpix);
+		if (dpix < dmin)
+		    dmin = dpix;
+		if (dpix > dmax)
+		    dmax = dpix;
 		np++;
 		if (verbose)
 		    printf ("%s[%d,%d] = %f\n",name,x,y,dpix);
@@ -325,6 +414,12 @@ char *rrange;	/* Row range string */
 	    std = sqrt ((sumsq / dnp) - (mean * mean));
 	    printf ("%f", std);
 	    }
+	if (complim) {
+	    printf (" ");
+	    printf (numform, dmin);
+	    printf ("- ");
+	    printf (numform, dmax);
+	    }
 	printf ("\n");
 	free (xrange);
 	free (yrange);
@@ -342,4 +437,7 @@ char *rrange;	/* Row range string */
  * Dec 14 1999	Change rms to variance
  *
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
+ *
+ * Dec  6 2002	Add option to sum over entire image if both ranges are 0
+ * Dec  6 2002	Add -l option to print range of values
  */

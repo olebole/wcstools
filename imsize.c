@@ -1,5 +1,5 @@
 /* File imsize.c
- * June 19, 2002
+ * October 3, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -27,6 +27,7 @@ static char coorsys[8];
 static double size = 0.0;
 static double frac = 0.0;
 
+
 static int verbose = 0;		/* verbose/debugging flag */
 static int dss = 0;		/* Flag to drop extra stuff for DSS */
 static int dssc = 0;		/* Flag to drop extra stuff for DSS */
@@ -53,14 +54,15 @@ char **av;
     char filename[128];
     FILE *flist;
     char *listfile;
-    int nfext, i, j;
+    int nfext=0;
+    int i, j;
     int nrmax=10;
     struct Range *erange;
-
 
     coorsys[0] = 0;
     extension = NULL;
     extensions = NULL;
+    erange = NULL;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -564,4 +566,5 @@ char *name;
  * Jun 18 2002	Make coorsys 8 instead of 4, fixing bug
  * Jun 18 2002	Use extn for image extension, ext for filename extension
  * Jun 19 2002	Add verbose argument to GetFITShead()
+ * Oct  3 2002	Initialize uninitialized switch nfext
  */

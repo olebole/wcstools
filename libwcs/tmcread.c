@@ -1,5 +1,5 @@
 /*** File libwcs/tmcread.c
- *** February 13, 2002
+ *** October 3, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2002
@@ -204,7 +204,6 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("radecsys	%s\n", cstr);
 	printf ("equinox	%.3f\n", eqout);
 	printf ("epoch	%.3f\n", epout);
-	printf ("program	stmc 2.9.4, 26 June 2001, Doug Mink SAO\n");
 	printf ("2mass_id  	ra          	dec         	");
 	printf ("magj  	magh  	magk  	arcmin\n");
 	printf ("----------	------------	------------	");
@@ -918,4 +917,5 @@ char	*filename;	/* Name of file for which to find size */
  * Dec  3 2001	Change default catalog directory to /data/astrocat/2MASS
  *
  * Feb 13 2002	Fix catalog name in web access
+ * Oct  3 2002	Use global variable for scat version
  */

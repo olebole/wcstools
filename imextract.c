@@ -20,6 +20,7 @@
 static void usage();
 static int ExtractImage();
 
+
 static int verbose = 0;		/* verbose flag */
 static int krename = 0;
 static char prefix[2];

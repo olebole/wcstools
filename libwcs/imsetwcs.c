@@ -1,5 +1,5 @@
 /*** File libwcs/imsetwcs.c
- *** August 2, 2002
+ *** September 4, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu (based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -192,7 +192,7 @@ int	verbose;
 	    }
 
 	if (nbin > 1)
-	    WCSMatch (nbin, &sx, &sy, &gra, &gdec, verbose);
+	    WCSMatch (nbin, sx, sy, gra, gdec, verbose);
 
 	/* Set WCS from image header and command line */
 	wcs = GetFITSWCS (filename,header,verbose,&cra,&cdec,&dra,&ddec,
@@ -664,7 +664,7 @@ match:
 			nmatch, nmax, refcatname, imcatname, niter);
 
 	/* Fit the matched catalog and image stars with a polynomial */
-	if (!iterate && !recenter && fitplate) {
+	if (!iterate && !recenter && fitplate && refcatname != NULL) {
 
 	    if (verbose)
 		fprintf (stderr,"Fitting matched stars with a polynomial\n");
@@ -1206,4 +1206,5 @@ setmagfit ()
  * Apr 10 2002	Allow sort/limit magnitude to be specified by letter as well as number
  * Jul 31 2002	Add iteration with increasing number of parameters to be fit
  * Aug  2 2002	Use WCSMatch() to set initial values for pre-matched stars
+ * Sep  4 2002	Don't iterate if there is no catalog
  */

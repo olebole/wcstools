@@ -33,8 +33,11 @@
  * ReadMatch (filename, sx, sy, gra, gdec, debug)
  *  Read in x, y, RA, and Dec of pre-match stars in image
  *
+ * WCSMatch (nmatch, sbx, sby, gbra, gbdec, debug)
+ *  Find shift, scale, and rotation of image stars to best-match reference stars
+ *
  * FitMatch (ns, sx, sy, ng, gra, gdec, gx, gy, tol, wcs, nfit, debug)
- *  Find shift, scale, and rotation of image stars to RA/Dec/X/Y matches
+ *  Fit shift, scale, and rotation of image stars to RA/Dec/X/Y matches
  *
  * wcs_amoeba (wcs0) Set up temp arrays and call multivariate solver
  * chisqr (v) Compute the chisqr of the vector v

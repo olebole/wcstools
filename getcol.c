@@ -18,6 +18,7 @@
 #define	MAX_NTOK	256
 #define MAXFILES	2000
 
+
 static void usage();
 static int ListFile();
 static int iscolop();

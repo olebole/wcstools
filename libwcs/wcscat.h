@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** August 6, 2002
+ *** October 30, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2002
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -214,6 +214,7 @@ struct StarCat {
     int entmag[10];	/* Entry numbers for up to 10 magnitudes */
     int entpeak;	/* Entry number for peak counts */
     int entepoch;	/* Entry number for epoch of observation */
+    int entdate;	/* Entry number for FITS-format date of observation */
     int entname;	/* Entry number for object name */
     int entadd;		/* Entry number for additional keyword */
     int entrpm;		/* Entry number for proper motion in right ascension */
@@ -235,6 +236,7 @@ struct StarCat {
     char keytype[16];	/* Entry name for spectral type */
     char keyrv[16];	/* Entry name for radial velocity */
     char keyadd[16];	/* Entry name for additional keyword */
+    char keyepoch[16];	/* Entry name for epoch */
 };
 
 /* Subroutines for reading headers of TDC binary and ASCII catalogs */
@@ -344,6 +346,10 @@ int getoken();		/* Get specified token from tokenized string */
 void polfit();		/* Fit polynomial coefficients */
 double polcomp();	/* Evaluate polynomial from polfit coefficients */
 
+/* Subroutines for VOTable output */
+void vothead();		/* Print heading for VOTable SCAT output */
+void vottail();		/* Terminate VOTable SCAT output */
+
 /* Sep 22 1998  New header file (star.h)
  * Oct 16 1998  Add more options for ASCII catalogs
  * Oct 20 1998  Add object name to binary files
@@ -431,4 +437,5 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * May  6 2002	Increase object name length from 31 to 79 characters
  * May 13 2002	Add NumNdec(), gsc2read(), and gsc2rnum()
  * Aug  6 2002	Make magnitude entries and positions vectors of 10
+ * Oct 30 2002	Add epoch keyword and FITS date to StarCat data structure
  */

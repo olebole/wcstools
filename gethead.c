@@ -30,6 +30,7 @@ extern char *GetFITShead();
 static char nextnsp();
 static int PrintValues();
 
+
 static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;
 static int ndec = -9;

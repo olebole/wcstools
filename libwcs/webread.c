@@ -1,5 +1,5 @@
 /*** File webread.c
- *** August 6, 2002
+ *** October 3, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -105,6 +105,9 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
     char cstr[32];
     double ra, dec;
     int nstar;
+
+    if (nstarmax < 1)
+	nlog = -1;
 
     /* Convert coordinate system to string */
     wcscstr (cstr, sysout, eqout, epout);
@@ -778,4 +781,5 @@ FileINetParse(file, port, adrinet)
  *
  * Apr  8 2002	Fix bug in ESO USNO-A2.0 server code
  * Aug  6 2002	Make starcat->entmag and starcat->keymag into vectors
+ * Oct  3 2002	If nstarmax is less than 1, print results from web directly
  */

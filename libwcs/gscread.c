@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** July 31, 2002
+ *** October 2, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -252,22 +252,21 @@ int	nlog;		/* 1 for diagnostics */
     /* Write header if printing star entries as found */
     if (nstarmax < 1) {
 	title = CatName (refcat, NULL);
-	printf ("catalog        %s\n", title);
+	printf ("catalog	%s\n", title);
 	free (title);
 	ra2str (rastr, 31, cra, 3);
-	printf ("ra     %s\n", rastr);
+	printf ("ra	%s\n", rastr);
 	dec2str (decstr, 31, cdec, 2);
-	printf ("dec    %s\n", decstr);
+	printf ("dec	%s\n", decstr);
 	if (drad != 0.0)
-	    printf ("radmin     %.1f\n", drad*60.0);
+	    printf ("radmin	%.1f\n", drad*60.0);
 	else {
-	    printf ("dramin     %.1f\n", dra*60.0* cosdeg (cdec));
-	    printf ("ddecmin    %.1f\n", ddec*60.0);
+	    printf ("dramin	%.1f\n", dra*60.0* cosdeg (cdec));
+	    printf ("ddecmin	%.1f\n", ddec*60.0);
 	    }
-	printf ("radecsys       %s\n", cstr);
-	printf ("equinox        %.3f\n", eqout);
-	printf ("epoch  %.3f\n", epout);
-	printf ("program        scat 2.9.4, 27 June 2001, Doug Mink SAO\n");
+	printf ("radecsys	%s\n", cstr);
+	printf ("equinox	%.3f\n", eqout);
+	printf ("epoch	%.3f\n", epout);
 	CatID (catid, refcat);
 	printf ("%s	ra          	dec         	", catid);
 	printf ("magv 	ulass	band	n	arcmin\n");
@@ -1143,5 +1142,6 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Nov 20 2001	Change cos(degrad)) to cosdeg()
  *
  * Mar 28 2002	Change pathnames to /data/astrocat
- * JUl 31 2002	Always check for GSCACT_PATH, not GSCA_PATH
+ * Jul 31 2002	Always check for GSCACT_PATH, not GSCA_PATH
+ * Oct  2 2002	Fix pass-through tab table header
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** August 6, 2002
+ *** October 30, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2002
@@ -43,6 +43,7 @@
 #include <sys/types.h>
 #include "wcs.h"
 #include "wcscat.h"
+#include "fitsfile.h"
 
 /* default pathname for catalog,  used if catalog file not found in current
    working directory, but overridden by WCS_CATDIR environment variable */
@@ -799,16 +800,16 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	header[lhead] = (char) 0;
 	}
 
+    /* Catalog positions are in radians */
+    if (strsrch (header, "/a") || strsrch (header, "/A"))
+	sc->inform = 'R';
+
     /* Catalog positions are in B1950 (FK4) coordinates */
     if (strsrch (header, "/b") || strsrch (header, "/B")) {
 	sc->coorsys = WCS_B1950;
 	sc->epoch = 1950.0;
 	sc->equinox = 1950.0;
 	}
-
-    /* Catalog positions are in radians */
-    if (strsrch (header, "/a") || strsrch (header, "/A"))
-	sc->inform = 'R';
 
     /* Catalog positions are in degrees */
     if (strsrch (header, "/d") || strsrch (header, "/D"))
@@ -822,7 +823,7 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	sc->equinox = 2000.0;
 	}
 
-    /* Catalog positions are in hhmmss.s ddmmss.s */
+    /* Catalog positions are in hh.mm and fractional degrees */
     if (strsrch (header, "/f") || strsrch (header, "/F"))
 	sc->inform = 'F';
 
@@ -891,6 +892,10 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     if (strsrch (header, "/t") || strsrch (header, "/T"))
 	sc->inform = 'T';
 
+    /* Catalog positions are in hhmmss.s ddmmss.s (UZC) */
+    if (strsrch (header, "/u") || strsrch (header, "/U"))
+	sc->inform = 'U';
+
     /* Radial velocity is included after magnitude(s) */
     if (strsrch (header, "/v") || strsrch (header, "/V")) {
 	sc->mprop = 2;
@@ -930,6 +935,11 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     if (sc->entrv > 0 && sc->nmag < 10) {
 	sc->nmag = sc->nmag + 1;
 	strcpy (sc->keymag[sc->nmag-1], "velocity");
+	}
+
+    if (sc->nepoch > 0 && sc->nmag < 10) {
+	sc->nmag = sc->nmag + 1;
+	strcpy (sc->keymag[sc->nmag-1], "epoch");
 	}
 
     /* Enumerate entries in ASCII catalog by counting newlines */
@@ -1131,7 +1141,7 @@ struct Star *st; /* Star data structure, updated on return */
 	}
 
     /* Translate single-token right ascension from hhmmss.ss */
-    else if (sc->inform == 'F') {
+    else if (sc->inform == 'U') {
 	dtemp = 0.0001 * atof (token);
 	sprintf (token, "%.6f", dtemp);
 	st->ra = ctg2ra (token);
@@ -1140,6 +1150,10 @@ struct Star *st; /* Star data structure, updated on return */
     /* Translate single-token right ascension as degrees */
     else if (sc->inform == 'D')
 	st->ra = atof (token);
+
+    /* Translate single-token right ascension as hh.mm */
+    else if (sc->inform == 'F')
+	st->ra = ctg2ra (token);
 
     /* Translate single-token right ascension as radians */
     else if (sc->inform == 'R')
@@ -1185,7 +1199,7 @@ struct Star *st; /* Star data structure, updated on return */
 	st->dec = atof (token);
 
     /* Translate single-token declination as degrees */
-    else if (sc->inform == 'D')
+    else if (sc->inform == 'D' || sc->inform == 'F')
 	st->dec = atof (token);
 
     /* Translate single-token declination as radians */
@@ -1193,7 +1207,7 @@ struct Star *st; /* Star data structure, updated on return */
 	st->dec = raddeg (atof (token));
 
     /* Translate single-token declination from ddmmss.ss */
-    else if (sc->inform == 'F') {
+    else if (sc->inform == 'U') {
 	dtemp = 0.0001 * atof (token);
 	sprintf (token, "%.6f", dtemp);
 	st->dec = ctg2dec (token);
@@ -1222,10 +1236,11 @@ struct Star *st; /* Star data structure, updated on return */
 	}
 
     /* Magnitude, if present */
+    nmag = sc->nmag;
     if (sc->nmag > 0 && sc->mprop == 2)
-	nmag = sc->nmag - 1;
-    else
-	nmag = sc->nmag;
+	nmag = nmag - 1;
+    if (sc->nmag > 0 && sc->nepoch)
+	nmag = nmag - 1;
     if (nmag > 0) {
 	for (imag = 0; imag < nmag; imag++) {
 	    ltok = nextoken (&tokens, token, MAX_LTOK);
@@ -1274,8 +1289,21 @@ struct Star *st; /* Star data structure, updated on return */
     /* Epoch, if present */
     if (sc->nepoch) {
 	ltok = nextoken (&tokens, token, MAX_LTOK);
-	ydate = atof (token);
-	st->epoch = dt2ep (ydate, 12.0);
+	if (strchr (token, '-') != NULL)
+	    st->epoch = fd2ep (token);
+	else {
+	    ydate = atof (token);
+	    if (ydate < 3000.0 && ydate > 0.0)
+		st->epoch = dt2ep (ydate, 12.0);
+	    else if (ydate < 100000.0)
+		st->epoch = mjd2ep (ydate);
+	    else
+		st->epoch = jd2ep (ydate);
+	    }
+	if (sc->entrv > 0)
+	    st->xmag[nmag+1] = st->epoch;
+	else
+	    st->xmag[nmag] = st->epoch;
 	}
 
     /* Object name */
@@ -1511,4 +1539,6 @@ char	*in;	/* Character string */
  * Mar 12 2002	Add /a flag for positions in radians
  * May  6 2002	Allow object names to be up to 79 characters
  * Aug  6 2002	Change keymag to avector of strings
+ * Oct 29 2002	Change UZC format to /u; add /f as fractional hours and degrees
+ * Oct 30 2002	Read epoch as MJD or ISO data+time as well as yyyy.ddmm for /y
  */

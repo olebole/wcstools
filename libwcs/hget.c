@@ -1480,6 +1480,9 @@ char *string;	/* Character string */
 }
 
 
+/* ISNUM-- Return 1 if string is an integer number, 2 if floating point, else 0
+ */
+
 int
 isnum (string)
 

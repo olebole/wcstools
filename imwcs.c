@@ -23,6 +23,7 @@ static int maxnfile = MAXFILES;
 static void PrintUsage();
 static void FitWCS();
 
+
 static int verbose = 0;		/* verbose/debugging flag */
 static int writeheader = 0;	/* write header fields; else read-only */
 static int overwrite = 0;	/* allow overwriting of input image file */
@@ -831,10 +832,6 @@ char	*name;		/* FITS or IRAF image filename */
     return;
 }
 
-
-char *
-{
-}
 /* Feb 16 1996	New program
  * Apr 15 1996	Move delWCSFITS to libwcs
  * Apr 24 1996	Add optional initial plate center on command line

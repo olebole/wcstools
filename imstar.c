@@ -23,6 +23,7 @@
 #define MAXFILES 1000
 static int maxnfile = MAXFILES;
 
+
 static int verbose = 0;		/* verbose flag */
 static int debug = 0;		/* debugging flag */
 static int version = 0;		/* If 1, print only program name and version */

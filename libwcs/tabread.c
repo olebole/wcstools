@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** August 6, 2002
+ *** October 30, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -57,6 +57,7 @@
 #include <sys/types.h>
 #include "wcs.h"
 #include "wcscat.h"
+#include "fitsfile.h"
 
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 
@@ -1015,11 +1016,29 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	strcpy (sc->keyrv, "rv");
     else if ((sc->entrv = tabcol (startab, "cz")))
 	strcpy (sc->keyrv, "cz");
-    if (sc->entrv > 0 && sc->nmag < 2) {
+    if (sc->entrv > 0 && sc->nmag < 10) {
 	strcpy (sc->keymag[sc->nmag], sc->keyrv);
 	sc->entmag[sc->nmag] = sc->entrv;
 	sc->nmag++;
 	}
+
+    /* Find column for epoch */
+    sc->entepoch = 0;
+    sc->keyepoch[0] = (char) 0;
+    if ((sc->entepoch = tabcol (startab, "epoch")))
+	strcpy (sc->keyepoch, "epoch");
+    else if ((sc->entepoch = tabcol (startab, "ep")))
+	strcpy (sc->keyepoch, "ep");
+    if (sc->entepoch > 0 && sc->nmag < 10) {
+	strcpy (sc->keymag[sc->nmag], sc->keyepoch);
+	sc->entmag[sc->nmag] = sc->entepoch;
+	sc->nmag++;
+	sc->nepoch = 1;
+	}
+
+    /* Find column for date (in FITS format as epoch alternate) */
+    sc->entdate = 0;
+    sc->entdate = tabcol (startab, "date");
 
     /* Find column and name of object peak or plate number */
     sc->entpeak = -1;
@@ -1196,6 +1215,8 @@ int	verbose;	/* 1 to print error messages */
     char *line;
     char *uscore;
     char cnum[32];
+    char temp[32];
+    double ydate;
     char *cn;
     int ndec, i, imag;
     int lnum, ireg, inum;
@@ -1332,6 +1353,33 @@ int	verbose;	/* 1 to print error messages */
     else
 	st->radvel = 0.0;
 
+    /* Epoch */
+    if (sc->entepoch) {
+	tabgetc (&startok, sc->entepoch, temp, 10);
+	if (temp[0] == '_') {
+	    if (sc->entdate > 0) {
+		tabgetc (&startok, sc->entdate, temp, 10);
+		st->epoch = fd2ep (temp);
+		}
+	    else
+		st->epoch = sc->epoch;
+	    }
+	else if (strchr (temp, '-') != NULL)
+	    st->epoch = fd2ep (temp);
+	else {
+	    ydate = tabgetr8 (&startok, sc->entepoch);
+	    if (ydate < 3000.0 && ydate > 0.0)
+		st->epoch = dt2ep (ydate, 12.0);
+	    else if (ydate < 100000.0)
+		st->epoch = mjd2ep (ydate);
+	    else
+		st->epoch = jd2ep (ydate);
+	    }
+	st->xmag[sc->nmag-1] = st->epoch;
+	}
+    else
+	st->epoch = sc->epoch;
+
     /* Peak counts */
     if (sc->entpeak > 0)
 	st->peak = tabgeti4 (&startok, sc->entpeak);
@@ -1350,7 +1398,6 @@ int	verbose;	/* 1 to print error messages */
 
     st->coorsys = sc->coorsys;
     st->equinox = sc->equinox;
-    st->epoch = sc->epoch;
     return (0);
 }
 
@@ -2207,4 +2254,5 @@ char    *filename;      /* Name of file to check */
  * Aug  5 2002	Add magu, magb, magv for UBV magnitudes
  * Aug  6 2002	Pass through magnitude keywords
  * Aug  6 2002	Return initial string if token not found by tabgetc()
+ * Oct 30 2002	Add code to pass epoch as a final magnitude (but not RV, yet)
  */

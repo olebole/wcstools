@@ -1,5 +1,5 @@
 /* File setpix.c
- * April 9, 2002
+ * December 5, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -28,6 +28,7 @@ static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
 static int eachpix = 0;		/* If 1, print each pixel change */
 static int version = 0;		/* If 1, print only program name and version */
+static int logrange = 1;	/* Log pixel change in image header */
 static char *pform = NULL;	/* Format in which to print pixels */
 
 
@@ -37,19 +38,22 @@ char **av;
 {
     char *str;
     char *fn[500];
-    char *crange[500], *rrange[500];
-    char *value[500];
+    char **crange, **rrange, **value, **rtemp;
+    char cr[64], rr[64], vr[64];
     char *listfile = NULL;
     char nextline[128];
     FILE *flist;
+    int j;
     int i = 0;
     int iv = 0;
+    int nrange, nrange0;
     int op;
 
     fn[0] = NULL;
-    value[0] = NULL;
-    rrange[0] = NULL;
-    crange[0] = NULL;
+    nrange = 500;
+    crange = (char **) calloc (nrange, sizeof (char *));
+    rrange = (char **) calloc (nrange, sizeof (char *));
+    value  = (char **) calloc (nrange, sizeof (char *));
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -106,12 +110,36 @@ char **av;
 		usage ();
 		}
 	    while (fgets (nextline, 64, flist) != NULL) { 
-		crange[iv] = (char *) malloc (16);
-		rrange[iv] = (char *) malloc (16);
-		value[iv] = (char *) malloc (16);
-		sscanf (nextline, "%s %s %s",
-			crange[iv], rrange[iv], value[iv]);
+		sscanf (nextline, "%s %s %s", cr, rr, vr);
+		crange[iv] = (char *) malloc (strlen (cr) + 2);
+		rrange[iv] = (char *) malloc (strlen (rr) + 2);
+		value[iv] = (char *) malloc (strlen (vr) + 2);
+		strcpy (crange[iv], cr);
+		strcpy (rrange[iv], rr);
+		strcpy (value[iv], vr);
+		/* if (verbose)
+		    printf ("%4d: %s %s %s\n",
+			    iv, crange[iv], rrange[iv], value[iv]); */
 		iv++;
+		if (iv >= nrange) {
+		    nrange0 = nrange;
+		    nrange = nrange + 500;
+		    rtemp = (char **) calloc (nrange, sizeof (char **));
+		    for (j = 0; j < nrange0; j++)
+			rtemp[j] = rrange[j];
+		    free (rrange);
+		    rrange = rtemp;
+		    rtemp = (char **) calloc (nrange, sizeof (char **));
+		    for (j = 0; j < nrange0; j++)
+			rtemp[j] = crange[j];
+		    free (crange);
+		    crange = rtemp;
+		    rtemp = (char **) calloc (nrange, sizeof (char **));
+		    for (j = 0; j < nrange0; j++)
+			rtemp[j] = value[j];
+		    free (value);
+		    value = rtemp;
+		    }
 		rrange[iv] = NULL;
 		crange[iv] = NULL;
 		value[iv] = NULL;
@@ -127,6 +155,25 @@ char **av;
 	    else if (isnum (str)) {
 		value[iv] = str;
 		iv++;
+		if (iv >= nrange) {
+		    nrange0 = nrange;
+		    nrange = nrange + 500;
+		    rtemp = (char **) calloc (nrange, sizeof (char **));
+		    for (j = 0; j < nrange0; i++)
+			rtemp[j] = rrange[j];
+		    free (rrange);
+		    rrange = rtemp;
+		    rtemp = (char **) calloc (nrange, sizeof (char **));
+		    for (j = 0; j < nrange0; i++)
+			rtemp[j] = crange[j];
+		    free (crange);
+		    crange = rtemp;
+		    rtemp = (char **) calloc (nrange, sizeof (char **));
+		    for (j = 0; j < nrange0; i++)
+			rtemp[j] = value[j];
+		    free (value);
+		    value = rtemp;
+		    }
 		rrange[iv] = NULL;
 		crange[iv] = NULL;
 		value[iv] = NULL;
@@ -141,6 +188,10 @@ char **av;
 
     if (i == 0 || iv == 0)
 	usage();
+
+    /* If number of ranges being set is more than 10 do not login header */
+    if (iv > 10)
+	logrange = 0;
 
     /* Loop through pixel changes for each image */
     i = 0;
@@ -508,12 +559,14 @@ char	**value;	/* value to insert into pixel */
 	    free (xrange);
 	    free (yrange);
 	    }
-	if (hputc (header,"HISTORY",history)) {
-	    lhead = gethlength (header);
-	    lhead = lhead + 14400;
-	    if ((header = (char *) realloc (header, (unsigned int) lhead)) != NULL) {
-		hlength (header, lhead);
-		hputc (header,"HISTORY",history);
+	if (logrange) {
+	    if (hputc (header,"HISTORY",history)) {
+		lhead = gethlength (header);
+		lhead = lhead + 14400;
+		if ((header = (char *) realloc (header, (unsigned int) lhead)) != NULL) {
+		    hlength (header, lhead);
+		    hputc (header,"HISTORY",history);
+		    }
 		}
 	    }
 	if (verbose)
@@ -624,4 +677,6 @@ char	**value;	/* value to insert into pixel */
  * Jun 21 2000	Add options to operate on existing image
  *
  * Apr  9 2002	Do not free unallocated header
+ * Dec  5 2002	Allocate ranges so number of them can be infinite
+ * Dec  5 2002	Drop header HISTORY if more than 10 ranges of pixels set
  */

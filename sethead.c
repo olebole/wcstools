@@ -1,5 +1,5 @@
 /* File sethead.c
- * April 2, 2002
+ * November 7, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -54,6 +54,7 @@ char **av;
     char *ilistfile;
     char *klistfile;
     int ikwd, i, nc;
+    int newimage1;
     char *dq, *sq, *sl;
     char lf = (char) 10;
     char cr = (char) 13;
@@ -277,10 +278,28 @@ char **av;
     for (ifile = 0; ifile < nfile; ifile++) {
 	if (ilistfile != NULL) {
 	    first_token (flist, 254, filename);
+
+	    /* If multispec, always write a new image */
+	    newimage1 = newimage0;
+	    if (strchr (filename, ',') || strchr (filename, '[')) {
+		newimage1 = newimage0;
+		newimage0 = 1;
+		}
+
 	    SetValues (filename, nkwd, kwd, comment);
+	    newimage0 = newimage1;
 	    }
 	else
+
+	    /* If multispec, always write a new image */
+	    newimage1 = newimage0;
+	    if (strchr (fn[ifile], ',') || strchr (fn[ifile], '[')) {
+		newimage1 = newimage0;
+		newimage0 = 1;
+		}
+
 	    SetValues (fn[ifile], nkwd, kwd, comment);
+	    newimage0 = newimage1;
 	}
     if (ilistfile != NULL)
 	fclose (flist);
@@ -828,4 +847,5 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Jan  4 2002	Allow stdin to be keyword input file if image file is set
  * Jan  9 2002	Add -s command to replace char with space in input value strings
  * Feb  5 2002	Add -l command to log files as they are processed
+ * Nov  7 2002	If writing to a multiextension FITS file, write a new file
  */

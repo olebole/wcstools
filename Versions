@@ -1,3 +1,20 @@
+Version 3.2.0 (December 6, 2002)
+getfits: New program to extract part of a FITS image preserving WCS
+getdate: Add sidereal time conversion; fix bug in -now option
+imsize: Fix bug which caused segv crash on Linux and OS/X
+scat: Add VOTable output option (sr=degrees over web or -tt)
+scat: Fix several minor bugs dealing with returned star counts and formats
+scat: Add -n -1 option to ACT and Tycho-2 catalogs
+scat: Add filtering by epoch of entry using -y y1,y2 option
+sethead: Never overwrite a multiextension FITS file
+setpix: Rewrite code so arbitrary number of ranges of pixels can be set
+sumpix: Add -l option to print range and allow summing over entire image
+catutil.c: Add VOTable header and trailer subroutines vothead() and vottail()
+dateutil.c: Add sidereal time conversion
+wcsinit.c: Fix subroutine calls for radial velocity and pole latitude
+wcsinit.c: Fix computation of center pixel in image for default ref.  pixel
+ctgread.c: Change UZC format from /f to /u; add /f for fractional hrs and deg
+
 Version 3.1.3 (August 30, 2002)
 scat: Fix bug which broke USNO-A catalog reading by number; fix UJC mag. bug.
 scat and imcat: Print all available magnitudes in BINARY, ASCII and TABTABLE

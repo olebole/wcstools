@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** April 8, 2002
+ *** October 2, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1999-2002
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -100,7 +100,7 @@ int	nlog;		/* 1 for diagnostics */
     double num, ra, dec, rapm, decpm, mag, magb, magv;
     double rra1, rra2, rra2a, rdec1, rdec2;
     char *str;
-    char cstr[32];
+    char cstr[32], decstr[32], rastr[32];
     int nbytes;
 
     ntot = 0;
@@ -185,6 +185,30 @@ int	nlog;		/* 1 for diagnostics */
 	}
     nrmax = 100;
 
+    /* Write header if printing star entries as found */
+    if (nstarmax < 1) {
+	printf ("catalog	ACT\n");
+	ra2str (rastr, 31, cra, 3);
+	printf ("ra	%s\n", rastr);
+	dec2str (decstr, 31, cdec, 2);
+	printf ("dec	%s\n", decstr);
+	printf ("rpmunit	tsec/century\n");
+	printf ("dpmunit	arcsec/century\n");
+	if (drad != 0.0)
+	    printf ("radmin	%.1f\n", drad*60.0);
+	else {
+	    printf ("dramin	%.1f\n", dra*60.0* cosdeg (cdec));
+	    printf ("ddecmin	%.1f\n", ddec*60.0);
+	    }
+	printf ("radecsys	%s\n", cstr);
+	printf ("equinox	%.3f\n", eqout);
+	printf ("epoch	%.3f\n", epout);
+	printf ("act_id    	ra          	dec         	");
+	printf ("magb 	magv 	ura   	udec  	arcmin\n");
+	printf ("----------	------------	------------    ");
+	printf ("-----	-----	------	------	------\n");
+	}
+
     /* If searching through RA = 0:00, split search in two */
     for (iw = 0; iw <= wrap; iw++) {
 
@@ -247,6 +271,17 @@ int	nlog;		/* 1 for diagnostics */
 		    (!wrap && (ra >= ra1 && ra <= ra2))) &&
 		    ((drad > 0.0 && dist <= drad) ||
      		    (drad == 0.0 && dec >= dec1 && dec <= dec2))) {
+
+		    /* Write star position and magnitudes to stdout */
+		    if (nstarmax < 1) {
+			ra2str (rastr, 31, ra, 3);
+			dec2str (decstr, 31, dec, 2);
+			dist = wcsdist (cra,cdec,ra,dec) * 60.0;
+			printf ("%010.5f	%s	%s", num,rastr,decstr);
+			printf ("	%.2f	%.2f	%7.3f	%6.2f	%.2f\n",
+				magb, magv, gpra[nstar], gpdec[nstar],
+				dist / 60.0);
+			}
 
 		    /* Save star position and magnitude in table */
 		    if (nstar < nstarmax) {
@@ -885,4 +920,5 @@ char	*filename;	/* Name of file for which to find size */
  * Sep 11 2001	Add sort magnitude argument to actread()
  *
  * Apr  8 2002	Fix extraneous declaration of actsize()
+ * Oct  2 2002	Print stars as found in actread() if nstarmax < 1
  */

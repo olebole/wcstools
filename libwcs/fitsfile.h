@@ -1,5 +1,5 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** August 30, 2002
+ *** October 21, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -49,6 +49,7 @@ struct Keyword {
 extern int fitsropen();
 extern char *fitsrhead();
 extern char *fitsrimage();
+extern char *fitsrsect();
 extern int fitswhead();
 extern int fitswext();
 extern int fitswhdu();
@@ -219,7 +220,16 @@ double jd2jed(); /* Convert from Julian Date to Julian Ephemeris Date */
 double jed2jd(); /* Convert from Julian Ephemeris Date to Julian Date */
 double ets2ts(); /* ET in seconds since 1950-01-01 to UT in same format */
 double ts2ets(); /* UT in seconds since 1950-01-01 to ET in same format */
+void dt2et();	/* yyyy.ddmm and hh.mmsss to Ephemeris Time */ 
+void edt2dt(); /* yyyy.ddmm and hh.mmsss Ephemeris Time to UT */ 
 double utdt();	/* Compute difference between UT and dynamical time (ET-UT) */
+char *fd2gst();	/* Convert from FITS UT date to Greenwich Sidereal Time */
+void dt2gst();	/* Convert from UT as yyyy.mmdd hh.mmssss to Greenwich Sidereal Time */
+double ts2gst(); /* Calculate Greenwich Sidereal Time given Universal Time */
+char *fd2mst();	/* Convert from FITS UT date to Mean Sidereal Time */
+void dt2mst();	/* Convert from UT as yyyy.mmdd hh.mmssss to Mean Sidereal Time */
+double ts2mst(); /* Calculate Mean Sidereal Time given Universal Time */
+void compnut();	/* Compute nutation in longitude and obliquity and mean obliquity*/
 
 #endif /* fitsfile_h_ */
 
@@ -261,4 +271,6 @@ double utdt();	/* Compute difference between UT and dynamical time (ET-UT) */
  * Apr  8 2002	Change all long declarations to time_t for compatibility
  * Jun 18 2002	Add fitserr() to print error messages
  * Aug 30 2002	Add Ephemeris Time date conversions
+ * Sep 10 2002	Add Sidereal Time conversions
+ * Oct 21 2002	Add fitsrsect() to read sections of FITS images
  */

@@ -23,6 +23,7 @@ static void MatchCat();
 #define MAXFILES 1000
 static int maxnfile = MAXFILES;
 
+
 static int verbose = 0;		/* verbose/debugging flag */
 static int rot = 0;
 static int mirror = 0;
@@ -560,10 +561,6 @@ char	*name;			/* Name of FITS or IRAF image file */
     return;
 }
 
-
-char *
-{
-}
 /* Nov  6 1997	New program based on IMWCS
  * Nov 17 1997	Add optional second magnitude limit
  * Dec  8 1997	Fix bug in setting nominal WCS

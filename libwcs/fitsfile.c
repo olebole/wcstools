@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** June 18, 2002
+ *** October 21, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -32,6 +32,8 @@
  *		Open a FITS file for reading, returning a FILE pointer
  * Subroutine:	fitsrhead (filename, lhead, nbhead)
  *		Read FITS header and return it
+ * Subroutine:	fitsrsect (filename, nbhead, header, fd, x0, y0, nx, ny)
+ *		Read section of a FITS image, having already ready the header
  * Subroutine:	fitsrimage (filename, nbhead, header)
  *		Read FITS image, having already ready the header
  * Subroutine:	fitsrtopen (inpath, nk, kw, nrows, nchar, nbhead)
@@ -394,6 +396,144 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 }
 
 
+/* FITSRSECT -- Read a piece of a FITS image, having already read the header */
+
+char *
+fitsrsect (filename, header, nbhead, x0, y0, nx, ny, nlog)
+
+char	*filename;	/* Name of FITS image file */
+char	*header;	/* FITS header for image (previously read) */
+int	nbhead;		/* Actual length of image header(s) in bytes */
+int	x0, y0;		/* FITS image coordinate of first pixel */
+int	nx;		/* Number of columns to read (less than NAXIS1) */
+int	ny;		/* Number of rows to read (less than NAXIS2) */
+int	nlog;		/* Note progress mod this rows */
+{
+    int fd;		/* File descriptor */
+    int nbimage, naxis1, naxis2, bytepix, nbread;
+    int bitpix, naxis, nblocks, nbytes, nbleft, nbr;
+    int x1, y1, nbline, impos, nblin, nyleft;
+    char *image, *imline, *imlast;
+    int ilog = 0;
+    int row;
+
+    /* Open the image file and read the header */
+    if (strncasecmp (filename,"stdin", 5)) {
+	fd = -1;
+
+	fd = fitsropen (filename);
+	if (fd < 0) {
+	    snprintf (fitserrmsg,79, "FITSRSECT:  cannot read file %s\n", filename);
+	    return (NULL);
+	    }
+
+	/* Skip over FITS header and whatever else needs to be skipped */
+	if (lseek (fd, nbhead, SEEK_SET) < 0) {
+	    (void)close (fd);
+	    snprintf (fitserrmsg,79, "FITSRSECT:  cannot skip header of file %s\n",
+		     filename);
+	    return (NULL);
+	    }
+	}
+#ifndef VMS
+    else
+	fd = STDIN_FILENO;
+#endif
+
+    /* Compute size of image in bytes using relevant header parameters */
+    naxis = 1;
+    hgeti4 (header,"NAXIS",&naxis);
+    naxis1 = 1;
+    hgeti4 (header,"NAXIS1",&naxis1);
+    naxis2 = 1;
+    hgeti4 (header,"NAXIS2",&naxis2);
+    bitpix = 0;
+    hgeti4 (header,"BITPIX",&bitpix);
+    if (bitpix == 0) {
+	/* snprintf (fitserrmsg,79, "FITSRSECT:  BITPIX is 0; image not read\n"); */
+	close (fd);
+	return (NULL);
+	}
+    bytepix = bitpix / 8;
+    if (bytepix < 0) bytepix = -bytepix;
+
+    /* Keep X coordinates within image limits */
+    if (x0 < 1)
+	x0 = 1;
+    else if (x0 > naxis1)
+	x0 = naxis1;
+    x1 = x0 + nx - 1;
+    if (x1 < 1)
+	x1 = 1;
+    else if (x1 > naxis1)
+	x1 = naxis1;
+    nx = x1 - x0 + 1;
+
+    /* Keep Y coordinates within image limits */
+    if (y0 < 1)
+	y0 = 1;
+    else if (y0 > naxis2)
+	y0 = naxis2;
+    y1 = y0 + ny - 1;
+    if (y1 < 1)
+	y1 = 1;
+    else if (y1 > naxis2)
+	y1 = naxis2;
+    ny = y1 - y0 + 1;
+
+    /* Number of bytes in output image */
+    nbline = nx * bytepix;
+    nbimage = nbline * ny;
+
+    /* Set number of bytes to integral number of 2880-byte blocks */
+    nblocks = nbimage / FITSBLOCK;
+    if (nblocks * FITSBLOCK < nbimage)
+	nblocks = nblocks + 1;
+    nbytes = nblocks * FITSBLOCK;
+
+    /* Allocate image section to be read */
+    image = (char *) malloc (nbytes);
+    nyleft = ny;
+    imline = image;
+    nbr = 0;
+
+    /* Computer pointer to first byte of input image to read */
+    nblin = naxis1 * bytepix;
+    impos = nbhead + ((y0 - 1) * nblin) + ((x0 - 1) * bytepix);
+    row = y0 - 1;
+
+    /* Read image section one line at a time */
+    while (nyleft-- > 0) {
+	if (lseek (fd, impos, SEEK_SET) >= 0) {
+	    nbread = read (fd, imline, nbline);
+	    nbr = nbr + nbread;
+	    impos = impos + nblin;
+	    imline = imline + nbline;
+	    row++;
+	    if (++ilog == nlog) {
+		ilog = 0;
+		fprintf (stderr, "Row %5d extracted   ", row);
+                (void) putc (13,stderr);
+		}
+	    }
+	}
+    if (nlog)
+	fprintf (stderr, "\n");
+
+    /* Fill rest of image with zeroes */
+    imline = image + nbimage;
+    imlast = image + nbytes;
+    while (imline++ < imlast)
+	*imline = (char) 0;
+
+    /* Byte-reverse image, if necessary */
+    if (imswapped ())
+	imswap (bitpix, image, nbytes);
+
+    return (image);
+}
+
+
 /* FITSRIMAGE -- Read a FITS image */
 
 char *
@@ -402,7 +542,6 @@ fitsrimage (filename, nbhead, header)
 char	*filename;	/* Name of FITS image file */
 int	nbhead;		/* Actual length of image header(s) in bytes */
 char	*header;	/* FITS header for image (previously read) */
-
 {
     int fd;
     int nbimage, naxis1, naxis2, bytepix, nbread;
@@ -1479,4 +1618,5 @@ fitserr ()
  *
  * Jan 28 2002	In fitsrhead(), allow stdin to include extension and/or WCS selection
  * Jun 18 2002	Save error messages as fitserrmsg and use fitserr() to print them
+ * Oct 21 2002	Add fitsrsect() to read a section of an image
  */

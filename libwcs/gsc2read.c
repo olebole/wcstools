@@ -97,6 +97,9 @@ int	nlog;		/* 1 for diagnostics */
     char *str;
     char *eod;
 
+    if (nstarmax < 1)
+	nlog = -1;
+
     gpra = NULL;
     gpdec = NULL;
     ntot = 0;
@@ -232,4 +235,5 @@ int	nlog;		/* 1 for diagnostics */
  * Sep 20 2001	Make argument starcat, not *starcat in tabcatclose()
  *
  * Apr  8 2002	Fix bugs in null subroutine gsc2rnum()
+ * Oct  3 2002	If nstarmax is less than 1, print everything returned
  */

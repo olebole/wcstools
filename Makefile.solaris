@@ -11,7 +11,7 @@ BIN = bin
 
 all:	cphead delwcs delhead edhead fixpix gethead i2f imcat imhead immatch \
 	imrot imsize imstar imwcs scat sethead addpix getpix setpix sky2xy \
-	keyhead skycoor subpix xy2sky wcshead conpix gettab newfits \
+	keyhead skycoor subpix xy2sky wcshead conpix gettab newfits getfits \
 	imstack imextract sumpix remap getcol getdate fileroot filename filext
 
 addpix: addpix.c $(LIBWCS) libwcs/fitsfile.h
@@ -58,6 +58,9 @@ getdate: getdate.c $(LIBWCS) libwcs/wcscat.h
 
 gethead: gethead.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/gethead gethead.c $(CATLIBS)
+
+getfits: getfits.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
+	$(CC) $(CFLAGS) -o $(BIN)/getfits getfits.c $(LIBS)
 
 getpix: getpix.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/getpix getpix.c $(CATLIBS)

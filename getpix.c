@@ -1,5 +1,5 @@
 /* File getpix.c
- * June 3, 2002
+ * October 30, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,11 +11,13 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
+#include "libwcs/wcs.h"
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcscat.h"
 
 static void usage();
 static void PrintPix ();
+
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;		/* If 1, print only program name and version */
@@ -27,6 +29,13 @@ static int ltcheck = 0;		/* If 1, list pixels less than ltval */
 static nopunct=0;		/* If 1, print output with no punctuation */
 static double gtval = 0.0;
 static double ltval = 0.0;
+static double ra0 = -99.0;	/* Initial center RA in degrees */
+static double dec0 = -99.0;	/* Initial center Dec in degrees */
+static double rad0 = 0.0;	/* Search box radius */
+static double dra0 = 0.0;	/* Search box width */
+static double ddec0 = 0.0;	/* Search box height */
+static double eqcoor = 2000.0;  /* Equinox of search center */
+static int syscoor = 0;         /* Input search coordinate system */
 
 main (ac, av)
 int ac;
@@ -36,6 +45,8 @@ char **av;
     char *fn;
     char *rrange;       /* Row range string */
     char *crange;       /* Column range string */
+    char *rstr, *dstr, *cstr, *ccom;
+    int systemp;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -96,6 +107,32 @@ char **av;
 		    pixlabel++;
 		    break;
 
+		case 'r':	/* Box radius in arcseconds */
+		    if (ac < 2)
+    			usage ();
+		    av++;
+		    if ((dstr = strchr (*av, ',')) != NULL) {
+			*dstr = (char) 0;
+			dstr++;
+			}
+		    if (strchr (*av,':'))
+			rad0 = 3600.0 * str2dec (*av);
+		    else
+			rad0 = atof (*av);
+		    if (dstr != NULL) {
+			dra0 = rad0;
+			rad0 = 0.0;
+			if (strchr (dstr, ':'))
+			    ddec0 = 3600.0 * str2dec (dstr);
+			else
+			    ddec0 = atof (dstr);
+			if (ddec0 <= 0.0)
+			    ddec0 = dra0;
+			/* rad0 = sqrt (dra0*dra0 + ddec0*ddec0); */
+			}
+    		    ac--;
+    		    break;
+
 		case 's':	/* Print x y value without punctuation */
 		    nopunct++;
 		    break;
@@ -103,6 +140,51 @@ char **av;
 		default:
 		    usage();
 		    break;
+		}
+	    }
+
+	/* Set search RA, Dec, and equinox if colon in argument */
+	else if (strsrch (*av,":") != NULL) {
+	    if (ac < 2)
+		usage ();
+	    else {
+		strcpy (rstr, *av);
+		ac--;
+		strcpy (dstr, *++av);
+		ra0 = str2ra (rstr);
+		dec0 = str2dec (dstr);
+		ac--;
+		if (ac < 1) {
+		    syscoor = WCS_J2000;
+		    eqcoor = 2000.0;
+		    }
+		else if ((syscoor = wcscsys (*(av+1))) >= 0)
+		    eqcoor = wcsceq (*++av);
+		else {
+		    syscoor = WCS_J2000;
+		    eqcoor = 2000.0;
+		    }
+		}
+	    }
+
+	/* Center coordinates in degrees */
+	else if (isnum (str) == 2 && ac > 1 && isnum (*(av+1)) == 2) {
+	    rstr = *av++;
+	    ac--;
+	    dstr = *av++;
+	    ac--;
+	    ra0 = atof (rstr);
+	    dec0 = atof (dstr);
+	    if (ac > 0 && (systemp = wcscsys (*av)) > 0) {
+		cstr = *av++;
+		syscoor = systemp;
+		eqcoor = wcsceq (cstr);
+		}
+	    else {
+		cstr = (char *) malloc (8);
+		strcpy (cstr, "J2000");
+		syscoor = WCS_J2000;
+		eqcoor = 2000.0;
 		}
 	    }
 
@@ -133,10 +215,12 @@ usage ()
     fprintf (stderr,"Print FITS or IRAF pixel values\n");
     fprintf(stderr,"Usage: getpix [-vp][-n num][-g val][-l val][format] file.fit x_range y_range ...\n");
     fprintf(stderr,"  format: C-style (%%f, %%d, ...) format for pixel values\n");
-    fprintf(stderr,"  -g: keep pixels with values greater than this\n");
-    fprintf(stderr,"  -l: keep pixels with values less than this\n");
-    fprintf(stderr,"  -n: number of pixel values printed per page\n");
+    fprintf(stderr,"  -f name: Write specified region to a FITS file\n");
+    fprintf(stderr,"  -g num: keep pixels with values greater than this\n");
+    fprintf(stderr,"  -l num: keep pixels with values less than this\n");
+    fprintf(stderr,"  -n num: number of pixel values printed per line\n");
     fprintf(stderr,"  -p: label pixels\n");
+    fprintf(stderr,"  -r num: radius (<0=box) to extract in degrees/arcsec\n");
     fprintf(stderr,"  -s: print x y value with no punctuation\n");
     fprintf(stderr,"  -v: verbose\n");
     fprintf(stderr,"   %%: C format for each pixel value\n");
@@ -475,7 +559,10 @@ char *rrange;   /* Row range string */
 			printf (pform, ipix);
 		    else
 			printf (pform, dpix);
-		    printf (" ");
+		    if ((x+1) % nline == 0)
+			printf ("\n");
+		    else
+			printf (" ");
 		    }
 		}
 	    if (!verbose && !ltcheck && !gtcheck)
@@ -514,4 +601,5 @@ char *rrange;   /* Row range string */
  * Jan 30 2001	Fix format specification in help message
  *
  * Jun  3 2002	Add -s option to print x y value with no punctuation
+ * Oct 30 2002	Add code to count lines when printing a region
  */
