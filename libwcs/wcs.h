@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
- * February 20, 2001
+ * March 9, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 #ifndef _wcs_h_
@@ -209,15 +209,15 @@ extern "C" {
 	const char* wcsname);	/* WCS name */
     struct WorldCoor *wcsninitn (
 	const char* hstring,	/* FITS header */
+	int len,		/* Length of FITS header */
 	const char* wcsname);	/* WCS name */
-	int len);		/* Length of FITS header */
     struct WorldCoor *wcsinitc (
 	const char* hstring,	/* FITS header */
 	const char wcschar);	/* WCS character (A-Z) */
     struct WorldCoor *wcsninitc (
 	const char* hstring,	/* FITS header */
+	int len,		/* Length of FITS header */
 	const char wcschar);	/* WCS character (A-Z) */
-	int len);		/* Length of FITS header */
     void wcsfree (
 	struct WorldCoor *wcs);	/* World coordinate system structure */
 

@@ -302,7 +302,7 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Compute RA Dec from X Y using WCS in FITS and IRAF image files\n");
     fprintf (stderr,"Usage: [-abdjgv] [-n ndec] file.fits x1 y1 ... xn yn\n");
-    fprintf (stderr,"Usage: [-abdjgv] [-n ndec] file.fits @listfile\n");
+    fprintf (stderr,"  or : [-abdjgv] [-n ndec] file.fits @listfile\n");
     fprintf (stderr,"  -a: append input line after output position\n");
     fprintf (stderr,"  -b: B1950 (FK4) output\n");
     fprintf (stderr,"  -d: RA and Dec output in degrees\n");

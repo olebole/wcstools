@@ -1,3 +1,12 @@
+Version 2.9.2 (March 12, 2001)
+fitsfile.c, fitswcs.c: Change WCS selection character from : to %
+fitsfile.c: Fix bug which caused crash on reading multi-extension FITS files
+fileroot: New program used by saom* scripts to create match catalog file name
+Add shell scripts which use SAOimage to overplot and match star catalogs in
+the SAOimage.scripts subdirectory.
+Help messages now print my e-mail address to make it easier to complain about
+bugs (or compliment me for features which work).
+
 Version 2.9.1 (March 2, 2001)
 wcsinit.c: Fix bug which read CRPIX1 as CRPIX2 as well as CRPIX1
 scat: Add option -z to append to pre-existing file (for SAOimage star matching)

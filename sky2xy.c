@@ -213,8 +213,8 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Compute X Y from RA Dec using WCS in FITS and IRAF image files\n");
-    fprintf(stderr,"sky2xy: usage: [-vbjg] file.fts ra1 dec1 sys1 ... ran decn sysn\n");
-    fprintf (stderr,"sky2xy: usage: [-vbjg] file.fts @listfile\n");
+    fprintf (stderr,"Usage: [-vbjg] file.fts ra1 dec1 sys1 ... ran decn sysn\n");
+    fprintf (stderr,"  or : [-vbjg] file.fts @listfile\n");
     fprintf (stderr,"  -v: verbose\n");
     fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     fprintf (stderr,"These flags are best used for files of coordinates in the same system:\n");

@@ -121,8 +121,8 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Write FITS files from IRAF image files\n");
-    fprintf(stderr,"usage: i2f [-isvx] [-o name] [-d path] file.imh ...\n");
-    fprintf(stderr,"       i2f [-isvx] [-o name] [-d path] @imhlist\n");
+    fprintf(stderr,"Usage: i2f [-isvx] [-o name] [-d path] file.imh ...\n");
+    fprintf(stderr,"  or : i2f [-isvx] [-o name] [-d path] @imhlist\n");
     fprintf(stderr,"  -d: write FITS file(s) to this directory\n");
     fprintf(stderr,"  -i: delete unnecessary IRAF keywords\n");
     fprintf(stderr,"  -o: output name for one file\n");

@@ -1,0 +1,2 @@
+#!/bin/sh
+saoimage -reg `imact -r 15 $1` -wcscom sact_-ha_%s $*

@@ -292,8 +292,8 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Remap FITS or IRAF images into single FITS image using WCS\n");
-    fprintf(stderr,"usage: remap [-vf][-a rot][[-b][-j] ra dec][-i bits][-l num] file1.fit file2.fit ... filen.fit\n");
-    fprintf(stderr,"       remap [-vf][-a rot][[-b][-j] ra dec][-i bits][-l num] @filelist\n");
+    fprintf(stderr,"Usage: remap [-vf][-a rot][[-b][-j] ra dec][-i bits][-l num] file1.fit file2.fit ... filen.fit\n");
+    fprintf(stderr,"  or : remap [-vf][-a rot][[-b][-j] ra dec][-i bits][-l num] @filelist\n");
     fprintf(stderr,"  -a: Output rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: Output center in B1950 (FK4) RA and Dec\n");
     fprintf(stderr,"  -f: Force FITS output\n");

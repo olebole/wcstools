@@ -1,5 +1,5 @@
 /*** File libwcs/fitswcs.c
- *** January 31, 2001
+ *** March 8, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -41,7 +41,7 @@ char *filename;	/* FITS or IRAF file filename */
 	return (NULL);
 
     /* Set the world coordinate system from the image header */
-    cwcs = strchr (filename, ':');
+    cwcs = strchr (filename, '%');
     if (cwcs != NULL)
 	cwcs++;
     wcs = wcsinitn (header, cwcs);
@@ -518,4 +518,5 @@ struct WorldCoor *wcs;	/* WCS structure */
  *
  * Jan 11 2001	Print all messages to stderr
  * Jan 31 2001	Add code to extract WCS name or character from filename
+ * Mar  8 2001	Change WCS character separator from : to % in FITS filenames
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** February 23, 2001
+ *** March 9, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -85,11 +85,12 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     int extnum;		/* desired header data number
 			   (0=primary -1=first with data -2=use EXTNAME) */
     char extname[32];	/* FITS extension name */
-    char *ext;		/* Desired FITS extension name, if any */
+    char extnam[32];	/* Desired FITS extension name */
+    char *ext;		/* FITS extension name or number in header, if any */
     char *pheader;	/* Primary header (naxis is 0) */
     char cext;
     char *rbrac;	/* Pointer to right bracket if present in file name */
-    char *mwcs;		/* Pointer to WCS name separated by : */
+    char *mwcs;		/* Pointer to WCS name separated by % */
 
     pheader = NULL;
     lprim = 0;
@@ -99,15 +100,13 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     if (strcmp (filename,"stdin") && strcmp (filename,"STDIN") ) {
 
 	/* Check for FITS WCS specification and ignore for file opening */
-	mwcs = strchr (filename, ':');
+	mwcs = strchr (filename, '%');
 	if (mwcs != NULL)
 	    *mwcs = (char) 0;
 
 	/* Check for FITS extension and ignore for file opening */
 	rbrac = NULL;
 	ext = strchr (filename, ',');
-	if (ext == NULL)
-	    ext = strchr (filename, '%');
 	if (ext == NULL) {
 	    ext = strchr (filename, '[');
 	    if (ext != NULL) {
@@ -119,32 +118,31 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	if (ext != NULL) {
 	    cext = *ext;
 	    *ext = (char) 0;
-	    ext++;
 	    }
 
 	fd = -1;
 	fd = fitsropen (filename);
 
 	if (ext != NULL) {
-	    if (isnum (ext))
-		extnum = atoi (ext);
-	    else
+	    if (isnum (ext+1))
+		extnum = atoi (ext+1);
+	    else {
 		extnum = -2;
+		strcpy (extnam, ext+1);
+		}
 	    }
 	else
 	    extnum = -1;
 
 	/* Repair the damage done to the file-name string during parsing */
 	if (ext != NULL)
-	    *(ext-1) = cext;
+	    *ext = cext;
 	if (rbrac != NULL)
 	    *rbrac = ']';
 	if (mwcs != NULL)
-	    *mwcs = ':';
+	    *mwcs = '%';
 
 	if (fd < 0) {
-	    if (mwcs != NULL)
-		*mwcs = ':';
 	    fprintf (stderr, "FITSRHEAD:  cannot read file %s\n", filename);
 	    return (NULL);
 	    }
@@ -193,8 +191,6 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 			free (header);
 			if (pheader != NULL)
 			    free (pheader);
-			if (mwcs != NULL)
-			    *mwcs = ':';
 			return (NULL);
 			}
 		    }
@@ -238,6 +234,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		strncpy (pheader, header, lprim);
 		pheader[lprim] = 0;
 		hchange (pheader, "SIMPLE", "ROOTHEAD");
+		hchange (pheader, "NEXTEND", "NUMEXT");
 		hdel (pheader, "BITPIX");
 		hdel (pheader, "NAXIS");
 		}
@@ -264,7 +261,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		else if (extnum < 0) {
 		    extname[0] = 0;
 		    hgets (header, "EXTNAME", 32, extname);
-		    if (!strcmp (ext,extname))
+		    if (!strcmp (extnam,extname))
 			break;
 		    }
 
@@ -357,7 +354,12 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    strncpy (header, "SIMPLE  ", 8);
 	    hputl (header, "SIMPLE", 1);
 	    }
+	hputs (header,"COMMENT","-------------------------------------------");
+	hputs (header,"COMMENT","Information from Primary Header");
+	hputs (header,"COMMENT","-------------------------------------------");
 	headend = blsearch (header,"END");
+	if (headend == NULL)
+	    headend = ksearch (header, "END");
 	lext = headend - header;
 	if (lext + lprim > nbh) {
 	    nrec = (lext + lprim) / FITSBLOCK;
@@ -372,8 +374,6 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	free (pheader);
 	}
 
-    if (mwcs != NULL)
-	*mwcs = ':';
     return (header);
 }
 
@@ -496,24 +496,18 @@ char	*inpath;	/* Pathname for FITS tables file to read */
     char *ext;		/* extension name or number */
     char cext;
     char *rbrac;
-    char *mwcs;		/* Pointer to WCS name separated by : */
+    char *mwcs;		/* Pointer to WCS name separated by % */
 
 /* Check for FITS WCS specification and ignore for file opening */
-    mwcs = strchr (inpath, ':');
-    if (mwcs != NULL)
-	*mwcs = (char) 0;
+    mwcs = strchr (inpath, '%');
 
 /* Check for FITS extension and ignore for file opening */
     ext = strchr (inpath, ',');
     rbrac = NULL;
-    if (ext == NULL)
-	ext = strchr (inpath, '%');
     if (ext == NULL) {
 	ext = strchr (inpath, '[');
 	if (ext != NULL) {
 	    rbrac = strchr (inpath, ']');
-	    if (rbrac != NULL)
-		*rbrac = (char) 0;
 	    }
 	}
 
@@ -523,6 +517,8 @@ char	*inpath;	/* Pathname for FITS tables file to read */
 	    cext = *ext;
 	    *ext = 0;
 	    }
+	if (rbrac != NULL)
+	    *rbrac = (char) 0;
 	if (mwcs != NULL)
 	    *mwcs = (char) 0;
 	fd = open (inpath, O_RDONLY);
@@ -531,7 +527,7 @@ char	*inpath;	/* Pathname for FITS tables file to read */
 	if (rbrac != NULL)
 	    *rbrac = ']';
 	if (mwcs != NULL)
-	    *mwcs = ':';
+	    *mwcs = '%';
 	if (fd >= 0)
 	    break;
 	else if (ntry == 2) {
@@ -1430,4 +1426,7 @@ char	*header;	/* FITS header */
  * Jan 30 2001	Fix FITSCIMAGE so it doesn't overwrite data when overwriting a file
  * Feb 20 2001	Ignore WCS name or letter following a : in file name in fitsropen()
  * Feb 23 2001	Initialize rbrac in fitsropen()
+ * Mar  8 2001	Use % instead of : for WCS specification in file name
+ * Mar  9 2001	Fix bug so primary header is always appended to secondary header
+ * Mar  9 2001	Change NEXTEND to NUMEXT in appended primary header
  */

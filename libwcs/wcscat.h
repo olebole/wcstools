@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * December 18, 2000
+ * March 1, 2001
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -30,6 +30,7 @@
 
 /* Subroutines for dealing with catalogs */
 int RefCat();		/* Return catalog type code, title, coord. system */
+char *CatName();	/* Return catalog name given catalog type code */
 char *ProgCat();	/* Return catalog name given program name used */
 char *ProgName();	/* Return program name given program path used */
 void CatNum();		/* Return formatted source number */

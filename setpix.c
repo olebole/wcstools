@@ -159,7 +159,7 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Edit pixels of FITS or IRAF image file\n");
     fprintf(stderr,"Usage: setpix [-vn] file.fts x_range y_range value ...\n");
-    fprintf(stderr,"Usage: setpix [-vn] file.fts @valuefile ...\n");
+    fprintf(stderr,"  or : setpix [-vn] file.fts @valuefile ...\n");
     fprintf(stderr,"  -a: Add constant to pixels\n");
     fprintf(stderr,"  -d: Divide pixels by constant\n");
     fprintf(stderr,"  -i: List each line which is dropped \n");

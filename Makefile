@@ -2,8 +2,8 @@ CFLAGS= -g
 CC=cc
 LIBWCS = libwcs/libwcs.a
 LIBS = $(LIBWCS) -lm
-#CATLIBS = $(LIBS) -lnsl -lsocket
-CATLIBS = $(LIBS)
+CATLIBS = $(LIBS) -lnsl -lsocket
+#CATLIBS = $(LIBS)
 BIN = bin
 .PRECIOUS: ${LIBWCS}
 .c.o:

@@ -215,9 +215,9 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Extract one FITS or IRAF image from compound image\n");
-    fprintf(stderr,"usage: imextract [-vf] [-x ext] [kwn=valn] range file1.fit ... filen.fit\n");
-    fprintf(stderr,"       imextract [-vf] [-o file] [kwn=valn] n filename\n");
-    fprintf(stderr,"       imextract [-vf] [kwn=valn] n @filelist\n");
+    fprintf(stderr,"Usage: imextract [-vf] [-x ext] [kwn=valn] range file1.fit ... filen.fit\n");
+    fprintf(stderr,"  or : imextract [-vf] [-o file] [kwn=valn] n filename\n");
+    fprintf(stderr,"  or : imextract [-vf] [kwn=valn] n @filelist\n");
     fprintf(stderr,"  range: images to extract (by sequence number)\n");
     fprintf(stderr,"  -f: Write FITS out for IRAF input\n");
     fprintf(stderr,"  -n: Write out name of output file\n");

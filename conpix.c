@@ -195,7 +195,7 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Operate on all pixels of a FITS or IRAF image file\n");
     fprintf(stderr,"Usage: conpix [-vnpr][-asmd constant][-l num] file.fits ...\n");
-    fprintf(stderr,"       conpix [-vnpr][-asmd constant][-l num] @filelist\n");
+    fprintf(stderr,"  or : conpix [-vnpr][-asmd constant][-l num] @filelist\n");
     fprintf(stderr,"  -a: add constant to all pixels (g=noise)\n");
     fprintf(stderr,"  -d: divide all pixels by constant\n");
     fprintf(stderr,"  -g: Gaussian noise from each pixel\n");

@@ -14,6 +14,8 @@ delwcs.c
 edhead.c
   Edit the header of a FITS file or the user parameters of an IRAF image file
   using a the text editor specified by the EDITOR environment variable.
+fileroot.c
+  Remove file extension and return the root, including character replacement
 getcol.c
   Extract specified fields from an space-separated ASCII table file
 getdate.c

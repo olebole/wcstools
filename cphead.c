@@ -236,9 +236,9 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Copy FITS or IRAF header keyword values\n");
-    fprintf(stderr,"usage: cphead [-v][-d dir][-p num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
-    fprintf(stderr,"       cphead [-v][-d dir][-p num] file1.fit @filelist kw1 kw2 ... kwn\n");
-    fprintf(stderr,"       cphead [-v][-d dir][-p num] file1.fit @filelist @kwlist\n");
+    fprintf(stderr,"Usage: cphead [-v][-d dir][-p num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
+    fprintf(stderr,"  or : cphead [-v][-d dir][-p num] file1.fit @filelist kw1 kw2 ... kwn\n");
+    fprintf(stderr,"  or : cphead [-v][-d dir][-p num] file1.fit @filelist @kwlist\n");
     fprintf(stderr,"  -d: Root directory for input files (default is cwd)\n");
     fprintf(stderr,"  -h: Write HISTORY line\n");
     fprintf(stderr,"  -k: Write CPHEAD keyword\n");

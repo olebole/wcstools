@@ -404,10 +404,10 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF header keyword values\n");
-    fprintf(stderr,"usage: gethead [-abhoptv][-d dir][-f num][-m num][-n num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
-    fprintf(stderr,"       gethead [-abhoptv][-d dir][-f num][-m num][-n num] @filelist kw1 kw2 ... kwn\n");
-    fprintf(stderr,"usage: gethead [-abhoptv][-d dir][-f num][-m num][-n num] file1.fit ... filen.fits @keywordlist\n");
-    fprintf(stderr,"       gethead [-abhoptv][-d dir][-f num][-m num][-n num] @filelist @keywordlist\n");
+    fprintf(stderr,"Usage: gethead [-abhoptv][-d dir][-f num][-m num][-n num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
+    fprintf(stderr,"  or : gethead [-abhoptv][-d dir][-f num][-m num][-n num] @filelist kw1 kw2 ... kwn\n");
+    fprintf(stderr,"  or : gethead [-abhoptv][-d dir][-f num][-m num][-n num] file1.fit ... filen.fits @keywordlist\n");
+    fprintf(stderr,"  or : gethead [-abhoptv][-d dir][-f num][-m num][-n num] @filelist @keywordlist\n");
     fprintf(stderr,"  -a: List file even if keywords are not found\n");
     fprintf(stderr,"  -b: Replace blanks in strings with underscores\n");
     fprintf(stderr,"  -d: Root directory for input files (default is cwd)\n");

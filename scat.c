@@ -691,9 +691,9 @@ char *command;
 	fprintf (dev, "Bad command: %s\n", command);
     fprintf (dev,"Usage: %s [arguments] ra dec system (J2000, B1950, etc.)\n",
 	progname);
-    fprintf (dev,"    or %s [arguments] list of catalog number ranges\n",
+    fprintf (dev,"  or : %s [arguments] list of catalog number ranges\n",
 	progname);
-    fprintf (dev,"    or %s [arguments] @file of either positions or numbers)\n",
+    fprintf (dev,"  or : %s [arguments] @file of either positions or numbers)\n",
 	progname);
     fprintf(dev,"  -a: List single closest catalog source\n");
     fprintf(dev,"  -b: Output B1950 (FK4) coordinates\n");

@@ -180,8 +180,8 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Stack FITS or IRAF images into single FITS image\n");
-    fprintf(stderr,"usage: imstack [-vi][-o filename][-n num] file1.fits file2.fits ... filen.fits\n");
-    fprintf(stderr,"       imstack [-vi][-n num] @filelist\n");
+    fprintf(stderr,"Usage: imstack [-vi][-o filename][-n num] file1.fits file2.fits ... filen.fits\n");
+    fprintf(stderr,"  or : imstack [-vi][-n num] @filelist\n");
     fprintf(stderr,"  -i: Do not put FITS header in output file\n");
     fprintf(stderr,"  -n: Use each file this many times\n");
     fprintf(stderr,"  -o: Output filename\n");

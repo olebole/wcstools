@@ -1,0 +1,2 @@
+#!/bin/sh
+saoimage -reg `imiras -r 15 $1` -wcscom siras_-ha_%s $*

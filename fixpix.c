@@ -147,9 +147,9 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Fix pixel regions of FITS or IRAF image file\n");
     fprintf(stderr,"Usage: fixpix [-vn] file.fits xl yl xr yr...\n");
-    fprintf(stderr,"Usage: fixpix [-vn] file.fits @regionlist\n");
-    fprintf(stderr,"Usage: fixpix [-vn] @filelist xl yl xr yr...\n");
-    fprintf(stderr,"Usage: fixpix [-vn] @filelist @regionlist\n");
+    fprintf(stderr,"  or : fixpix [-vn] file.fits @regionlist\n");
+    fprintf(stderr,"  or : fixpix [-vn] @filelist xl yl xr yr...\n");
+    fprintf(stderr,"  or : fixpix [-vn] @filelist @regionlist\n");
     fprintf(stderr,"  -n: write new file, else overwrite \n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
