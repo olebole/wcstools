@@ -1,4 +1,4 @@
-/* File fileroot.c
+/* File filext.c
  * April 29, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu

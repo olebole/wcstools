@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** February 4, 2003
+ *** March 11, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -115,6 +115,8 @@ int	nlog;
 {
     double ra1,ra2;	/* Limiting right ascensions of region in degrees */
     double dec1,dec2;	/* Limiting declinations of region in degrees */
+    double rra1,rra2;	/* Catalog coordinate limiting right ascension (deg) */
+    double rdec1,rdec2;	/* Catalog coordinate limiting declination (deg) */
     double dist = 0.0;  /* Distance from search center in degrees */
     double faintmag=0.0; /* Faintest magnitude */
     double maxdist=0.0; /* Largest distance */
@@ -126,6 +128,7 @@ int	nlog;
     double epref;	/* Catalog epoch */
     double magt;
     double ddra, dddec;
+    double rdist, ddist;
     int pass;
     char cstr[32];
     struct Star *star;
@@ -153,13 +156,6 @@ int	nlog;
 	verbose = 0;
 
     SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
-
-    /* If RA range includes zero, split it in two */
-    wrap = 0;
-    if (ra1 > ra2)
-	wrap = 1;
-    else
-	wrap = 0;
 
     /* mag1 is always the smallest magnitude limit */
     if (mag2 < mag1) {
@@ -209,8 +205,18 @@ int	nlog;
 	sysref = sysout;
     wcscstr (cstr, sysout, eqout, epout);
 
-    /* Convert dra to angular units for rectangular box on sky */
-    dra = dra / cos (degrad (cdec));
+    rra1 = ra1;
+    rra2 = ra2;
+    rdec1 = dec1;
+    rdec2 = dec2;
+    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
+	    &rra1, &rra2, &rdec1, &rdec2, verbose);
+
+    /* If RA range includes zero, split it in two */
+    if (rra1 > rra2)
+        wrap = 1;
+    else
+	wrap = 0;
 
     /* Loop through catalog */
     for (istar = 1; istar <= nstars; istar++) {
@@ -222,33 +228,7 @@ int	nlog;
 	    break;
 	    }
 
-	/* Set coordinate system for this star */
-	sysref = star->coorsys;
-	eqref = star->equinox;
-	epref = star->epoch;
-
-	/* Extract selected fields  */
-	num = star->num;
-	ra = star->ra;
-	dec = star->dec;
-	rapm = star->rapm;
-	decpm = star->decpm;
-	parallax = star->parallax;
-	rv = star->radvel;
-	if (sc->entpx || sc->entrv)
-	    wcsconv (sysref, sysout, eqref, eqout, epref, epout,
-		     &ra, &dec, &rapm, &decpm, &parallax, &rv);
-	else if (sc->mprop == 1)
-	    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
-		     &ra, &dec, &rapm, &decpm);
-	else
-	    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
-	if (sc->sptype)
-	    peak = (1000 * (int) star->isp[0]) + (int)star->isp[1];
-	else
-	    peak = star->peak;
-
-	/* Set magnitude for faint star rejection */
+	/* Set magnitude to test */
 	if (sc->nmag > 0) {
 	    magt = star->xmag[magsort];
 	    imag = 0;
@@ -266,33 +246,61 @@ int	nlog;
 	    pass = 0;
 
 	/* Check rough position limits */
-	if  ((!wrap && (ra < ra1 || ra > ra2)) ||
-	    (wrap && (ra < ra1 && ra > ra2)))
+	ra = star->ra;
+	dec = star->dec;
+	if  ((!wrap && (ra < rra1 || ra > rra2)) ||
+	    (wrap && (ra < rra1 && ra > rra2)) ||
+	    dec < rdec1 || dec > rdec2)
 	    pass = 0;
 
-	/* Check exact position limits */
+	/* Convert coordinate system for this star and test it*/
 	if (pass) {
+	    sysref = star->coorsys;
+	    eqref = star->equinox;
+	    epref = star->epoch;
+
+	    /* Extract selected fields  */
+	    num = star->num;
+	    rapm = star->rapm;
+	    decpm = star->decpm;
+	    parallax = star->parallax;
+	    rv = star->radvel;
+
+	    /* Convert from catalog to search coordinate system */
+	    if (sc->entpx || sc->entrv)
+		wcsconv (sysref, sysout, eqref, eqout, epref, epout,
+		     &ra, &dec, &rapm, &decpm, &parallax, &rv);
+	    else if (sc->mprop == 1)
+		wcsconp (sysref, sysout, eqref, eqout, epref, epout,
+		     &ra, &dec, &rapm, &decpm);
+	    else
+		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+	    if (sc->sptype)
+		peak = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+	    else
+		peak = star->peak;
+
+	    /* Compute distance from search center */
 	    if (drad > 0 || distsort)
 		dist = wcsdist (cra,cdec,ra,dec);
-	    else if (dra > 0.0 || ddec > 0.0) {
-		if (ra >= cra)
-		    ddra = ra - cra;
-		else
-		    ddra = cra - ra;
-		ddra = ddra * cos (degrad(dec));
-		if (dec >= cdec)
-		    dddec = dec - cdec;
-		else
-		    dddec = cdec - dec;
-		}
 	    else
 		dist = 0.0;
-	    if  (drad > 0.0) {
+
+	    /* Check radial distance to search center */
+	    if (drad > 0) {
 		if (dist > drad)
 		    pass = 0;
 		}
-	    else if (ddra > dra || dddec > ddec)
-		pass = 0;
+
+	    /* Check distance along RA and Dec axes */
+	    else {
+		ddist = wcsdist (cra,cdec,cra,dec);
+		if (ddist > ddec)
+		    pass = 0;
+		rdist = wcsdist (cra,dec,ra,dec);
+		if (rdist > dra)
+		   pass = 0;
+		}
 	    }
 
 	/* Add this star's information to the list if still OK */
@@ -2303,4 +2311,5 @@ char    *filename;      /* Name of file to check */
  * Jan 26 2003	Add code to pass USNO-B1.0 pm quality and no. of ids
  * Jan 28 2003	Improve spatial position test
  * Feb  4 2003	Compare character to 0, not NULL
+ * Mar 11 2003	Fix limit setting
  */

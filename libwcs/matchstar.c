@@ -1,8 +1,8 @@
 /*** File libwcs/matchstar.c
- *** August 30, 2002
+ *** March 13, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -48,7 +48,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#if !defined(__convexc__) && !defined(__APPLE__)
 #include <malloc.h>
+#endif
 #include <string.h>
 #include "wcs.h"
 #include "lwcs.h"
@@ -1891,4 +1893,5 @@ int nitmax;
  * Aug 30 2002	Fix WCSMatch() to set scale in arcsec, not degrees
  *
  * Jan 30 2003	Remove uninitialized variable in WCSMatch()
+ * Mar 13 2003	Do not include malloc.h on Apples and Convexes
  */ 

@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** January 16, 2003
+ *** March 24, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -28,7 +28,7 @@
 
 /* Source catalog flags and subroutines */
 
-/* Source catalog flags returned from RefCat */
+/* Source catalog flags returned from CatCode */
 #define GSC		1	/* HST Guide Star Catalog */
 #define UJC		2	/* USNO UJ Star Catalog */
 #define UAC		3	/* USNO A Star Catalog */
@@ -57,6 +57,7 @@
 #define NUMCAT		21	/* Number of predefined catalogs */
 
 /* Subroutines for dealing with catalogs */
+int CatCode();		/* Return catalog type code */
 int RefCat();		/* Return catalog type code, title, coord. system */
 char *CatName();	/* Return catalog name given catalog type code */
 char *ProgCat();	/* Return catalog name given program name used */
@@ -441,4 +442,5 @@ void vottail();		/* Terminate VOTable SCAT output */
  * Oct 30 2002	Add epoch keyword and FITS date to StarCat data structure
  *
  * Jan 16 2003	Add USNO-B1.0 catalog
+ * Mar 24 2003	Add CatCde() to get only catalog code
  */

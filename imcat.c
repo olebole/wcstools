@@ -1,5 +1,5 @@
 /* File imcat.c
- * January 29, 2003
+ * March 25, 2003
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -944,6 +944,10 @@ int	*region_char;	/* Character for SAOimage region file output */
     for (i = 0; i < nbg; i++ ) {
 	offscale = 0;
 	wcs2pix (wcs, gra[i], gdec[i], &gx[i], &gy[i], &offscale);
+	if (offscale) {
+	    gx[i] = 0.0;
+	    gy[i] = 0.0;
+	    }
 	}
 
     /* Check to see whether gc is set at all */
@@ -1852,4 +1856,6 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Jan 26 2003	Add support for USNO-B1.0 catalog
  * Jan 28 2003	Fix bug printing proper motion
  * Jan 29 2003	Add header lines if USNO-B1.0 ID or PM quality limits
+ * Mar  4 2003	If star is offscale, set x and y to 0.0
+ * Mar 25 2003	Deal correctly with rotated images
  */

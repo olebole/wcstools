@@ -1,8 +1,8 @@
 /*** File libwcs/imgetwcs.c
- *** August 2, 2002
+ *** March 27, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -20,11 +20,11 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
-                           Smithsonian Astrophysical Observatory
-                           60 Garden St.
-                           Cambridge, MA 02138 USA
+	   Internet email: dmink@cfa.harvard.edu
+	   Postal address: Doug Mink
+	                   Smithsonian Astrophysical Observatory
+	                   60 Garden St.
+	                   Cambridge, MA 02138 USA
 
 
  */
@@ -86,7 +86,8 @@ int	*sysout;	/* Coordinate system to return (0=image, returned) */
 double	*eqout;		/* Equinox to return (0=image, returned) */
 {
     int nax;
-    double eq1, xref, yref, degpix, ra1, dec1;
+    double eq1, xref, yref, degpix, ra, dec, ra1, dec1, x, y, dx, dy;
+    double xmin, xmax, ymin, ymax, ra2, dec2, ra3, dec3, ra4, dec4;
     struct WorldCoor *wcs;
     char rstr[64], dstr[64], temp[16], cstr[16];
 
@@ -148,10 +149,10 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     if (ptype0 > -1 && ptype0 < nctype) {
 	strcpy (temp,"RA---");
 	strcat (temp, ctypes[ptype0]);
-	hputc (header, "CTYPE1", temp);
+	hputs (header, "CTYPE1", temp);
 	strcpy (temp,"DEC--");
 	strcat (temp, ctypes[ptype0]);
-	hputc (header, "CTYPE2", temp);
+	hputs (header, "CTYPE2", temp);
 	}
 
     /* Set reference pixel from command line, if it is there */
@@ -168,7 +169,7 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 
     /* Set plate scale from command line, if it is there */
     if (secpix0 != 0.0 || cd0 != NULL) {
-        if (secpix2 != 0.0) {
+	if (secpix2 != 0.0) {
 	    *secpix = 0.5 * (secpix0 + secpix2);
 	    hputnr8 (header, "SECPIX1", 5, secpix0);
 	    hputnr8 (header, "SECPIX2", 5, secpix2);
@@ -216,12 +217,12 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	    }
 	if (!ksearch (header,"CTYPE1")) {
 	    if (comsys == WCS_GALACTIC) {
-		hputc (header, "CTYPE1", "GLON-TAN");
-		hputc (header, "CTYPE2", "GLAT-TAN");
+		hputs (header, "CTYPE1", "GLON-TAN");
+		hputs (header, "CTYPE2", "GLAT-TAN");
 		}
 	    else {
-		hputc (header, "CTYPE1", "RA---TAN");
-		hputc (header, "CTYPE2", "DEC--TAN");
+		hputs (header, "CTYPE1", "RA---TAN");
+		hputs (header, "CTYPE2", "DEC--TAN");
 		}
 	    }
 	}
@@ -267,26 +268,60 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     if (verbose && (eq1 != *eqout || wcs->syswcs != *sysout)) {
 	if (wcs->degout) {
 	    deg2str (rstr, 32, ra1, 6);
-            deg2str (dstr, 32, dec1, 6);
+	    deg2str (dstr, 32, dec1, 6);
 	    }
 	else {
 	    ra2str (rstr, 32, ra1, 3);
-            dec2str (dstr, 32, dec1, 2);
+	    dec2str (dstr, 32, dec1, 2);
 	    }
 	wcscstr (cstr, wcs->syswcs, wcs->equinox, wcs->epoch);
 	fprintf (stderr,"Reference pixel (%.2f,%.2f) %s %s %s\n",
 		 wcs->xrefpix, wcs->yrefpix, rstr, dstr, cstr);
 	}
 
-    /* Get center and size for catalog searching */
-    wcssize (wcs, cra, cdec, dra, ddec);
+    /* Get coordinates of corners for size for catalog searching */
+    dx = (double) *hp;
+    dy = (double) *wp;
+    xmin = 0.5;
+    ymin = 0.5;
+    xmax = 0.5 + dx;
+    ymax = 0.5 + dy;
+    pix2wcs (wcs, xmin, ymin, &ra1, &dec1);
+    pix2wcs (wcs, xmin, ymax, &ra2, &dec2);
+    pix2wcs (wcs, xmax, ymin, &ra3, &dec3);
+    pix2wcs (wcs, xmax, ymax, &ra4, &dec4);
 
-    /* Convert center to desired output coordinate system */
-    wcscon (wcs->syswcs, *sysout, wcs->equinox, *eqout, cra, cdec, wcs->epoch);
+    /* Convert search corners to output coordinate system and equinox */
+    wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra1,&dec1,wcs->epoch);
+    wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra2,&dec2,wcs->epoch);
+    wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra3,&dec3,wcs->epoch);
+    wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra4,&dec4,wcs->epoch);
 
-    /* Compute plate scale to return if it was not set on the command line */
-    if (secpix0 <= 0.0)
-	*secpix = 3600.0 * 2.0 * *ddec / (double) *hp;
+    /* Find center and convert to output coordinate system and equinox */
+    x = 0.5 + (dx * 0.5);
+    y = 0.5 + (dy * 0.5);
+    pix2wcs (wcs, x, y, cra, cdec);
+    wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,cra,cdec,wcs->epoch);
+
+    /* Find maximum half-width in right ascension */
+    *dra = fabs (ra1 - *cra);
+    if (fabs (ra2 - *cra) > *dra)
+	*dra = fabs (ra2 - *cra);
+    if (fabs (ra3 - *cra) > *dra)
+	*dra = fabs (ra3 - *cra);
+    if (fabs (ra4 - *cra) > *dra)
+	*dra = fabs (ra4 - *cra);
+
+    /* Find maximum half-width in declination */
+    *ddec = fabs (dec1 - *cdec);
+    if (fabs (dec2 - *cdec) > *ddec)
+	*ddec = fabs (dec2 - *cdec);
+    if (fabs (dec3 - *cdec) > *ddec)
+	*ddec = fabs (dec3 - *cdec);
+    if (fabs (dec4 - *cdec) > *ddec)
+	*ddec = fabs (dec4 - *cdec);
+
+    /* wcssize (wcs, cra, cdec, dra, ddec); */
 
     /* Set reference pixel to center of image if it has not been set */
     if (wcs->xref == 0.0 && wcs->yref == 0.0) {
@@ -295,8 +330,8 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	ra1 = *cra;
 	dec1 = *cdec;
 	if (wcs->xrefpix == 0.0 && wcs->yrefpix == 0.0) {
-	    wcs->xrefpix = (double) wcs->nxpix * 0.5;
-	    wcs->yrefpix = (double) wcs->nypix * 0.5;
+	    wcs->xrefpix = 0.5 + (double) wcs->nxpix * 0.5;
+	    wcs->yrefpix = 0.5 + (double) wcs->nypix * 0.5;
 	    }
 	wcs->xinc = *dra * 2.0 / (double) wcs->nxpix;
 	wcs->yinc = *ddec * 2.0 / (double) wcs->nypix;
@@ -316,6 +351,14 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	    wcs->yref = dec1;
 	    }
 	}
+
+    /* Compute plate scale to return if it was not set on the command line */
+    if (secpix0 <= 0.0) {
+	pix2wcs (wcs, wcs->xrefpix-0.5, wcs->yrefpix, &ra1, &dec1);
+	pix2wcs (wcs, wcs->xrefpix+0.5, wcs->yrefpix, &ra2, &dec2);
+	*secpix = 3600.0 * wcsdist (ra1, ra2, dec1, dec2);
+	}
+
     wcs->crval[0] = wcs->xref;
     wcs->crval[1] = wcs->yref;
     wcs->cel.ref[0] = wcs->crval[0];
@@ -589,4 +632,8 @@ char *dateobs;
  *
  * Apr  3 2002	Update projection types to match list in wcs.h and wcs.c
  * Aug  2 2002	Add getsecpix(), getrefpix(), getcneter() to return presets
+ *
+ * Mar 25 2003	Fix GetFITSWCS() to return correct search area for rotated image
+ * Mar 25 2003	Write out CTYPEn with quotes
+ * Mar 27 2003	Fix half-pixel bug in computation of image center
  */

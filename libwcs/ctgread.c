@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** January 16, 2003
+ *** March 11, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -116,10 +116,12 @@ int	nlog;
     double ra,dec,rapm,decpm;
     double mag;
     double num;
+    double rdist, ddist;
     int peak, i;
     int istar;
     int verbose;
     int isp;
+    int pass;
 
     nstar = 0;
 
@@ -281,47 +283,71 @@ int	nlog;
 	    break;
 	    }
 
-	/* Set coordinate system for this star */
-	sysref = star->coorsys;
-	eqref = star->equinox;
-	epref = star->epoch;
-
-	/* Extract selected fields  */
-	num = star->num;
-	ra = star->ra;
-	dec = star->dec;
-	rapm = star->rapm;
-	decpm = star->decpm;
-	if (sc->inform != 'X') {
-	    if (sc->mprop == 1)
-		wcsconp (sysref, sysout, eqref, eqout, epref, epout,
-		         &ra, &dec, &rapm, &decpm);
-	    else
-		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
-	    }
-
+	/* Magnitude */
 	mag = star->xmag[magsort];
 
-	peak = 0;
-	if (drad > 0 || distsort) {
-	    if (sc->inform == 'X')
-		dist = sqrt ((ra-cra)*(ra-cra) + (dec-cdec)*(dec-cdec));
-	    else
-		dist = wcsdist (cra,cdec,ra,dec);
-	    }
-	else
-	    dist = 0.0;
+	/* Check magnitude limits */
+	pass = 1;
+	if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+	    pass = 0;
 
-	/* If catalog is RA-sorted, stop reading if past highest RA */
-	if (sc->rasorted && !wrap && ra > ra2)
-	    break;
+	/* Set coordinate system for this star */
+	if (pass) {
+	    sysref = star->coorsys;
+	    eqref = star->equinox;
+	    epref = star->epoch;
+
+	    /* Extract selected fields  */
+	    num = star->num;
+	    ra = star->ra;
+	    dec = star->dec;
+	    rapm = star->rapm;
+	    decpm = star->decpm;
+
+	    /* If catalog is RA-sorted, stop reading if past highest RA */
+	    if (sc->rasorted && !wrap && ra > ra2)
+		break;
+
+	    /* Get position in output coordinate system, equinox, and epoch */
+	    if (sc->inform != 'X') {
+		if (sc->mprop == 1)
+		    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
+		         &ra, &dec, &rapm, &decpm);
+		else
+		    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+		}
+
+	    /* Compute distance from search center */
+	    if (drad > 0 || distsort) {
+		if (sc->inform == 'X')
+		    dist = sqrt ((ra-cra)*(ra-cra) + (dec-cdec)*(dec-cdec));
+		else
+		    dist = wcsdist (cra,cdec,ra,dec);
+		}
+	    else
+		dist = 0.0;
+
+	    /* Check radial distance to search center */
+	    if (drad > 0) {
+		if (dist > drad)
+		    pass = 0;
+		}
+
+	    /* Check distance along RA and Dec axes */
+	    else {
+		ddist = wcsdist (cra,cdec,cra,dec);
+		if (ddist > ddec)
+		    pass = 0;
+		rdist = wcsdist (cra,dec,ra,dec);
+		if (rdist > dra)
+		    pass = 0;
+		}
+	    }
 
 	/* Check magnitude and position limits */
-	if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
-	    ((wrap && (ra >= ra1 || ra <= ra2)) ||
-	    (!wrap && (ra >= ra1 && ra <= ra2))) &&
-	    ((drad > 0.0 && dist < drad) ||
-     	    (drad == 0.0 && dec >= dec1 && dec <= dec2))) {
+	if (pass) {
+
+	    peak = 0;
 
 	    /* Spectral type */
 	    if (sc->sptype)
@@ -1552,4 +1578,5 @@ char	*in;	/* Character string */
  * Oct 30 2002	Read epoch as MJD or ISO data+time as well as yyyy.ddmm for /y
  *
  * Jan 16 2003	Add USNO-B1.0 Catalog
+ * Mar 11 2003	Improve position filtering
  */

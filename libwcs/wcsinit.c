@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** January 3, 2003
+ *** March 27, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -871,8 +871,8 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	wcsdeltset (wcs, cdelt1, cdelt2, rot);
 
 	/* By default, set reference pixel to center of image */
-	wcs->crpix[0] = 1.0 + ((wcs->nxpix - 1.0) * 0.5);
-	wcs->crpix[1] = 1.0 + ((wcs->nypix - 1.0) * 0.5);
+	wcs->crpix[0] = 0.5 + (wcs->nxpix * 0.5);
+	wcs->crpix[1] = 0.5 + (wcs->nypix * 0.5);
 
 	/* Get reference pixel from the header, if it's there */
 	if (ksearch (hstring,"CRPIX1") != NULL) {
@@ -1239,4 +1239,5 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  *
  * Jan  2 2002	Do not reinitialize projection vector for PV input
  * Jan  3 2002	For ZPN, read PVi_0 to PVi_9, not PVi_1 to PVi_10
+ * Mar 27 2003	Clean up default center computation
  */

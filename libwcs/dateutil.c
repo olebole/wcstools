@@ -1,5 +1,5 @@
 /*** File libwcs/dateutil.c
- *** January 30, 2003
+ *** March 7, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1999-2003
@@ -42,7 +42,7 @@
 	yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999)
    jd = Julian Date
    lt = Local time
-  mjd = modified Julian Date = Julian date - 2400000.5
+  mjd = modified Julian Date = JD - 2400000.5
   ofd = FITS date string (dd/mm/yy before 2000, else no return)
  time = use fd2* with no date to convert time as hh:mm:ss.ss to sec, day, year
    ts = UT seconds since 1950-01-01T00:00 (used for ephemeris computations)
@@ -52,6 +52,8 @@
    et = Ephemeris Time (or TDB or TT)
   mst = Mean Sidereal Time
   gst = Greenwich Sidereal Time (includes nutation)
+  hjd = Heliocentric Julian Date
+ mhjd = modified Heliocentric Julian Date = HJD - 2400000.5
 
  * doy2dt (year, doy, date, time)
  *	Convert year and day of year to date as yyyy.ddmm and time as hh.mmsss
@@ -262,8 +264,10 @@
 #include <math.h>
 #include <time.h>
 #include <sys/time.h>
+#include "wcs.h"
 #include "fitsfile.h"
 
+static double suntl();
 static void fixdate();
 static int caldays();
 static double dint();
@@ -391,6 +395,162 @@ double	time;	/* Time as hh.mmssxxxx
 	dj = ts2jd (tsec);
 
     return (dj - 2400000.5);
+}
+
+
+/* HJD2JD-- convert  Heliocentric Julian Date to (geocentric) Julian date */
+
+double
+hjd2jd (dj, ra, dec, sys)
+
+double	dj;	/* Heliocentric Julian date */
+double	ra;	/* Right ascension (degrees) */
+double	dec;	/* Declination (degrees) */
+int	sys;	/* J2000, B1950, GALACTIC, ECLIPTIC */
+{
+    double lt;		/* Light travel difference to the Sun (days) */
+
+    lt = suntl (dj, ra, dec, sys);
+
+    /* Return Heliocentric Julian Date */
+    return (dj - lt);
+}
+
+
+/* JD2HJD-- convert (geocentric) Julian date to Heliocentric Julian Date */
+
+double
+jd2hjd (dj, ra, dec, sys)
+
+double	dj;	/* Julian date (geocentric) */
+double	ra;	/* Right ascension (degrees) */
+double	dec;	/* Declination (degrees) */
+int	sys;	/* J2000, B1950, GALACTIC, ECLIPTIC */
+{
+    double lt;		/* Light travel difference to the Sun (days) */
+
+    lt = suntl (dj, ra, dec, sys);
+
+    /* Return Heliocentric Julian Date */
+    return (dj + lt);
+}
+
+
+/* MHJD2MJD-- convert modified Heliocentric Julian Date to
+	      modified geocentric Julian date */
+
+double
+mhjd2mjd (mhjd, ra, dec, sys)
+
+double	mhjd;	/* Modified Heliocentric Julian date */
+double	ra;	/* Right ascension (degrees) */
+double	dec;	/* Declination (degrees) */
+int	sys;	/* J2000, B1950, GALACTIC, ECLIPTIC */
+{
+    double lt;		/* Light travel difference to the Sun (days) */
+    double hjd;		/* Heliocentric Julian date */
+
+    hjd = mjd2jd (mhjd);
+
+    lt = suntl (hjd, ra, dec, sys);
+
+    /* Return Heliocentric Julian Date */
+    return (jd2mjd (hjd - lt));
+}
+
+
+/* MJD2MHJD-- convert modified geocentric Julian date tp
+	      modified Heliocentric Julian Date */
+
+double
+mjd2mhjd (mjd, ra, dec, sys)
+
+double	mjd;	/* Julian date (geocentric) */
+double	ra;	/* Right ascension (degrees) */
+double	dec;	/* Declination (degrees) */
+int	sys;	/* J2000, B1950, GALACTIC, ECLIPTIC */
+{
+    double lt;		/* Light travel difference to the Sun (days) */
+    double	dj;	/* Julian date (geocentric) */
+
+    dj = mjd2jd (mjd);
+
+    lt = suntl (dj, ra, dec, sys);
+
+    /* Return Heliocentric Julian Date */
+    return (jd2mjd (dj + lt));
+}
+
+
+/* SUNTL-- compute light travel time to heliocentric correction in days */
+/* Translated into C from IRAF SPP noao.astutils.asttools.asthjd.x */
+
+static double
+suntl (dj, ra, dec, sys)
+
+double	dj;	/* Julian date (geocentric) */
+double	ra;	/* Right ascension (degrees) */
+double	dec;	/* Declination (degrees) */
+int	sys;	/* J2000, B1950, GALACTIC, ECLIPTIC */
+{
+    double t;		/* Number of Julian centuries since J1900 */
+    double manom;	/* Mean anomaly of the Earth's orbit (degrees) */
+    double lperi;	/* Mean longitude of perihelion (degrees) */
+    double oblq;	/* Mean obliquity of the ecliptic (degrees) */
+    double eccen;	/* Eccentricity of the Earth's orbit (dimensionless) */
+    double eccen2, eccen3;
+    double tanom;	/* True anomaly (approximate formula) (radians) */
+    double slong;	/* True longitude of the Sun from the Earth (radians) */
+    double rs;		/* Distance to the sun (AU) */
+    double lt;		/* Light travel difference to the Sun (days) */
+    double l;		/* Longitude of star in orbital plane of Earth (radians) */
+    double b;		/* Latitude of star in orbital plane of Earth (radians) */
+    double epoch;	/* Epoch of obervation */
+    double rs1,rs2;
+
+    t = (dj - 2415020.0) / 36525.0;
+
+    /* Compute earth orbital parameters */
+    manom = 358.47583 + (t * (35999.04975 - t * (0.000150 + t * 0.000003)));
+    lperi = 101.22083 + (t * (1.7191733 + t * (0.000453 + t * 0.000003)));
+    oblq = 23.452294 - (t * (0.0130125 + t * (0.00000164 - t * 0.000000503)));
+    eccen = 0.01675104 - (t * (0.00004180 + t * 0.000000126));
+    eccen2 = eccen * eccen;
+    eccen3 = eccen * eccen2;
+
+    /* Convert to principle angles */
+    manom = manom - (360.0 * (dint) (manom / 360.0));
+    lperi = lperi - (360.0 * (dint) (lperi / 360.0));
+
+    /* Convert to radians */
+    manom = degrad (manom);
+    lperi = degrad (lperi);
+    oblq = degrad (oblq);
+
+    /* True anomaly */
+    tanom = manom + (2 * eccen - 0.25 * eccen3) * sin (manom) +
+	    1.25 * eccen2 * sin (2 * manom) +
+	    13./12. * eccen3 * sin (3 * manom);
+
+    /* Distance to the Sun */
+    rs1 = 1.0 - eccen2;
+    rs2 = 1.0 + (eccen * cos (tanom));
+    rs = rs1 / rs2;
+
+    /* True longitude of the Sun seen from the Earth */
+    slong = lperi + tanom + PI;
+
+    /* Longitude and latitude of star in orbital plane of the Earth */
+    epoch = jd2ep (dj);
+    wcscon (sys, WCS_ECLIPTIC, 0.0, 0.0, &ra, &dec, epoch);
+    l = degrad (ra);
+    b = degrad (dec);
+
+    /* Light travel difference to the Sun */
+    lt = -0.005770 * rs * cos (b) * cos (l - slong);
+
+    /* Return light travel difference */
+    return (lt);
 }
 
 
@@ -3817,4 +3977,5 @@ double	dnum, dm;
  * Sep 10 2002	Add sidereal time conversions
  *
  * Jan 30 2003	Fix typo in ts2gst()
+ * Mar  7 2003	Add conversions for heliocentric julian dates
  */

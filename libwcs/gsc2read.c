@@ -1,8 +1,8 @@
 /*** File libwcs/gsc2read.c
- *** April 8, 2002
+ *** March 11, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2002
+ *** Copyright (C) 2001-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -137,7 +137,7 @@ int	nlog;		/* 1 for diagnostics */
     sprintf (temp, "m1=%.2f&m2=99.9&", mag1);
     strcat (srchurl, temp);
     nstar = 100000;
-    sprintf (temp, "n=%d&submit2=Submit+Request",nstar);
+    sprintf (temp, "n=%d",nstar);
     strcat (srchurl, temp);
     if (nlog > 0)
 	fprintf (stderr,"%s%s\n", gsc2url, srchurl);
@@ -176,6 +176,7 @@ int	nlog;		/* 1 for diagnostics */
     starcat->coorsys = WCS_J2000;
     starcat->epoch = 2000.0;
     starcat->equinox = 2000.0;
+    starcat->nmag = 4;
 
     /* Extract desired sources from catalog  and return them */
     nstar = tabread (gsc2url,distsort,cra,cdec,dra,ddec,drad,
@@ -236,4 +237,7 @@ int	nlog;		/* 1 for diagnostics */
  *
  * Apr  8 2002	Fix bugs in null subroutine gsc2rnum()
  * Oct  3 2002	If nstarmax is less than 1, print everything returned
+ *
+ * Feb  6 2003	Reset nmag to 4 because there is an epoch column
+ * Mar 11 2003	Fix URL for search
  */

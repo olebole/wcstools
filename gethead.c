@@ -1,5 +1,5 @@
 /* File gethead.c
- * February 5, 2003
+ * March 25, 2003
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -212,7 +212,7 @@ char **av;
 	/* File containing a list of keywords or files */
 	else if (*av[0] == '@') {
 	    listfile = *av + 1;
-	    if (isimlist (listfile)) {
+	    if (isimlistd (listfile, rootdir)) {
 		ilistfile = listfile;
 		nfile = getfilelines (ilistfile);
 		}
@@ -515,7 +515,7 @@ usage ()
     fprintf(stderr,"  or : gethead [-abhoptv][-d dir][-f num][-m num][-n num] @filelist kw1 kw2 ... kwn\n");
     fprintf(stderr,"  or : gethead [-abhoptv][-d dir][-f num][-m num][-n num] file1.fit ... filen.fits @keywordlist\n");
     fprintf(stderr,"  or : gethead [-abhoptv][-d dir][-f num][-m num][-n num] @filelist @keywordlist\n");
-    fprintf(stderr,"  -a: List file even if keywords are not found\n");
+    fprintf(stderr,"  -a: List file even if keywords are not found or null\n");
     fprintf(stderr,"  -b: Replace blanks in strings with underscores\n");
     fprintf(stderr,"  -c: Read all files as plain ASCII\n");
     fprintf(stderr,"  -d: Root directory for input files (default is cwd)\n");
@@ -528,7 +528,7 @@ usage ()
     fprintf(stderr,"  -p: Print full pathnames of files\n");
     fprintf(stderr,"  -s: Do not pad tab-separated table with spaces\n");
     fprintf(stderr,"  -t: Output in tab-separated table format\n");
-    fprintf(stderr,"  -u: Always print ___ if keyword not found\n");
+    fprintf(stderr,"  -u: Always print ___ if keyword not found or null value\n");
     fprintf(stderr,"  -v: Verbose\n");
     fprintf(stderr,"  -x [range]: Read header for these extensions (no arg=all)\n");
     exit (1);
@@ -816,6 +816,8 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		sprintf (temp, " %s=%s", keyword, str);
 		strcat (outline, temp);
 		}
+	    else if (strlen (str) < 1)
+		strcat (outline, "___");
 	    else
 		strcat (outline, str);
 	    nfound++;
@@ -1038,4 +1040,5 @@ char *string;
  * Jun 20 2002	If -x and no argument, read all extensions
  *
  * Feb  5 2003	Set nfext tp zero if no extensions
+ * Mar 25 2003	If null keyword value and padding on, print ___
  */

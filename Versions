@@ -1,3 +1,14 @@
+Version 3.3.1 (March 27, 2003)
+getdate: Add Heliocentric Julian Date and Modified Heliocentric Julian Date, RA,Dec args
+scat: Fix bug which failed to read PPM catalog proper motions
+scat: Debug separate search, catalog, and output coordinate system implementation
+imcat: Deal correctly with rotated images
+gethead: If null keyword value and padding on, print ___
+newfits: Fix bug which wrote CTYPEn without quotes. Set default reference pixel
+  to correct center of image (was off one-half pixel)
+Catalog subroutines: Check regions exactly in search, not catalog, coordinates
+getdate and dateutil.c: Add conversions to and from heliocentric Julian date
+
 Version 3.3.0 (February 6, 2003)
 scat,imcat,imwcs,immatch: Add support for USNO-B1.0 Catalog including minid and minpmq
 scat: add argument ndec=n to set number of decimal places in output

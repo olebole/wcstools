@@ -1,5 +1,5 @@
 /* File setpix.c
- * December 5, 2002
+ * February 19, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -325,9 +325,9 @@ char	**value;	/* value to insert into pixel */
 
 	/* Extract new value from command line string */
 	if (strchr (value[i], (int)'.'))
-	    dpix = (double) atoi (value[i]);
-	else
 	    dpix = atof (value[i]);
+	else
+	    dpix = (double) atoi (value[i]);
 
 	/* Set format if not already set */
 	if (pform == NULL) {
@@ -679,4 +679,6 @@ char	**value;	/* value to insert into pixel */
  * Apr  9 2002	Do not free unallocated header
  * Dec  5 2002	Allocate ranges so number of them can be infinite
  * Dec  5 2002	Drop header HISTORY if more than 10 ranges of pixels set
+ *
+ * Feb 19 2003	Fix bug which caused pixels to always be set as integers
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/fitswcs.c
- *** JUne 19, 2002
+ *** February 10, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -365,15 +365,15 @@ int	verbose;	/* 1 to print WCS header keyword values */
 	if (verbose) fprintf (stderr,"CD1_1 = %.8g\n", v);
 	n++;
 	if (hgetr8 (header, "CD1_2", &v)) {
-	    if (verbose) fprintf (stderr,"CD1_2 = %.gf\n", v);
+	    if (verbose) fprintf (stderr,"CD1_2 = %.8g\n", v);
 	    n++;
 	    }
 	if (hgetr8 (header, "CD2_1", &v)) {
-	    if (verbose) fprintf (stderr,"CD2_1 = %.gf\n", v);
+	    if (verbose) fprintf (stderr,"CD2_1 = %.8g\n", v);
 	    n++;
 	    }
 	if (hgetr8 (header, "CD2_2", &v)) {
-	    if (verbose) fprintf (stderr,"CD2_2 = %.gf\n", v);
+	    if (verbose) fprintf (stderr,"CD2_2 = %.8g\n", v);
 	    n++;
 	    }
 	}
@@ -466,10 +466,10 @@ struct WorldCoor *wcs;	/* WCS structure */
 
     /* CD matrix (proposed FITS standard) */
     if (wcs->rotmat) {
-	hputnr8 (header, "CD1_1", 9, wcs->cd[0]);
-	hputnr8 (header, "CD1_2", 9, wcs->cd[1]);
-	hputnr8 (header, "CD2_1", 9, wcs->cd[2]);
-	hputnr8 (header, "CD2_2", 9, wcs->cd[3]);
+	hputnr8 (header, "CD1_1", 12, wcs->cd[0]);
+	hputnr8 (header, "CD1_2", 12, wcs->cd[1]);
+	hputnr8 (header, "CD2_1", 12, wcs->cd[2]);
+	hputnr8 (header, "CD2_2", 12, wcs->cd[3]);
 	hdel (header, "CDELT1");
 	hdel (header, "CDELT2");
 	hdel (header, "CROTA1");
@@ -478,14 +478,14 @@ struct WorldCoor *wcs;	/* WCS structure */
 
     /* Scale and rotation (old FITS standard) */
     else {
-	hputnr8 (header, "CDELT1", 9, wcs->xinc);
-	hputnr8 (header, "CDELT2", 9, wcs->yinc);
-	hputnr8 (header, "CROTA1", 3, wcs->rot);
-	hputnr8 (header, "CROTA2", 3, wcs->rot);
-	hputnr8 (header, "CD1_1", 9, wcs->cd[0]);
-	hputnr8 (header, "CD1_2", 9, wcs->cd[1]);
-	hputnr8 (header, "CD2_1", 9, wcs->cd[2]);
-	hputnr8 (header, "CD2_2", 9, wcs->cd[3]);
+	hputnr8 (header, "CDELT1", 12, wcs->xinc);
+	hputnr8 (header, "CDELT2", 12, wcs->yinc);
+	hputnr8 (header, "CROTA1", 6, wcs->rot);
+	hputnr8 (header, "CROTA2", 6, wcs->rot);
+	hputnr8 (header, "CD1_1", 12, wcs->cd[0]);
+	hputnr8 (header, "CD1_2", 12, wcs->cd[1]);
+	hputnr8 (header, "CD2_1", 12, wcs->cd[2]);
+	hputnr8 (header, "CD2_2", 12, wcs->cd[3]);
 	/* hdel (header, "CD1_1");
 	hdel (header, "CD1_2");
 	hdel (header, "CD2_1");
@@ -504,7 +504,7 @@ struct WorldCoor *wcs;	/* WCS structure */
 	    hdel (header,"SECPIX1");
 	if (ksearch (header,"SECPIX2"))
 	    hdel (header,"SECPIX2");
-	hputnr8 (header, "SECPIX", 4, wcs->yinc*3600.0);
+	hputnr8 (header, "SECPIX", 6, wcs->yinc*3600.0);
 	}
 
     /* Plate fit coefficients, if present */
@@ -578,4 +578,6 @@ struct WorldCoor *wcs;	/* WCS structure */
  *
  * Apr 23 2002	Always write CD matrix in SetFITSWCS()
  * Jun 19 2002	Add verbose argument to GetWCSFITS() and GetFITShead()
+ *
+ * Feb 10 2003	Print 12 decimal places instead of 9 for CD matrix and CDELT
  */

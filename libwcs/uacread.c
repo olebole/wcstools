@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** February 4, 2003
+ *** March 10, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -201,11 +201,12 @@ int	nlog;		/* Logging interval */
     int itable, jtable,jstar;
     int nstar, nread;
     int uara1, uara2, uadec1, uadec2;
-    double ra,dec;
+    double ra,dec, rdist, ddist;
     double mag, magb, magr;
     int istar, istar1, istar2, plate;
     int nzmax = NZONES;	/* Maximum number of declination zones */
     int isp;
+    int pass;
     int magsort;
     char ispc[2];
     char *str;
@@ -401,20 +402,47 @@ int	nlog;		/* Logging interval */
 				mag = magr;
 			    else
 				mag = magb;
-			    plate = uacplate (star.magetc);
-			    ra = uacra (star.rasec);
-			    dec = uacdec (star.decsec);
-			    wcscon (sysref,sysout,eqref,eqout,&ra,&dec,epout);
-			    if (distsort || drad > 0)
-				dist = wcsdist (cra,cdec,ra,dec);
-			    else
-				dist = 0.0;
-			    if ((mag1==mag2 || (mag>=mag1 && mag<=mag2)) &&
-				(drad == 0.0 || dist < drad) &&
-				(xplate == 0 || plate == xplate)) {
 
-				/* br2sp (NULL, magb, mag, ispc);
-				isp = (1000 * (int)ispc[0]) + (int)ispc[1]; */
+			    /* Check magnitude limits */
+			    pass = 1;
+			    if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+				pass = 0;
+
+			    /* Check plate ID */
+			    plate = uacplate (star.magetc);
+			    if (xplate != 0 && plate != xplate)
+				pass = 0;
+
+			    /* Check position limits */
+			    if (pass) {
+				ra = uacra (star.rasec);
+				dec = uacdec (star.decsec);
+				wcscon (sysref,sysout,eqref,eqout,&ra,&dec,epout);
+
+				/* Compute distance from search center */
+				if (distsort || drad > 0)
+				    dist = wcsdist (cra,cdec,ra,dec);
+				else
+				    dist = 0.0;
+			    
+				/* Check radial distance to search center */
+				if (drad > 0.0) {
+				    if (dist > drad)
+					pass = 0;
+				    }
+
+				/* Check distance along RA and Dec axes */
+				else {
+				    ddist = wcsdist (cra,cdec,cra,dec);
+				    if (ddist > ddec)
+					pass = 0;
+				    rdist = wcsdist (cra,dec,ra,dec);
+				    if (rdist > dra)
+					pass = 0;
+				    }
+				}
+
+			    if (pass) {
 				num = (double) znum +
 				      (0.00000001 * (double)istar);
 
@@ -1152,4 +1180,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  *
  * Jan 21 2003	Print arcminute radial distance, not arcsecond for instant out
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
+ * Mar 10 2003	Improve test for position
  */

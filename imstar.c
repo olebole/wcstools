@@ -630,7 +630,9 @@ char	*filename;	/* FITS or IRAF file filename */
     if (wfile && region_char) {
 	int radius, ix, iy;
 	char rstr[16];
-	fprintf (fd, "# stars in %s\n", filename);
+	fprintf (fd, "# %d stars in %s\n", ns, filename);
+	if (verbose)
+	    printf ("# %d stars in %s\n", ns, filename);
 	switch (region_char) {
 	    case WCS_SQUARE:
 		strcpy (rstr, "SQUARE");
@@ -654,6 +656,9 @@ char	*filename;	/* FITS or IRAF file filename */
 	    iy = (int)(sy[i] + 0.5);
 	    fprintf (fd, "%s(%d,%d,%d) # %s %d\n",
 		     rstr, ix, iy, radius, filename, i);
+	    if (verbose)
+		printf ("%s(%d,%d,%d) # %s %d\n",
+			rstr, ix, iy, radius, filename, i);
 	    }
 	printf ("%s\n", outfile);
 	}

@@ -1,5 +1,5 @@
 /* File getpix.c
- * October 30, 2002
+ * March 26, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -47,6 +47,14 @@ char **av;
     char *crange;       /* Column range string */
     char *rstr, *dstr, *cstr, *ccom;
     int systemp;
+    int i;
+    int npix = 0;
+    int maxnpix = 10;
+    int *xpix, *ypix;
+    int nmaxpix, *xp1, *yp1;
+
+    xpix = calloc (maxnpix, sizeof (int));
+    ypix = calloc (maxnpix, sizeof (int));
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -171,7 +179,7 @@ char **av;
 	else if (isnum (str) == 2 && ac > 1 && isnum (*(av+1)) == 2) {
 	    rstr = *av++;
 	    ac--;
-	    dstr = *av++;
+	    dstr = *av;
 	    ac--;
 	    ra0 = atof (rstr);
 	    dec0 = atof (dstr);
@@ -188,21 +196,42 @@ char **av;
 		}
 	    }
 
-	/* range of pixels to print */
-        else if (isnum (str) || isrange (str)) {
-	    if (crange == NULL)
-		crange = str;
-	    else
-		rrange = str;
+	/* Coordinate pairs for pixels to print */
+        else if (isnum (str) && ac > 1 && isnum (*(av+1))) {
+	    if (npix+1 > maxnpix) {
+		nmaxpix = 2 * maxnpix;
+		xp1 = calloc (nmaxpix, sizeof (int));
+		yp1 = calloc (nmaxpix, sizeof (int));
+		for (i = 0; i < nmaxpix; i++) {
+		    xp1[i] = xpix[i];
+		    yp1[i] = ypix[i];
+		    }
+		free (xpix);
+		free (ypix);
+		xpix = xp1;
+		ypix = yp1;
+		}
+	    xpix[npix] = atoi (*av++);
+	    ac--;
+	    ypix[npix] = atoi (*av);
+	    npix++;
+	    }
+
+	/* Range of pixels to print (only one allowed) */
+        else if (isrange (str) && ac > 1 && isrange (*(av+1))) {
+	    crange = *av++;
+	    ac--;
+	    rrange = *av;
 	    }
 
 	/* file name */
 	else
 	    fn = str;
 
-	if (fn && crange && rrange)
-            PrintPix (fn, crange, rrange);
 	}
+
+    if (fn && ((crange && rrange) || npix > 0))
+        PrintPix (fn, crange, rrange, npix, xpix, ypix);
 
     return (0);
 }
@@ -213,7 +242,8 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF pixel values\n");
-    fprintf(stderr,"Usage: getpix [-vp][-n num][-g val][-l val][format] file.fit x_range y_range ...\n");
+    fprintf(stderr,"Usage: getpix [-vp][-n num][-g val][-l val][format] file.fit x_range y_range\n");
+    fprintf(stderr,"  or   getpix [-vp][-n num][-g val][-l val][format] file.fit x1 y1 x2 y2 ... xn yn\n");
     fprintf(stderr,"  format: C-style (%%f, %%d, ...) format for pixel values\n");
     fprintf(stderr,"  -f name: Write specified region to a FITS file\n");
     fprintf(stderr,"  -g num: keep pixels with values greater than this\n");
@@ -229,11 +259,13 @@ usage ()
 
 
 static void
-PrintPix (name, crange, rrange)
+PrintPix (name, crange, rrange, npix, xpix, ypix)
 
 char *name;
-char *crange;   /* Column range string */
-char *rrange;   /* Row range string */
+char *crange;		/* Column range string */
+char *rrange;		/* Row range string */
+int npix;		/* Number of coordinate pairs */
+int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 
 {
     char *header;	/* FITS image header */
@@ -293,7 +325,9 @@ char *rrange;   /* Row range string */
 	    }
 	}
     if (verbose) {
-	if (!strcmp (crange, "0"))
+	if (npix > 0)
+	    fprintf (stderr,"Print pixels in ");
+	else if (!strcmp (crange, "0"))
 	    fprintf (stderr,"Print rows %s in ", rrange);
 	else if (!strcmp (rrange, "0"))
 	    fprintf (stderr,"Print columns %s in ", crange);
@@ -312,6 +346,8 @@ char *rrange;   /* Row range string */
 	}
 
 /* Get value of specified pixel */
+
+    /* Get size of image and scaling factors */
     hgeti4 (header,"BITPIX",&bitpix);
     xdim = 1;
     hgeti4 (header,"NAXIS1",&xdim);
@@ -322,7 +358,7 @@ char *rrange;   /* Row range string */
     bscale = 1.0;
     hgetr8 (header,"BSCALE",&bscale);
 
-/* Set format if not already set */
+    /* Set format if not already set */
     if (pform == NULL) {
 	pform = (char *) calloc (8,1);
 	if (bitpix > 0)
@@ -331,8 +367,63 @@ char *rrange;   /* Row range string */
 	    strcpy (pform, "%.2f");
 	}
 
+/* Print values at specified coordinates in an image  */
+    if (npix > 0) {
+
+	/* Loop through rows starting with the last one */
+	for (i = 0; i < npix; i++) {
+            dpix = getpix1(image,bitpix,xdim,ydim,bzero,bscale,xpix[i],ypix[i]);
+	    if (gtcheck || ltcheck) {
+		if (gtcheck && dpix > gtval ||
+		    ltcheck && dpix < ltval) {
+		    if (nopunct)
+			printf ("%d %d %f\n", xpix[i], ypix[i], dpix);
+		    else
+			printf ("[%d,%d] = %f\n", xpix[i], ypix[i], dpix);
+		    }
+		continue;
+		}
+	    if (bitpix > 0) {
+		if ((c = strchr (pform,'f')) != NULL)
+		    *c = 'd';
+		if (dpix > 0)
+	 	    ipix = (int) (dpix + 0.5);
+		else if (dpix < 0)
+		     ipix = (int) (dpix - 0.5);
+		else
+		    ipix = 0;
+		}
+	    else {
+		if ((c = strchr (pform,'d')) != NULL)
+		    *c = 'f';
+		}
+	    if (verbose) {
+		printf ("%s[%d,%d] = ",name,xpix[i],ypix[i]);
+		if (bitpix > 0)
+		    printf (pform, ipix);
+		else
+		    printf (pform, dpix);
+		printf ("\n");
+		}
+	    else {
+		if (bitpix > 0)
+		    printf (pform, ipix);
+		else
+		    printf (pform, dpix);
+		if ((i+1) % nline == 0)
+		    printf ("\n");
+		else
+		    printf (" ");
+		}
+	    }
+	if (!verbose && !ltcheck && !gtcheck)
+	    printf ("\n");
+	free (xpix);
+	free (ypix);
+	}
+
 /* Print entire image */
-    if (!strcmp (rrange, "0") && !strcmp (crange, "0")) {
+    else if (!strcmp (rrange, "0") && !strcmp (crange, "0")) {
 	if (gtcheck || ltcheck) {
 	    nx = xdim;
 	    ny = ydim;
@@ -602,4 +693,7 @@ char *rrange;   /* Row range string */
  *
  * Jun  3 2002	Add -s option to print x y value with no punctuation
  * Oct 30 2002	Add code to count lines when printing a region
+ *
+ * Feb 20 2003	Add option to enter multiple pixel (x,y) as well as ranges
+ * Mar 26 2003	Fix pixel counter bug in individual pixel printing
  */

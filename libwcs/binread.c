@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** February 4, 2003
+ *** March 21, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -53,6 +53,9 @@ static int ndist = 0;
 #include <fcntl.h>
 #include "wcs.h"
 #include "wcscat.h"
+#ifndef O_BINARY
+#define O_BINARY 0
+#endif
 
 static int binsra();
 static int binsize();
@@ -107,10 +110,11 @@ int	nlog;
     double epref;	/* Catalog position epoch */
     double ra, dec, rapm, decpm;
     double rra1a, rra2a;
+    double rdist, ddist;
     struct StarCat *sc;	/* Star catalog data structure */
     struct Star *star;
     int rwrap, wrap, iwrap, istar1,istar2;
-    int binset;
+    int pass;
     int imag;
     char *objname;
     int lname;
@@ -302,37 +306,55 @@ int	nlog;
 	    /* ID number */
 	    num = star->num;
 
-	    /* Get position in output coordinate system, equinox, and epoch */
-	    rapm = star->rapm;
-	    decpm = star->decpm;
-	    ra = star->ra;
-	    dec = star->dec;
-	    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
-		     &ra, &dec, &rapm, &decpm);
-
-	    /* Radial velocity */
-	    if (sc->entrv > 0)
-		star->xmag[mrv] = star->radvel;
-
 	    /* Magnitude */
 	    if (sc->entmag[0] > 0)
 		mag = star->xmag[magsort];
 
-	    /* Spectral Type */
-	    isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+	    /* Check magnitude limits */
+	    pass = 1;
+	    if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+		pass = 0;
 
-	    /* Compute distance from search center */
-	    if (drad > 0 || distsort)
-		dist = wcsdist (cra,cdec,ra,dec);
-	    else
-		dist = 0.0;
+	    /* Get position in output coordinate system, equinox, and epoch */
+	    if (pass) {
+		rapm = star->rapm;
+		decpm = star->decpm;
+		ra = star->ra;
+		dec = star->dec;
+		wcsconp (sysref, sysout, eqref, eqout, epref, epout,
+			 &ra, &dec, &rapm, &decpm);
 
-	    /* Check magnitude and position limits */
-	    if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
-		((wrap && (ra <= ra1 || ra >= ra2)) ||
-		(!wrap && (ra >= ra1 && ra <= ra2))) &&
-		((drad > 0.0 && dist <= drad) ||
-     		(drad == 0.0 && dec >= dec1 && dec <= dec2))) {
+		/* Compute distance from search center */
+		if (drad > 0 || distsort)
+		    dist = wcsdist (cra,cdec,ra,dec);
+		else
+		    dist = 0.0;
+
+		/* Check radial distance to search center */
+		if (drad > 0) {
+		    if (dist > drad)
+			pass = 0;
+		    }
+
+		/* Check distance along RA and Dec axes */
+		else {
+		    ddist = wcsdist (cra,cdec,cra,dec);
+		    if (ddist > ddec)
+			pass = 0;
+		    rdist = wcsdist (cra,dec,ra,dec);
+		    if (rdist > dra)
+			pass = 0;
+		    }
+		}
+
+	    if (pass) {
+
+		/* Radial velocity */
+		if (sc->entrv > 0)
+		    star->xmag[mrv] = star->radvel;
+
+		/* Spectral Type */
+		isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 
 		/* Save star position and magnitude in table */
 		if (nstar < nstarmax) {
@@ -508,7 +530,6 @@ int	nlog;
     struct StarCat *starcat;
     struct Star *star;
     char str[128];
-    int binset;
     int mrv, nmag;
 
     nstar = 0;
@@ -761,7 +782,7 @@ char *bincat;	/* Binary catalog file name */
 	strcpy (binpath, bincat);
 
     /* Open binary catalog */
-    if ((fcat = open (binpath, O_RDONLY)) < 3) {
+    if ((fcat = open (binpath, O_RDONLY+O_BINARY)) < 3) {
 	fprintf (stderr,"BINOPEN: Binary catalog %s cannot be read\n",binpath);
 	free (sc);
 	return (NULL);
@@ -777,7 +798,7 @@ char *bincat;	/* Binary catalog file name */
 	}
 
     /* Check for byte reversal */
-    if (sc->nbent > 50) {
+    if (sc->nbent > 80) {
 	sc->byteswapped = 1;
 	binswap4 (&sc->star0);
 	binswap4 (&sc->star1);
@@ -808,6 +829,8 @@ char *bincat;	/* Binary catalog file name */
     else
 	sc->entmag[0] = 0;
     nb = nb + 18 + (sc->nmag * 2);
+    if (sc->mprop == -1)
+	sc->mprop = 1;
     if (sc->mprop == 1) {
 	sc->entrpm = nb;
 	sc->entdpm = nb + 4;
@@ -1315,4 +1338,9 @@ char *from, *last, *to;
  * Aug  6 2002	Make sc->entmag into vector, but only use first position
  *
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
+ * Feb 19 2003	Increase maximum nbent from 50 to 80
+ * Feb 20 2003	Eliminate unused variables after lint
+ * Mar 11 2003	Upgrade position testing
+ * Mar 11 2003	If proper motion flag is -1, reset it to 1
+ * Mar 26 2003	Open binpath with binary flag set
  */

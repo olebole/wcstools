@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** February 4, 2003
+ *** March 11, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -112,8 +112,10 @@ int	verbose;	/* 1 for diagnostics */
     int znum, itot,iz;
     int nlog,itable,jstar, mprop, nmag;
     int nstar, i;
+    int pass;
     double ra,dec;
     double mag;
+    double rdist, ddist;
     int istar, istar1, istar2, plate;
     int nzmax = NZONES;	/* Maximum number of declination zones */
     char *str;
@@ -218,24 +220,50 @@ int	verbose;	/* 1 for diagnostics */
 
 		    /* Extract selected fields if not probable duplicate */
 		    else if (star.magetc > 0) {
-			ra = ujcra (star.rasec); /* Right ascension in degrees */
-			dec = ujcdec (star.decsec); /* Declination in degrees */
-			wcscon (sysref,sysout,eqref,eqout,&ra,&dec,epout);
 			mag = ujcmag (star.magetc);	/* Magnitude */
+
+			/* Check magnitude limits */
+			pass = 1;
+			if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+			    pass = 0;
+
+			/* Check plate number */
 			plate = ujcplate (star.magetc);	/* Plate number */
-			if (drad > 0 || distsort)
-			    dist = wcsdist (cra,cdec,ra,dec);
-			else
-			    dist = 0.0;
+			if (xplate != 0 || plate != xplate)
+			    pass = 0;
 
-			/* Check magnitude and position limits */
-			if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
-     			    (dec >= dec1 && dec <= dec2) &&
-			    ((wrap && (ra >= ra1 || ra <= ra2)) ||
-			    (!wrap && (ra >= ra1 && ra <= ra2))) &&
-			    (drad == 0.0 || dist < drad) &&
-			    (xplate == 0 || plate == xplate)) {
+			/* Check position limits */
+			if (pass) {
+			    ra = ujcra (star.rasec);	/* RA in degrees */
+			    dec = ujcdec (star.decsec);	/* Dec in degrees */
 
+			    /* Get position in output coordinate system */
+			    wcscon (sysref,sysout,eqref,eqout,&ra,&dec,epout);
+
+			    /* Compute distance from search center */
+			    if (drad > 0 || distsort)
+				dist = wcsdist (cra,cdec,ra,dec);
+			    else
+				dist = 0.0;
+
+			    /* Check radial distance to search center */
+			    if (drad > 0) {
+				if (dist > drad)
+				    pass = 0;
+				}
+
+			    /* Check distance along RA and Dec axes */
+			    else {
+				ddist = wcsdist (cra,cdec,cra,dec);
+				if (ddist > ddec)
+				    pass = 0;
+				rdist = wcsdist (cra,dec,ra,dec);
+			        if (rdist > dra)
+				   pass = 0;
+				}
+			    }
+
+			if (pass) {
 			    if (refcat == UJC)
 				num = (double) znum + (0.0000001*(double)istar);
 			    else
@@ -814,4 +842,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Sep 19 2001	Drop fitshead.h; it is in wcs.h
  *
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
+ * Mar 11 2003	Improve position filtering
  */

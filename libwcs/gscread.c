@@ -1,8 +1,8 @@
 /*** File libwcs/gscread.c
- *** October 2, 2002
+ *** March 10, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -116,6 +116,7 @@ int	nlog;		/* 1 for diagnostics */
 
     int verbose;
     int wrap;
+    int pass;
     int rnum, num0, num, itot,ireg;
     int ik,nk,itable,ntable,jstar;
     int nbline,npos,nbhead;
@@ -124,6 +125,7 @@ int	nlog;		/* 1 for diagnostics */
     double ra,ra0,rasum,dec,dec0,decsum,perr,perr0,perr2,perrsum,msum;
     double mag,mag0,merr,merr0,merr2,merrsum;
     double rra1, rra2, rdec1, rdec2;
+    double rdist, ddist;
     char *str;
     char *url;
     char *title;
@@ -242,7 +244,7 @@ int	nlog;		/* 1 for diagnostics */
     strcpy (kw[6].kname,"MAG_BAND");
     strcpy (kw[7].kname,"CLASS");
     for (ik = 0; ik < nk; ik++) {
-	kw[ik].lname = strlen (kw[i].kname);
+	kw[ik].lname = (int) strlen (kw[ik].kname);
 	kw[ik].kn = 0;
 	kw[ik].kf = 0;
 	kw[ik].kl = 0;
@@ -340,27 +342,52 @@ int	nlog;		/* 1 for diagnostics */
 		((classd < -1 && band != band0) ||
 		(classd < -1 && class != class0) || 
 		num != num0)) {
-		ra = rasum / perrsum;
-		dec = decsum / perrsum;
-		mag = msum / merrsum;
-		class = class + (band * 100) + (npos * 10000);
-		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
-		if (drad > 0 || distsort)
-		    dist = wcsdist (cra,cdec,ra,dec);
-		else
-		    dist = 0.0;
 
-	/* Check magnitude and position limits */
-		if (((mag1 != mag2 && (mag >= mag1 && mag <= mag2)) ||
-		    (mag1 == mag2)) &&
-		    ((wrap && (ra >= ra1 || ra <= ra2)) ||
-		    (!wrap && (ra >= ra1 && ra <= ra2))) &&
-		    ((drad > 0.0 && dist < drad) ||
-     		    (drad == 0.0 && dec >= dec1 && dec <= dec2))) {
+		pass = 1;
+		if (perrsum == 0.0 || merrsum == 0)
+		    pass = 0;
+		else {
+		    ra = rasum / perrsum;
+		    dec = decsum / perrsum;
+		    mag = msum / merrsum;
+		    }
 
+		if (pass > 0 && classd > -1 && class != classd)
+		    pass = 0;
+
+		/* Check magnitude and position limits */
+		if (pass > 0 && mag1 != mag2 && (mag < mag1 || mag > mag2))
+		    pass = 0;
+
+		if (pass) {
+		    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+		
+		    /* Compute distance from search center */
+		    if (drad > 0 || distsort)
+			dist = wcsdist (cra,cdec,ra,dec);
+		    else
+			dist = 0.0;
+
+		    /* Check position limits */
+		    if (drad > 0) {
+			if (dist > drad)
+			    pass = 0;
+			}
+		    else {
+			ddist = wcsdist (cra,cdec,cra,dec);
+			if (ddist > ddec)
+			    pass = 0;
+			rdist = wcsdist (cra,dec,ra,dec);
+			if (rdist > dra)
+			    pass = 0;
+			}
+		    }
+
+		if (pass) {
+		    class = class + (band * 100) + (npos * 10000);
 		    xnum = (double)rnum + (0.0001 * (double) num);
 
-		/* Write star position and magnitudes to stdout */
+		    /* Write star position and magnitudes to stdout */
 		    if (nstarmax < 1) {
 			CatNum (refcat, -9, 0, xnum, numstr);
 			ra2str (rastr, 31, ra, 3);
@@ -371,7 +398,7 @@ int	nlog;		/* 1 for diagnostics */
 				mag, class-(band*100)-(npos*10000), band, npos, dist);
 			}
 
-		/* Save star position in table */
+		    /* Save star position in table */
 		    else if (nstar < nstarmax) {
 			gnum[nstar] = xnum;
 			gra[nstar] = ra;
@@ -389,8 +416,8 @@ int	nlog;		/* 1 for diagnostics */
 			    }
 			}
 
-		/* If too many stars and distance sorting,
-		   replace furthest star */
+		    /* If too many stars and distance sorting,
+			replace furthest star */
 		    else if (distsort) {
 			if (dist < maxdist) {
 			    gnum[farstar] = xnum;
@@ -401,7 +428,7 @@ int	nlog;		/* 1 for diagnostics */
 			    gdist[farstar] = dist;
 			    maxdist = 0.0;
 
-			/* Find new farthest star */
+			    /* Find new farthest star */
 			    for (i = 0; i < nstarmax; i++) {
 				if (gdist[i] > maxdist) {
 				    maxdist = gdist[i];
@@ -411,7 +438,7 @@ int	nlog;		/* 1 for diagnostics */
 			    }
 			}
 
-		/* If too many stars, replace faintest star */
+		    /* If too many stars, replace faintest star */
 		    else if (mag < faintmag) {
 			gnum[faintstar] = xnum;
 			gra[faintstar] = ra;
@@ -421,7 +448,7 @@ int	nlog;		/* 1 for diagnostics */
 			gdist[faintstar] = dist;
 			faintmag = 0.0;
 
-		    /* Find new faintest star */
+			/* Find new faintest star */
 			for (i = 0; i < nstarmax; i++) {
 			    if (gmag[0][i] > faintmag) {
 				faintmag = gmag[0][i];
@@ -580,7 +607,7 @@ int	nlog;		/* 1 for diagnostics */
     strcpy (kw[6].kname,"MAG_BAND");
     strcpy (kw[7].kname,"CLASS");
     for (ik = 0; ik < nk; ik++) {
-	kw[ik].lname = strlen (kw[i].kname);
+	kw[ik].lname = (int) strlen (kw[ik].kname);
 	kw[ik].kn = 0;
 	kw[ik].kf = 0;
 	kw[ik].kl = 0;
@@ -1144,4 +1171,6 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Mar 28 2002	Change pathnames to /data/astrocat
  * Jul 31 2002	Always check for GSCACT_PATH, not GSCA_PATH
  * Oct  2 2002	Fix pass-through tab table header
+ *
+ * Mar 10 2003	Improve position limits
  */

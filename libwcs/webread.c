@@ -1,5 +1,5 @@
 /*** File webread.c
- *** January 28, 2003
+ *** March 12, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -206,7 +206,7 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 	    dtemp = drad * 60.0;
 	else
 	    dtemp = 60.0 * sqrt (dra*dra + ddec*ddec);
-	sprintf (temp, "radius=0,%.3f&", temp);
+	sprintf (temp, "radius=0,%.3f&", dtemp);
 	strcat (srchurl, temp);
 	if (mag1 != mag2) {
 	    sprintf (temp, "mag=%.2f,%.2f&", mag1, mag2);
@@ -794,4 +794,5 @@ FileINetParse(file, port, adrinet)
  *
  * Jan 27 2003	Add maximum number of stars to be returned to webread()
  * Jan 28 2003	Add number of decimal places to webread() and webrnum()
+ * Mar 12 2003	Fix bug in USNO-A2 server code
  */

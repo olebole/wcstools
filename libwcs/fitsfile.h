@@ -1,8 +1,8 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** October 21, 2002
+ *** March 5, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -100,6 +100,7 @@ extern int getfilelines();
 extern char *getfilebuff();
 extern int getfilesize();
 extern int isimlist();
+extern int isimlistd();
 extern int isfilelist();
 extern int isfile();
 extern int first_token();
@@ -273,4 +274,6 @@ void compnut();	/* Compute nutation in longitude and obliquity and mean obliquit
  * Aug 30 2002	Add Ephemeris Time date conversions
  * Sep 10 2002	Add Sidereal Time conversions
  * Oct 21 2002	Add fitsrsect() to read sections of FITS images
+ *
+ * Mar  5 2003	Add isimlistd() to check image lists with root directory
  */

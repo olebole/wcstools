@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** January 27, 2003
+ *** March 24, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -115,18 +115,16 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 
     *catprop = 0;
 
-    if (strncasecmp(refcatname,"gsca",4)==0 &&
-	strsrch(refcatname, ".tab") == NULL) {
+    refcat = CatCode (refcatname);
+    if (refcat == GSCACT) {
 	strcpy (title, "HST Guide Stars/ACT");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
 	*nmag = 1;
 	*catprop = 0;
-	refcat = GSCACT;
 	}
-    else if (strncasecmp(refcatname,"gsc2",4)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+    else if (refcat == GSC2) {
 	strcpy (title, "GSC 2.2");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
@@ -135,17 +133,15 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	*nmag = 4;
 	refcat = GSC2;
 	}
-    else if (strncasecmp(refcatname,"gs",2)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+    else if (refcat == GSC2) {
 	strcpy (title, "HST Guide Stars");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
 	*catprop = 0;
 	*nmag = 1;
-	refcat = GSC;
 	}
-    else if (strncasecmp(refcatname,"ub",2)==0) {
+    else if (refcat == UB1) {
 	strcpy (title, "USNO-B1.0 Catalog");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
@@ -154,67 +150,49 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	*nmag = 5;
 	refcat = UB1;
 	}
-    else if (strncasecmp(refcatname,"usa",3)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+    else if (refcat == USA1 || refcat == USA2 || refcat == USAC) {
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
 	*nmag = 2;
 	*catprop = 0;
-	if (strchr (refcatname, '1') != NULL) {
+	if (strchr (refcatname, '1') != NULL)
 	    strcpy (title, "USNO SA-1.0 Catalog Stars");
-	    refcat = USA1;
-	    }
-	else if (strchr (refcatname, '2') != NULL) {
+	else if (strchr (refcatname, '2') != NULL)
 	    strcpy (title, "USNO SA-2.0 Catalog Stars");
-	    refcat = USA2;
-	    }
-	else {
+	else
 	    strcpy (title, "USNO SA Catalog Stars");
-	    refcat = USAC;
-	    }
 	}
-    else if (strncmp (refcatname, ".usnop", 6) == 0) {
+    else if (refcat == USNO) {
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
 	*catprop = 0;
 	*nmag = 1;
 	sprintf (title, "USNO %s Stars", refcatname);
-	refcat = USNO;
 	}
-    else if (strncasecmp(refcatname,"ua",2)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+    else if (refcat == UA1 || refcat == UA2 || refcat == UAC) {
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
 	*catprop = 0;
 	*nmag = 2;
-	if (strchr (refcatname, '1') != NULL) {
+	if (strchr (refcatname, '1') != NULL)
 	    strcpy (title, "USNO A-1.0 Catalog Stars");
-	    refcat = UA1;
-	    }
-	else if (strchr (refcatname, '2') != NULL) {
+	else if (strchr (refcatname, '2') != NULL)
 	    strcpy (title, "USNO A-2.0 Catalog Stars");
-	    refcat = UA2;
-	    }
-	else {
+	else
 	    strcpy (title, "USNO A Catalog Stars");
-	    refcat = UAC;
-	    }
 	}
-    else if (strncasecmp(refcatname,"uj",2)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+    else if (refcat == UJC) {
 	strcpy (title, "USNO J Catalog Stars");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
 	*catprop = 0;
 	*nmag = 1;
-	refcat = UJC;
 	}
-    else if (strncasecmp(refcatname,"sao",3)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+    else if (refcat == SAO) {
 	strcpy (title, "SAO Catalog Stars");
 	starcat = binopen ("SAO");
 	if (starcat == NULL)
@@ -226,11 +204,9 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	    *catprop = starcat->mprop;
 	    *nmag = 1;
 	    binclose (starcat);
-	    refcat = SAO;
 	    }
 	}
-    else if (strncasecmp(refcatname,"ppm",3)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+    else if (refcat == PPM) {
 	strcpy (title, "PPM Catalog Stars");
 	starcat = binopen ("PPM");
 	if (starcat == NULL)
@@ -242,11 +218,9 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	    *catprop = starcat->mprop;
 	    *nmag = 1;
 	    binclose (starcat);
-	    refcat = PPM;
 	    }
 	}
-    else if (strncasecmp(refcatname,"iras",4)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+    else if (refcat == IRAS) {
 	strcpy (title, "IRAS Point Sources");
 	if ((starcat = binopen ("IRAS"))) {
 	    *syscat = starcat->coorsys;
@@ -255,35 +229,28 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	    *nmag = 1;
 	    *catprop = starcat->mprop;
 	    binclose (starcat);
-	    refcat = IRAS;
 	    }
 	}
-    else if (strncasecmp(refcatname,"ty",2)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
-	if (strsrch (refcatname, "2") != NULL) {
-	    strcpy (title, "Tycho 2 Catalog Stars");
-	    *syscat = WCS_J2000;
-	    *eqcat = 2000.0;
-	    *epcat = 2000.0;
+    else if (refcat == TYCHO2) {
+	strcpy (title, "Tycho 2 Catalog Stars");
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	*catprop = 1;
+	*nmag = 2;
+	}
+    else if (refcat == TYCHO) {
+	strcpy (title, "Tycho Catalog Stars");
+	if ((starcat = binopen ("tycho"))) {
+	    *syscat = starcat->coorsys;
+	    *eqcat = starcat->equinox;
+	    *epcat = starcat->epoch;
 	    *catprop = 1;
 	    *nmag = 2;
-	    refcat = TYCHO2;
-	    }
-	else {
-	    strcpy (title, "Tycho Catalog Stars");
-	    if ((starcat = binopen ("tycho"))) {
-		*syscat = starcat->coorsys;
-		*eqcat = starcat->equinox;
-		*epcat = starcat->epoch;
-		*catprop = 1;
-		*nmag = 2;
-		binclose (starcat);
-		refcat = TYCHO;
-		}
+	    binclose (starcat);
 	    }
 	}
-    else if (strncasecmp(refcatname,"hip",3)==0 &&
-	      strsrch(refcatname, ".tab") == NULL) {
+    else if (refcat == HIP) {
 	strcpy (title, "Hipparcos Catalog Stars");
 	if ((starcat = binopen ("hipparcos"))) {
 	    *syscat = starcat->coorsys;
@@ -292,21 +259,17 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	    *catprop = starcat->mprop;
 	    *nmag = 1;
 	    binclose (starcat);
-	    refcat = HIP;
 	    }
 	}
-    else if (strncasecmp(refcatname,"act",3)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+    else if (refcat == ACT) {
 	strcpy (title, "ACT Catalog Stars");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
 	*catprop = 1;
 	*nmag = 2;
-	refcat = ACT;
 	}
-    else if (strncasecmp(refcatname,"bsc",3)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+    else if (refcat == BSC) {
 	strcpy (title, "Bright Star Catalog Stars");
 	if ((starcat = binopen ("BSC5"))) {
 	    *syscat = starcat->coorsys;
@@ -315,30 +278,25 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	    *catprop = starcat->mprop;
 	    *nmag = 1;
 	    binclose (starcat);
-	    refcat = BSC;
 	    }
 	}
-    else if ((strncasecmp(refcatname,"2mp",3)==0 ||
-	     strncasecmp(refcatname,"tmc",3)==0) &&
-	     strsrch(refcatname, ".tab") == NULL) {
+    else if (refcat == TMPSC) {
 	strcpy (title, "2MASS Point Sources");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
 	*catprop = 0;
 	*nmag = 3;
-	refcat = TMPSC;
 	}
-    else if (strsrch (refcatname, ".usno")) {
+    else if (refcat == USNO) {
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
 	*catprop = 0;
 	*nmag = 1;
 	sprintf (title, "USNO %s Stars", refcatname);
-	refcat = USNO;
 	}
-    else if (isbin (refcatname)) {
+    else if (refcat == BINCAT) {
 	strcpy (title, refcatname);
 	strcat (title, " Catalog Sources");
 	if ((starcat = binopen (refcatname))) {
@@ -348,10 +306,9 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	    *catprop = starcat->mprop;
 	    *nmag = starcat->nmag;
 	    binclose (starcat);
-	    refcat = BINCAT;
 	    }
 	}
-    else if (istab (refcatname)) {
+    else if (refcat == TABCAT) {
 	strcpy (title, refcatname);
 	strcat (title, " Catalog Sources");
 	if (strchr (refcatname, ','))
@@ -365,7 +322,6 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	    *catprop = starcat->mprop;
 	    *nmag = starcat->nmag;
 	    ctgclose (starcat);
-	    refcat = TABCAT;
 	    }
 	}
     else {
@@ -377,6 +333,139 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	    *epcat = starcat->epoch;
 	    *catprop = starcat->mprop;
 	    *nmag = starcat->nmag;
+	    ctgclose (starcat);
+	    }
+	}
+    return refcat;
+}
+
+
+/* Return code for reference catalog or its type */
+
+int
+CatCode (refcatname)
+
+char	*refcatname;	/* Name of reference catalog */
+{
+    struct StarCat *starcat;
+    int refcat, nbuff;
+
+    if (strncasecmp(refcatname,"gsca",4)==0 &&
+	strsrch(refcatname, ".tab") == NULL)
+	refcat = GSCACT;
+    else if (strncasecmp(refcatname,"gsc2",4)==0 &&
+	     strsrch(refcatname, ".tab") == NULL)
+	refcat = GSC2;
+    else if (strncasecmp(refcatname,"gs",2)==0 &&
+	     strsrch(refcatname, ".tab") == NULL)
+	refcat = GSC;
+    else if (strncasecmp(refcatname,"ub",2)==0)
+	refcat = UB1;
+    else if (strncasecmp(refcatname,"usa",3)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
+	if (strchr (refcatname, '1') != NULL)
+	    refcat = USA1;
+	else if (strchr (refcatname, '2') != NULL)
+	    refcat = USA2;
+	else
+	    refcat = USAC;
+	}
+    else if (strncmp (refcatname, ".usnop", 6) == 0)
+	refcat = USNO;
+    else if (strncasecmp(refcatname,"ua",2)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
+	if (strchr (refcatname, '1') != NULL)
+	    refcat = UA1;
+	else if (strchr (refcatname, '2') != NULL)
+	    refcat = UA2;
+	else
+	    refcat = UAC;
+	}
+    else if (strncasecmp(refcatname,"uj",2)==0 &&
+	     strsrch(refcatname, ".tab") == NULL)
+	refcat = UJC;
+    else if (strncasecmp(refcatname,"sao",3)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
+	starcat = binopen ("SAO");
+	if (starcat == NULL)
+	    starcat = binopen ("SAOra");
+	if (starcat) {
+	    binclose (starcat);
+	    refcat = SAO;
+	    }
+	}
+    else if (strncasecmp(refcatname,"ppm",3)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
+	starcat = binopen ("PPM");
+	if (starcat == NULL)
+	    starcat = binopen ("PPMra");
+	if (starcat) {
+	    binclose (starcat);
+	    refcat = PPM;
+	    }
+	}
+    else if (strncasecmp(refcatname,"iras",4)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
+	if ((starcat = binopen ("IRAS"))) {
+	    binclose (starcat);
+	    refcat = IRAS;
+	    }
+	}
+    else if (strncasecmp(refcatname,"ty",2)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
+	if (strsrch (refcatname, "2") != NULL) {
+	    refcat = TYCHO2;
+	    }
+	else {
+	    if ((starcat = binopen ("tycho"))) {
+		binclose (starcat);
+		refcat = TYCHO;
+		}
+	    }
+	}
+    else if (strncasecmp(refcatname,"hip",3)==0 &&
+	      strsrch(refcatname, ".tab") == NULL) {
+	if ((starcat = binopen ("hipparcos"))) {
+	    binclose (starcat);
+	    refcat = HIP;
+	    }
+	}
+    else if (strncasecmp(refcatname,"act",3)==0 &&
+	     strsrch(refcatname, ".tab") == NULL)
+	refcat = ACT;
+    else if (strncasecmp(refcatname,"bsc",3)==0 &&
+	     strsrch(refcatname, ".tab") == NULL) {
+	if ((starcat = binopen ("BSC5"))) {
+	    binclose (starcat);
+	    refcat = BSC;
+	    }
+	}
+    else if ((strncasecmp(refcatname,"2mp",3)==0 ||
+	     strncasecmp(refcatname,"tmc",3)==0) &&
+	     strsrch(refcatname, ".tab") == NULL) {
+	refcat = TMPSC;
+	}
+    else if (strsrch (refcatname, ".usno")) {
+	refcat = USNO;
+	}
+    else if (isbin (refcatname)) {
+	if ((starcat = binopen (refcatname))) {
+	    binclose (starcat);
+	    refcat = BINCAT;
+	    }
+	}
+    else if (istab (refcatname)) {
+	if (strchr (refcatname, ','))
+	    nbuff = 0;
+	else
+	    nbuff = 1000;
+	if ((starcat = tabcatopen (refcatname, NULL, nbuff))) {
+	    ctgclose (starcat);
+	    refcat = TABCAT;
+	    }
+	}
+    else {
+	if ((starcat = ctgopen (refcatname, TXTCAT))) {
 	    ctgclose (starcat);
 	    refcat = TXTCAT;
 	    }
@@ -1096,11 +1185,12 @@ double number;	/* Floating point number */
 }
 
 
+/* SEARCHLIM-- Set RA and Dec limits for search given center and dimensions */
 void
 SearchLim (cra, cdec, dra, ddec, syscoor, ra1, ra2, dec1, dec2, verbose)
 
 double	cra, cdec;	/* Center of search area  in degrees */
-double	dra, ddec;	/* Horizontal and vertical half-widths of area in degrees */
+double	dra, ddec;	/* Horizontal and vertical half-widths in degrees */
 int	syscoor;	/* Coordinate system */
 double	*ra1, *ra2;	/* Right ascension limits in degrees */
 double	*dec1, *dec2;	/* Declination limits in degrees */
@@ -1167,12 +1257,13 @@ int	verbose;	/* 1 to print limits, else 0 */
 }
 
 
+/* REFLIM-- Set limits in reference catalog coordinates given search coords */
 void
 RefLim (cra, cdec, dra, ddec, sysc, sysr, eqc, eqr, epc,
 	ramin, ramax, decmin, decmax, verbose)
 
 double	cra, cdec;	/* Center of search area  in degrees */
-double	dra, ddec;	/* Horizontal and verticla half-widths of area */
+double	dra, ddec;	/* Horizontal and vertical half-widths of area */
 int	sysc, sysr;	/* System of search, catalog coordinates */
 double	eqc, eqr;	/* Equinox of search, catalog coordinates in years */
 double	epc;		/* Epoch of search coordinates in years
@@ -1182,8 +1273,9 @@ double	*decmin,*decmax; /* Declination search limits in degrees (returned) */
 int	verbose;	/* 1 to print limits, else 0 */
 
 {
-    double ra1, ra2, ra3, ra4, dec1, dec2, dec3, dec4;
-    double dec;
+    double ra, ra1, ra2, ra3, ra4, dec1, dec2, dec3, dec4;
+    double dec, adec;
+    int nrot;
 
     /* Set declination limits for search */
     dec1 = cdec - ddec;
@@ -1195,28 +1287,39 @@ int	verbose;	/* 1 to print limits, else 0 */
 	dec1 = dec2;
 	dec2 = dec;
 	}
+    dec3 = dec2;
+    dec4 = dec1;
 
     /* Adjust width in right ascension to that at max absolute declination */
-    if (fabs (dec1) > fabs (dec2)) {
-	if (fabs (dec1) > fabs (cdec))
-	    dra = dra * (cos (degrad(cdec)) / cos (degrad(dec1)));
-	    }
-    else if (fabs(dec2) > fabs (cdec))
-	dra = dra * (cos (degrad(cdec)) / cos (degrad(dec2)));
+    adec = fabs (dec2);
+    if (fabs (dec1) > adec)
+	adec = fabs (dec1);
+    if (adec > fabs (cdec))
+	dra = dra * (cos (degrad(cdec)) / cos (degrad(adec)));
 
     /* Set right ascension limits for search */
     ra1 = cra - dra;
     ra2 = cra + dra;
 
-    /* Keep right ascension between 0 and 360 degrees */
-    if (ra1 < 0.0)
-	ra1 = ra1 + 360.0;
-    if (ra2 > 360.0)
-	ra2 = ra2 - 360.0;
+    /* Keep right ascension limits between 0 and 360 degrees */
+    if (ra1 < 0.0) {
+	nrot = 1 - (int) (ra1 / 360.0);
+	ra1 = ra1 + (360.0 * (double) nrot);
+	}
+    if (ra1 > 360.0) {
+	nrot = (int) (ra1 / 360.0);
+	ra1 = ra1 - (360.0 * (double) nrot);
+	}
+    if (ra2 < 0.0) {
+	nrot = 1 - (int) (ra2 / 360.0);
+	ra2 = ra2 + (360.0 * (double) nrot);
+	}
+    if (ra2 > 360.0) {
+	nrot = (int) (ra2 / 360.0);
+	ra2 = ra2 - (360.0 * (double) nrot);
+	}
     ra3 = ra1;
     ra4 = ra2;
-    dec3 = dec2;
-    dec4 = dec1;
 
     /* Convert search corners to catalog coordinate system and equinox */
     wcscon (sysc, sysr, eqc, eqr, &ra1, &dec1, epc);
@@ -1224,18 +1327,44 @@ int	verbose;	/* 1 to print limits, else 0 */
     wcscon (sysc, sysr, eqc, eqr, &ra3, &dec3, epc);
     wcscon (sysc, sysr, eqc, eqr, &ra4, &dec4, epc);
 
+    /* Find minimum and maximum right ascensions to search */
     *ramin = ra1;
+    if (ra2 < *ramin)
+	*ramin = ra2;
     if (ra3 < *ramin)
 	*ramin = ra3;
-    *ramax = ra2;
+    if (ra4 < *ramin)
+	*ramin = ra4;
+    *ramax = ra1;
+    if (ra2 > *ramax)
+	*ramax = ra2;
+    if (ra3 > *ramax)
+	*ramax = ra3;
     if (ra4 > *ramax)
 	*ramax = ra4;
+
+    /* If RA separation is > 180 and < 360 degrees, assume wrap around 0 */
+    if (*ramax - *ramin > 180.0 && *ramax - *ramin < 360.0) {
+	ra = *ramax;
+	*ramax = *ramin;
+	*ramin = ra;
+	}
+
+    /* Find minimum and maximum declinatons to search */
     *decmin = dec1;
+    if (dec2 < *decmin)
+	*decmin = dec2;
+    if (dec3 < *decmin)
+	*decmin = dec3;
     if (dec4 < *decmin)
 	*decmin = dec4;
-    *decmax = dec2;
+    *decmax = dec1;
+    if (dec2 > *decmax)
+	*decmax = dec2;
     if (dec3 > *decmax)
 	*decmax = dec3;
+    if (dec4 > *decmax)
+	*decmax = dec4;
 
     /* Search zones which include the poles cover 360 degrees in RA */
     if (*decmin < -90.0) {
@@ -2347,4 +2476,6 @@ vottail ()
  *
  * Jan 23 2003	Add USNO-B1.0 Catalog
  * Jan 27 2003	Adjust dra in RefLimit to max width in RA seconds in region
+ * Mar 10 2003	Clean up RefLim() to better represent region to be searched
+ * Mar 24 2003	Add CatCode() to separate catalog type from catalog parameters
  */

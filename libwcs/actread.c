@@ -1,7 +1,7 @@
 /*** File libwcs/actread.c
- *** October 2, 2002
+ *** March 11, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
- *** Copyright (C) 1999-2002
+ *** Copyright (C) 1999-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -92,6 +92,7 @@ int	nlog;		/* 1 for diagnostics */
     struct Star *star;
     int verbose;
     int wrap;
+    int pass;
     int magsort;
     int rnum, ireg;
     int jstar, iw;
@@ -99,6 +100,7 @@ int	nlog;		/* 1 for diagnostics */
     int istar, istar1, istar2, isp;
     double num, ra, dec, rapm, decpm, mag, magb, magv;
     double rra1, rra2, rra2a, rdec1, rdec2;
+    double rdist, ddist;
     char *str;
     char cstr[32], decstr[32], rastr[32];
     int nbytes;
@@ -241,36 +243,55 @@ int	nlog;		/* 1 for diagnostics */
 		    break;
 		    }
 
-		/* ID number */
-		num = (double) rlist[ireg] + (star->num / 100000.0);
-
-		/* Get position in output coordinate system, equinox, epoch */
-		rapm = star->rapm;
-		decpm = star->decpm;
-		ra = star->ra;
-		dec = star->dec;
-		wcsconp (sysref, sysout, eqref, eqout, epref, epout,
-		 	 &ra, &dec, &rapm, &decpm);
-
 		/* Magnitude */
 		magv = star->xmag[0];
 		magb = star->xmag[1];
+		mag = star->xmag[magsort];
 
-		/* Spectral Type */
-		isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+		/* Check magnitude limits */
+		pass = 1;
+		if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+		    pass = 0;
 
-		/* Compute distance from search center */
-		if (drad > 0 || distsort)
-		    dist = wcsdist (cra,cdec,ra,dec);
-		else
-		    dist = 0.0;
+		/* Get position in output coordinate system */
+		if (pass) {
+		    rapm = star->rapm;
+		    decpm = star->decpm;
+		    ra = star->ra;
+		    dec = star->dec;
+		    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
+			     &ra, &dec, &rapm, &decpm);
 
-		/* Check magnitude and position limits */
-		if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
-		    ((wrap && (ra <= ra1 || ra >= ra2)) ||
-		    (!wrap && (ra >= ra1 && ra <= ra2))) &&
-		    ((drad > 0.0 && dist <= drad) ||
-     		    (drad == 0.0 && dec >= dec1 && dec <= dec2))) {
+		    /* Compute distance from search center */
+		    if (drad > 0 || distsort)
+			dist = wcsdist (cra,cdec,ra,dec);
+		    else
+			dist = 0.0;
+
+		    /* Check radial distance to search center */
+		    if (drad > 0) {
+			if (dist > drad)
+			    pass = 0;
+			}
+
+		    /* Check distance along RA and Dec axes */
+		    else {
+			ddist = wcsdist (cra,cdec,cra,dec);
+			if (ddist > ddec)
+			    pass = 0;
+			rdist = wcsdist (cra,dec,ra,dec);
+		        if (rdist > dra)
+			   pass = 0;
+			}
+		    }
+
+		if (pass) {
+
+		    /* ID number */
+		    num = (double) rlist[ireg] + (star->num / 100000.0);
+
+		    /* Spectral Type */
+		    isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 
 		    /* Write star position and magnitudes to stdout */
 		    if (nstarmax < 1) {
@@ -921,4 +942,6 @@ char	*filename;	/* Name of file for which to find size */
  *
  * Apr  8 2002	Fix extraneous declaration of actsize()
  * Oct  2 2002	Print stars as found in actread() if nstarmax < 1
+ *
+ * Mar 11 2003	Fix position limit testing
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/ubcread.c
- *** February 4, 2003
+ *** March 21, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2003
@@ -125,7 +125,7 @@ int	nlog;		/* Logging interval */
     double dist = 0.0;	/* Distance from search center in degrees */
     double faintmag=0.0; /* Faintest magnitude */
     double maxdist=0.0; /* Largest distance */
-    double ddra, dddec;
+    double rdist, ddist;
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
     int pmqual;
@@ -133,16 +133,17 @@ int	nlog;		/* Logging interval */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
 
-    double rra1, rra2, rdec1, rdec2;
+    double rra1, rra2, rdec1, rdec2, rcdec;
     double num;		/* UB numbers */
-    double rapm, decpm;
+    double rapm, decpm, rapm0, decpm0;
+    double dmarg;
     int wrap, iwrap;
     int verbose;
     int znum, itot,iz, i;
     int itable, jtable,jstar;
     int nstar, nread, pass;
     int ubra1, ubra2, ubdec1, ubdec2;
-    double ra,dec;
+    double ra,dec, ra0, dec0;
     double mag, magtest;
     int istar, istar1, istar2, pmni, nid;
     int nzmax = NZONES;	/* Maximum number of declination zones */
@@ -198,12 +199,14 @@ int	nlog;		/* Logging interval */
     RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
 	    &rra1, &rra2, &rdec1, &rdec2, verbose);
 
-    /* Expand region if proper motion is involved */
-    if (minpmqual < 11) {
-	rra1 = ra1 - 0.01;
-	rra2 = ra2 + 0.01;
-	rdec1 = dec1 - 0.01;
-	rdec2 = dec2 + 0.01;
+    /* Add 60 arcsec/century margins to region to get most stars which move */
+    if (minpmqual < 11 && (epout != 0.0 || sysout != sysref)) {
+	dmarg = (60.0 / 3600.0) * fabs (epout - epref);
+	rdec1 = rdec1 - dmarg;
+	rdec2 = rdec2 + dmarg;
+	rcdec = 0.5 * (rdec1 + rdec2);
+	rra1 = rra1 - (dmarg / cos (degrad(rcdec)));
+	rra2 = rra2 + (dmarg / cos (degrad(rcdec)));
 	}
 
     /* Find declination zones to search */
@@ -343,8 +346,10 @@ int	nlog;		/* Logging interval */
 
 			/* Test distance limits */
 			if (pass) {
-			    ra = ubcra (star.rasec);
-			    dec = ubcdec (star.decsec);
+			    ra0 = ubcra (star.rasec);
+			    dec0 = ubcdec (star.decsec);
+			    ra = ra0;
+			    dec = dec0;
 			    pmqual = ubcpmq (star.pm);
 			    if (nid == 0)
 				pmqual = 10;
@@ -354,29 +359,22 @@ int	nlog;		/* Logging interval */
 			    if (pmqual < minpmqual) {
 				rapm = 0.0;
 				decpm = 0.0;
+				rapm0 = 0.0;
+				decpm0 = 0.0;
 				wcscon (sysref,sysout,eqref,eqout,
 					&ra,&dec,epout);
 				}
 			    else {
-				rapm = ubcpra (star.pm);
-				decpm = ubcpdec (star.pm);
+				rapm0 = ubcpra (star.pm);
+				decpm0 = ubcpdec (star.pm);
+				rapm = rapm0;
+				decpm = decpm0;
 				wcsconp (sysref,sysout,eqref,eqout,epref,epout,
 					 &ra, &dec, &rapm, &decpm);
 				}
 
-			    if (distsort || drad > 0)
+			    if (distsort || drad > 0.0)
 				dist = wcsdist (cra,cdec,ra,dec);
-			    else if (dra > 0.0 || ddec > 0.0) {
-				if (ra >= cra)
-				    ddra = ra - cra;
-				else
-				    ddra = cra - ra;
-				ddra = ddra * cos (degrad(dec));
-				if (dec >= cdec)
-				    dddec = dec - cdec;
-				else
-				    dddec = cdec - dec;
-				}
 			    else
 				dist = 0.0;
 
@@ -385,8 +383,14 @@ int	nlog;		/* Logging interval */
 				if (dist > drad)
 				    pass = 0;
 				}
-			    else if (ddra > dra || dddec > ddec)
-				pass = 0;
+			    else {
+				rdist = wcsdist (cra,dec,ra,dec);
+				if (rdist > dra)
+				    pass = 0;
+				ddist = wcsdist (ra,cdec,ra,dec);
+				if (ddist > ddec)
+				    pass = 0;
+				}
 			    }
 
 			if (pass) {
@@ -1067,4 +1071,5 @@ int nbytes = nbent; /* Number of bytes to reverse */
 
 /* Jan 30 2003	New subroutine based on ubcread.c
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
+ * Mar 21 2003	Improve search limit test by always using wcsdist()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** February 3, 2003
+ *** March 11, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2000-2003
@@ -89,12 +89,13 @@ int	nlog;		/* 1 for diagnostics */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
     int nreg;		/* Number of Tycho 2 regions in search */
+    int regnum[MAXREG];	/* List of region numbers */
     int rlist[MAXREG];	/* List of first stars in regions */
     int nlist[MAXREG];	/* List of number of stars per region */
     char inpath[128];	/* Pathname for input region file */
-    int sysref=WCS_J2000;	/* Catalog coordinate system */
-    double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
+    int sysref = WCS_J2000;	/* Catalog coordinate system */
+    double eqref = 2000.0;	/* Catalog equinox */
+    double epref = 2000.0;	/* Catalog epoch */
     struct StarCat *starcat;
     struct Star *star;
     int verbose;
@@ -105,8 +106,10 @@ int	nlog;		/* 1 for diagnostics */
     int nrmax = MAXREG;
     int nstar,i, ntot;
     int istar, istar1, istar2, isp;
+    int pass;
     double num, ra, dec, rapm, decpm, mag, magb, magv;
-    double rra1, rra2, rra2a, rdec1, rdec2;
+    double rra1, rra2, rra2a, rdec1, rdec2, dmarg, ddra, dddec;
+    double rdist, ddist;
     char cstr[32], rastr[32], decstr[32];
     char *str;
 
@@ -133,13 +136,6 @@ int	nlog;		/* 1 for diagnostics */
     wcscstr (cstr, sysout, eqout, epout);
 
     SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
-
-    /* If RA range includes zero, split it in two */
-    wrap = 0;
-    if (ra1 > ra2)
-	wrap = 1;
-    else
-	wrap = 0;
 
     /* Make mag1 always the smallest magnitude */
     if (mag2 < mag1) {
@@ -176,17 +172,32 @@ int	nlog;		/* 1 for diagnostics */
     nstar = 0;
     jstar = 0;
 
+    /* Get RA and Dec limits in catalog (J2000) coordinates */
     rra1 = ra1;
     rra2 = ra2;
     rdec1 = dec1;
     rdec2 = dec2;
     RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
 	    &rra1, &rra2, &rdec1, &rdec2, verbose);
+
+    /* Add 60 arcsec/century margins to region to get most stars which move */
+    if (epout == 0.0)
+	dmarg = 0.0;
+    else
+	dmarg = (60.0 / 3600.0) * fabs (epout - epref);
+    rdec1 = rdec1 - dmarg;
+    rdec2 = rdec2 + dmarg;
+    rra1 = rra1 - (dmarg / cos (degrad(cdec)));
+    rra2 = rra2 + (dmarg / cos (degrad(cdec)));
+
+    /* Deal with search passing through 0:00 RA */
     if (rra1 > rra2) {
 	rra2a = rra2;
 	rra2 = 360.0;
-	if (!wrap) wrap = 1;
+	wrap = 1;
 	}
+    else
+	wrap = 0;
 
     /* Write header if printing star entries as found */
     if (nstarmax < 1) {
@@ -216,7 +227,7 @@ int	nlog;		/* 1 for diagnostics */
     for (iw = 0; iw <= wrap; iw++) {
 
 	/* Find Tycho 2 Star Catalog regions in which to search */
-	nreg = ty2reg (rra1,rra2,rdec1,rdec2,nrmax,rlist,nlist,verbose);
+	nreg = ty2reg (rra1,rra2,rdec1,rdec2,nrmax,regnum,rlist,nlist,verbose);
 	if (nreg <= 0) {
 	    fprintf (stderr,"TY2READ:  no Tycho 2 region for %.2f-%.2f %.2f %.2f\n",
 		     rra1, rra2, rdec1, rdec2);
@@ -252,34 +263,54 @@ int	nlog;		/* 1 for diagnostics */
 		/* ID number */
 		num = star->num;
 
-		/* Get position in output coordinate system, equinox, epoch */
-		rapm = star->rapm;
-		decpm = star->decpm;
-		ra = star->ra;
-		dec = star->dec;
-		wcsconp (sysref, sysout, eqref, eqout, epref, epout,
-		 	 &ra, &dec, &rapm, &decpm);
-
 		/* Magnitude */
 		magv = star->xmag[0];
 		magb = star->xmag[1];
 		mag = star->xmag[magsort];
 
+		/* Check magnitude limits */
+		pass = 1;
+		if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+		    pass = 0;
+
+		/* Check position limits */
+		if (pass) {
+
+		    /* Get position in output coordinate system */
+		    rapm = star->rapm;
+		    decpm = star->decpm;
+		    ra = star->ra;
+		    dec = star->dec;
+		    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
+		 	     &ra, &dec, &rapm, &decpm);
+
+		    /* Compute distance from search center */
+		    if (drad > 0 || distsort)
+			dist = wcsdist (cra,cdec,ra,dec);
+		    else
+			dist = 0.0;
+
+		    /* Check radial distance to search center */
+		    if (drad > 0) {
+			if (dist > drad)
+			    pass = 0;
+			}
+
+		    /* Check distance along RA and Dec axes */
+		    else {
+			ddist = wcsdist (cra,cdec,cra,dec);
+			if (ddist > ddec)
+			    pass = 0;
+			rdist = wcsdist (cra,dec,ra,dec);
+		        if (rdist > dra)
+			   pass = 0;
+			}
+		    }
+
+		if (pass) {
+
 		/* Spectral Type */
 		isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
-
-		/* Compute distance from search center */
-		if (drad > 0 || distsort)
-		    dist = wcsdist (cra,cdec,ra,dec);
-		else
-		    dist = 0.0;
-
-		/* Check magnitude and position limits */
-		if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
-		    ((wrap && (ra <= ra1 || ra >= ra2)) ||
-		    (!wrap && (ra >= ra1 && ra <= ra2))) &&
-		    ((drad > 0.0 && dist <= drad) ||
-     		    (drad == 0.0 && dec >= dec1 && dec <= dec2))) {
 
 		/* Write star position and magnitudes to stdout */
 		    if (nstarmax < 1) {
@@ -299,9 +330,8 @@ int	nlog;		/* 1 for diagnostics */
 			gdec[nstar] = dec;
 			gpra[nstar] = rapm;
 			gpdec[nstar] = decpm;
-			gmag[1][nstar] = magv;
 			gmag[0][nstar] = magb;
-			/* gtype[nstar] = isp; */
+			gmag[1][nstar] = magv;
 			gdist[nstar] = dist;
 			if (dist > maxdist) {
 			    maxdist = dist;
@@ -324,7 +354,6 @@ int	nlog;		/* 1 for diagnostics */
 			    gpdec[farstar] = decpm;
 			    gmag[0][farstar] = magb;
 			    gmag[1][farstar] = magv;
-			    /* gtype[farstar] = isp; */
 			    gdist[farstar] = dist;
 
 			    /* Find new farthest star */
@@ -345,9 +374,8 @@ int	nlog;		/* 1 for diagnostics */
 			gdec[faintstar] = dec;
 			gpra[faintstar] = rapm;
 			gpdec[faintstar] = decpm;
-			gmag[1][faintstar] = magv;
 			gmag[0][faintstar] = magb;
-			/* gtype[faintstar] = isp; */
+			gmag[1][faintstar] = magv;
 			gdist[faintstar] = dist;
 			faintmag = 0.0;
 
@@ -460,6 +488,8 @@ int	nlog;		/* 1 for diagnostics */
 /* Loop through star list */
     for (jstar = 0; jstar < nstars; jstar++) {
 	rnum = (int) (gnum[jstar] + 0.0000001);
+	
+	/* Find numbered stars (rrrr.nnnnn) */
 	if (gnum[jstar]-(double)rnum > 0.0000001) {
 	    ty2regn (rnum, &istar1, &istar2, verbose);
 	    nstar = istar2 - istar1 + 1;
@@ -484,7 +514,7 @@ int	nlog;		/* 1 for diagnostics */
 		}
 	    ty2close (starcat);
 	    }
-	/* Find star directly in catalog */
+	/* Find nth sequential stars in catalog (not rrrr.nnnnn) */
 	else {
 	    istar = (int) (gnum[jstar] + 0.01);
 	    starcat = ty2open (istar, 10);
@@ -629,11 +659,12 @@ int	verbose;	/* 1 for diagnostics */
  */
 
 static int
-ty2reg (ra1, ra2, dec1, dec2, nrmax, rstar, nstar, verbose)
+ty2reg (ra1, ra2, dec1, dec2, nrmax, regnum, rstar, nstar, verbose)
 
 double	ra1, ra2;	/* Right ascension limits in degrees */
 double	dec1, dec2; 	/* Declination limits in degrees */
 int	nrmax;		/* Maximum number of regions to find */
+int	*regnum;	/* Region numbers (returned)*/
 int	*rstar;		/* Region first star numbers (returned)*/
 int	*nstar;		/* Region numbers of stars (returned)*/
 int	verbose;	/* 1 for diagnostics */
@@ -758,6 +789,7 @@ int	verbose;	/* 1 for diagnostics */
 			if (verbose)
 			    fprintf (stderr,"TY2REG: Region %d added to search\n",irow);
 			if (nrgn < nrmax) {
+			    regnum[nrgn] = irow;
 			    rstar[nrgn] = num1;
 			    nstar[nrgn] = num2 - num1;
 			    nrgn = nrgn + 1;
@@ -775,6 +807,7 @@ int	verbose;	/* 1 for diagnostics */
 			    fprintf (stderr,"GSCREG: Region %d added to search\n", irow);
 
 			if (nrgn < nrmax) {
+			    regnum[nrgn] = irow;
 			    rstar[nrgn] = num1;
 			    nstar[nrgn] = num2 - num1;
 			    nrgn = nrgn + 1;
@@ -1061,4 +1094,6 @@ char	*filename;	/* Name of file for which to find size */
  * Oct  3 2002	Print stars as found in ty2read() if nstarmax < 1
  *
  * Feb  3 2003	Include math.h because of fabs()
+ * Feb 27 2003	Add 60 arcsec/century to margins of search box to get moving stars
+ * Mar 11 2003	Fix position limit testing
  */

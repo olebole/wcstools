@@ -122,8 +122,10 @@ char **av;
 		    syscoor = WCS_J2000;
 		    eqcoor = 2000.0;
 		    }
-		else if ((syscoor = wcscsys (*(av+1))) >= 0)
+		else if ((syscoor = wcscsys (*(av+1))) >= 0) {
 		    eqcoor = wcsceq (*++av);
+		    ac--;
+		    }
 		else {
 		    syscoor = WCS_J2000;
 		    eqcoor = 2000.0;

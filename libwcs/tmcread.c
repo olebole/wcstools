@@ -1,8 +1,8 @@
 /*** File libwcs/tmcread.c
- *** October 3, 2002
+ *** March 11, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2002
+ *** Copyright (C) 2001-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -99,6 +99,7 @@ int	nlog;		/* 1 for diagnostics */
     struct Star *star;
     int verbose;
     int wrap;
+    int pass;
     int ireg;
     int imag;
     int jstar, iw;
@@ -109,6 +110,7 @@ int	nlog;		/* 1 for diagnostics */
     int istar, istar1, istar2;
     double num, ra, dec, rapm, decpm, mag;
     double rra1, rra2, rra2a, rdec1, rdec2;
+    double rdist, ddist;
     char cstr[32], rastr[32], decstr[32], numstr[32];
     char *str;
 
@@ -248,29 +250,45 @@ int	nlog;		/* 1 for diagnostics */
 		/* ID number */
 		num = star->num;
 
-		/* Get position in output coordinate system, equinox, epoch */
-		rapm = star->rapm;
-		decpm = star->decpm;
-		ra = star->ra;
-		dec = star->dec;
-		wcsconp (sysref, sysout, eqref, eqout, epref, epout,
-		 	 &ra, &dec, &rapm, &decpm);
-
 		/* Magnitude */
 		mag = star->xmag[0];
 
-		/* Compute distance from search center */
-		if (drad > 0 || distsort)
-		    dist = wcsdist (cra,cdec,ra,dec);
-		else
-		    dist = 0.0;
+		/* Check magnitude limits */
+		pass = 1;
+		if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+		    pass = 0;
 
-		/* Check magnitude and position limits */
-		if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
-		    ((wrap && (ra <= ra1 || ra >= ra2)) ||
-		    (!wrap && (ra >= ra1 && ra <= ra2))) &&
-		    ((drad > 0.0 && dist <= drad) ||
-     		    (drad == 0.0 && dec >= dec1 && dec <= dec2))) {
+		if (pass) {
+
+		    /* Get position in output coordinate system */
+		    ra = star->ra;
+		    dec = star->dec;
+		    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+
+		    /* Compute distance from search center */
+		    if (drad > 0 || distsort)
+			dist = wcsdist (cra,cdec,ra,dec);
+		    else
+			dist = 0.0;
+
+		    /* Check radial distance to search center */
+		    if (drad > 0) {
+			if (dist > drad)
+			    pass = 0;
+			}
+
+		    /* Check distance along RA and Dec axes */
+		    else {
+			ddist = wcsdist (cra,cdec,cra,dec);
+			if (ddist > ddec)
+			    pass = 0;
+			rdist = wcsdist (cra,dec,ra,dec);
+		        if (rdist > dra)
+			   pass = 0;
+			}
+		    }
+
+		if (pass) {
 
 		    /* Write star position and magnitudes to stdout */
 		    if (nstarmax < 1) {
