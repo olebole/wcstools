@@ -1,3 +1,10 @@
+Version 2.7.3 (May 1, 2000)
+imhfile: Fix bug and clean up code dealing with pixel subdirectories
+dateutil: Years from old FITS format or system less than 1000 get 1900 added
+hput: Bug in hadd() fixed so line is not overwritten.
+scat: Allocate search buffers once to speed multiple-object searches
+ctgread: Implement missing /d catalog flag for positions in degrees.
+
 Version 2.7.2 (March 28, 2000)
 cphead: New program to copy keyword values between headers
 gethead: Add extraction of keyword= values from any ASCII file

@@ -1,5 +1,5 @@
 /* File sethead.c
- * March 22, 2000
+ * May 1, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -28,7 +28,6 @@ static int histset = 0;
 static int krename = 0;
 static char prefix[2];
 static int version = 0;		/* If 1, print only program name and version */
-static int isodate = 0;		/* If 1, convert all FITS dates to ISO */
 
 
 main (ac, av)
@@ -74,10 +73,6 @@ char **av;
 	    char c;
 	    while (c = *++str)
 	    switch (c) {
-
-		case 'd':	/* Upgrade date to ISO */
-		    isodate++;
-		    break;
 
 		case 'h':	/* Set HISTORY */
 		    histset++;
@@ -207,10 +202,9 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Set FITS or IRAF header keyword values\n");
     fprintf(stderr,"Usage: [-nhkv][-f num][-m num][-r char] file1.fits [... filen.fits] kw1=val1 [ ... kwn=valuen]\n");
-    fprintf(stderr,"  or : [-dhknv][-f num][-m num][-r char] file1.fits [... filen.fits] @keywordfile]\n");
-    fprintf(stderr,"  or : [-dhknv][-f num][-m num][-r char] @listfile kw1=val1 [ ... kwn=valuen]\n");
-    fprintf(stderr,"  or : [-dhknv][-f num][-m num][-r char] @listfile @keywordfile\n");
-    fprintf(stderr,"  -d: Change date to ISO format\n");
+    fprintf(stderr,"  or : [-hknv][-f num][-m num][-r char] file1.fits [... filen.fits] @keywordfile]\n");
+    fprintf(stderr,"  or : [-hknv][-f num][-m num][-r char] @listfile kw1=val1 [ ... kwn=valuen]\n");
+    fprintf(stderr,"  or : [-hknv][-f num][-m num][-r char] @listfile @keywordfile\n");
     fprintf(stderr,"  -h: Write HISTORY line\n");
     fprintf(stderr,"  -k: Write SETHEAD keyword\n");
     fprintf(stderr,"  -n: Write a new file (add e before the extension)\n");
@@ -337,149 +331,154 @@ char	*kwd[];		/* Names and values of those keywords */
 		}
 	    }
 	else {
-	*kwv0 = 0;
-	lkwd = kwv0 - kwd[ikwd];
-	kwv = kwv0 + 1;
-	lkwv = strlen (kwv);
+	    *kwv0 = 0;
+	    lkwd = kwv0 - kwd[ikwd];
+	    kwv = kwv0 + 1;
+	    lkwv = strlen (kwv);
 
-	/* If end of line comes before end of string terminate value there */
-	knl = strchr (kwv,newline);
-	if (knl != NULL) {
-	    lnl = knl - kwv;
-	    if (lnl < lkwv) lkwv = lnl;
-	    }
-
-	/* Get current length of header buffer */
-	lhead = gethlength (header);
-
-	/* Make keyword all upper case */
-	kwl = kwd[ikwd] + lkwd;
-	for (kw = kwd[ikwd]; kw < kwl; kw++) {
-	    if (*kw > 96 && *kw < 123)
-		*kw = *kw - 32;
-	    }
-
-	/* If keyword is already in header, rename it if requested */
-	if (krename && ksearch (header, kwd[ikwd])) {
-	    strcpy (newkey, prefix);
-	    strcat (newkey, kwd[ikwd]);
-	    if (strlen (newkey) > 8)
-		newkey[8] = (char) 0;
-	    hchange (header, kwd[ikwd], newkey);
-	    }
-
-	/* Write numeric value to keyword */
-	if (isnum (kwv)) {
-	    i = 21 - lkwv;
-	    for (v = kwv; v < kwv+lkwv; v++)
-		cval[i++] = *v;
-	    cval[21] = 0;
-	    if (hputc (header, kwd[ikwd], cval)) {
-		lhead = lhead + 28800;
-		if ((header =
-		    (char *)realloc(header,(unsigned int)lhead)) != NULL) {
-		    hlength (header, lhead);
-		    hputc (header,kwd[ikwd], cval);
-		    }
+	    /* If end of line before end of string, terminate value there */
+	    knl = strchr (kwv,newline);
+	    if (knl != NULL) {
+		lnl = knl - kwv;
+		if (lnl < lkwv) lkwv = lnl;
 		}
-	    }
 
-	/* Write boolean value to keyword */
-	else if (!strcmp (kwv,"T") || !strcmp (kwv,"t") ||
-		 !strcmp (kwv,"YES") || !strcmp (kwv,"yes")) {
-	    if (hputl (header, kwd[ikwd], 1)) {
-		lhead = lhead + 28800;
-		if ((header =
-		    (char *)realloc(header,(unsigned int)lhead)) != NULL) {
-		    hlength (header, lhead);
-		    hputl (header,kwd[ikwd], 1);
-		    }
-		}
-	    }
-	else if (!strcmp (kwv,"F") || !strcmp (kwv,"f") ||
-		 !strcmp (kwv,"NO") || !strcmp (kwv,"no")) {
-	    if (hputl (header, kwd[ikwd], 0)) {
-		lhead = lhead + 28800;
-		if ((header =
-		    (char *)realloc(header,(unsigned int)lhead)) != NULL) {
-		    hlength (header, lhead);
-		    hputl (header,kwd[ikwd], 0);
-		    }
-		}
-	    }
+	    /* Get current length of header buffer */
+	    lhead = gethlength (header);
 
-	/* Write character string to keyword */
-	else {
-	    if ((vq0 = strchr (kwv,dquote))) {
-		vq0 = vq0 + 1;
-		vq1 = strchr (vq0,dquote);
-		if (vq0 && vq1) {
-		    kwv = vq0;
-		    *vq1 = 0;
-		    }
+	    /* Make keyword all upper case */
+	    kwl = kwd[ikwd] + lkwd;
+	    for (kw = kwd[ikwd]; kw < kwl; kw++) {
+		if (*kw > 96 && *kw < 123)
+		    *kw = *kw - 32;
 		}
-	    else if ((vq0 = strchr (kwv,squote))) {
-		vq0 = vq0 + 1;
-		vq1 = strchr (vq0,squote);
-		if (vq0 && vq1) {
-		    kwv = vq0;
-		    *vq1 = 0;
-		    }
+
+	    /* If keyword is already in header, rename it if requested */
+	    if (krename && ksearch (header, kwd[ikwd])) {
+		strcpy (newkey, prefix);
+		strcat (newkey, kwd[ikwd]);
+		if (strlen (newkey) > 8)
+		    newkey[8] = (char) 0;
+		hchange (header, kwd[ikwd], newkey);
 		}
-	    lval = strlen (kwv);
-	    if (lval < 69) {
-		if (hputs (header, kwd[ikwd], kwv)) {
-		    lhead = lhead + 14400;
+
+	    /* Write numeric value to keyword */
+	    if (isnum (kwv)) {
+		i = 21 - lkwv;
+		for (v = kwv; v < kwv+lkwv; v++)
+		    cval[i++] = *v;
+		cval[21] = 0;
+		if (hputc (header, kwd[ikwd], cval)) {
+		    lhead = lhead + 28800;
 		    if ((header =
 			(char *)realloc(header,(unsigned int)lhead)) != NULL) {
 			hlength (header, lhead);
-			hputs (header, kwd[ikwd], kwv);
+			hputc (header,kwd[ikwd], cval);
 			}
 		    }
 		}
 
-	    /* If character string is longer than 68 characters, split it */
-	    else {
-		strcpy (keyroot, kwd[ikwd]);
-		lroot = strlen (keyroot);
-		if (lroot > 6) {
-		    *(keyroot+6) = (char) 0;
-		    lroot = 6;
+	    /* Write boolean value to keyword */
+	    else if (!strcmp (kwv,"T") || !strcmp (kwv,"t") ||
+		     !strcmp (kwv,"YES") || !strcmp (kwv,"yes")) {
+		if (hputl (header, kwd[ikwd], 1)) {
+		    lhead = lhead + 28800;
+		    if ((header =
+			(char *)realloc(header,(unsigned int)lhead)) != NULL) {
+			hlength (header, lhead);
+			hputl (header,kwd[ikwd], 1);
+			}
 		    }
-		ii = '1';
-		lkwv = strlen (kwv);
-		while (lkwv > 0) {
-		    if (lkwv > 67)
-			lv = 67;
-		    else
-			lv = lkwv;
-		    strncpy (value, kwv, lv);
-		    ctemp = value[lv];
-		    value[lv] = (char) 0;
-		    strcpy (newkey, keyroot);
-		    strcat (newkey, "_");
-		    newkey[lroot+1] = ii;
-		    newkey[lroot+2] = (char) 0;
-		    ii++;
-		    if (hputs (header, newkey, value)) {
-			lhead = lhead + 28800;
-			if ((header =
-			  (char *)realloc(header,(unsigned int)lhead))!=NULL) {
+		}
+	    else if (!strcmp (kwv,"F") || !strcmp (kwv,"f") ||
+		     !strcmp (kwv,"NO") || !strcmp (kwv,"no")) {
+		if (hputl (header, kwd[ikwd], 0)) {
+		    lhead = lhead + 28800;
+		    if ((header =
+			(char *)realloc(header,(unsigned int)lhead)) != NULL) {
+			hlength (header, lhead);
+			hputl (header,kwd[ikwd], 0);
+			}
+		    }
+		}
+
+	    /* Write character string to keyword */
+	    else {
+		if ((vq0 = strchr (kwv,dquote))) {
+		    vq0 = vq0 + 1;
+		    vq1 = strchr (vq0,dquote);
+		    if (vq0 && vq1) {
+			kwv = vq0;
+			*vq1 = 0;
+			}
+		    }
+		else if ((vq0 = strchr (kwv,squote))) {
+		    vq0 = vq0 + 1;
+		    vq1 = strchr (vq0,squote);
+		    if (vq0 && vq1) {
+			kwv = vq0;
+			*vq1 = 0;
+			}
+		    }
+
+		/* Remove trailing blanks */
+		lval = strlen (kwv);
+		while (kwv[lval-1] < (char) 33)
+		    kwv[--lval] = (char) 0;
+
+		if (lval < 69) {
+		    if (hputs (header, kwd[ikwd], kwv)) {
+			lhead = lhead + 14400;
+		    	if ((header =
+			(char *)realloc(header,(unsigned int)lhead)) != NULL) {
 			    hlength (header, lhead);
-			    hputs (header, newkey, value);
+			    hputs (header, kwd[ikwd], kwv);
 			    }
 			}
-		    value[lv] = ctemp;
-		    kwv = kwv + lv;
-		    lkwv = lkwv - lv;
 		    }
-		kwv = kwv0 + 1;
+
+		/* If character string is longer than 68 characters, split it */
+		else {
+		    strcpy (keyroot, kwd[ikwd]);
+		    lroot = strlen (keyroot);
+		    if (lroot > 6) {
+			*(keyroot+6) = (char) 0;
+			lroot = 6;
+			}
+		    ii = '1';
+		    lkwv = strlen (kwv);
+		    while (lkwv > 0) {
+			if (lkwv > 67)
+			    lv = 67;
+			else
+			    lv = lkwv;
+			strncpy (value, kwv, lv);
+			ctemp = value[lv];
+			value[lv] = (char) 0;
+			strcpy (newkey, keyroot);
+			strcat (newkey, "_");
+			newkey[lroot+1] = ii;
+			newkey[lroot+2] = (char) 0;
+			ii++;
+			if (hputs (header, newkey, value)) {
+			    lhead = lhead + 28800;
+			    if ((header =
+			  (char *)realloc(header,(unsigned int)lhead))!=NULL) {
+				hlength (header, lhead);
+				hputs (header, newkey, value);
+				}
+			    }
+			value[lv] = ctemp;
+			kwv = kwv + lv;
+			lkwv = lkwv - lv;
+			}
+		    kwv = kwv0 + 1;
+		    }
 		}
+	    if (verbose)
+		printf ("%s = %s\n", kwd[ikwd], kwv);
+	    *kwv0 = '=';
 	    }
-	if (verbose)
-	    printf ("%s = %s\n", kwd[ikwd], kwv);
-	*kwv0 = '=';
-	}
 	}
 
     /* Make up name for new FITS or IRAF output file */
@@ -661,4 +660,6 @@ char	*kwd[];		/* Names and values of those keywords */
  *
  * Feb 17 2000	Fix bug reading last of assignments from file
  * Mar 22 2000	Use lt2fd() instead of getltime()
+ * Apr 21 2000	Drop trailing spaces from character strings
+ * May  1 2000	Drop -d option; it was unneeded for date-valued keywords
  */

@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * March 27, 2000
+ * April 3, 2000
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -112,6 +112,7 @@ struct StarCat {
 			   Negative for J2000 catalog */
     int nbent;		/* Number of bytes per star entry */
     int	rasorted;	/* 1 if RA-sorted, else 0 */
+    int	ignore;		/* 1 if ignoring info after position and magnitude */
     FILE *ifcat;	/* File descriptor for catalog file */
     char isfil[24];	/* Star catalog file name */
     char isname[64];	/* Star catalog description */
@@ -288,4 +289,5 @@ int getoken();		/* Get specified token from tokenized string */
  * Mar  8 2000	Add ProgName() to extract program name from path used
  * Mar 10 2000	Add PropCat() to tell whether a catalog has proper motions
  * Mar 27 2000	Add tabxyread()
+ * Apr  3 2000	Add option in catalog structure to ignore extra info
  */

@@ -1,5 +1,5 @@
 /* File imhfile.c
- * March 27, 2000
+ * May 1, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
@@ -602,11 +602,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 	newpixname = same_path (pixname, hdrname);
 	free (pixname);
 	pixname = newpixname;
-	hputl (fitsheader, "SAMEDIR", 1);
 	}
-    else
-	hputl (fitsheader, "SAMEDIR", 0);
-    fhead = fhead + 80;
     if ((bang = strchr (pixname, '!')) != NULL )
 	nl = hputm (fitsheader,"PIXFIL",bang+1);
     else
@@ -842,7 +838,8 @@ char	*image;		/* IRAF image */
     int fd;
     char *bang;
     int nbw, bytepix, bitpix, naxis, naxis1, naxis2, nbimage, lphead;
-    char *pixn, *pixname;
+    char *pixn, *newpixname;
+    char pixname[SZ_IM2PIXFILE+1];
     int imhver, pixswap;
 
     hgeti4 (fitsheader, "IMHVER", &imhver);
@@ -852,10 +849,11 @@ char	*image;		/* IRAF image */
 	    pixn = irafgetc (irafheader, IM2_PIXFILE, SZ_IM2PIXFILE);
 	else
 	    pixn = irafgetc2 (irafheader, IM_PIXFILE, SZ_IMPIXFILE);
-	if (strncmp(pixn, "HDR", 3) == 0 )
-	    pixname = same_path (pixn, hdrname);
+	if (strncmp(pixn, "HDR", 3) == 0 ) {
+	    newpixname = same_path (pixn, hdrname);
+	    strcpy (pixname, newpixname);
+	    }
 	else {
-	    pixname = (char *) calloc (SZ_IM2PIXFILE, sizeof (char));
 	    if ((bang = strchr (pixn, '!')) != NULL )
 		strcpy (pixname, bang+1);
 	    else
@@ -987,7 +985,7 @@ int	*nbiraf;	/* Length of returned IRAF header */
 {
     int i, n, pixoff, samedir, lhdrdir, lpixdir;
     short *irafp, *irafs, *irafu;
-    char *iraf2u, *iraf2p, *filename;
+    char *iraf2u, *iraf2p, *filename, *hdrdir, *pixf;
     char *fitsend, *fitsp, pixfile[SZ_IM2PIXFILE], hdrfile[SZ_IM2HDRFILE];
     char title[SZ_IM2TITLE], temp[80];
     int	nax, nlfits, imhver, nbits, pixtype, hdrlength, mtime;
@@ -1098,35 +1096,26 @@ int	*nbiraf;	/* Length of returned IRAF header */
 
     /* Replace pixel file name, if it is in the FITS header */
     if (hgetm (fitsheader, "PIXFIL", SZ_IM2PIXFILE, pixfile)) {
-	samedir = 0;
-	hgetl (fitsheader, "SAMEDIR", &samedir);
-	if (samedir) {
-	    filename = strrchr (pixfile, '/');
-	    if (filename)
-		filename = filename + 1;
-	    else
-		filename = pixfile;
-	    strcpy (temp, "HDR$");
-	    strcat (temp,filename);
-	    strcpy (pixfile, temp);
-	    }
-	else if (hgetm (fitsheader, "IMHFIL", SZ_IM2HDRFILE, hdrfile) &&
-	    strchr (pixfile, '/')) {
-	    lpixdir = strrchr (pixfile, '/') - pixfile;
-	    lhdrdir = strrchr (hdrfile, '/') - hdrfile;
-	    if (lpixdir == lhdrdir && !strncmp (pixfile, hdrfile, lpixdir)) {
-		filename = strrchr (pixfile, '/') + 1;
-		strcpy (temp, "HDR$");
-		strcat (temp,filename);
-		strcpy (pixfile, temp);
+	if (strchr (pixfile, '/')) {
+	    if (hgetm (fitsheader, "IMHFIL", SZ_IM2HDRFILE, hdrfile)) {
+		hdrdir = strrchr (hdrfile, '/');
+		if (hdrdir != NULL) {
+		    lhdrdir = hdrdir - hdrfile + 1;
+		    if (!strncmp (pixfile, hdrfile, lhdrdir)) {
+			filename = pixfile + lhdrdir;
+			strcpy (temp, "HDR$");
+			strcat (temp,filename);
+			strcpy (pixfile, temp);
+			}
+		    }
+		if (pixfile[0] != '/' && pixfile[0] != 'H') {
+		    strcpy (temp, "HDR$");
+		    strcat (temp,pixfile);
+		    strcpy (pixfile, temp);
+		    }
 		}
 	    }
 
-	if (!strchr (pixfile,'/') && !strchr (pixfile,'$')) {
-	    strcpy (temp, "HDR$");
-	    strcat (temp,pixfile);
-	    strcpy (pixfile, temp);
-	    }
 	if (imhver == 2)
             irafputc (pixfile, irafheader, IM2_PIXFILE, SZ_IM2PIXFILE);
 	else
@@ -1135,7 +1124,6 @@ int	*nbiraf;	/* Length of returned IRAF header */
 	hdel (fitsheader,"PIXFIL_2");
 	hdel (fitsheader,"PIXFIL_3");
 	hdel (fitsheader,"PIXFIL_4");
-	hdel (fitsheader,"SAMEDIR");
 	}
 
     /* Replace header file name, if it is in the FITS header */
@@ -1211,6 +1199,7 @@ int	*nbiraf;	/* Length of returned IRAF header */
 	    *irafp++ = 10;
 	    }
 	*irafp++ = 0;
+	*irafp++ = 32;
 	*nbiraf = 2 * (irafp - irafs);
 	hdrlength = *nbiraf / 4;
 	}
@@ -1799,4 +1788,7 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * Mar 27 2000	Use hputm() to save file paths up to 256 characters
  * Mar 27 2000	Write filename comments after 1st keyword with short value
  * Mar 27 2000	Allocate pixel file name in same_path to imh2 length
+ * Mar 29 2000	Add space after last linefeed of header in fits2iraf()
+ * Apr 28 2000	Dimension pixname in irafwimage()
+ * May  1 2000	Fix code for updating pixel file name with HDR$ in fits2iraf()
  */

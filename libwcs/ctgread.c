@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** March 15, 2000
+ *** April 3, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -77,6 +77,7 @@ int	nlog;
     struct StarCat *starcat;
     struct Star *star;
     char *objname;
+    int nameobj;	/* Save object name if 1, else do not */
     int lname;
     int wrap;
     int jstar;
@@ -189,6 +190,10 @@ int	nlog;
 	}
 
     jstar = 0;
+    if (tobj == NULL || starcat->ignore)
+	nameobj = 0;
+    else
+	nameobj = 1;
 
     /* Loop through catalog */
     for (istar = 1; istar <= starcat->nstars; istar++) {
@@ -238,7 +243,7 @@ int	nlog;
 		tdec[nstar] = dec;
 		tmag[nstar] = mag;
 		tdist[nstar] = dist;
-		if (tobj != NULL) {
+		if (nameobj) {
 		    lname = strlen (star->objname) + 1;
 		    objname = (char *)calloc (lname, 1);
 		    strcpy (objname, star->objname);
@@ -262,7 +267,7 @@ int	nlog;
 		    tdec[farstar] = dec;
 		    tmag[farstar] = mag;
 		    tdist[farstar] = dist;
-		    if (tobj != NULL) {
+		    if (nameobj) {
 			free (tobj[farstar]);
 			lname = strlen (star->objname) + 1;
 			objname = (char *)calloc (lname, 1);
@@ -288,7 +293,7 @@ int	nlog;
 		tdec[faintstar] = dec;
 		tmag[faintstar] = mag;
 		tdist[faintstar] = dist;
-		if (tobj != NULL) {
+		if (nameobj) {
 		    free (tobj[faintstar]);
 		    lname = strlen (star->objname) + 1;
 		    objname = (char *)calloc (lname, 1);
@@ -380,6 +385,7 @@ int	nlog;
     char *objname;
     int lname;
     int starfound;
+    int nameobj;
 
     nstar = 0;
 
@@ -442,6 +448,10 @@ int	nlog;
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
     star->num = 0.0;
+    if (tobj == NULL || starcat->ignore)
+	nameobj = 0;
+    else
+	nameobj = 1;
 
     /* Loop through star list */
     for (jnum = 0; jnum < nnum; jnum++) {
@@ -497,7 +507,7 @@ int	nlog;
 	    tra[jnum] = ra;
 	    tdec[jnum] = dec;
 	    tmag[jnum] = mag;
-	    if (tobj != NULL) {
+	    if (nameobj) {
 		lname = strlen (star->objname) + 1;
 		objname = (char *)calloc (lname, 1);
 		strcpy (objname, star->objname);
@@ -622,13 +632,19 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 
     catdesc = strchr (sc->catbuff, newline) + 1;
     lhead = catdesc - sc->catbuff;
-    if (lhead < 80) {
-	strncpy (header, sc->catbuff, lhead);
-	header[lhead] = (char) 0;
+    if (lhead > 79)
+	lhead = 79;
+    if (sc->catbuff[0] == '#' && sc->catbuff[1] == ' ') {
+	strncpy (header, sc->catbuff+2, lhead-2);
+	header[lhead-2] = (char) 0;
+	}
+    else if (sc->catbuff[0] == '#') {
+	strncpy (header, sc->catbuff+1, lhead-1);
+	header[lhead-1] = (char) 0;
 	}
     else {
-	strncpy (header, sc->catbuff, 79);
-	header[79] = (char) 0;
+	strncpy (header, sc->catbuff, lhead);
+	header[lhead] = (char) 0;
 	}
 
     /* Catalog positions are in B1950 (FK4) coordinates */
@@ -657,6 +673,16 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     /* Catalog positions are in hh.mmsssss dd.mmssss format */
     if (strsrch (header, "/h") || strsrch (header, "/H"))
 	sc->inform = 'H';
+
+    /* Catalog positions are in degrees */
+    if (strsrch (header, "/d") || strsrch (header, "/D"))
+	sc->inform = 'D';
+
+    /* Ignore information after position and magnitude */
+    if (strsrch (header, "/i") || strsrch (header, "/I"))
+	sc->ignore = 1;
+    else
+	sc->ignore = 0;
 
     /* Catalog positions are J2000 (FK5) coordinates */
     if (strsrch (header, "/j") || strsrch (header, "/J")) {
@@ -687,10 +713,16 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     /* Proper motion */
     if (strsrch (header, "/p") || strsrch (header, "/P"))
 	sc->mprop = 1;
+
+    /* RA-sorted catalog */
     if (strsrch (header, "/r") || strsrch (header, "/R"))
 	sc->rasorted = 1;
+
+    /* Table format (hh mm ss dd mm ss) */
     if (strsrch (header, "/t") || strsrch (header, "/T"))
 	sc->inform = 'T';
+
+    /* Epoch per catalog object as yyyy.mmdd */
     if (strsrch (header, "/y") || strsrch (header, "/Y"))
 	sc->nepoch = 1;
     else
@@ -699,10 +731,20 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     /* Second line is description */
     sc->catdata = strchr (catdesc, newline) + 1;
     ldesc = sc->catdata - catdesc;
-    if (ldesc < 64)
+    if (ldesc > 63)
+	ldesc = 63;
+    if (catdesc[0] == '#' && catdesc[1] == ' ') {
+	strncpy (sc->isname, catdesc+2, ldesc-2);
+	sc->isname[ldesc-2] = (char) 0;
+	}
+    else if (catdesc[0] == '#') {
+	strncpy (sc->isname, catdesc+1, ldesc-1);
+	sc->isname[ldesc-1] = (char) 0;
+	}
+    else {
 	strncpy (sc->isname, catdesc, ldesc);
-    else
-	strncpy (sc->isname, catdesc, 63);
+	sc->isname[ldesc] = (char) 0;
+	}
 
     /* Enumerate entries in ASCII catalog by counting newlines */
     catnew = sc->catdata;
@@ -832,6 +874,7 @@ struct Star *st; /* Star data structure, updated on return */
 	linend = sc->catlast;
     ctemp = *linend;
     *linend = (char) 0;
+    st->objname[0] = (char) 0;
 
     /* Extract information from line of catalog */
     ntok = setoken (&tokens, line, NULL);
@@ -866,7 +909,7 @@ struct Star *st; /* Star data structure, updated on return */
     if (ltok < 1)
 	return (-1);
 
-    /* Translate 3-token RA (hh mm ss.ss) */
+    /* Translate 3-token right ascension (hh mm ss.ss) */
     if (sc->inform == 'T') {
 	int hr, mn;
 	double sec;
@@ -883,7 +926,11 @@ struct Star *st; /* Star data structure, updated on return */
 	st->ra = 15.0 * ((double) hr + ((double) mn / 60.0) + (sec / 3600.0));
 	}
 
-    /* Translate single-token RA (hh:mm:ss.ss or hh.mmssss) */
+    /* Translate single-token right ascension as degrees */
+    else if (sc->inform == 'D')
+	st->ra = atof (token);
+
+    /* Translate single-token right ascension (hh:mm:ss.ss or hh.mmssss) */
     else
 	st->ra = ctg2ra (token);
 
@@ -892,7 +939,7 @@ struct Star *st; /* Star data structure, updated on return */
     if (ltok < 1)
 	return (-1);
 
-    /* Translate 3-token Dec (hh mm ss.ss) */
+    /* Translate 3-token declination (sdd mm ss.ss) */
     if (sc->inform == 'T') {
 	int deg, min;
 	int decsgn = 0;
@@ -914,7 +961,11 @@ struct Star *st; /* Star data structure, updated on return */
 	    st->dec = -st->dec;
 	}
 
-    /* Translate single-token Dec (dd:mm:ss.ss or dd.mmssss) */
+    /* Translate single-token declination as degrees */
+    else if (sc->inform == 'D')
+	st->dec = atof (token);
+
+    /* Translate single-token declination (dd:mm:ss.ss or dd.mmssss) */
     else
 	st->dec = ctg2dec (token);
 
@@ -964,7 +1015,7 @@ struct Star *st; /* Star data structure, updated on return */
 
     /* Object name */
     itok = tokens.itok;
-    if (sc->stnum < 5 && itok < ntok) {
+    if (sc->stnum < 5 && itok < ntok && !sc->ignore) {
 	itok = -(itok+1);
 	ltok = getoken (&tokens, itok, token);
 	if (ltok > 31) {
@@ -1130,4 +1181,7 @@ char	*in;	/* Character string */
  * Jan 10 2000	Add second magnitude to tabread() and tabrnum()
  * Mar 10 2000	Add proper motions to ctgread(), ctgrnum(), tabread(), tabrnum()
  * Mar 15 2000	Add proper motions to binread(), binrnum(), actread(), actrnum()
+ * Apr  3 2000	Implement fractional degrees (/d) for positions
+ * Apr  3 2000	Add /i option to ignore stuff at end of line
+ * Apr  3 2000	Ignore leading # on first two lines of ASCII catalog file
  */

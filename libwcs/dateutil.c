@@ -1803,7 +1803,7 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 	    *iyr = (int) atof (nval);
 	    if (*iyr >= 0 && *iyr <= 49)
 		*iyr = *iyr + 2000;
-	    else if (*iyr <= 100)
+	    else if (*iyr < 1000)
 		*iyr = *iyr + 1900;
 	    }
 	else
@@ -2165,9 +2165,7 @@ char	*string; /* Possible FITS date string, which may be:
 	    *sstr = '/';
 	    nval = sstr + 1;
 	    iyr = (int) atof (nval);
-	    if (iyr >= 0 && iyr <= 49)
-		iyr = iyr + 2000;
-	    else if (iyr < 100)
+	    if (iyr < 1000)
 		iyr = iyr + 1900;
 	    }
 	if (imon > 0 && iday > 0)
@@ -2403,4 +2401,5 @@ double	dnum, dm;
  * Mar 22 2000	Add lt2* and ut2* to get current time as local and UT
  * Mar 24 2000	Fix calloc() calls
  * Mar 24 2000	Add tsi2* and tsu2* to convert IRAF and Unix seconds
+ * May  1 2000	In old FITS format, all years < 1000 get 1900 added to them
  */

@@ -1,5 +1,5 @@
 /* File scat.c
- * March 28, 2000
+ * April 3, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -62,6 +62,19 @@ static int notprinted = 1;	/* If 1, print header */
 static char *listfile;		/* Name of catalog file with search centers */
 static int printxy = 0;		/* If 1, print X Y instead of object number */
 static char *xstr, *ystr;	/* X and Y strings if printxy */
+static int closest;		/* 1 if printing only closest star */
+static double *gnum;		/* Catalog star numbers */
+static double *gra;		/* Catalog star right ascensions */
+static double *gdec;		/* Catalog star declinations */
+static double *gpra;		/* Catalog star RA proper motions */
+static double *gpdec;		/* Catalog star declination proper motions */
+static double *gm;		/* Catalog magnitudes */
+static double *gmb;		/* Catalog B magnitudes */
+static double *gx;		/* Catalog star X positions on image */
+static double *gy;		/* Catalog star Y positions on image */
+static int *gc;			/* Catalog star object classes */
+static char **gobj;		/* Catalog star object names */
+static char **gobj1;		/* Catalog star object names */
 
 main (ac, av)
 int ac;
@@ -85,6 +98,20 @@ char **av;
     ranges = NULL;
     keyword = NULL;
     objname = NULL;
+
+    /* Null out buffers before starting */
+    gnum = NULL;
+    gra = NULL;
+    gdec = NULL;
+    gpra = NULL;
+    gpdec = NULL;
+    gm = NULL;
+    gmb = NULL;
+    gx = NULL;
+    gy = NULL;
+    gc = NULL;
+    gobj = NULL;
+    gobj1 = NULL;
 
     /* Check name used to execute programe and set catalog name accordingly */
     progname = ProgName (av[0]);
@@ -200,6 +227,7 @@ char **av;
 	    case 'a':	/* Get closest source */
 		distsort++;
 		nstars = 1;
+		closest++;
 		break;
 
     	    case 'b':	/* output coordinates in B1950 */
@@ -258,6 +286,7 @@ char **av;
 	    case 'l':	/* Print center and closest star on one line */
 		oneline++;
 		distsort++;
+		closest++;
 		nstars = 1;
 		break;
 
@@ -434,6 +463,18 @@ char **av;
 
     for (i = 0; i < ncat; i++)
 	free (refcatname[i]);
+
+    /* Free memory used for search results and return */
+    if (gx) free ((char *)gx);
+    if (gy) free ((char *)gy);
+    if (gm) free ((char *)gm);
+    if (gmb) free ((char *)gmb);
+    if (gra) free ((char *)gra);
+    if (gdec) free ((char *)gdec);
+    if (gnum) free ((char *)gnum);
+    if (gc) free ((char *)gc);
+    if (gobj) free ((char *)gobj);
+
     return (0);
 }
 
@@ -516,18 +557,6 @@ char	*ranges;	/* String with range of catalog numbers to list */
 double	eqout;		/* Equinox for output coordinates */
 
 {
-    double *gnum;	/* Catalog star numbers */
-    double *gra;	/* Catalog star right ascensions */
-    double *gdec;	/* Catalog star declinations */
-    double *gpra;	/* Catalog star right ascension proper motions */
-    double *gpdec;	/* Catalog star declination proper motions */
-    double *gm;		/* Catalog magnitudes */
-    double *gmb;	/* Catalog B magnitudes */
-    double *gx;		/* Catalog star X positions on image */
-    double *gy;		/* Catalog star Y positions on image */
-    int *gc;		/* Catalog star object classes */
-    char **gobj;	/* Catalog star object names */
-    char **gobj1;	/* Catalog star object names */
     double cra, cdec;
     double epout;
     int sysref;		/* Coordinate system of reference catalog */
@@ -549,7 +578,7 @@ double	eqout;		/* Equinox for output coordinates */
     char cstr[32];	/* Coordinate system */
     double drad, dra, ddec, mag1, mag2;
     double gdist, da, dd, dec, gdmax;
-    int nlog, closest;
+    int nlog;
     int nmag;
     int typecol;
     int sysout;
@@ -569,28 +598,83 @@ double	eqout;		/* Equinox for output coordinates */
     void PrintNum();
     int LenNum();
 
-    gnum = NULL;
-    gra = NULL;
-    gdec = NULL;
-    gpra = NULL;
-    gpdec = NULL;
-    gm = NULL;
-    gmb = NULL;
-    gx = NULL;
-    gy = NULL;
-    gc = NULL;
-    gobj = NULL;
-    gobj1 = NULL;
+    /* Allocate space for returned catalog information */
+    if (ranges != NULL) {
+	int nfdef = 9;
+
+	/* Allocate and fill list of numbers to read */
+	range = RangeInit (ranges, nfdef);
+	ngmax = rgetn (range);
+	}
+    else if (nstars > 0)
+	ngmax = nstars;
+    else
+	ngmax = MAXCAT;
+    if (gnum == NULL) {
+	if (!(gnum = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gnum\n",
+		     ngmax*sizeof(double));
+	}
+    if (gra == NULL) {
+	if (!(gra = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gra\n",
+		     ngmax*sizeof(double));
+	}
+    if (gdec == NULL) {
+	if (!(gdec = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gdec\n",
+		     ngmax*sizeof(double));
+	}
+    if (gm == NULL) {
+	if (!(gm = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gm\n",
+		     ngmax*sizeof(double));
+	}
+    if (gmb == NULL) {
+	if (!(gmb = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gmb\n",
+		     ngmax*sizeof(double));
+	}
+    if (gc == NULL) {
+	if (!(gc = (int *) calloc (ngmax, sizeof(int))))
+	    fprintf (stderr, "Could not calloc %d bytes for gc\n",
+		     ngmax*sizeof(int));
+	}
+    if (gx == NULL) {
+	if (!(gx = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gx\n",
+		     ngmax*sizeof(double));
+	}
+    if (gy == NULL) {
+	if (!(gy = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gy\n",
+		     ngmax*sizeof(double));
+	}
+    if (gobj == NULL) {
+	if (!(gobj = (char **) calloc (ngmax, sizeof(char *))))
+	    fprintf (stderr, "Could not calloc %d bytes for obj\n",
+		     ngmax*sizeof(char *));
+	}
+    if (!gnum || !gra || !gdec || !gm || !gmb || !gc || !gx || !gy || !gobj) {
+	if (gm) free ((char *)gm);
+	if (gmb) free ((char *)gmb);
+	if (gra) free ((char *)gra);
+	if (gdec) free ((char *)gdec);
+	if (gpra) free ((char *)gpra);
+	if (gpdec) free ((char *)gpdec);
+	if (gnum) free ((char *)gnum);
+	if (gc) free ((char *)gc);
+	if (gx) free ((char *)gx);
+	if (gy) free ((char *)gy);
+	if (gobj) free ((char *)gobj);
+	return (0);
+	}
 
     /* Start of per catalog loop */
     for (icat = 0; icat < ncat; icat++) {
 	nndec = 0;
 	isp[2] = (char) 0;
 	isp[3] = (char) 0;
-	if (distsort && nstars == 1)
-	    closest = 1;
-	else
-	    closest = 0;
 
         if (verbose || (printhead && notprinted)) {
 	if (closest)
@@ -622,6 +706,34 @@ double	eqout;		/* Equinox for output coordinates */
 
 	/* Find out whether catalog has proper motions */
 	mprop = PropCat ();
+
+	/* If it does, allocate memory for them, if not already done */
+	if (mprop) {
+	    if (gpra == NULL) {
+		if (!(gpra = (double *) calloc (ngmax, sizeof(double))))
+		    fprintf (stderr, "Could not calloc %d bytes for gpra\n",
+			     ngmax*sizeof(double));
+		}
+	    if (gpdec == NULL) {
+		if (!(gpdec = (double *) calloc (ngmax, sizeof(double))))
+		    fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
+			     ngmax*sizeof(double));
+		}
+	    if (!gpra || !gpdec) {
+		if (gm) free ((char *)gm);
+		if (gmb) free ((char *)gmb);
+		if (gra) free ((char *)gra);
+		if (gdec) free ((char *)gdec);
+		if (gpra) free ((char *)gpra);
+		if (gpdec) free ((char *)gpdec);
+		if (gnum) free ((char *)gnum);
+		if (gc) free ((char *)gc);
+		if (gx) free ((char *)gx);
+		if (gy) free ((char *)gy);
+		if (gobj) free ((char *)gobj);
+		return (0);
+		}
+	    }
 
 	/* Set number of magnitudes */
 	if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
@@ -669,68 +781,9 @@ double	eqout;		/* Equinox for output coordinates */
 
 	/* Find stars specified by number */
 	if (ranges != NULL) {
-	    int nfdef = 9;
-
-	    /* Allocate and fill list of numbers to read */
-	    range = RangeInit (ranges, nfdef);
 	    nfind = rgetn (range);
-	    gnum = (double *) calloc (nfind, sizeof(double));
-	    if (!(gnum = (double *) calloc (nfind, sizeof(double))))
-		fprintf (stderr, "Could not calloc %d bytes for gnum\n",
-			 nfind*sizeof(double));
-	    else {
-		for (i = 0; i < nfind; i++)
-		    gnum[i] = rgetr8 (range);
-		}
-
-	    /* Allocate space for returned catalog information */
-	    if (!(gra = (double *) calloc (nfind, sizeof(double))))
-		fprintf (stderr, "Could not calloc %d bytes for gra\n",
-		     nfind*sizeof(double));
-	    if (!(gdec = (double *) calloc (nfind, sizeof(double))))
-		fprintf (stderr, "Could not calloc %d bytes for gdec\n",
-		     nfind*sizeof(double));
-	    if (!(gm = (double *) calloc (nfind, sizeof(double))))
-		fprintf (stderr, "Could not calloc %d bytes for gm\n",
-		     nfind*sizeof(double));
-	    if (!(gmb = (double *) calloc (nfind, sizeof(double))))
-		fprintf (stderr, "Could not calloc %d bytes for gmb\n",
-		     nfind*sizeof(double));
-	    if (!(gc = (int *) calloc (nfind, sizeof(int))))
-		fprintf (stderr, "Could not calloc %d bytes for gc\n",
-		     nfind*sizeof(int));
-	    if (!(gx = (double *) calloc (nfind, sizeof(double))))
-		fprintf (stderr, "Could not calloc %d bytes for gx\n",
-		     nfind*sizeof(double));
-	    if (!(gy = (double *) calloc (nfind, sizeof(double))))
-		fprintf (stderr, "Could not calloc %d bytes for gy\n",
-		     nfind*sizeof(double));
-	    if (!(gobj = (char **) calloc (nfind, sizeof(char *))))
-		fprintf (stderr, "Could not calloc %d bytes for obj\n",
-		     nfind*sizeof(char *));
-	    if (mprop) {
-		if (!(gpra = (double *) calloc (nfind, sizeof(double))))
-		    fprintf (stderr, "Could not calloc %d bytes for gpra\n",
-		 	nfind*sizeof(double));
-		if (!(gpdec = (double *) calloc (nfind, sizeof(double))))
-		    fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
-		 	nfind*sizeof(double));
-		}
-	    if (!gnum || !gra || !gdec || !gm || !gmb || !gc ||
-		!gx || !gy || !gobj) {
-		if (gm) free ((char *)gm);
-		if (gmb) free ((char *)gmb);
-		if (gra) free ((char *)gra);
-		if (gdec) free ((char *)gdec);
-		if (gpra) free ((char *)gpra);
-		if (gpdec) free ((char *)gpdec);
-		if (gnum) free ((char *)gnum);
-		if (gc) free ((char *)gc);
-		if (gx) free ((char *)gx);
-		if (gy) free ((char *)gy);
-		if (gobj) free ((char *)gobj);
-		return (0);
-		}
+	    for (i = 0; i < nfind; i++)
+		gnum[i] = rgetr8 (range);
 	    wfile = 0;
 
 	    /* Find the specified catalog stars */
@@ -851,8 +904,11 @@ double	eqout;		/* Equinox for output coordinates */
 
 	    if (srch != NULL) {
 		if ((srchcat->stnum == 0 || srchcat->stnum > 4) &&
-		    strlen (srch->objname) > 0)
+		    strlen (srch->objname) > 0) {
+		    if (objname == NULL)
+			objname = (char *) calloc (1,32);
 		    strcat (objname, srch->objname);
+		    }
 		else {
 		    if (objname == NULL)
 			objname = (char *) calloc (1,32);
@@ -880,63 +936,6 @@ double	eqout;		/* Equinox for output coordinates */
 	    else {
 		mag1 = maglim1;
 		mag2 = maglim2;
-		}
-
-	    /* Allocate memory for results of catalog search */
-	    if (nstars > 0)
-		ngmax = nstars;
-	    else
-		ngmax = MAXCAT;
-	    if (icat == 0) {
-		if (!(gnum = (double *) calloc (ngmax, sizeof(double))))
-		    fprintf (stderr, "Could not calloc %d bytes for gnum\n",
-			     ngmax*sizeof(double));
-		if (!(gra = (double *) calloc (ngmax, sizeof(double))))
-		    fprintf (stderr, "Could not calloc %d bytes for gra\n",
-			     ngmax*sizeof(double));
-		if (!(gdec = (double *) calloc (ngmax, sizeof(double))))
-		    fprintf (stderr, "Could not calloc %d bytes for gdec\n",
-			     ngmax*sizeof(double));
-		if (!(gm = (double *) calloc (ngmax, sizeof(double))))
-		    fprintf (stderr, "Could not calloc %d bytes for gm\n",
-			     ngmax*sizeof(double));
-		if (!(gmb = (double *) calloc (ngmax, sizeof(double))))
-		    fprintf (stderr, "Could not calloc %d bytes for gmb\n",
-			     ngmax*sizeof(double));
-		if (!(gc = (int *) calloc (ngmax, sizeof(int))))
-		    fprintf (stderr, "Could not calloc %d bytes for gc\n",
-			     ngmax*sizeof(int));
-		if (!(gx = (double *) calloc (ngmax, sizeof(double))))
-		    fprintf (stderr, "Could not calloc %d bytes for gx\n",
-			     ngmax*sizeof(double));
-		if (!(gy = (double *) calloc (ngmax, sizeof(double))))
-		    fprintf (stderr, "Could not calloc %d bytes for gy\n",
-			     ngmax*sizeof(double));
-		if (!(gobj = (char **) calloc (ngmax, sizeof(char *))))
-		    fprintf (stderr, "Could not calloc %d bytes for obj\n",
-			     ngmax*sizeof(char *));
-		if (mprop) {
-		    if (!(gpra = (double *) calloc (ngmax, sizeof(double))))
-			fprintf (stderr, "Could not calloc %d bytes for gpra\n",
-				 ngmax*sizeof(double));
-		    if (!(gpdec = (double *)calloc (ngmax, sizeof(double))))
-	 		fprintf (stderr,"Could not calloc %d bytes for gpdec\n",
-		 		 ngmax*sizeof(double));
-		    }
-		if (!gnum||!gra||!gdec||!gm||!gmb||!gc||!gx||!gy||!gobj) {
-		    if (gm) free ((char *)gm);
-		    if (gmb) free ((char *)gmb);
-		    if (gra) free ((char *)gra);
-		    if (gdec) free ((char *)gdec);
-		    if (gpra) free ((char *)gpra);
-		    if (gpdec) free ((char *)gpdec);
-		    if (gnum) free ((char *)gnum);
-		    if (gc) free ((char *)gc);
-		    if (gx) free ((char *)gx);
-		    if (gy) free ((char *)gy);
-		    if (gobj) free ((char *)gobj);
-		    return (0);
-		    }
 		}
 
 	    /* Find the nearby reference stars, in ra/dec */
@@ -1193,18 +1192,7 @@ double	eqout;		/* Equinox for output coordinates */
 		    printf ("\n");
 		    }
 		notprinted = 0;
-
-		/* Free memory used for search results and return */
-		if (gx) free ((char *)gx);
-		if (gy) free ((char *)gy);
-		if (gm) free ((char *)gm);
-		if (gmb) free ((char *)gmb);
-		if (gra) free ((char *)gra);
-		if (gdec) free ((char *)gdec);
-		if (gnum) free ((char *)gnum);
-		if (gc) free ((char *)gc);
-		if (gobj) free ((char *)gobj);
-		return (0);
+		continue;
 		}
 
 	    /* List the brightest or closest MAXSTARS reference stars */
@@ -1256,14 +1244,6 @@ double	eqout;		/* Equinox for output coordinates */
 		if (fd == NULL) {
 		    fprintf (stderr, "%s:  cannot write file %s\n",
 			     cpname, filename);
-		    if (gx) free ((char *)gx);
-		    if (gy) free ((char *)gy);
-		    if (gm) free ((char *)gm);
-		    if (gmb) free ((char *)gmb);
-		    if (gra) free ((char *)gra);
-		    if (gdec) free ((char *)gdec);
-		    if (gnum) free ((char *)gnum);
-		    if (gc) free ((char *)gc);
         	    return (0);
 		    }
 		}
@@ -1763,17 +1743,6 @@ double	eqout;		/* Equinox for output coordinates */
     if (wfile)
 	fclose (fd);
 
-    /* Free memory used for search results */
-    if (gx) free ((char *)gx);
-    if (gy) free ((char *)gy);
-    if (gm) free ((char *)gm);
-    if (gmb) free ((char *)gmb);
-    if (gra) free ((char *)gra);
-    if (gdec) free ((char *)gdec);
-    if (gnum) free ((char *)gnum);
-    if (gc) free ((char *)gc);
-    if (gobj) free ((char *)gobj);
-
     return (ns);
 }
 
@@ -2108,4 +2077,5 @@ int	ndec;	/* Number of decimal places in output */
  * Mar 14 2000	Add proper motion, if present, to Starbase output
  * Mar 27 2000	Drop unused subroutine setradius() declaration
  * Mar 28 2000	Clean up output for catalog IDs and GSC classes
+ * Apr  3 2000	Allocate search return buffers only once per execution
  */

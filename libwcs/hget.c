@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** March 21, 2000
+ *** April 5, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -1242,6 +1242,8 @@ char *string;	/* Character string */
 	    cstr != 'E' && cstr != 'e' &&
 	    cstr != '.')
 	    return (0);
+	else if (cstr == '+' && string[i+1] == '-')
+	    return (0);
 	else if (cstr >= 47 && cstr <= 57)
 	    nd++;
 	if (cstr=='.' || cstr=='d' || cstr=='e' || cstr=='d' || cstr=='e')
@@ -1330,4 +1332,5 @@ int set_saolib(hstring)
  * Mar 17 2000	Return 2 from isnum() if number is floating point (.de)
  * Mar 17 2000	Ignore leading # for numeric values in header
  * Mar 21 2000	Implement -n to get string value starting with nth token
+ * Apr  5 2000	Reject +- in isnum()
  */

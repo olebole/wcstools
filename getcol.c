@@ -1,5 +1,5 @@
 /* File getcol.c
- * March 20, 2000
+ * April 4, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -16,6 +16,7 @@
 static void usage();
 
 static int maxncond = 100;
+static int maxnop = 100;
 static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
 static int debug = 0;		/* True for extra information */
@@ -37,6 +38,9 @@ static int ncond=0;		/* Number of keyword conditions to check */
 static int condand=1;		/* If 1, AND comparisons, else OR */
 static char **cond;		/* Conditions to check */
 static char **ccond;		/* Condition characters */
+static int nop=0;		/* Number of keyword values to operate on */
+static char **op;		/* Operations to check */
+static char **cop;		/* Operation characters */
 static void strclean();
 
 main (ac, av)
@@ -58,6 +62,8 @@ char **av;
 
     cond = (char **)calloc (maxncond, sizeof(char *));
     ccond = (char **)calloc (maxncond, sizeof(char *));
+    op = (char **)calloc (maxnop, sizeof(char *));
+    cop = (char **)calloc (maxnop, sizeof(char *));
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -123,7 +129,7 @@ char **av;
 	    if (ncond >= maxncond) {
 		maxncond = maxncond * 2;
 		cond = (char **)realloc((void *)cond, maxncond*sizeof(void *));
-		ccond = (char **)realloc((void *)cond, maxncond*sizeof(void *));
+		ccond = (char **)realloc((void *)ccond, maxncond*sizeof(void *));
 		}
 	    cond[ncond] = *av;
 	    ccond[ncond] = strchr (*av, '=');
@@ -134,6 +140,23 @@ char **av;
 	    if (ccond[ncond] == NULL)
 		ccond[ncond] = strchr (*av, '<');
 	    ncond++;
+	    }
+
+	/* Operation */
+	else if (strchr (*av, '*') != NULL || strchr (*av, '+') != NULL ||
+		 strchr (*av, '/') != NULL ) {
+	    if (nop >= maxnop) {
+		maxnop = maxnop * 2;
+		op = (char **)realloc((void *)op, maxncond*sizeof(void *));
+		cop = (char **)realloc((void *)cop, maxncond*sizeof(void *));
+		}
+	    op[nop] = *av;
+	    cop[nop] = strchr (*av, '*');
+	    if (cop[nop] == NULL)
+		cop[nop] = strchr (*av, '+');
+	    if (cop[nop] == NULL)
+		cop[nop] = strchr (*av, '/');
+	    nop++;
 	    }
 
 	/* Otherwise, read command */
@@ -231,6 +254,7 @@ usage ()
     fprintf(stderr,"  -k: Print number of columns on first line\n");
     fprintf(stderr,"  -m: Compute mean of numeric columns\n");
     fprintf(stderr,"  -n: Number of lines to read, if not all\n");
+    fprintf(stderr,"  -o: OR conditions insted of ANDing them\n");
     fprintf(stderr,"  -r: Range or @file of lines to read, if not all\n");
     fprintf(stderr,"  -s: Number of lines to skip\n");
     fprintf(stderr,"  -t: Starbase tab table output\n");
@@ -265,12 +289,13 @@ char	*lfile;		/* Name of file with lines to list */
     int *nsum;
     int *nent;
     int nlmax;
-    int nfind, ntok, nt, ltok;
+    double dtok, dnum;
+    int nfind, ntok, nt, ltok,iop;
     int *inum;
     int skipline, icond, itok;
-    char tcond, *cstr, *cval;
+    char tcond, *cstr, *cval, top;
     char numstr[32], numstr1[32];
-    double dcond, dval, dnum;
+    double dcond, dval;
     int pass;
     int jcond, jval;
     char *cwhite;
@@ -388,6 +413,12 @@ char	*lfile;		/* Name of file with lines to list */
 	    lastchar = line + strlen(line) - 1;
 	    if (*lastchar < 32)
 		*lastchar = (char) 0;
+
+	    /* Echo line if it is a comment */
+	    if (line[0] == '#') {
+		printf ("%s\n", line);
+		continue;
+		}
 
 	    /* Check conditions */
 	    ntok = setoken (&tokens, line, cwhite);
@@ -517,6 +548,12 @@ char	*lfile;		/* Name of file with lines to list */
 	    if (*lastchar < 32)
 		*lastchar = (char) 0;
 
+	    /* Echo line if it is a comment */
+	    if (line[0] == '#') {
+		printf ("%s\n", line);
+		continue;
+		}
+
 	    ntok = setoken (&tokens, line, cwhite);
 	    if (counttok) {
 		printf ("%d", ntok);
@@ -643,6 +680,36 @@ char	*lfile;		/* Name of file with lines to list */
 		    printf ("	");
 		    }
 		printf ("\n");
+		}
+	    /* Print columns being operated on */
+	    for (iop = 0; iop < nop; iop++) {
+
+		/* Extract test value from comparison string */
+		top = *cop[iop];
+		*cop[iop] = (char) 0;
+		cstr = cop[iop]+1;
+		dnum = atof (cstr);
+		*cop[iop] = top;
+
+		/* Extract token from input line */
+		itok = atoi (op[iop]);
+		if (getoken (tokens, itok, token)) {
+		    dtok = atof (token);
+		    if (top == '+')
+			printf ("%f", dtok + dnum);
+		    else if (top == '*')
+			printf ("%f", dtok * dnum);
+		    else if (top == '*')
+			printf ("%f", dtok / dnum);
+		    else
+			printf ("___");
+		    if (i < nop-1 || nfind > 0) {
+			if (tabout)
+			    printf ("	");
+			else
+			    printf (" ");
+			}
+		    }
 		}
 	    for (i = 0; i < nfind; i++) {
 		if (getoken (tokens, inum[i], token)) {
@@ -806,4 +873,6 @@ char *string;
  * Jan 26 2000	Add option to print tab table header
  * Feb 11 2000	Fix reallocation of range variables
  * Mar 20 2000	Add conditional line printing
+ * Apr  4 2000	Add option to operate on keyword values
+ * Apr  5 2000	Simply echo lines starting with #
  */

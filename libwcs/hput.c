@@ -1,5 +1,5 @@
 /*** File libwcs/hput.c
- *** March 27, 2000
+ *** April 19, 2000
  *** By Doug Mink
 
  * Module:	hput.c (Put FITS Header parameter values)
@@ -678,7 +678,8 @@ char *keyword;		/* Keyword of entry to be deleted */
     v1 = hplace;
 
     /* Shift rest of header down one line */
-    for (v = ve; v > v1; v = v - 80) {
+    /* limit bug found by Paolo Montegriffo fixed 2000-04-19 */
+    for (v = ve; v >= v1; v = v - 80) {
 	v2 = v + 80;
 	strncpy (v2, v, 80);
 	}
@@ -1149,4 +1150,5 @@ int	ndec;		/* Number of decimal places in degree string */
  * Mar 22 2000	Move getutime() and getltime() to dateutil.c
  * Mar 27 2000	Add hputm() for muti-line keywords
  * Mar 27 2000	Fix bug testing for space to fit comment in hputcom()
+ * Apr 19 2000	Fix bug in hadd() which overwrote line
  */
