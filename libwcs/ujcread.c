@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** June 16, 1999
+ *** August 26, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -39,8 +39,8 @@ static void ujcswap();
 /* UJCREAD -- Read USNO J Catalog stars from CDROM */
 
 int
-ujcread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,xplate,nstarmax,
-	 unum,ura,udec,umag,uplate,verbose)
+ujcread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
+	 xplate,nstarmax,unum,ura,udec,umag,uplate,verbose)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
@@ -98,43 +98,46 @@ int	verbose;	/* 1 for diagnostics */
 
     SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
 
-/* mag1 is always the smallest magnitude */
+    /* mag1 is always the smallest magnitude */
     if (mag2 < mag1) {
 	mag = mag2;
 	mag2 = mag1;
 	mag1 = mag;
 	}
 
-/* Find UJ Star Catalog regions in which to search */
+    /* Find UJ Star Catalog regions in which to search */
     rra1 = ra1;
     rra2 = ra2;
     rdec1 = dec1;
     rdec2 = dec2;
-    wcscon (sysout, sysref, eqout, eqref, &rra1, &rdec1, epout);
-    wcscon (sysout, sysref, eqout, eqref, &rra2, &rdec2, epout);
+    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
+	    &rra1, &rra2, &rdec1, &rdec2, verbose);
     nz = ujczones (rra1, rra2, rdec1, rdec2, nzmax, zlist, verbose);
     if (nz <= 0) {
 	fprintf (stderr,"UJCREAD:  no UJ zones found\n");
 	return (0);
 	}
 
-/* If RA range includes zero, set a flag */
+    /* If RA range includes zero, set a flag */
     wrap = 0;
     if (ra1 > ra2)
 	wrap = 1;
     else
 	wrap = 0;
 
-    udist = (double *) malloc (nstarmax * sizeof (double));
+    udist = (double *) calloc (nstarmax, sizeof (double));
 
-/* Logging interval */
-    nlog = 0;
+    /* Logging interval */
+    if (verbose)
+	nlog = 100;
+    else
+	nlog = 0;
     nstar = 0;
 
-/* Loop through region list */
+    /* Loop through region list */
     for (iz = 0; iz < nz; iz++) {
 
-    /* Get path to zone catalog */
+	/* Get path to zone catalog */
 	znum = zlist[iz];
 	if ((nstars = ujcopen (znum)) != 0) {
 
@@ -142,13 +145,13 @@ int	verbose;	/* 1 for diagnostics */
 	    itable = 0;
 	    for (iwrap = 0; iwrap <= wrap; iwrap++) {
 
-	    /* Find first star based on RA */
+		/* Find first star based on RA */
 		if (iwrap == 0 || wrap == 0)
 		    istar1 = ujcsra (rra1);
 		else
 		    istar1 = 1;
 
-	    /* Find last star based on RA */
+		/* Find last star based on RA */
 		if (iwrap == 1 || wrap == 0)
 		    istar2 = ujcsra (rra2);
 		else
@@ -157,7 +160,7 @@ int	verbose;	/* 1 for diagnostics */
 		if (istar1 == 0 || istar2 == 0)
 		    break;
 
-	    /* Loop through zone catalog for this region */
+		/* Loop through zone catalog for this region */
 		for (istar = istar1; istar <= istar2; istar++) {
 		    itable ++;
 
@@ -166,7 +169,7 @@ int	verbose;	/* 1 for diagnostics */
 			break;
 			}
 
-		/* Extract selected fields if not probable duplicate */
+		    /* Extract selected fields if not probable duplicate */
 		    else if (star.magetc > 0) {
 			ra = ujcra (star.rasec); /* Right ascension in degrees */
 			dec = ujcdec (star.decsec); /* Declination in degrees */
@@ -178,18 +181,18 @@ int	verbose;	/* 1 for diagnostics */
 			else
 			    dist = 0.0;
 
-		    /* Check magnitude and position limits */
+			/* Check magnitude and position limits */
 			if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
      			    (dec >= dec1 && dec <= dec2) &&
-			    ((wrap && (ra <= ra1 || ra >= ra2)) ||
+			    ((wrap && (ra >= ra1 || ra <= ra2)) ||
 			    (!wrap && (ra >= ra1 && ra <= ra2))) &&
 			    (drad == 0.0 || dist < drad) &&
 			    (xplate == 0 || plate == xplate)) {
 
 			    num = (double) znum + (0.0000001 * (double)istar);
 
-			/* Save star position and magnitude in table */
-			    if (nstar <= nstarmax) {
+			    /* Save star position and magnitude in table */
+			    if (nstar < nstarmax) {
 				unum[nstar] = num;
 				ura[nstar] = ra;
 				udec[nstar] = dec;
@@ -206,8 +209,8 @@ int	verbose;	/* 1 for diagnostics */
 				    }
 				}
 
-			/* If too many stars and radial search,
-			   replace furthest star */
+			    /* If too many stars and radial search,
+				replace furthest star */
 			    else if (drad > 0 && dist < maxdist) {
 				unum[farstar] = num;
 				ura[farstar] = ra;
@@ -217,7 +220,7 @@ int	verbose;	/* 1 for diagnostics */
 				udist[farstar] = dist;
 				maxdist = 0.0;
 
-			    /* Find new farthest star */
+				/* Find new farthest star */
 				for (i = 0; i < nstarmax; i++) {
 				    if (udist[i] > maxdist) {
 					maxdist = udist[i];
@@ -226,7 +229,7 @@ int	verbose;	/* 1 for diagnostics */
 				    }
 				}
 
-			/* If too many stars, replace faintest star */
+			    /* If too many stars, replace faintest star */
 			    else if (mag < faintmag) {
 				unum[faintstar] = num;
 				ura[faintstar] = ra;
@@ -236,7 +239,7 @@ int	verbose;	/* 1 for diagnostics */
 				udist[faintstar] = dist;
 				faintmag = 0.0;
 
-			    /* Find new faintest star */
+				/* Find new faintest star */
 				for (i = 0; i < nstarmax; i++) {
 				    if (umag[i] > faintmag) {
 					faintmag = umag[i];
@@ -250,18 +253,18 @@ int	verbose;	/* 1 for diagnostics */
 				fprintf (stderr,"UJCREAD: %04d.%04d: %9.5f %9.5f %s %5.2f\n",
 				    znum,istar,ra,dec,cstr,mag);
 
-			/* End of accepted star processing */
+			    /* End of accepted star processing */
 			    }
 
-		    /* End of individual star processing */
+			/* End of individual star processing */
 			}
 
-		/* Log operation */
+		    /* Log operation */
 		    if (nlog > 0 && itable%nlog == 0)
 			fprintf (stderr,"UJCREAD: zone %d (%4d / %4d) %6d / %6d sources\r",
-				znum, iz, nz, jstar, itable);
+				znum, iz+1, nz, jstar, itable);
 
-		/* End of star loop */
+		    /* End of star loop */
 		    }
 
 		/* End of wrap loop */
@@ -286,11 +289,9 @@ int	verbose;	/* 1 for diagnostics */
 	    fprintf (stderr,"UJCREAD: %d zone: %d / %d found\n",nz,nstar,itot);
 	else
 	    fprintf (stderr,"UJCREAD: 1 zone: %d / %d found\n",nstar,itable);
-	}
-    if (nstar > nstarmax) {
-	fprintf (stderr,"UJCREAD: %d stars found; only %d returned\n",
-		 nstar,nstarmax);
-	nstar = nstarmax;
+	if (nstar > nstarmax)
+	    fprintf (stderr,"UJCREAD: %d stars found; only %d returned\n",
+		     nstar,nstarmax);
 	}
     free ((char *)udist);
     return (nstar);
@@ -721,4 +722,8 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Oct 29 1998	Correctly assign numbers when too many stars are found
  *
  * Jun 16 1999	Use SearchLim()
+ * Aug 16 1999	Add RefLim() to get converted search coordinates right
+ * Aug 16 1999  Fix bug to fix failure to search across 0:00 RA
+ * Aug 25 1999  Return real number of stars from ujcread()
+ * Aug 26 1999	Set nlog to 100 if verbose mode is on
  */

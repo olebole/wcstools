@@ -1,5 +1,5 @@
 /* File scat.c
- * July 1, 1999
+ * August 26, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -65,6 +65,8 @@ static struct StarCat *srchcat; /* Search catalog structure */
 static int readlist = 0;	/* If 1, search centers are from a list */
 static int notprinted = 1;	/* If 1, print header */
 static char *listfile;		/* Name of catalog file with search centers */
+static int printxy = 0;		/* If 1, print X Y instead of object number */
+static char *xstr, *ystr;	/* X and Y strings if printxy */
 
 main (ac, av)
 int ac;
@@ -188,6 +190,12 @@ char **av;
 	ncat = 1;
 	refcatn = (char *) calloc (1,8);
 	strcpy (refcatn, "act");
+	refcatname[0] = refcatn;
+	}
+    else if (strsrch (progname,"bsc") != NULL) {
+	ncat = 1;
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "bsc");
 	refcatname[0] = refcatn;
 	}
 
@@ -398,7 +406,8 @@ char **av;
 		else
 		    rad0 = atof (*av);
     		ac--;
-		if (ac > 1 && isnum (*(av+1))) {
+		if (ac > 1 && isnum (*(av+1)) &&
+		    (ac < 4 || wcscsys (*(av+3)) < 1)) {
 		    dra0 = rad0;
 		    rad0 = 0.0;
 		    if (strchr (*++av,':'))
@@ -420,11 +429,14 @@ char **av;
 		tabout = 1;
 		break;
 
-	    case 'u':       /* USNO Catalog plate number */
-		if (ac < 2)
-		    usage(progname);
-		uplate = (int) atof (*++av);
-		ac--;
+	    case 'u':       /* Print following 2 numbers at start of line */
+		if (ac > 2) {
+		    printxy = 1;
+		    xstr = *++av;
+		    ac--;
+		    ystr = *++av;
+		    ac--;
+		    }
 		break;
 
     	    case 'w':	/* write output file */
@@ -553,9 +565,11 @@ char *progname;
 	fprintf (stderr,"Find Hipparcos Catalog stars in a square on the sky\n");
     else if (strsrch (progname,"act") != NULL)
 	fprintf (stderr,"Find ACT Catalog stars in a square on the sky\n");
+    else if (strsrch (progname,"bsc") != NULL)
+	fprintf (stderr,"Find Bright Star Catalog stars in a square on the sky\n");
     else
 	fprintf (stderr,"Find catalog stars in a square on the sky\n");
-    fprintf (stderr,"Usage: [-abdehjlstvw] [-m [mag1] mag2] [-n num] [-r arcsec] ra dec sys or @list\n");
+    fprintf (stderr,"Usage: [-abdehjlstvw] [-m [mag1] mag2] [-n num] [-r arcsec] [-u x y] ra dec sys or @list\n");
     fprintf(stderr,"  -a: List single closest catalog source\n");
     fprintf(stderr,"  -b: Output B1950 (FK4) coordinates\n");
     fprintf(stderr,"  -c: Reference catalog (act, gsc, ua2, usa2, or local file\n");
@@ -576,7 +590,7 @@ char *progname;
     fprintf(stderr,"  -r: Search half-width (<0=-radius) in arcsec (def 10)\n");
     fprintf(stderr,"  -s: Sort by RA instead of flux \n");
     fprintf(stderr,"  -t: Tab table to standard output as well as file\n");
-    fprintf(stderr,"  -u: USNO catalog single plate number to accept\n");
+    fprintf(stderr,"  -u: Print X Y instead of number in front of non-tab entry\n");
     fprintf(stderr,"  -v: Verbose\n");
     fprintf(stderr,"  -w: Write tab table output file search[objname].[catalog]\n");
     fprintf(stderr,"  -x: GSC object type (0=stars 3=galaxies -1=all)\n");
@@ -610,10 +624,10 @@ char	*ranges;	/* String with range of catalog numbers to list */
     double eqref;	/* Equinox of catalog to be searched */
     double epref;	/* Epoch of catalog to be searched */
     int ng;		/* Number of catalog stars */
-    int nbg;		/* Number of brightest catalog stars actually used */
+    int ns;		/* Number of brightest catalog stars actually used */
     struct Range *range; /* Range of catalog numbers to list */
     int nfind;		/* Number of stars to find */
-    int i, ngmax, nbytes, nbobj;
+    int i, ngmax;
     double das, dds, drs;
     int degout;
     char nform[64];
@@ -621,7 +635,7 @@ char	*ranges;	/* String with range of catalog numbers to list */
     char rastr[32], decstr[32];	/* coordinate strings */
     char numstr[32];	/* Catalog number */
     double drad, dra, ddec, mag1, mag2;
-    double gdist, dr, da, dd, dec;
+    double gdist, dr, da, dd, dec, gdmax;
     int nlog, closest;
     int sysout;
     char headline[160];
@@ -707,31 +721,37 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	int nfdef = 9;
 	range = RangeInit (ranges, nfdef);
 	nfind = rgetn (range);
-	nbytes = nfind * sizeof (double);
-	nbobj = nfind * sizeof (char *);
 	gnum = (double *) calloc (nfind, sizeof(double));
 	if (!(gnum = (double *) calloc (nfind, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gnum\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gnum\n", nfind*sizeof(double));
 	else {
 	    for (i = 0; i < nfind; i++)
 		gnum[i] = rgetr8 (range);
 	    }
 	if (!(gra = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gra\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gra\n",
+		     ngmax*sizeof(double));
 	if (!(gdec = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gdec\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gdec\n",
+		     ngmax*sizeof(double));
 	if (!(gm = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gm\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gm\n",
+		     ngmax*sizeof(double));
 	if (!(gmb = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gmb\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gmb\n",
+		     ngmax*sizeof(double));
 	if (!(gc = (int *) calloc (ngmax, sizeof(int))))
-	    fprintf (stderr, "Could not calloc %d bytes for gc\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gc\n",
+		     ngmax*sizeof(int));
 	if (!(gx = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gx\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gx\n",
+		     ngmax*sizeof(double));
 	if (!(gy = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gy\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gy\n",
+		     ngmax*sizeof(double));
 	if (!(gobj = (char **) calloc (nfind, sizeof(char *))))
-	    fprintf (stderr, "Could not calloc %d bytes for obj\n", nbobj);
+	    fprintf (stderr, "Could not calloc %d bytes for obj\n",
+		     ngmax*sizeof(char *));
 	if (!gnum || !gra || !gdec || !gm || !gmb || !gc || !gx || !gy || !gobj) {
 	    if (gm) free ((char *)gm);
 	    if (gmb) free ((char *)gmb);
@@ -780,41 +800,44 @@ char	*ranges;	/* String with range of catalog numbers to list */
 
 	/* Find the specified catalog stars */
 	if (refcat == GSC)
-	    nbg = gscrnum (nfind,sysout,eqout,epout,
+	    ng = gscrnum (nfind,sysout,eqout,epout,
 			   gnum,gra,gdec,gm,gc,nlog);
 	else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		 refcat == UAC  || refcat == UA1  || refcat == UA2)
-	    nbg = uacrnum (refcatname[icat],nfind,sysout,eqout,epout,
+	    ng = uacrnum (refcatname[icat],nfind,sysout,eqout,epout,
 			   gnum,gra,gdec,gm,gmb,gc,nlog);
 	else if (refcat == UJC)
-	    nbg = ujcrnum (nfind,sysout,eqout,epout,
+	    ng = ujcrnum (nfind,sysout,eqout,epout,
 			   gnum,gra,gdec,gm,gc,nlog);
 	else if (refcat == SAO)
-	    nbg = binrnum ("SAO",nfind,sysout,eqout,epout,match,
+	    ng = binrnum ("SAO",nfind,sysout,eqout,epout,match,
 			   gnum,gra,gdec,gm,gmb,gc,nlog);
 	else if (refcat == PPM)
-	    nbg = binrnum ("PPM",nfind,sysout,eqout,epout,match,
+	    ng = binrnum ("PPM",nfind,sysout,eqout,epout,match,
 			   gnum,gra,gdec,gm,gmb,gc,nlog);
 	else if (refcat == IRAS)
-	    nbg = binrnum ("IRAS",nfind,sysout,eqout,epout,match,
+	    ng = binrnum ("IRAS",nfind,sysout,eqout,epout,match,
 			   gnum,gra,gdec,gm,gmb,gc,nlog);
 	else if (refcat == TYCHO)
-	    nbg = binrnum ("tycho",nfind,sysout,eqout,epout,match,
+	    ng = binrnum ("tycho",nfind,sysout,eqout,epout,match,
 			   gnum,gra,gdec,gm,gmb,gc,nlog);
 	else if (refcat == HIP)
-	    nbg = binrnum ("hipparcos",nfind,sysout,eqout,epout,match,
+	    ng = binrnum ("hipparcos",nfind,sysout,eqout,epout,match,
+			   gnum,gra,gdec,gm,gmb,gc,nlog);
+	else if (refcat == BSC)
+	    ng = binrnum ("BSC5",nfind,sysout,eqout,epout,match,
 			   gnum,gra,gdec,gm,gmb,gc,nlog);
 	else if (refcat == ACT)
-	    nbg = actrnum (nfind,sysout,eqout,epout,
+	    ng = actrnum (nfind,sysout,eqout,epout,
 			   gnum,gra,gdec,gm,gmb,gc,nlog);
 	else if (refcat == TABCAT) {
-	    nbg = tabrnum (refcatname[icat],nfind,sysout,eqout,epout,
+	    ng = tabrnum (refcatname[icat],nfind,sysout,eqout,epout,
 			   gnum,gra,gdec,gm,gc,debug);
 	    if (keyword != NULL)
 		tabrkey (refcatname[icat], nfind, gnum, keyword, gobj);
 	    }
 	else if (refcat == BINCAT) {
-	    nbg = binrnum (refcatname[icat],nfind,sysout,eqout,epout,match,
+	    ng = binrnum (refcatname[icat],nfind,sysout,eqout,epout,match,
 			   gnum,gra,gdec,gm,gmb,gc,gobj,nlog);
 	    starcat = binopen (refcatname[icat]);
 	    if (!sysout)
@@ -827,7 +850,7 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	    binclose (starcat);
 	    }
 	else {
-	    nbg = catrnum (refcatname[icat],nfind,sysout,eqout,epout,match,
+	    ng = catrnum (refcatname[icat],nfind,sysout,eqout,epout,match,
 			   gnum,gra,gdec,gm,gobj,debug);
 	    starcat = catopen (refcatname[icat]);
 	    if (!sysout)
@@ -840,14 +863,19 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	    catclose (starcat);
 	    }
 
-	for (i = 0; i < nbg; i++ ) {
+	if (ng > ngmax)
+	    ns = ngmax;
+	else
+	    ns = ng;
+
+	for (i = 0; i < ns; i++ ) {
 	    gx[i] = 0.0;
 	    gy[i] = 1.0;
 	    }
 
 	/* Write out entries for use as image centers */
 	if (searchcenter) {
-	    for (i = 0; i < nbg; i++ ) {
+	    for (i = 0; i < ns; i++ ) {
 		if (printobj) {
 		    if (refcat == TABCAT && keyword != NULL)
 			printf ("%s ", gobj[i]);
@@ -890,7 +918,7 @@ char	*ranges;	/* String with range of catalog numbers to list */
 		else
 		    printf ("%s %s none\n", rastr, decstr);
 		}
-	    return (nbg);
+	    return (ns);
 	    }
 	}
 
@@ -901,14 +929,15 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	if (rad0 == 0.0 && dra0 == 0.0) {
 	    if (closest) {
 		if (refcat == GSC || refcat == UJC ||
-		    refcat == USAC || refcat == USA1 || refcat == USA2 ||
-		    refcat == UAC  || refcat == UA1  || refcat == UA2)
-		    rad0 = 1800.0;
+		    refcat == USAC || refcat == USA1 || refcat == USA2)
+		    rad0 = -900.0;
+		else if ( refcat == UAC  || refcat == UA1  || refcat == UA2)
+		    rad0 = -180.0;
 		else
-		    rad0 = 360.0;
+		    rad0 = -360.0;
 		}
 	    else
-		rad0 = 10.0;
+		rad0 = -10.0;
 	    }
 
 	/* Set limits from defaults and command line information */
@@ -950,32 +979,39 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	    }
 
 	/* Allocate memory for results of catalog search over image region */
-	if (nstars > MAXREF)
+	if (nstars > 0)
 	    ngmax = nstars;
 	else
 	    ngmax = MAXREF;
-	nbytes = ngmax * sizeof (double);
-	nbobj = ngmax * sizeof (char *);
 	if (icat == 0) {
 	if (!(gnum = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gnum\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gnum\n",
+		     ngmax*sizeof(double));
 	if (!(gra = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gra\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gra\n",
+		     ngmax*sizeof(double));
 	if (!(gdec = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gdec\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gdec\n",
+		     ngmax*sizeof(double));
 	if (!(gm = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gm\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gm\n",
+		     ngmax*sizeof(double));
 	if (!(gmb = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gmb\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gmb\n",
+		     ngmax*sizeof(double));
 	if (!(gc = (int *) calloc (ngmax, sizeof(int))))
-	    fprintf (stderr, "Could not calloc %d bytes for gc\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gc\n",
+		     ngmax*sizeof(int));
 	if (!(gx = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gx\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gx\n",
+		     ngmax*sizeof(double));
 	if (!(gy = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gy\n", nbytes);
+	    fprintf (stderr, "Could not calloc %d bytes for gy\n",
+		     ngmax*sizeof(double));
 	if (!(gobj = (char **) calloc (ngmax, sizeof(char *))))
-	    fprintf (stderr, "Could not calloc %d bytes for obj\n", nbobj);
-	if (!gnum || !gra || !gdec || !gm || !gmb || !gc || !gx || !gy || !gobj) {
+	    fprintf (stderr, "Could not calloc %d bytes for obj\n",
+		     ngmax*sizeof(char *));
+	if (!gnum||!gra||!gdec||!gm||!gmb||!gc||!gx||!gy||!gobj) {
 	    if (gm) free ((char *)gm);
 	    if (gmb) free ((char *)gmb);
 	    if (gra) free ((char *)gra);
@@ -986,7 +1022,6 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	    if (gy) free ((char *)gy);
 	    if (gobj) free ((char *)gobj);
 	    return (0);
-	    }
 	    }
 
 	/* Find the nearby reference stars, in ra/dec */
@@ -1014,6 +1049,9 @@ char	*ranges;	/* String with range of catalog numbers to list */
 			  mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,nlog);
 	else if (refcat == HIP)
 	    ng = binread ("hipparcosra",cra,cdec,dra,ddec,drad,sysout,eqout,
+		      epout,mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,nlog);
+	else if (refcat == BSC)
+	    ng = binread ("BSC5ra",cra,cdec,dra,ddec,drad,sysout,eqout,
 		      epout,mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,nlog);
 	else if (refcat == ACT)
 	    ng = actread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,
@@ -1054,28 +1092,32 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	    gobj1 = NULL;
 	else
 	    gobj1 = gobj;
+	if (ng > ngmax)
+	    ns = ngmax;
+	else
+	    ns = ng;
 
 	/* Compute distance from star to search center */
-	for (i = 0; i < ng; i++ ) {
+	for (i = 0; i < ns; i++ ) {
 	    gx[i] = wcsdist (cra, cdec, gra[i], gdec[i]);
 	    gy[i] = 1.0;
 	    }
 
 	/* Sort reference stars from closest to furthest */
 	if (distsort)
-	    XSortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, gobj1, ng);
+	    XSortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, gobj1, ns);
 
 	/* Sort star-like objects in image by right ascension */
 	else if (rasort)
-	    RASortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, gobj1, ng);
+	    RASortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, gobj1, ns);
 
 	/* Sort reference stars from brightest to faintest */
 	else
-	    MagSortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, gobj1, ng);
+	    MagSortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, gobj1, ns);
 
 	/* Print one line with search center and found star */
 	if (oneline) {
-	    if (ng > 0) {
+	    if (ns > 0) {
 		das = dra * cos (degrad(cdec)) * 3600.0;
 		dds = ddec * 3600.0;
 		drs = drad * 3600.0;
@@ -1117,6 +1159,8 @@ char	*ranges;	/* String with range of catalog numbers to list */
 			printf ("CATALOG	Hipparcos\n");
 		    else if (refcat == ACT)
 			printf ("CATALOG	ACT\n");
+    		    else if (refcat == BSC)
+			printf ("CATALOG	Yale Bright Star Catalog");
 		    else
 			printf ("CATALOG	%s\n", refcatname[icat]);
 		    printf ("SEARCH	%s\n", listfile);
@@ -1261,27 +1305,25 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	    }
 
 	/* List the brightest or closest MAXSTARS reference stars */
-	if (nstars > 0 && ng > nstars) {
-	    nbg = nstars;
+	if (ng > ngmax) {
 	    if ((verbose || printhead) && !closest) {
 		if (distsort) {
 		    if (ng > 1)
 			printf ("Closest %d / %d %s (closer than %.2f arcsec)",
-				nbg, ng, title, 3600.0*gx[nbg-1]);
+				ns, ng, title, 3600.0*gx[ns-1]);
 		    else
 			printf ("Closest of %d %s",ng, title);
 		    }
 		else if (maglim1 > 0.0)
 		    printf ("%d / %d %s (between %.1f and %.1f)",
-			    nbg, ng, title, gm[0], gm[nbg-1]);
+			    ns, ng, title, gm[0], gm[ns-1]);
 		else
 		    printf ("%d / %d %s (brighter than %.1f)",
-		 	    nbg, ng, title, gm[nbg-1]);
+		 	    ns, ng, title, gm[ns-1]);
 		printf ("\n");
 		}
 	    }
 	else {
-	    nbg = ng;
 	    if (verbose || printhead) {
 		if (maglim1 > 0.0)
 		    printf ("%d %s between %.1f and %.1f\n",
@@ -1352,6 +1394,8 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	sprintf (headline, "CATALOG	Hipparcos");
     else if (refcat == ACT)
 	sprintf (headline, "CATALOG	ACT");
+    else if (refcat == BSC)
+	sprintf (headline, "CATALOG	Yale Bright Star Catalog");
     else
 	sprintf (headline, "CATALOG	%s", refcatname[icat]);
     if (wfile)
@@ -1405,13 +1449,6 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	    printf ("BOXSEC	%.2f\n",dds);
 	}
 
-    if (uplate > 0) {
-	if (wfile)
-            fprintf (fd, "PLATE     %d\n", uplate);
-        if (tabout)
-            printf ("PLATE      %d\n", uplate);
-        }
-
     if (distsort) {
 	if (wfile)
 	    fprintf (fd, "DISTSORT	T\n");
@@ -1430,6 +1467,8 @@ char	*ranges;	/* String with range of catalog numbers to list */
     /* Print column headings */
     if (refcat == ACT)
 	strcpy (headline, "act_id  	");
+    else if (refcat == BSC)
+	strcpy (headline, "bsc_id  	");
     else if (refcat == GSC)
 	strcpy (headline, "gsc_id  	");
     else if (refcat == USAC)
@@ -1456,8 +1495,6 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	strcpy (headline,"tycho_id  	");
     else if (refcat == HIP)
 	strcpy (headline,"hip_id  	");
-    else if (refcat == ACT)
-	strcpy (headline,"act_id  	");
     else
 	strcpy (headline,"id       	");
     if (sysout == WCS_GALACTIC)
@@ -1485,6 +1522,8 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	}
     if (gobj1 != NULL)
 	strcat (headline,"	object");
+    if (printxy)
+	strcat (headline, "	X      	Y      ");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
@@ -1502,12 +1541,14 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	strcat (headline, "	------");
     if (refcat == TABCAT && keyword != NULL)
 	strcat (headline,"	------");
+    if (printxy)
+	strcat (headline, "	-------	-------");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
     if (printhead) {
-	if (nbg == 0) {
+	if (ng == 0) {
 	    if (refcat == GSC)
 		printf ("No Guide Stars Found\n");
 	    else if (refcat == USAC)
@@ -1536,40 +1577,48 @@ char	*ranges;	/* String with range of catalog numbers to list */
 		printf ("No Hipparcos Stars Found\n");
 	    else if (refcat == ACT)
 		printf ("No ACT Stars Found\n");
+	    else if (refcat == BSC)
+		printf ("No BSC Stars Found\n");
 	    else
 		printf ("No Stars Found\n");
 	    }
 	else {
-	    if (refcat == GSC)
-		printf ("GSC number ");
-	    else if (refcat == USAC)
-		printf ("USNO SA number ");
-	    else if (refcat == USA1)
-		printf ("USNO SA1 number");
-	    else if (refcat == USA2)
-		printf ("USNO SA2 number");
-	    else if (refcat == UAC)
-		printf ("USNO A number  ");
-	    else if (refcat == UA1)
-		printf ("USNO A1 number ");
-	    else if (refcat == UA2)
-		printf ("USNO A2 number ");
-	    else if (refcat == UJC)
-		printf (" UJ number    ");
-	    else if (refcat == SAO)
-		printf ("SAO number  ");
-	    else if (refcat == PPM)
-		printf ("PPM number  ");
-	    else if (refcat == IRAS)
-		printf ("IRAS number  ");
-	    else if (refcat == TYCHO)
-		printf ("Tycho number ");
-	    else if (refcat == HIP)
-		printf ("Hip number  ");
-	    else if (refcat == ACT)
-		printf ("ACT number  ");
+	    if (!printxy) {
+		if (refcat == GSC)
+		    printf ("GSC number ");
+		else if (refcat == USAC)
+		    printf ("USNO SA number ");
+		else if (refcat == USA1)
+		    printf ("USNO SA1 number");
+		else if (refcat == USA2)
+		    printf ("USNO SA2 number");
+		else if (refcat == UAC)
+		    printf ("USNO A number  ");
+		else if (refcat == UA1)
+		    printf ("USNO A1 number ");
+		else if (refcat == UA2)
+		    printf ("USNO A2 number ");
+		else if (refcat == UJC)
+		    printf (" UJ number    ");
+		else if (refcat == SAO)
+		    printf ("SAO number ");
+		else if (refcat == PPM)
+		    printf ("PPM number ");
+		else if (refcat == BSC)
+		    printf ("BSC number ");
+		else if (refcat == IRAS)
+		    printf ("IRAS number ");
+		else if (refcat == TYCHO)
+		    printf ("Tycho number ");
+		else if (refcat == HIP)
+		    printf ("Hip number  ");
+		else if (refcat == ACT)
+		    printf ("ACT number  ");
+		else
+		    printf ("  Number  ");
+		}
 	    else
-		printf ("  Number  ");
+		printf ("  X     Y   ");
 	    if (sysout == WCS_B1950) {
 		if (degout) {
 		    if (eqout == 1950.0)
@@ -1591,26 +1640,27 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	    else {
 		if (degout) {
 		    if (eqout == 2000.0)
-			printf ("  RAJ2000   DecJ2000  ");
+			printf ("  RA2000   Dec2000  ");
 		    else
 			printf ("RAJ%7.2f  DecJ%7.2f ", eqout, eqout);
 		    }
 		else {
 		    if (eqout == 2000.0)
-			printf (" RAJ2000       DecJ2000   ");
+			printf (" RA2000       Dec2000   ");
 		    else
 			printf ("RAJ%7.2f   DecJ%7.2f  ", eqout, eqout);
 		    }
 		}
 	    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		refcat == UAC  || refcat == UA1  || refcat == UA2)
-		printf ("MagB  MagR Plate");
+		printf (" MagB  MagR Plate");
 	    else if (refcat == UJC)
 		printf ("  Mag  Plate");
 	    else if (refcat == GSC)
 		printf (" Mag  Type");
-	    else if (refcat == SAO || refcat == PPM || refcat == IRAS)
-		printf (" Mag  Type");
+	    else if (refcat == SAO || refcat == PPM ||
+		     refcat == IRAS || refcat == BSC)
+		printf ("   Mag  Type");
 	    else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
 		printf (" MagB  MagV  Type");
 	    else if (refcat == TABCAT)
@@ -1618,14 +1668,23 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	    else
 		printf ("  Mag");
 	    if (ranges == NULL)
-		printf ("   Arcsec\n");
-	    else
-		printf ("\n");
+		printf ("  Arcsec");
+	    printf ("\n");
+	    }
+	}
+
+    /* Find maximum separation for formatting */
+    gdmax = 0.0;
+    for (i = 0; i < ns; i++) {
+	if (gx[i] > 0.0) {
+	    gdist = 3600.0 * gx[i];
+	    if (gdist > gdmax)
+		gdmax = gdist;
 	    }
 	}
 
     string[0] = (char) 0;
-    for (i = 0; i < nbg; i++) {
+    for (i = 0; i < ns; i++) {
 	if (gy[i] > 0.0) {
 	    if (degout) {
 		deg2str (rastr, 32, gra[i], 5);
@@ -1647,7 +1706,8 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	    else if (refcat == UJC)
 	        sprintf (headline, "%s	%s	%s	%.2f	%d",
 		 numstr, rastr, decstr, gm[i], gc[i]);
-	    else if (refcat==SAO || refcat==PPM || refcat==IRAS ) {
+	    else if (refcat==SAO || refcat==PPM ||
+		     refcat==IRAS || refcat == BSC) {
 		isp[0] = gc[i] / 1000;
 		isp[1] = gc[i] % 1000;
 	        sprintf (headline, "%s	%s	%s	%.2f	%2s",
@@ -1685,11 +1745,22 @@ char	*ranges;	/* String with range of catalog numbers to list */
 		strcat (headline, "	");
 		strcat (headline, gobj[i]);
 		}
+	    if (printxy) {
+		strcat (headline, "	");
+		strcat (numstr, xstr);
+		strcat (headline, "	");
+		strcat (numstr, ystr);
+		}
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
 	    else if (tabout)
 		printf ("%s\n", headline);
 	    else {
+		if (printxy) {
+		    strcpy (numstr, xstr);
+		    strcat (numstr, " ");
+		    strcat (numstr, ystr);
+		    }
 		if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		    refcat == UAC  || refcat == UA1  || refcat == UA2)
 		    sprintf (headline,"%s %s %s %5.1f %5.1f %4d ",
@@ -1700,10 +1771,11 @@ char	*ranges;	/* String with range of catalog numbers to list */
 		else if (refcat == GSC)
 		    sprintf (headline,"%s %s %s %6.2f %2d",
 			numstr, rastr, decstr, gm[i],gc[i]);
-		else if (refcat==SAO || refcat==PPM || refcat==IRAS ) {
+		else if (refcat==SAO || refcat==PPM ||
+			 refcat==IRAS || refcat == BSC) {
 		    isp[0] = gc[i] / 1000;
 		    isp[1] = gc[i] % 1000;
-		    sprintf (headline,"%s  %s %s %6.2f  %2s",
+		    sprintf (headline,"  %s  %s %s %6.2f  %2s",
 			numstr,rastr,decstr,gm[i],isp);
 		    }
 		else if (refcat == TYCHO || refcat == HIP || refcat == ACT) {
@@ -1726,7 +1798,16 @@ char	*ranges;	/* String with range of catalog numbers to list */
 			numstr, rastr, decstr, gm[i]);
 		    }
 		if (ranges == NULL) {
-		    sprintf (temp, "  %7.2f", gdist);
+		    if (gdmax < 100.0)
+			sprintf (temp, "  %5.2f", gdist);
+		    else if (gdmax < 1000.0)
+			sprintf (temp, "  %6.2f", gdist);
+		    else if (gdmax < 10000.0)
+			sprintf (temp, "  %7.2f", gdist);
+		    else if (gdmax < 100000.0)
+			sprintf (temp, "  %8.2f", gdist);
+		    else
+			sprintf (temp, "  %.2f", gdist);
 		    strcat (headline, temp);
 		    }
 		if (refcat == TABCAT && keyword != NULL) {
@@ -1749,9 +1830,10 @@ char	*ranges;	/* String with range of catalog numbers to list */
 
 	/* Free memory used for object names in current catalog */
 	if (gobj1 != NULL) {
-	    for (i = 0; i < nbg; i++)
+	    for (i = 0; i < ns; i++)
 		if (gobj[i] != NULL) free (gobj[i]);
 	    }
+	}
 	}
 
     /* Close output file */
@@ -1769,7 +1851,7 @@ char	*ranges;	/* String with range of catalog numbers to list */
     if (gc) free ((char *)gc);
     if (gobj) free ((char *)gobj);
 
-    return (nbg);
+    return (ns);
 }
 
 
@@ -1946,9 +2028,9 @@ int	nndec;
     wcscstr (cstr, sys2, eq2, ep2);
     printf (" %s %s %s", rastr, decstr, cstr);
     if (drad != 0.0)
-	printf ("r= %.2f", drad*3600.0);
+	printf (" r= %.2f", drad*3600.0);
     else
-	printf ("+- %.2f", ddec*3600.0);
+	printf (" +- %.2f", ddec*3600.0);
     if (classd == 0)
 	printf (" stars");
     else if (classd == 3)
@@ -2078,4 +2160,8 @@ int	ndec;	/* Number of decimal places in output */
  * Jun  7 1999	Allow radius input in sexagesimal
  * Jun 30 1999	Use isrange() to check for a range of source numbers
  * Jul  1 1999	Allow any legal FITS date format for epoch
+ * Aug 16 1999	Be more careful checking for 2nd -r argument
+ * Aug 20 1999	Change u from USNO plate to print X Y 
+ * Aug 23 1999	Fix closest star search by setting search radius not box
+ * Aug 25 1999	Add the Bright Star Catalog
  */

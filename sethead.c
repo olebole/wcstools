@@ -1,5 +1,5 @@
 /* File sethead.c
- * April 2, 1999
+ * July 15, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -38,17 +38,28 @@ char **av;
     char *str;
     char **kwd;
     int nkwd = 0;
-    int nxkwd = 0;
     char **fn;
     int nfile = 0;
-    int nxfile = 0;
     int readlist = 0;
     int ifile;
     char *lastchar;
     char filename[128];
+    char *keybuff, *kw1, *kw2;
     char *name;
-    FILE *flist;
+    FILE *flist, *fdk;
     char *listfile;
+    char *ilistfile;
+    char *klistfile;
+    int ikwd, lkwd, i;
+    char newline = 10;
+
+    ilistfile = NULL;
+    klistfile = NULL;
+    keybuff = NULL;
+    nkwd = 0;
+    nfile = 0;
+    fn = (char **)calloc (maxnfile, sizeof(char *));
+    kwd = (char **)calloc (maxnkwd, sizeof(char *));
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -60,124 +71,128 @@ char **av;
 	}
 
     /* crack arguments */
-    for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
-	char c;
-	while (c = *++str)
-	switch (c) {
+    for (av++; --ac > 0; av++) {
+	if (*(str = *av) == '-') {
+	    char c;
+	    while (c = *++str)
+	    switch (c) {
 
-	case 'f':	/* maximum number of files, overrides MAXFILES */
-	    if (ac < 2)
-		usage();
-	    maxnfile = (int) (atof (*++av));
-	    ac--;
-	    break;
+		case 'h':	/* Set HISTORY */
+		    histset++;
+		    break;
+	
+		case 'k':	/* Set SETHEAD keyword */
+		    keyset++;
+		    break;
 
-	case 'h':	/* set HISTORY */
-	    histset++;
-	    break;
+		case 'n':	/* Write new file */
+		    newimage0++;
+		    break;
 
-	case 'k':	/* set SETHEAD keyword */
-	    keyset++;
-	    break;
+		case 'r':	/* Rename keywords with replaced values */
+		    krename++;
+		    if (ac > 1) {
+			strncpy (prefix, *++av, 1);
+			ac--;
+			}
+		    else
+			prefix[0] = 'X';
+		    prefix[1] = (char) 0;
+		    break;
 
-	case 'm':	/* maximum number of keywords, overrides MAXKWD */
-	    if (ac < 2)
-		usage();
-	    maxnkwd = (int) (atof (*++av));
-	    ac--;
-	    break;
+		case 'v':	/* more verbosity */
+		    verbose++;
+		    break;
 
-	case 'n':	/* write new file */
-	    newimage0++;
-	    break;
-
-	case 'r':	/* set flag to krename keywords with replaced values */
-	    krename++;
-	    if (ac > 1) {
-		strncpy (prefix, *++av, 1);
-		ac--;
+		default:
+		    usage();
+		    break;
 		}
-	    else
-		prefix[0] = 'X';
-	    prefix[1] = (char) 0;
-	    break;
+	    }
 
-	case 'v':	/* more verbosity */
-	    verbose++;
-	    break;
-
-	default:
-	    usage();
-	    break;
-	}
-    }
-
-    /* now there are ac remaining file names starting at av[0] */
-    if (ac == 0)
-	usage ();
-
-    nkwd = 0;
-    nfile = 0;
-    nxfile = 0;
-    nxkwd = 0;
-    fn = (char **)calloc (maxnfile, sizeof(char *));
-    kwd = (char **)calloc (maxnkwd, sizeof(char *));
-    while (ac-- > 0) {
-	if (strsrch (*av,"@") != NULL) {
+	/* File containing a list of keywords or files */
+	else if (*av[0] == '@') {
 	    readlist++;
 	    listfile = *av + 1;
-	    nfile = 2;
-	    }
-	else if (isfits (*av) || isiraf (*av)) {
-	    if (nfile < maxnfile) {
-		fn[nfile] = *av;
-		nfile++;
+	    if (isimlist (listfile)) {
+		ilistfile = listfile;
+		nfile = getfilelines (ilistfile);
 		}
-	    else
-		nxfile++;
+	    else {
+		klistfile = listfile;
+		nkwd = getfilelines (klistfile);
+		if (nkwd > 0) {
+		    if (nkwd > maxnkwd) {
+			kwd = realloc ((void *)kwd, nkwd);
+			maxnkwd = nkwd;
+			}
+		    keybuff = getfilebuff (klistfile);
+		    if (keybuff != NULL) {
+			kw1 = keybuff;
+			for (ikwd = 0; ikwd < nkwd; ikwd++) {
+			    kwd[ikwd] = kw1;
+			    kw2 = strchr (kw1, newline);
+			    *kw2 = (char) 0;
+			    if (ikwd < nkwd - 1)
+				kw1 = kw2 + 1;
+			    }
+			}
+		    else
+			nkwd = 0;
+		    }
+		}
 	    }
-	else if (nkwd < maxnkwd) {
+
+	/* Image file */
+	else if (isfits (*av) || isiraf (*av)) {
+	    if (nfile >= maxnfile) {
+		maxnfile = maxnfile * 2;
+		fn = realloc ((void *)fn, maxnfile);
+		}
+	    fn[nfile] = *av;
+	    nfile++;
+	    }
+
+	/* Keyword */
+	else {
+	    if (nkwd >= maxnkwd) {
+		maxnkwd = maxnkwd * 2;
+		kwd = realloc ((void *)kwd, maxnkwd);
+		}
 	    kwd[nkwd] = *av;
 	    nkwd++;
 	    }
+	}
+
+    if (nkwd <= 0 || nfile <= 0 )
+	usage ();
+
+    /* Open file containing a list of images, if there is one */
+    if (ilistfile != NULL) {
+	if ((flist = fopen (ilistfile, "r")) == NULL) {
+	    fprintf (stderr,"SETHEAD: Image list file %s cannot be read\n",
+		     ilistfile);
+	    usage ();
+	    }
+	}
+
+    /* Read through headers of images */
+    for (ifile = 0; ifile < nfile; ifile++) {
+	if (ilistfile != NULL) {
+	    first_token (flist, 254, filename);
+	    SetValues (filename, nkwd, kwd);
+	    }
 	else
-	    nxkwd++;
-	av++;
+	    SetValues (fn[ifile], nkwd, kwd);
+
+	if (verbose)
+	    printf ("\n");
 	}
-    /* Get keyword values one at a time */
-    if (nkwd > 0) {
+    if (ilistfile != NULL)
+	fclose (flist);
 
-	/* Read through headers of images in listfile */
-	if (readlist) {
-	    if ((flist = fopen (listfile, "r")) == NULL) {
-		fprintf (stderr,"SETHEAD: List file %s cannot be read\n",
-		     listfile);
-		usage ();
-		}
-	    while (fgets (filename, 128, flist) != NULL) {
-		lastchar = filename + strlen (filename) - 1;
-		if (*lastchar < 32) *lastchar = 0;
-		SetValues (filename, nkwd, kwd);
-		if (verbose)
-		    printf ("\n");
-		}
-	    fclose (flist);
-	    }
-
-	/* Read image headers from command line list */
-	else {
-	    for (ifile = 0; ifile < nfile; ifile++)
-	    	SetValues (fn[ifile], nkwd, kwd);
-	    }
-	}
-
-    /* Print error message(s) if the command line got too long */
-    if (nxfile > 0)
-	fprintf (stderr, "SETHEAD limit of %d files exceeded by %d\n",
-		 maxnfile, nxfile);
-    if (nxkwd > 0)
-	fprintf (stderr, "SETHEAD limit of %d keywords exceeded by %d\n",
-		 maxnkwd, nxkwd);
+    if (keybuff != NULL)
+	free (keybuff);
 
     return (0);
 }
@@ -189,10 +204,10 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Set FITS or IRAF header keyword values\n");
     fprintf(stderr,"Usage: [-nhkv][-f num][-m num][-r char] file1.fits [... filen.fits] kw1=val1 [ ... kwn=valuen]\n");
-    fprintf(stderr,"Usage: [-nhkv][-f num][-m num][-r char] @listfile kw1=val1 [ ... kwn=valuen]\n");
-    fprintf(stderr,"  -f: Max number of files if not %d\n", maxnfile);
+    fprintf(stderr,"  or : [-nhkv][-f num][-m num][-r char] file1.fits [... filen.fits] @keywordfile]\n");
+    fprintf(stderr,"  or : [-nhkv][-f num][-m num][-r char] @listfile kw1=val1 [ ... kwn=valuen]\n");
+    fprintf(stderr,"  or : [-nhkv][-f num][-m num][-r char] @listfile @keywordfile\n");
     fprintf(stderr,"  -h: Write HISTORY line\n");
-    fprintf(stderr,"  -m: Max number of keywords if not %d\n", maxnkwd);
     fprintf(stderr,"  -k: Write SETHEAD keyword\n");
     fprintf(stderr,"  -n: Write a new file (add e before the extension)\n");
     fprintf(stderr,"  -r: Rename reset keywords with prefix following\n");
@@ -233,6 +248,10 @@ char	*kwd[];		/* Names and values of those keywords */
     char *endchar;
     char *ltime;
     char newkey[10];
+    char value[80];
+    char keyroot[8];
+    char ctemp;
+    int lval, ii, lv;
 
     newimage = newimage0;
 
@@ -292,6 +311,7 @@ char	*kwd[];		/* Names and values of those keywords */
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
         strcpy (cval,"                    ");
 	kwv0 = strchr (kwd[ikwd],'=');
+	if (kwv0 != NULL) {
 	*kwv0 = 0;
 	lkwd = kwv0 - kwd[ikwd];
 	kwv = kwv0 + 1;
@@ -313,36 +333,16 @@ char	*kwd[];		/* Names and values of those keywords */
 	    hchange (header, kwd[ikwd], newkey);
 	    }
 
-	/* Write value to keyword */
-	if ((vq0 = strchr (kwv,dquote))) {
-	    vq0 = vq0 + 1;
-	    vq1 = strchr (vq0,dquote);
-	    if (vq0 && vq1) {
-		kwv = vq0;
-		*vq1 = 0;
-		hputs (header, kwd[ikwd], kwv);
-		}
-	    else
-		hputs (header, kwd[ikwd], kwv);
-	    }
-	else if ((vq0 = strchr (kwv,squote))) {
-	    vq0 = vq0 + 1;
-	    vq1 = strchr (vq0,squote);
-	    if (vq0 && vq1) {
-		kwv = vq0;
-		*vq1 = 0;
-		hputs (header, kwd[ikwd], kwv);
-		}
-	    else
-		hputs (header, kwd[ikwd], kwv);
-	    }
-	else if (isnum (kwv)) {
+	/* Write numeric value to keyword */
+	if (isnum (kwv)) {
 	    i = 21 - lkwv;
 	    for (v = kwv; v < kwv+lkwv; v++)
 		cval[i++] = *v;
 	    cval[21] = 0;
 	    hputc (header, kwd[ikwd], cval);
 	    }
+
+	/* Write boolean value to keyword */
 	else if (!strcmp (kwv,"T") || !strcmp (kwv,"t"))
 	    hputl (header, kwd[ikwd], 1);
 	else if (!strcmp (kwv,"YES") || !strcmp (kwv,"yes"))
@@ -351,11 +351,64 @@ char	*kwd[];		/* Names and values of those keywords */
 	    hputl (header, kwd[ikwd], 0);
 	else if (!strcmp (kwv,"NO") || !strcmp (kwv,"no"))
 	    hputl (header, kwd[ikwd], 0);
-	else
-	    hputs (header, kwd[ikwd], kwv);
+
+	/* Write character string to keyword */
+	else {
+	    if ((vq0 = strchr (kwv,dquote))) {
+		vq0 = vq0 + 1;
+		vq1 = strchr (vq0,dquote);
+		if (vq0 && vq1) {
+		    kwv = vq0;
+		    *vq1 = 0;
+		    }
+		}
+	    else if ((vq0 = strchr (kwv,squote))) {
+		vq0 = vq0 + 1;
+		vq1 = strchr (vq0,squote);
+		if (vq0 && vq1) {
+		    kwv = vq0;
+		    *vq1 = 0;
+		    }
+		}
+	    lval = strlen (kwv);
+	    if (lval < 69)
+		hputs (header, kwd[ikwd], kwv);
+
+	    /* If character string is longer than 68 characters, split it */
+	    else {
+		strcpy (keyroot, kwd[ikwd]);
+		lroot = strlen (keyroot);
+		if (lroot > 6) {
+		    *(keyroot+6) = (char) 0;
+		    lroot = 6;
+		    }
+		ii = '1';
+		lkwv = strlen (kwv);
+		while (lkwv > 0) {
+		    if (lkwv > 67)
+			lv = 67;
+		    else
+			lv = lkwv;
+		    strncpy (value, kwv, lv);
+		    ctemp = value[lv];
+		    value[lv] = (char) 0;
+		    strcpy (newkey, keyroot);
+		    strcat (newkey, "_");
+		    newkey[lroot+1] = ii;
+		    newkey[lroot+2] = (char) 0;
+		    ii++;
+		    hputs (header, newkey, value);
+		    value[lv] = ctemp;
+		    kwv = kwv + lv;
+		    lkwv = lkwv - lv;
+		    }
+		kwv = kwv0 + 1;
+		}
+	    }
 	if (verbose)
 	    printf ("%s = %s\n", kwd[ikwd], kwv);
 	*kwv0 = '=';
+	}
 	}
 
     /* Make up name for new FITS or IRAF output file */
@@ -526,4 +579,8 @@ char	*kwd[];		/* Names and values of those keywords */
  * Mar  4 1999	Reset = for each keyword after setting value in header
  * Apr  2 1999	Add warning if too many files or keywords on command line
  * Apr  2 1999	Add -f and -m to change maximum number of files or keywords
+ * Jul 14 1999  Read lists of BOTH keywords and files simultaneously
+ * Jul 14 1999  Reallocate keyword array if too many in file
+ * Jul 15 1999	Add capability of writing multi-line keywords a la IRAF
+ * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
  */

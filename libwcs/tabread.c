@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** June 16, 1999
+ *** August 25, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -181,7 +181,7 @@ int	nlog;
 
 	/* Check magnitude and position limits */
 	if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
-	    ((wrap && (ra <= ra1 || ra >= ra2)) ||
+	    ((wrap && (ra >= ra1 || ra <= ra2)) ||
 	    (!wrap && (ra >= ra1 && ra <= ra2))) &&
 	    ((drad > 0.0 && dist < drad) ||
      	    (drad == 0.0 && dec >= dec1 && dec <= dec2))) {
@@ -260,15 +260,12 @@ int	nlog;
 	}
 
     /* Summarize search */
-    if (nlog > 0)
+    if (nlog > 0) {
 	fprintf (stderr,"TABREAD: Catalog %s : %d / %d / %d found\n",tabcatname,
 		 jstar,istar,nstars);
-
-
-    if (nstar > nstarmax) {
-	fprintf (stderr,"TABREAD: %d stars found; only %d returned\n",
-		 nstar,nstarmax);
-	nstar = nstarmax;
+	if (nstar > nstarmax)
+	    fprintf (stderr,"TABREAD: %d stars found; only %d returned\n",
+		     nstar,nstarmax);
 	}
 
     tabcatclose (starcat);
@@ -1197,4 +1194,6 @@ char    *filename;      /* Name of file to check */
  * May 28 1999	Add tabcatopen() and tabstar() and use them
  * Jun  3 1999	Fix bug so header parameters are read correctly
  * Jun 16 1999	Use SearchLim()
+ * Aug 16 1999	Fix bug to fix failure to search across 0:00 RA
+ * Aug 25 1999  Return real number of stars from tabread()
  */

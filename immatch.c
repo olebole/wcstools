@@ -1,5 +1,5 @@
 /* File immatch.c
- * July 7, 1999
+ * August 25, 1999
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -151,6 +151,11 @@ char **av;
     else if (strsrch (progname,"act") != NULL) {
 	refcatn = (char *) calloc (1,8);
 	strcpy (refcatn, "act");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"bsc") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "bsc");
 	refcatname = refcatn;
 	}
 
@@ -407,6 +412,8 @@ char	*progname;		/* Name of program being executed */
 	fprintf (stderr,"Match USNO SA2.0 Catalog to image stars from WCS in image file\n");
     else if (strsrch (progname,"act") != NULL)
 	fprintf (stderr,"Match USNO ACT Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"bsc") != NULL)
+	fprintf (stderr,"Match Yale Bright Star Catalog to image stars from WCS in image file\n");
     else if (strsrch (progname,"iras") != NULL)
 	fprintf (stderr,"Match IRAS Point Source Catalog to image stars from WCS in image file\n");
     else if (strsrch (progname,"sao") != NULL)
@@ -580,4 +587,5 @@ char *
  * Jun  8 1999	Return image pointer from RotFITS, not flag
  * Jun 10 1999	If -a argument is multiple of 90, rotate image
  * Jul  7 1999	Fix bug setting rotation
+ * Aug 25 1999	Add Bright Star Catalog, BSC
  */

@@ -308,14 +308,13 @@ usage ()
     fprintf(stderr,"       [-r deg] [-t tol] [-x x y] [-y frac] FITS or IRAF file(s)\n");
     fprintf(stderr,"  -a: initial rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
-    fprintf(stderr,"  -d: Use following file of ra/dec/x/y matches instead of search\n");
+    fprintf(stderr,"  -d: Use following file of ra/dec/x/y matches\n");
     fprintf(stderr,"  -e: WCS projection type (TAN default)\n");
     fprintf(stderr,"  -f: write FITS output no matter what input\n");
     fprintf(stderr,"  -h: maximum number of reference stars to use (10-200, default all\n");
     fprintf(stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
     fprintf(stderr,"  -l: reflect left<->right before rotating and fitting\n");
-    fprintf(stderr,"  -m: reference catalog magnitude limit(s) (default none)\n");
-    fprintf(stderr,"  -n: list of parameters to fit (12345678; negate for refinement)\n");
+    fprintf(stderr,"  -n: list of parameters to fit (12345678)\n");
     fprintf(stderr,"  -o: name for output image, - to overwrite\n");
     fprintf(stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
     fprintf(stderr,"  -q: <i>terate, <r>ecenter, <p>olynomial fit\n");

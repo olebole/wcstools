@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** June 16, 1999
+ *** August 25, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Subroutines to read from the USNO A and SA catalogs
@@ -235,8 +235,8 @@ int	nlog;		/* Logging interval */
     rra2 = ra2;
     rdec1 = dec1;
     rdec2 = dec2;
-    wcscon (sysout, sysref, eqout, eqref, &rra1, &rdec1, epout);
-    wcscon (sysout, sysref, eqout, eqref, &rra2, &rdec2, epout);
+    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
+	    &rra1, &rra2, &rdec1, &rdec2, verbose);
     nz = uaczones (rra1, rra2, rdec1, rdec2, nzmax, zlist, verbose);
     if (nz <= 0) {
 	fprintf (stderr, "UACREAD:  no USNO A zones found\n");
@@ -302,7 +302,7 @@ int	nlog;		/* Logging interval */
 
 		    /* Check position limits */
      			if ((star.decsec >= uadec1 && star.decsec <= uadec2) &&
-			    ((wrap && (star.rasec<=uara1 || star.rasec>=uara2)) ||
+			    ((wrap && (star.rasec>=uara1 || star.rasec<=uara2)) ||
 			     (!wrap && (star.rasec>=uara1 && star.rasec<=uara2))
 			    )){
 
@@ -426,12 +426,9 @@ int	nlog;		/* Logging interval */
 	    fprintf (stderr,"UACREAD: %d zones: %d / %d found\n",nz,nstar,itot);
 	else
 	    fprintf (stderr,"UACREAD: 1 zone: %d / %d found\n",nstar,itable);
-	}
-    if (nstar > nstarmax) {
-	if (nlog > 0)
+	if (nstar > nstarmax)
 	    fprintf (stderr,"UACREAD: %d stars found; only %d returned\n",
 		     nstar,nstarmax);
-	nstar = nstarmax;
 	}
     free ((char *)udist);
     return (nstar);
@@ -1005,4 +1002,7 @@ int nbytes = 12; /* Number of bytes to reverse */
  *
  * Feb  9 1999	Improve documentation
  * Jun 16 1999	Use SearchLim()
+ * Aug 16 1999	Add RefLim() to get converted search coordinates right
+ * Aug 16 1999  Fix bug to fix failure to search across 0:00 RA
+ * Aug 25 1999  Return real number of stars from uacread()
  */

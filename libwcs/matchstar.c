@@ -1,10 +1,12 @@
 /* File libwcs/matchstar.c
- * October 8, 1998
+ * September 8, 1999
  * By Doug Mink, Smithsonian Astrophyscial Observatory
  */
 
 /* StarMatch (ns, sx, sy, ng, gra, gdec, gx, gy, tol, wcs, nfit, debug)
  *  Find shift, scale, and rotation of image stars to best-match reference stars
+ * FitMatch (ns, sx, sy, ng, gra, gdec, gx, gy, tol, wcs, nfit, debug)
+ *  Find shift, scale, and rotation of image stars to RA/Dec/X/Y matches
  * wcs_amoeba (wcs0) Set up temp arrays and call multivariate solver
  * chisqr (v) Compute the chisqr of the vector v
  * amoeba (p, y, ndim, ftol, itmax, funk, nfunk)
@@ -39,6 +41,7 @@ static int	nbin_p;
 static int	nfit;	/* Number of parameters to fit */
 static int	pfit0 = 0;	/* List of parameters to fit, 1 per digit */
 static int	resid_refine = 0;
+static int	minbin=2;		/* Minimum number of coincidence hits needed */
 static int	vfit[NPAR1]; /* Parameters being fit: index to value vector
 				1= RA,		  2= Dec,
 				3= X plate scale, 4= Y plate scale
@@ -76,7 +79,6 @@ int	debug;
     int nbin;
     double *sbx, *sby;	/* malloced array of s stars in best bin */
     double *gbra, *gbdec;	/* malloced array of g stars in best bin */
-    double vguess[NPAR];	/* Initial values for fit */
     int peaks[NPEAKS+1];	/* history of bin counts */
     int dxpeaks[NPEAKS+1], dypeaks[NPEAKS+1]; /* history of dx/dy at peaks */
     int npeaks;		/* entries in use in peaks[] */
@@ -85,7 +87,6 @@ int	debug;
     int *is, *ig, *ibs, *ibg;
     char rastr[16], decstr[16];
     double xref0, yref0, xinc0, yinc0, rot0, xrefpix0, yrefpix0, cd0[4];
-    int minbin;		/* Minimum number of coincidence hits needed */
     int bestbin;	/* Number of coincidences for refit */
     int pfit;		/* List of parameters to fit, 1 per digit */
     char vpar[16];	/* List of parameters to fit */
@@ -98,7 +99,6 @@ int	debug;
      */
     npeaks = 0;
     nmatch = 0;
-    minbin = 2;
     for (i = 0; i < NPEAKS; i++) {
 	peaks[i] = 0;
 	dxpeaks[i] = 0;
@@ -214,6 +214,8 @@ int	debug;
     wcs->xref = wcs->xref + (bestdx * wcs->xinc);
     wcs->yref = wcs->yref + (bestdy * wcs->yinc);
 
+    /* Fit WCS to matched stars */
+
     /* Provide non-parametric access to the star lists */
     sx_p = sbx;
     sy_p = sby;
@@ -277,7 +279,7 @@ int	debug;
     cd0[0] = wcs->cd[0];
     cd0[1] = wcs->cd[1];
     cd0[2] = wcs->cd[2];
-    cd0[3] = wcs->cd[0];
+    cd0[3] = wcs->cd[3];
 
     /* Fit image star coordinates to reference star positions */
     wcs_amoeba (wcs);
@@ -416,6 +418,257 @@ int	debug;
 
     return (nmatch);
 }
+
+
+/* Find shift, scale, and rotation of image stars to best-match reference stars
+ * Return count of total coincidences found, else 0 if none or -1 if trouble.
+ */
+
+int
+FitMatch (nmatch, sbx, sby, ng, gbra, gbdec, gx, gy, tol, dx, dy, wcs, debug)
+
+int	nmatch;		/* Number of matched stars */
+double	*sbx;		/* Image star X coordinates in pixels */
+double	*sby;		/* Image star Y coordinates in pixels */
+double	*gbra;		/* Reference star right ascensions in degrees */
+double	*gbdec;		/* Reference star right ascensions in degrees */
+double	*gx;		/* Reference star X coordinates in pixels */
+double	*gy;		/* Reference star Y coordinates in pixels */
+double	tol;		/* +/- this many pixels is a hit */
+double	dx, dy;		/* Nominal offset between current WCS and ref stars */
+struct WorldCoor *wcs;	/* World coordinate structure (fit returned) */
+int	debug;
+
+{
+    int nbin;
+    int maxnbin, i;
+    int minmatch;
+    char rastr[16], decstr[16];
+    double xref0, yref0, xinc0, yinc0, rot0, xrefpix0, yrefpix0, cd0[4];
+    int bestbin;	/* Number of coincidences for refit */
+    int pfit;		/* List of parameters to fit, 1 per digit */
+    char vpar[16];	/* List of parameters to fit */
+    char *vi;
+    char vc;
+    int offscl;
+
+    if (debug) {
+	fprintf (stderr,"%d matched stars:\n", nmatch);
+	}
+
+    /* too few hits */
+    if (nmatch < minbin)
+	return (nmatch);
+
+    /* Use mean offset if no best offset is passed */
+    if (dx == 0.0 && dy == 0.0) {
+	for (i = 0; i < nmatch; i++) {
+	    wcs2pix (wcs, gbra[i], gbdec[i], &gx[i], &gy[i], &offscl);
+	    dx = dx + (sbx[i] - gx[i]);
+	    dy = dy + (sby[i] - gy[i]);
+	    }
+	dx = dx / (double) nmatch;
+	dy = dy / (double) nmatch;
+	}
+
+    /* Reset image center based on star matching */
+    wcs->xref = wcs->xref + (dx * wcs->xinc);
+    wcs->yref = wcs->yref + (dy * wcs->yinc);
+
+    /* Provide non-parametric access to the star lists */
+    sx_p = sbx;
+    sy_p = sby;
+    gx_p = gbra;
+    gy_p = gbdec;
+    xref_p = wcs->xref;
+    yref_p = wcs->yref;
+    xrefpix = wcs->xrefpix;
+    yrefpix = wcs->yrefpix;
+    nbin_p = nmatch;
+
+    /* Number of parameters to fit from command line or number of matches */
+    if (pfit0 != 0) {
+	if (pfit0 < 3)
+	    pfit = 12;
+	else if (pfit0 == 3)	/* Fit center and plate scale */
+	    pfit = 123;
+	else if (pfit0 == 4)	/* Fit center, plate scale, rotation */
+	    pfit = 1235;
+	else if (pfit0 == 5)	/* Fit center, x&y plate scales, rotation */
+	    pfit = 12345;
+	else if (pfit0 == 6)	/* Fit center, x&y plate scales, x&y rotations */
+	    pfit = 123456;
+	else if (pfit0 == 7)	/* Fit center, x&y plate scales, rotation, refpix */
+	    pfit = 1234578;
+	else if (pfit0 == 8)	/* Fit center, x&y plate scales, x&y rotation, refpix */
+	    pfit = 12345678;
+	else
+	    pfit = pfit0;
+	}
+    else if (nmatch < 4)
+	pfit = 12;
+    else if (nmatch < 6)
+	pfit = 123;
+    else
+	pfit = 12345;
+
+    /* Get parameters to fit from digits of pfit */
+    sprintf (vpar, "%d", pfit);
+    nfit = 0;
+    vfit[0] = -1;
+    for (i = 1; i < NPAR1; i++) {
+	vc = i + 48;
+	vi = strchr (vpar, vc);
+	if (vi != NULL) {
+	    vfit[i] = vi - vpar;
+	    nfit++;
+	    }
+	else
+	    vfit[i] = -1;
+	}
+
+    /* Set initial guesses for parameters which are being fit */
+    xref0 = wcs->xref;
+    yref0 = wcs->yref;
+    xinc0 = wcs->xinc;
+    yinc0 = wcs->yinc;
+    rot0 = wcs->rot;
+    xrefpix0 = wcs->xrefpix;
+    yrefpix0 = wcs->yrefpix;
+    cd0[0] = wcs->cd[0];
+    cd0[1] = wcs->cd[1];
+    cd0[2] = wcs->cd[2];
+    cd0[3] = wcs->cd[3];
+
+    /* Fit image star coordinates to reference star positions */
+    wcs_amoeba (wcs);
+
+    if (debug) {
+	fprintf (stderr,"\nAmoeba fit:\n");
+	ra2str (rastr, 16, xref0, 3);
+	dec2str (decstr, 16, yref0, 2);
+	fprintf (stderr,"   initial guess:\n");
+	if (vfit[6] > -1)
+	    fprintf (stderr," cra= %s cdec= %s cd = %9.7f,%9.7f,%9.7f,%9.7f ",
+		     rastr, decstr, cd0[0], cd0[1], cd0[2], cd0[3]);
+	else
+	    fprintf (stderr," cra= %s cdec= %s del=%7.4f,%7.4f rot=%7.4f ",
+		     rastr, decstr, xinc0*3600.0, yinc0*3600.0, rot0);
+	fprintf (stderr,"(%8.2f,%8.2f\n", xrefpix0, yrefpix0);
+
+	ra2str (rastr, 16, wcs->xref, 3);
+	dec2str (decstr, 16, wcs->yref, 2);
+	fprintf (stderr,"\nfirst solution:\n");
+	if (vfit[6] > -1)
+	    fprintf (stderr," cra= %s cdec= %s cd = %9.7f,%9.7f,%9.7f,%9.7f ",
+		     rastr,decstr,wcs->cd[0],wcs->cd[1],wcs->cd[2],wcs->cd[3]);
+	else
+	    fprintf (stderr," cra= %s cdec= %s del=%7.4f,%7.4f rot=%7.4f ",
+		     rastr,decstr,3600.0*wcs->xinc,3600.0*wcs->yinc,wcs->rot);
+	fprintf (stderr,"(%8.2f,%8.2f)\n", wcs->xrefpix, wcs->yrefpix);
+	}
+
+    /* If we have extra bins, repeat with the best ones */
+    bestbin = nfit + 1;
+    if (resid_refine && nmatch > bestbin) {
+	double *resid = (double *) malloc (nmatch * sizeof(double));
+	double *xe = (double *) malloc (nmatch * sizeof(double));
+	double *ye = (double *) malloc (nmatch * sizeof(double));
+	int i, j;
+	double xmean, ymean, rmean, xsumsq, ysumsq, diff;
+	double mx, my, xsig, ysig, rsig, siglim;
+	char wcstring[64];
+	double xsum = 0.0;
+	double ysum = 0.0;
+	double rsum = 0.0;
+	double dmatch = (double)nmatch;
+	double dmatch1 = (double)(nmatch - 1);
+
+	/* Compute residuals at each star location */
+	for (i = 0; i < nmatch; i++) {
+	    pix2wcs (wcs, sbx[i], sby[i], &mx, &my);
+	    xe[i] = (mx - gbra[i]) * 3600.0;
+	    ye[i] = (my - gbdec[i]) * 3600.0;
+	    resid[i] = sqrt (xe[i]*xe[i] + ye[i]*ye[i]);
+	    if (debug) {
+		pix2wcst (wcs, sbx[i], sby[i], wcstring, 64);
+		fprintf (stderr,"%3d (%8.3f,%8.3f) -> %s %6.3f %6.3f %6.3f\n",
+		    i, sbx[i], sby[i], wcstring, xe[i], ye[i], resid[i]);
+		}
+	    xsum = xsum + xe[i];
+	    ysum = ysum + ye[i];
+	    rsum = rsum + resid[i];
+	    }
+
+	/* Compute means and standard deviations */
+	xmean = xsum / dmatch;
+	ymean = ysum / dmatch;
+	rmean = rsum / dmatch;
+	xsumsq = 0.0;
+	ysumsq = 0.0;
+	for (i = 0; i < nmatch; i++) {
+	    diff = xe[i] - xmean;
+	    xsumsq = xsumsq + (diff * diff);
+	    diff = ye[i] - ymean;
+	    ysumsq = ysumsq + (diff * diff);
+	    }
+	xsig = sqrt (xsumsq / dmatch1);
+	ysig = sqrt (ysumsq / dmatch1);
+	rsig = sqrt ((xsumsq + ysumsq)/ dmatch1);
+	siglim = 2.0 * rsig;
+	if (debug) {
+	    fprintf (stderr,"Mean x: %6.3f/%6.3f y: %6.3f/%6.3f r: %6.3f/%6.3f\n",
+		    xmean, xsig, ymean, ysig, rmean, rsig);
+	    }
+
+	/* sort by increasing total residual */
+	for (i = 0; i < nmatch-1; i++) {
+	    for (j = i+1; j < nmatch; j++) {
+		if (resid[j] < resid[i]) {
+		    double tmp;
+
+		    tmp = sbx[i]; sbx[i] = sbx[j]; sbx[j] = tmp;
+		    tmp = sby[i]; sby[i] = sby[j]; sby[j] = tmp;
+		    tmp = gbra[i]; gbra[i] = gbra[j]; gbra[j] = tmp;
+		    tmp = gbdec[i]; gbdec[i] = gbdec[j]; gbdec[j] = tmp;
+		    tmp = resid[i]; resid[i] = resid[j]; resid[j] = tmp;
+		    }
+		}
+	    }
+
+	/* Cut off points at residual of two sigma */
+	for (i = 0; i < nmatch; i++) {
+	    if (resid[i] > siglim) {
+		if (i > bestbin) bestbin = i - 1;
+		break;
+		}
+	    }
+
+	xref_p = wcs->xref;
+	yref_p = wcs->yref;
+	xrefpix = wcs->xrefpix;
+	yrefpix = wcs->yrefpix;
+	nbin_p = bestbin;
+	wcs_amoeba (wcs);
+
+	if (debug) {
+	    ra2str (rastr, 16, wcs->xref, 3);
+	    dec2str (decstr, 16, wcs->yref, 2);
+	    fprintf (stderr,"\nresid solution:\n");
+	    fprintf (stderr,"\n%d points < %.3f arcsec residuals refit\n",
+			    bestbin, siglim);
+	    fprintf (stderr," cra= %s cdec= %s del=%7.4f,%7.4f rot=%7.4f ",
+		 rastr, decstr, 3600.0*wcs->xinc, 3600.0*wcs->yinc, wcs->rot);
+	    fprintf (stderr,"(%8.2f,%8.2f)\n", wcs->xrefpix, wcs->yrefpix);
+	    }
+	free (resid);
+	free (xe);
+	free (ye);
+	}
+
+    return (nmatch);
+}
+
 struct WorldCoor *wcsf;
 
 static double wcs_chisqr ();
@@ -1019,4 +1272,6 @@ int nfit;
  * Dec  8 1998	Fix declaration of amotry()
  *
  * Apr 21 1999	Add subroutines to set and retrieve resid_refine independently
+ * Jul 21 1999	Add FitMatch() to fit WCS to already-matched stars
+ * Sep  8 1999	Fix bug found by Jean-Baptiste Marquette
  */ 

@@ -1,3 +1,19 @@
+Version 2.6.4 (August 31, 1999)
+scat.c: Fix -r before decimal coordinates. Fix long/lat and 0:00 search bugs.
+imcat.c and scat.c: Fix formatting and -n option
+immatch:  Fix fatal bug caused by changes to imwcs subroutines
+sethead.c: Write multiple keywords of form name_i when character value too long
+gethead.c: Concatenate multi-line keyword values in new sethead format
+gethead.c, delhead.c, sethead.c, keyhead.c:  Programs rewritten to deal
+more completely with files of keywords and image files
+fileutil.c: New subtroutines to compartmentalize file information gathering
+hget.c: hgetm() now reads name_i, name_ii, and name_iii(IRAF) multiline keywords
+gscread.c, uacread.c, ujcread.c, binread.c: Call RefLim() to set catalog search
+ujcread.c: Fix bug when number of stars found exceeds maximum
+limits and fix test when search area passes through 0:00 RA
+wcs.c:  Print dd:mm:ss (not hh:mm:ss) dd:mm:ss for long/lat coordinates if
+        degout=0
+
 Version 2.6.3 (July 9, 1999)
 imwcs.c, immatch.c, imstar.c: Fix command line rotation angle setting
 imgetwcs.c: Fix bug when converting image coordinates to reference system

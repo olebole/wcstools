@@ -1,5 +1,5 @@
 /* File gethead.c
- * June 21, 1999
+ * July 15, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -42,20 +42,25 @@ char **av;
     char *str;
     char **kwd;
     int nkwd = 0;
-    int nxkwd = 0;
     char **fn;
-    int nxfile = 0;
     int ifile;
-    int readlist = 0;
     int lfn;
-    char *lastchar;
-    char filename[128];
+    char filename[256];
     char *name;
-    FILE *flist;
+    FILE *flist, *fdk;
     char *listfile;
+    char *ilistfile;
+    char *klistfile;
     int ikwd, lkwd, i;
     char *kw, *kwe;
     char string[80];
+
+    ilistfile = NULL;
+    klistfile = NULL;
+    nkwd = 0;
+    nfile = 0;
+    fn = (char **)calloc (maxnfile, sizeof(char *));
+    kwd = (char **)calloc (maxnkwd, sizeof(char *));
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -67,201 +72,201 @@ char **av;
 	}
 
     /* crack arguments */
-    for (av++; --ac > 0 && (*(str = *av)=='-'); av++) {
-	char c;
-	while (c = *++str)
-	switch (c) {
+    for (av++; --ac > 0; av++) {
+	if (*(str = *av)=='-') {
+	    char c;
+	    while (c = *++str)
+	    switch (c) {
 
-	case 'a':	/* list file even if the keywords are not found */
-	    listall++;
-	    break;
+		case 'a': /* list file even if the keywords are not found */
+		    listall++;
+		    break;
+	
+		case 'd': /* Root directory for input */
+		    if (ac < 2)
+			usage();
+		    rootdir = *++av;
+		    ac--;
+		    break;
+		    break;
+	
+		case 'h': /* Output column headings */
+		    printhead++;
+		    break;
+	
+		case 'n': /* Number of decimal places in output */
+		    if (ac < 2)
+			usage();
+		    ndec = (int) (atof (*++av));
+		    ac--;
+		    break;
+	
+		case 'p': /* Output column headings */
+		    listpath++;
+		    break;
+	
+		case 't': /* Output tab table */
+		    tabout++;
+		    break;
+	
+		case 'v': /* More verbosity */
+		    verbose++;
+		    break;
 
-	case 'd':	/* root directory for input */
-	    if (ac < 2)
-		usage();
-	    rootdir = *++av;
-	    ac--;
-	    break;
-	    break;
-
-	case 'f':	/* maximum number of files, overrides MAXFILES */
-	    if (ac < 2)
-		usage();
-	    maxnfile = (int) (atof (*++av));
-	    ac--;
-	    break;
-
-	case 'h':	/* output column headings */
-	    printhead++;
-	    break;
-
-	case 'm':	/* maximum number of keywords, overrides MAXKWD */
-	    if (ac < 2)
-		usage();
-	    maxnkwd = (int) (atof (*++av));
-	    ac--;
-	    break;
-
-	case 'n':	/* number of decimal places in output */
-	    if (ac < 2)
-		usage();
-	    ndec = (int) (atof (*++av));
-	    ac--;
-	    break;
-
-	case 'p':	/* output column headings */
-	    listpath++;
-	    break;
-
-	case 't':	/* output tab table */
-	    tabout++;
-	    break;
-
-	case 'v':	/* more verbosity */
-	    verbose++;
-	    break;
-
-	default:
-	    usage();
-	    break;
-	}
-    }
-
-    /* If no arguments left, print usage */
-    if (ac == 0)
-	usage();
-
-    nkwd = 0;
-    nfile = 0;
-    nxfile = 0;
-    nxkwd = 0;
-    fn = (char **)calloc (maxnfile, sizeof(char *));
-    kwd = (char **)calloc (maxnkwd, sizeof(char *));
-    while (ac-- > 0) {
-	if (*av[0] == '@') {
-	    readlist++;
-	    listfile = *av + 1;
-	    nfile = 2;
-	    }
-	else if (isfits (*av) || isiraf (*av)) {
-	    if (nfile < maxnfile) {
-		fn[nfile] = *av;
-
-		if (listpath || (name = strrchr (fn[nfile],'/')) == NULL)
-		    name = fn[nfile];
-		else
-		    name = name + 1;
-		lfn = strlen (name);
-		if (lfn > maxlfn)
-		    maxlfn = lfn;
-		nfile++;
+		default:
+		    usage();
+		    break;
 		}
-	    else
-		nxfile++;
 	    }
-	else if (nkwd < maxnkwd) {
+
+	/* File containing a list of keywords or files */
+	else if (*av[0] == '@') {
+	    listfile = *av + 1;
+	    if (isimlist (listfile)) {
+		ilistfile = listfile;
+		nfile = getfilelines (ilistfile);
+		}
+	    else {
+		klistfile = listfile;
+		nkwd = getfilelines (klistfile);
+		if (nkwd > 0) {
+		    if (nkwd > maxnkwd) {
+			kwd = realloc ((void *)kwd, nkwd);
+			maxnkwd = nkwd;
+			}
+		    if ((fdk = fopen (klistfile, "r")) == NULL) {
+			fprintf (stderr,"GETHEAD: File %s cannot be read\n",
+				 klistfile);
+			nkwd = 0;
+			}
+		    else {
+			for (ikwd = 0; ikwd < nkwd; ikwd++) {
+			    kwd[ikwd] = (char *) calloc (32, 1);
+			    first_token (fdk, 31, kwd[ikwd]);
+			    }
+			fclose (fdk);
+			}
+		    }
+		}
+	    }
+
+	/* Image file */
+	else if (isfits (*av) || isiraf (*av)) {
+	    if (nfile >= maxnfile) {
+		maxnfile = maxnfile * 2;
+		fn = realloc ((void *)fn, maxnfile);
+		}
+	    fn[nfile] = *av;
+
+	    if (listpath || (name = strrchr (fn[nfile],'/')) == NULL)
+		name = fn[nfile];
+	    else
+		name = name + 1;
+	    lfn = strlen (name);
+	    if (lfn > maxlfn)
+		maxlfn = lfn;
+	    nfile++;
+	    }
+
+	/* Keyword */
+	else {
+	    if (nkwd >= maxnkwd) {
+		maxnkwd = maxnkwd * 2;
+		kwd = realloc ((void *)kwd, maxnkwd);
+		}
 	    kwd[nkwd] = *av;
 	    nkwd++;
 	    }
-	else
-	    nxkwd++;
-	av++;
 	}
 
-    if (nkwd > 0) {
-	if (nkwd > 1)
-	    printfill = 1;
+    if (nkwd <= 0 || nfile <= 0 )
+	usage ();
 
-	/* Print column headings if tab table or headings requested */
-	if (printhead) {
-	    if (nfile > 1 || listall) {
-		printf ("FILENAME");
+    if (nkwd > 1)
+	printfill = 1;
+
+    /* Print column headings if tab table or headings requested */
+    if (printhead) {
+	if (nfile > 1 || listall) {
+	    printf ("FILENAME");
+	    if (maxlfn > 8) {
+		for (i = 8; i < maxlfn; i++)
+		    printf (" ");
+		}
+	    if (tabout)
+	    	printf ("	");
+	    else
+		printf (" ");
+	    }
+
+	/* Print keyword names in header */
+	for (ikwd = 0; ikwd < nkwd; ikwd++) {
+	    lkwd = strlen (kwd[ikwd]);
+	    kwe = kwd[ikwd] + lkwd;
+	    for (kw = kwd[ikwd]; kw < kwe; kw++) {
+		if (*kw > 96 && *kw < 123)
+		    *kw = *kw - 32;
+		}
+	    printf ("%s",kwd[ikwd]);
+	    if (verbose || ikwd == nkwd - 1)
+	    	printf ("\n");
+	    else if (tabout)
+	    	printf ("	");
+	    else
+		printf (" ");
+	    }
+
+	/* Print field-defining hyphens if tab table output requested */
+	if (nfile > 1 || listall) {
+	    if (tabout) {
+		printf ("--------");
 		if (maxlfn > 8) {
 		    for (i = 8; i < maxlfn; i++)
 			printf (" ");
 		    }
-		if (tabout)
-	    	    printf ("	");
-		else
-		    printf (" ");
+		printf ("	");
 		}
-	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
-		lkwd = strlen (kwd[ikwd]);
-		kwe = kwd[ikwd] + lkwd;
-		for (kw = kwd[ikwd]; kw < kwe; kw++) {
-		    if (*kw > 96 && *kw < 123)
-			*kw = *kw - 32;
-		    }
-		printf ("%s",kwd[ikwd]);
-		if (verbose || ikwd == nkwd - 1)
-	    	    printf ("\n");
-		else if (tabout)
-	    	    printf ("	");
-		else
-		    printf (" ");
-		}
-
-	    /* Print field-defining hyphens if tab table output requested */
-	    if (nfile > 1 || listall) {
-		if (tabout) {
-		    printf ("--------");
-		    if (maxlfn > 8) {
-			for (i = 8; i < maxlfn; i++)
-			    printf (" ");
-			}
-		    printf ("	");
-		    }
-		else
-		    printf (" ");
-		}
-
-	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
-		strcpy (string, "----------");
-		lkwd = strlen (kwd[ikwd]);
-		string[lkwd] = 0;
-		printf ("%s",string);
-		if (verbose || ikwd == nkwd - 1)
-	    	    printf ("\n");
-		else if (tabout)
-	    	    printf ("	");
-		else
-		    printf (" ");
-		}
+	    else
+		printf (" ");
 	    }
 
-    /* Get keyword values one at a time */
-
-	/* Read through headers of images in listfile */
-	if (readlist) {
-	    if ((flist = fopen (listfile, "r")) == NULL) {
-		fprintf (stderr,"GETHEAD: List file %s cannot be read\n",
-		     listfile);
-		usage ();
-		}
-	    while (fgets (filename, 128, flist) != NULL) {
-		lastchar = filename + strlen (filename) - 1;
-		if (*lastchar < 32) *lastchar = 0;
-		PrintValues (filename, nkwd, kwd);
-		if (verbose)
-		    printf ("\n");
-		}
-	    fclose (flist);
-	    }
-
-	/* Read image headers from command line list */
-	else {
-	    for (ifile = 0; ifile < nfile; ifile++)
-	    	PrintValues (fn[ifile], nkwd, kwd);
+	for (ikwd = 0; ikwd < nkwd; ikwd++) {
+	    strcpy (string, "----------");
+	    lkwd = strlen (kwd[ikwd]);
+	    string[lkwd] = 0;
+	    printf ("%s",string);
+	    if (verbose || ikwd == nkwd - 1)
+	    	printf ("\n");
+	    else if (tabout)
+	    	printf ("	");
+	    else
+		printf (" ");
 	    }
 	}
 
-    /* Print error message(s) if the command line got too long */
-    if (nxfile > 0)
-	fprintf (stderr, "GETHEAD limit of %d files exceeded by %d\n",
-		 maxnfile, nxfile);
-    if (nxkwd > 0)
-	fprintf (stderr, "GETHEAD limit of %d keywords exceeded by %d\n",
-		 maxnkwd, nxkwd);
+    /* Open file containing a list of images, if there is one */
+    if (ilistfile != NULL) {
+	if ((flist = fopen (ilistfile, "r")) == NULL) {
+	    fprintf (stderr,"GETHEAD: Image list file %s cannot be read\n",
+		     ilistfile);
+	    usage ();
+	    }
+	}
+
+    /* Read through headers of images */
+    for (ifile = 0; ifile < nfile; ifile++) {
+	if (ilistfile != NULL) {
+	    first_token (flist, 254, filename);
+	    PrintValues (filename, nkwd, kwd);
+	    }
+	else
+	    PrintValues (fn[ifile], nkwd, kwd);
+
+	if (verbose)
+	    printf ("\n");
+	}
+    if (ilistfile != NULL)
+	fclose (flist);
 
     return (0);
 }
@@ -276,9 +281,7 @@ usage ()
     fprintf(stderr,"       gethead [-ahptv][-d dir][-f num][-m num][-n num] @filelist kw1 kw2 ... kwn\n");
     fprintf(stderr,"  -a: List file even if keywords are not found\n");
     fprintf(stderr,"  -d: Root directory for input files (default is cwd)\n");
-    fprintf(stderr,"  -f: Max number of files if not %d\n", maxnfile);
     fprintf(stderr,"  -h: Print column headings\n");
-    fprintf(stderr,"  -m: Max number of keywords if not %d\n", maxnkwd);
     fprintf(stderr,"  -n: Number of decimal places in numeric output\n");
     fprintf(stderr,"  -p: Print full pathnames of files\n");
     fprintf(stderr,"  -t: Output in tab-separated table format\n");
@@ -480,4 +483,7 @@ char *string;
  * Apr  2 1999	Add -f and -m to change maximum number of files or keywords
  * Jun  9 1999	Initialize outline so Linux doesn't print garbage
  * Jun 21 1999	Fix bug so that -a option works, always printing filename
+ * Jul 13 1999	Use only first token from line of list as filename
+ * Jul 14 1999	Read lists of BOTH keywords and files simultaneously
+ * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
  */

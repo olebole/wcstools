@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * July 9, 1999
+ * August 31, 1999
  * By Doug Mink, based on UIowa code
  */
 
@@ -82,7 +82,8 @@ int	verbose;
     int *gc=0;		/* Reference object types */
     int *goff=0;	/* Reference star offscale flags */
     int ng;		/* Number of reference stars in image */
-    int nbg;		/* Number of brightest reference stars actually used */
+    int nbg;		/* Number of brightest reference stars from search */
+    int nrg;		/* Number of brightest reference stars actually used */
     double *sx=0;	/* Image star image X-coordinates in pixels */
     double *sy=0;	/* Image star image X-coordinates in pixels */
     double *sb=0;	/* Image star image flux in counts */
@@ -96,6 +97,7 @@ int	verbose;
     int imsearch = 1;	/* Flag set if image should be searched for sources */
     double mag1,mag2;
     double dxys;
+    char numstr[32];
     int minstars;
     int ngmax;
     int nbin, nbytes;
@@ -112,6 +114,9 @@ int	verbose;
     struct WorldCoor *wcs=0;	/* WCS structure */
     double *sx1, *sy1, *gra1, *gdec1, *gnum1, *gm1;
     double imfrac = imfrac0;
+    int nmatch;
+    double ra,dec;
+    double dx, dy, dx2, dy2, dxy, tol2;
 
     /* Set reference catalog coordinate system and epoch */
     if (nofit) {
@@ -160,12 +165,18 @@ getfield:
     if (imfrac > 1.0)
 	ngmax = (int) ((double) ngmax * imfrac * imfrac);
     nbytes = ngmax * sizeof (double);
-    gnum = (double *) malloc (nbytes);
-    gra = (double *) malloc (nbytes);
-    gdec = (double *) malloc (nbytes);
-    gm = (double *) malloc (nbytes);
-    gmb = (double *) malloc (nbytes);
-    gc = (int *) malloc (nbytes);
+    if (!(gnum = (double *) calloc (ngmax, sizeof(double))))
+	fprintf (stderr, "Could not calloc %d bytes for gnum\n", ngmax*sizeof(double));
+    if (!(gra = (double *) calloc (ngmax, sizeof(double))))
+	fprintf (stderr, "Could not calloc %d bytes for gra\n", ngmax*sizeof(double));
+    if (!(gdec = (double *) calloc (ngmax, sizeof(double))))
+	fprintf (stderr, "Could not calloc %d bytes for gdec\n", ngmax*sizeof(double));
+    if (!(gm = (double *) calloc (ngmax, sizeof(double))))
+	fprintf (stderr, "Could not calloc %d bytes for gm\n", ngmax*sizeof(double));
+    if (!(gmb = (double *) calloc (ngmax, sizeof(double))))
+	fprintf (stderr, "Could not calloc %d bytes for gmb\n", ngmax*sizeof(double));
+    if (!(gc = (int *) calloc (ngmax, sizeof(int))))
+	fprintf (stderr, "Could not calloc %d bytes for gc\n", ngmax*sizeof(int));
 
     /* Find the nearby reference stars, in ra/dec */
     if (refcat == UAC || refcat == UA1 || refcat == UA2 ||
@@ -181,6 +192,9 @@ getfield:
     else if (refcat == ACT)
 	ng = actread (cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
 		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,verbose*100);
+    else if (refcat == BSC)
+	ng = binread ("BSC5",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
     else if (refcat == SAO)
 	ng = binread ("SAOra",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
 		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
@@ -210,45 +224,51 @@ getfield:
 	ret = 0;
 	goto out;
 	}
+    if (ng > ngmax)
+	nrg = ngmax;
+    else
+	nrg = ng;
 
     minstars = MINSTARS;
 
     /* Project the reference stars into pixels on a plane at ra0/dec0 */
-    gx = (double *) malloc (nbytes);
-    gy = (double *) malloc (nbytes);
-    goff = (int *) malloc (nbytes);
-    if (!gx || !gy) {
-	fprintf (stderr, "Could not malloc temp space of %d bytes\n",
-					    ng*sizeof(double)*2);
+    if (!(gx = (double *) calloc (ngmax, sizeof(double))))
+	fprintf (stderr, "Could not calloc %d bytes for gx\n",
+		 ngmax*sizeof(double));
+    if (!(gy = (double *) calloc (ngmax, sizeof(double))))
+	fprintf (stderr, "Could not calloc %d bytes for gy\n",
+		 ngmax*sizeof(double));
+    if (!(goff = (int *) calloc (ngmax, sizeof(int))))
+	fprintf (stderr, "Could not calloc %d bytes for gy\n",
+		 ngmax*sizeof(double));
+    if (!gx || !gy || !goff) {
 	ret = 0;
 	goto out;
 	}
 
     /* use the nominal WCS info to find x/y on image */
-    for (ig = 0; ig < ng; ig++) {
+    for (ig = 0; ig < nrg; ig++) {
 	gx[ig] = 0.0;
 	gy[ig] = 0.0;
 	wcs2pix (wcs, gra[ig], gdec[ig], &gx[ig], &gy[ig], &goff[ig]);
 	}
 
     /* Sort reference stars by brightness (magnitude) */
-    MagSortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, NULL, ng);
+    MagSortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, NULL, nrg);
 
     /* Note how reference stars were selected */
-    nbg = ngmax;
-    if (ng > nbg) {
+    if (ng > ngmax) {
 	if (verbose)
-	    printf ("using %d / %d reference stars brighter than %.1f\n",
-		     nbg, ng, gm[nbg-1]);
+	    printf ("Using %d / %d reference stars brighter than %.1f\n",
+		     nrg, ng, gm[nrg-1]);
 	}
     else {
-	nbg = ng;
 	if (verbose) {
 	    if (refmag1 > 0.0 && refmag2 > 0.0)
-		printf ("using all %d reference stars from %.1f to %.1f mag.\n",
+		printf ("Using all %d reference stars from %.1f to %.1f mag.\n",
 			ng, refmag1, refmag2);
 	    else if (refmag2 > 0.0)
-		printf ("using all %d reference stars brighter than %.1f\n",
+		printf ("Using all %d reference stars brighter than %.1f\n",
 			ng,refmag2);
 	    else
 		printf ("using all %d reference stars\n", ng);
@@ -260,31 +280,21 @@ getfield:
 	for (ig = 0; ig < ng; ig++) {
 	    ra2str (rstr, 32, gra[ig], 3);
 	    dec2str (dstr, 32, gdec[ig], 2);
-	    if (refcat == UAC || refcat == UA1 || refcat == UA2 ||
-		refcat == USAC || refcat == USA1 || refcat == USA2)
-		printf (" %13.8f",gnum[ig]);
-	    else if (refcat == UJC)
-		printf (" %12.7f",gnum[ig]);
-	    else if (refcat == GSC)
-		printf (" %9.4f",gnum[ig]);
-	    else if (refcat == ACT || refcat == TYCHO || refcat == HIP)
-		printf (" %10.5f",gnum[ig]);
-	    else
-		printf (" %9d",(int)gnum[ig]);
-	    printf (" %s %s %5.2f %6.1f %6.1f\r",
-		    rstr,dstr,gm[ig],gx[ig],gy[ig]);
+	    CatNum (refcat, wcs->ndec, gnum[ig], numstr);
+	    printf ("%s %s %s %5.2f %6.1f %6.1f\r",
+		    numstr,rstr,dstr,gm[ig],gx[ig],gy[ig]);
 	    }
 	printf ("\n");
 	}
 
-    if (ng < minstars) {
+    if (nrg < minstars) {
 	if (ng < 0)
 	    fprintf (stderr, "Error getting reference stars: %d\n", ng);
 	else if (ng == 0)
 	    fprintf (stderr,"No reference stars found in image area\n");
 	else if (fitwcs)
 	    fprintf (stderr, "Found only %d out of %d reference stars needed\n",
-			     ng, minstars);
+			     nrg, minstars);
 	if (ng <= 0 || fitwcs) {
 	    ret = 0;
 	    goto out;
@@ -328,29 +338,31 @@ getfield:
 	*/
 	if (imfrac > 0.0) {
 	    double imfrac2 = imfrac * imfrac;
-	    if (ns > (nbg / imfrac2)) {
-		nbs = nbg * frac / imfrac2;
+	    if (ns > (nrg / imfrac2)) {
+		nbs = nrg * frac / imfrac2;
 		if (nbs > ns)
 		    nbs = ns;
+		nbg = nrg;
 		}
 	    else {
 		nbs = ns;
 		nbg = (int) ((double) nbs * imfrac2);
-		if (nbg > ng)
-		    nbg = ng;
+		if (nbg > nrg)
+		    nbg = nrg;
 		}
 	    }
 	else {
-	    if (ns > nbg) {
-		nbs = nbg * frac;
+	    if (ns > nrg) {
+		nbs = nrg * frac;
 		if (nbs > ns)
 		    nbs = ns;
+		nbg = nrg;
 		}
 	    else {
 		nbs = ns;
 		nbg = nbs * frac;
-		if (nbg > ng)
-		    nbg = ng;
+		if (nbg > nrg)
+		    nbg = nrg;
 		}
 	    }
 	if (verbose) {
@@ -393,15 +405,27 @@ getfield:
 	else if (verbose)
 	    printf ("%d bin hits\n", nbin);
 
+	imcatname = getimcat ();
+	if (strlen (imcatname) == 0)
+	    imcatname = filename;
+	hputs (header, "WCSRFCAT", refcatname);
+	hputs (header, "WCSIMCAT", imcatname);
+	hputi4 (header, "WCSMATCH", nbin);
+	if (ns < nbg)
+	    hputi4 (header, "WCSNREF", ns);
+	else
+	    hputi4 (header, "WCSNREF", nbg);
+
 	SetFITSWCS (header, wcs);
 	}
 
     /* Match reference and image stars */
-    if (verbose || !fitwcs) {
-	double ra,dec;
-	double dx, dy, dx2, dy2, dxy, tol2;
-	int nmatch=0;
+    nmatch=0;
 
+    if (verbose || !fitwcs) {
+	imcatname = getimcat ();
+	if (strlen (imcatname) == 0)
+	    imcatname = filename;
 	if (wcs->ncoeff1 > 0)
 	    printf ("# %d-term x, %d-term y polynomial fit\n",
 		    wcs->ncoeff1, wcs->ncoeff2);
@@ -428,98 +452,103 @@ getfield:
 	    printf ("# Optical axis: %s  %s J2000 at (%.2f,%.2f)\n",
 		    rstr,dstr, wcs->xrefpix, wcs->yrefpix);
 	    }
+	}
 
-	/* Find star matches for this offset and print them */
-	tol2 = tolerance * tolerance;
+    /* Find star matches for this offset and print them */
+    tol2 = tolerance * tolerance;
 
-	/* Use the fit WCS info to find catalog star x/y on image */
-	for (ig = 0; ig < ng; ig++) {
-	    gx[ig] = 0.0;
-	    gy[ig] = 0.0;
-	    wcs2pix (wcs, gra[ig], gdec[ig], &gx[ig], &gy[ig], &goff[ig]);
-	    }
+    /* Use the fit WCS info to find catalog star x/y on image */
+    for (ig = 0; ig < nrg; ig++) {
+	gx[ig] = 0.0;
+	gy[ig] = 0.0;
+	wcs2pix (wcs, gra[ig], gdec[ig], &gx[ig], &gy[ig], &goff[ig]);
+	}
 
-	/* Find best catalog matches to stars in image */
-	nmatch = 0;
-	nbytes = ns * sizeof (double);
-	gra1 = (double *) malloc (nbytes);
-	gdec1 = (double *) malloc (nbytes);
-	gm1 = (double *) malloc (nbytes);
-	gnum1 = (double *) malloc (nbytes);
-	sx1 = (double *) malloc (nbytes);
-	sy1 = (double *) malloc (nbytes);
-	for (is = 0; is < ns; is++) {
-	    dxys = -1.0;
-	    igs = -1;
-	    for (ig = 0; ig < ng; ig++) {
-		if (!goff[ig]) {
-		    dx = gx[ig] - sx[is];
-		    dy = gy[ig] - sy[is];
-		    dx2 = dx * dx;
-		    dy2 = dy * dy;
-		    dxy = dx2 + dy2;
-		    if (dxy < tol2) {
-			if (dxys < 0.0) {
-			    dxys = dxy;
-			    igs = ig;
-			    }
-			else if (dxy < dxys) {
-			    dxys = dxy;
-			    igs = ig;
-			    }
-		        }
+    /* Find best catalog matches to stars in image */
+    nmatch = 0;
+    nbytes = ns * sizeof (double);
+    gra1 = (double *) malloc (nbytes);
+    gdec1 = (double *) malloc (nbytes);
+    gm1 = (double *) malloc (nbytes);
+    gnum1 = (double *) malloc (nbytes);
+    sx1 = (double *) malloc (nbytes);
+    sy1 = (double *) malloc (nbytes);
+    for (is = 0; is < ns; is++) {
+	dxys = -1.0;
+	igs = -1;
+	for (ig = 0; ig < nrg; ig++) {
+	    if (!goff[ig]) {
+		dx = gx[ig] - sx[is];
+		dy = gy[ig] - sy[is];
+		dx2 = dx * dx;
+		dy2 = dy * dy;
+		dxy = dx2 + dy2;
+		if (dxy < tol2) {
+		    if (dxys < 0.0) {
+			dxys = dxy;
+			igs = ig;
+			}
+		    else if (dxy < dxys) {
+			dxys = dxy;
+			igs = ig;
+			}
 		    }
 		}
-	    if (igs > -1) {
-		gnum1[nmatch] = gnum[igs];
-		gm1[nmatch] = gm[igs];
-		gra1[nmatch] = gra[igs];
-		gdec1[nmatch] = gdec[igs];
-		sx1[nmatch] = sx[is];
-		sy1[nmatch] = sy[is];
-		nmatch++;
-		}
 	    }
+	if (igs > -1) {
+	    gnum1[nmatch] = gnum[igs];
+	    gm1[nmatch] = gm[igs];
+	    gra1[nmatch] = gra[igs];
+	    gdec1[nmatch] = gdec[igs];
+	    sx1[nmatch] = sx[is];
+	    sy1[nmatch] = sy[is];
+	    nmatch++;
+	    }
+	}
 
-	imcatname = getimcat ();
-	if (strlen (imcatname) == 0)
-	    imcatname = filename;
-
-	/* If there were any matches found, print them */
-	if (nmatch > 0) {
+    /* If there were any matches found, print them */
+    if (nmatch > 0) {
+	int rprint = verbose || !fitwcs;
+	if (ns < ng)
+	    hputi4 (header, "WCSNREF", ns);
+	else
+	    hputi4 (header, "WCSNREF", ng);
+	if (rprint)
 	    printf ("# %d matches between %s and %s:\n",
 		    nmatch, refcatname, imcatname);
 
-	    PrintRes (wcs, nmatch, sx1, sy1, gra1, gdec1, gm1, gnum1, refcat);
+	PrintRes (header,wcs,nmatch,sx1,sy1,gra1,gdec1,gm1,gnum1,refcat,rprint);
 
-	    /* Fit the matched catalog and image stars with a polynomial */
-	    if (!iterate && !recenter && fitplate) {
+	/* Fit the matched catalog and image stars with a polynomial */
+	if (!iterate && !recenter && fitplate) {
 
-		if (verbose)
-		    printf ("Fitting matched stars with a polynomial\n");
+	    if (verbose)
+		printf ("Fitting matched stars with a polynomial\n");
 
-		/* Fit residuals */
-		if (FitPlate (wcs, sx1, sy1, gra1, gdec1, nmatch, fitplate,
-			      verbose))
-		    printf ("FitPlate cannot fit matches\n");
+	    /* Fit residuals */
+	    if (FitPlate (wcs, sx1, sy1, gra1, gdec1, nmatch, fitplate,
+			  verbose))
+		printf ("FitPlate cannot fit matches\n");
 
-		/* Print the new residuals */
-		else {
-		    printf ("# %d matches between %s and %s:\n",
-			    nmatch, refcatname, imcatname);
-		    PrintRes (wcs,nmatch,sx1,sy1,gra1,gdec1,gm1,gnum1,refcat);
-		    SetFITSPlate (header, wcs);
-		    }
+	    /* Print the new residuals */
+	    else {
+		printf ("# %d matches between %s and %s:\n",
+			nmatch, refcatname, imcatname);
+		PrintRes (header,wcs,nmatch,sx1,sy1,gra1,gdec1,gm1,gnum1,refcat);
+		SetFITSPlate (header, wcs);
 		}
 	    }
-	else
-	    fprintf (stderr, "SetWCSFITS: No matches between %s and %s:\n",
-		    refcatname, imcatname);
-	if (gra1) free ((char *)gra1);
-	if (gdec1) free ((char *)gdec1);
-	if (gm1) free ((char *)gm1);
-	if (gnum1) free ((char *)gnum1);
 	}
+
+    else {
+	fprintf (stderr, "SetWCSFITS: No matches between %s and %s:\n",
+	refcatname, imcatname);
+	hputi4 (header, "WCSMATCH", 0);
+	}
+    if (gra1) free ((char *)gra1);
+    if (gdec1) free ((char *)gdec1);
+    if (gm1) free ((char *)gm1);
+    if (gnum1) free ((char *)gnum1);
 
     ret = 1;
 
@@ -572,9 +601,10 @@ getfield:
 
 
 static void
-PrintRes (wcs, nmatch, sx1, sy1, gra1, gdec1, gm1, gnum1, refcat)
+PrintRes (header, wcs, nmatch, sx1, sy1, gra1, gdec1, gm1, gnum1, refcat, verbose)
 
-struct WorldCoor *wcs;
+char	*header;	/* Image FITS header */
+struct WorldCoor *wcs;	/* Image World Coordinate System */
 int	nmatch;		/* Number of image/catalog matches */
 double	*sx1, *sy1;	/* Image star pixel coordinates */
 double	*gra1, *gdec1;	/* Reference catalog sky coordinates */
@@ -598,7 +628,7 @@ int	refcat;		/* Reference catalog code */
     double dx2sum = 0.0;
     double dy2sum = 0.0;
     double dxysum = 0.0;
-    char rstr[32], dstr[32];
+    char rstr[32], dstr[32], numstr[32];
 
     for (i = 0; i < nmatch; i++) {
 	wcs2pix (wcs, gra1[i], gdec1[i], &gx, &gy, &goff);
@@ -628,17 +658,8 @@ int	refcat;		/* Reference catalog code */
 	dec2str (dstr, 32, gdec1[i], 2);
 	if (irafout)
 	    printf (" %6.1f %6.1f %s %s %5.2f ",sx1[i],sy1[i],rstr,dstr,gm1[i]);
-	if (refcat == UAC || refcat == UA1 || refcat == UA2 ||
-	    refcat == USAC || refcat == USA1 || refcat == USA2)
-	    printf (" %13.8f",gnum1[i]);
-	else if (refcat == UJC)
-	    printf (" %12.7f",gnum1[i]);
-	else if (refcat == GSC)
-	    printf (" %9.4f",gnum1[i]);
-	else if (refcat == ACT || refcat == TYCHO || refcat == HIP)
-	    printf (" %10.5f",gnum1[i]);
-	else
-	    printf (" %9d", (int)gnum1[i]);
+	CatNum (refcat, 0, gnum1[i], numstr);
+	printf (" %s",numstr);
 	if (!irafout)
 	    printf (" %s %s %5.2f %6.1f %6.1f ",rstr,dstr,gm1[i],sx1[i],sy1[i]);
 	printf ("%6.2f %6.2f %6.2f\n", rsep, dsep, sep);
@@ -660,6 +681,8 @@ int	refcat;		/* Reference catalog code */
 	    dx, dx2, dy, dy2, dxy);
     printf ("# Mean dra= %.4f/%.4f  ddec= %.4f/%.4f sep= %.4f/%.4f\n",
 	    rsep, rsep2, dsep, dsep2, sep, sep2);
+    hputi4 (header, "WCSMATCH", nmatch);
+    hputnr8 (header, "WCSSEP", 3, sep);
 
     return;
 }
@@ -857,4 +880,10 @@ int recenter;
  * Jul  7 1999	Fix bug setting secpix when iterating
  * Jul  7 1999	List catalog and image stars without linefeeds
  * Jul  9 1999	Log tabread() every 100 if verbose
+ * Jul 23 1999	Add BSC for very wide fields
+ * Jul 26 1999	Add WCSIMCAT, WCSFRCAT, WCSMATCH, and WCSSEP to header
+ * Jul 26 1999	Always compute residuals so WCSMATCH and WCSSEP match WCS
+ * Jul 27 1999	Add WCSNREF, maximum possible matches
+ * Aug 26 1999	Handle true number return from search subroutines
+ * Aug 31 1999	Set image catalog name when only matching stars
  */

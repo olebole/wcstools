@@ -1,5 +1,5 @@
 /* File delhead.c
- * April 2, 1999
+ * July 15, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -32,18 +32,26 @@ char **av;
     char *str;
     char **kwd;
     int nkwd = 0;
-    int nxkwd = 0;
     char **fn;
     int nfile = 0;
-    int nxfile = 0;
-    int readlist = 0;
     int ifile;
     char *lastchar;
     char filename[128];
-    char keyword[16];
+    char keyword[32];
     char *name;
-    FILE *flist;
+    FILE *flist, *fdk;
     char *listfile;
+    char *ilistfile;
+    char *klistfile;
+    int ikwd, i;
+    char *kw, *kwe;
+
+    ilistfile = NULL;
+    klistfile = NULL;
+    nkwd = 0;
+    nfile = 0;
+    fn = (char **)calloc (maxnfile, sizeof(char *));
+    kwd = (char **)calloc (maxnkwd, sizeof(char *));
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -55,127 +63,103 @@ char **av;
 	}
 
     /* crack arguments */
-    for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
-	char c;
-	while (c = *++str)
-	switch (c) {
+    for (av++; --ac > 0; av++) {
+	if (*(str = *av) == '-') {
+	    char c;
+	    while (c = *++str)
+	    switch (c) {
 
-	case 'f':	/* maximum number of files, overrides MAXFILES */
-	    if (ac < 2)
-		usage();
-	    maxnfile = (int) (atof (*++av));
-	    ac--;
-	    break;
-
-	case 'm':	/* maximum number of keywords, overrides MAXKWD */
-	    if (ac < 2)
-		usage();
-	    maxnkwd = (int) (atof (*++av));
-	    ac--;
-	    break;
-
-	case 'n':	/* write new file */
-	    newimage++;
-	    break;
-
-	case 'v':	/* more verbosity */
-	    verbose++;
-	    break;
-
-	default:
-	    usage();
-	    break;
-	}
-    }
-
-    /* now there are ac remaining file names starting at av[0] */
-    if (ac == 0)
-	usage ();
-
-    nkwd = 0;
-    nfile = 0;
-    nxfile = 0;
-    nxkwd = 0;
-    fn = (char **)calloc (maxnfile, sizeof(char *));
-    kwd = (char **)calloc (maxnkwd, sizeof(char *));
-    while (ac-- > 0) {
-	if (*av[0] == '@') {
-	    readlist++;
-	    listfile = *av + 1;
-	    if (nfile == 0)
-		nfile = 2;
-	    }
-	else if (isfits (*av) || isiraf (*av)) {
-	    if (nfile < maxnfile) {
-		fn[nfile] = *av;
-		nfile++;
+		case 'n':	/* write new file */
+		    newimage++;
+		    break;
+	
+		case 'v':	/* more verbosity */
+		    verbose++;
+		    break;
+	
+		default:
+		    usage();
+		    break;
 		}
-	    else
-		nxfile++;
 	    }
-	else if (nkwd < maxnkwd) {
+
+	/* File containing a list of keywords or files */
+	else if (*av[0] == '@') {
+	    listfile = *av + 1;
+	    if (isimlist (listfile)) {
+		ilistfile = listfile;
+		nfile = getfilelines (ilistfile);
+		}
+	    else {
+		klistfile = listfile;
+		nkwd = getfilelines (klistfile);
+		if (nkwd > 0) {
+		    if (nkwd > maxnkwd) {
+			kwd = realloc ((void *)kwd, nkwd);
+			maxnkwd = nkwd;
+			}
+		    if ((fdk = fopen (klistfile, "r")) == NULL) {
+			fprintf (stderr,"DELHEAD: File %s cannot be read\n",
+				 klistfile);
+			nkwd = 0;
+			}
+		    else {
+			for (ikwd = 0; ikwd < nkwd; ikwd++) {
+			    kwd[ikwd] = (char *) calloc (32, 1);
+			    first_token (fdk, 31, kwd[ikwd]);
+			    }
+			fclose (fdk);
+			}
+		    }
+		}
+	    }
+
+	/* Image file */
+	else if (isfits (*av) || isiraf (*av)) {
+	    if (nfile >= maxnfile) {
+		maxnfile = maxnfile * 2;
+		fn = realloc ((void *)fn, maxnfile);
+		}
+	    fn[nfile] = *av;
+	    nfile++;
+	    }
+
+	/* Keyword */
+	else {
+	    if (nkwd >= maxnkwd) {
+		maxnkwd = maxnkwd * 2;
+		kwd = realloc ((void *)kwd, maxnkwd);
+		}
 	    kwd[nkwd] = *av;
 	    nkwd++;
 	    }
-	else
-	    nxkwd++;
-	av++;
 	}
+
+    if (nkwd <= 0 || nfile < 0 )
+	usage ();
 
     /* Delete keyword values one file at a time */
-    if (nkwd > 0) {
 
-	/* Read through headers of images in listfile */
-	if (readlist) {
-	    if ((flist = fopen (listfile, "r")) == NULL) {
-		fprintf (stderr,"DELHEAD: List file %s cannot be read\n",
-		     listfile);
-		usage ();
-		}
-	    while (fgets (filename, 128, flist) != NULL) {
-		lastchar = filename + strlen (filename) - 1;
-		if (*lastchar < 32) *lastchar = 0;
-		DelKeywords (filename, nkwd, kwd);
-		if (verbose)
-		    printf ("\n");
-		}
-	    fclose (flist);
-	    }
-
-	/* Read image headers from command line list */
-	else {
-	    for (ifile = 0; ifile < nfile; ifile++)
-	    	DelKeywords (fn[ifile], nkwd, kwd);
-	    }
-	}
-
-    /* Read keywords from list file */
-    else if (readlist) {
-	if ((flist = fopen (listfile, "r")) == NULL) {
-	    fprintf (stderr,"DELHEAD: List file %s cannot be read\n",
-		     listfile);
+    /* Open file containing a list of images, if there is one */
+    if (ilistfile != NULL) {
+	if ((flist = fopen (ilistfile, "r")) == NULL) {
+	    fprintf (stderr,"DELHEAD: Image list file %s cannot be read\n",
+		     ilistfile);
 	    usage ();
 	    }
-	while (fgets (keyword, 16, flist) != NULL) {
-	    lastchar = keyword + strlen (keyword) - 1;
-	    if (*lastchar < 32) *lastchar = 0;
-	    kwd[nkwd] = (char *) calloc (1, 16);
-	    strcpy (kwd[nkwd], keyword);
-	    nkwd++;
-	    }
-	fclose (flist);
-
-	for (ifile = 0; ifile < nfile; ifile++)
-	    DelKeywords (fn[ifile], nkwd, kwd);
 	}
 
-    /* Print error message(s) if the command line got too long */
-    if (nxfile > 0)
-	fprintf (stderr, "DELHEAD limit of %d files exceeded by %d\n",
-		 maxnfile, nxfile);
-    if (nxkwd > 0)
-	fprintf (stderr, "DELHEAD limit of %d keywords exceeded by %d\n",
-		 maxnkwd, nxkwd);
+    /* Read through headers of images */
+    for (ifile = 0; ifile < nfile; ifile++) {
+	if (ilistfile != NULL) {
+	    first_token (flist, 254, filename);
+	    DelKeywords (filename, nkwd, kwd);
+	    }
+	else
+	    DelKeywords (fn[ifile], nkwd, kwd);
+	}
+    if (ilistfile != NULL)
+	fclose (flist);
 
     return (0);
 }
@@ -187,10 +171,9 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Delete FITS or IRAF header keyword entries\n");
     fprintf(stderr,"Usage: [-nv][-f num][-m num] file1.fits [ ... filen.fits] kw1 [... kwn]\n");
-    fprintf(stderr,"Usage: [-nv][-f num][-m num] @listfile kw1 [... kwn]\n");
-    fprintf(stderr,"Usage: [-nv][-f num][-m num] file1.fits [ ... filen.fits] @keylistfile\n");
-    fprintf(stderr,"  -f: Max number of files if not %d\n", maxnfile);
-    fprintf(stderr,"  -m: Max number of keywords if not %d\n", maxnkwd);
+    fprintf(stderr,"  or : [-nv][-f num][-m num] @listfile kw1 [... kwn]\n");
+    fprintf(stderr,"  or : [-nv][-f num][-m num] file1.fits [ ... filen.fits] @keylistfile\n");
+    fprintf(stderr,"  or : [-nv][-f num][-m num] @listfile @keylistfile\n");
     fprintf(stderr,"  -n: write new file\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
@@ -385,4 +368,7 @@ char	*kwd[];		/* Names of those keywords */
  * Mar  2 1999	Add option to delete list of keyword names from file
  * Apr  2 1999	Add warning if too many files or keywords on command line
  * Apr  2 1999	Add -f and -m to change maximum number of files or keywords
+ * Jul 14 1999	Read lists of BOTH keywords and files simultaneously
+ * Jul 14 1999	Reallocate keyword array if too many in file
+ * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
  */

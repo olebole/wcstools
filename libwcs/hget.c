@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** May 5, 1999
+ *** July 15, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -515,13 +515,30 @@ char *str;	/* String (returned) */
     char *stri;
     char keywordi[16];
     int lval, lstri, ikey;
+    char keyform[8];
 
     stri = str;
     lstri = lstr;
 
+    sprintf (keywordi, "%s_1", keyword);
+    if (ksearch (hstring, keywordi))
+	strcpy (keyform, "%s_%d");
+    else {
+	sprintf (keywordi, "%s_01", keyword);
+	if (ksearch (hstring, keywordi))
+	    strcpy (keyform, "%s_%02d");
+	else {
+	    sprintf (keywordi, "%s_001", keyword);
+	    if (ksearch (hstring, keywordi))
+		strcpy (keyform, "%s_%03d");
+	    else
+		return (0);
+	    }
+	}
+
     /* Loop through sequentially-named keywords */
     for (ikey = 1; ikey < 20; ikey++) {
-	sprintf (keywordi, "%s_%03d", keyword, ikey);
+	sprintf (keywordi, keyform, keyword, ikey);
 
 	/* Get value for this keyword */
 	value = hgetc (hstring, keywordi);
@@ -1222,4 +1239,5 @@ int set_saolib(hstring)
  *
  * Apr  5 1999	Check lengths of strings before copying them
  * May  5 1999	values.h -> POSIX limits.h: MAXINT->INT_MAX, MAXSHORT->SHRT_MAX
+ * Jul 15 1999	Add hgetm() options of 1- or 2-digit keyword extensions
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** June 16, 1999
+ *** August 25, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -131,40 +131,8 @@ int	nlog;
     epref = starcat->epoch;
     rcra = cra;
     rcdec = cdec;
-    wcscon (sysout,sysref, eqout,eqref, &rcra,&rcdec, epref);
-
-    /* Set right ascension limits for catalog search */
-    rra1 = rcra - dra;
-    rra2 = rcra + dra;
-
-    /* Keep right ascension between 0 and 360 degrees */
-    if (rra1 < 0.0)
-	rra1 = rra1 + 360.0;
-    if (rra2 > 360.0)
-	rra2 = rra2 - 360.0;
-
-    /* Set declination limits in catalog coordinates */
-    rdec1 = rcdec - ddec;
-    rdec2 = rcdec + ddec;
-
-    /* rdec1 is always the smallest declination */
-    if (rdec1 > rdec2) {
-	dec = rdec1;
-	rdec1 = rdec2;
-	rdec2 = dec;
-	}
-
-    /* Search zones which include the poles cover 360 degrees in RA */
-    if (rdec1 < -90.0) {
-	rdec1 = -90.0;
-	rra1 = 0.0;
-	rra2 = 359.99999;
-	}
-    if (rdec2 > 90.0) {
-	rdec2 = 90.0;
-	rra1 = 0.0;
-	rra2 = 359.99999;
-	}
+    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
+	    &rra1, &rra2, &rdec1, &rdec2, verbose);
     if (verbose) {
 	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
 	ra2str (rstr1, 16, rra1, 3);
@@ -188,11 +156,7 @@ int	nlog;
     else
 	rwrap = 0;
 
-    /* Set declination limits in output coordinates */
-    dec1 = cdec - ddec;
-    dec2 = cdec + ddec;
-
-    /* rdec1 is always the smallest declination */
+    /* Make sure first declination is always the smallest one */
     if (dec1 > dec2) {
 	dec = dec1;
 	dec1 = dec2;
@@ -383,13 +347,12 @@ int	nlog;
 	}
 
     /* Summarize search */
-    if (nlog > 0)
+    if (nlog > 0) {
 	fprintf (stderr,"BINREAD: Catalog %s : %d / %d / %d found\n",
 		 bincat,jstar,istar,starcat->nstars);
-    if (nstar > nstarmax) {
-	fprintf (stderr,"BINREAD: %d stars found; only %d returned\n",
-		 nstar,nstarmax);
-	nstar = nstarmax;
+	if (nstar > nstarmax)
+	    fprintf (stderr,"BINREAD: %d stars found; only %d returned\n",
+		     nstar,nstarmax);
 	}
 
     binclose(starcat);
@@ -1047,4 +1010,7 @@ char    *filename;      /* Name of file to check */
  * Feb  2 1999	Set number of decimal places in star number
  * Feb 11 1999	Change starcat.insys to starcat.coorsys
  * Jun 16 1999	Use SearchLim()
+ * Aug 16 1999	Add RefLim() to get converted search coordinates right
+ * Aug 24 1999	Fix declination limit bug which broke search 
+ * Aug 25 1999	Return real number of stars from binread()
  */

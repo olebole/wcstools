@@ -21,6 +21,8 @@ daoread.c
   flux for use by IMSTAR or IMWCS.
 dateutil.c
   Subroutines for conversions between various date and time formats
+fileutil.c
+  Subroutines for finding size and contents of ASCII files
 findstar.c
   findStars() gets the location and brightest pixel of stars in the given
   image.  Included are subroutines to find and reject bright pixels and

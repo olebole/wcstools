@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** June 16, 1999
+ *** August 25, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -69,7 +69,7 @@ int	nlog;		/* 1 for diagnostics */
     int istar, istar1, istar2, isp;
     int ift;
     double num, ra, dec, rapm, decpm, mag, magb;
-    double rra1, rra2, rdec1, rdec2;
+    double rra1, rra2, rra2a, rdec1, rdec2;
     char *str;
     char cstr[32];
 
@@ -115,14 +115,19 @@ int	nlog;		/* 1 for diagnostics */
     rra2 = ra2;
     rdec1 = dec1;
     rdec2 = dec2;
+    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
+	    &rra1, &rra2, &rdec1, &rdec2, verbose);
+    if (rra1 > rra2) {
+	rra2a = rra2;
+	rra2 = 360.0;
+	if (!wrap) wrap = 1;
+	}
     nrmax = 100;
 
     /* If searching through RA = 0:00, split search in two */
     for (iw = 0; iw <= wrap; iw++) {
 
 	/* Find ACT Star Catalog regions in which to search */
-	wcscon (sysout, sysref, eqout, eqref, &rra1, &rdec1, epout);
-	wcscon (sysout, sysref, eqout, eqref, &rra2, &rdec2, epout);
 	nreg = actreg (rra1,rra2,rdec1,rdec2,nrmax,rlist,verbose);
 	if (nreg <= 0) {
 	    fprintf (stderr,"ACTREAD:  no ACT regions found\n");
@@ -267,7 +272,7 @@ int	nlog;		/* 1 for diagnostics */
 	    actclose (starcat);
 	    }
 	rra1 = 0.0;
-	rra2 = ra2;
+	rra2 = rra2a;
 	}
 
 /* close output file and summarize transfer */
@@ -276,12 +281,9 @@ int	nlog;		/* 1 for diagnostics */
 	    fprintf (stderr,"ACTREAD: %d regions: %d / %d found\n",nreg,nstar,ntot);
 	else
 	    fprintf (stderr,"ACTREAD: 1 region: %d / %d found\n",nstar,ntot);
-	}
-    if (nstar > nstarmax) {
-	if (nlog > 0)
+	if (nstar > nstarmax)
 	    fprintf (stderr,"ACTREAD: %d stars found; only %d returned\n",
 		     nstar,nstarmax);
-	nstar = nstarmax;
 	}
     free ((char *)gdist);
     return (nstar);
@@ -810,4 +812,6 @@ char	*filename;	/* Name of file for which to find size */
  * May 12 1999	Fix bug for all searches
  * May 21 1999	Fix bug with proper motion so it is in deg/yr, not sec/yr
  * Jun 16 1999	Use SearchLim()
+ * Aug 16 1999	Add RefLim() to get converted search coordinates right
+ * Aug 25 1999	Return real number of stars from actread()
  */

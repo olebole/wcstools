@@ -347,20 +347,24 @@ char *refcatname;	/* Name of catalog to translate */
 	else
 	    ngmax = MAXREF;
 	nbytes = ngmax * sizeof (double);
-	if (!(gnum = (double *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gnum\n", nbytes);
-	if (!(gra = (double *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gra\n", nbytes);
-	if (!(gdec = (double *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gdec\n", nbytes);
-	if (!(gm = (double *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gm\n", nbytes);
-	if (!(gmb = (double *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gmb\n", nbytes);
-	if (!gm)
-	    fprintf (stderr, "Could not malloc %d bytes for gm\n", nbytes);
-	if (!(gc = (int *) malloc (nbytes)))
-	    fprintf (stderr, "Could not malloc %d bytes for gc\n", nbytes);
+	if (!(gnum = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gnum\n",
+		     ngmax*sizeof(double));
+	if (!(gra = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gra\n",
+		     ngmax*sizeof(double));
+	if (!(gdec = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gdec\n",
+		     ngmax*sizeof(double));
+	if (!(gm = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gm\n",
+		     ngmax*sizeof(double));
+	if (!(gmb = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gmb\n",
+		     ngmax*sizeof(double));
+	if (!(gc = (int *) calloc (ngmax, sizeof(int))))
+	    fprintf (stderr, "Could not calloc %d bytes for gc\n",
+		     ngmax*sizeof(int));
 	if (!gnum || !gra || !gdec || !gm || !gmb || !gc) {
 	    if (gm) free ((char *)gm);
 	    if (gmb) free ((char *)gmb);

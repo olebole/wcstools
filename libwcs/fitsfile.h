@@ -1,12 +1,11 @@
 /* fitsfile.h  FITS and IRAF file access subroutines
- * October 7, 1998
+ * July 14, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
 #ifndef fitsfile_h_
 #define fitsfile_h_
 #include "fitshead.h"
-#include "imio.h"
 
 /* FITS table keyword structure */
 struct Keyword {
@@ -59,6 +58,13 @@ extern void imswap4();
 extern void imswap8();
 extern int imswapped();
 
+/* File utilities from fileutil.c */
+extern int getfilelines();
+extern char *getfilebuff();
+extern int getfilesize();
+extern int isimlist();
+extern int first_token();
+
 #endif /* fitsfile_h_ */
 
 /* May 31 1996	Use stream I/O for reading as well as writing
@@ -75,4 +81,6 @@ extern int imswapped();
  * Aug 18 1998	Change name to fitsfile.h from fitsio.h
  * Oct  5 1998	Add isiraf() and isfits()
  * Oct  7 1998	Note separation of imhfile.c into two files
+ *
+ * Jul 15 1999	Add fileutil.c subroutines
  */

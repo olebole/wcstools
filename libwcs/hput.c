@@ -1,5 +1,5 @@
 /*** File libwcs/hput.c
- *** January 28, 1999
+ *** August 16, 1999
  *** By Doug Mink
 
  * Module:	hput.c (Put FITS Header parameter values)
@@ -255,7 +255,7 @@ char *cval;	/* character string containing the value for variable
 {
     char squot = 39;
     char value[70];
-    int lcval;
+    int lcval, i;
 
     /*  find length of variable string */
 
@@ -263,11 +263,21 @@ char *cval;	/* character string containing the value for variable
     if (lcval > 67)
 	lcval = 67;
 
-    /* Put quotes around string */
+    /* Put single quote at start of string */
     value[0] = squot;
     strncpy (&value[1],cval,lcval);
+
+    /* If string is less than eight characters, pad it with spaces */
+    if (lcval < 8) {
+	for (i = lcval; i < 8; i++) {
+	    value[i+1] = ' ';
+	    }
+	lcval = 8;
+	}
+
+    /* Add single quote and null to end of string */
     value[lcval+1] = squot;
-    value[lcval+2] = 0;
+    value[lcval+2] = (char) 0;
 
     /* Put value into header string */
     hputc (hstring,keyword,value);
@@ -789,7 +799,7 @@ double	dec;		/* Declination in degrees */
 int	ndec;		/* Number of decimal places in arcseconds */
 
 {
-    double a,b;
+    double a, b, dsgn, deg1;
     double seconds;
     char sign;
     int degrees;
@@ -797,11 +807,20 @@ int	ndec;		/* Number of decimal places in arcseconds */
     int isec;
     char tstring[64];
 
-    /* Set declinations outside of +-90 to the closest limit */
-    if (dec > 90.0) dec = 90.0;
-    if (dec < -90.0) dec = -90.0;
+    /* Keep angle between -180 and 360 degrees */
+    deg1 = dec;
+    if (deg1 < 0.0 ) {
+	deg1 = -deg1;
+	dsgn = -1.0;
+	}
+    else
+	dsgn = 1.0;
+    deg1 = fmod(deg1, 360.0);
+    deg1 *= dsgn;
+    if (deg1 <= -180.0)
+	deg1 = deg1 + 360.0;
 
-    a = dec;
+    a = deg1;
 
     /* Set sign and do all the rest with a positive */
     if (a < 0) {
@@ -1110,4 +1129,6 @@ getutime ()
  * Oct  1 1998	Change clock declaration in getltime() from int (Allan Brighton)
  *
  * Jan 28 1999	Fix bug to avoid writing HISTORY or COMMENT past 80 characters
+ * Jul 14 1999	Pad string in hputs() to minimum of 8 characters
+ * Aug 16 1999	Keep angle between -180 and +360 in dec2str()
  */

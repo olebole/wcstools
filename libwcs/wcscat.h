@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * July 2, 1999
+ * July 26, 1999
  * By Doug Mink, SAO
  */
 
@@ -19,6 +19,7 @@
 #define USA2		12	/* refcat value for USNO SA-2.0 Star Catalog */
 #define HIP		13	/* refcat value for Hipparcos Star Catalog */
 #define ACT		14	/* refcat value for USNO ACT Star Catalog */
+#define BSC		15	/* refcat value for Yale Bright Star Catalog */
 #define TABCAT		-1	/* refcat value for StarBase tab table catalog */
 #define BINCAT		-2	/* refcat value for TDC binary catalog */
 #define TXTCAT		-3	/* refcat value for TDC ASCII catalog */
@@ -28,6 +29,7 @@ int RefCat();
 void CatNum();
 int CatNumLen();
 void SearchLim();
+void RefLim();
 
 /* Subroutines for extracting sources from catalogs by sky region */
 int gscread();		/* Read sources from HST Guide Star Catalog */
@@ -36,6 +38,7 @@ int ujcread();		/* Read sources from USNO J Catalog */
 int tabread();		/* Read sources from tab table catalog */
 int binread();		/* Read sources from SAO TDC binary format catalog */
 int catread();		/* Read sources from SAO TDC ASCII format catalog */
+int actread();		/* Read sources from USNO ACT Catalog */
 
 /* Subroutines for extracting sources from catalogs by ID number */
 int gscrnum();		/* Read sources from HST Guide Star Catalog */
@@ -44,6 +47,7 @@ int ujcrnum();		/* Read sources from USNO J Catalog */
 int tabrnum();		/* Read sources from tab table catalog */
 int binrnum();		/* Read sources from SAO TDC binary format catalog */
 int catrnum();		/* Read sources from SAO TDC ASCII format catalog */
+int actrnum();		/* Read sources from USNO ACT Catalog */
 
 /* Subroutines for sorting tables of star positions and magnitudes */
 void XSortStars();
@@ -219,4 +223,7 @@ double ep2jd();	/* fractional year to Julian Date */
  * Jun 30 1999	Add isrange()
  * Jul  1 1999	Add declarations for date/time conversions in dateutil.c
  * Jul  2 1999	Add rstart()
+ * Jul 26 1999	Add Yale Bright Star Catalog
+ * Aug 16 1999	Add RefLim() to get converted search coordinates right
+ * Aug 25 1999	Add ACT catalog
  */

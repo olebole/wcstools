@@ -1,5 +1,5 @@
 /*** File libwcs/agascread.c
- *** June 16, 1999
+ *** August 25, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -113,8 +113,10 @@ int	nlog;		/* 1 for diagnostics */
     rra2 = ra2;
     rdec1 = dec1;
     rdec2 = dec2;
-    wcscon (sysout, sysref, eqout, eqref, &rra1, &rdec1, epout);
-    wcscon (sysout, sysref, eqout, eqref, &rra2, &rdec2, epout);
+    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
+	    &rra1, &rra2, &rdec1, &rdec2, verbose);
+    if (rra1 > rra2)
+	wrap = 1;
     nreg = agascreg (rra1,rra2,rdec1,rdec2,ltab,table,nrmax,rlist,verbose);
     if (nreg <= 0) {
 	fprintf (stderr,"AGASCREAD:  no Guide Star regions found\n");
@@ -216,7 +218,7 @@ int	nlog;		/* 1 for diagnostics */
 	/* Check magnitude and position limits */
 		if (((mag1 != mag2 && (mag >= mag1 && mag <= mag2)) ||
 		    (mag1 == mag2)) &&
-		    ((wrap && (ra <= ra1 || ra >= ra2)) ||
+		    ((wrap && (ra >= ra1 || ra <= ra2)) ||
 		    (!wrap && (ra >= ra1 && ra <= ra2))) &&
 		    ((drad > 0.0 && dist < drad) ||
      		    (drad == 0.0 && dec >= dec1 && dec <= dec2))) {
@@ -339,14 +341,11 @@ int	nlog;		/* 1 for diagnostics */
 	    fprintf (stderr,"AGASCREAD: %d regions: %d / %d found\n",nreg,nstar,itot);
 	else
 	    fprintf (stderr,"AGASCREAD: 1 region: %d / %d found\n",nstar,itable);
-	}
-    free (table);
-    if (nstar > nstarmax) {
-	if (nlog > 0)
+	if (nstar > nstarmax)
 	    fprintf (stderr,"AGASCREAD: %d stars found; only %d returned\n",
 		     nstar,nstarmax);
-	nstar = nstarmax;
 	}
+    free (table);
     free ((char *)gdist);
     return (nstar);
 }
@@ -896,4 +895,7 @@ char *path;	/* Pathname of AGASC region FITS file */
 /* Nov  9 1998	New program, based on gscread.c
  *
  * Jun 16 1999	Use SearchLim()
+ * Aug 16 1999	Add RefLim() to get converted search coordinates right
+ * Aug 16 1999  Fix bug to fix failure to search across 0:00 RA
+ * Aug 25 1999	Return real number of stars from agascread()
  */

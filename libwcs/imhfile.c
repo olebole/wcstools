@@ -1,5 +1,5 @@
 /* File imhfile.c
- * January 27, 1999
+ * July 13, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
@@ -169,18 +169,19 @@ int	*lihead;	/* Length of IRAF image header in bytes (returned) */
     int imhver;
 
     headswap = -1;
-
-    /* Find size of image header file */
-    if ((nbhead = irafsize (filename)) <= 0) {
-	fprintf (stderr, "IRAFRHEAD:  cannot read file %s\n", filename);
-	return (NULL);
-	}
     *lihead = 0;
 
     /* open the image header file */
     fd = fopen (filename, "r");
-    if (!fd) {
-	fprintf (stderr, "IRAFRHEAD:  cannot read file %s\n", filename);
+    if (fd == NULL) {
+	fprintf (stderr, "IRAFRHEAD:  cannot open file %s to read\n", filename);
+	return (NULL);
+	}
+
+    /* Find size of image header file */
+    if ((nbhead = irafsize (fd)) <= 0) {
+	fprintf (stderr, "IRAFRHEAD:  cannot read file %s, size = %d\n",
+		 filename, nbhead);
 	return (NULL);
 	}
 
@@ -1661,28 +1662,28 @@ char	*filename;	/* Name of file for which to find size */
 /* IRAFSIZE -- return size of file in bytes */
 
 static int
-irafsize (filename)
+irafsize (diskfile)
 
-char	*filename;	/* Name of file for which to find size */
+FILE *diskfile;		/* Descriptor of file for which to find size */
 {
-    FILE *diskfile;
     long filesize;
     long position;
+    long offset;
 
-    /* Open file */
-    if ((diskfile = fopen (filename, "r")) == NULL)
-	return (-1);
+    offset = (long) 0;
 
     /* Move to end of the file */
-    if (fseek (diskfile, 0, 2) == 0)
+    if (fseek (diskfile, offset, SEEK_END) == 0) {
 
  	/* Position is the size of the file */
 	filesize = ftell (diskfile);
 
+	/* Move file pointer back tot he start of the file */
+	fseek (diskfile, offset, SEEK_SET);
+	}
+
     else
 	filesize = -1;
-
-    fclose (diskfile);
 
     return (filesize);
 }
@@ -1729,4 +1730,5 @@ char	*filename;	/* Name of file for which to find size */
  * Nov 16 1998	Fix byte-swap checking
  *
  * Jan 27 1999	Read and write all of 3D image if one dimension is =1
+ * Jul 13 1999	Improve error messages; change irafsize() argument to fd
  */

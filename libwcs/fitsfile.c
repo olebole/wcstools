@@ -1,6 +1,6 @@
 /*** File libwcs/fitsfile.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** May 25, 1999
+ *** July 14, 1999
 
  * Module:      fitsfile.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -33,7 +33,7 @@
  * Subroutine:	isfits (filename)
  *		Return 1 if file is a FITS file, else 0
 
- * Copyright:   1998 Smithsonian Astrophysical Observatory
+ * Copyright:   1999 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -882,6 +882,12 @@ char	*image;		/* FITS image pixels */
 	return (0);
 	}
 
+    /* Return if file has no data */
+    if (bitpix == 0) {
+	close (fd);
+	return (nbytes);
+	}
+
     /* Compute size of image in bytes using relevant header parameters */
     naxis = 1;
     hgeti4 (header,"NAXIS",&naxis);
@@ -1031,7 +1037,6 @@ char    *filename;      /* Name of file for which to find size */
 	}
 }
 
-
 /*
  * Feb  8 1996	New subroutines
  * Apr 10 1996	Add subroutine list at start of file
@@ -1080,4 +1085,5 @@ char    *filename;      /* Name of file for which to find size */
  * Apr 29 1999	Write BITPIX=-16 files as BITPIX=16 with BSCALE and BZERO
  * Apr 30 1999	Add % as alternative to , to denote sub-images
  * May 25 1999	Set buffer offsets to 0 when FITS table file is opened
+ * Jul 14 1999	Do not try to write image data if BITPIX is 0
  */

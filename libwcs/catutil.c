@@ -1,10 +1,20 @@
 /* File libwcs/catutil.c
- * July 1, 1999
+ * August 16, 1999
  * By Doug Mink
  */
 
 /* int RefCat (refcatname,title,syscat,eqcat,epcat)
  *	Return catalog type code, title, coord. system
+ * void CatNum (refcat, nndec, dnum, numstr)
+ *	Return formatted source number
+ * void SearchLim (cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, verbose)
+ *	Comput limiting RA and Dec from center and half-widths
+ * int CatNumLen (refcat, nndec)
+ *	Return length of source numbers
+ * void SearchLim (cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, verbose)
+ *	Compute limiting RA and Dec from center and half-widths
+ * void RefLim (cra,cdec,dra,ddec,sysc,sysr,eqc,eqr,epc,ramin,ramax,decmin,decmax,verbose)
+ *	Compute limiting RA and Dec in new system from center and half-widths
  * struct Range *RangeInit (string, ndef)
  *	Return structure containing ranges of numbers
  * int isrange (string)
@@ -17,12 +27,6 @@
  *	Return next number from range structure as 4-byte integer
  * int rgetr8 (range)
  *	Return next number from range structure as 8-byte floating point number
- * void SearchLim (cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, verbose)
- *	Comput limiting RA and Dec from center and half-widths
- * void CatNum (refcat, nndec, dnum, numstr)
- *	Return formatted source number
- * int CatNumLen (refcat, nndec)
- *	Return length of source numbers
  */
 
 #include <stdlib.h>
@@ -159,6 +163,17 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*epcat = 2000.0;
 	return (ACT);
 	}
+    else if (strncmp(refcatname,"bsc",3)==0 ||
+	strncmp(refcatname,"BSC",3)==0) {
+	strcpy (title, "Bright Star Catalog Stars");
+	if ((starcat = binopen ("BSC5")) == NULL)
+	    return (0);
+	*syscat = starcat->coorsys;
+	*eqcat = starcat->equinox;
+	*epcat = starcat->epoch;
+	binclose (starcat);
+	return (BSC);
+	}
     else if (isbin (refcatname)) {
 	strcpy (title, refcatname);
 	strcat (title, " Catalog Sources");
@@ -189,6 +204,239 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	catclose (starcat);
 	return (TXTCAT);
 	}
+}
+
+
+void
+CatNum (refcat, nndec, dnum, numstr)
+
+int	refcat;		/* Catalog code */
+int	nndec;		/* Number of decimal places ( >= 0) */
+double	dnum;		/* Catalog number of source */
+char	*numstr;	/* Formatted number (returned) */
+
+{
+    char nform[16];	/* Format for star number */
+
+    /* USNO A1.0, A2.0, SA1.0, or SA2.0 Catalogs */
+    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
+	refcat == UAC  || refcat == UA1  || refcat == UA2)
+	sprintf (numstr, "%13.8f", dnum);
+
+    /* USNO UJ 1.0 Catalog */
+    else if (refcat == UJC)
+	sprintf (numstr, "%12.7f", dnum);
+
+    /* HST Guide Star Catalog */
+    else if (refcat == GSC)
+	sprintf (numstr, "%9.4f", dnum);
+
+    /* SAO, PPM, or IRAS Point Source Catalogs (TDC binary format) */
+    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC)
+	sprintf (numstr, "%6d", (int)(dnum+0.5));
+
+    /* Tycho, Hipparcos, or ACT catalogs */
+    else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
+	sprintf (numstr, "%10.5f", dnum);
+
+    /* Starbase tab-separated catalogs */
+    else if (refcat == TABCAT)
+	sprintf (numstr, "%9.4f", dnum);
+
+    /* TDC binary or ASCII catalogs */
+    else if (nndec > 0) {
+	sprintf (nform,"%%%d.%df", nndec+5, nndec);
+	sprintf (numstr, nform, dnum);
+	}
+    else
+	sprintf (numstr, "%6d", (int)(dnum+0.5));
+
+    return;
+}
+
+
+int
+CatNumLen (refcat, nndec)
+
+int	refcat;		/* Catalog code */
+int	nndec;		/* Number of decimal places ( >= 0) */
+
+{
+
+    /* USNO A1.0, A2.0, SA1.0, or SA2.0 Catalogs */
+    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
+	refcat == UAC  || refcat == UA1  || refcat == UA2)
+	return (13);
+
+    /* USNO UJ 1.0 Catalog */
+    else if (refcat == UJC)
+	return (12);
+
+    /* HST Guide Star Catalog */
+    else if (refcat == GSC)
+	return (9);
+
+    /* SAO, PPM, or IRAS Point Source Catalogs (TDC binary format) */
+    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC)
+	return (6);
+
+    /* Tycho, Hipparcos, or ACT catalogs */
+    else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
+	return (10);
+
+    /* Starbase tab-separated catalogs */
+    else if (refcat == TABCAT)
+	return (9);
+
+    /* TDC binary or ASCII catalogs */
+    else if (nndec > 0) {
+	return (nndec + 5);
+	}
+    else
+	return (6);
+}
+
+
+void
+SearchLim (cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, verbose)
+
+double	cra, cdec;	/* Center of search area  in degrees */
+double	dra, ddec;	/* Horizontal and verticla half-widths of area */
+double	*ra1, *ra2;	/* Right ascension limits in degrees */
+double	*dec1, *dec2;	/* Declination limits in degrees */
+int	verbose;	/* 1 to print limits, else 0 */
+
+{
+    double dec;
+
+    /* Set right ascension limits for search */
+    *ra1 = cra - dra;
+    *ra2 = cra + dra;
+
+    /* Keep right ascension between 0 and 360 degrees */
+    if (*ra1 < 0.0)
+	*ra1 = *ra1 + 360.0;
+    if (*ra2 > 360.0)
+	*ra2 = *ra2 - 360.0;
+
+    /* Set declination limits for search */
+    *dec1 = cdec - ddec;
+    *dec2 = cdec + ddec;
+
+    /* dec1 is always the smallest declination */
+    if (*dec1 > *dec2) {
+	dec = *dec1;
+	*dec1 = *dec2;
+	*dec2 = dec;
+	}
+
+    /* Search zones which include the poles cover 360 degrees in RA */
+    if (*dec1 < -90.0) {
+	*dec1 = -90.0;
+	*ra1 = 0.0;
+	*ra2 = 359.99999;
+	}
+    if (*dec2 > 90.0) {
+	*dec2 = 90.0;
+	*ra1 = 0.0;
+	*ra2 = 359.99999;
+	}
+    if (verbose) {
+	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
+	ra2str (rstr1, 16, *ra1, 3);
+        dec2str (dstr1, 16, *dec1, 2);
+	ra2str (rstr2, 16, *ra2, 3);
+        dec2str (dstr2, 16, *dec2, 2);
+	fprintf (stderr,"SearchLim: RA: %s - %s  Dec: %s - %s\n",
+		 rstr1,rstr2,dstr1,dstr2);
+	}
+    return;
+}
+
+
+void
+RefLim (cra, cdec, dra, ddec, sysc, sysr, eqc, eqr, epc,
+	ramin, ramax, decmin, decmax, verbose)
+
+double	cra, cdec;	/* Center of search area  in degrees */
+double	dra, ddec;	/* Horizontal and verticla half-widths of area */
+int	sysc, sysr;	/* System of search, catalog coordinates */
+double	eqc, eqr;	/* Equinox of search, catalog coordinates in years */
+double	epc;		/* Epoch of search coordinates in years
+			   (catalog is assumed to be at epoch eqr) */
+double	*ramin,*ramax;	/* Right ascension search limits in degrees (returned)*/
+double	*decmin,*decmax; /* Declination search limits in degrees (returned) */
+int	verbose;	/* 1 to print limits, else 0 */
+
+{
+    double ra1, ra2, ra3, ra4, dec1, dec2, dec3, dec4;
+    double dec;
+
+    /* Set right ascension limits for search */
+    ra1 = cra - dra;
+    ra2 = cra + dra;
+
+    /* Keep right ascension between 0 and 360 degrees */
+    if (ra1 < 0.0)
+	ra1 = ra1 + 360.0;
+    if (ra2 > 360.0)
+	ra2 = ra2 - 360.0;
+    ra3 = ra1;
+    ra4 = ra2;
+
+    /* Set declination limits for search */
+    dec1 = cdec - ddec;
+    dec2 = cdec + ddec;
+
+    /* dec1 is always the smallest declination */
+    if (dec1 > dec2) {
+	dec = dec1;
+	dec1 = dec2;
+	dec2 = dec;
+	}
+    dec3 = dec2;
+    dec4 = dec1;
+
+    /* Convert search corners to catalog coordinate system and equinox */
+    wcscon (sysc, sysr, eqc, eqr, &ra1, &dec1, epc);
+    wcscon (sysc, sysr, eqc, eqr, &ra2, &dec2, epc);
+    wcscon (sysc, sysr, eqc, eqr, &ra3, &dec3, epc);
+    wcscon (sysc, sysr, eqc, eqr, &ra4, &dec4, epc);
+
+    *ramin = ra1;
+    if (ra3 < *ramin)
+	*ramin = ra3;
+    *ramax = ra2;
+    if (ra4 > *ramax)
+	*ramax = ra4;
+    *decmin = dec1;
+    if (dec4 < *decmin)
+	*decmin = dec4;
+    *decmax = dec2;
+    if (dec3 > *decmax)
+	*decmax = dec3;
+
+    /* Search zones which include the poles cover 360 degrees in RA */
+    if (*decmin < -90.0) {
+	*decmin = -90.0;
+	*ramin = 0.0;
+	*ramax = 359.99999;
+	}
+    if (*decmax > 90.0) {
+	*decmax = 90.0;
+	*ramin = 0.0;
+	*ramax = 359.99999;
+	}
+    if (verbose) {
+	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
+	ra2str (rstr1, 16, *ramin, 3);
+        dec2str (dstr1, 16, *decmin, 2);
+	ra2str (rstr2, 16, *ramax, 3);
+        dec2str (dstr2, 16, *decmax, 2);
+	fprintf (stderr,"RefLim: RA: %s - %s  Dec: %s - %s\n",
+		 rstr1,rstr2,dstr1,dstr2);
+	}
+    return;
 }
 
 struct Range *
@@ -421,153 +669,6 @@ struct Range *range;	/* Range structure */
     return ((int) (value + 0.000000001));
 }
 
-
-void
-SearchLim (cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, verbose)
-
-double	cra, cdec;	/* Center of search area  in degrees */
-double	dra, ddec;	/* Horizontal and verticla half-widths of area */
-double	*ra1, *ra2;	/* Right ascension limits in degrees */
-double	*dec1, *dec2;	/* Declination limits in degrees */
-int	verbose;	/* 1 to print limits, else 0 */
-
-{
-    double dec;
-
-    /* Set right ascension limits for search */
-    *ra1 = cra - dra;
-    *ra2 = cra + dra;
-
-    /* Keep right ascension between 0 and 360 degrees */
-    if (*ra1 < 0.0)
-	*ra1 = *ra1 + 360.0;
-    if (*ra2 > 360.0)
-	*ra2 = *ra2 - 360.0;
-
-    /* Set declination limits for search */
-    *dec1 = cdec - ddec;
-    *dec2 = cdec + ddec;
-
-    /* dec1 is always the smallest declination */
-    if (*dec1 > *dec2) {
-	dec = *dec1;
-	*dec1 = *dec2;
-	*dec2 = dec;
-	}
-
-    /* Search zones which include the poles cover 360 degrees in RA */
-    if (*dec1 < -90.0) {
-	*dec1 = -90.0;
-	*ra1 = 0.0;
-	*ra2 = 359.99999;
-	}
-    if (*dec2 > 90.0) {
-	*dec2 = 90.0;
-	*ra1 = 0.0;
-	*ra2 = 359.99999;
-	}
-    if (verbose) {
-	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
-	ra2str (rstr1, 16, *ra1, 3);
-        dec2str (dstr1, 16, *dec1, 2);
-	ra2str (rstr2, 16, *ra2, 3);
-        dec2str (dstr2, 16, *dec2, 2);
-	fprintf (stderr,"SearchLim: RA: %s - %s  Dec: %s - %s\n",
-		 rstr1,rstr2,dstr1,dstr2);
-	}
-    return;
-}
-
-
-void
-CatNum (refcat, nndec, dnum, numstr)
-
-int	refcat;		/* Catalog code */
-int	nndec;		/* Number of decimal places ( >= 0) */
-double	dnum;		/* Catalog number of source */
-char	*numstr;	/* Formatted number (returned) */
-
-{
-    char nform[16];	/* Format for star number */
-
-    /* USNO A1.0, A2.0, SA1.0, or SA2.0 Catalogs */
-    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
-	refcat == UAC  || refcat == UA1  || refcat == UA2)
-	sprintf (numstr, "%13.8f", dnum);
-
-    /* USNO UJ 1.0 Catalog */
-    else if (refcat == UJC)
-	sprintf (numstr, "%12.7f", dnum);
-
-    /* HST Guide Star Catalog */
-    else if (refcat == GSC)
-	sprintf (numstr, "%9.4f", dnum);
-
-    /* SAO, PPM, or IRAS Point Source Catalogs (TDC binary format) */
-    else if (refcat==SAO || refcat==PPM || refcat==IRAS )
-	sprintf (numstr, "%6d", (int)(dnum+0.5));
-
-    /* Tycho, Hipparcos, or ACT catalogs */
-    else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
-	sprintf (numstr, "%10.5f", dnum);
-
-    /* Starbase tab-separated catalogs */
-    else if (refcat == TABCAT)
-	sprintf (numstr, "%9.4f", dnum);
-
-    /* TDC binary or ASCII catalogs */
-    else if (nndec > 0) {
-	sprintf (nform,"%%%d.%df", nndec+5, nndec);
-	sprintf (numstr, nform, dnum);
-	}
-    else
-	sprintf (numstr, "%6d", (int)(dnum+0.5));
-
-    return;
-}
-
-
-int
-CatNumLen (refcat, nndec)
-
-int	refcat;		/* Catalog code */
-int	nndec;		/* Number of decimal places ( >= 0) */
-
-{
-
-    /* USNO A1.0, A2.0, SA1.0, or SA2.0 Catalogs */
-    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
-	refcat == UAC  || refcat == UA1  || refcat == UA2)
-	return (13);
-
-    /* USNO UJ 1.0 Catalog */
-    else if (refcat == UJC)
-	return (12);
-
-    /* HST Guide Star Catalog */
-    else if (refcat == GSC)
-	return (9);
-
-    /* SAO, PPM, or IRAS Point Source Catalogs (TDC binary format) */
-    else if (refcat==SAO || refcat==PPM || refcat==IRAS )
-	return (6);
-
-    /* Tycho, Hipparcos, or ACT catalogs */
-    else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
-	return (10);
-
-    /* Starbase tab-separated catalogs */
-    else if (refcat == TABCAT)
-	return (9);
-
-    /* TDC binary or ASCII catalogs */
-    else if (nndec > 0) {
-	return (nndec + 5);
-	}
-    else
-	return (6);
-}
-
 /* Mar  2 1998	Make number and second magnitude optional
  * Oct 21 1998	Add RefCat() to set reference catalog code
  * Oct 26 1998	Include object names in star catalog entry structure
@@ -587,4 +688,6 @@ int	nndec;		/* Number of decimal places ( >= 0) */
  * Jun 16 1999	Add SearchLim(), used by all catalog search subroutines
  * Jun 30 1999	Add isrange() to check to see whether a string is a range
  * Jul  1 1999	Move date and time utilities to dateutil.c
+ * Jul 23 1999	Add Bright Star Catalog
+ * Aug 16 1999	Add RefLim() to set catalog search limits
  */

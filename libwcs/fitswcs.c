@@ -1,5 +1,5 @@
 /* File libwcs/fitswcs.c
- * July 8, 1999
+ * July 21, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
@@ -352,7 +352,7 @@ char *type;
 { strcpy (wcsproj, type); return; }
 
 
-/* Set FITS C* fields, assuming ra/dec refers to the center pixel */
+/* Set FITS C* fields, assuming RA/DEC refers to the reference pixel, CRPIX1/CRPIX2 */
 
 void
 SetFITSWCS (header, wcs)
@@ -377,6 +377,7 @@ struct WorldCoor *wcs;	/* WCS structure */
     else if (!ksearch (header,"WEPOCH") && ksearch (header,"EPOCH"))
 	hchange (header, "EPOCH", "WEPOCH");
 
+
     /* Set new center coordinates */
     hputra (header,"RA",wcs->xref);
     hputdec (header,"DEC",wcs->yref);
@@ -400,10 +401,14 @@ struct WorldCoor *wcs;	/* WCS structure */
     strcpy (wcstemp, "DEC--");
     strcat (wcstemp, wcsproj);
     hputs  (header, "CTYPE2", wcstemp);
+
+    /* Reference pixel in WCS and image coordinates */
     hputnr8 (header, "CRVAL1", 9, wcs->xref);
     hputnr8 (header, "CRVAL2", 9, wcs->yref);
     hputnr8 (header, "CRPIX1", 4, wcs->xrefpix);
     hputnr8 (header, "CRPIX2", 4, wcs->yrefpix);
+
+    /* CD matrix (proposed FITS standard) */
     if (wcs->rotmat) {
 	hputnr8 (header, "CD1_1", 9, wcs->cd[0]);
 	hputnr8 (header, "CD1_2", 9, wcs->cd[1]);
@@ -414,6 +419,8 @@ struct WorldCoor *wcs;	/* WCS structure */
 	hdel (header, "CROTA1");
 	hdel (header, "CROTA2");
 	}
+
+    /* Scale and rotation (old FITS standard) */
     else {
 	hputnr8 (header, "CDELT1", 9, wcs->xinc);
 	hputnr8 (header, "CDELT2", 9, wcs->yinc);
@@ -425,7 +432,22 @@ struct WorldCoor *wcs;	/* WCS structure */
 	hdel (header, "CD2_2");
 	}
 
-    /* Set plate fit, if present */
+    /* Plate scale at reference pixel */
+    if (-wcs->xinc != wcs->yinc) {
+	if (ksearch (header,"SECPIX"))
+	    hdel (header,"SECPIX");
+	hputnr8 (header, "SECPIX1", 4, -wcs->xinc*3600.0);
+	hputnr8 (header, "SECPIX2", 4, wcs->yinc*3600.0);
+	}
+    else {
+	if (ksearch (header,"SECPIX1"))
+	    hdel (header,"SECPIX1");
+	if (ksearch (header,"SECPIX2"))
+	    hdel (header,"SECPIX2");
+	hputnr8 (header, "SECPIX", 4, wcs->yinc*3600.0);
+	}
+
+    /* Plate fit coefficients, if present */
     if (wcs->ncoeff1 > 0) {
 	char keyword[16];
 	int i;
@@ -484,4 +506,5 @@ struct WorldCoor *wcs;	/* WCS structure */
  *
  * Apr  7 1999	Add file name to error message if WCS error
  * Jul  8 1999	Write RADECSYS as FK5 or FK4 instead of J2000 or B1950
+ * Jul 21 1999	Add SECPIX plate scale output to SetFITSWCS()
  */

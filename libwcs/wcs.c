@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** July 8, 1999
+ *** August 16, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -1797,8 +1797,14 @@ int	lstr;		/* Length of world coordinate string (returned) */
 	else if (wcs->degout == 0) {
 	    minlength = 18 + (2 * wcs->ndec);
 	    if (lstr > minlength) {
-		ra2str (rastr, 32, xpos, wcs->ndec);
-		dec2str (decstr, 32, ypos, wcs->ndec-1);
+		if (wcs->sysout == WCS_J2000 || wcs->sysout == WCS_B1950) {
+		    ra2str (rastr, 32, xpos, wcs->ndec);
+		    dec2str (decstr, 32, ypos, wcs->ndec-1);
+		    }
+		else {
+		    dec2str (rastr, 32, xpos, wcs->ndec);
+		    dec2str (decstr, 32, ypos, wcs->ndec);
+		    }
 		if (wcs->tabsys)
 		    (void)sprintf (wcstring,"%s	%s", rastr, decstr);
 		else
@@ -2552,4 +2558,5 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * May  6 1999	Fix bug printing height of LINEAR image
  * Jun 16 1999	Add wcsrange() to return image RA and Dec limits
  * Jul  8 1999	Always use FK5 and FK4 instead of J2000 and B1950 in RADECSYS
+ * Aug 16 1999	Print dd:mm:ss dd:mm:ss if not J2000 or B1950 output
  */

@@ -1,5 +1,5 @@
 /* File setpix.c
- * June 29, 1999
+ * July 12, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -13,13 +13,16 @@
 #include <math.h>
 #include "fitsfile.h"
 #include "wcs.h"
+#include "wcscat.h"
 
 static void usage();
 static void SetPix();
 
 static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
+static int eachpix = 0;		/* If 1, print each pixel change */
 static int version = 0;		/* If 1, print only program name and version */
+static char *pform = NULL;	/* Format in which to print pixels */
 
 
 main (ac, av)
@@ -27,9 +30,19 @@ int ac;
 char **av;
 {
     char *str;
-    char *fn;
+    char *fn[100];
+    char *crange[100], *rrange[100];
     char *value[100];
-    int i,x[100],y[100];
+    char *listfile = NULL;
+    char nextline[128];
+    FILE *flist;
+    int i = 0;
+    int iv = 0;
+
+    fn[0] = NULL;
+    value[0] = NULL;
+    rrange[0] = NULL;
+    crange[0] = NULL;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -41,39 +54,80 @@ char **av;
 	}
 
     /* crack arguments */
-    for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
-	char c;
-	while (c = *++str)
-	switch (c) {
-	case 'v':	/* more verbosity */
-	    verbose++;
-	    break;
-	case 'n':	/* ouput new file */
-	    newimage++;
-	    break;
-	default:
-	    usage ();
-	    break;
+    for (av++; --ac > 0; av++) {
+	str = *av;
+
+	if (str[0] == '-') {
+	    char c;
+	    while (c = *++str) {
+		switch (c) {
+		    case 'i':	/* print each change */
+			eachpix++;
+			break;
+		    case 'n':	/* ouput new file */
+			newimage++;
+			break;
+		    case 'v':	/* some verbosity */
+			verbose++;
+			break;
+		    default:
+			usage ();
+			break;
+		    }
+		}
+	    }
+
+	/* Set up pixel changes from a file */
+	else if (str[0] == '@') {
+	    listfile = str+1;
+	    if ((flist = fopen (listfile, "r")) == NULL) {
+		fprintf (stderr,"CONPIX: List file %s cannot be read\n",
+			 listfile);
+		usage ();
+		}
+	    while (fgets (nextline, 64, flist) != NULL) { 
+		crange[iv] = (char *) malloc (16);
+		rrange[iv] = (char *) malloc (16);
+		value[iv] = (char *) malloc (16);
+		sscanf (nextline, "%s %s %s",
+			crange[iv], rrange[iv], value[iv]);
+		iv++;
+		rrange[iv] = NULL;
+		crange[iv] = NULL;
+		value[iv] = NULL;
+		}
+	    }
+
+	/* Set x or y range or new pixel value */
+	else if (isnum (str) || isrange (str)) {
+	    if (crange[iv] == NULL)
+		crange[iv] = str;
+	    else if (rrange[iv] == NULL)
+		rrange[iv] = str;
+	    else if (isnum (str)) {
+		value[iv] = str;
+		iv++;
+		rrange[iv] = NULL;
+		crange[iv] = NULL;
+		value[iv] = NULL;
+		}
+	    }
+	else {
+	    fn[i] = str;
+	    i++;
+	    fn[i] = NULL;
+	    }
 	}
-    }
 
-    /* now there are ac remaining arguments starting at av[0] */
-    if (ac == 0)
-	usage ();
+    if (i == 0 || iv == 0)
+	usage();
 
-    fn = *av++;
-
+    /* Loop through pixel changes for each image */
     i = 0;
-    while (--ac > 2 && i < 100) {
-	x[i] = atoi (*av++);
-	ac--;
-	y[i] = atoi (*av++);
-	ac--;
-	value[i] = *av++;
+    while (fn[i] != NULL) {
+	SetPix (fn[i], crange, rrange, value);
 	i++;
 	}
-    if (i > 0)
-	SetPix (fn,i,x,y,value);
 
     return (0);
 }
@@ -84,7 +138,7 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Edit pixels of FITS or IRAF image file\n");
-    fprintf(stderr,"Usage: setpix [-vn] file.fts x y value ...\n");
+    fprintf(stderr,"Usage: setpix [-vn] file.fts x_range y_range value ...\n");
     fprintf(stderr,"  -n: write new file, else overwrite \n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
@@ -92,13 +146,12 @@ usage ()
 
 
 static void
-SetPix (filename,n,x,y,value)
+SetPix (filename, crange, rrange, value)
 
 char	*filename;	/* FITS or IRAF file filename */
-int	n;		/* Number of pixels to set */
-int	*x,*y;		/* Horizontal and vertical coordinates of pixel */
-			/* (1-based) */
-char	**value;		/* value to insert into pixel */
+char	**crange;	/* Column range string */
+char	**rrange;	/* Row range string */
+char	**value;	/* value to insert into pixel */
 
 {
     char *image;		/* FITS image */
@@ -108,13 +161,12 @@ char	**value;		/* value to insert into pixel */
     int iraffile;		/* 1 if IRAF image */
     char *irafheader;		/* IRAF image header */
     int i, nbytes, nhb, nhblk, lname, lext, lroot;
-    char *head, *headend, *hlast, *imext, *imext1;
+    int nx, ny, ix, iy, x, y, ipix;
+    char *head, *imext, *imext1;
     double bzero;		/* Zero point for pixel scaling */
     double bscale;		/* Scale factor for pixel scaling */
-    char headline[160];
     char newname[128];
     char pixname[128];
-    char tempname[128];
     char history[64];
     FILE *fd;
     char *ext, *fname;
@@ -122,10 +174,12 @@ char	**value;		/* value to insert into pixel */
     char newline[1];
     char echar;
     double dpix;
+    char *c;
     int bitpix,xdim,ydim;
+    struct Range *xrange;    /* X range structure */
+    struct Range *yrange;    /* Y range structure */
 
     newline[0] = 10;
-    strcpy (tempname, "fitshead.temp");
 
     /* Open IRAF image and header */
     if (isiraf (filename)) {
@@ -179,28 +233,164 @@ char	**value;		/* value to insert into pixel */
     bscale = 1.0;
     hgetr8 (header,"BSCALE",&bscale);
 
-    for (i = 0; i < n; i++) {
-	if (strchr (value[i],(int)'.'))
+    i = 0;
+    while (value[i] != NULL) {
+
+	/* Extract new value from command line string */
+	if (strchr (value[i], (int)'.'))
 	    dpix = (double) atoi (value[i]);
 	else
 	    dpix = atof (value[i]);
-	putpix (image,bitpix,xdim,ydim,bzero,bscale,x[i]-1,y[i]-1,dpix);
 
-	/* Note addition as history line in header */
-	if (bitpix > 0) {
-	    int ipix = (int)dpix;
-	    sprintf (history, "SETPIX: pixel at row %d, column %d set to %d",
-		     x[i],y[i],ipix);
+	/* Set format if not already set */
+	if (pform == NULL) {
+	    pform = (char *) calloc (8,1);
+	    if (bitpix > 0)
+		strcpy (pform, "%d");
+	    else
+		strcpy (pform, "%.2f");
 	    }
-	else if (dpix < 1.0 && dpix > -1.0)
-	    sprintf (history, "SETPIX: pixel at row %d, column %d set to %f",
-		     x[i],y[i],dpix);
-	else
-	    sprintf (history, "SETPIX: pixel at row %d, column %d set to %.2f",
-		     x[i],y[i],dpix);
+
+	/* Set entire columns */
+	if (!strcmp (rrange[i], "0")) {
+	    xrange = RangeInit (crange[i], xdim);
+	    nx = rgetn (xrange);
+	    ny = ydim;
+	    for (ix = 0; ix < nx; ix++) {
+		rstart (xrange);
+		x = rgeti4 (xrange) - 1;
+		for (y = 0; y < ny; y++) {
+		    putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
+	            if (bitpix > 0) {
+			if (dpix > 0)
+	 		    ipix = (int) (dpix + 0.5);
+			else if (dpix < 0)
+		 	    ipix = (int) (dpix - 0.5);
+			else
+			    ipix = 0;
+			}
+		    if (eachpix) {
+			printf ("%s[%d,%d] = ", filename,x+1,y+1);
+		        if (bitpix > 0)
+			    printf (pform, ipix);
+			else
+			    printf (pform, dpix);
+			printf ("\n");
+			}
+		    }
+		}
+	    if (isnum (crange[i]))
+		sprintf (history, "SETPIX: pixels in column %s set to %s",
+		     crange[i],value[i]);
+	    else
+		sprintf (history, "SETPIX: pixels in columns %s set to %s",
+		     crange[i],value[i]);
+	    free (xrange);
+	    }
+
+	/* Set entire rows */
+	else if (!strcmp (crange[i], "0")) {
+	    yrange = RangeInit (rrange[i], xdim);
+	    ny = rgetn (yrange);
+	    nx = xdim;
+	    for (iy = 0; iy < ny; iy++) {
+		y = rgeti4 (yrange) - 1;
+		for (x = 0; x < nx; x++) {
+		    putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
+		    if (eachpix) {
+			if (bitpix > 0) {
+			    if (dpix > 0)
+	 			ipix = (int) (dpix + 0.5);
+			    else if (dpix < 0)
+		 		ipix = (int) (dpix - 0.5);
+			    else
+				ipix = 0;
+			    }
+			printf ("%s[%d,%d] = ", filename,x+1,y+1);
+			if (bitpix > 0)
+			    printf (pform, ipix);
+			else
+			    printf (pform, dpix);
+			printf ("\n");
+			}
+		    }
+		}
+	    if (isnum (rrange[i]))
+		sprintf (history, "SETPIX: pixels in row %s set to %s",
+		     rrange[i],value[i]);
+	    else
+		sprintf (history, "SETPIX: pixels in rows %s set to %s",
+		     rrange[i],value[i]);
+	    free (yrange);
+	    }
+
+	/* Set a region of a two-dimensional image */
+	else {
+	    xrange = RangeInit (crange[i], xdim);
+	    nx = rgetn (xrange);
+
+	    /* Make list of y coordinates */
+	    yrange = RangeInit (rrange[i], ydim);
+	    ny = rgetn (yrange);
+
+	    /* Loop through rows starting with the last one */
+	    for (i = 0; i < ny; i++) {
+		if (verbose)
+		    iy++;
+		else
+		    iy--;
+		rstart (xrange);
+
+		/* Loop through columns */
+		for (ix = 0; ix < nx; ix++) {
+		    x = rgeti4 (xrange) - 1;
+		    putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
+        	
+		    if (eachpix) {
+	        	if (bitpix > 0) {
+			    if ((c = strchr (pform,'f')) != NULL)
+				*c = 'd';
+			    if (dpix > 0)
+	 			ipix = (int) (dpix + 0.5);
+			    else if (dpix < 0)
+		 		ipix = (int) (dpix - 0.5);
+			    else
+				ipix = 0;
+			    }
+			else {
+			    if ((c = strchr (pform,'d')) != NULL)
+				*c = 'f';
+			    }
+			printf ("%s[%d,%d] = ", filename,x+1,y+1);
+			if (bitpix > 0)
+			    printf (pform, ipix);
+			else
+			    printf (pform, dpix);
+			printf ("\n");
+			}
+		    }
+		}
+
+	    /* Note addition as history line in header */
+	    if (isnum (crange[i]) && isnum (rrange[i]))
+		sprintf (history, "SETPIX: pixel at row %s, column %s set to %s",
+		     rrange[i], crange[i], value[i]);
+	    else if (isnum (rrange[i]))
+		sprintf (history, "SETPIX: pixels in row %s, columns %s set to %s",
+		     rrange[i], crange[i], value[i]);
+	    else if (isnum (crange[i]))
+		sprintf (history, "SETPIX: pixels in column %s, rows %s set to %s",
+		     crange[i], rrange[i], value[i]);
+	    else
+		sprintf (history, "SETPIX: pixels in rows %s, columns %s set to %s",
+		     rrange[i], crange[i], value[i]);
+	    }
 	hputc (header,"HISTORY",history);
 	if (verbose)
 	    printf ("%s\n", history);
+	free (xrange);
+	free (yrange);
+	i++;
 	}
 
     /* Make up name for new FITS or IRAF output file */
@@ -293,4 +483,5 @@ char	**value;		/* value to insert into pixel */
  * Feb 12 1999	Initialize dxisn to 1 so it works for 1-D images
  * Apr 29 1999	Add BZERO and BSCALE
  * Jun 29 1999	Fix typo in BSCALE setting
+ * Jul 12 1999	Add ranges
  */

@@ -1,6 +1,5 @@
 #!/bin/sh
 echo "WCSTools 2.6 Programs"
-echo
 
 echo "addpix:    Add a constant value(s) to specified pixel(s)"
 echo "conpix:    Operate on all of the pixels of an image"
@@ -28,3 +27,5 @@ echo "sky2xy:    Print image pixel coordinates for given sky coordinates"
 echo "skycoor:   Convert between J2000, B1950, galactic, and ecliptic coordinates"
 echo "wcshead:   Print basic world coordinate system information for images"
 echo "xy2sky:    Print sky coordinates for given image pixel coordinates"
+echo "* program help    lists possible arguments"
+echo "* program version lists version of program"
