@@ -1,5 +1,5 @@
 /* File imsize.c
- * April 27, 1998
+ * June 25, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,15 +11,14 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
-#include "libwcs/wcs.h"
+#include "fitsio.h"
+#include "wcs.h"
 
 static void usage();
 static void PrintWCS ();
 extern void setsys();
 extern void setcenter();
 extern void setsecpix();
-extern void setoldwcs();	/* AIPS classic WCS flag */
 extern struct WorldCoor *GetFITSWCS();
 extern char *GetFITShead();
 
@@ -148,7 +147,7 @@ char **av;
 	    break;
 
 	case 'z':       /* Use AIPS classic WCS */
-	    setoldwcs (1);
+	    setdefwcs (1);
 	    break;
 
 	case '@':	/* List of files to be read */
@@ -285,8 +284,8 @@ char *name;
 	}
 
     /* Image center */
-    ra2str (rstr, cra, 3);
-    dec2str (dstr, cdec, 2);
+    ra2str (rstr, 16, cra, 3);
+    dec2str (dstr, 16, cdec, 2);
 
     /* Image size in arcminutes */
     dra = 2.0 * dra * 60.0 * cos (degrad(cdec));
@@ -362,10 +361,10 @@ char *name;
 	    if (ypos[i] > ymax)
 		ymax = ypos[i];
 	    }
-	ra2str (ramin, xmin, 3);
-	ra2str (ramax, xmax, 3);
-	dec2str (decmin, ymin, 3);
-	dec2str (decmax, ymax, 3);
+	ra2str (ramin, 32, xmin, 3);
+	ra2str (ramax, 32, xmax, 3);
+	dec2str (decmin, 32, ymin, 3);
+	dec2str (decmax, 32, ymax, 3);
 	/* dx1 = wcsdist (xpos[0],ypos[0],xpos[2],ypos[2]);
 	dx2 = wcsdist (xpos[1],ypos[1],xpos[3],ypos[3]);
 	dx = 0.5 * (dx1 + dx2) * 3600.0 / (double)wcs->nxpix;
@@ -452,4 +451,7 @@ char *name;
  * Feb 18 1998	Version 2.0: Full Calabretta WCS
  * Apr 24 1998	change coordinate setting to setsys() from setfk4()
  * Apr 28 1998	Change coordinate system flags to WCS_*
+ * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
+ * Jun 25 1998	Set WCS subroutine choice with SETDEFWCS()
  */

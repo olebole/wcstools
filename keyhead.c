@@ -1,5 +1,5 @@
 /* File keyhead.c
- * December 17, 1997
+ * May 27, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
+#include "fitsio.h"
 
 #define MAXKWD 50
 #define MAXFILES 1000
@@ -277,4 +277,6 @@ char	*kwd[];		/* Names and values of those keywords */
 }
 
 /* Dec 17 1997	New program
+ *
+ * May 28 1998	Include fitsio.h instead of fitshead.h
  */

@@ -1,5 +1,5 @@
 /* File imhead.c
- * March 16, 1998
+ * June 2, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
+#include "fitsio.h"
 
 static void usage();
 static int PrintFITSHead();
@@ -182,4 +182,6 @@ char	*header;	/* Image FITS header */
  * Jan  5 1998	Print error message if no END is found in header
  * Jan 14 1998	Really get IRAF 2.11 files right on any architecture
  * Mar 16 1998	Print line instead of lines if there is only one blank line
+ * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jun  2 1998	Fix bug in hput()
  */

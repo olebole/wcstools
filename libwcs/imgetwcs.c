@@ -1,5 +1,5 @@
 /* File libwcs/imgetwcs.c
- * April 28, 1998
+ * June 25, 1998
  * By Doug Mink, remotely based on UIowa code
  */
 
@@ -32,7 +32,6 @@ static double dec0 = -99.0;		/* Initial center Dec in degrees */
 static double rad0 = 10.0;		/* Search box radius in arcseconds */
 static double xref0 = -99999.0;		/* Reference pixel X coordinate */
 static double yref0 = -99999.0;		/* Reference pixel Y coordinate */
-static int oldwcs0 = 0;			/* 1 to use AIPS classic WCS */
 static int ptype0 = -1;			/* Projection type to fit */
 static int  nctype = 28;		/* Number of possible projections */
 static char ctypes[28][4];		/* 3-letter codes for projections */
@@ -166,16 +165,15 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 	}
 
     /* Initialize WCS structure from FITS header */
-    setdefwcs (oldwcs0);
     wcs = wcsinit (header);
 
     /* If incomplete WCS in header, drop out */
     if (nowcs (wcs)) {
+	wcserr();
 	if (verbose)
 	    fprintf (stderr,"Insufficient information for initial WCS\n");
 	return (NULL);
 	}
-    wcs->oldwcs = oldwcs0;
 
     /* Set flag to get appropriate equinox for catalog search */
     equinox = (int) wcs->equinox;
@@ -260,13 +258,13 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
     /* Print reference pixel position and value */
     if (verbose) {
 	if (eq1 != eq2) {
-	    ra2str (rstr, ra1, 3);
-            dec2str (dstr, dec1, 2);
+	    ra2str (rstr, 32, ra1, 3);
+            dec2str (dstr, 32, dec1, 2);
 	    printf ("Reference pixel (%.2f,%.2f) %s %s %.2f\n",
 		    wcs->xrefpix, wcs->yrefpix, rstr, dstr, eq1);
 	    }
-	ra2str (rstr, ra1, 3);
-        dec2str (dstr, dec1, 2);
+	ra2str (rstr, 32, ra1, 3);
+        dec2str (dstr, 32, dec1, 2);
 	printf ("Reference pixel (%.2f,%.2f) %s %s %.2f\n",
 		wcs->xrefpix, wcs->yrefpix, rstr, dstr, eq2);
 	}
@@ -274,14 +272,14 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
     /* Image size for catalog search */
     if (verbose) {
 	char rstr[64], dstr[64];
-	ra2str (rstr, *cra, 3);
-	dec2str (dstr, *cdec, 2);
+	ra2str (rstr, 32, *cra, 3);
+	dec2str (dstr, 32, *cdec, 2);
 	if (eqref == 2000)
 	    printf ("Search at %s %s J2000", rstr, dstr);
 	else
 	    printf ("Search at %s %s B1950", rstr, dstr);
-	ra2str (rstr, *dra, 3);
-	dec2str (dstr, *ddec, 2);
+	ra2str (rstr, 32, *dra, 3);
+	dec2str (dstr, 32, *ddec, 2);
 	printf (" +- %s %s\n", rstr, dstr);
 	printf ("Image width=%d height=%d, %g arcsec/pixel\n",
 				*wp, *hp, *secpix);
@@ -338,11 +336,6 @@ void
 setradius (rad)
 double rad;
 { rad0 = rad; return; }
-
-void
-setoldwcs (oldwcs)
-int	oldwcs;
-{ oldwcs0 = oldwcs; return; }
 
 void
 setproj (ptype)
@@ -431,4 +424,7 @@ char*	ptype;
  * Apr 20 1998	Move GetArea() to scat.c
  * Apr 24 1998	Always convert image reference coordinate to catalog equinox
  * Apr 28 1998	Change coordinate system flags to WCS_*
+ * Jun  1 1998	Print error message if WCS cannot be initialized
+ * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
+ * Jun 25 1998	Leave use of AIPS wcs to wcs.c file
  */

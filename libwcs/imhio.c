@@ -1,5 +1,5 @@
 /* File imh2io.c
- * May 26, 1998
+ * June 4, 1998
  * By Doug Mink, based on Mike VanHilst's readiraf.c
 
  * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
@@ -54,7 +54,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/stat.h>
-#include "fitshead.h"
+#include "fitsio.h"
 
 /* Parameters from iraf/lib/imhdr.h for IRAF version 1 images */
 #define SZ_IMPIXFILE	 79		/* name of pixel storage file */
@@ -368,7 +368,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 {
     int lfhead;		/* Actual length of FITS header (returned) */
     char *objname;	/* object name from FITS file */
-    int i, j, k, ib, nax, nbits, nbytes;
+    int lstr, i, j, k, ib, nax, nbits, nbytes;
     char *pixname, *bang, *chead;
     char *fitsheader;
     int nblock, nlines;
@@ -449,33 +449,40 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 	return (NULL);
     }
     hputi4 (fitsheader,"BITPIX",nbits);
+    hputcom (fitsheader,"BITPIX", "IRAF .imh pixel type");
     fhead = fhead + 80;
 
     /*  Set image dimensions in FITS header */
     nax = irafgeti4 (irafheader, imndim);
     hputi4 (fitsheader,"NAXIS",nax);
+    hputcom (fitsheader,"NAXIS", "IRAF .imh naxis");
     fhead = fhead + 80;
 
     n = irafgeti4 (irafheader, imphyslen);
     hputi4 (fitsheader, "NAXIS1", n);
+    hputcom (fitsheader,"NAXIS1", "IRAF .imh naxis[1]");
     fhead = fhead + 80;
 
     if (nax > 1) {
 	n = irafgeti4 (irafheader, imphyslen+4);
 	hputi4 (fitsheader, "NAXIS2", n);
+	hputcom (fitsheader,"NAXIS2", "IRAF .imh naxis[2]");
 	}
     else
 	hputi4 (fitsheader, "NAXIS2", 1);
+	hputcom (fitsheader,"NAXIS2", "IRAF .imh naxis[2]");
     fhead = fhead + 80;
 
     if (nax > 2) {
 	n = irafgeti4 (irafheader, imphyslen+8);
 	hputi4 (fitsheader, "NAXIS3", n);
+	hputcom (fitsheader,"NAXIS3", "IRAF .imh naxis[3]");
 	fhead = fhead + 80;
 	}
     if (nax > 3) {
 	n = irafgeti4 (irafheader, imphyslen+12);
 	hputi4 (fitsheader, "NAXIS4", n);
+	hputcom (fitsheader,"NAXIS4", "IRAF .imh naxis[4]");
 	fhead = fhead + 80;
 	}
 
@@ -484,12 +491,19 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 	objname = irafgetc (irafheader, IM2_TITLE, SZ_IM2TITLE);
     else
 	objname = irafgetc2 (irafheader, IM_TITLE, SZ_IMTITLE);
+    if ((lstr = strlen (objname)) < 8) {
+	for (i = lstr; i < 8; i++)
+	    objname[i] = ' ';
+	objname[8] = 0;
+	}
     hputs (fitsheader,"OBJECT",objname);
+    hputcom (fitsheader,"OBJECT", "IRAF .imh title");
     free (objname);
     fhead = fhead + 80;
 
     /* Save image header filename in header */
     hputs (fitsheader,"IMHFILE",hdrname);
+    hputcom (fitsheader,"IMHFILE", "IRAF header file name");
     fhead = fhead + 80;
 
     /* Save image pixel file pathname in header */
@@ -505,16 +519,19 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     else
 	hputs (fitsheader,"PIXFILE",pixname);
     free (pixname);
+    hputcom (fitsheader,"PIXFILE", "IRAF .pix pixel file");
     fhead = fhead + 80;
 
     /* Save image offset from star of pixel file */
     pixoff = irafgeti4 (irafheader, impixoff);
     pixoff = (pixoff - 1) * 2;
     hputi4 (fitsheader, "PIXOFF", pixoff);
+    hputcom (fitsheader,"PIXOFF", "IRAF .pix pixel offset (Do not change!)");
     fhead = fhead + 80;
 
     /* Save IRAF file format version in header */
     hputi4 (fitsheader,"IMHVER",imhver);
+    hputcom (fitsheader,"IMHVER", "IRAF .imh format version (1 or 2)");
     fhead = fhead + 80;
 
 
@@ -523,6 +540,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 	hputl (fitsheader, "SWAPIRAF", 1);
     else
 	hputl (fitsheader, "SWAPIRAF", 0);
+    hputcom (fitsheader,"SWAPIRAF", "IRAF and FITS byte orders differ if T");
     fhead = fhead + 80;
 
     /* Add user portion of IRAF header to FITS header */
@@ -633,7 +651,11 @@ char	*fitsheader;	/* FITS image header */
     int nbw, nbhead;
 
     /* Convert FITS header to IRAF header */
-    nbhead = fits2iraf (fitsheader, irafheader, lhead);
+    irafheader = fits2iraf (fitsheader, irafheader, lhead, &nbhead);
+    if (irafheader == NULL) {
+	fprintf (stderr, "IRAFWIMAGE:  file %s header error\n", hdrname);
+	return (-1);
+	}
 
     /* Open the output file */
     if (!access (hdrname, 0)) {
@@ -797,12 +819,13 @@ char	*hdrname;	/* IRAF image header file pathname */
 /* Convert FITS image header to IRAF image header, returning IRAF header */
 /* No matter what the input, this always writes in the local byte order */
 
-int
-fits2iraf (fitsheader, irafheader, nbhead)
+int *
+fits2iraf (fitsheader, irafheader, nbhead, nbiraf)
 
 char	*fitsheader;	/* FITS image header */
 int	*irafheader;	/* IRAF image header (returned updated) */
 int	nbhead;		/* Length of IRAF header */
+int	*nbiraf;	/* Length of returned IRAF header */
 
 {
     int i, n, pixoff;
@@ -810,7 +833,7 @@ int	nbhead;		/* Length of IRAF header */
     char *iraf2u, *iraf2p;
     char *fitsend, *fitsp, pixfile[SZ_IM2PIXFILE];
     char title[SZ_IM2TITLE], temp[80];
-    int	nax, nbiraf, nlfits, imhver, nbits, pixtype;
+    int	nax, nlfits, imhver, nbits, pixtype;
     int imndim, imlen, imphyslen, impixtype;
 
     hgeti4 (fitsheader, "IMHVER", &imhver);
@@ -859,7 +882,7 @@ int	nbhead;		/* Length of IRAF header */
 	    break;
 	default:
 	    (void)fprintf(stderr,"Unsupported data type: %d\n", pixtype);
-	    return (0);
+	    return (NULL);
 	}
     irafputi4 (irafheader, impixtype, pixtype);
     hdel (fitsheader,"BITPIX");
@@ -895,17 +918,17 @@ int	nbhead;		/* Length of IRAF header */
 
     /* Find length of FITS header */
     fitsend = ksearch (fitsheader,"END");
-    nlfits = (fitsend - fitsheader) / 80;
+    nlfits = ((fitsend - fitsheader) / 80) - 4;
     if (imhver == 2)
-	nbiraf = LEN_IM2HDR + (81 * nlfits);
+	*nbiraf = LEN_IM2HDR + (81 * nlfits);
     else
-	nbiraf = LEN_IMHDR + (162 * nlfits);
-    if (nbiraf > nbhead)
-	irafheader = (int *) realloc (irafheader, nbiraf);
+	*nbiraf = LEN_IMHDR + (162 * nlfits);
+    if (*nbiraf > nbhead)
+	irafheader = (int *) realloc (irafheader, *nbiraf);
 
     /* Replace pixel file name, if it is in the FITS header */
     if (hgets (fitsheader, "PIXFILE", SZ_IM2PIXFILE, pixfile)) {
-	if (!strchr (pixfile,'/')) {
+	if (!strchr (pixfile,'/') && !strchr (pixfile,'$')) {
 	    strcpy (temp, "HDR$");
 	    strcat (temp,pixfile);
 	    strcpy (pixfile, temp);
@@ -919,7 +942,7 @@ int	nbhead;		/* Length of IRAF header */
 
     /* Replace header file name, if it is in the FITS header */
     if (hgets (fitsheader, "IMHFILE", SZ_IM2HDRFILE, pixfile)) {
-	if (!strchr (pixfile,'/')) {
+	if (!strchr (pixfile,'/') && !strchr (pixfile,'$')) {
 	    strcpy (temp, "HDR$");
 	    strcat (temp,pixfile);
 	    strcpy (pixfile, temp);
@@ -952,7 +975,7 @@ int	nbhead;		/* Length of IRAF header */
 		*iraf2p++ = fitsp[i];
 	    *iraf2p++ = 10;
 	    }
-	nbiraf = iraf2p - (char *) irafheader;
+	*nbiraf = iraf2p - (char *) irafheader;
 	}
     else {
 	irafs = (short *)irafheader;
@@ -963,12 +986,12 @@ int	nbhead;		/* Length of IRAF header */
 		*irafp++ = (short) fitsp[i];
 	    *irafp++ = 10;
 	    }
-	nbiraf = 2 * (irafp - irafs);
+	*nbiraf = 2 * (irafp - irafs);
 	}
     hputi4 (fitsheader, "PIXOFF", pixoff);
 
     /* Return number of bytes in new IRAF header */
-    return (nbiraf);
+    return (irafheader);
 }
 
 
@@ -1373,4 +1396,7 @@ machswap ()
  * May 15 1998	Delete header keywords used for IRAF binary values
  * May 15 1998	Fix bug so FITS OBJECT is put into IRAF title
  * May 26 1998	Fix bug in fits2iraf keeping track of end of header
+ * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jun  4 1998	Write comments into header for converted IRAF binary values
+ * Jun  4 1998	Pad FITS strings to 8 character minimum
  */

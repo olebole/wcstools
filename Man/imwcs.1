@@ -1,4 +1,4 @@
-.TH imwcs(1) WCS "12 December 1996"
+.TH imwcs(1) WCS "14 April 1998"
 .SH Name
 imwcs \- Set WCS in FITS and IRAF image files
 .SH Synopsis
@@ -20,7 +20,7 @@ images with near-zero rotation.
 A plane-tangent projection (center right ascension and declination, plate
 scale, and rotation angle) is fit based on matches between stars in the
 image and stars in a reference catalog. The HST Guide Star Catalog,
-the USNO UJ Catalog, the USNO A Catalog, or a user-supplied, tab-delimited
+the USNO A 1.0, SA 1.0, or UJ Catalog, or a user-supplied, tab-delimited
 Starbase catalog may be used. 
 
 .SH Options
@@ -36,8 +36,8 @@ Reference catalog (gsc, uac, ujc, usac, or tab table file) (default=gsc)
 .TP
 .B \-d <catalog name>
 Use this DAOFIND output catalog of X, Y, and magnitude instead of searching
-for stars in the image.  The format is simply white-space-separated numbers
-on a line, with # at the beginning of comment lines.
+for stars in the image.  The format is simply white-space-separated X, Y,
+and magnitue on a line, with # at the beginning of comment lines.
 .TP
 .B \-f
 Write FITS output no matter what input
@@ -51,7 +51,8 @@ Change the maximum number of reference stars to match from 25 to
 
 .TP
 .B \-i <counts>
-Minimum peak value for star in image (<0=-sigma)
+Minimum peak value for star in image.  If negative, use -<counts> standard
+deviations as minimum.
 .TP
 .B \-j <RA> <Dec>
 Initial center in J2000 (FK5) RA and Dec (default=RA,DEC from file)
@@ -59,17 +60,17 @@ Initial center in J2000 (FK5) RA and Dec (default=RA,DEC from file)
 .B \-l
 Reflect left<->right before rotating and fitting
 .TP
-.B \-m <magnitude>
-Initial GSC, UAC, USAC, or UJC limiting magnitude (default 17)
+.B \-m [<bright magnitude>] <faint magnitude>
+Limiting catalog magnitude(s) (default none, bright -2 if only faint is given)
+.TP
 .TP
 .B \-n <number>
-Number of parameters to fit (2-5). The default is 2 (RA+Dec) if <3 stars
-are matched, 3 (RA+Dec+scale) if <5 stars are matched, or 4 (RA+Dec+scale+rot)
-if 5 or more stars are matched.  To fit separate plate scales in X and Y, this
-argument must be explicitly set to 5.  Alternatively this may be a list of
-all of the parameters to fit, in the form nnnnnn.., where 1=RA, 2=Dec,
-3=RA scale, 4=Dec scale, 5=rotation angle, 6=chip rotation angle,
-7=RA reference pixel, and 8=Dec reference pixel.
+Number of parameters to fit (1-8, or digit string). The default is 2 (RA+Dec)
+if <3 stars are matched, 3 (RA+Dec+scale) if <5 stars are matched, or
+4 (RA+Dec+scale+rot) if 5 or more stars are matched.  Alternatively this
+may be a list of all of the parameters to fit, in the form nnnnnn..,
+where 1=RA, 2=Dec, 3=RA scale, 4=Dec scale, 5=rotation angle, 6=Y axis
+rotation (CD matrix), 7=RA reference pixel, and 8=Dec reference pixel.
 .TP
 .B \-o <filename>
 Write output to this file; may be the same as input file.  This option
@@ -81,7 +82,7 @@ option to write the file.
 Initial plate scale in arcsec per pixel (default 0)
 .TP
 .B \-r <angle>
-Rotation angle in degrees before fitting (default 0)
+Rotation angle in degrees before fitting (0, 90, 180, 270) (default 0)
 .TP
 .B \-s <frac>
 Use this fraction extra stars (default 1.0)
@@ -90,12 +91,19 @@ Use this fraction extra stars (default 1.0)
 Offset tolerance in pixels (default 20)
 .TP
 .B \-u <num>
-UJ or UA catalog single plate number to accept (default all)
+USNO catalog single plate number to accept (default all)
 .TP
 .B \-v
 Verbose listing of processing intermediate results
 .TP
 .B \-w
 Write WCS to a new file (default is read-only)
+.B \-x
+X and Y coordinates of reference pixel (default is image center)
+.B \-y
+multiply image dimensions by this for search (default is 1)
+.B \-z
+Use AIPS classic projections instead of WCSLIB; use CD matrix or CDELT
+instead of polynomial solution.
 .SH Author
 Doug Mink, SAO (dmink@cfa.harvard.edu)

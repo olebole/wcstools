@@ -1,5 +1,5 @@
 /* File libwcs/fitswcs.c
- * April 17, 1998
+ * June 11, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "fitshead.h"
+#include "fitsio.h"
 #include "wcs.h"
 
 
@@ -40,6 +40,8 @@ char *filename;	/* FITS or IRAF file filename */
 
     /* Set the world coordinate system from the image header */
     wcs = wcsinit (header);
+    if (wcs == NULL)
+	wcserr ();
     free (header);
 
     return (wcs);
@@ -290,11 +292,11 @@ int	verbose;	/* 1 to print WCS header keyword values */
     return (n > 8 ? 0 : -1);
 }
 
-static char wcstype[8]="TAN";		/* WCS projection name */
+static char wcsproj[8]="TAN";		/* WCS projection name */
 void
-setwcstype (type)
+setwcsproj (type)
 char *type;
-{ strcpy (wcstype, type); return; }
+{ strcpy (wcsproj, type); return; }
 
 
 /* Set FITS C* fields, assuming ra/dec refers to the center pixel */
@@ -334,10 +336,10 @@ struct WorldCoor *wcs;	/* WCS structure */
 
     /* Set standard FITS WCS keywords */
     strcpy (wcstemp, "RA---");
-    strcat (wcstemp, wcstype);
+    strcat (wcstemp, wcsproj);
     hputs  (header, "CTYPE1", wcstemp);
     strcpy (wcstemp, "DEC--");
-    strcat (wcstemp, wcstype);
+    strcat (wcstemp, wcsproj);
     hputs  (header, "CTYPE2", wcstemp);
     hputnr8 (header, "CRVAL1", 9, wcs->xref);
     hputnr8 (header, "CRVAL2", 9, wcs->yref);
@@ -411,4 +413,7 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Apr 13 1998	Print polynomial coefficients, if in header
  * Apr 16 1998	Drop NCOEFF header parameter
  * Apr 17 1998	Do not write W* keywords if they are already there
+ * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jun  1 1998	Print error message if WCS cannot be initialized
+ * Jun 11 1998	Change WCSTYPE to WCSPROJ to avoid conflict
  */

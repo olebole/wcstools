@@ -1,5 +1,5 @@
 /* File libwcs/matchstar.c
- * April 27, 1998
+ * June 24, 1998
  * By Doug Mink, Smithsonian Astrophyscial Observatory
  */
 
@@ -282,8 +282,8 @@ int	debug;
 
     if (debug) {
 	fprintf (stderr,"\nAmoeba fit:\n");
-	ra2str (rastr, xref0, 3);
-	dec2str (decstr, yref0, 2);
+	ra2str (rastr, 16, xref0, 3);
+	dec2str (decstr, 16, yref0, 2);
 	fprintf (stderr,"   initial guess:\n");
 	if (vfit[6] > -1)
 	    fprintf (stderr," cra= %s cdec= %s cd = %9.7f,%9.7f,%9.7f,%9.7f ",
@@ -293,8 +293,8 @@ int	debug;
 		     rastr, decstr, xinc0*3600.0, yinc0*3600.0, rot0);
 	fprintf (stderr,"(%8.2f,%8.2f\n", xrefpix0, yrefpix0);
 
-	ra2str (rastr, wcs->xref, 3);
-	dec2str (decstr, wcs->yref, 2);
+	ra2str (rastr, 16, wcs->xref, 3);
+	dec2str (decstr, 16, wcs->yref, 2);
 	fprintf (stderr,"\nfirst solution:\n");
 	if (vfit[6] > -1)
 	    fprintf (stderr," cra= %s cdec= %s cd = %9.7f,%9.7f,%9.7f,%9.7f ",
@@ -389,8 +389,8 @@ int	debug;
 	wcs_amoeba (wcs);
 
 	if (debug) {
-	    ra2str (rastr, wcs->xref, 3);
-	    dec2str (decstr, wcs->yref, 2);
+	    ra2str (rastr, 16, wcs->xref, 3);
+	    dec2str (decstr, 16, wcs->yref, 2);
 	    fprintf (stderr,"\nresid solution:\n");
 	    fprintf (stderr,"\n%d points < %.3f arcsec residuals refit\n",
 			    bestbin, siglim);
@@ -534,13 +534,13 @@ struct WorldCoor *wcs0;
     printf ("Before:\n");
     for (i = 0; i < nfit1; i++) {
 	if (vfit[1] > -1)
-	    ra2str (rastr, p[i][vfit[1]] + xref_p, 3);
+	    ra2str (rastr, 16, p[i][vfit[1]] + xref_p, 3);
 	else
-	    ra2str (rastr, wcsf->xref, 3);
+	    ra2str (rastr, 16, wcsf->xref, 3);
 	if (vfit[2] > -1)
-	    dec2str (decstr, p[i][vfit[2]]+yref_p, 2);
+	    dec2str (decstr, 16, p[i][vfit[2]]+yref_p, 2);
 	else
-	    dec2str (decstr, wcsf->yref, 2);
+	    dec2str (decstr, 16, wcsf->yref, 2);
 	if (vfit[6] > -1) {
 	    cd[0] = p[i][vfit[3]];
 	    cd[1] = p[i][vfit[4]];
@@ -591,13 +591,13 @@ struct WorldCoor *wcs0;
     printf ("\nAfter:\n");
     for (i = 0; i < nfit1; i++) {
 	if (vfit[1] > -1)
-	    ra2str (rastr, p[i][vfit[1]] + xref_p, 3);
+	    ra2str (rastr, 16, p[i][vfit[1]] + xref_p, 3);
 	else
-	    ra2str (rastr, wcsf->xref, 3);
+	    ra2str (rastr, 16, wcsf->xref, 3);
 	if (vfit[2] > -1)
-	    dec2str (decstr, p[i][vfit[2]]+yref_p, 2);
+	    dec2str (decstr, 16, p[i][vfit[2]]+yref_p, 2);
 	else
-	    dec2str (decstr, wcsf->yref, 2);
+	    dec2str (decstr, 16, wcsf->yref, 2);
 	if (vfit[6] > -1) {
 	    cd[0] = p[i][vfit[3]];
 	    cd[1] = p[i][vfit[4]];
@@ -640,12 +640,12 @@ struct WorldCoor *wcs0;
 	}
 #endif
 
-    /* on return, all entries in p[1..NPAR] are within FTOL;
-     * average them?? pick first one?
+    /* On return, all entries in p[1..NPAR] are within FTOL;
+     * Return the average, though you could just pick the first one
      */
-    for (j = 0; j < NPAR; j++) {
+    for (j = 0; j < nfit; j++) {
 	double sum = 0.0;
-        for (i = 0; i < nfit1; i++)
+	for (i = 0; i < nfit1; i++)
 	    sum += p[i][j];
 	vp[j] = sum / (double)nfit1;
 	}
@@ -680,8 +680,8 @@ struct WorldCoor *wcs0;
 
 #define RESIDDUMP
 #ifdef RESIDDUMP
-    ra2str (rastr,wcsf->xref,3);
-    dec2str (decstr,wcsf->yref,2);
+    ra2str (rastr, 16, wcsf->xref, 3);
+    dec2str (decstr, 16, wcsf->yref, 2);
 
     if (vfit[6] > -1)
 	printf ("iter=%d\n cra= %s cdec= %s CD=%9.7f,%9.7f,%9.7f,%9.7f ", iter,
@@ -706,11 +706,11 @@ struct WorldCoor *wcs0;
 	sumy = sumy + ey;
 	sumr = sumr + er;
 
-	ra2str (rastr, gx_p[i], 3);
-	dec2str (decstr, gy_p[i], 2);
-	ra2str (rastr, mx, 3);
-	dec2str (decstr, my, 2);
+	ra2str (rastr, 16, gx_p[i], 3);
+	dec2str (decstr, 16, gy_p[i], 2);
 	printf ("%2d: c: %s %s ", i+1, rastr, decstr);
+	ra2str (rastr, 16, mx, 3);
+	dec2str (decstr, 16, my, 2);
 	printf ("i: %s %s %6.3f %6.3f %6.3f\n",
 		rastr, decstr, 3600.0*ex, 3600.0*ey,
 		3600.0*sqrt(ex*ex + ey*ey));
@@ -818,8 +818,8 @@ int	iter;	/* Number of iterations */
 
 #define TRACE_CHSQR
 #ifdef TRACE_CHSQR
-    ra2str (rastr,wcsf->xref,3);
-    dec2str (decstr,wcsf->yref,2);
+    ra2str (rastr, 16, wcsf->xref, 3);
+    dec2str (decstr, 16, wcsf->yref, 2);
     if (vfit[6] > -1)
 	fprintf (stderr,"%4d: %s %s CD: %9.7f,%9.7f,%9.7f,%9.7f ",
 		iter, rastr, decstr, wcsf->cd[0],wcsf->cd[1],wcsf->cd[2],
@@ -1001,5 +1001,7 @@ int nfit;
  * Mar 25 1998	Make amoeba() externally callable
  * Mar 26 1998	Return instead of crashing when too many iterations
  * Apr 21 1998	Drop out of loop if more than half of stars are matched
- * Apr 27 1998	Fix bug handiling nfit=8
+ * Apr 27 1998	Fix bug handling nfit=8
+ * Jun 24 1998	Fix bug summing unitialized values for mean after fit
+ * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  */ 

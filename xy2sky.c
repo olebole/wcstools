@@ -1,5 +1,5 @@
 /* File xy2sky.c
- * May 13, 1998
+ * July 7, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/wcs.h"
+#include "wcs.h"
 
 static void usage();
 extern struct WorldCoor *GetWCSFITS ();	/* Read WCS from FITS or IRAF header */
@@ -20,9 +20,9 @@ extern int pix2wcst();
 static int verbose = 0;		/* verbose/debugging flag */
 static int append = 0;		/* append input line flag */
 static int tabtable = 0;	/* tab table output flag */
-static int oldwcs = 0;		/* AIPS classic WCS flag */
 static char coorsys[16];
 static int linmode = -1;
+static int face = 1;
 
 main (ac, av)
 int ac;
@@ -72,6 +72,14 @@ char **av;
             degout++;
     	    break;
 
+	case 'f':	/* Face to use for projections with 3rd dimension */
+	    if (ac < 2)
+		usage();
+	    face = atoi (*++av);
+	    (void) wcszin (face);
+	    ac--;
+	    break;
+
 	case 'g':	/* Output galactic coordinates */
 	    strcpy (coorsys,"galactic");
             degout++;
@@ -108,7 +116,7 @@ char **av;
     	    break;
 
     	case 'z':	/* Use AIPS classic WCS */
-    	    oldwcs++;
+    	    setdefwcs(1);
     	    break;
 
     	default:
@@ -129,21 +137,26 @@ char **av;
 	printf ("%s: No WCS for file, cannot compute image size\n", fn);
 	exit(1);
 	}
-    wcs->oldwcs = oldwcs;
     if (linmode > -1)
-	setlinmode (wcs, linmode);
+	setwcslin (wcs, linmode);
     if (*coorsys)
 	wcsoutinit (wcs, coorsys);
     if (tabtable) {
 	wcs->tabsys = 1;
 	if (!append) {
+	    printf ("X    	Y    	");
+	    if (wcs->naxes > 2)
+		printf ("Z    	");
 	    if (wcs->sysout == WCS_B1950 || wcs->sysout == WCS_J2000)
-		printf ("X    	Y    	RA      	Dec     	Equinox\n");
+		printf ("RA      	Dec     	Equinox\n");
 	    else if (wcs->sysout == WCS_GALACTIC)
-		printf ("X    	Y    	Gal Long 	Gal Lat 	Equinox\n");
+		printf ("Gal Long 	Gal Lat 	Equinox\n");
 	    else if (wcs->sysout == WCS_ECLIPTIC)
-		printf ("X    	Y    	Ecl Long 	Ecl Lat 	Equinox\n");
-	    printf ("-----	-----	--------	--------	-------\n");
+		printf ("Ecl Long 	Ecl Lat 	Equinox\n");
+	    printf ("-----	-----	");
+	    if (wcs->naxes > 2)
+		printf ("-----	");
+	    printf ("--------	--------	-------\n");
 	    }
 	}
     if (degout) {
@@ -182,24 +195,40 @@ char **av;
 			    else
 				printf ("%s %s", wcstring, line);
 			    }
-			else if (degout) {
-			    if (wcs->nxpix > 9999 || wcs->nypix > 9999) {
-				if (tabtable)
-				    printf ("%9.3f	%9.3f	%s\n",x, y, wcstring);
-				else
-				    printf ("%9.3f %9.3f %s\n",x, y, wcstring);
+			else {
+			    if (degout) {
+				if (wcs->nxpix > 9999 || wcs->nypix > 9999) {
+				    if (tabtable)
+					printf ("%9.3f	%9.3f	",x, y);
+				    else
+					printf ("%9.3f %9.3f ",x, y);
+				    }
+				else {
+				    if (tabtable)
+					printf ("%8.3f	%8.3f	",x, y);
+				    else
+					printf ("%8.3f %8.3f ",x, y);
+				    }
+				if (wcs->naxes > 2) {
+				    if (tabtable)
+					printf ("%2d	", face);
+				    else
+					printf ("%2d  ", face);
+				    }
+				}
+			    else if (tabtable) {
+				printf ("%.3f	%.3f	",x, y);
+				if (wcs->naxes > 2)
+				    printf ("%2d	", face);
 				}
 			    else {
-				if (tabtable)
-				    printf ("%8.3f	%8.3f	%s\n",x, y, wcstring);
-				else
-				    printf ("%8.3f %8.3f %s\n",x, y, wcstring);
+				printf ("%.3f %.3f ",x, y);
+				if (wcs->naxes > 2)
+				    printf ("%2d ", face);
+				printf ("-> ");
 				}
+			    printf ("%s\n", wcstring);
 			    }
-			else if (tabtable)
-			    printf ("%.3f	%.3f	%s\n",x, y, wcstring);
-			else
-			    printf ("%.3f %.3f -> %s\n",x, y, wcstring);
 			}
 		    }
 		}
@@ -217,10 +246,18 @@ char **av;
 		    strcat (wcstring, " ");
 		    strcat (wcstring, temp);
 		    }
-		if (tabtable)
-		    printf ("%.3f	%.3f	%s\n",x, y, wcstring);
-		else
-		    printf ("%.3f %.3f -> %s\n",x, y, wcstring);
+		if (tabtable) {
+		    printf ("%.3f	%.3f	", x, y);
+		    if (wcs->naxes > 2)
+			printf ("%2d	", face);
+		    }
+		else {
+		    printf ("%.3f %.3f ", x, y);
+		    if (wcs->naxes > 2)
+			printf ("%2d ", face);
+		    printf ("-> ");
+		    }
+		printf ("%s\n", wcstring);
 		}
 	    av++;
 	    }
@@ -241,6 +278,7 @@ usage ()
     fprintf (stderr,"  -b: B1950 (FK4) output\n");
     fprintf (stderr,"  -d: RA and Dec output in degrees\n");
     fprintf (stderr,"  -e: ecliptic longitude and latitude output\n");
+    fprintf (stderr,"  -f: Number of face to use for 3-d projection\n");
     fprintf (stderr,"  -g: galactic longitude and latitude output\n");
     fprintf (stderr,"  -j: J2000 (FK5) output\n");
     fprintf (stderr,"  -m: mode for output of LINEAR WCS coordinates\n");
@@ -274,4 +312,8 @@ usage ()
  * Apr 28 1998	Add output mode for linear coordinates
  * Apr 28 1998	Add ecliptic coordinate system output
  * May 13 1998	Allow arbitrary equinox for output coordinates
+ * Jun 25 1998	Set WCS subroutine choice with SETDEFWCS()
+ * Jul  7 1998	Change setlinmode() to setwcslin()
+ * Jul  7 1998	Add -f for face to use in 3-d projection
+ * Jul  7 1998	Add 3rd dimension in output
  */

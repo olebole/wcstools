@@ -1,5 +1,5 @@
 /* File remap.c
- * April 28, 1998
+ * May 27, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
-#include "libwcs/wcs.h"
+#include "fitshead.h"
+#include "wcs.h"
 
 static void usage();
 static int verbose = 0;		/* verbose flag */
@@ -408,4 +408,5 @@ char	*filename;	/* FITS or IRAF file filename */
  *
  * Apr 24 1998	change coordinate setting to setsys() from setfk4()
  * Apr 28 1998	Change coordinate system flags to WCS_*
+ * May 28 1998	Include fitsio.h instead of fitshead.h
  */

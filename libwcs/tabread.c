@@ -1,5 +1,5 @@
 /*** File libwcs/tabcread.c
- *** June 4, 1997
+ *** June 24, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -130,10 +130,10 @@ int	nlog;
 	}
     if (verbose) {
 	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
-	ra2str (rstr1, ra1, 3);
-        dec2str (dstr1, dec1, 2);
-	ra2str (rstr2, ra2, 3);
-        dec2str (dstr2, dec2, 2);
+	ra2str (rstr1, 16, ra1, 3);
+        dec2str (dstr1, 16, dec1, 2);
+	ra2str (rstr2, 16, ra2, 3);
+        dec2str (dstr2, 16, dec2, 2);
 	fprintf (stderr,"TABREAD: RA: %s - %s  Dec: %s - %s\n",
 		 rstr1,rstr2,dstr1,dstr2);
 	}
@@ -772,4 +772,7 @@ char	*keyword;	/* Column heading to find */
  * May 29 1997	Add TABPARSE and TABCOL to more easily extract specific columns
  * May 29 1997	Add TABCLOSE to free memory from outside this file
  * Jun  4 1997	Set ID to sequence number in table if no ID/id entry present
+ *
+ * Jun  2 1998	Fix bug parsing last column of header
+ * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  */

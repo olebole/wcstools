@@ -1,5 +1,5 @@
 /* File edhead.c
- * May 20, 1998
+ * June 24, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -13,8 +13,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
-#include "libwcs/wcs.h"
+#include "fitsio.h"
+#include "wcs.h"
 
 static void usage();
 static int newimage = 0;
@@ -84,15 +84,16 @@ char	*filename;	/* FITS or IRAF file filename */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
     int *irafheader;		/* IRAF image header */
-    int i, nbytes, nhb, nhblk, lname, lext;
+    int i, nbytes, nhb, nhblk, lname, lext, lroot;
     char *head, *headend, *hlast;
     char headline[160];
     char newname[128];
     char tempname[128];
     FILE *fd;
-    char *ext, *fname;
+    char *ext, *fname, *imext, *imext1;
     char *editcom;
     char newline[1];
+    char echar;
 
     newline[0] = 10;
     strcpy (tempname, "fitshead.temp");
@@ -220,26 +221,53 @@ char	*filename;	/* FITS or IRAF file filename */
     if (newimage) {
 
     /* Remove directory path and extension from file name */
-	ext = strrchr (filename, '.');
 	fname = strrchr (filename, '/');
 	if (fname)
 	    fname = fname + 1;
 	else
 	    fname = filename;
-	lname = strlen (fname);
-	if (ext) {
-	    lext = strlen (ext);
-	    strncpy (newname, fname, lname - lext);
-	    *(newname + lname - lext) = 0;
+	ext = strrchr (fname, '.');
+	if (ext != NULL) {
+	    lext = (fname + strlen (fname)) - ext;
+	    lroot = ext - fname;
+	    strncpy (newname, fname, lroot);
+	    *(newname + lroot) = 0;
 	    }
-	else
+	else {
+	    lext = 0;
+	    lroot = strlen (fname);
 	    strcpy (newname, fname);
-
-    /* Add file extension preceded by a e */
-	if (iraffile)
-	    strcat (newname, "e.imh");
+	    }
+	imext = strchr (fname, ',');
+	imext1 = NULL;
+	if (imext == NULL) {
+	    imext = strchr (fname, '[');
+	    if (imext != NULL) {
+		imext1 = strchr (fname, ']');
+		*imext1 = (char) 0;
+		}
+	    }
+	if (imext != NULL) {
+	    strcat (newname, "_");
+	    strcat (newname, imext+1);
+	    }
+	if (fname)
+	    fname = fname + 1;
 	else
-	    strcat (newname, "e.fit");
+	    fname = filename;
+	strcat (newname, "e");
+	if (lext > 0) {
+	    if (imext != NULL) {
+		echar = *imext;
+		*imext = (char) 0;
+		strcat (newname, ext);
+		*imext = echar;
+		if (imext1 != NULL)
+		    *imext1 = ']';
+		}
+	    else
+		strcat (newname, ext);
+	    }
 	}
     else
 	strcpy (newname, filename);
@@ -274,4 +302,8 @@ char	*filename;	/* FITS or IRAF file filename */
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
  *
  * May 20 1998	Set reread buffer size based on temporary file size
+ * May 26 1998	Version 2.2.1: Fix long-standing .imh writing bug
+ * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jun  2 1998  Fix bug in hput()
+ * Jun 24 1998	Preserve file extension
  */

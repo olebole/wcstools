@@ -1,5 +1,5 @@
-#ifndef LIN
-#define LIN
+#ifndef lin_h_
+#define lin_h_
 
 #ifdef __cplusplus
 extern "C" {
@@ -42,4 +42,7 @@ extern const char *linrev_errmsg[];
 };
 #endif
 
-#endif /* LIN */
+#endif /* lin_h_ */
+
+/* May 27 1998	ifndef LIN changed to ifndef lin_h_
+ */

@@ -1,5 +1,5 @@
 /* File gethead.c
- * March 12, 1998
+ * June 18, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
+#include "fitsio.h"
 
 #define MAXKWD 100
 #define MAXFILES 1000
@@ -24,6 +24,7 @@ static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;
 static int maxlfn = 0;
 static int listall = 0;
+static int listpath = 0;
 static int tabout = 0;
 static int printhead = 0;
 
@@ -41,6 +42,7 @@ char **av;
     int lfn;
     char *lastchar;
     char filename[128];
+    char *name;
     FILE *flist;
     char *listfile;
     int ikwd, lkwd, i;
@@ -63,6 +65,10 @@ char **av;
 
 	case 'h':	/* output column headings */
 	    printhead++;
+	    break;
+
+	case 'p':	/* output column headings */
+	    listpath++;
 	    break;
 
 	case 't':	/* output tab table */
@@ -88,7 +94,12 @@ char **av;
 	    strsrch (*av,".FTS") != NULL ||
 	    strsrch (*av,".imh") != NULL) {
 	    fn[nfile] = *av;
-	    lfn = strlen (fn[nfile]);
+
+	    if (listpath || (name = strrchr (fn[nfile],'/')) == NULL)
+		name = fn[nfile];
+	    else
+		name = name + 1;
+	    lfn = strlen (name);
 	    if (lfn > maxlfn)
 		maxlfn = lfn;
 	    nfile++;
@@ -108,16 +119,18 @@ char **av;
     if (nkwd > 0) {
 
 	/* Print column headings if tab table or headings requested */
-	if (tabout || printhead) {
-	    printf ("FILENAME");
-	    if (maxlfn > 8) {
-		for (i = 8; i < maxlfn; i++)
+	if (printhead) {
+	    if (nfile > 1) {
+		printf ("FILENAME");
+		if (maxlfn > 8) {
+		    for (i = 8; i < maxlfn; i++)
+			printf (" ");
+		    }
+		if (tabout)
+	    	    printf ("	");
+		else
 		    printf (" ");
 		}
-	    if (tabout)
-	    	printf ("	");
-	    else
-		printf (" ");
 	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
 		lkwd = strlen (kwd[ikwd]);
 		kwe = kwd[ikwd] + lkwd;
@@ -133,18 +146,21 @@ char **av;
 		else
 		    printf (" ");
 		}
-	    }
-	/* Print field-defining hyphens if tab table output requested */
-	if (tabout) {
-	    printf ("--------");
-	    if (maxlfn > 8) {
-		for (i = 8; i < maxlfn; i++)
+
+	    /* Print field-defining hyphens if tab table output requested */
+	    if (nfile > 1) {
+		if (tabout) {
+		    printf ("--------");
+		    if (maxlfn > 8) {
+			for (i = 8; i < maxlfn; i++)
+			    printf (" ");
+			}
+		    printf ("	");
+		    }
+		else
 		    printf (" ");
 		}
-	    if (tabout)
-	    	printf ("	");
-	    else
-		printf (" ");
+
 	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
 		strcpy (string, "----------");
 		lkwd = strlen (kwd[ikwd]);
@@ -194,9 +210,10 @@ char *progname;
 {
     fprintf (stderr,"Print FITS or IRAF header keyword values\n");
     fprintf(stderr,"usage: [-ahtv] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
-    fprintf(stderr,"usage: [-ahtv] @filelist kw1 kw2 ... kwn\n");
+    fprintf(stderr,"usage: [-ahptv] @filelist kw1 kw2 ... kwn\n");
     fprintf(stderr,"  -a: list file even if keywords are not found\n");
     fprintf(stderr,"  -h: print column headings\n");
+    fprintf(stderr,"  -p: print full pathnames of files\n");
     fprintf(stderr,"  -t: output in tab-separated table format\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
@@ -219,6 +236,7 @@ char	*kwd[];	/* Names of keywords for which to print values */
     char fnform[8];
     char string[80];
     char temp[80];
+    char *filename;
     char outline[1000];
     char mstring[800];
     char *kw, *kwe;
@@ -256,12 +274,19 @@ char	*kwd[];	/* Names of keywords for which to print values */
 	else
 	    fprintf (stderr,"FITS image file %s\n", name);
 	}
+
+    /* Find file name */
+    if (listpath || (filename = strrchr (name,'/')) == NULL)
+	filename = name;
+    else
+	filename = filename + 1;
+
     if (nfile > 1) {
 	if (tabout)
 	    sprintf (fnform, "%%-%ds	", maxlfn);
 	else
 	    sprintf (fnform, "%%-%ds ", maxlfn);
-	sprintf (outline, fnform, name);
+	sprintf (outline, fnform, filename);
 	}
     nfound = 0;
 
@@ -375,4 +400,8 @@ char *string;
  * Jan  5 1998	Do not print line unless keyword is found
  * Jan 27 1998	Clean up scientific notation and trailing zeroes
  * Mar 12 1998	Read IRAF multi-line keyword values
+ * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jun  2 1998  Fix bug in hput()
+ * Jun  3 1998	Add -p option
+ * Jun 18 1998	Print tab table heading only if -h option used
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** March 20, 1997
+ *** June 24, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -119,10 +119,10 @@ int	verbose;	/* 1 for diagnostics */
 	}
     if (verbose) {
 	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
-	ra2str (rstr1, ra1, 3);
-        dec2str (dstr1, dec1, 2);
-	ra2str (rstr2, ra2, 3);
-        dec2str (dstr2, dec2, 2);
+	ra2str (rstr1, 16, ra1, 3);
+        dec2str (dstr1, 16, dec1, 2);
+	ra2str (rstr2, 16, ra2, 3);
+        dec2str (dstr2, 16, dec2, 2);
 	fprintf (stderr,"UJCREAD: RA: %s - %s  Dec: %s - %s\n",
 		 rstr1,rstr2,dstr1,dstr2);
 	}
@@ -531,7 +531,7 @@ double	rax0;		/* Right ascension for which to search */
     int debug = 0;
 
     rax = rax0;
-    ra2str (rastrx, rax, 3);
+    ra2str (rastrx, 16, rax, 3);
     istar1 = 1;
     if (ujcstar (istar1, &star))
 	return (0);
@@ -547,7 +547,7 @@ double	rax0;		/* Right ascension for which to search */
 		break;
 	    if (debug) {
 		char rastr[16];
-		ra2str (rastr,ra,3);
+		ra2str (rastr, 16, ra, 3);
 		fprintf (stderr,"UJCSRA %d %d: %s (%s)\n",
 			 nrep,istar,rastr,rastrx);
 		}
@@ -615,6 +615,7 @@ int znum;	/* UJ Catalog zone */
 	}
 
 /* Check to see if byte-swapping is necessary */
+    cswap = 0;
     if (ujcstar (1, &star)) {
 	fprintf (stderr,"UJCOPEN: cannot read star 1 from UJ zone catalog %s\n",
 		 zonepath);
@@ -725,4 +726,7 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Dec 17 1996	Add code to keep brightest or closest stars if too many found
  * Dec 18 1996	Add code to read a specific star
  * Mar 20 1997	Clean up UJCRNUM after lint
+ *
+ * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
+ * Jun 24 1998	Initialize byte-swapping flag in UJCOPEN()
  */

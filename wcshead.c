@@ -1,5 +1,5 @@
 /* File wcshead.c
- * February 18, 1998
+ * June 24, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
-#include "libwcs/wcs.h"
+#include "fitsio.h"
+#include "wcs.h"
 
 static void usage();
 static void PrintHead();
@@ -192,12 +192,12 @@ struct WorldCoor *wcs;
     if (tabout) {
 	if (hms) {
 	    if (wcs->coorflip) {
-		ra2str (rastr, wcs->yref, ndec);
-		dec2str (decstr, wcs->xref, ndec-1);
+		ra2str (rastr, 32, wcs->yref, ndec);
+		dec2str (decstr, 32, wcs->xref, ndec-1);
 		}
 	    else {
-		ra2str (rastr, wcs->xref, ndec);
-		dec2str (decstr, wcs->yref, ndec-1);
+		ra2str (rastr, 32, wcs->xref, ndec);
+		dec2str (decstr, 32, wcs->yref, ndec-1);
 		}
 	    printf (" %s %s %s", rastr, decstr, wcs->radecsys);
 	    }
@@ -207,12 +207,12 @@ struct WorldCoor *wcs;
     else {
 	if (hms) {
 	    if (wcs->coorflip) {
-		ra2str (rastr, wcs->yref, ndec);
-		dec2str (decstr, wcs->xref, ndec-1);
+		ra2str (rastr, 32, wcs->yref, ndec);
+		dec2str (decstr, 32, wcs->xref, ndec-1);
 		}
 	    else {
-		ra2str (rastr, wcs->xref, ndec);
-		dec2str (decstr, wcs->yref, ndec-1);
+		ra2str (rastr, 32, wcs->xref, ndec);
+		dec2str (decstr, 32, wcs->yref, ndec-1);
 		}
 	    printf (" %s %s %s", rastr, decstr, wcs->radecsys);
 	    }
@@ -238,4 +238,6 @@ struct WorldCoor *wcs;
     return;
 }
 /* Feb 18 1998	New program
+ * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  */

@@ -1,5 +1,5 @@
 /* File setpix.c
- * December 15, 1997
+ * May 27, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
-#include "libwcs/wcs.h"
+#include "fitsio.h"
+#include "wcs.h"
 
 static void usage();
 static int newimage = 0;
@@ -231,4 +231,6 @@ char	**value;		/* value to insert into pixel */
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
  * Dec 15 1997	Add capability of reading and writing IRAF 2.11 images
+ *
+ * May 28 1998	Include fitsio.h instead of fitshead.h
  */

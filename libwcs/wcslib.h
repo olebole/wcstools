@@ -16,8 +16,6 @@ struct wcsprm {
    int cubeface;
 };
 
-#include "wcs.h" /* allan: 28.4.98: added include */
-
 #if __STDC__ || defined(__cplusplus)
    int wcsset(const int,
               const char[][9],
@@ -79,4 +77,7 @@ extern const char *wcsmix_errmsg[];
 };
 #endif
 
-#endif /* wcsli_h_ */
+#endif /* wcslib_h_ */
+
+/* May 27 1998	ifndef WCSLIB changed to ifndef wcslib_h_
+ */

@@ -1,24 +1,24 @@
-.TH scat(1) WCS "12 December 1996"
+.TH scat(1) WCS "14 April 1998"
 .SH Name
-scat \- Find catalog stars in a square on the sky
+scat \- Find catalog stars in a square or circle on the sky
 .SH Synopsis
 scat [options] [-b or -j] ra dec
 .SH Description
 .I scat
 is a utility for finding all of the Hubble Space Telescope Guide Star
-Catalog (GSC), U.S. Naval Observatory A (UAC) or UJ (UJC) Catalogs, or
-locally catalogued objects in a specified region of the sky and listing
-their sky coordinates to standard output. If the -w flag is set, they
-are written to a file objectname.catalogname, where objectname is given
-by the argument to -o on the command line, defaulting to "search", and
-catalogname is given by the argument to -c on the command line. The
+Catalog (GSC), U.S. Naval Observatory A (UAC), SA (USAC), or UJ (UJC)
+Catalogs, or locally catalogued objects in a specified region of the sky
+and listing their sky coordinates to standard output. If the -w flag is
+set, they are written to a file objectname.catalogname, where objectname
+is given by the argument to -o on the command line, defaulting to "search",
+and catalogname is given by the argument to -c on the command line. The
 catalog defaults to the GSC, if no -c argument is present. scat resembles
 rgsc(1) and star(1), which can search from lists of coordinates but
-cannot sort the output. 
+cannot sort the output.  sgsc, suac, and susac are links to this program.1
 .SH Options
 .TP
-.B \-1
-List single closest catalog source
+.B \-a
+List the single closest catalog source
 .TP
 .B \-b <RA> <Dec>
 Output B1950 (FK4) coordinates around this center
@@ -30,13 +30,16 @@ Reference catalog (gsc, uac, ujc, or tab table file
 Sort by distance from center instead of flux
 .TP
 .B \-g <class>
-Object class (0=stars 3=galaxies -1=all)
+HST Guide Star Catalog object class (0=stars 3=galaxies -1=all)
 .TP
 .B \-h
-Print heading, else do not 
+Print search and column heading, else do not 
 .TP
 .B \-j <RA> <Dec>
 Output J2000 (FK5) coordinates around this center
+.TP
+.B \-k <keyword>
+Add value of this keyword to end of output lines from a tab table search
 .TP
 .B \-m [<bright magnitude>] <faint magnitude>
 Limiting catalog magnitude(s) (default none, bright -2 if only faint is given)
@@ -48,16 +51,16 @@ Number of brightest stars to print
 Object name used for output file naming
 .TP
 .B \-r <radius>
-Search radius in arcsec (default 10)
+Halfwidth (-radius if negative) of search area in arcseconds (default 10)
 .TP
 .B \-s
-Sort by RA instead of flux 
+Sort by right ascension instead of flux 
 .TP
 .B \-t
 Tab table to standard output as well as file
 .TP
 .B \-u <num>
-UJ or UA catalog single plate number to accept
+USNO catalog single plate number to accept
 .TP
 .B \-v
 Verbose listing of processing intermediate results
@@ -65,6 +68,6 @@ Verbose listing of processing intermediate results
 .B \-w
 Write tab table output file objectname.catalog
 .SH See Also
-sgsc(1), suac(1)
+sgsc(1), suac(1), susac(1)
 .SH Author
 Doug Mink, SAO (dmink@cfa.harvard.edu)

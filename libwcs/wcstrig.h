@@ -1,5 +1,5 @@
-#ifndef WCSTRIG
-#define WCSTRIG
+#ifndef wcstrig_h_
+#define wcstrig_h_
 
 #include <math.h>
 
@@ -42,5 +42,7 @@ extern "C" {
 };
 #endif
 
-#endif /* WCSTRIG */
-/*   Function names changed by Doug Mink, SAO, April 15, 1998 */
+#endif /* wcstrig_h_ */
+/* Apr 15 1998	"deg" added to function names by Doug Mink, SAO
+ * May 27 1998	ifndef WCSTRIG changed to ifndef wcstrig_h_
+ */

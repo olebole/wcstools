@@ -1,5 +1,5 @@
 /* File imstar.c
- * April 28, 1998
+ * June 25, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
-#include "libwcs/wcs.h"
+#include "fitsio.h"
+#include "wcs.h"
 
 static void usage();
 static int verbose = 0;		/* verbose flag */
@@ -26,18 +26,20 @@ extern void setbmin ();
 extern void setmaxrad ();
 extern void setborder ();
 extern void setimcat();
-extern void setoldwcs();	/* AIPS classic WCS flag */
 extern struct WorldCoor *GetFITSWCS();
 
 static double magoff = 0.0;
 static int rasort = 0;
 static int printhead = 0;
 static int tabout = 0;
+static int tabfile = 1;
 static int nstar = 0;
 static double cra0 = 0.0;
 static double cdec0 = 0.0;
 static double eqout = 0.0;
-static int daoout = 0;
+static int daofile = 0;
+static int ascfile = 0;
+static int setuns = 0;	/* Change to unsigned integer flag */
 
 main (ac, av)
 int ac;
@@ -100,6 +102,11 @@ char **av;
 	    ac--;
 	    break;
 
+	case 'f':	/* Write ASCII catalog format for SKYMAP */
+	    ascfile = 1;
+	    tabfile = 0;
+	    break;
+
 	case 'h':	/* ouput descriptive header */
 	    printhead++;
 	    break;
@@ -160,8 +167,13 @@ char **av;
 	    tabout = 1;
 	    break;
 
+	case 'u':	/* Set 16-bit int image file to unsigned */
+	    setuns = 1;
+	    break;
+
 	case 'w':	/* Write DAOFIND-format output file */
-	    daoout = 1;
+	    daofile = 1;
+	    tabfile = 0;
 	    break;
 
 	case 'x':	/* X and Y coordinates of reference pixel */
@@ -173,7 +185,7 @@ char **av;
     	    break;
 
 	case 'z':       /* Use AIPS classic WCS */
-	    setoldwcs (1);
+	    setdefwcs (1);
 	    break;
 
 	case '@':	/* List of files to be read */
@@ -231,6 +243,7 @@ char *progname;
     fprintf(stderr,"  -c: Use following RA and Dec as center \n");
     fprintf(stderr,"  -d: Use following DAOFIND output catalog instead of search \n");
     fprintf(stderr,"  -e: Number of pixels to ignore around image edge \n");
+    fprintf(stderr,"  -f: Write simple ASCII catalog file, not tab table \n");
     fprintf(stderr,"  -h: Print heading, else do not \n");
     fprintf(stderr,"  -i: Minimum peak value for star in image (<0=-sigma)\n");
     fprintf(stderr,"  -j: Output J2000 (FK5) coordinates \n");
@@ -241,8 +254,9 @@ char *progname;
     fprintf(stderr,"  -r: Maximum radius for star in pixels \n");
     fprintf(stderr,"  -s: Sort by RA instead of flux \n");
     fprintf(stderr,"  -t: Tab table format star list\n");
+    fprintf(stderr,"  -u: Set BITPIX to -16 for unsigned integer\n");
     fprintf(stderr,"  -v: Verbose; print star list to stdout\n");
-    fprintf(stderr,"  -w: DAOFIND format star list\n");
+    fprintf(stderr,"  -w: write DAOFIND format star list to output file\n");
     fprintf(stderr,"  -x: X and Y coordinates of reference pixel (if not in header or center)\n");
     fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     fprintf(stderr,"  @listfile: file containing a list of filenames to search\n");
@@ -275,7 +289,7 @@ char	*filename;	/* FITS or IRAF file filename */
     double cra,cdec,dra,ddec,secpix;
     int wp, hp;
     char rastr[16], decstr[16];
-    int i;
+    int i, bitpix;
     char headline[160];
     char pixname[128];
     char outfile[64];
@@ -320,6 +334,13 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	}
     if (verbose && printhead)
+
+    /* Set image to unsigned integer if 16-bit and flag set */
+    if (setuns) {
+	hgeti4 (header, "BITPIX", &bitpix);
+	if (bitpix == 16)
+	    hputi4 (header, "BITPIX", -16);
+	}
 
 /* Find the stars in an image and use the world coordinate system
  * information in the header to produce a plate catalog with right
@@ -371,13 +392,15 @@ char	*filename;	/* FITS or IRAF file filename */
 	    strcpy (outfile, strrchr (filename, '/')+1);
 	else
 	    strcpy (outfile,filename);
-	strcat (outfile,".stars");
 	}
     else {
 	strcpy (outfile,filename);
 	(void) hgets (header,"OBJECT",64,outfile);
-	strcat (outfile,".stars");
 	}
+    if (daofile || nowcs (wcs))
+	strcat (outfile,".dao");
+    else
+	strcat (outfile,".stars");
     if (verbose)
 	printf ("%s\n", outfile);
 		
@@ -388,12 +411,16 @@ char	*filename;	/* FITS or IRAF file filename */
         }
 
     /* Write header */
-    fprintf (fd,"%s\n", headline);
+    if (tabfile)
+	fprintf (fd,"%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
+    if (daofile)
+	fprintf (fd,"#%s\n", headline);
     if (iswcs (wcs)) {
 	if (rasort) {
-	    fprintf (fd, "RASORT	T\n");
+	    if (tabfile)
+		fprintf (fd, "RASORT	T\n");
 	    if (tabout)
 		printf ("RASORT	T\n");
 	    }
@@ -402,21 +429,32 @@ char	*filename;	/* FITS or IRAF file filename */
 	    sprintf (headline, "EQUINOX	1950.0");
 	else
 	    sprintf (headline, "EQUINOX	2000.0");
-	fprintf (fd, "%s\n", headline);
+	if (ascfile) {
+	    if (wcs->sysout == WCS_B1950)
+		fprintf (fd, "%s.cat\n", filename);
+	    else
+		fprintf (fd, "%s.cat/j\n", filename);
+	    }
+	else if (tabfile)
+	    fprintf (fd, "%s\n", headline);
+	else if (daofile)
+	    fprintf (fd, "#%s\n", headline);
 	if (tabout)
 	    printf ("%s\n", headline);
-	}
-
-    if (tabout) {
-	if (verbose)
+	if (ascfile)
+	else if (daofile)
+	else if (tabfile)
+	if (tabout)
 
 	sprintf (headline,"ID 	RA      	DEC     	MAG   	X    	Y    	COUNTS   	PEAK");
-	fprintf (fd, "%s\n", headline);
-	if (verbose)
+	if (tabfile)
+	    fprintf (fd, "%s\n", headline);
+	if (tabout)
 	    printf ("%s\n", headline);
 	sprintf (headline,"---	------------	------------	------	-----	-----	--------	------");
-	fprintf (fd, "%s\n", headline);
-	if (verbose)
+	if (tabfile)
+	    fprintf (fd, "%s\n", headline);
+	if (tabout)
 	    printf ("%s\n", headline);
 	}
 
@@ -429,27 +467,26 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	ra2str (rastr, ra, 3);
 	dec2str (decstr, dec, 2);
-	if (tabout) {
-	    sprintf (headline, "%d	%s	%s	%.2f	%.2f	%.2f	%.2f	%d",
+	sprintf (headline, "%d	%s	%s	%.2f	%.2f	%.2f	%.2f	%d",
 		     i+1, rastr,decstr, smag[i], sx[i], sy[i], sb[i], sp[i]);
+	if (tabout)
+	    printf ("%s\n", headline);
+	if (tabfile)
 	    fprintf (fd, "%s\n", headline);
-	    if (verbose)
-		printf ("%s\n", headline);
-	    }
-	else if (daoout) {
-	    sprintf (headline, "%7.2f %7.2f %6.2f %d %s %s",
-		    sx[i],sy[i],smag[i],sp[i],rastr,decstr);
+	if (daofile) {
+	    sprintf (headline, "%7.2f %7.2f %6.2f  %d",
+		    sx[i],sy[i],smag[i],sp[i]);
+	    if (iswcs (wcs))
+		sprintf (headline, "%s %s %s", headline, rastr, decstr);
 	    fprintf (fd, "%s\n", headline);
-	    if (verbose)
-		printf ("%s\n", headline);
 	    }
-	else {
-	    sprintf (headline, "%3d %s %s %6.2f %7.2f %7.2f %8.1f %d",
-		     i+1, rastr, decstr, smag[i],sx[i],sy[i],sb[i], sp[i]);
+	sprintf (headline, "%3d %s %s %.2f", i+1,rastr,decstr,smag[i]);
+	sprintf (headline, "%s  %.2f %.2f %.2f %d",
+	    headline, sx[i],sy[i],sb[i], sp[i]);
+	if (ascfile)
 	    fprintf (fd, "%s\n", headline);
-	    if (verbose)
-		printf ("%s\n", headline);
-	    }
+	if (verbose)
+	    printf ("%s\n", headline);
 	}
 
     fclose (fd);
@@ -500,4 +537,9 @@ char	*filename;	/* FITS or IRAF file filename */
  * Mar 27 1998	Version 2.2: Add polynomial plate fit
  * Apr 27 1998	Drop directory from output file name
  * Apr 28 1998	Change coordinate system flags to WCS_*
+ * May 28 1998	Include fitsio.h instead of fitshead.h
+ * Jun  2 1998  Fix bug in hput()
+ * Jun 15 1998	Default to tab table file; ASCII table verbosee
+ * Jun 15 1998	Write DAO-format file if -w flag set; ASCII table verbose
+ * Jun 17 1998	Add option to set 16-bit files to unsigned int BITPIX=-16
  */

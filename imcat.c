@@ -1,5 +1,5 @@
 /* File imcat.c
- * May 13, 1998
+ * July 9, 1998
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -13,8 +13,7 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "libwcs/fitshead.h"
-#include "libwcs/wcs.h"
+#include "wcs.h"
 #include "libwcs/lwcs.h"
 
 #define GSC	1	/* refcat value for HST Guide Star Catalog */
@@ -37,7 +36,6 @@ extern char *GetFITShead();
 extern void setsys();
 extern void setcenter();
 extern void setsecpix();
-extern void setoldwcs();	/* AIPS classic WCS flag */
 
 
 static int verbose = 0;		/* verbose/debugging flag */
@@ -54,7 +52,12 @@ static int printhead = 0;	/* 1 to print table heading */
 static int tabout = 0;		/* 1 for tab table to standard output */
 static int rasort = 0;		/* 1 to sort stars by brighness */
 static int debug = 0;		/* True for extra information */
+static int degout0 = 0;		/* True for RA and Dec in fractional degrees */
 static char *progname;		/* Name of program as executed */
+static int sysout = -1;		/* Output coordinate system */
+static int sysref = WCS_J2000;	/* Output coordinate system */
+static double eqout = 2000.0;	/* Equinox for output coordinates */
+static double eqref = 2000.0;	/* Equinox of catalog to be searched */
 static char progpath[128];
 
 main (ac, av)
@@ -69,7 +72,7 @@ char **av;
     char filename[128];
     FILE *flist;
     char *listfile;
-    int i;
+    int i, ic;
 
     /* Check name used to execute programe and set catalog name accordingly */
     strcpy (progpath, av[0]);
@@ -103,15 +106,20 @@ char **av;
 
     	case 'b':	/* initial coordinates on command line in B1950 */
 	    str1 = *(av+1);
-	    if (*(str+1) || (str1[0] > 47 && str[0] < 58)) {
+	    ic = (int)str1[0];
+	    if (*(str+1) || ic < 48 || ic > 58) {
 		setsys(WCS_B1950);
 		strcpy (coorsys, "FK4");
+		sysout = WCS_B1950;
+		eqout = 1950.0;
 		}
 	    else if (ac < 3)
 		usage ();
 	    else {
 		setsys(WCS_B1950);
 		strcpy (coorsys, "FK4");
+		sysout = WCS_B1950;
+		eqout = 1950.0;
 		strcpy (rastr, *++av);
 		ac--;
 		strcpy (decstr, *++av);
@@ -142,7 +150,17 @@ char **av;
 	    break;
 
 	case 'd':
-	    debug++;
+	    degout0++;
+	    break;
+
+	case 'e':
+	    sysout = WCS_ECLIPTIC;
+	    strcpy (coorsys, "ecliptic");
+	    break;
+
+	case 'g':
+	    sysout = WCS_GALACTIC;
+	    strcpy (coorsys, "galactic");
 	    break;
 
 	case 'h':	/* ouput descriptive header */
@@ -151,14 +169,19 @@ char **av;
 
     	case 'j':	/* center coordinates on command line in J2000 */
 	    str1 = *(av+1);
-	    if (*(str+1) || (str1[0] > 47 && str[0] < 58)) {
+	    ic = (int)str1[0];
+	    if (*(str+1) || ic < 48 || ic > 58) {
 		strcpy (coorsys, "FK5");
 		setsys(WCS_J2000);
+		sysout = WCS_J2000;
+		eqout = 2000.0;
 		}
 	    else if (ac < 3)
 		usage ();
 	    else {
 		setsys(WCS_J2000);
+		sysout = WCS_J2000;
+		eqout = 2000.0;
 		strcpy (coorsys, "FK5");
 		strcpy (rastr, *++av);
 		ac--;
@@ -166,13 +189,6 @@ char **av;
 		ac--;
 		setcenter (rastr, decstr);
 		}
-    	    break;
-
-	case 'g':	/* Guide Star object class */
-    	    if (ac < 2)
-    		usage();
-    	    classd = (int) atof (*++av);
-    	    ac--;
     	    break;
 
     	case 'm':	/* Limiting reference star magnitude */
@@ -226,8 +242,15 @@ char **av;
     	    wfile++;
     	    break;
 
+	case 'x':	/* Guide Star object class */
+    	    if (ac < 2)
+    		usage();
+    	    classd = (int) atof (*++av);
+    	    ac--;
+    	    break;
+
 	case 'z':       /* Use AIPS classic WCS */
-	    setoldwcs (1);
+	    setdefwcs (1);
 	    break;
 
 	case '@':       /* List of files to be read */
@@ -304,20 +327,23 @@ usage ()
 	fprintf (stderr,"Usage: [-vwhst] [-m [mag1] mag2] [-c catalog]\n");
 	}
     fprintf (stderr,"       [-p scale] [-b ra dec] [-j ra dec] FITS or IRAF file(s)\n");
-    fprintf (stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
-    fprintf (stderr,"  -c: reference catalog (gsc, ujc, or tab table file\n");
-    fprintf (stderr,"  -g: Guide Star Catalog class (-1=all,0,3 (default -1)\n");
-    fprintf (stderr,"  -h: print heading, else do not \n");
-    fprintf (stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
-    fprintf (stderr,"  -m: limiting catalog magnitude(s) (default none)\n");
-    fprintf (stderr,"  -n: number of brightest stars to print \n");
-    fprintf (stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
-    fprintf (stderr,"  -s: sort by RA instead of flux \n");
-    fprintf (stderr,"  -t: tab table to standard output as well as file\n");
+    fprintf (stderr,"  -b: Output, (center) in B1950 (FK4) RA and Dec\n");
+    fprintf (stderr,"  -c: Reference catalog (gsc, ujc, or tab table file\n");
+    fprintf (stderr,"  -d: Output RA,Dec positions in fractional degrees\n");
+    fprintf (stderr,"  -e: Output in ecliptic longitude and latitude\n");
+    fprintf (stderr,"  -g: Output in galactic longitude and latitude\n");
+    fprintf (stderr,"  -h: Print heading, else do not \n");
+    fprintf (stderr,"  -j: Output (center) in J2000 (FK5) RA and Dec\n");
+    fprintf (stderr,"  -m: Limiting catalog magnitude(s) (default none)\n");
+    fprintf (stderr,"  -n: Number of brightest stars to print \n");
+    fprintf (stderr,"  -p: Initial plate scale in arcsec per pixel (default 0)\n");
+    fprintf (stderr,"  -s: Sort by RA instead of flux \n");
+    fprintf (stderr,"  -t: Tab table to standard output as well as file\n");
     fprintf (stderr,"  -u: USNO catalog single plate number to accept\n");
     fprintf (stderr,"  -w: Write tab table output file imagename.cat\n");
-    fprintf (stderr,"  -v: verbose\n");
-    fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
+    fprintf (stderr,"  -v: Verbose\n");
+    fprintf (stderr,"  -x: Guide Star Catalog class (-1=all,0,3 (default -1)\n");
+    fprintf (stderr,"  -z: Use AIPS classic projections instead of WCSLIB\n");
     exit (1);
 }
 
@@ -343,11 +369,12 @@ char	*filename;	/* FITS or IRAF file filename */
     int nbg;		/* Number of brightest catalog stars actually used */
     int imh, imw;	/* Image height and width in pixels */
     int i, ngmax, nbytes;
+    int degout;
     FILE *fd;
     struct WorldCoor *wcs;	/* World coordinate system structure */
     char rastr[16], decstr[16];	/* coordinate strings */
     double cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, mag1, mag2,secpix;
-    double mag;
+    double mag, gdist;
     int offscale, nlog;
     char headline[160];
     char title[80];
@@ -374,10 +401,15 @@ char	*filename;	/* FITS or IRAF file filename */
     if ((header = GetFITShead (filename)) == NULL)
 	return;
     wcs = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-		      &imw, &imh, 2000.0);
+		      &imw, &imh, eqref);
     free (header);
     if (nowcs (wcs))
 	return;
+
+    if (sysout < 0) {
+        sysout = wcs->syswcs;
+        eqout = wcs->equinox;
+        }
 
     /* Set up limits for search */
     ra1 = cra - dra;
@@ -386,11 +418,11 @@ char	*filename;	/* FITS or IRAF file filename */
     dec2 = cdec + ddec;
     if (verbose || printhead) {
 	char rastr1[16],rastr2[16],decstr1[16],decstr2[16];
-	ra2str (rastr1,ra1,3);
-	ra2str (rastr2,ra2,3);
+	ra2str (rastr1, 16, ra1, 3);
+	ra2str (rastr2, 16, ra2, 3);
 	printf ("%s: RA:  %s - %s (J2000)\n",filename,rastr1,rastr2);
-	dec2str (decstr1,dec1,2);
-	dec2str (decstr2,dec2,2);
+	dec2str (decstr1, 16, dec1, 2);
+	dec2str (decstr2, 16, dec2, 2);
 	printf ("%s: Dec: %s - %s (J2000)\n",filename, decstr1,decstr2);
 	}
 
@@ -481,11 +513,10 @@ char	*filename;	/* FITS or IRAF file filename */
 	return;
 	}
 
+    /* Get image pixel coordinates for each star found in reference catalog */
     for (i = 0; i < ng; i++ ) {
 	offscale = 0;
-	if (wcs->sysout== WCS_B1950)
-	    fk524e (&gra[i],&gdec[i], wcs->epoch);
-	wcs2pix (wcs, gra[i], gdec[i], &gx[i], &gy[i], &offscale);
+	wcsc2pix (wcs, gra[i], gdec[i], "J2000", &gx[i], &gy[i], &offscale);
 	}
 
     /* Sort reference stars by brightness (magnitude) */
@@ -562,6 +593,12 @@ char	*filename;	/* FITS or IRAF file filename */
     if (tabout)
 	printf ("%s\n", headline);
 
+    /* Set degree flag for output */
+    if (sysout == WCS_ECLIPTIC || sysout == WCS_GALACTIC)
+	degout = 1;
+    else
+	degout = degout0;
+
     if (refcat == GSC) 
 	sprintf (headline, "CATALOG     HSTGSC1.1");
     else if (refcat == UAC)
@@ -604,73 +641,153 @@ char	*filename;	/* FITS or IRAF file filename */
     if (tabout)
 
     if (refcat == GSC)
-	sprintf (headline,"GSC_NUMBER	RA      	DEC      	MAG   	X    	Y    	Type");
+	strcpy (headline,"gsc_id    	");
     else if (refcat == UAC)
-	sprintf (headline,"UAC_NUMBER	RA      	DEC      	MAGB	MAGR	X    	Y    	Plate");
+	strcpy (headline,"uac_id    	");
     else if (refcat == USAC)
-	sprintf (headline,"USAC_NUMBER	RA      	DEC      	MAGB	MAGR	X    	Y    	Plate");
+	strcpy (headline,"usac_id    	");
     else if (refcat == UJC)
-	sprintf (headline,"UJC_NUMBER	RA      	DEC      	MAG   	X    	Y    	Plate");
+	strcpy (headline,"ujc_id    	");
     else
-	sprintf (headline,"NUMBER	RA      	DEC      	MAG   	X    	Y    	Peak");
+	strcpy (headline,"id    	");
+    if (sysout == WCS_B1950)
+	strcat (headline,"ra1950   	dec1950      	");
+    else if (sysout == WCS_ECLIPTIC)
+	strcat (headline,"long_ecl 	lat_ecl       	");
+    else if (sysout == WCS_GALACTIC)
+	strcat (headline,"long_gal  	lat_gal       	");
+    else
+	strcat (headline,"ra      	dec           	");
+    if (refcat == UAC || refcat == USAC)
+	strcat (headline,"magb  	magr  	x    	y    	");
+    else
+	strcat (headline,"mag   	x    	y    	");
+    if (refcat == GSC)
+	strcat (headline,"type	");
+    else if (refcat == UAC || refcat == USAC || refcat == UJC)
+	strcat (headline,"plate	");
+    else
+	strcat (headline,"peak	");
+    strcat (headline,"dist");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
 
     if (refcat == UAC)
-	sprintf(headline,"----------	--------	---------	----	-----	-----	-----	-----");
+	sprintf(headline,"----------	--------	---------	----	-----	-----	-----	-----	----");
     else
-        sprintf (headline,"----------	------------	------------	------	----	_______");
+        sprintf (headline,"----------	------------	------------	------	----	-------	----");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
     if (printhead) {
-	if (refcat == GSC)
-	    printf ("GSC number RA           Dec           Mag    X      Y   Type\n");
-	else if (refcat == UAC)
-	    printf ("USNO A number  RA           Dec          MagB  MagR   X      Y   Plate\n"); 
-	else if (refcat == USAC)
-	    printf ("USNO SA number  RA           Dec          MagB  MagR   X      Y   Plate\n"); 
-	else if (refcat == UJC)
-	    printf (" UJ number    RA           Dec           Mag    X      Y   Plate\n");
-	else
-	    printf (" Number    RA           Dec           Mag    X      Y   Peak\n");
+	if (nbg == 0) {
+	    if (refcat == GSC)
+		printf ("No Guide Stars Found\n");
+	    else if (refcat == USAC)
+		printf ("No USNO A 1.0 Stars Found\n");
+	    else if (refcat == USAC)
+		printf ("No USNO SA 1.0 Stars Found\n");
+	    else if (refcat == UJC)
+		printf ("No UJ 1.0 Stars Found\n");
+	    else
+		printf ("No Stars Found\n");
+	    }
+	else {
+	    if (refcat == GSC)
+		printf ("GSC number ");
+	    else if (refcat == USAC)
+		printf ("USNO SA number ");
+	    else if (refcat == UAC)
+		printf ("USNO A number  ");
+	    else if (refcat == UJC)
+		printf (" UJ number    ");
+	    else
+		printf (" Number    ");
+	    if (sysout == WCS_B1950) {
+		if (degout) {
+		    if (eqout == 1950.0)
+			printf ("  RA1950   Dec1950  ");
+		    else
+			printf ("RAB%7.2f DecB%7.2f  ", eqout, eqout);
+		    }
+		else {
+		    if (eqout == 1950.0)
+			printf ("RAB1950      DecB1950     ");
+		    else
+			printf ("RAB%7.2f   DecB%7.2f  ", eqout, eqout);
+		    }
+		}
+	    else if (sysout == WCS_ECLIPTIC)
+		printf ("Ecl Lon    Ecl Lat  ");
+	    else if (sysout == WCS_GALACTIC)
+		printf ("Gal Lon    Gal Lat  ");
+	    else {
+		if (degout) {
+		    if (eqout == 2000.0)
+			printf ("  RA2000   Dec2000  ");
+		    else
+			printf ("RAJ%7.2f  DecJ%7.2f ", eqout, eqout);
+		    }
+		else {
+		    if (eqout == 2000.0)
+			printf (" RA2000       Dec2000     ");
+		    else
+			printf ("RAJ%7.2f   DecJ%7.2f  ", eqout, eqout);
+		    }
+		}
+	    if (refcat == UAC || refcat == USAC)
+		printf ("MagB  MagR    X      Y   Plate Arcsec\n");
+	    else if (refcat == GSC)
+		printf (" Mag     X      Y   Class Arcsec\n");
+	    else
+		printf (" Mag     X      Y   Plate Arcsec\n");
+	    }
 	}
 
+    /* Print positions from reference catalog */
     for (i = 0; i < nbg; i++) {
 	if (gx[i] > 0.0 && gy[i] > 0.0) {
-	    ra2str (rastr, gra[i], 3);
-	    dec2str (decstr, gdec[i], 2);
+	    gdist = 3600.0 * wcsdist (cra, cdec, gra[i], gdec[i]);
+	    wcscon (sysref, sysout, eqref, eqout, &gra[i],&gdec[i], wcs->epoch);
+	    if (degout) {
+		deg2str (rastr, 32, gra[i], 5);
+		deg2str (decstr, 32, gdec[i], 5);
+		}
+	    else {
+		ra2str (rastr, 32, gra[i], 3);
+		dec2str (decstr, 32, gdec[i], 2);
+		}
 	    if (refcat == GSC)
-		sprintf (headline, "%9.4f	%s	%s	%.2f	%.1f	%.1f	%d",
-		 gnum[i], rastr, decstr, gm[i], gx[i], gy[i], gc[i]);
+		sprintf (headline, "%9.4f	%s	%s	%.2f	%.1f	%.1f	%d	%.2f",
+		 gnum[i], rastr, decstr, gm[i], gx[i], gy[i], gc[i], gdist);
 	    else if (refcat == UAC || refcat == USAC)
-		sprintf (headline, "%13.8f	%s	%s	%.1f	%.1f	%.1f	%.1f	%d",
-		 gnum[i], rastr, decstr, gmb[i], gm[i], gx[i], gy[i], gc[i]);
+		sprintf (headline, "%13.8f	%s	%s	%.1f	%.1f	%.1f	%.1f	%d	%.2f",
+		 gnum[i],rastr,decstr,gmb[i],gm[i],gx[i],gy[i],gc[i],gdist);
 	    else if (refcat == UJC)
-		sprintf (headline, "%12.7f	%s	%s	%.2f	%.1f	%.1f	%d",
-		 gnum[i], rastr, decstr, gm[i], gx[i], gy[i], gc[i]);
+		sprintf (headline, "%12.7f	%s	%s	%.2f	%.1f	%.1f	%d	%.2f",
+		 gnum[i], rastr, decstr, gm[i], gx[i], gy[i], gc[i], gdist);
 	    else
-		sprintf (headline, "%9.4f	%s	%s	%.2f	%.1f	%.1f	%d",
-		 gnum[i], rastr, decstr, gm[i], gx[i], gy[i], gc[i]);
+		sprintf (headline, "%9.4f	%s	%s	%.2f	%.1f	%.1f	%d	%.2f",
+		 gnum[i], rastr, decstr, gm[i], gx[i], gy[i], gc[i], gdist);
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
 	    else if (tabout)
 		printf ("%s\n", headline);
 	    else if (refcat == UAC || refcat == USAC)
-		printf ("%13.8f %s %s %5.1f %5.1f %6.1f %6.1f %4d\n",
-			gnum[i],rastr,decstr,gmb[i],gm[i],gx[i],gy[i],gc[i]);
+		printf ("%13.8f %s %s %5.1f %5.1f %6.1f %6.1f %4d %7.2f\n",
+			gnum[i],rastr,decstr,gmb[i],gm[i],gx[i],gy[i],gc[i],gdist);
 	    else if (refcat == UJC)
-		printf ("%12.7f %s %s %6.2f %6.1f %6.1f %4d\n",
-			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i]);
+		printf ("%12.7f %s %s %6.2f %6.1f %6.1f %4d %7.2f\n",
+			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i],gdist);
 	    else if (refcat == GSC)
-		printf ("%9.4f %s %s %6.2f %6.1f %6.1f  %3d\n",
-			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i]);
+		printf ("%9.4f %s %s %6.2f %6.1f %6.1f  %3d %7.2f\n",
+			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i],gdist);
 	    else
-		printf ("%9.4f %s %s %6.2f %6.1f %6.1f  %d\n",
-			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i]);
+		printf ("%9.4f %s %s %6.2f %6.1f %6.1f  %d %7.2f\n",
+			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i],gdist);
 	    }
 	}
 
@@ -723,4 +840,10 @@ char	*filename;	/* FITS or IRAF file filename */
  * Apr 24 1998	change coordinate setting to setsys() from setfk4()
  * Apr 28 1998	Change coordinate system flags to WCS_*
  * May 13 1998	If nstars is set use it as a limit no matter how small
+ * May 27 1998	Do not include fitshead.h
+ * Jun  2 1998	Fix bug in tabread()
+ * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
+ * Jun 25 1998	Set WCS subroutine choice with SETDEFWCS()
+ * Jul  8 1998	Add other coordinate types
+ * Jul  9 1998	Adjust report headings
  */

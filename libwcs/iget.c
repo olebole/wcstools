@@ -1,5 +1,5 @@
 /*** File libwcs/iget.c
- *** April 24, 1998
+ *** June 1, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	iget.c (Get IRAF FITS Header parameter values)
@@ -27,7 +27,12 @@
 #include <stdio.h>
 #include "fitshead.h"	/* FITS header extraction subroutines */
 #include <stdlib.h>
+#ifndef VMS
 #include <values.h>
+#else
+#define MAXINT  2147483647 /* Biggest number that can fit in long */
+#define MAXSHORT 32767
+#endif
 
 static char *igetc();
 static char *isearch();
@@ -492,4 +497,5 @@ char *keyword;	/* character string containing the name of the variable
 /* Mar 12 1998	New subroutines
  * Apr 15 1998	Set IGET() and ISEARCH() static when defined
  * Apr 24 1998	Add MGETI4(), MGETR8(), and MGETS() for single step IRAF ext.
+ * Jun  1 1998	Add VMS patch from Harry Payne at STScI
  */

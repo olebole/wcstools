@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** December 15, 1997
+ *** May 27, 1998
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -8,6 +8,7 @@
 #include <math.h>
 #include <string.h>
 #include "fitshead.h"
+#include "imio.h"
 #include "lwcs.h"
 
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
@@ -644,4 +645,6 @@ double	background;
  * Mar 20 1997	Declare external subroutine DAOREAD
  * Nov  6 1997	Add subroutine to return image catalog filename
  * Dec 15 1997	Change calls to ABS to FABS when doubles are involved
+ *
+ * May 27 1998	Include imio.h
  */

@@ -1,5 +1,5 @@
 /* File scat.c
- * April 28, 1998
+ * July 9, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
-#include "libwcs/wcs.h"
+#include "fitshead.h"
+#include "wcs.h"
 #include "libwcs/lwcs.h"
 
 #define GSC	1	/* refcat value for HST Guide Star Catalog */
@@ -51,6 +51,9 @@ static int uplate = 0;		/* UJ Catalog plate number to use */
 static double maglim1 = MAGLIM1; /* Catalog bright magnitude limit */
 static double maglim2 = MAGLIM2; /* Catalog faint magnitude limit */
 static int sysout = -1;		/* Output coordinate system */
+static double eqref = 2000.0;	/* Equinox of catalog to be searched */
+static double eqcoor = 2000.0;	/* Equinox of search center */
+static double eqout = 2000.0;	/* Equinox for output coordinates */
 static int degout0 = 0;		/* 1 if degrees output instead of hms */
 static double ra0 = -99.0;	/* Initial center RA in degrees */
 static double dec0 = -99.0;	/* Initial center Dec in degrees */
@@ -79,7 +82,7 @@ char **av;
     char rastr[16];
     char decstr[16];
     int nfind = 0;
-    int i;
+    int i, nc;
     double *snum;
     snum = NULL;
 
@@ -123,6 +126,7 @@ char **av;
 		dec0 = str2dec (decstr);
 		ac--;
 		syscoor = wcscsys (*++av);
+		eqcoor = wcsceq (*av);
 		}
 	    }
 
@@ -154,18 +158,31 @@ char **av;
 
     	    case 'b':	/* initial coordinates on command line in B1950 */
 		str1 = *(av+1);
-		if (syscoor >= 0 || *(str+1) || (str1[0] < 47 && str1[0] > 58))
+		nc = (int)str1[0];
+		if (syscoor >= 0 || *(str+1) || nc < 47 || nc > 58) {
 		    sysout = WCS_B1950;
+		    eqout = 1950.0;
+		    }
 		else if (ac < 3)
 		    usage ();
 		else {
 		    syscoor = WCS_B1950;
+		    eqcoor = 1950.0;
+		    sysout = WCS_B1950;
+		    eqout = 1950.0;
 		    strcpy (rastr, *++av);
 		    ac--;
 		    strcpy (decstr, *++av);
 		    ac--;
 		    ra0 = str2ra (rastr);
 		    dec0 = str2dec (decstr);
+		    if (ac > 1) {
+			if ((syscoor = wcscsys (*(av+1))) > -1) {
+			    ac--;
+			    av++;
+			    eqcoor = wcsceq (*av);
+			    }
+			}
 		    }
     		break;
 
@@ -196,7 +213,8 @@ char **av;
 
 	    case 'e':	/* Set ecliptic coordinate output and optional center */
 		str1 = *(av+1);
-		if (syscoor >= 0 || *(str+1) || (str1[0] < 47 && str1[0] > 58))
+		nc = (int)str1[0];
+		if (syscoor >= 0 || *(str+1) || nc < 47 || nc > 58)
 		    sysout = WCS_ECLIPTIC;
 		else if (ac < 3)
 		    usage ();
@@ -208,22 +226,38 @@ char **av;
 		    ac--;
 		    ra0 = atof (rastr);
 		    dec0 = atof (decstr);
+		    if (ac > 1) {
+			if ((syscoor = wcscsys (*(av+1))) > -1) {
+			    ac--;
+			    av++;
+			    }
+			else
+			    syscoor = WCS_ECLIPTIC;
+			}
 		    }
 		break;
 
 	    case 'g':	/* Set galactic coordinate output and optional center */
-		if (ac < 2 || *(str+1) != 0)
+		if (ac < 2 || *(str+1) != 0 || nc < 47 || nc > 58)
 		    sysout = WCS_GALACTIC;
 		else if (ac < 3)
 		    usage ();
 		else {
-		    syscoor = WCS_ECLIPTIC;
+		    syscoor = WCS_GALACTIC;
 		    strcpy (rastr, *++av);
 		    ac--;
 		    strcpy (decstr, *++av);
 		    ac--;
 		    ra0 = atof (rastr);
 		    dec0 = atof (decstr);
+		    if (ac > 1) {
+			if ((syscoor = wcscsys (*(av+1))) > -1) {
+			    ac--;
+			    av++;
+			    }
+			else
+			    syscoor = WCS_GALACTIC;
+			}
 		    }
 		break;
 
@@ -233,18 +267,31 @@ char **av;
 
     	    case 'j':	/* center coordinates on command line in J2000 */
 		str1 = *(av+1);
-		if (syscoor >= 0 || *(str+1) || (str1[0] < 47 && str1[0] > 58))
+		nc = (int)str1[0];
+		if (syscoor >= 0 || *(str+1) || nc < 47 || nc > 58) {
 		    sysout = WCS_J2000;
+		    eqout = 2000.0;
+		    }
 		else if (ac < 3)
 		    usage ();
 		else {
+		    sysout = WCS_J2000;
+		    eqout = 2000.0;
 		    syscoor = WCS_J2000;
+		    eqcoor = 2000.0;
 		    strcpy (rastr, *++av);
 		    ac--;
 		    strcpy (decstr, *++av);
 		    ac--;
 		    ra0 = str2ra (rastr);
 		    dec0 = str2dec (decstr);
+		    if (ac > 1) {
+			if ((syscoor = wcscsys (*(av+1))) > -1) {
+			    ac--;
+			    av++;
+			    eqcoor = wcsceq (*av);
+			    }
+			}
 		    }
     		break;
 
@@ -286,6 +333,13 @@ char **av;
 	    case 'p':	/* Sort by distance from center */
 		distsort++;
 		break;
+
+    	    case 'q':	/* Output equinox in years */
+    		if (ac < 2)
+    		    usage();
+    		eqout = atof (*++av);
+    		ac--;
+    		break;
 
     	    case 'r':	/* Box radius in arcseconds */
     		if (ac < 2)
@@ -383,6 +437,7 @@ usage ()
     fprintf(stderr,"  -n: Number of brightest stars to print \n");
     fprintf(stderr,"  -o: Object name \n");
     fprintf(stderr,"  -p: Sort by distance from center instead of flux\n");
+    fprintf(stderr,"  -q: Equinox of output positions in years\n");
     fprintf(stderr,"  -r: Search half-width (<0=-radius) in arcsec (def 10)\n");
     fprintf(stderr,"  -s: Sort by RA instead of flux \n");
     fprintf(stderr,"  -t: Tab table to standard output as well as file\n");
@@ -418,9 +473,9 @@ double *snum;		/* Catalog numbers */
     int i, ngmax, nbytes;
     int degout;
     FILE *fd;
-    char rastr[16], decstr[16];	/* coordinate strings */
+    char rastr[32], decstr[32];	/* coordinate strings */
     double drad, dra, ddec, ra1, dec1, mag1, mag2;
-    double epref, eqref;
+    double epref;
     double mag;
     int offscale, nlog;
     char headline[160];
@@ -435,11 +490,12 @@ double *snum;		/* Catalog numbers */
 	else
 	}
     tabline = 0;
-    if (sysout < 0)
+    if (sysout < 0) {
 	sysout = syscoor;
+	eqout = eqcoor;
+	}
     sysref = WCS_J2000;
     epref = 2000.0;
-    eqref = 2000.0;
     if (debug)
 	nlog = 1;
     else if (verbose)
@@ -510,7 +566,7 @@ double *snum;		/* Catalog numbers */
 	else
 	    nbg = tabrnum (refcatname,nfind,gnum,gra,gdec,gm,gc,debug);
 	for (i = 0; i < nbg; i++ ) {
-	    wcscon (sysref, sysout, &gra[i],&gdec[i]);
+	    wcscon (sysref, sysout, eqref, eqout, &gra[i],&gdec[i], 2000.0);
 	    gx[i] = 0.0;
 	    gy[i] = 1.0;
 	    }
@@ -526,11 +582,11 @@ double *snum;		/* Catalog numbers */
 
 	/* Print search center and size in input and output coordinates */
 	if (verbose || printhead) {
-	    SearchHead (sysref, syscoor, cra, cdec, dra, ddec, drad, epoch);
+	    SearchHead (sysref,syscoor,eqref,eqcoor,cra,cdec,dra,ddec,drad);
 	    if (sysref != syscoor)
-		SearchHead (sysref, sysref, cra, cdec, dra, ddec, drad, epoch);
+		SearchHead (sysref,sysref,eqref,eqref,cra,cdec,dra,ddec,drad);
 	    if (sysout != syscoor && sysout != sysref)
-		SearchHead (sysref, sysout, cra, cdec, dra, ddec, drad, epoch);
+		SearchHead (sysref,sysout,eqref,eqout,cra,cdec,dra,ddec,drad);
 	    }
 
 	/* Set the magnitude limits for the catalog search */
@@ -608,10 +664,7 @@ double *snum;		/* Catalog numbers */
 	/* Compute distance from star to search center */
 	for (i = 0; i < ng; i++ ) {
 	    offscale = 0;
-	    ra1 = gra[i];
-	    dec1 = gdec[i];
-	    wcscon (sysref, syscoor, &ra1, &dec1, 2000.0);
-	    gx[i] = wcsdist (cra, cdec, ra1, dec1);
+	    gx[i] = wcsdist (cra, cdec, gra[i], gdec[i]);
 	    gy[i] = 1.0;
 	    }
 
@@ -677,21 +730,30 @@ double *snum;		/* Catalog numbers */
 	    else
 		strcat (filename,".");
 	    strcat (filename,refcatname);
-	    }
-	fd = fopen (filename, "w");
-	if (fd == NULL) {
-	    fprintf (stderr, "SCAT:  cannot write file %s\n", filename);
-	    if (gx) free ((char *)gx);
-	    if (gy) free ((char *)gy);
-	    if (gm) free ((char *)gm);
-	    if (gmb) free ((char *)gmb);
-	    if (gra) free ((char *)gra);
-	    if (gdec) free ((char *)gdec);
-	    if (gnum) free ((char *)gnum);
-	    if (gc) free ((char *)gc);
-            return (0);
+
+	    fd = fopen (filename, "w");
+
+	    /* Free result arrays and return if cannot write file */
+	    if (fd == NULL) {
+		fprintf (stderr, "SCAT:  cannot write file %s\n", filename);
+		if (gx) free ((char *)gx);
+		if (gy) free ((char *)gy);
+		if (gm) free ((char *)gm);
+		if (gmb) free ((char *)gmb);
+		if (gra) free ((char *)gra);
+		if (gdec) free ((char *)gdec);
+		if (gnum) free ((char *)gnum);
+		if (gc) free ((char *)gc);
+        	return (0);
+		}
 	    }
         }
+
+    /* Set degree flag for output */
+    if (sysout == WCS_ECLIPTIC || sysout == WCS_GALACTIC)
+	degout = 1;
+    else
+	degout = degout0;
 
     /* Write heading */
     if (refcat == GSC)
@@ -710,7 +772,7 @@ double *snum;		/* Catalog numbers */
 	printf ("%s\n", headline);
 
     if (cra >= 0.0) {
-	ra2str (rastr, cra, 3);
+	ra2str (rastr, 32, cra, 3);
 	if (wfile)
 	    fprintf (fd, "RA	%s\n", rastr);
 	if (tabout)
@@ -718,7 +780,7 @@ double *snum;		/* Catalog numbers */
 	}
 
     if (cdec >= -90.0) {
-	dec2str (decstr, cdec, 2);
+	dec2str (decstr, 32, cdec, 2);
 	if (wfile)
 	    fprintf (fd, "DEC	%s\n", decstr);
 	if (tabout)
@@ -726,7 +788,7 @@ double *snum;		/* Catalog numbers */
 	}
 
     if (ddec > 0.0) {
-	dec2str (decstr, ddec, 2);
+	dec2str (decstr, 32, ddec, 2);
 	if (wfile)
 	    fprintf (fd, "RADIUS	%s\n", decstr);
 	if (tabout)
@@ -775,10 +837,18 @@ double *snum;		/* Catalog numbers */
 	strcpy (headline,"usnoj_id  	");
     else
 	strcpy (headline,"id    	");
-    if (refcat == USAC || refcat == UAC)
-	strcat (headline,"ra      	dec      	magb	magr	plate  	arcsec");
+    if (sysout == WCS_GALACTIC)
+	strcat (headline,"long.ecl   	lat.ecl  	");
+    else if (sysout == WCS_ECLIPTIC)
+	strcat (headline,"long.ecl   	lat.ecl  	");
+    else if (sysout == WCS_B1950)
+	strcat (headline,"ra1950      	dec1950  	");
     else
-	strcat (headline,"ra      	dec      	mag	plate	arcsec");
+	strcat (headline,"ra      	dec      	");
+    if (refcat == USAC || refcat == UAC)
+	strcat (headline,"magb	magr	plate  	arcsec");
+    else
+	strcat (headline,"mag	plate	arcsec");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
@@ -816,16 +886,42 @@ double *snum;		/* Catalog numbers */
 		printf (" UJ number    ");
 	    else
 		printf (" Number    ");
-	    if (sysout == WCS_B1950)
-		printf ("RA1950       Dec1950      ");
+	    if (sysout == WCS_B1950) {
+		if (degout) {
+		    if (eqout == 1950.0)
+			printf ("  RA1950   Dec1950  ");
+		    else
+			printf ("RAB%7.2f DecB%7.2f  ", eqout, eqout);
+		    }
+		else {
+		    if (eqout == 1950.0)
+			printf ("RAB1950      DecB1950     ");
+		    else
+			printf ("RAB%7.2f   DecB%7.2f  ", eqout, eqout);
+		    }
+		}
 	    else if (sysout == WCS_ECLIPTIC)
 		printf ("Ecl Lon    Ecl Lat  ");
 	    else if (sysout == WCS_GALACTIC)
 		printf ("Gal Lon    Gal Lat  ");
-	    else
-		printf ("RA2000       Dec2000      ");
+	    else {
+		if (degout) {
+		    if (eqout == 2000.0)
+			printf ("  RA2000   Dec2000  ");
+		    else
+			printf ("RAJ%7.2f  DecJ%7.2f ", eqout, eqout);
+		    }
+		else {
+		    if (eqout == 2000.0)
+			printf (" RA2000       Dec2000     ");
+		    else
+			printf ("RAJ%7.2f   DecJ%7.2f  ", eqout, eqout);
+		    }
+		}
 	    if (refcat == UAC || refcat == USAC)
 		printf ("MagB  MagR Plate  Arcsec\n");
+	    else if (refcat == GSC)
+		printf (" Mag  Type  Arcsec\n");
 	    else
 		printf (" Mag  Plate Arcsec\n");
 	    }
@@ -834,24 +930,20 @@ double *snum;		/* Catalog numbers */
     if (keyword != NULL)
 	ntab = tabopen (refcat);
 
-    if (sysout == WCS_ECLIPTIC || sysout == WCS_GALACTIC)
-	degout = 1;
-    else
-	degout = degout0;
     for (i = 0; i < nbg; i++) {
 	if (gx[i] > 0.0 && gy[i] > 0.0) {
-	    wcscon (sysref, sysout, &gra[i],&gdec[i], epoch);
+	    wcscon (sysref, sysout, eqref, eqout, &gra[i],&gdec[i], epref);
 	    if (degout) {
-		deg2str (rastr, gra[i], 5);
-		deg2str (decstr, gdec[i], 5);
+		deg2str (rastr, 32, gra[i], 5);
+		deg2str (decstr, 32, gdec[i], 5);
 		}
 	    else {
-		ra2str (rastr, gra[i], 3);
-		dec2str (decstr, gdec[i], 2);
+		ra2str (rastr, 32, gra[i], 3);
+		dec2str (decstr, 32, gdec[i], 2);
 		}
 	    if (refcat == UAC || refcat == USAC)
-		sprintf (headline, "%13.8f	%s	%s	%.1f	%.1f	%.1f	%.1f	%d",
-		 gnum[i], rastr, decstr, gmb[i], gm[i], gx[i], gy[i], gc[i]);
+		sprintf (headline, "%13.8f	%s	%s	%.1f	%.1f	%d	%.2f",
+		 gnum[i], rastr, decstr, gmb[i], gm[i], gc[i], 3600.0*gx[i]);
 	    else if (refcat == UJC)
 	        sprintf (headline, "%12.7f	%s	%s	%.2f	%d	%.2f",
 		 gnum[i], rastr, decstr, gm[i], gc[i], 3600.0*gx[i]);
@@ -916,7 +1008,7 @@ double *snum;		/* Catalog numbers */
  * Return 0 if OK, else -1
  */
 
-int
+static int
 GetArea (verbose, syscoor, sysref, epoch, cra, cdec, dra, ddec, drad)
 
 int	verbose;	/* Extra printing if =1 */
@@ -929,19 +1021,18 @@ double	*dra;		/* Right ascension half-width in degrees (returned) */
 double	*ddec;		/* Declination half-width in degrees (returned) */
 double	*drad;		/* Radius to search in degrees (0=box) (returned) */
 {
-    int eqcoor;
     char rstr[32], dstr[32];
 
     *cra = ra0;
     *cdec = dec0;
     if (verbose) {
 	if (syscoor == WCS_ECLIPTIC || syscoor == WCS_GALACTIC || degout0) {
-	    deg2str (rstr, *cra, 5);
-            deg2str (dstr, *cdec, 5);
+	    deg2str (rstr, 32, *cra, 5);
+            deg2str (dstr, 32, *cdec, 5);
 	    }
 	else {
-	    ra2str (rstr, *cra, 3);
-            dec2str (dstr, *cdec, 2);
+	    ra2str (rstr, 32, *cra, 3);
+            dec2str (dstr, 32, *cdec, 2);
 	    }
 	if (syscoor == WCS_B1950)
 	    fprintf (stderr,"Center:  %s   %s (B1950)\n", rstr, dstr);
@@ -954,7 +1045,7 @@ double	*drad;		/* Radius to search in degrees (0=box) (returned) */
 	}
 
     /* Convert coordinate system to match reference catalog system */
-    wcscon (syscoor, sysref, cra, cdec, epoch);
+    wcscon (syscoor, sysref, eqcoor, eqref, cra, cdec, epoch);
 
     /* Set search box radius from command line, if it is there */
     if (rad0 > 0.0) {
@@ -982,12 +1073,12 @@ double	*drad;		/* Radius to search in degrees (0=box) (returned) */
 
     if (verbose && sysref != syscoor) {
 	if (degout0) {
-	    deg2str (rstr, *cra, 5);
-            deg2str (dstr, *cdec, 5);
+	    deg2str (rstr, 32, *cra, 5);
+            deg2str (dstr, 32, *cdec, 5);
 	    }
 	else {
-	    ra2str (rstr, *cra, 3);
-            dec2str (dstr, *cdec, 2);
+	    ra2str (rstr, 32, *cra, 3);
+            dec2str (dstr, 32, *cdec, 2);
 	    }
 	if (sysref == WCS_B1950)
 	    fprintf (stderr,"Center:  %s   %s (B1950)\n", rstr, dstr);
@@ -995,8 +1086,8 @@ double	*drad;		/* Radius to search in degrees (0=box) (returned) */
 	    fprintf (stderr,"Center:  %s   %s (J2000)\n", rstr, dstr);
 	}
     if (verbose) {
-	ra2str (rstr, *dra * 2.0, 2); 
-	dec2str (dstr, *ddec * 2.0, 2); 
+	ra2str (rstr, 32, *dra * 2.0, 2); 
+	dec2str (dstr, 32, *ddec * 2.0, 2); 
 	fprintf (stderr,"Area:    %s x %s\n", rstr, dstr);
 	}
 
@@ -1005,28 +1096,29 @@ double	*drad;		/* Radius to search in degrees (0=box) (returned) */
 
 
 static void
-SearchHead (sys1, sys2, cra, cdec, dra, ddec, drad)
+SearchHead (sys1, sys2, eq1, eq2, cra, cdec, dra, ddec, drad)
 
 int	sys1;
 int	sys2;
+double	eq1, eq2;
 double	cra, cdec;
 double	dra, ddec;
 double	drad;
 {
     double ra, dec;
-    char rastr[16];
-    char decstr[16];
+    char rastr[32];
+    char decstr[32];
 
     ra = cra;
     dec = cdec;
-    wcscon (sys1, sys2, &ra, &dec, epoch);
+    wcscon (sys1, sys2, eq1, eq2, &ra, &dec, epoch);
     if (sys2 == WCS_ECLIPTIC || sys2 == WCS_GALACTIC || degout0) {
-	deg2str (rastr, ra, 5);
-	deg2str (decstr, dec, 5);
+	deg2str (rastr, 32, ra, 5);
+	deg2str (decstr, 32, dec, 5);
 	}
     else {
-	ra2str (rastr, ra, 3);
-	dec2str (decstr, dec, 2);
+	ra2str (rastr, 32, ra, 3);
+	dec2str (decstr, 32, dec, 2);
 	}
     if (objname)
 	printf ("%12s %s %s ", objname, rastr, decstr);
@@ -1042,14 +1134,22 @@ double	drad;
 	else
 	    printf ("%9s %s %s ", refcatname, rastr, decstr);
 	}
-    if (sys2 == WCS_B1950)
-	printf ("(B1950) ");
+    if (sys2 == WCS_B1950) {
+	if (eq2 == 1950.0)
+	    printf ("(B1950) ");
+	else
+	    printf ("(B%7.2f) ", eq2);
+	}
     else if (sys2 == WCS_GALACTIC)
 	printf ("(galactic) ");
     else if (sys2 == WCS_ECLIPTIC)
 	printf ("(ecliptic) ");
-    else
-	printf ("(J2000) ");
+    else {
+	if (eq2 == 2000.0)
+	    printf ("(J2000) ");
+	else
+	    printf ("(J%7.2f) ", eq2);
+	}
     if (drad != 0.0)
 	printf ("r= %.2f\n", drad*3600.0);
     else
@@ -1084,4 +1184,9 @@ double	drad;
  * Apr 14 1998	Version 2.2: to match other software
  * Apr 23 1998	Add output in galactic or ecliptic coordinates; use wcscon()
  * Apr 28 1998	Change coordinate system flags to WCS_*
+ * Jun  2 1998	Fix bug in tabread()
+ * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
+ * Jun 30 1998	Fix declaration of GetArea()
+ * Jul  1 1998	Allow specification of center different from output system
+ * Jul  9 1998	Adjust all report headings
  */

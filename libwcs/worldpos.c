@@ -1,5 +1,5 @@
 /*  worldpos.c -- WCS Algorithms from Classic AIPS.
- *  April 28, 1998
+ *  June 25, 1998
  *  Copyright (C) 1994
  *  Associated Universities, Inc. Washington DC, USA.
  *  With code added by Doug Mink, Smithsonian Astrophysical Observatory
@@ -164,19 +164,23 @@ double	*ypos;		/* y (dec) coordinate (deg) */
       }
     }
 
+  /* Flip coordinates if necessary */
+  if (wcs->coorflip) {
+    tx = dx;
+    dx = dy;
+    dy = tx;
+    }
+
 /* Default, linear result for error or pixel return  */
   *xpos = xref + dx;
   *ypos = yref + dy;
-  if (itype < 0)
+  if (itype <= 0)
     return 0;
 
 /* Convert to radians  */
   if (wcs->coorflip) {
     dec0 = degrad (xref);
     ra0 = degrad (yref);
-    tx = dx;
-    dx = dy;
-    dy = tx;
     }
   else {
     ra0 = degrad (xref);
@@ -192,8 +196,7 @@ double	*ypos;		/* y (dec) coordinate (deg) */
 
 /* process by case  */
   switch (itype) {
-    case WCS_PIX:   /* pixel */
-    case WCS_LPR:   /* linear */
+    case WCS_CAR:   /* -CAR Cartesian (was WCS_PIX pixel and WCS_LIN linear) */
       rat =  ra0 + l;
       dect = dec0 + m;
       break;
@@ -353,7 +356,7 @@ double	*xpix;		/* x pixel number  (RA or long without rotation) */
 double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 {
   double dx, dy, ra0, dec0, ra, dec, coss, sins, dt, da, dd, sint;
-  double l, m, geo1, geo2, geo3, sinr, cosr, tx;
+  double l, m, geo1, geo2, geo3, sinr, cosr, tx, x, y;
   double cond2r=1.745329252e-2, deps=1.0e-5, twopi=6.28318530717959;
 
 /* Structure elements */
@@ -393,12 +396,10 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
       dt = xpos - xref;
       }
 
-  /* 0h wrap-around tests added by D.Wells 10/12/94: */
-  if (itype >= 0) {
+    /* 0h wrap-around tests added by D.Wells 10/12/94: */
     if (dt > 180.0) xpos -= 360.0;
     if (dt < -180.0) xpos += 360.0;
     /* NOTE: changing input argument xpos is OK (call-by-value in C!) */
-    }
 
     ra = degrad (xpos);
     dec = degrad (ypos);
@@ -412,6 +413,10 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 
 /* Process by case  */
   switch (itype) {
+    case WCS_CAR:   /* -CAR Cartesian */
+      l = ra - ra0;
+      m = dec - dec0;
+      break;
     case WCS_SIN:   /* -SIN sin*/ 
 	 if (sint<0.0) return 1;
 	 m = sins * cos(dec0) - coss * sin(dec0) * cos(ra-ra0);
@@ -543,6 +548,16 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 
 /* Convert to pixels  */
   *xpix = dx + xrefpix;
+  if (itype == WCS_CAR) {
+    if (*xpix > wcs->nxpix) {
+      x = *xpix - (360.0 / xinc);
+      if (x > 0.0) *xpix = x;
+      }
+    else if (*xpix < 0) {
+      x = *xpix + (360.0 / xinc);
+      if (x <= wcs->nxpix) *xpix = x;
+      }
+    }
   *ypix = dy + yrefpix;
 
   return 0;
@@ -564,4 +579,6 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
  * Feb  5 1998	Make cd[] and dc[] vectors; use xinc, yinc, rot from init
  * Feb 23 1998	Add NOAO TNX projection as TAN
  * Apr 28 1998  Change projection flags to WCS_*
+ * May 27 1998	Skip limit checking for linear projection
+ * Jun 25 1998	Fix inverse for CAR projection
  */

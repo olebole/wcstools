@@ -1,5 +1,5 @@
 /* File i2f.c
- * January 14, 1998
+ * June 2, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "libwcs/fitshead.h"
+#include "fitsio.h"
 
 static void usage();
 static void IRAFtoFITS ();
@@ -163,4 +163,6 @@ char *name;
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
  *
  * Jan 14 1998	Version 1.3 to handle IRAF 2.11 .imh files
+ * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jun  2 1998  Fix bug in hput()
  */

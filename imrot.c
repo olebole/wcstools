@@ -1,5 +1,5 @@
 /* File imrot.c
- * May 26, 1998
+ * May 27, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "libwcs/fitshead.h"
+#include "fitsio.h"
 
 static void usage();
 static void imRot ();
@@ -317,4 +317,5 @@ char *name;
  *
  * Feb 24 1998	Add ext. to filename if writing part of multi-ext. file
  * May 26 1998	Fix bug when writing .imh images
+ * May 27 1998	Include fitsio.h instead of fitshead.h
  */

@@ -1,9 +1,13 @@
-.TH imcat(1) WCS "12 December 1996"
+.TH imcat(1) WCS "14 April 1998"
 .SH Name
 imcat \- List catalog stars in FITS and IRAF image files
 .SH Synopsis
 imcat [options] FITS or IRAF file(s)
 .SH Description
+Search given catalog withing area described by the world coordinate
+system in an image header.  May be called as imuac to search the USNO A 1.0
+catalog, imusac to search the USNO SA 1.0 catalog, or imgsc to search
+the HST Guide Star Catalog.
 .SH Options
 .TP
 .B \-b [<RA> <Dec>]
@@ -37,14 +41,17 @@ Sort by RA instead of flux
 Tab table to standard output as well as file
 .TP
 .B \-u
-UA or UJ catalog single plate number to accept
+USNO catalog single plate number to accept
 .TP
 .B \-v
 Verbose listing of processing intermediate results
 .TP
 .B \-w
 Write tab table output file imagename.cat
+.B \-z
+Use AIPS classic projections instead of WCSLIB; use CD matrix or CDELT
+instead of polynomial solution.
 .SH See Also
-imgsc(1), imuac(1)
+imgsc(),imuac(),imusac(),scat()
 .SH Author
 Doug Mink, SAO (dmink@cfa.harvard.edu)

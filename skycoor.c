@@ -1,5 +1,5 @@
 /* File skycoor.c
- * May 13, 1998
+ * June 24, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
-#include "libwcs/wcs.h"
+#include "fitshead.h"
+#include "wcs.h"
 
 static void usage();
 static void skycons();
@@ -144,7 +144,7 @@ char **av;
 			else
 			    sys1 = WCS_J2000;
 			}
-		    skycons (rastr0, decstr0, sys0, rastr1, decstr1, sys1,ndec);
+		    skycons (rastr0,decstr0,sys0,rastr1,decstr1,sys1,32,ndec);
 		    if (verbose)
 			printf ("%s %s %s -> %s %s %s\n",
 			    rastr0, decstr0, coorsys[sys0],
@@ -185,12 +185,12 @@ char **av;
 	    if (strlen (coorout) == 0)
 		strcpy (coorout, coorsys[sys1]);
 	    eqout = wcsceq (coorout);
-	    skycons (rastr0, decstr0, sys0, rastr1, decstr1, sys1, ndec);
+	    skycons (rastr0, decstr0, sys0, rastr1, decstr1, sys1, 32, ndec);
 	    if (degout) {
 		ra = str2ra (rastr1);
 		dec = str2dec (decstr1);
-		deg2str (rastr1, ra, 5);
-		deg2str (decstr1, dec, 5);
+		deg2str (rastr1, 32, ra, 5);
+		deg2str (decstr1, 32, dec, 5);
 		}
 	    if (verbose)
 		printf ("%s %s %s -> %s %s %s\n",
@@ -206,15 +206,16 @@ char **av;
 
 
 static void
-skycons (rastr0, decstr0, sys0, rastr1, decstr1, sys1, ndec)
+skycons (rastr0, decstr0, sys0, rastr1, decstr1, sys1, lstr, ndec)
 
-char *rastr0;	/* Input right ascension */
-char *decstr0;	/* Input declination */
-int sys0;	/* Input coordinate system */
-char *rastr1;	/* Output right ascension (returned) */
-char *decstr1;	/* Output declination (returned) */
-int sys1;	/* Output coordinate system */
-int ndec;	/* Number of decimal places in output RA seconds */
+char	*rastr0;	/* Input right ascension */
+char	*decstr0;	/* Input declination */
+int	sys0;		/* Input coordinate system */
+char	*rastr1;	/* Output right ascension (returned) */
+char	*decstr1;	/* Output declination (returned) */
+int	sys1;		/* Output coordinate system */
+int	lstr;		/* Length of output strings */
+int	ndec;		/* Number of decimal places in output RA seconds */
 {
     double ra, dec;
     ra = str2ra (rastr0);
@@ -224,26 +225,26 @@ int ndec;	/* Number of decimal places in output RA seconds */
 
     /* Convert to B1950 FK4 */
     if (sys1 == WCS_B1950) {
-	ra2str (rastr1,ra, ndec);
-	dec2str (decstr1, dec, ndec-1);
+	ra2str (rastr1, lstr, ra, ndec);
+	dec2str (decstr1, lstr, dec, ndec-1);
 	}
 
     /* Convert to J2000 FK5 */
     else if (sys1 == WCS_J2000) {
-	ra2str (rastr1,ra, ndec);
-	dec2str (decstr1, dec, ndec-1);
+	ra2str (rastr1, lstr, ra, ndec);
+	dec2str (decstr1, lstr, dec, ndec-1);
 	}
 
     /* Convert to galactic coordinates */
     else if (sys1 == WCS_GALACTIC) {
-	deg2str (rastr1, ra, ndec);
-	deg2str (decstr1, dec, ndec);
+	deg2str (rastr1, lstr, ra, ndec);
+	deg2str (decstr1, lstr, dec, ndec);
 	}
 
     /* Convert to ecliptic coordinates */
     else if (sys1 == WCS_ECLIPTIC) {
-	deg2str (rastr1, ra, ndec);
-	deg2str (decstr1, dec, ndec);
+	deg2str (rastr1, lstr, ra, ndec);
+	deg2str (decstr1, lstr, dec, ndec);
 	}
     return;
 }
@@ -275,4 +276,5 @@ usage ()
  * Apr 28 1998	Change coordinate system flags to WCS_*
  * May  1 1998	Increase coordinate system name array from 8 to 12 characters
  * May 13 1998	Add q command for output equinox; allow input equinox, too
+ * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  */

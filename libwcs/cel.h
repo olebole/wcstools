@@ -1,5 +1,5 @@
-#ifndef CEL
-#define CEL
+#ifndef cel_h_
+#define cel_h_
 
 #include "proj.h"
 
@@ -56,4 +56,7 @@ extern const char *celrev_errmsg[];
 }
 #endif
 
-#endif /* CEL */
+#endif /* cel_h_ */
+
+/* May 27 1998	ifndef CEL changed to ifndef cel_h_
+ */

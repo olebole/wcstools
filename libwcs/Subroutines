@@ -93,11 +93,13 @@ ujcread.c
 wcs.c
   Subroutines for using FITS or IRAF header spatial world coordinate
   system information.
+wcsinit.c
+  Subroutines to initialize WCS structure from a FITS header
 wcscon.c
   Subroutines for converting between B1950, J2000, and galactic
   coordinates, mostly based on Starlink SLA_LIB subroutines.
-wftnx.c
-  IRAF TNX plane tangent projection with polynomial correction
+wcsfort.c
+  Fortran wrapper subroutines for all useful subroutines in wcs.c and wcsinit.c
 worldpos.c
   worldpos() uses the WCS structure to compute sky coordinates given
   image pixel X and Y for images with header information for any of 8
@@ -108,8 +110,11 @@ worldpos.c
 cel.h
   Declarations for WCSLIB spherical coordinate transformation drivers
 fitshead.h
-  Declarations of FITS header and image access subroutines and FITS
-  table data structure.
+  Declarations of FITS header access subroutines
+fitsio.h
+  Declarations of image access subroutines and FITS table data structure.
+imio.h
+  Declarations of subroutines to convert binary formats of numbers
 lin.h
   Declarations for WCSLIB linear transformation subroutines
 lwcs.h
@@ -128,8 +133,10 @@ wcstrig.h
             astrometry library and may be omitted if that library is
             being linked.
   WCSLIB subroutines were written by Mark Calabretta of CSIRO and have
-         been modified in two ways:
+         been modified in three ways:
          1) His distributed wcs.h has been changed to wcslib.h, and
          2) wcstrig.c subroutine names have been changed from <function>d()
             to <function>deg() to avoid name conflicts on some operating
             systems.
+         3) ifndef's at start of headers files have been named to reflect
+            the names of the header files, i.e. wcslib_h_ in wcslib.h.

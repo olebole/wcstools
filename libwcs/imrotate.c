@@ -1,5 +1,5 @@
 /* File libwcs/imrotate.c
- * May 26, 1998
+ * May 27, 1998
  * By Doug Mink
  */
 
@@ -8,6 +8,7 @@
 #include <math.h>
 #include <string.h>
 #include "fitshead.h"
+#include "imio.h"
 
 static void RotWCSFITS();
 
@@ -485,4 +486,5 @@ int	verbose;	/* Print progress if 1 */
  *
  * Feb 23 1998	Do not delete WCS if image not rotated or mirrored
  * May 26 1998	Rotate WCS instead of deleting it
+ * May 27 1998	Include imio.h
  */

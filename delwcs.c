@@ -1,5 +1,5 @@
 /* File delwcs.c
- * April 14, 1998
+ * May 27, 1998
  * By Doug Mink, after University of Iowa code
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -13,7 +13,7 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "libwcs/fitshead.h"
+#include "fitsio.h"
 
 static void usage();
 static void DelWCS ();
@@ -167,4 +167,5 @@ char *name;
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
  *
  * Apr 14 1998	Version 2.2: deletes more parameters
+ * May 27 1998	Include fitsio.h instead of fitshead.h
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** May 26, 1998
+ *** June 18, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -40,7 +40,12 @@
 #include <stdio.h>
 #include "fitshead.h"	/* FITS header extraction subroutines */
 #include <stdlib.h>
+#ifndef VMS
 #include <values.h>
+#else
+#define MAXINT  2147483647 /* Biggest number that can fit in long */
+#define MAXSHORT 32767
+#endif
 
 #ifdef USE_SAOLIB
 static int use_saolib=0;
@@ -590,10 +595,10 @@ char *keyword0;	/* character string containing the name of the keyword
 	static char cval[80];
 	char *value;
 	char cwhite[2];
-	char squot[2],dquot[2],lbracket[2],rbracket[2],slash[2];
+	char squot[2], dquot[2], lbracket[2], rbracket[2], slash[2], comma[2];
 	char keyword[81]; /* large for ESO hierarchical keywords */
 	char line[100];
-	char *vpos,*cpar;
+	char *vpos, *cpar;
 	char *q1, *q2, *v1, *v2, *c1, *brack1, *brack2;
 	int ipar, i;
 
@@ -610,6 +615,8 @@ char *keyword0;	/* character string containing the name of the keyword
 	dquot[1] = 0;
 	lbracket[0] = 91;
 	lbracket[1] = 0;
+	comma[0] = 44;
+	comma[1] = 0;
 	rbracket[0] = 93;
 	rbracket[1] = 0;
 	slash[0] = 47;
@@ -618,7 +625,12 @@ char *keyword0;	/* character string containing the name of the keyword
 /* Find length of variable name */
 	strncpy (keyword,keyword0, sizeof(keyword)-1);
 	brack1 = strsrch (keyword,lbracket);
-	if (brack1 != NULL) *brack1 = '\0';
+	if (brack1 == NULL)
+	    brack1 = strsrch (keyword,comma);
+	if (brack1 != NULL) {
+	    *brack1 = '\0';
+	    brack1++;
+	    }
 
 /* Search header string for variable name */
 	vpos = ksearch (hstring,keyword);
@@ -697,22 +709,22 @@ char *keyword0;	/* character string containing the name of the keyword
 
 /* If keyword has brackets, extract appropriate token from value */
 	if (brack1 != NULL) {
-	    brack2 = strsrch (keyword,rbracket);
-	    if (brack2 != NULL) {
+	    brack2 = strsrch (brack1,rbracket);
+	    if (brack2 != NULL)
 		*brack2 = '\0';
-		ipar = atoi (brack1);
-		if (ipar > 0) {
-		    cwhite[0] = ' ';
-		    cwhite[1] = '\0';
-		    for (i = 1; i <= ipar; i++) {
-			cpar = strtok (v1,cwhite);
-			}
-		    if (cpar != NULL) {
-			strcpy (cval,cpar);
-			}
-		    else
-			value = NULL;
+	    ipar = atoi (brack1);
+	    if (ipar > 0) {
+		cwhite[0] = ' ';
+		cwhite[1] = '\0';
+		for (i = 1; i <= ipar; i++) {
+		    cpar = strtok (v1,cwhite);
+		    v1 = NULL;
 		    }
+		if (cpar != NULL) {
+		    strcpy (cval,cpar);
+		    }
+		else
+		    value = NULL;
 		}
 	    }
 
@@ -984,7 +996,8 @@ char	*in;	/* Character string */
 
 /* Find string s2 within null-terminated string s1 */
 
-char *strsrch (s1, s2)
+char *
+strsrch (s1, s2)
 
 char *s1;	/* String to search */
 char *s2;	/* String to look for */
@@ -998,7 +1011,8 @@ char *s2;	/* String to look for */
 
 /* Find string s2 within string s1 */
 
-char *strnsrch (s1, s2, ls1)
+char *
+strnsrch (s1, s2, ls1)
 
 char	*s1;	/* String to search */
 char	*s2;	/* String to look for */
@@ -1150,5 +1164,7 @@ int set_saolib(hstring)
  * Mar 12 1998	Add subroutine NOTNUM
  * Mar 27 1998	Add changes to match SKYCAT version
  * Apr 30 1998	Add BLSEARCH() to find blank lines before END
- * May 26 1998	Add HGETNDEC() to get number of decimal places in entry
+ * May 27 1998	Add HGETNDEC() to get number of decimal places in entry
+ * Jun  1 1998	Add VMS patch from Harry Payne at StSci
+ * Jun 18 1998	Fix code which extracts tokens from string values
  */

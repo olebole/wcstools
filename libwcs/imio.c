@@ -1,6 +1,6 @@
 /*** File wcslib/imio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** July 24, 1997
+ *** June 17, 1998
 
  * Module:      imio.c (image pixel manipulation)
  * Purpose:     Read and write pixels from arbitrary data type 2D arrays
@@ -35,7 +35,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "fitshead.h"
+#include "imio.h"
 
 
 /* GETPIX -- Get pixel from 2D image of any numeric type */
@@ -55,7 +55,7 @@ int	y;
 {
     short *im2;
     int *im4;
-    unsigned int *imu;
+    unsigned short *imu;
     float *imr;
     double *imd;
 
@@ -80,7 +80,7 @@ int	y;
 	  return ((double) im4[(y*w) + x]);
 
 	case -16:
-	  imu = (unsigned int *)image;
+	  imu = (unsigned short *)image;
 	  return ((double) imu[(y*w) + x]);
 
 	case -32:
@@ -115,7 +115,7 @@ double	dpix;
 {
     short *im2;
     int *im4;
-    unsigned int *imu;
+    unsigned short *imu;
     float *imr;
     double *imd;
 
@@ -142,8 +142,8 @@ double	dpix;
 	    break;
 
 	case -16:
-	    imu = (unsigned int *)image;
-	    imu[(y*w) + x] = (unsigned int) dpix;
+	    imu = (unsigned short *)image;
+	    imu[(y*w) + x] = (unsigned short) dpix;
 	    break;
 
 	case -32:
@@ -183,7 +183,7 @@ int	x2, y2;		/* Row and column for output pixel */
 {
     short *ims1, *ims2;
     int *imi1, *imi2;
-    unsigned int *imu1, *imu2;
+    unsigned short *imu1, *imu2;
     float *imr1, *imr2;
     double *imd1, *imd2;
 
@@ -200,8 +200,8 @@ int	x2, y2;		/* Row and column for output pixel */
 		    imi2[(y2*w2) + x2] = (int) image1[(y1*w1) + x1];
 		    break;
 		case -16:
-		    imu2 = (unsigned int *)image2;
-		    imu2[(y2*w2) + x2] = (unsigned int) image1[(y1*w1) + x1];
+		    imu2 = (unsigned short *)image2;
+		    imu2[(y2*w2) + x2] = (unsigned short) image1[(y1*w1) + x1];
 		    break;
 		case -32:
 		    imr2 = (float *)image2;
@@ -232,8 +232,8 @@ int	x2, y2;		/* Row and column for output pixel */
 		    break;
 		case -16:
 		    ims1 = (short *)image1;
-		    imu2 = (unsigned int *)image2;
-		    imu2[(y2*w2) + x2] = (unsigned int) ims1[(y1*w1) + x1];
+		    imu2 = (unsigned short *)image2;
+		    imu2[(y2*w2) + x2] = (unsigned short) ims1[(y1*w1) + x1];
 		    break;
 		case -32:
 		    ims1 = (short *)image1;
@@ -266,8 +266,8 @@ int	x2, y2;		/* Row and column for output pixel */
 		    break;
 		case -16:
 		    imi1 = (int *)image1;
-		    imu2 = (unsigned int *)image2;
-		    imu2[(y2*w2) + x2] = (unsigned int) imi1[(y1*w1) + x1];
+		    imu2 = (unsigned short *)image2;
+		    imu2[(y2*w2) + x2] = (unsigned short) imi1[(y1*w1) + x1];
 		    break;
 		case -32:
 		    imi1 = (int *)image1;
@@ -285,31 +285,31 @@ int	x2, y2;		/* Row and column for output pixel */
 	case -16:
 	    switch (bitpix2) {
 		case 8:
-		    imu1 = (unsigned int *)image1;
+		    imu1 = (unsigned short *)image1;
 		    image2[(y2*w2) + x2] = (char) imu1[(y1*w1) + x1];
 		    break;
 		case 16:
-		    imu1 = (unsigned int *)image1;
+		    imu1 = (unsigned short *)image1;
 		    ims2 = (short *)image2;
 		    ims2[(y2*w2) + x2] = (short) imu1[(y1*w1) + x1];
 		    break;
 		case 32:
-		    imu1 = (unsigned int *)image1;
+		    imu1 = (unsigned short *)image1;
 		    imi2 = (int *)image2;
 		    imi2[(y2*w2) + x2] = (int) imu1[(y1*w1) + x1];
 		    break;
 		case -16:
-		    imu1 = (unsigned int *)image1;
-		    imu2 = (unsigned int *)image2;
+		    imu1 = (unsigned short *)image1;
+		    imu2 = (unsigned short *)image2;
 		    imu2[(y2*w2) + x2] = imu1[(y1*w1) + x1];
 		    break;
 		case -32:
-		    imu1 = (unsigned int *)image1;
+		    imu1 = (unsigned short *)image1;
 		    imr2 = (float *)image2;
 		    imr2[(y2*w2) + x2] = (float) imu1[(y1*w1) + x1];
 		    break;
 		case -64:
-		    imu1 = (unsigned int *)image1;
+		    imu1 = (unsigned short *)image1;
 		    imd2 = (double *)image2;
 		    imd2[(y2*w2) + x2] = (double) imu1[(y1*w1) + x1];
 		    break;
@@ -334,8 +334,8 @@ int	x2, y2;		/* Row and column for output pixel */
 		    break;
 		case -16:
 		    imr1 = (float *)image1;
-		    imu2 = (unsigned int *)image2;
-		    imu2[(y2*w2) + x2] = (unsigned int) imr1[(y1*w1) + x1];
+		    imu2 = (unsigned short *)image2;
+		    imu2[(y2*w2) + x2] = (unsigned short) imr1[(y1*w1) + x1];
 		    break;
 		case -32:
 		    imr1 = (float *)image1;
@@ -368,8 +368,8 @@ int	x2, y2;		/* Row and column for output pixel */
 		    break;
 		case -16:
 		    imd1 = (double *)image1;
-		    imu2 = (unsigned int *)image2;
-		    imu2[(y2*w2) + x2] = (unsigned int) imd1[(y1*w1) + x1];
+		    imu2 = (unsigned short *)image2;
+		    imu2[(y2*w2) + x2] = (unsigned short) imd1[(y1*w1) + x1];
 		    break;
 		case -32:
 		    imd1 = (double *)image1;
@@ -404,7 +404,7 @@ double	*dpix;
 {
     short *im2;
     int *im4;
-    unsigned int *imu;
+    unsigned short *imu;
     float *imr;
     double *imd;
     int ipix, pix2;
@@ -431,7 +431,7 @@ double	*dpix;
 	    break;
 
 	case -16:
-	    imu = (unsigned int *)image;
+	    imu = (unsigned short *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
 		*dpix++ = (double) *(imu+ipix);
 	    break;
@@ -469,7 +469,7 @@ double	*dpix;
 {
     short *im2;
     int *im4;
-    unsigned int *imu;
+    unsigned short *imu;
     float *imr;
     double *imd;
     int ipix, pix2;
@@ -497,9 +497,9 @@ double	*dpix;
 	    break;
 
 	case -16:
-	    imu = (unsigned int *)image;
+	    imu = (unsigned short *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*(imu+ipix) = (unsigned int) *dp++;
+		*(imu+ipix) = (unsigned short) *dp++;
 	    break;
 
 	case -32:
@@ -679,4 +679,7 @@ imswapped ()
  * Jun 12 1996	Add byte-swapping subroutines
  *
  * Jul 24 1997	Add 8-bit option to subroutines
+ *
+ * May 27 1998	Include imio.h instead of fitshead.h
+ * Jun 17 1998	Fix bug, changing all unsigned int's to unsigned short's
  */

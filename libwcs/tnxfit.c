@@ -1,12 +1,10 @@
-/*** File libwcs/platefit.c
+/*** File libwcs/tnxfit.c
  *** June 24, 1998
  *** By Doug Mink
  */
 
-/*  Nonlinear least squares fitting program using data arrays starting
- *  at x and y to fit array starting at z.
- *  Contains convergence oscillation damping and optional normalization 
- *  Fits up to MAXPAR parameters
+/*  Nonlinear least squares fitting program using data array 
+ *  (x, y) to fit array (x1, y1)
  */
 
 #include <stdio.h>
@@ -14,22 +12,21 @@
 #include "wcs.h"
 #include "lwcs.h"
 
-static void plate_amoeba();
-static double plate_chisqr();
+static void tnx_amoeba();
+static double tnx_chisqr();
 static int ncoeff=0;
 static double   *sx_p;
 static double   *sy_p;
 static double   *gx_p;
 static double   *gy_p;
 static int	nbin_p;
-extern int SetPlate();
 
 #define MAXPAR 26
 #define MAXPAR1 27
 #define NITMAX 2500
 
 int
-FitPlate (wcs, x, y, x1, y1, np, ncoeff0, debug)
+TNXFit (wcs, x, y, x1, y1, np, ncoeff0, debug)
 
 struct WorldCoor *wcs;	/* World coordinate system structure */
 double	*x, *y;		/* Image WCS coordinates */
@@ -47,7 +44,7 @@ int	debug;
     ncoeff = ncoeff0;
 
     /* Fit polynomials */
-    plate_amoeba (wcs);
+    tnx_amoeba (wcs);
 
     return (0);
 }
@@ -57,7 +54,7 @@ static struct WorldCoor *wcsp;
 /* Set up the necessary temp arrays and call the amoeba() multivariate solver */
 
 static void
-plate_amoeba (wcs0)
+tnx_amoeba (wcs0)
 
 struct WorldCoor *wcs0;
 
@@ -80,55 +77,40 @@ struct WorldCoor *wcs0;
     for (i = 0; i < nfit1; i++)
 	p[i] = (double *) malloc (nbytes);
 
-    nitmax = 6000;
+    nitmax = NITMAX;
     wcsp = wcs0;
 
 /* Zero guess and difference vectors */
     for (i = 0; i < MAXPAR; i++) {
 	vguess[i] = 0.0;
 	vdiff[i] = 0.0;
-	vp[i] = 0.0;
 	}
 
     if (nfit > 0) {
-	double dra = wcsp->cdelt[0];
-	double ddec = wcsp->cdelt[1];
-	vguess[0] = 0.0;
-	vdiff[0] = 5.0 * dra;
-	vguess[1] = wcsp->cd[0];
-	vdiff[1] = 0.05 * dra;
-	vguess[2] = wcsp->cd[1];
-	vdiff[2] = 0.05 * ddec;
+	vguess[0] = 1.0;
+	vdiff[0] = 0.01;
+	vguess[1] = 0.0;
+	vdiff[1] = 0.01;
+	vguess[2] = 0.0;
+	vdiff[2] = 0.01;
 	vguess[3] = 0.0;
-	vdiff[3] = 0.001 * dra;
+	vdiff[3] = 0.01;
 	vguess[4] = 0.0;
-	vdiff[4] = 0.001 * ddec;
+	vdiff[4] = 0.01;
 	vguess[5] = 0.0;
-	vdiff[5] = 0.001 * ddec;
-	if (ncoeff > 6) {
-	    vguess[6] = 0.0;
-	    vdiff[6] = 0.001 * ddec;
-	    vguess[7] = 0.0;
-	    vdiff[7] = 0.001 * ddec;
-	    }
-	vguess[ncoeff+0] = 0.0;
-	vdiff[ncoeff+0] = 5.0 * ddec;
-	vguess[ncoeff+1] = wcsp->cd[2];
-	vdiff[ncoeff+1] = 0.05 * ddec;
-	vguess[ncoeff+2] = wcsp->cd[3];
-	vdiff[ncoeff+2] = 0.05 * dra;
-	vguess[ncoeff+3] = 0.0;
-	vdiff[ncoeff+3] = 0.001 * ddec;
-	vguess[ncoeff+4] = 0.0;
-	vdiff[ncoeff+4] = 0.001 * dra;
-	vguess[ncoeff+5] = 0.0;
-	vdiff[ncoeff+5] = 0.001 * ddec;
-	if (ncoeff > 6) {
-	    vguess[ncoeff+6] = 0.0;
-	    vdiff[ncoeff+6] = 0.001 * dra;
-	    vguess[ncoeff+7] = 0.0;
-	    vdiff[ncoeff+7] = 0.001 * ddec;
-	    }
+	vdiff[5] = 0.01;
+	vguess[6] = 1.0;
+	vdiff[6] = 0.01;
+	vguess[7] = 0.0;
+	vdiff[7] = 0.01;
+	vguess[8] = 0.0;
+	vdiff[8] = 0.01;
+	vguess[9] = 0.0;
+	vdiff[9] = 0.01;
+	vguess[10] = 0.0;
+	vdiff[10] = 0.01;
+	vguess[11] = 0.0;
+	vdiff[11] = 0.01;
 	}
 
     /* Set up matrix of nfit+1 initial guesses.
@@ -139,7 +121,7 @@ struct WorldCoor *wcs0;
 	    p[i][j] = vguess[j];
 	if (i > 0)
 	    p[i][i-1] = vguess[i-1] + vdiff[i-1];
-	y[i] = plate_chisqr (p[i], -i);
+	y[i] = tnx_chisqr (p[i], -i);
 	}
 
 #define	PDUMP
@@ -156,7 +138,7 @@ struct WorldCoor *wcs0;
 	}
 #endif
 
-    amoeba (p, y, nfit, FTOL, nitmax, plate_chisqr, &iter);
+    amoeba (p, y, nfit, FTOL, nitmax, tnx_chisqr, &iter);
 
 #define	PDUMP
 #ifdef	PDUMP
@@ -173,13 +155,13 @@ struct WorldCoor *wcs0;
 #endif
 
     /* on return, all entries in p[1..NPAR] are within FTOL; average them */
-    for (j = 0; j < nfit; j++) {
+    for (j = 0; j < MAXPAR; j++) {
 	double sum = 0.0;
         for (i = 0; i < nfit1; i++)
 	    sum += p[i][j];
 	vp[j] = sum / (double)nfit1;
 	}
-    (void)SetPlate (wcsp, ncoeff, ncoeff, vp);
+    tnxset (wcsp, nfit, vp);
 
 #define RESIDDUMP
 #ifdef RESIDDUMP
@@ -208,9 +190,9 @@ struct WorldCoor *wcs0;
 
 	ra2str (rastr, 16, gx_p[i], 3);
 	dec2str (decstr, 16, gy_p[i], 2);
-	printf ("%2d: c: %s %s ", i+1, rastr, decstr);
 	ra2str (rastr, 16, mx, 3);
 	dec2str (decstr, 16, my, 2);
+	printf ("%2d: c: %s %s ", i+1, rastr, decstr);
 	printf ("i: %s %s %6.3f %6.3f %6.3f\n",
 		rastr, decstr, 3600.0*ex, 3600.0*ey,
 		3600.0*sqrt(ex*ex + ey*ey));
@@ -232,19 +214,19 @@ struct WorldCoor *wcs0;
  */
 
 static double
-plate_chisqr (v, iter)
+tnx_chisqr (v, iter)
 
 double	*v;	/* Vector of parameter values */
 int	iter;	/* Number of iterations */
 
 {
     double chsq;
-    double xsp, ysp, dx, dy;
+    double xmp, ymp, dx, dy;
     int i, j, offscale;
-    extern int SetPlate();
+    extern int tnxpset();
 
     /* Set plate constants from fit parameter vector */
-    if (SetPlate (wcsp, ncoeff, ncoeff, v)) {
+    if (tnxpset (wcsp, 3, 3, 2, v)) {
 	fprintf (stderr,"CHISQR: Cannot reset WCS!\n");
 	return (0.0);
 	}
@@ -252,27 +234,26 @@ int	iter;	/* Number of iterations */
     /* Compute sum of squared residuals for these parameters */
     chsq = 0.0;
     for (i = 0; i < nbin_p; i++) {
-	pix2wcs (wcsp, sx_p[i], sy_p[i], &xsp, &ysp);
-	dx =3600.0 * (xsp - gx_p[i]);
-	dy = 3600.0 * (ysp - gy_p[i]);
-	chsq += dx*dx + dy*dy;
+	wcs2pix (wcsp, gx_p[i], gy_p[i], &xmp, &ymp, &offscale);
+	/* if (!offscale) { */
+	    dx = xmp - sx_p[i];
+	    dy = ymp - sy_p[i];
+	    chsq += dx*dx + dy*dy;
+	    /* } */
 	}
 
 #define TRACE_CHSQR
 #ifdef TRACE_CHSQR
     printf ("%4d:", iter);
     for (j = 0; j < ncoeff; j++)
-	printf (" %9.4g",v[j]);
+	printf (" %9.7f",v[j]);
     for (j = 0; j < ncoeff; j++)
-	printf (" %9.4g",v[ncoeff+j]);
-    printf (" -> %f\r", chsq);
+	printf (" %9.7f",v[ncoeff+j]);
+    printf (" -> %f\n", chsq);
 #endif
     return (chsq);
 }
 
-/* Mar 30 1998	New subroutines
- * Apr  7 1998	Add x^3 and y^3 terms
- * Apr 10 1998	Add second number of coefficients
- * May 14 1998	include stdio.h for stderr
+/* Mar 26 1998	New subroutines
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  */

@@ -1,5 +1,5 @@
 /* File fixpix.c
- * April 14, 1998
+ * May 27, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -10,8 +10,8 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include "libwcs/fitshead.h"
-#include "libwcs/wcs.h"
+#include "fitsio.h"
+#include "wcs.h"
 
 #define MAXFIX 10
 #define MAXFILES 50
@@ -377,5 +377,5 @@ int ixr, iyr;	/* Upper right corner of region (1 based) */
  * Dec 15 1997	Add capability of reading and writing IRAF 2.11 images
  *
  * Apr 14 1998	Change xn, yn variable names due to a header conflict
+ * May 27 1998	Include fitsio.h instead of fitshead.h
  */
-

@@ -1,5 +1,5 @@
 /* File sethead.c
- * February 21, 1997
+ * June 2, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
+#include "fitsio.h"
 
 #define MAXKWD 50
 
@@ -247,4 +247,7 @@ char	*kwd[];		/* Names and values of those keywords */
  * Dec 12 1996	Move ISNUM subroutine to hget.c
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
+ *
+ * May 28 1998	Include fitsio.h instead of fitshead.h
+ * Jun  2 1998	Fix bug in hput()
  */

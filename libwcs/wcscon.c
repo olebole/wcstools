@@ -1,7 +1,7 @@
 /*** File wcscon.c
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Based on Starlink subroutines by Patrick Wallace
- *** May 13, 1998
+ *** June 24, 1998
 
  * Module:	wcscon.c (World Coordinate System conversion)
  * Purpose:	Convert between various sky coordinate systems
@@ -179,6 +179,7 @@ char *wcstring;		/* Name of coordinate system */
 
     if (wcstring[0] == 'J' || wcstring[0] == 'j' ||
 	!strcmp (wcstring,"2000") || !strcmp (wcstring, "2000.0") ||
+	!strcmp (wcstring,"ICRS") || !strcmp (wcstring, "icrs") ||
 	!strncmp (wcstring,"FK5",3) || !strncmp (wcstring, "fk5",3))
 	return WCS_J2000;
 
@@ -1436,4 +1437,5 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
  * May  7 1998	Keep theta within 0 to 2pi in ecl2fk5()
  * May 13 1998	Add wcsceq()
  * May 13 1998	Add equinox arguments to wcscon()
+ * Jun 24 1998	Set J2000 from ICRS in wcscsys()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** April 10, 1998
+ *** June 24, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -193,10 +193,10 @@ int	nlog;		/* Logging interval */
 	}
     if (verbose) {
 	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
-	ra2str (rstr1, ra1, 3);
-        dec2str (dstr1, dec1, 2);
-	ra2str (rstr2, ra2, 3);
-        dec2str (dstr2, dec2, 2);
+	ra2str (rstr1, 16, ra1, 3);
+        dec2str (dstr1, 16, dec1, 2);
+	ra2str (rstr2, 16, ra2, 3);
+        dec2str (dstr2, 16, dec2, 2);
 	fprintf (stderr,"UACREAD: RA: %s - %s  Dec: %s - %s\n",
 		 rstr1,rstr2,dstr1,dstr2);
 	}
@@ -707,7 +707,7 @@ double	rax0;		/* Right ascension for which to search */
     int debug = 0;
 
     rax = rax0;
-    ra2str (rastrx, rax, 3);
+    ra2str (rastrx, 16, rax, 3);
     istar1 = 1;
     if (uacstar (istar1, &star))
 	return (0);
@@ -723,7 +723,7 @@ double	rax0;		/* Right ascension for which to search */
 		break;
 	    if (debug) {
 		char rastr[16];
-		ra2str (rastr,ra,3);
+		ra2str (rastr, 16, ra, 3);
 		fprintf (stderr,"UACSRA %d %d: %s (%s)\n",
 			 nrep,istar,rastr,rastrx);
 		}
@@ -791,6 +791,7 @@ int znum;	/* UA Catalog zone */
 	}
 
 /* Check to see if byte-swapping is necessary */
+    cswap = 0;
     if (uacstar (1, &star)) {
 	fprintf (stderr,"UACOPEN: cannot read star 1 from UA zone catalog %s\n",
 		 zonepath);
@@ -918,4 +919,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Feb 20 1998	Speed up processing by searching in arcseconds, not degrees
  * Feb 20 1998	Speed up processing by searching RA and Dec, then rest
  * Apr 20 1998	Fix bug so stars within radius can be found
+ * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
+ * Jun 24 1998	Initialize byte-swapping flag in UACOPEN()
  */

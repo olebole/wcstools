@@ -1,6 +1,6 @@
 /*** File libwcs/fitsio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** May 4, 1998
+ *** June 11, 1998
 
  * Module:      fitsio.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -38,13 +38,15 @@
  */
 
 #include <stdlib.h>
+#ifndef VMS
 #include <unistd.h>
+#endif
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/file.h>
 #include <errno.h>
 #include <string.h>
-#include "fitshead.h"
+#include "fitsio.h"
 
 static int verbose=0;		/* if 1 print diagnostics */
 
@@ -113,10 +115,12 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 	    extnum = -1;
 	
 	}
+#ifndef VMS
     else {
 	fd = STDIN_FILENO;
 	extnum = -1;
 	}
+#endif
 
     nbytes = FITSBLOCK;
     *nbhead = 0;
@@ -147,7 +151,9 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 		    else {
 			fprintf(stderr, "FITSRHEAD: '%d / %d bytes of header read from %s\n"
 				,nbr,nbytes,filename);
+#ifndef VMS
 			if (fd != STDIN_FILENO)
+#endif
 			    (void)close (fd);
 			free (header);
 			if (pheader != NULL)
@@ -214,6 +220,7 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 		if (extnum > -1 && hdu == extnum)
 		    break;
 		else if (extnum < 0) {
+		    extname[0] = 0;
 		    hgets (header, "EXTNAME", 32, extname);
 		    if (!strcmp (ext,extname))
 			break;
@@ -250,11 +257,15 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 
 	/* Set file pointer to beginning of next header/data unit */
 		if (nblock > 0) {
+#ifndef VMS
 		    if (fd != STDIN_FILENO) {
 			ipos = lseek (fd, *nbhead, SEEK_SET);
 			npos = *nbhead;
 			}
 		    else {
+#else
+			{
+#endif
 			ipos = 0;
 			for (i = 0; i < nblock; i++) {
 			    nbytes = FITSBLOCK;
@@ -283,8 +294,10 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 	    }
 	}
 
+#ifndef VMS
     if (fd != STDIN_FILENO)
 	(void)close (fd);
+#endif
 
     /* Allocate an extra block for good measure */
     *lhead = (nrec + 1) * FITSBLOCK;
@@ -294,6 +307,7 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 	*lhead = nbh;
 
     if (pheader != NULL && extnum != 0) {
+	extname[0] = 0;
 	hgets (header, "XTENSION", 32, extname);
 	if (!strcmp (extname,"IMAGE")) {
 	    strncpy (header, "SIMPLE  ", 8);
@@ -347,14 +361,25 @@ char	*header;	/* FITS header for image (previously read) */
 	    return (NULL);
 	    }
 	}
+#ifndef VMS
     else
 	fd = STDIN_FILENO;
+#endif
 
     /* Compute size of image in bytes using relevant header parameters */
+    naxis = 1;
     hgeti4 (header,"NAXIS",&naxis);
+    naxis1 = 1;
     hgeti4 (header,"NAXIS1",&naxis1);
+    naxis2 = 1;
     hgeti4 (header,"NAXIS2",&naxis2);
+    bitpix = 0;
     hgeti4 (header,"BITPIX",&bitpix);
+    if (bitpix == 0) {
+	fprintf (stderr, "FITSRIMAGE:  BITPIX is 0; image not read\n");
+	close (fd);
+	return (0);
+	}
     bytepix = bitpix / 8;
     if (bytepix < 0) bytepix = -bytepix;
     nbimage = naxis1 * naxis2 * bytepix;
@@ -368,8 +393,10 @@ char	*header;	/* FITS header for image (previously read) */
     /* Allocate and read image */
     image = malloc (nbytes);
     nbr = read (fd, image, nbytes);
+#ifndef VMS
     if (fd != STDIN_FILENO)
 	(void)close (fd);
+#endif
     if (nbr < nbimage) {
 	fprintf (stderr, "FITSRIMAGE:  %d of %d bytes read from file %s\n",
 		 nbr, nbimage, filename);
@@ -496,6 +523,7 @@ int	*nchar;		/* Number of characters in one table row (returned) */
     h0 = header;
 
 /* Make sure this is really a FITS table file header */
+    temp[0] = 0;
     hgets (header,"XTENSION",16,temp);
     if (strncmp (temp, "TABLE", 5) != 0) {
 	fprintf (stderr, "FITSRTHEAD:  Not a FITS table file\n");
@@ -515,6 +543,7 @@ int	*nchar;		/* Number of characters in one table row (returned) */
 	}
 
 /* Set up table for access to individual fields */
+    nfields = 0;
     hgeti4 (header,"TFIELDS",&nfields);
     if (verbose)
 	printf ("FITSRTHEAD: %d fields per table entry\n", nfields);
@@ -533,11 +562,13 @@ int	*nchar;		/* Number of characters in one table row (returned) */
 	for (i = 0; i < 12; i++) tname[i] = 0;
 	sprintf (tname, "TBCOL%d", ifield+1);
 	h1 = ksearch (h0,tname);
+	pw[ifield].kf = 0;
 	hgeti4 (h0,tname, &pw[ifield].kf);
 
     /* Length of field */
 	for (i = 0; i < 12; i++) tname[i] = 0;
 	sprintf (tname, "TFORM%d", ifield+1);;
+	tform[0] = 0;
 	hgets (h0,tname,16,tform);
 	tf1 = tform + 1;
 	tf2 = strchr (tform,'.');
@@ -548,6 +579,7 @@ int	*nchar;		/* Number of characters in one table row (returned) */
     /* Name of field */
 	for (i = 0; i < 12; i++) tname[i] = 0;
 	sprintf (tname, "TTYPE%d", ifield+1);;
+	temp[0] = 0;
 	hgets (h0,tname,16,temp);
 	strcpy (pw[ifield].kname,temp);
 	lpnam[ifield] = strlen (pw[ifield].kname);
@@ -807,10 +839,19 @@ char	*image;		/* FITS image pixels */
 	}
 
     /* Compute size of image in bytes using relevant header parameters */
+    naxis = 1;
     hgeti4 (header,"NAXIS",&naxis);
+    naxis1 = 1;
     hgeti4 (header,"NAXIS1",&naxis1);
+    naxis2 = 1;
     hgeti4 (header,"NAXIS2",&naxis2);
+    bitpix = 0;
     hgeti4 (header,"BITPIX",&bitpix);
+    if (bitpix == 0) {
+	fprintf (stderr, "FITSWIMAGE:  BITPIX is 0; image not written\n");
+	close (fd);
+	return (0);
+	}
     bytepix = bitpix / 8;
     if (bytepix < 0) bytepix = -bytepix;
     nbimage = naxis1 * naxis2 * bytepix;
@@ -868,4 +909,8 @@ char	*image;		/* FITS image pixels */
  * Feb 24 1998	Add SIMPLE keyword to start of extracted extension
  * Apr 30 1998	Fix error return if not table file after Allan Brighton
  * May  4 1998	Fix error in argument sequence in HGETS call
+ * May 27 1998	Include fitsio.h and imio.h
+ * Jun  1 1998	Add VMS fixes from Harry Payne at STScI
+ * Jun  3 1998	Fix bug reading EXTNAME
+ * Jun 11 1998	Initialize all header parameters before reading them
  */

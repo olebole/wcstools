@@ -7,7 +7,7 @@ BIN = bin
 
 all:	delwcs edhead fixpix gethead i2f imcat imhead immatch imrot \
 	imsize imstar imwcs scat sethead addpix getpix setpix sky2xy \
-	keyhead skycoor subpix xy2sky
+	keyhead skycoor subpix xy2sky wcshead
 
 addpix: addpix.c $(LIBWCS) libwcs/fitshead.h
 	$(CC) $(CFLAGS) -o $(BIN)/addpix addpix.c $(LIBS)

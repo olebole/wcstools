@@ -1,12 +1,12 @@
 /*** File libwcs/gscread.c
- *** May 13, 1998
+ *** June 24, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include "fitshead.h"
+#include "fitsio.h"
 #include "wcs.h"
 
 char cdn[64]="/data/gsc1";	/* pathname of northern hemisphere GSC CDROM */
@@ -114,10 +114,10 @@ int	nlog;		/* 1 for diagnostics */
 	}
     if (verbose) {
 	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
-	ra2str (rstr1, ra1, 3);
-        dec2str (dstr1, dec1, 2);
-	ra2str (rstr2, ra2, 3);
-        dec2str (dstr2, dec2, 2);
+	ra2str (rstr1, 16, ra1, 3);
+        dec2str (dstr1, 16, dec1, 2);
+	ra2str (rstr2, 16, ra2, 3);
+        dec2str (dstr2, 16, dec2, 2);
 	fprintf (stderr,"GSCREAD: RA: %s - %s  Dec: %s - %s\n",
 		 rstr1,rstr2,dstr1,dstr2);
 	}
@@ -928,4 +928,6 @@ char *path;	/* Pathname of GSC region FITS file */
  *
  * May 13 1998	Do not set classd in gscread()
  * May 13 1998	Print all stars if classd is < -1
+ * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  */

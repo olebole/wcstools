@@ -1,5 +1,5 @@
 /* File imstack.c
- * May 30, 1997
+ * May 27, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
-#include "libwcs/wcs.h"
+#include "fitsio.h"
+#include "wcs.h"
 
 static void usage();
 static int verbose = 0;		/* verbose flag */
@@ -306,4 +306,6 @@ char	*filename;	/* FITS or IRAF file filename */
 
 /* May 15 1997	New program
  * May 30 1997	Fix FITS data padding to integral multiple of 2880 bytes
+ *
+ * May 28 1998	Include fitsio.h instead of fitshead.h
  */

@@ -1,5 +1,5 @@
 /* File immwcs.c
- * April 30, 1998
+ * June 25, 1998
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -13,8 +13,8 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "libwcs/fitshead.h"
-#include "libwcs/wcs.h"
+#include "fitshead.h"
+#include "wcs.h"
 
 static void usage();
 static void FitWCS ();
@@ -50,8 +50,7 @@ extern void setrefcat();
 extern void setimcat();
 extern void setbmin();
 extern void setrefpix();
-extern void setwcstype();
-extern void setoldwcs();	/* AIPS classic WCS flag */
+extern void setwcsproj();
 extern void setfitplate();
 extern void setproj();
 extern void setiterate();
@@ -224,7 +223,7 @@ char **av;
     	    break;
 
 	case 'z':       /* Use AIPS classic WCS */
-	    setoldwcs (1);
+	    setdefwcs (1);
 	    break;
 
 	case '@':	/* List of files to be read */
@@ -530,4 +529,8 @@ char *
 {
 }
 /* Apr 30 1998	New program based on IMWCS
+ * May 27 1998	Include fitsio.h instead of fitshead.h
+   Jun  2 1998  Fix bugs in hput() and tabread()
+ * Jun 11 1998	Change setwcstype() to setwcsproj() to avoid conflict
+ * Jun 25 1998	Set WCS subroutine choice with SETDEFWCS()
  */

@@ -1,4 +1,4 @@
-.TH sgsc(1) WCS "12 December 1996"
+.TH sgsc(1) WCS "14 April 1998"
 .SH Name
 sgsc \- Find HST GSC stars in a square on the sky
 .SH Synopsis
@@ -6,14 +6,16 @@ sgsc [options] [-b or -j] ra dec
 .SH Description
 .I sgsc
 is a utility for finding all of the Hubble Space Telescope Guide Star
-Catalog objects in a specified region of the sky and listing their sky
-positions.  Output is to standard out, unless the -w flag is set, in
+Catalog objects in a specified region of the sky and listing them with their
+sky positions and magnitudes in order of brightness, with the brighter ones
+first.
+Output is to standard out, unless the -w flag is set, in
 which case it goes to objectname.gsc or search.gsc. It is somewhat
 similar to RGSC, which can search from lists of coordinates but cannot
-sort the output. 
+sort the output.  It is a link to scat.
 .SH Options
 .TP
-.B \-1
+.B \-a
 List single closest catalog source
 .TP
 .B \-b <RA> <Dec>
@@ -26,7 +28,7 @@ Sort by distance from center instead of flux
 Object class (0=stars 3=galaxies -1=all)
 .TP
 .B \-h
-print heading, else do not 
+Print heading, else do not 
 .TP
 .B \-j <RA> <Dec>
 Output J2000 (FK5) coordinates around this center
@@ -55,6 +57,6 @@ Verbose listing of processing intermediate results
 .B \-w
 Write tab table output file imagename.gsc
 .SH See Also
-rgsc(1), suac(1), scat(1)
+scat(1), rgsc(1), suac(1), susac(1), imgsc(1)
 .SH Author
 Doug Mink, SAO (dmink@cfa.harvard.edu)

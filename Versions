@@ -1,3 +1,18 @@
+Version 2.3 (July 10, 1998)
+Restructure WCS initialization subroutines, putting keyword-dependent
+stuff into wcsinit.c
+wcs.c: Add wcskinit() to initialize WCS from keywords obtained elsewhere
+wcs.c: Add wcsndec() to set number of decimal places output by pix2wcst()
+wcs.c: Fix wcscdset() to deal with all possible cases correctly
+wcs.c: Change setlinmode() to setwcslin() and setdegout() to setwcsdeg().
+wcsinit.c: Fix bug reading 1-dimensional FITS files
+wcsinit.c: Fix several initialization bugs discovered on Alpha version
+wcs.c: Add ICRS as RADECSYS value (acts like FK5)
+wcsfort.c:  Add Fortran interface in wcsfort.c
+wcs.c: Use AIPS subroutines of CAR projection to avoid WCSLIB bug
+scat.c: Add equinox options to and fix other bugs
+imcat.c: Add equinox options to and fix other bugs
+
 Version 2.2.1 (June 2, 1998)
 Fix bug in hput() so blank lines before END are filled correctly
 Fix fatal bug in tabread()

@@ -1,5 +1,5 @@
-#ifndef PROJ
-#define PROJ
+#ifndef proj_h_
+#define proj_h_
 
 #include "wcstrig.h"
 
@@ -137,4 +137,7 @@ extern const char *prjrev_errmsg[];
 };
 #endif
 
-#endif /* PROJ */
+#endif /* proj_h_ */
+
+/* May 27 1998	ifndef WCSTRIG changed to ifndef wcstrig_h_
+ */

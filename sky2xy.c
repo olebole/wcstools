@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * May 13, 1998
+ * June 25, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,15 +11,14 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/wcs.h"
-#include "libwcs/fitshead.h"
+#include "wcs.h"
+#include "fitsio.h"
 
 static void usage();
 extern struct WorldCoor *GetWCSFITS ();	/* Read WCS from FITS or IRAF header */
 
 static int verbose = 0;		/* verbose/debugging flag */
 static char coorsys[16];
-static int oldwcs = 0;		/* AIPS classic WCS flag */
 static double eqin = 0.0;
 static double eqout = 0.0;
 
@@ -69,7 +68,7 @@ char **av;
     		break;
 
 	    case 'z':       /* Use AIPS classic WCS */
-		oldwcs++;
+		setdefwcs (1);
 		break;
 
     	    default:
@@ -90,7 +89,6 @@ char **av;
 	fprintf (stderr, "No WCS in image file %s\n", fn);
 	exit (1);
 	}
-    wcs->oldwcs = oldwcs;
 
     while (ac-- > 1) {
 	listname = *av;
@@ -172,8 +170,8 @@ char **av;
 	    wcscon (sysin, wcs->syswcs, eqin, eqout, &ra, &dec, wcs->epoch);
 	    if (sysin != wcs->syswcs && verbose) {
 		printf ("%s %s %s -> ", rastr, decstr, csys);
-		ra2str (rastr, ra, 3);
-		dec2str (decstr, dec, 2);
+		ra2str (rastr, 32, ra, 3);
+		dec2str (decstr, 32, dec, 2);
 		printf ("%s %s %s\n", rastr, decstr, wcs->radecsys);
 		}
 	    wcsc2pix (wcs, ra0, dec0, csys, &x, &y, &offscale);
@@ -229,4 +227,7 @@ char *progname;
  * Apr 24 1998	Handle linear coodinates
  * Apr 28 1998	Implement separate coordinate system for input
  * May 13 1998	Implement arbitrary equinox for input
+ * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
+ * Jun 25 1998	Set WCS subroutine choice with SETDEFWCS()
  */

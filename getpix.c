@@ -1,5 +1,5 @@
 /* File getpix.c
- * December 15, 1997
+ * May 27, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitshead.h"
+#include "fitsio.h"
 
 static void usage();
 static int PrintFITSHead ();
@@ -162,4 +162,6 @@ int n, *x, *y;
  *
  * Feb 21 1997  Check pointers against NULL explicitly for Linux
  * Dec 15 1997	Add capability of reading and writing IRAF 2.11 images
+ *
+ * May 27 1998	Include fitsio.h instead of fitshead.h
  */

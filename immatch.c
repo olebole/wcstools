@@ -1,5 +1,5 @@
 /* File immatch.c
- * April 28, 1998
+ * June 25, 1998
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -13,8 +13,8 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "libwcs/fitshead.h"
-#include "libwcs/wcs.h"
+#include "fitsio.h"
+#include "wcs.h"
 
 static void usage();
 static void FitWCS ();
@@ -47,9 +47,8 @@ extern void setimcat();
 extern void setbmin();
 extern void setfrac();
 extern void setrefpix();
-extern void setwcstype();
+extern void setwcsproj();
 extern void setfitwcs();
-extern void setoldwcs();	/* AIPS classic WCS flag */
 
 main (ac, av)
 int ac;
@@ -225,7 +224,7 @@ char **av;
     	    break;
 
 	case 'z':       /* Use AIPS classic WCS */
-	    setoldwcs (1);
+	    setdefwcs (1);
 	    break;
 
 	case '@':	/* List of files to be read */
@@ -414,4 +413,8 @@ char *
  * Apr 13 1998	Version 2.2: Add polynomial plate fit
  * Apr 24 1998	change coordinate setting to setsys() from setfk4()
  * Apr 28 1998	Change coordinate system flags to WCS_*
+ * May 27 1998	Include fitsio.h instead of fitshead.h
+ * Jun  2 1998	Fix bugs in hput() and tabread()
+ * Jun 11 1998	Change setwcstype() to setwcsproj() to avoid conflict
+ * Jun 25 1998	Set WCS subroutine choice with SETDEFWCS()
  */

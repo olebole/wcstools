@@ -1,6 +1,6 @@
 WCSTools
 
-This is version 2.2.1 of the WCSTools package developed by Doug Mink
+This is version 2.3 of the WCSTools package developed by Doug Mink
 at the Smithsonian Astrophysical Observatory, with significant code from
 
 Bill Cotton of NRAO (projection),
@@ -23,11 +23,11 @@ of this software is in the Versions file.
 
 The complete source code is in
 
-	ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-2.2.1.tar.gz
+	ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-2.3.tar.gz
 
 To install the code, create a directory for it, download it, and run
 
-	gzcat wcstools-2.2.1.tar.gz | tar xvf -
+	gzcat wcstools-2.3.tar.gz | tar xvf -
 
 The main directory will contain the source code for the programs, and
 a subdirectory, libwcs, will contain the source code for the subroutines
@@ -42,17 +42,25 @@ in the code.
 
 compiles the subroutine library and all of the documented programs.
 The resulting executable binaries will be in the bin/ subdirectory.
+scat and imcat search specific catalogs if invoked with specific commands.
+Execute Linkbin to make these links in the bin/ directory.
+
 Man pages for most, but not all, of the programs are in the Man/
 subdirectory.
 
+To use the catalog search routine without having to type the catalog
+name as an argument, run Linkbins to add symbolic links from sgsc,
+suac, sujc, and susac to scat and imgsc, imuac, imujc, and imusac
+to imcat.
 
-SAOimage, available via FTP from
+
+SAOimage is available via FTP from
 
 	ftp://cfa-ftp.harvard.edu/pub/gsc/SAOimage/
 
-uses the same WCS subroutines as WCSTools.  If you want to include the
-same WCS access in your own code, this subset of the WCSTools library
-is available at
+and uses the same WCS subroutines as WCSTools.  If you want to include the
+same WCS access in your own code, the subset of the WCSTools library
+which is used in SAOimage is available at
 
 	ftp://cfa-ftp.harvard.edu/pub/gsc/SAOimage/wcssubs.tar.gz
 

@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * April 30, 1998
+ * June 24, 1998
  * By Doug Mink, based on UIowa code
  */
 
@@ -230,8 +230,8 @@ getfield:
     if (verbose) {
 	printf ("%s:\n",refcatname);
 	for (ig = 0; ig < ng; ig++) {
-	    ra2str (rstr, gra[ig], 3);
-	    dec2str (dstr, gdec[ig], 2);
+	    ra2str (rstr, 32, gra[ig], 3);
+	    dec2str (dstr, 32, gdec[ig], 2);
 	    if (refcat == GSC)
 		printf (" %9.4f",gnum[ig]);
 	    else if (refcat == UAC || refcat == USAC)
@@ -332,8 +332,8 @@ getfield:
 	    double xmag, mdiff, ra, dec;
 	    for (is = 0; is < nbs; is++) {
 		pix2wcs (wcs, sx[is], sy[is], &ra, &dec);
-		ra2str (rastr, ra, 3);
-		dec2str (decstr, dec, 2);
+		ra2str (rastr, 32, ra, 3);
+		dec2str (decstr, 32, dec, 2);
 		xmag = -2.5 * log10 (sb[is]);
 		if (!is) mdiff = gm[0] - xmag;
 		xmag = xmag + mdiff;
@@ -370,15 +370,15 @@ getfield:
 	else
 	    printf ("# Arcsec/Pixel: %.6f %.6f  Rotation: %.6f degrees\n",
 		    3600.0*wcs->xinc, 3600.0*wcs->yinc, wcs->rot);
-	ra2str (rstr, wcs->xref, 3);
-	dec2str (dstr, wcs->yref, 2);
+	ra2str (rstr, 32, wcs->xref, 3);
+	dec2str (dstr, 32, wcs->yref, 2);
 	printf ("# Optical axis: %s  %s J2000 at (%.2f,%.2f)\n",
 		rstr,dstr, wcs->xrefpix, wcs->yrefpix);
 	ra = wcs->xref;
 	dec = wcs->yref;
 	(void)fk524e (&ra, &dec, wcs->epoch);
-	ra2str (rstr, ra, 3);
-	dec2str (dstr, dec, 2);
+	ra2str (rstr, 32, ra, 3);
+	dec2str (dstr, 32, dec, 2);
 	printf ("# Optical axis: %s  %s B1950 at (%.2f,%.2f)\n",
 		rstr,dstr, wcs->xrefpix, wcs->yrefpix);
 
@@ -571,8 +571,8 @@ int	refcat;		/* Reference catalog code */
 	dsepsum = dsepsum + dsep;
 	rsep2sum = rsep2sum + rsep2;
 	dsep2sum = dsep2sum + dsep2;
-	ra2str (rstr, gra1[i], 3);
-	dec2str (dstr, gdec1[i], 2);
+	ra2str (rstr, 32, gra1[i], 3);
+	dec2str (dstr, 32, gdec1[i], 2);
 	if (refcat == GSC)
 	    printf (" %9.4f",gnum1[i]);
 	else if (refcat == UAC || refcat == USAC)
@@ -779,4 +779,5 @@ int recenter;
  * Mar 27 1998	Save plate fit coefficients to FITS header
  * Apr  8 1998	Reset equinox to that of reference catalog
  * Apr 30 1998	Handle prematched star/pixel file
+ * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  */
