@@ -1,5 +1,5 @@
 /*** File libwcs/tmcread.c
- *** April 14, 2003
+ *** May 28, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2003
@@ -37,30 +37,39 @@
 #include "wcs.h"
 #include "wcscat.h"
 
-#define MAXREG 100
+#define MAXREG 1800
+
+#define IDR1 1
+#define IDR2 2
+#define ALLSKY 3
+
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 
 /* pathname of 2MASS point source catalog root directory
    or catalog search engine URL */
-char tmccd[64]="/data/astrocat/2MASS";
+char tmc2path[64]="/data/astrocat/2MASS";
+char tmcapath[64]="/data/astrocat/tmc";
+char *tmcpath;
+
 static double *gdist;	/* Array of distances to stars */
 static int ndist = 0;
 static int linedump = 0;
+static int tmcrel = ALLSKY;
 
 static int tmcreg();
-static int tmcsize();
 struct StarCat *tmcopen();
 void tmcclose();
 static int tmcstar();
-static int tmcsize();
 static int tmcsdec();
+static int tmcsra();
 
 /* TMCREAD -- Read 2MASS point source catalog stars from CDROM */
 
 int
-tmcread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,sortmag,
-	 nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
+tmcread (catfile,cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,
+	 sortmag,nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
 
+char	*catfile;	/* Name of catalog file (tmc or tmidr2) */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
@@ -110,6 +119,19 @@ int	nlog;		/* 1 for diagnostics */
     double rdist, ddist;
     char cstr[32], rastr[32], decstr[32], numstr[32];
     char *str;
+    char tmcenv[16];
+
+    /* If catalog file contains idr2 or IDR2, set release to IDR2 */
+    if (strcsrch (catfile, "idr2")) {
+	tmcrel = IDR2;
+	tmcpath = tmc2path;
+	strcpy (tmcenv, "TMCIDR2_PATH");
+	}
+    else {
+	tmcrel = ALLSKY;
+	tmcpath = tmcapath;
+	strcpy (tmcenv, "TMC_PATH");
+	}
 
     ntot = 0;
     if (nlog > 0)
@@ -119,19 +141,15 @@ int	nlog;		/* 1 for diagnostics */
     else
 	verbose = 0;
 
+    /* If pathname is set in environment, override local value */
+    if ((str = getenv(tmcenv)) != NULL )
+	tmcpath = str;
+
     /* If pathname is a URL, search and return */
-    if ((str = getenv("TMC_PATH")) != NULL ) {
-	if (!strncmp (str, "http:",5)) {
-	    return (webread (str,"tmc",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
-			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
-	    }
-	}
-    if (!strncmp (tmccd, "http:",5)) {
-	return (webread (tmccd,"tmc",distsort,cra,cdec,dra,ddec,drad,
+    if (!strncmp (tmcpath, "http:",5))
+	return (webread (str,catfile,distsort,cra,cdec,dra,ddec,drad,
 			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			 gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
-	}
 
     wcscstr (cstr, sysout, eqout, epout);
 
@@ -222,7 +240,7 @@ int	nlog;		/* 1 for diagnostics */
 	    return (0);
 	    }
 
-	/* Loop through region list */
+	/* Loop through zone or region list */
 	for (ireg = 0; ireg < nreg; ireg++) {
 
 	    /* Open file for this region of 2MASS point source catalog */
@@ -234,8 +252,14 @@ int	nlog;		/* 1 for diagnostics */
 		}
 
 	    /* Find first and last stars in this region */
-	    istar1 = tmcsdec (starcat, star, zone, rdec1);
-	    istar2 = tmcsdec (starcat, star, zone, rdec2);
+	    if (tmcrel == ALLSKY) {
+		istar1 = tmcsra (starcat, star, zone, rra1);
+		istar2 = tmcsra (starcat, star, zone, rra2);
+		}
+	    else {
+		istar1 = tmcsdec (starcat, star, zone, rdec1);
+		istar2 = tmcsdec (starcat, star, zone, rdec2);
+		}
 	    if (verbose)
 		fprintf (stderr,"TMCREAD: Searching stars %d through %d\n",
 			istar1, istar2-1);
@@ -419,9 +443,9 @@ int	nlog;		/* 1 for diagnostics */
 /* TMCRNUM -- Read HST Guide Star Catalog stars from CDROM */
 
 int
-tmcrnum (nstars,sysout,eqout,epout,
-	 gnum,gra,gdec,gmag,gtype,nlog)
+tmcrnum (catfile,nstars,sysout,eqout,epout,gnum,gra,gdec,gmag,gtype,nlog)
 
+char	*catfile;	/* Name of catalog file (tmc or tmidr2) */
 int	nstars;		/* Number of stars to find */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
@@ -445,21 +469,31 @@ int	nlog;		/* 1 for diagnostics */
     int jstar;
     int istar, nstar;
     double num, ra, dec, rapm, decpm, dstar;
+    char tmcenv[16];
+
+    /* If catalog file contains idr2 or IDR2, set release to IDR2 */
+    if (strcsrch (catfile, "idr2")) {
+	tmcrel = IDR2;
+	tmcpath = tmc2path;
+	strcpy (tmcenv, "TMCIDR2_PATH");
+	}
+    else {
+	tmcrel = ALLSKY;
+	tmcpath = tmcapath;
+	strcpy (tmcenv, "TMC_PATH");
+	}
 
     if (nlog < 0)
 	linedump = 1;
 
+    /* If pathname is set in environment, override local value */
+    if ((str = getenv(tmcenv)) != NULL )
+	tmcpath = str;
+
     /* If pathname is a URL, search and return */
-    if ((str = getenv("TMC_PATH")) != NULL ) {
-	if (!strncmp (str, "http:",5)) {
-	    return (webrnum (str,"tmc",nstars,sysout,eqout,epout,
-			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
-	    }
-	}
-    if (!strncmp (tmccd, "http:",5)) {
-	return (webrnum (tmccd,"tmc",nstars,sysout,eqout,epout,
+    if (!strncmp (tmcpath, "http:",5))
+	return (webrnum (tmcapath,"tmc",nstars,sysout,eqout,epout,
 			 gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
-	}
 
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
@@ -474,7 +508,10 @@ int	nlog;		/* 1 for diagnostics */
 	    fprintf (stderr,"TMCRNUM: File %s not found\n",inpath);
 	    return (0);
 	    }
-	dstar = (gnum[jstar] - (double)rnum) * 10000000.0;
+	if (tmcrel == IDR2)
+	    dstar = (gnum[jstar] - (double)rnum) * 10000000.0;
+	else
+	    dstar = (gnum[jstar] - (double)rnum) * 1000000.0;
 	istar = (int) (dstar + 0.5);
 	if (tmcstar (starcat, star, rnum, istar)) {
 	    fprintf (stderr,"TMCRNUM: Cannot read star %d\n", istar);
@@ -553,91 +590,106 @@ int	verbose;	/* 1 for diagnostics */
 
 {
     int nrgn;		/* Number of regions found (returned) */
-    char *tabpath;	/* Pathname for regions table */
     char *str;
     int ir;
     int iz1,iz2,ir1,ir2,jr1,jr2,i;
+    int ispd1, ispd2, ispd;
     int nsrch;
-    double rah1,rah2;
+    double rah1,rah2, spd1, spd2;
 
     nrgn = 0;
-
-    /* Set path to 2MASS Catalog */
-    if ((str = getenv("TMC_PATH")) != NULL ) {
-	tabpath = (char *) malloc (strlen (str) + 16);
-	strcpy (tabpath, str);
-	}
-    else {
-	tabpath = (char *) malloc (strlen (tmccd) + 16);
-	strcpy (tabpath, tmccd);
-	}
 
     /* Find region range to search based on right ascension */
-    rah1 = ra1 / 15.0;
-    for (i = 1; i < 50; i++) {
-	if (rah1 < zmax[i]) {
-	    iz1 = i - 1;
-	    break;
+    if (tmcrel == IDR2) {
+	rah1 = ra1 / 15.0;
+	for (i = 1; i < 50; i++) {
+	    if (rah1 < zmax[i]) {
+		iz1 = i - 1;
+		break;
+		}
 	    }
-	}
-    rah2 = ra2 / 15.0;
-    for (i = 1; i < 50; i++) {
-	if (rah2 < zmax[i]) {
-	    iz2 = i - 1;
-	    break;
+	rah2 = ra2 / 15.0;
+	for (i = 1; i < 50; i++) {
+	    if (rah2 < zmax[i]) {
+		iz2 = i - 1;
+		break;
+		}
 	    }
-	}
-    if (iz2 >= iz1) {
-	ir1 = iz1;
-	ir2 = iz2;
-	jr1 = 0;
-	jr2 = 0;
-	nsrch = iz2 - iz1 + 1;
-	}
-    else {
-	ir1 = iz1;
-	ir2 = 48;
-	jr1 = 0;
-	jr2 = iz2;
-	nsrch = 48 - iz1 + 1 + iz2 + 1;
-	}
+	if (iz2 >= iz1) {
+	    ir1 = iz1;
+	    ir2 = iz2;
+	    jr1 = 0;
+	    jr2 = 0;
+	    nsrch = iz2 - iz1 + 1;
+	    }
+	else {
+	    ir1 = iz1;
+	    ir2 = 48;
+	    jr1 = 0;
+	    jr2 = iz2;
+	    nsrch = 48 - iz1 + 1 + iz2 + 1;
+	    }
 
-    /* Search region northern hemisphere or only one region */
-    if (verbose) {
-	fprintf(stderr,"TMCREG: RA: %.5f - %.5f, Dec: %.5f - %.5f\n",
+	/* Search region northern hemisphere or only one region */
+	if (verbose) {
+	    fprintf(stderr,"TMCREG: RA: %.5f - %.5f, Dec: %.5f - %.5f\n",
 		ra1,ra2,dec1,dec2);
-	if (nsrch == 1)
-	    fprintf (stderr,"TMCREG: searching region %d", ir1);
-	else
-	    fprintf (stderr,"TMCREG: searching %d regions: %d - %d",
+	    if (nsrch == 1)
+		fprintf (stderr,"TMCREG: searching region %d", ir1);
+	    else
+		fprintf (stderr,"TMCREG: searching %d regions: %d - %d",
 		 nsrch, ir1, ir2);
-	if (jr1 > 0 && jr2 > 0)
-	    fprintf (stderr,", %d - %d", jr1, jr2);
-	fprintf (stderr,"\n");
-	}
+	    if (jr1 > 0 && jr2 > 0)
+		fprintf (stderr,", %d - %d", jr1, jr2);
+	    fprintf (stderr,"\n");
+	    }
 
-    /* Loop through first section of sky */
-    nrgn = 0;
-    for (ir = ir1; ir <= ir2; ir++) {
-	if (verbose)
-	    fprintf (stderr,"TMCREG: Region %d (%s) added to search\n",
+	/* Loop through first section of sky */
+	nrgn = 0;
+	for (ir = ir1; ir <= ir2; ir++) {
+	    if (verbose)
+		fprintf (stderr,"TMCREG: Region %d (%s) added to search\n",
 		    ir, rdir[ir]);
 
-	/* Add this region to list, if there is space */
-	if (nrgn < nrmax) {
-	    regions[nrgn] = ir;
-	    nrgn++;
+	    /* Add this region to list, if there is space */
+	    if (nrgn < nrmax) {
+		regions[nrgn] = ir;
+		nrgn++;
+		}
 	    }
-	}
-    for (ir = jr1; ir < jr2; ir++) {
-	if (verbose)
-	    fprintf (stderr,"TMCREG: Region %d %s) added to search\n",
+
+	/* Loop through second section of sky */
+	for (ir = jr1; ir < jr2; ir++) {
+	    if (verbose)
+		fprintf (stderr,"TMCREG: Region %d %s) added to search\n",
 		     ir, rdir[ir]);
 
-	/* Add this region to list, if there is space */
-	if (nrgn < nrmax) {
-	    regions[nrgn] = ir;
-	    nrgn++;
+	    /* Add this region to list, if there is space */
+	    if (nrgn < nrmax) {
+		regions[nrgn] = ir;
+		nrgn++;
+		}
+	    }
+	}
+
+    /* Compute SPD regions for all-sky release of point source catalog */
+    else {
+	if (dec1 < dec2) {
+	    spd1 = dec1 + 90.0;
+	    spd2 = dec2 + 90.0;
+	    }
+	else {
+	    spd1 = dec2 + 90.0;
+	    spd2 = dec1 + 90.0;
+	    }
+	ispd1 = (int) (spd1 * 10.0);
+	ispd2 = (int) (spd2 * 10.0);
+	for (ispd = ispd1; ispd <= ispd2; ispd++) {
+	    /* Add this region to list, if there is space */
+	    if (nrgn < nrmax) {
+		regions[nrgn] = ispd;
+		nrgn++;
+		}
 	    }
 	}
 
@@ -655,37 +707,39 @@ int	zone;	/* RA zone (hours) to read */
 {
     FILE *fcat;
     struct StarCat *sc;
-    int lfile, lpath;
+    int lfile, lpath, izone, ireg;
     char *str;
-    char *tmcfile;
-    char *tmcpath;	/* Full pathname for catalog file */
+    char *zonefile;
+    char *zonepath;	/* Full pathname for catalog file */
 
     /* Set path to 2MASS Point Source Catalog zone */
-    if ((str = getenv("TMC_PATH")) != NULL ) {
-	lpath = strlen(str) + 18;
-	tmcpath = (char *) malloc (lpath);
-	sprintf (tmcpath, "%s/idr2psc%s.tbl", str, rdir[zone]);
+    if (tmcrel == ALLSKY) {
+	izone = zone / 10;
+	ireg = zone % 10;
+	lpath = strlen (tmcpath) + 18;
+	zonepath = (char *) malloc (lpath);
+	sprintf (zonepath, "%s/%03d/t%04d.cat", tmcpath, izone, ireg);
 	}
     else {
-	lpath = strlen (tmccd) + 18;
-	tmcpath = (char *) malloc (lpath);
-	sprintf (tmcpath, "%s/idr2psc%s.tbl", tmccd, rdir[zone]);
+	lpath = strlen (tmcpath) + 18;
+	zonepath = (char *) malloc (lpath);
+	sprintf (zonepath, "%s/idr2psc%s.tbl", tmcpath, rdir[zone]);
 	}
 
     /* Find length of 2MASS catalog file */
-    lfile = tmcsize (tmcpath);
+    lfile = getfilesize (zonepath);
 
     /* Check for existence of catalog */
     if (lfile < 2) {
-	fprintf (stderr,"TMCOPEN: Binary catalog %s has no entries\n",tmcpath);
-	free (tmcpath);
+	fprintf (stderr,"TMCOPEN: Binary catalog %s has no entries\n",zonepath);
+	free (zonepath);
 	return (NULL);
 	}
 
     /* Open 2MASS point source catalog zone file */
-    if (!(fcat = fopen (tmcpath, "r"))) {
-	fprintf (stderr,"TMCOPEN: 2MASS PSC file %s cannot be read\n",tmcpath);
-	free (tmcpath);
+    if (!(fcat = fopen (zonepath, "r"))) {
+	fprintf (stderr,"TMCOPEN: 2MASS PSC file %s cannot be read\n",zonepath);
+	free (zonepath);
 	return (0);
 	}
 
@@ -693,19 +747,37 @@ int	zone;	/* RA zone (hours) to read */
     sc = (struct StarCat *) calloc (1, sizeof (struct StarCat));
     sc->byteswapped = 0;
 
-    sc->nbent = 302;
+    if (tmcrel == ALLSKY) {
+	sc->entra = 0;
+	sc->entdec = 10;
+	sc->entname = 0;
+	sc->entmag[0] = 39;
+	sc->entmag[1] = 46;
+	sc->entmag[2] = 53;
+	sc->entadd = 60;
+	sc->nbent = 69;
+	}
+    else {
+	sc->entra = 0;
+	sc->entdec = 10;
+	sc->entmag[0] = 53;
+	sc->entmag[1] = 72;
+	sc->entmag[2] = 91;
+	sc->entadd = 110;
+	sc->nbent = 302;
+	}
     sc->nstars = lfile / sc->nbent;
 
     /* Separate filename from pathname and save in structure */
-    tmcfile = strrchr (tmcpath,'/');
-    if (tmcfile)
-	tmcfile = tmcfile + 1;
+    zonefile = strrchr (zonepath,'/');
+    if (zonefile)
+	zonefile = zonefile + 1;
     else
-	tmcfile = tmcpath;
-    if (strlen (tmcfile) < 24)
-	strcpy (sc->isfil, tmcfile);
+	zonefile = zonepath;
+    if (strlen (zonefile) < 24)
+	strcpy (sc->isfil, zonefile);
     else
-	strncpy (sc->isfil, tmcfile, 23);
+	strncpy (sc->isfil, zonefile, 23);
 
     /* Set other catalog information in structure */
     sc->inform = 'J';
@@ -715,9 +787,14 @@ int	zone;	/* RA zone (hours) to read */
     sc->ifcat = fcat;
     sc->sptype = 2;
 
-    /* 2MASS stars are Dec-sorted within regions */
-    sc->rasorted = 0;
+    /* All-sky release 2MASS catalogs are RA-sorted within Dec zones */
+    if (tmcrel == ALLSKY)
+	sc->rasorted = 1;
+    /* Pre-release 2MASS catalogs were Dec-sorted within RA zones */
+    else
+	sc->rasorted = 0;
 
+    free (zonepath);
     return (sc);
 }
 
@@ -768,7 +845,7 @@ double	decx0;		/* Declination in degrees for which to search */
 	    if (debug) {
 		char decstr[16];
 		dec2str (decstr, 16, dec, 3);
-		fprintf (stderr,"UACSRA %d %d: %s (%s)\n",
+		fprintf (stderr,"TMCSRA %d %d: %s (%s)\n",
 			 nrep,istar,decstr,decstrx);
 		}
 	    rdiff = dec1 - dec;
@@ -787,6 +864,77 @@ double	decx0;		/* Declination in degrees for which to search */
 	    if (debug) {
 		fprintf (stderr," dec1=    %.5f dec=     %.5f decx=    %.5f\n",
 			 dec1,dec,decx);
+		fprintf (stderr," rdiff=  %.5f rdiff1= %.5f rdiff2= %.5f\n",
+			 rdiff,rdiff1,rdiff2);
+		fprintf (stderr," istar1= %d istar= %d istar1= %d\n",
+			 istar1,istar,istar2);
+		}
+	    if (istar < 1)
+		istar = 1;
+	    if (istar > starcat->nstars)
+		istar = starcat->nstars;
+	    if (istar == istar1)
+		break;
+	    }
+	}
+    return (istar);
+}
+
+
+/* TMCSRA -- Find 2MASS star closest to specified right ascension */
+
+static int
+tmcsra (starcat, star, zone, rax0)
+
+struct StarCat *starcat; /* Star catalog descriptor */
+struct Star *star;	/* Current star entry */
+int	zone;		/* Declination zone in which search is occurring */
+double	rax0;		/* Right ascension in degrees for which to search */
+{
+    int istar, istar1, istar2, nrep;
+    double rax, ra1, ra, rdiff, rdiff1, rdiff2, sdiff;
+    char rastrx[16];
+    int debug = 0;
+
+    rax = rax0;
+    if (debug)
+	ra2str (rastrx, 16, rax, 3);
+    istar1 = 1;
+    istar1 = 1;
+    if (tmcstar (starcat, star, zone, istar1))
+	return (0);
+    ra1 = star->ra;
+    istar = starcat->nstars;
+    nrep = 0;
+    while (istar != istar1 && nrep < 20) {
+	if (tmcstar (starcat, star, zone, istar))
+	    break;
+	else {
+	    ra = star->ra;
+	    if (ra == ra1)
+		break;
+	    if (debug) {
+		char rastr[16];
+		ra2str (rastr, 16, ra, 3);
+		fprintf (stderr,"TMCSRA %d %d: %s (%s)\n",
+			 nrep,istar,rastr,rastrx);
+		}
+	    rdiff = ra1 - ra;
+	    rdiff1 = ra1 - rax;
+	    rdiff2 = ra - rax;
+	    if (nrep > 20 && ABS(rdiff2) > ABS(rdiff1)) {
+		istar = istar1;
+		break;
+		}
+	    nrep++;
+	    sdiff = (double)(istar - istar1) * rdiff1 / rdiff;
+	    istar2 = istar1 + (int) (sdiff + 0.5);
+	    ra1 = ra;
+	    istar1 = istar;
+	    istar = istar2;
+	    if (debug) {
+		fprintf (stderr," ra1=    %.5f ra=     %.5f rax=    %.5f\n",
+			 ra1,ra,rax);
 		fprintf (stderr," rdiff=  %.5f rdiff1= %.5f rdiff2= %.5f\n",
 			 rdiff,rdiff1,rdiff2);
 		fprintf (stderr," istar1= %d istar= %d istar1= %d\n",
@@ -844,70 +992,56 @@ int	istar;		/* Star sequence in 2MASS zone file */
 	}
 
     /* Make up source number from zone number and star number */
-    st->num = zone + (0.0000001 * (double) istar);
+    if (tmcrel == IDR2)
+	st->num = zone + (0.0000001 * (double) istar);
+    else
+	st->num = zone + (0.000001 * (double) istar);
 
     /* Read position in degrees */
     st->ra = atof (line);
-    st->dec = atof (line+11);
+    st->dec = atof (line+sc->entdec);
 
     /* No proper motion */
     st->rapm = 0.0;
     st->decpm = 0.0;
 
     /* Set J magnitude */
-    st->xmag[0] = atof (line+53);
+    st->xmag[0] = atof (line+sc->entmag[0]);
 
     /* Set H magnitude */
-    st->xmag[1] = atof (line+72);
+    st->xmag[1] = atof (line+sc->entmag[1]);
 
     /* Set K magnitude */
-    st->xmag[2] = atof (line+91);
+    st->xmag[2] = atof (line+sc->entmag[2]);
 
     /* Add 100 to magnitude if it isn't a good one */
-    iflag = ((int) line[110]) - 48;
-    if (iflag < 1 || iflag == 3 || iflag > 4)
-	st->xmag[0] = st->xmag[0] + 100.0;
-    iflag = ((int) line[111]) - 48;
-    if (iflag < 1 || iflag == 3 || iflag > 4)
-	st->xmag[1] = st->xmag[1] + 100.0;
-    iflag = ((int) line[112]) - 48;
-    if (iflag < 1 || iflag == 3 || iflag > 4)
-	st->xmag[2] = st->xmag[2] + 100.0;
+    if (tmcrel == ALLSKY) {
+	if (line[sc->entadd] == 'U')
+	    st->xmag[0] = st->xmag[0] + 100.0;
+	if (line[sc->entadd + 1] == 'U')
+	    st->xmag[1] = st->xmag[1] + 100.0;
+	if (line[sc->entadd + 2] == 'U')
+	    st->xmag[2] = st->xmag[2] + 100.0;
+	}
+
+	/* Preliminary data release data quality flag */
+    else {
+	iflag = ((int) line[sc->entadd]) - 48;
+	if (iflag < 1 || iflag == 3 || iflag > 4)
+	    st->xmag[0] = st->xmag[0] + 100.0;
+	iflag = ((int) line[sc->entadd + 1]) - 48;
+	if (iflag < 1 || iflag == 3 || iflag > 4)
+	    st->xmag[1] = st->xmag[1] + 100.0;
+	iflag = ((int) line[sc->entadd + 2]) - 48;
+	if (iflag < 1 || iflag == 3 || iflag > 4)
+	    st->xmag[2] = st->xmag[2] + 100.0;
+	}
 
     if (linedump)
 	printf ("%s\n",line);
 
     return (0);
 }
-
-/* TMCSIZE -- return size of 2MASS point source catalog file in bytes */
-
-static int
-tmcsize (filename)
-
-char	*filename;	/* Name of file for which to find size */
-{
-    FILE *diskfile;
-    long filesize;
-
-    /* Open file */
-    if ((diskfile = fopen (filename, "r")) == NULL)
-	return (-1);
-
-    /* Move to end of the file */
-    if (fseek (diskfile, 0, 2) == 0)
-
-	/* Position is the size of the file */
-	filesize = ftell (diskfile);
-
-    else
-	filesize = -1;
-
-    fclose (diskfile);
-
-    return (filesize);
-}
-
 
 /* May 29 2001	New program, based on ty2read.c and uacread.c
  * May 30 2001	Round K magnitude to nearest 1000th
@@ -927,4 +1061,8 @@ char	*filename;	/* Name of file for which to find size */
  *
  * Apr  3 2003	Drop unused variables after lint
  * Apr 14 2003	Explicitly get revision date if nstarmax < 1
+ * May 19 2003	Add code to read dec-zoned, ra-sorted All-Sky release
+ * May 21 2003	Add catfile argument to read both IDR2 and All-Sky releases
+ * May 27 2003	Allow IDR2 and Allsky release to be set by catalog name
+ * May 28 2003	Star ID numbers from All-Sky release have 6 decimal places
  */

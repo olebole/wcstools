@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** April 14, 2003
+ *** June 2, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2000-2003
@@ -209,8 +209,8 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("ra	%s\n", rastr);
 	dec2str (decstr, 31, cdec, 2);
 	printf ("dec	%s\n", decstr);
-	printf ("rpmunit	tsec/century\n");
-	printf ("dpmunit	arcsec/century\n");
+	printf ("rpmunit	mas/year\n");
+	printf ("dpmunit	mas/year\n");
 	if (drad != 0.0)
 	    printf ("radmin	%.1f\n", drad*60.0);
 	else {
@@ -322,9 +322,9 @@ int	nlog;		/* 1 for diagnostics */
 			dec2str (decstr, 31, dec, 2);
 			dist = wcsdist (cra,cdec,ra,dec) * 60.0;
 			printf ("%010.5f	%s	%s", num,rastr,decstr);
-			printf ("	%5.2f	%5.2f	%6.3f	%6.2f	%.2f\n",
-				magb, magv, rapm*240000.0, decpm*3600000.0,
-				dist / 60.0);
+			printf ("	%5.2f	%5.2f	%6.1f	%6.1f	%.2f\n",
+				magb, magv, rapm * 3600000.0 * cosdeg(dec),
+				decpm * 3600000.0, dist / 60.0);
 			}
 
 		    /* Save star position and magnitude in table */
@@ -1029,7 +1029,7 @@ int istar;	/* Star sequence number in Tycho 2 catalog region file */
     st->ra = atof (line+15);
     st->dec = atof (line+28);
 
-    /* Read proper motion and convert it to to degrees/year */
+    /* Read proper motion and convert it to degrees (of RA and Dec) per year */
     st->rapm = (atof (line+41) / 3600000.0) / cosdeg (st->dec);
     st->decpm = atof (line+49) / 3600000.0;
 
@@ -1103,4 +1103,5 @@ char	*filename;	/* Name of file for which to find size */
  * Mar 11 2003	Fix position limit testing
  * Apr  3 2003	Drop unused variables after lint
  * Apr 14 2003	Explicitly get revision date if nstarmax < 1
+ * Jun  2 2003	Print proper motion as mas/year
  */

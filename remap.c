@@ -1,5 +1,5 @@
 /* File remap.c
- * April 9, 2002
+ * May 23, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -117,10 +117,22 @@ char **av;
 	    setcenter (rastr, decstr);
     	    break;
 
+    	case 'e':	/* Output image center on command line in ecliptic */
+    	    if (ac < 3)
+    		usage();
+	    setsys (WCS_ECLIPTIC);
+	    outsys = WCS_ECLIPTIC;
+	    strcpy (rastr, *++av);
+	    ac--;
+	    strcpy (decstr, *++av);
+	    ac--;
+	    setcenter (rastr, decstr);
+    	    break;
+
 	case 'f':	/* Force FITS output */
 	    fitsout++;
 	    break;
-	    
+
     	case 'g':	/* Output image center on command line in galactic */
     	    if (ac < 3)
     		usage();
@@ -322,6 +334,7 @@ usage ()
     fprintf(stderr,"  or : remap [-vf][-a rot][[-b][-j] ra dec][-i bits][-l num] @filelist\n");
     fprintf(stderr,"  -a: Output rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b ra dec: Output center in B1950 (FK4) RA and Dec\n");
+    fprintf(stderr,"  -e long lat: Output center in ecliptic longitude and latitude\n");
     fprintf(stderr,"  -f: Force FITS output\n");
     fprintf(stderr,"  -g long lat: Output center in galactic longitude and latitude\n");
     fprintf(stderr,"  -i num: Number of bits per output pixel (default is input)\n");
@@ -652,4 +665,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jul 10 2001	Set CTYPEn correctly for ecliptic or galactic output
  *
  * Apr  9 2002	Do not free unallocated header
+ *
+ * May 23 2003	Add -e for ecliptic coordinates
  */

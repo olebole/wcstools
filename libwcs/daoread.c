@@ -1,8 +1,8 @@
 /*** File libwcs/daoread.c
- *** July 20, 2001
+ *** May 27, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -32,8 +32,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 
 static int nlines;	/* Number of lines in catalog */
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
@@ -125,18 +123,16 @@ daoopen (daofile)
 
 char *daofile;	/* DAOFIND catalog file name */
 {
-    struct stat statbuff;
     FILE *fcat;
     int nr, lfile;
     char *daonew;
     
 /* Find length of DAOFIND catalog */
-    if (stat (daofile, &statbuff)) {
+    lfile = getfilesize (daofile);
+    if (lfile < 2) {
 	fprintf (stderr,"DAOOPEN: DAOFIND catalog %s has no entries\n",daofile);
 	return (0);
 	}
-    else
-	lfile = (int) statbuff.st_size;
 
 /* Open DAOFIND catalog */
     if (!(fcat = fopen (daofile, "r"))) {
@@ -201,4 +197,6 @@ char *line;	/* Pointer to iline'th entry (returned updated) */
  * Mar 20 1997	Removed unused variables, fixed logging after lint
  *
  * Jul 20 2001	Return magnitude as well as flux
+ *
+ * May 27 2003	Use getfilesize() to get length of file
  */

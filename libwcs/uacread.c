@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** April 14, 2003
+ *** May 27, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -33,8 +33,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include "wcs.h"
 #include "wcscat.h"
 
@@ -978,7 +976,7 @@ int znum;	/* UA Catalog zone */
 {
     char zonepath[64];	/* Pathname for input UA zone file */
     UACstar star;	/* UA catalog entry for one star */
-    struct stat statbuff;
+    int lfile;
     
 /* Get path to zone catalog */
     if (uacpath (znum, zonepath)) {
@@ -987,12 +985,13 @@ int znum;	/* UA Catalog zone */
 	}
 
 /* Find number of stars in zone catalog by its length */
-    if (stat (zonepath, &statbuff)) {
+    lfile = getfilesize (zonepath);
+    if (lfile < 2) {
 	fprintf (stderr,"UA zone catalog %s has no entries\n",zonepath);
 	return (0);
 	}
     else
-	nstars = (int) statbuff.st_size / 12;
+	nstars = lfile / 12;
 
 /* Open zone catalog */
     if (!(fcat = fopen (zonepath, "rb"))) {
@@ -1185,4 +1184,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Mar 10 2003	Improve test for position
  * Apr  3 2003	Drop unused variables after lint
  * Apr 14 2003	Explicitly get revision date if nstarmax < 1
+ * May 27 2003	Use getfilesize() to get file size
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** April 23, 2003
+ *** May 21, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -149,12 +149,12 @@ int	nlog;
                           cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
                           mag2,sortmag,nsmax,tnum,tra,tdec,tpra,tpdec,tmag,
 			  tc,nlog);
-        else if (refcat == UCAC1)
-            nstar = ucacread (cra,cdec,dra,ddec,drad,distsort,
+        else if (refcat == UCAC1 || refcat == UCAC2)
+            nstar = ucacread (catfile,cra,cdec,dra,ddec,drad,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
-        else if (refcat == TMPSC)
-            nstar = tmcread (cra,cdec,dra,ddec,drad,distsort,
+        else if (refcat == TMPSC || refcat == TMIDR2)
+            nstar = tmcread (catfile,cra,cdec,dra,ddec,drad,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == ACT)
@@ -552,11 +552,11 @@ int	nlog;
         else if (refcat == UJC || refcat == USNO)
 	    nstar = ujcrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
-        else if (refcat == UCAC1)
-	    nstar = ucacrnum (nnum,sysout,eqout,epout,
+        else if (refcat == UCAC1 || refcat == UCAC2)
+	    nstar = ucacrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
-	else if (refcat == TMPSC)
-	    nstar = tmcrnum (nnum,sysout,eqout,epout,
+        else if (refcat == TMPSC || refcat == TMIDR2)
+	    nstar = tmcrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
 	else if (refcat == SAO)
 	    nstar = binrnum ("SAO",nnum,sysout,eqout,epout,match,
@@ -1587,4 +1587,5 @@ char	*in;	/* Character string */
  * Mar 11 2003	Improve position filtering
  * Apr  3 2003	Drop call to gsc2rnum(); it didn't do anything anyway
  * Apr 23 2003	Add ucacread() and ucacrnum()
+ * May 21 2003	Pass catalog names for UCAC and 2MASS PSC
  */

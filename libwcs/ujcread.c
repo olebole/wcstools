@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** March 11, 2003
+ *** May 27, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -31,8 +31,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include "wcs.h"
 #include "wcscat.h"
 
@@ -678,8 +676,8 @@ int znum;	/* UJ Catalog zone */
 {
     char zonepath[128];	/* Pathname for input UJ zone file */
     UJCstar star;	/* UJ catalog entry for one star */
-    struct stat statbuff;
-    
+    int lfile;
+
 /* Get path to zone catalog */
     if (ujcpath (znum, zonepath)) {
 	fprintf (stderr, "UJCOPEN: Cannot find zone catalog for %d\n", znum);
@@ -687,12 +685,13 @@ int znum;	/* UJ Catalog zone */
 	}
 
 /* Find number of stars in zone catalog by its length */
-    if (stat (zonepath, &statbuff)) {
+    lfile = getfilesize (zonepath);
+    if (lfile < 2) {
 	fprintf (stderr,"UJCOPEN: Zone catalog %s has no entries\n",zonepath);
 	return (0);
 	}
     else
-	nstars = (int) statbuff.st_size / 12;
+	nstars = lfile / 12;
 
 /* Open zone catalog */
     if (!(fcat = fopen (zonepath, "rb"))) {
@@ -843,4 +842,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  *
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  * Mar 11 2003	Improve position filtering
+ * May 27 2003	Use getfilesize() to get file length
  */

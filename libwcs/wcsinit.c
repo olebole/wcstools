@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** May 8, 2003
+ *** May 28, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -239,6 +239,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     double mjd;
     double rot;
     int twod;
+    int iszpx = 0;
     extern int tnxinit();
     extern int platepos();
     extern int dsspos();
@@ -332,13 +333,24 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 
     /* World coordinate system reference coordinate information */
     if (hgetsc (hstring, "CTYPE1", mchar, 16, ctype1)) {
+	if (!strncmp (ctype1+5,"ZPX", 3)) {
+	    iszpx = 1;
+	    ctype1[7] = 'N';
+	    }
+	else
+	    iszpx = 0;
 
 	/* Read second coordinate type */
 	strcpy (ctype2, ctype1);
 	if (!hgetsc (hstring, "CTYPE2", mchar, 16, ctype2))
 	    twod = 0;
-	else
+	else {
 	    twod = 1;
+	    if (!strncmp (ctype2+5,"ZPX", 3)) {
+		iszpx = 1;
+		ctype2[7] = 'N';
+		}
+	    }
 	strcpy (wcs->ctype[0], ctype1);
 	strcpy (wcs->ctype[1], ctype2);
 	if (strsrch (ctype2, "LAT") || strsrch (ctype2, "DEC"))
@@ -429,35 +441,35 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	if (wcs->prjcode == WCS_AZP || wcs->prjcode == WCS_SIN ||
 	    wcs->prjcode == WCS_COP || wcs->prjcode == WCS_COE ||
 	    wcs->prjcode == WCS_COD || wcs->prjcode == WCS_COO) {
-	    wcs->prj.p[0] = 0.0;
 	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
-	    wcs->prj.p[1] = 0.0;
 	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[1]);
 	    }
 	else if (wcs->prjcode == WCS_SZP) {
-	    wcs->prj.p[0] = 0.0;
 	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
-	    wcs->prj.p[1] = 0.0;
 	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[1]);
-	    wcs->prj.p[2] = 90.0;
+	    if (wcs->prj.p[2] == 0.0)
+		wcs->prj.p[2] = 90.0;
 	    hgetr8c (hstring, pvkey3, mchar, &wcs->prj.p[2]);
 	    }
 	else if (wcs->prjcode == WCS_CEA) {
-	    wcs->prj.p[0] = 1.0;
+	    if (wcs->prj.p[0] == 0.0)
+		wcs->prj.p[0] = 1.0;
 	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
 	    }
 	else if (wcs->prjcode == WCS_CYP) {
-	    wcs->prj.p[0] = 1.0;
+	    if (wcs->prj.p[0] == 0.0)
+		wcs->prj.p[0] = 1.0;
 	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
-	    wcs->prj.p[1] = 1.0;
+	    if (wcs->prj.p[1] == 0.0)
+		wcs->prj.p[1] = 1.0;
 	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[1]);
 	    }
 	else if (wcs->prjcode == WCS_AIR) {
-	    wcs->prj.p[0] = 90.0;
+	    if (wcs->prj.p[0] == 0.0)
+		wcs->prj.p[0] = 90.0;
 	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
 	    }
 	else if (wcs->prjcode == WCS_BON) {
-	    wcs->prj.p[0] = 0.0;
 	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
 	    }
 	else if (wcs->prjcode == WCS_ZPN) {
@@ -466,6 +478,18 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 		hgetr8c (hstring, keyword, mchar, &wcs->prj.p[i]);
 		}
 	    }
+
+	/* If ZPX, read coefficients from WATi keyword */
+	if (iszpx) {
+	    char mkey[8];
+	    sprintf (mkey,"WAT%d", ilat);
+	    for (i = 0; i < 10; i++) {
+		wcs->prj.p[i] = 0.0;
+		sprintf (keyword,"projp%d",i);
+		mgetr8 (hstring, mkey, keyword, &wcs->prj.p[i]);
+		}
+	    }
+
 
 	/* Coordinate reference frame, equinox, and epoch */
 	if (strncmp (wcs->ptype,"LINEAR",6) &&
@@ -1323,4 +1347,6 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Mar 27 2003	Clean up default center computation
  * Apr  3 2003	Add input for SIRTF distortion coefficients
  * May  8 2003	Change PROJP reading to start with 0 instead of 1
+ * May 22 2003	Add ZPX approximation, reading projpn from WATi
+ * May 28 2003	Avoid reinitializing coefficients set by PROJP
  */

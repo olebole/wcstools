@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** April 3, 2003
+ *** June 2, 2003
  *** By Doug Mink, after Elwood Downey
  *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -176,7 +176,7 @@ int	zap;		/* If 1, set star to background after reading */
     hgetr8 (header,"BZERO", &bz);
     bs = 1.0;
     hgetr8 (header,"BSCALE", &bs);
-    if (bz == 0.0 && bs == 0.0)
+    if (bz == 0.0 && bs == 1.0)
 	setscale (0);
 
     /* Allocate the position, flux, and peak intensity arrays
@@ -1044,4 +1044,5 @@ int	h;	/* Original height of image */
  * Jan 23 2003	Add setminpmqual() to setparm() for USNO-B1.0
  * Jan 29 2003	Add setminid() to setparm() for USNO-B1.0
  * Apr  3 2003	Fix bug setting minll if bmin is less than 0
+ * Jun  2 2003	Fix bug to setcale(0) if bscale == 1, not 0 (J-B Marquette)
  */

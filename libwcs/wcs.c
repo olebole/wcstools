@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** April 1, 2003
+ *** May 20, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2003
@@ -2429,6 +2429,7 @@ static char *wcscom0[10];
 
 void
 savewcscom (i, wcscom)
+int i;
 char *wcscom;
 {
     int lcom;
@@ -2718,4 +2719,5 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  *
  * Mar 31 2003	Add distcode to wcstype()
  * Apr  1 2003	Add calls to foc2pix() in wcs2pix() and pix2foc() in pix2wcs()
+ * May 20 2003	Declare argument i in savewcscom()
  */

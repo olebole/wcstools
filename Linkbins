@@ -13,6 +13,7 @@ ln -s scat bin/sppm
 ln -s scat bin/ship
 ln -s scat bin/siras
 ln -s scat bin/sucac1
+ln -s scat bin/sucac2
 ln -s scat bin/sty2
 ln -s scat bin/stmc
 ln -s imcat bin/imgsc
@@ -30,6 +31,7 @@ ln -s imcat bin/imppm
 ln -s imcat bin/imiras
 ln -s imcat bin/imty2
 ln -s imcat bin/imucac1
+ln -s imcat bin/imucac2
 ln -s imcat bin/imtmc
 ln -s imwcs bin/imwgsc
 ln -s imwcs bin/imwgsca
@@ -46,6 +48,7 @@ ln -s imwcs bin/imwppm
 ln -s imwcs bin/imwiras
 ln -s imwcs bin/imwty2
 ln -s imwcs bin/imwucac1
+ln -s imwcs bin/imwucac2
 ln -s imwcs bin/imwtmc
 ln -s immatch bin/immgsc
 ln -s immatch bin/immgsca
@@ -62,5 +65,6 @@ ln -s immatch bin/immppm
 ln -s immatch bin/immiras
 ln -s immatch bin/immty2
 ln -s immatch bin/immucac1
+ln -s immatch bin/immucac2
 ln -s immatch bin/immtmc
 cp -p wcstools bin

@@ -1,5 +1,5 @@
 /*** File libwcs/fileutil.c
- *** March 5, 2003
+ *** May 27, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1999-2003
@@ -58,6 +58,8 @@
 #include <errno.h>
 #include <string.h>
 #include "fitsfile.h"
+#include <sys/types.h>
+#include <sys/stat.h>
 
 
 /* GETFILELINES -- return number of lines in one file */
@@ -174,6 +176,19 @@ char    *filename;      /* Name of file for which to find number of lines */
 
 int
 getfilesize (filename)
+
+char    *filename;      /* Name of file for which to find size */
+{
+    struct stat statbuff;
+
+    if (stat (filename, &statbuff))
+	return (0);
+    else
+	return ((int) statbuff.st_size);
+}
+
+int
+getfilesize0 (filename)
 
 char    *filename;      /* Name of file for which to find size */
 {
@@ -396,4 +411,5 @@ char	*string;
  *
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  * Mar  5 2003	Add isimlistd() to check image lists with root directory
+ * May 27 2003	Use file stat call in getfilesize() instead of opening file
  */

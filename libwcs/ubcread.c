@@ -1,5 +1,5 @@
 /*** File libwcs/ubcread.c
- *** April 15, 2003
+ *** June 2, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2003
@@ -34,8 +34,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
-#include <sys/types.h>
-#include <sys/stat.h>
 #include "wcs.h"
 #include "wcscat.h"
 
@@ -234,8 +232,8 @@ int	nlog;		/* Logging interval */
 	printf ("ra	%s\n", rastr);
 	dec2str (decstr, 31, cdec, 2);
 	printf ("dec	%s\n", decstr);
-	printf ("rpmunit	tsec/century\n");
-	printf ("dpmunit	arcsec/century\n");
+	printf ("rpmunit	mas/year\n");
+	printf ("dpmunit	mas/year\n");
 	if (drad != 0.0)
 	    printf ("radmin	%.1f\n", drad*60.0);
 	else {
@@ -409,8 +407,9 @@ int	nlog;		/* Logging interval */
 				printf ("%s	%s	%s", numstr,rastr,decstr);
 				for (i = 0; i < 5; i++)
 				    printf ("	%.2f",ubcmag(star.mag[i]));
-				printf ("	%6.3f	%6.2f",
-					rapm*240000.0, decpm*3600000.0);
+				printf ("	%6.1f	%6.1f",
+					rapm * 3600000.0 * cosdeg(dec),
+					decpm * 3600000.0);
 				printf ("	%d	%d", pmqual, nid);
 				printf ("	%.2f\n", dist/60.0);
 				}
@@ -944,7 +943,7 @@ int znum;	/* UB Catalog zone */
 {
     char zonepath[64];	/* Pathname for input UB zone file */
     UBCstar star;	/* UB catalog entry for one star */
-    struct stat statbuff;
+    int lfile;
     
 /* Get path to zone catalog */
     if (ubcpath (znum, zonepath)) {
@@ -953,12 +952,13 @@ int znum;	/* UB Catalog zone */
 	}
 
 /* Find number of stars in zone catalog by its length */
-    if (stat (zonepath, &statbuff)) {
+    lfile = getfilesize (zonepath);
+    if (lfile < 2) {
 	fprintf (stderr,"UB zone catalog %s has no entries\n",zonepath);
 	return (0);
 	}
     else
-	nstars = (int) statbuff.st_size / nbent;
+	nstars = lfile / nbent;
 
 /* Open zone catalog */
     if (!(fcat = fopen (zonepath, "rb"))) {
@@ -1076,4 +1076,6 @@ int nbytes = nbent; /* Number of bytes to reverse */
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  * Mar 21 2003	Improve search limit test by always using wcsdist()
  * Apr 15 2003	Explicitly get revision date if nstarmax < 1
+ * May 27 2003	Use getfilesize() to get file size
+ * Jun  2 2003	Print proper motion as mas/year
  */

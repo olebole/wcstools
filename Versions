@@ -1,5 +1,15 @@
+Version 3.4.0 (June 9, 2003)
+scat, imcat: Print both RA and Dec proper motion as mas/year
+scat, imcat: Add support for 2MASS All-Sky release as well as IDR2
+scat, imcat: Add support for UCAC2 beta all-sky proper motion catalog
+scat: Fix -rr command so it works
+tmcread.c, catutil.c: Add support for 2MASS All-Sky release as well as IDR2
+wcsinit.c: Add partial support for IRAF ZPX projection (if converted from ZPN)
+wcsinit.c: Fix bug which reinitialized coefficients set by PROJP
+ucacread: Add support for UCAC2 format
+
 Version 3.3.4 (May 8, 2003)
-scat, imcat: Add output formatting for UCAC
+scat, imcat: Add output formatting for UCAC1
 sky2xy: Add command line specification of FITS WCS parameters for imageless use
 getfits: Fix bug which didn'g pass arguments to main subroutine
 ucacread.c: New subroutines to read the USNO UCAC 1.0 astrometric catalog

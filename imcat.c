@@ -1,5 +1,5 @@
 /* File imcat.c
- * April 24, 2003
+ * June 2, 2003
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -890,9 +890,9 @@ int	*region_char;	/* Character for SAOimage region file output */
     if (webdump)
 	nlog = -1;
     else if (verbose) {
-	if (refcat == UAC  || refcat == UA1  || refcat == UA2 || refcat==UB1 ||
-	    refcat == USAC || refcat == USA1 || refcat == USA2 ||
-	    refcat == GSC  || refcat == GSCACT || refcat == TMPSC)
+	if (refcat==UAC  || refcat==UA1  || refcat==UA2 || refcat==UB1 ||
+	    refcat==USAC || refcat==USA1 || refcat==USA2 || refcat==GSC  ||
+	    refcat==GSCACT || refcat==TMPSC || refcat==TMIDR2)
 	    nlog = 1000;
 	else
 	    nlog = 100;
@@ -924,7 +924,7 @@ int	*region_char;	/* Character for SAOimage region file output */
     if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==TYCHO ||
 	refcat==HIP || refcat==BSC)
 	sptype = 1;
-    else if (refcat == TMPSC)
+    else if (refcat == TMPSC || refcat == TMIDR2)
 	sptype = 2;
     else if (starcat[icat] != NULL && starcat[icat]->sptype > 0)
 	sptype = 1;
@@ -1287,22 +1287,14 @@ int	*region_char;	/* Character for SAOimage region file output */
 
     /* Proper Motion units, if proper motion is in this catalog */
     if (mprop == 1) {
-	if (degout) {
-	    if (wfile)
-		fprintf (fd, "rpmunit	arcsec/century\n");
-	    else if (tabout)
-		printf ("rpmunit	arcsec/century\n");
+	if (wfile) {
+	    fprintf (fd, "rpmunit	mas/year\n");
+	    fprintf (fd, "dpmunit	mas/year\n");
 	    }
-	else {
-	    if (wfile)
-		fprintf (fd, "rpmunit	tsec/century\n");
-	    else if (tabout)
-		printf ("rpmunit	tsec/century\n");
+	else if (tabout) {
+	    printf ("rpmunit	mas/year\n");
+	    printf ("dpmunit	mas/year\n");
 	    }
-	if (wfile)
-	    fprintf (fd, "dpmunit	arcsec/century\n");
-	else if (tabout)
-	    printf ("dpmunit	arcsec/century\n");
 	}
 
     if (wfile)
@@ -1335,9 +1327,11 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"f10m  	f25m  	f60m  	f100m 	");
     else if (refcat == GSC2)
 	strcat (headline,"magf  	magj 	magv	magn	");
+    else if (refcat == UCAC2)
+	strcat (headline,"magj 	magh 	magk 	magc 	");
     else if (refcat == UB1)
 	strcat (headline,"magb1 	magr1	magb2	magr2	magn 	");
-    else if (refcat == TMPSC)
+    else if (refcat == TMPSC || refcat == TMIDR2)
 	strcat (headline,"magj   	magh   	magk   	");
     else {
 	for (imag = 0; imag < nmag; imag++) {
@@ -1386,7 +1380,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 	refcat == USAC || refcat == USA1 || refcat == USA2 || refcat == TYCHO ||
 	refcat == TYCHO2 || refcat == ACT)
 	strcat (headline,"	-----");		/* Second magnitude */
-    else if (refcat == TMPSC)
+    else if (refcat == TMPSC || refcat == TMIDR2)
 	strcat (headline,"--	-------	-------"); /* JHK Magnitudes */
     else if (refcat == IRAS)
 	strcat (headline,"-	------	------	------"); /* 4 fluxes */
@@ -1468,15 +1462,15 @@ int	*region_char;	/* Character for SAOimage region file output */
 		printf ("  Mag Class Band N    X       Y   \n");
 	    else if (refcat == GSC2)
 		printf ("MagF  MagJ  MagV  MagN    X       Y   \n");
+	    else if (refcat == UCAC2)
+		printf ("MagJ  MagH  MagK  MagC    X       Y   \n");
 	    else if (refcat == UB1)
 		printf ("MagB1 MagR1 MagB2 MagR2 MagN  PM NI    X       Y   \n");
-	    else if (refcat == GSC2)
-		printf ("MagB1 MagR1 MagB2 MagR2 MagN    X       Y   \n");
 	    else if (refcat == IRAS)
 		printf ("f10m  f25m  f60m  f100m   X       Y   \n");
 	    else if (refcat == HIP)
 		printf ("MagB  MagV  parlx parer   X       Y   \n");
-	    else if (refcat == TMPSC)
+	    else if (refcat == TMPSC || refcat == TMIDR2)
 		printf ("MagJ    MagH    MagK      X       Y   \n");
 	    else if (refcat == SAO || refcat == PPM || refcat == BSC)
 		printf ("  Mag  Type   X       Y     \n");
@@ -1543,7 +1537,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%5.2f	%2d	%2d",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],
 		     gm[4][i],gc[i]/100,gc[i]%100);
-		else if (refcat == TMPSC) {
+		else if (refcat == TMPSC || refcat == TMIDR2) {
 		    sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
 		    for (imag = 0; imag < 3; imag++) {
 			if (gm[imag][i] > 100.0)
@@ -1599,12 +1593,9 @@ int	*region_char;	/* Character for SAOimage region file output */
 			}
 		    }
 		if (mprop) {
-		    if (degout)
-			pra = gpra[i] * 360000.0;
-		    else
-			pra = gpra[i] * 24000.0;
-		    pdec = gpdec[i] * 360000.0;
-		    sprintf (temp, "	%.2f	%.2f", pra,pdec);
+		    pra = gpra[i] * 3600000.0 * cosdeg (gpdec[i]);
+		    pdec = gpdec[i] * 3600000.0;
+		    sprintf (temp, "	%.1f	%.1f", pra,pdec);
 		    strcat (headline, temp);
 		    }
 		sprintf (temp, "	%.2f	%.2f",
@@ -1626,7 +1617,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 		else if (refcat == GSC || refcat == GSCACT)
 		    sprintf (headline,"%s %s %s %6.2f %4d %4d %2d",
 			numstr, rastr, decstr, gm[0][i], gc[i], band, ngsc);
-		else if (refcat == TMPSC) {
+		else if (refcat == TMPSC || refcat == TMIDR2) {
 		    sprintf (headline, "%s %s %s", numstr, rastr, decstr);
 		    for (imag = 0; imag < 3; imag++) {
 			if (gm[imag][i] > 100.0)
@@ -1934,4 +1925,7 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Apr 13 2003	Set revision message for subroutines using setrevmsg()
  * Apr 14 2003	Pass through nstarmax=-1 option to ctgread()
  * Apr 24 2003	Add UCAC1 catalog; turn off header if tab on
+ * May 28 2003	Add TMIDR2 with TMPSC formats
+ * May 30 2003	Add UCAC2 catalog
+ * Jun  2 2003	Print both RA and Dec proper motion as mas/year
  */

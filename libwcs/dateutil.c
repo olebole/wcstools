@@ -1,5 +1,5 @@
 /*** File libwcs/dateutil.c
- *** April 1, 2003
+ *** May 20, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1999-2003
@@ -272,9 +272,11 @@ static void fixdate();
 static int caldays();
 static double dint();
 static double dmod();
+
 static int ndec = 3;
 void
 setdatedec (nd)
+int nd;
 { ndec = nd; return; }
 
 
@@ -3973,4 +3975,5 @@ double	dnum, dm;
  *
  * Jan 30 2003	Fix typo in ts2gst()
  * Mar  7 2003	Add conversions for heliocentric julian dates
+ * May 20 2003	Declare nd in setdatedec()
  */

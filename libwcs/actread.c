@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** April 14, 2003
+ *** June 2, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1999-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -197,8 +197,8 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("ra	%s\n", rastr);
 	dec2str (decstr, 31, cdec, 2);
 	printf ("dec	%s\n", decstr);
-	printf ("rpmunit	tsec/century\n");
-	printf ("dpmunit	arcsec/century\n");
+	printf ("rpmunit	mas/year\n");
+	printf ("dpmunit	mas/year\n");
 	if (drad != 0.0)
 	    printf ("radmin	%.1f\n", drad*60.0);
 	else {
@@ -303,9 +303,10 @@ int	nlog;		/* 1 for diagnostics */
 			dec2str (decstr, 31, dec, 2);
 			dist = wcsdist (cra,cdec,ra,dec) * 60.0;
 			printf ("%010.5f	%s	%s", num,rastr,decstr);
-			printf ("	%.2f	%.2f	%7.3f	%6.2f	%.2f\n",
-				magb, magv, gpra[nstar], gpdec[nstar],
-				dist / 60.0);
+			printf ("	%.2f	%.2f	%6.1f	%6.1f	%.2f\n",
+				magb, magv,
+				gpra[nstar] * 3600000.0 * cosdeg(dec),
+				gpdec[nstar] * 3600000.0, dist / 60.0);
 			}
 
 		    /* Save star position and magnitude in table */
@@ -952,4 +953,5 @@ char	*filename;	/* Name of file for which to find size */
  * Mar 11 2003	Fix position limit testing
  * Apr  3 2003	Drop unused type variables in actstar() and actread()
  * Apr 14 2003	Explicitly get revision date if nstarmax < 1
+ * Jun  2 2003	Print proper motion as mas/year
  */

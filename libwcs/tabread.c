@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** April 3, 2003
+ *** June 2, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -904,32 +904,90 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	}
     sc->nndec = nndec;
 
+    /* Figure out what the coordinate system is */
+    if (tabhgetc (startab, "radecsys", cstr)) {
+	if (!strcmp (cstr, "galactic"))
+	    sc->coorsys = WCS_GALACTIC;
+	else if (!strcmp (cstr, "ecliptic"))
+	    sc->coorsys = WCS_ECLIPTIC;
+	else if (!strcmp (cstr, "fk4"))
+	    sc->coorsys = WCS_B1950;
+	else
+	    sc->coorsys = WCS_J2000;
+	}
+    else
+	sc->coorsys = WCS_J2000;
+
     /* Find column and name of object right ascension */
     sc->entra = -1;
     sc->keyra[0] = (char) 0;
-    if ((sc->entra = tabcol (startab, "RA")))
-	strcpy (sc->keyra, "RA");
-    else if ((sc->entra = tabcol (startab, "ra")))
-	strcpy (sc->keyra, "ra");
-    else if ((sc->entra = tabcol (startab, "Ra")))
-	strcpy (sc->keyra, "ra");
-    else if ((sc->entra = tabcont (startab, "ra"))) {
-	i = sc->entra - 1;
-	strncpy (sc->keyra, startab->colname[i], startab->lcol[i]);
+    if (sc->coorsys == WCS_GALACTIC) {
+	if ((sc->entra = tabcol (startab, "long_gal")))
+	    strcpy (sc->keyra, "long_gal");
+	else if ((sc->entra = tabcol (startab, "long")))
+	    strcpy (sc->keyra, "long_gal");
+	else if ((sc->entra = tabcont (startab, "long"))) {
+	    i = sc->entra - 1;
+	    strncpy (sc->keyra, startab->colname[i], startab->lcol[i]);
+	    }
+	}
+    if (sc->coorsys == WCS_ECLIPTIC) {
+	if ((sc->entra = tabcol (startab, "long_ecl")))
+	    strcpy (sc->keyra, "long_ecl");
+	else if ((sc->entra = tabcol (startab, "long")))
+	    strcpy (sc->keyra, "long_ecl");
+	else if ((sc->entra = tabcont (startab, "long"))) {
+	    i = sc->entra - 1;
+	    strncpy (sc->keyra, startab->colname[i], startab->lcol[i]);
+	    }
+	}
+    else {
+	if ((sc->entra = tabcol (startab, "RA")))
+	    strcpy (sc->keyra, "RA");
+	else if ((sc->entra = tabcol (startab, "ra")))
+	    strcpy (sc->keyra, "ra");
+	else if ((sc->entra = tabcol (startab, "Ra")))
+	    strcpy (sc->keyra, "ra");
+	else if ((sc->entra = tabcont (startab, "ra"))) {
+	    i = sc->entra - 1;
+	    strncpy (sc->keyra, startab->colname[i], startab->lcol[i]);
+	    }
 	}
 
     /* Find column and name of object declination */
     sc->entdec = -1;
     sc->keydec[0] = (char) 0;
-    if ((sc->entdec = tabcol (startab, "DEC")))
-	strcpy (sc->keydec, "DEC");
-    else if ((sc->entdec = tabcol (startab, "dec")))
-	strcpy (sc->keydec, "dec");
-    else if ((sc->entdec = tabcol (startab, "Dec")))
-	strcpy (sc->keydec, "dec");
-    else if ((sc->entdec = tabcont (startab, "dec"))) {
-	i = sc->entdec;
-	strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
+    if (sc->coorsys == WCS_GALACTIC) {
+	if ((sc->entdec = tabcol (startab, "lat_gal")))
+	    strcpy (sc->keydec, "lat_gal");
+	else if ((sc->entdec = tabcol (startab, "lat")))
+	    strcpy (sc->keydec, "lat_gal");
+	else if ((sc->entdec = tabcont (startab, "lat"))) {
+	    i = sc->entdec;
+	    strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
+	    }
+	}
+    if (sc->coorsys == WCS_ECLIPTIC) {
+	if ((sc->entdec = tabcol (startab, "lat_ecl")))
+	    strcpy (sc->keydec, "lat_ecl");
+	else if ((sc->entdec = tabcol (startab, "lat")))
+	    strcpy (sc->keydec, "lat_ecl");
+	else if ((sc->entdec = tabcont (startab, "lat"))) {
+	    i = sc->entdec;
+	    strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
+	    }
+	}
+    else {
+	if ((sc->entdec = tabcol (startab, "DEC")))
+	    strcpy (sc->keydec, "DEC");
+	else if ((sc->entdec = tabcol (startab, "dec")))
+	    strcpy (sc->keydec, "dec");
+	else if ((sc->entdec = tabcol (startab, "Dec")))
+	    strcpy (sc->keydec, "dec");
+	else if ((sc->entdec = tabcont (startab, "dec"))) {
+	    i = sc->entdec;
+	    strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
+	    }
 	}
 
     /* Check columns for magnitudes and save columns and names */
@@ -1359,13 +1417,13 @@ int	verbose;	/* 1 to print error messages */
     /* Convert right ascension proper motion to degrees/year */
     st->rapm = tabgetr8 (&startok, sc->entrpm);
     if (sc->rpmunit == PM_MASYR)
-	st->rapm = st->rapm / 3600000.0;
+	st->rapm = (st->rapm / 3600000.0) / cosdeg(st->dec);
     else if (sc->rpmunit == PM_MTSYR)
 	st->rapm = st->rapm / 240000.0;
     else if (sc->rpmunit == PM_ARCSECYR)
-	st->rapm = st->rapm / 3600.0;
+	st->rapm = (st->rapm / 3600.0) / cosdeg (st->dec);
     else if (sc->rpmunit == PM_ARCSECCEN)
-	st->rapm = st->rapm / 360000.0;
+	st->rapm = (st->rapm / 360000.0) / cosdeg (st->dec);
     else if (sc->rpmunit == PM_TSECYR)
 	st->rapm = st->rapm / 240.0;
     else if (sc->rpmunit == PM_TSECCEN)
@@ -2312,4 +2370,6 @@ char    *filename;      /* Name of file to check */
  * Feb  4 2003	Compare character to 0, not NULL
  * Mar 11 2003	Fix limit setting
  * Apr  3 2003	Drop unused variables after lint
+ * May 28 2003	Read long and lat if radecsys is "galactic" or "ecliptic"
+ * Jun  2 003	Divide by cos(dec) for arcsec and mas RA proper motions
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** April 24, 2003
+ *** May 20, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -46,12 +46,13 @@
 #define BSC		15	/* Yale Bright Star Catalog */
 #define TYCHO2		16	/* Tycho-2 Star Catalog */
 #define USNO		17	/* USNO-format plate catalog */
-#define TMPSC		18	/* 2MASS Point Source Catalog */
+#define TMPSC		18	/* 2MASS All-Sky Point Source Catalog */
 #define GSCACT		19	/* GSC-ACT revised Guide Star Catalog */
 #define GSC2		20	/* GSC II version 2.2 */
 #define UB1		21	/* USNO B-1.0 Star Catalog */
 #define UCAC1		22	/* USNO CCD Astrograph Catalog 1.0 */
 #define UCAC2		23	/* USNO CCD Astrograph Catalog 2.0 */
+#define TMIDR2		24	/* 2MASS IDR2 Point Source Catalog */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */
@@ -457,4 +458,5 @@ char *getrevmsg();	/* Return version/date string */
  * Apr  3 2003	Drop gsc2rnum()
  * Apr 14 2003	Add setrevmsg() and getrevmsg()
  * Apr 24 2003	Add UCAC1 and UCAC2, ucacread() and ucacrnum()
+ * May 20 2003	Add TMIDR2 for 2MASS PSC Interim Data Release 2
  */

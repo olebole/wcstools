@@ -103,7 +103,8 @@ tabread.c
 tmcread.c
   Return 2MASS Point Source Catalog stars from the catalog as ungzipped from
   the DVD into (or linked from) a common root directory for a given RA, Dec,
-  and magnitude range or list of star numbers.
+  and magnitude range or list of star numbers.  Both IDR2 and All-Sky release
+  formats are supported.
 tnxpos.c
   tnxpos() uses the WCS keywords set up for IRAF's TNX projection to compute
   sky coordinates given image pixel X and Y.  tnxpix() uses the WCS structure
@@ -117,8 +118,8 @@ ubcread.c
   Return USNO B Catalog stars from their standard format files for a
   given RA, Dec, and magnitude range or list of star numbers.
 ucacread.c
-  Return USNO UCAC1 Catalog stars from their standard format files for a
-  given RA, Dec, and magnitude range or list of star numbers.
+  Return USNO UCAC1 or UCAC2 Catalog stars from their standard format files
+  for a given RA, Dec, and magnitude range or list of star numbers.
 ujcread.c
   Return USNO UJ Catalog stars from its standard CDROM format files for
   a given RA, Dec, and magnitude range or list of star numbers.

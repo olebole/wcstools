@@ -1,0 +1,39 @@
+Processing the 2MASS All-Sky Point Source Catalog for WCSTools
+
+1. Download all of the gzipped files containing the catalog from
+   anon-ftp.ipac.caltech.edu in the /pub/2mass/allsky directory.
+
+   $ ftp anon-ftp.ipac.caltech.edu
+   > cd /pub/2mass/allsky
+   > prompt
+   > bin
+   > mget psc_*.gz
+    . . .
+   > quit
+
+2. Modify tmcat.c to put the 2MASS catalog structure where you want
+   it to be by changing the value of the variable "root", and
+   compile the program.  It is self-contained C.
+
+3. gzcat all of the compressed files through the program tmcat
+   to produce 180 directories, named from 000-179, each containing
+   1 degree of declination (named by their angular south polar
+   distance (SPD) in degrees) split into 10 RA-sorted files
+   named t000[0-9].cat.  A file called "resort" contains all
+   those files where a single object was read out of RA order.
+
+	gzcat psc_*.gz | tmcat
+
+3. List all of the resulting files.
+
+     ls [root]/[0,1]*/* > filelist
+
+4. Run the simple nawk script tmcsort to RA-sort all of the catalog
+   files.
+
+    tmcsort filelist
+
+5. In libwcs/tmcread.c, change tmcpath to value of "root" and
+   change value of tmcrel to ALLSKY (no quotes).
+
+6. Remake WCSTools

@@ -1,5 +1,5 @@
 /* File newfits.c
- * April 9, 2002
+ * May 28, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -134,6 +134,18 @@ char **av;
     		case 'e':	/* Make an extended FITS file */
 		    extend = 1;
 		    break;
+	
+    		case 'g':	/* Reference pixel coordinates in Galactic */
+    		    if (ac < 3)
+    			usage();
+		    setsys (WCS_GALACTIC);
+		    strcpy (rastr, *++av);
+		    ac--;
+		    strcpy (decstr, *++av);
+		    ac--;
+		    setcenter (rastr, decstr);
+		    wcshead++;
+    		    break;
 
     		case 'i':	/* Input pixel file */
     		    if (ac < 2)
@@ -240,6 +252,7 @@ usage ()
     fprintf(stderr,"  -a: initial rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
     fprintf(stderr,"  -d: set CDELTn, CROTAn instead of CD matrix\n");
+    fprintf(stderr,"  -g: initial center in Galactic longitude and latitude\n");
     fprintf(stderr,"  -i: read image from a binary file\n");
     fprintf(stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
     fprintf(stderr,"  -o: output pixel size in bits (FITS code, default=0)\n");
@@ -446,4 +459,6 @@ char *name;
  * Oct 11 2001	Add COMMENT with FITS reference to each header that is written
  *
  * Apr  9 2002	Fix bug in final print statement
+ *
+ * May 28 2003	Add -g for image with galactic coordinate WCS
  */

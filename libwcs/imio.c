@@ -1,8 +1,8 @@
 /*** File wcslib/imio.c
- *** July 19, 2002
+ *** May 20, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -65,6 +65,7 @@
 static int scale = 1;	/* If 0, skip scaling step */
 void
 setscale (scale0)
+int scale0;
 {scale = scale0; return;}
 
 /* GETPIX1 -- Get pixel from 2D FITS image of any numeric type */
@@ -962,4 +963,6 @@ imswapped ()
  * Jun  4 2002	In getvec() and putvec(), change dpix to dvec
  * Jun  4 2002	Add addvec() to add to a vector
  * Jul 19 2002	Fix getvec() bug rescaling scaled numbers
+ *
+ * May 20 2003	Declare scale0 in setscale()
  */

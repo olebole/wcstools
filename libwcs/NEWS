@@ -1,5 +1,10 @@
 WCSTools subroutine release history
 
+May 30, 2003 - Release 3.4.0 (Doug Mink, SAO
+Add partial support for ZPX projection
+Fix bug reading COE and other projections when PROJPn coefficients
+were accidently reinitialized
+
 May 8, 2003 - Release 3.3.4 (Doug Mink, SAO)
 Add two missing semicolons in C++ declarations in wcs.h
 Read prj.p[0] from PROJP0 for ZPN projections, instead of ignoring it

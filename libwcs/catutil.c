@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** April 24, 2003
+ *** May 30, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -207,6 +207,14 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	*catprop = 1;
 	*nmag = 1;
 	}
+    else if (refcat == UCAC2) {
+	strcpy (title, "USNO UCAC2 Catalog Stars");
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	*catprop = 1;
+	*nmag = 4;
+	}
     else if (refcat == UJC) {
 	strcpy (title, "USNO J Catalog Stars");
 	*syscat = WCS_J2000;
@@ -303,7 +311,7 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	    binclose (starcat);
 	    }
 	}
-    else if (refcat == TMPSC) {
+    else if (refcat == TMPSC || refcat == TMIDR2) {
 	strcpy (title, "2MASS Point Sources");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
@@ -374,19 +382,22 @@ char	*refcatname;	/* Name of reference catalog */
     int refcat, nbuff;
 
     if (strncasecmp(refcatname,"gsca",4)==0 &&
-	strsrch(refcatname, ".tab") == NULL)
+	strcsrch(refcatname, ".tab") == NULL)
 	refcat = GSCACT;
     else if (strncasecmp(refcatname,"gsc2",4)==0 &&
 	     strsrch(refcatname, ".tab") == NULL)
 	refcat = GSC2;
     else if (strncasecmp(refcatname,"gs",2)==0 &&
-	     strsrch(refcatname, ".tab") == NULL)
+	     strcsrch(refcatname, ".tab") == NULL)
 	refcat = GSC;
-    else if (strncasecmp(refcatname,"ub",2)==0)
+    else if (strncasecmp(refcatname,"ub",2)==0 &&
+	     strcsrch(refcatname, ".tab") == NULL)
 	refcat = UB1;
-    else if (strncasecmp(refcatname,"ucac1",5)==0)
+    else if (strncasecmp(refcatname,"ucac1",5)==0 &&
+	     strcsrch(refcatname, ".tab") == NULL)
 	refcat = UCAC1;
-    else if (strncasecmp(refcatname,"ucac2",5)==0)
+    else if (strncasecmp(refcatname,"ucac2",5)==0 &&
+	     strcsrch(refcatname, ".tab") == NULL)
 	refcat = UCAC2;
     else if (strncasecmp(refcatname,"usa",3)==0 &&
 	     strsrch(refcatname, ".tab") == NULL) {
@@ -400,7 +411,7 @@ char	*refcatname;	/* Name of reference catalog */
     else if (strncmp (refcatname, ".usnop", 6) == 0)
 	refcat = USNO;
     else if (strncasecmp(refcatname,"ua",2)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+	     strcsrch(refcatname, ".tab") == NULL) {
 	if (strchr (refcatname, '1') != NULL)
 	    refcat = UA1;
 	else if (strchr (refcatname, '2') != NULL)
@@ -409,10 +420,10 @@ char	*refcatname;	/* Name of reference catalog */
 	    refcat = UAC;
 	}
     else if (strncasecmp(refcatname,"uj",2)==0 &&
-	     strsrch(refcatname, ".tab") == NULL)
+	     strcsrch(refcatname, ".tab") == NULL)
 	refcat = UJC;
     else if (strncasecmp(refcatname,"sao",3)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+	     strcsrch(refcatname, ".tab") == NULL) {
 	starcat = binopen ("SAO");
 	if (starcat == NULL)
 	    starcat = binopen ("SAOra");
@@ -422,7 +433,7 @@ char	*refcatname;	/* Name of reference catalog */
 	    }
 	}
     else if (strncasecmp(refcatname,"ppm",3)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+	     strcsrch(refcatname, ".tab") == NULL) {
 	starcat = binopen ("PPM");
 	if (starcat == NULL)
 	    starcat = binopen ("PPMra");
@@ -432,14 +443,14 @@ char	*refcatname;	/* Name of reference catalog */
 	    }
 	}
     else if (strncasecmp(refcatname,"iras",4)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+	     strcsrch(refcatname, ".tab") == NULL) {
 	if ((starcat = binopen ("IRAS"))) {
 	    binclose (starcat);
 	    refcat = IRAS;
 	    }
 	}
     else if (strncasecmp(refcatname,"ty",2)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+	     strcsrch(refcatname, ".tab") == NULL) {
 	if (strsrch (refcatname, "2") != NULL) {
 	    refcat = TYCHO2;
 	    }
@@ -451,7 +462,7 @@ char	*refcatname;	/* Name of reference catalog */
 	    }
 	}
     else if (strncasecmp(refcatname,"hip",3)==0 &&
-	      strsrch(refcatname, ".tab") == NULL) {
+	      strcsrch(refcatname, ".tab") == NULL) {
 	if ((starcat = binopen ("hipparcos"))) {
 	    binclose (starcat);
 	    refcat = HIP;
@@ -461,11 +472,15 @@ char	*refcatname;	/* Name of reference catalog */
 	     strsrch(refcatname, ".tab") == NULL)
 	refcat = ACT;
     else if (strncasecmp(refcatname,"bsc",3)==0 &&
-	     strsrch(refcatname, ".tab") == NULL) {
+	     strcsrch(refcatname, ".tab") == NULL) {
 	if ((starcat = binopen ("BSC5"))) {
 	    binclose (starcat);
 	    refcat = BSC;
 	    }
+	}
+    else if (strcsrch (refcatname,"idr2") &&
+	     strcsrch (refcatname, ".tab") == NULL) {
+	refcat = TMIDR2;
 	}
     else if ((strncasecmp(refcatname,"2mp",3)==0 ||
 	     strncasecmp(refcatname,"tmc",3)==0) &&
@@ -558,6 +573,8 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "TYCHO-2");
     else if (refcat ==  TMPSC)	/* 2MASS Point Source Catalog */
 	strcpy (catname, "2MASS PSC");
+    else if (refcat ==  TMIDR2)	/* 2MASS Point Source Catalog */
+	strcpy (catname, "2MASS PSC IDR2");
     return (catname);
 }
 
@@ -783,6 +800,14 @@ char	*numstr;	/* Formatted number (returned) */
 	    sprintf (numstr, "%10.6f", dnum);
 	}
 
+    /* USNO-UCAC2 */
+    else if (refcat == UCAC2) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%010.6f", dnum);
+	else
+	    sprintf (numstr, "%10.6f", dnum);
+	}
+
     /* GSC II */
     else if (refcat == GSC2) {
 	if (nnfld < 0) {
@@ -806,6 +831,14 @@ char	*numstr;	/* Formatted number (returned) */
 
     /* 2MASS Point Source Catalogs */
     else if (refcat == TMPSC) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%011.6f", dnum);
+	else
+	    sprintf (numstr, "%11.6f", dnum);
+	}
+
+    /* 2MASS Point Source Catalogs */
+    else if (refcat == TMIDR2) {
 	if (nnfld < 0)
 	    sprintf (numstr, "%010.7f", dnum);
 	else
@@ -910,10 +943,16 @@ int	nndec;		/* Number of decimal places ( >= 0) */
 
     /* 2MASS Point Source Catalog */
     else if (refcat == TMPSC)
+	return (11);
+    else if (refcat == TMIDR2)
 	return (10);
 
     /* UCAC1 Catalog */
     else if (refcat == UCAC1)
+	return (10);
+
+    /* UCAC2 Catalog */
+    else if (refcat == UCAC2)
 	return (10);
 
     /* USNO Plate Catalogs */
@@ -1001,14 +1040,22 @@ int	refcat;		/* Catalog code */
 
     /* 2MASS Point Source Catalog */
     else if (refcat == TMPSC)
+	return (6);
+
+    /* 2MASS Point Source Catalog */
+    else if (refcat == TMIDR2)
 	return (7);
 
     /* USNO Plate Catalogs */
     else if (refcat == USNO)
 	return (0);
 
-    /* UCAC1 Catalogs */
+    /* UCAC1 Catalog */
     else if (refcat == UCAC1)
+	return (6);
+
+    /* UCAC2 Catalog */
+    else if (refcat == UCAC2)
 	return (6);
 
     /* USNO UJ 1.0 Catalog */
@@ -2560,4 +2607,7 @@ vottail ()
  * Apr 24 2003	Add UCAC1 Catalog
  * Apr 24 2003	Return 5 magnitudes for GSC II, including epoch
  * Apr 24 2003	Fix bug dealing with HST GSC
+ * May 21 2003	Add TMIDR2=2MASS IDR2, and new 2MASS=TMPSC
+ * May 28 2003	Fix bug checking for TMIDR2=2MASS IDR2; 11 digits for TMPSC
+ * May 30 2003	Add UCAC2 catalog
  */
