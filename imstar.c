@@ -1,5 +1,5 @@
 /* File imstar.c
- * November 30, 1998
+ * May 25, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -399,8 +399,8 @@ char	*filename;	/* FITS or IRAF file filename */
  * ascension, declination, and a plate magnitude
  */
 
-    wcs = GetFITSWCS (header,verbose, &cra, &cdec, &dra, &ddec, &secpix,
-	  &wp, &hp, &sysout, &eqout);
+    wcs = GetFITSWCS (filename, header,verbose, &cra, &cdec, &dra, &ddec,
+		      &secpix, &wp, &hp, &sysout, &eqout);
 
     /* Discover star-like things in the image, in pixels */
     ns = FindStars (header, image, &sx, &sy, &sb, &sp, debug);
@@ -525,6 +525,8 @@ char	*filename;	/* FITS or IRAF file filename */
 	    fprintf (fd, "%s\n", headline);
 	else if (daofile)
 	    fprintf (fd, "#%s\n", headline);
+	if (tabfile)
+	    fprintf (fd, "EPOCH	%9.4f\n", wcs->epoch);
 	if (tabout)
 	    printf ("%s\n", headline);
 	if (ascfile)
@@ -636,4 +638,7 @@ char	*filename;	/* FITS or IRAF file filename */
  * Oct 14 1998	Use isiraf() to determine file type
  * Oct 27 1998	Add option to write region file to plot results over image
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Apr  7 1999	Add filename argument to GetFITSWCS
+ * May 25 1999	Add epoch to output tab table header
  */

@@ -1,5 +1,5 @@
 /* File catbin.c
- * November 30, 1998
+ * January 19, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -375,12 +375,10 @@ char *refcatname;	/* Name of catalog to translate */
 	if (refcat == GSC)
 	    ng = gscread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
 			  classd,ngmax,gnum,gra,gdec,gm,gc,nlog);
-	else if (refcat == USAC)
-	    ng = usaread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-			  uplate,ngmax,gnum,gra,gdec,gm,gmb,gc,nlog);
-	else if (refcat == UAC)
-	    ng = uacread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-			  uplate,ngmax,gnum,gra,gdec,gm,gmb,gc,nlog);
+	else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
+		 refcat == UAC  || refcat == UA1  || refcat == UA2)
+	    ng = uacread (refcatname,cra,cdec,dra,ddec,drad,sysout,eqout,epout,
+			  mag1,mag2,uplate,ngmax,gnum,gra,gdec,gm,gmb,gc,nlog);
 	else if (refcat == UJC)
 	    ng = ujcread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
 			  uplate,ngmax,gnum,gra,gdec,gm,gc,nlog);
@@ -757,7 +755,7 @@ char *refcatname;	/* Name of catalog to translate */
 	}
 
     if (keyword != NULL)
-	ntab = tabopen (refcat);
+	ntab = tabcatopen (refcat);
 
     string[0] = (char) 0;
     for (i = 0; i < nbg; i++) {
@@ -1037,4 +1035,6 @@ double	drad;
 
 /* Oct 21 1998	New program based on imcat
  * Nov 30 1998	Add version and help commands for consistency
+
+ * Jan 19 1999	Update USNO A and SA catalog reading
  */

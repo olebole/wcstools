@@ -1,5 +1,5 @@
 /* File wcshead.c
- * November 30, 1998
+ * June 3, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -15,7 +15,7 @@
 #include "wcs.h"
 
 static void usage();
-static void PrintHead();
+static void ListWCS();
 
 static int nskip = 0;		/* Number of bytes to skip */
 static int nfiles = 0;		/* Nuber of files for headers */
@@ -99,7 +99,7 @@ char **av;
 	while (fgets (filename, 128, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
 	    if (*lastchar < 32) *lastchar = 0;
-	    PrintHead (filename);
+	    ListWCS (filename);
 	    if (verbose)
 		printf ("\n");
 	    }
@@ -117,7 +117,7 @@ char **av;
     while (ac-- > 0) {
 	char *fn = *av++;
 	nf++;
-	PrintHead (fn);
+	ListWCS (fn);
 	}
 
     return (0);
@@ -137,73 +137,59 @@ usage ()
     exit (1);
 }
 
-
-static void
-PrintHead (filename)
+void
+ListWCS (filename)
 
 char	*filename;	/* FITS or IRAF image file name */
-
 {
+    int i;
+    char str[256], temp[80];
+    char rastr[32], decstr[32], fform[8];
     struct WorldCoor *wcs, *GetWCSFITS();
-    void TabWCS();
 
     wcs = GetWCSFITS (filename);
     if (nowcs (wcs))
 	return;
 
-    TabWCS (filename, wcs);
-
-    free (wcs);
-    return;
-}
-
-
-void
-TabWCS (filename, wcs)
-
-char	*filename;	/* FITS or IRAF image file name */
-
-struct WorldCoor *wcs;
-
-{
-    int i;
-    char rastr[32], decstr[32], fform[8];
-
     if (wcs->ctype[0][0] == (char) 0)
 	return;
     if (tabout && nf == 1) {
-	printf ("filename");
-	for (i = 1; i < nchar - 8; i++) printf (" ");
-	printf ("	naxis1	naxis2");
-	printf ("	ctype1  	ctype2  ");
-	printf ("	crval1	crval2	radecsys");
-	printf ("	crpix1	crpix2");
-	printf ("	cdelt1	cdelt2");
-	printf ("	crota2\n");
-	printf ("--------");
-	for (i = 1; i < nchar - 8; i++) printf ("-");
-	printf ("	------	------");
-	printf ("	------	------	--------");
-	printf ("	-------	-------");
-	printf ("	------	------");
-	printf ("	------	------");
-	printf ("	--------\n");
+	strcpy (str, "filename");
+	for (i = 1; i < nchar - 8; i++) strcat (str, " ");
+	strcat (str, "	naxis1	naxis2");
+	strcat (str, "	ctype1  	ctype2  ");
+	strcat (str, "	crval1	crval2	radecsys");
+	strcat (str, "	crpix1	crpix2");
+	strcat (str, "	cdelt1	cdelt2");
+	strcat (str, "	crota2\n");
+	strcat (str, "--------");
+	for (i = 1; i < nchar - 8; i++) strcat (str, "-");
+	strcat (str, "	------	------");
+	strcat (str, "	------	------	--------");
+	strcat (str, "	-------	-------");
+	strcat (str, "	------	------");
+	strcat (str, "	------	------");
+	strcat (str, "	--------\n");
+	printf ("%s", str);
 	}
 
     sprintf (fform,"%%%d.%ds",nchar);
     if (tabout)
-	printf (fform, filename);
+	sprintf (str, fform, filename);
     else
-	printf (fform, filename);
-    if (tabout)
-	printf ("	%.0f	%.0f", wcs->nxpix, wcs->nypix);
-    else
-	printf (" %4.0f %4.0f", wcs->nxpix, wcs->nypix);
+	sprintf (str, fform, filename);
 
     if (tabout)
-	printf ("	%s	%s", wcs->ctype[0], wcs->ctype[1]);
+	sprintf (temp, "	%.0f	%.0f", wcs->nxpix, wcs->nypix);
     else
-	printf (" %s %s", wcs->ctype[0], wcs->ctype[1]);
+	sprintf (temp, " %4.0f %4.0f", wcs->nxpix, wcs->nypix);
+    strcat (str, temp);
+
+    if (tabout)
+	sprintf (temp, "	%s	%s", wcs->ctype[0], wcs->ctype[1]);
+    else
+	sprintf (temp, " %s %s", wcs->ctype[0], wcs->ctype[1]);
+    strcat (str, temp);
 
     if (tabout) {
 	if (hms) {
@@ -215,10 +201,10 @@ struct WorldCoor *wcs;
 		ra2str (rastr, 32, wcs->xref, ndec);
 		dec2str (decstr, 32, wcs->yref, ndec-1);
 		}
-	    printf (" %s %s %s", rastr, decstr, wcs->radecsys);
+	    sprintf (temp, " %s %s %s", rastr, decstr, wcs->radecsys);
 	    }
 	else
-	    printf ("	%7.2f	%7.2f	%s", wcs->xref, wcs->yref, wcs->radecsys);
+	    sprintf (temp, "	%7.2f	%7.2f	%s", wcs->xref, wcs->yref, wcs->radecsys);
 	}
     else {
 	if (hms) {
@@ -230,26 +216,34 @@ struct WorldCoor *wcs;
 		ra2str (rastr, 32, wcs->xref, ndec);
 		dec2str (decstr, 32, wcs->yref, ndec-1);
 		}
-	    printf (" %s %s %s", rastr, decstr, wcs->radecsys);
+	    sprintf (temp, " %s %s %s", rastr, decstr, wcs->radecsys);
 	    }
 	else
-	    printf (" %7.2f %7.2f %s", wcs->xref, wcs->yref, wcs->radecsys);
+	    sprintf (temp, " %7.2f %7.2f %s", wcs->xref, wcs->yref, wcs->radecsys);
 	}
+    strcat (str, temp);
 
     if (tabout)
-	printf ("	%7.2f	%7.2f", wcs->xrefpix, wcs->yrefpix);
+	sprintf (temp, "	%7.2f	%7.2f", wcs->xrefpix, wcs->yrefpix);
     else
-	printf (" %7.2f %7.2f", wcs->xrefpix, wcs->yrefpix);
+	sprintf (temp, " %7.2f %7.2f", wcs->xrefpix, wcs->yrefpix);
+    strcat (str, temp);
 
     if (tabout)
-	printf ("	%7.4f	%7.4f", 3600.0*wcs->xinc, 3600.0*wcs->yinc);
+	sprintf (temp, "	%7.4f	%7.4f", 3600.0*wcs->xinc, 3600.0*wcs->yinc);
     else
-	printf (" %7.4f %7.4f", 3600.0*wcs->xinc, 3600.0*wcs->yinc);
+	sprintf (temp, " %7.4f %7.4f", 3600.0*wcs->xinc, 3600.0*wcs->yinc);
+    strcat (str, temp);
 
     if (tabout)
-	printf ("	%7.4f\n", wcs->rot);
+	sprintf (temp, "	%7.4f\n", wcs->rot);
     else
-	printf (" %7.4f\n", wcs->rot);
+	sprintf (temp, " %7.4f\n", wcs->rot);
+    strcat (str, temp);
+
+    printf ("%s", str);
+
+    free (wcs);
 
     return;
 }
@@ -259,4 +253,7 @@ struct WorldCoor *wcs;
  * Jul 10 1998	Add option to use AIPS classic WCS subroutines
  * Aug  6 1998	Change fitsio.h to fitsfile.h
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Apr  7 1999	Print lines all at once instead of one variable at a time
+ * Jun  3 1999	Change PrintWCS to ListWCS to avoid name conflict
  */

@@ -1,5 +1,5 @@
 /* File imcat.c
- * November 30, 1998
+ * May 12, 1999
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -43,13 +43,11 @@ static int tabout = 0;		/* 1 for tab table to standard output */
 static int rasort = 0;		/* 1 to sort stars by brighness */
 static int debug = 0;		/* True for extra information */
 static int degout0 = 0;		/* True for RA and Dec in fractional degrees */
-static char *progname;		/* Name of program as executed */
 static char *keyword = NULL;	/* Column to add to tab table output */
 static int sysout = 0;		/* Output coordinate system */
 static int sysref = WCS_J2000;	/* Output coordinate system */
 static double eqout = 0.0;	/* Equinox for output coordinates */
 static int version = 0;		/* If 1, print only program name and version */
-static char progpath[128];
 
 main (ac, av)
 int ac;
@@ -74,6 +72,8 @@ char **av;
     char *refcatn;
     int lcat;
     int scat = 0;
+    char progpath[128];
+    char *progname;		/* Name of program as executed */
 
     for (i = 0; i < 5; i++) {
 	region_radius[i] = 0;
@@ -87,7 +87,7 @@ char **av;
 	if (progpath[i] > 63 && progpath[i] < 90)
 	    progpath[i] = progpath[i] + 32;
 	if (progpath[i] == '/') {
-	    progname = progpath + i;
+	    progname = progpath + i + 1;
 	    break;
 	    }
 	}
@@ -161,6 +161,18 @@ char **av;
 	ncat = 1;
 	refcatn = (char *) calloc (1,8);
 	strcpy (refcatn, "tycho");
+	refcatname[0] = refcatn;
+	}
+    else if (strsrch (progname,"hip") != NULL) {
+	ncat = 1;
+	refcatn = (char *) calloc (1,16);
+	strcpy (refcatn, "hipparcos");
+	refcatname[0] = refcatn;
+	}
+    else if (strsrch (progname,"act") != NULL) {
+	ncat = 1;
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "act");
 	refcatname[0] = refcatn;
 	}
 
@@ -408,7 +420,7 @@ char **av;
 	    if (*lastchar < 32) *lastchar = 0;
     	    if (debug)
     		printf ("%s:\n", filename);
-	    ListCat (filename, ncat, refcatname, region_radius, region_char);
+	    ListCat (progname,filename,ncat,refcatname,region_radius,region_char);
 	    }
 	fclose (flist);
 	}
@@ -422,7 +434,7 @@ char **av;
     	char *fn = *av++;
     	if (debug)
     	    printf ("%s:\n", fn);
-    	ListCat (fn, ncat, refcatname, region_radius, region_char);
+    	ListCat (progname,fn, ncat, refcatname, region_radius, region_char);
     	if (debug)
     	    printf ("\n");
 	}
@@ -468,6 +480,10 @@ char	*progname;
 	fprintf (stderr,"List USNO SA-2.0 stars in FITS and IRAF image files\n");
 	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-u plate]\n");
 	}
+    else if (strsrch (progname,"act") != NULL) {
+	fprintf (stderr,"List ACT Catalog Stars in FITS and IRAF image files\n");
+	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2]\n");
+	}
     else if (strsrch (progname,"iras") != NULL) {
 	fprintf (stderr,"List IRAS Point Sources in FITS and IRAF image files\n");
 	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2]\n");
@@ -507,7 +523,7 @@ char	*progname;
     fprintf (stderr,"  -s: Sort by RA instead of flux \n");
     fprintf (stderr,"  -t: Tab table to standard output as well as file\n");
     fprintf (stderr,"  -u: USNO catalog single plate number to accept\n");
-    fprintf (stderr,"  -w: Write tab table output file imagename.cat\n");
+    fprintf (stderr,"  -w: Write tab table output file [imagename].[catalog]\n");
     fprintf (stderr,"  -v: Verbose\n");
     fprintf (stderr,"  -x: X and Y coordinates of reference pixel (default is center)\n");
     fprintf (stderr,"  -z: Use AIPS classic projections instead of WCSLIB\n");
@@ -518,8 +534,9 @@ char	*progname;
 struct WorldCoor *wcsinit();	
 
 static void
-ListCat (filename, ncat, refcatname, region_radius, region_char)
+ListCat (progname, filename, ncat, refcatname, region_radius, region_char)
 
+char	*progname;	/* Name of program being executed */
 char	*filename;	/* FITS or IRAF file filename */
 int	ncat;		/* Number oc catalogs to search */
 char	**refcatname;	/* reference catalog name */
@@ -556,9 +573,13 @@ int	*region_char;	/* Character for SAOimage region file output */
     char temp[80];
     char title[80];
     char outfile[80];
+    char *fname;
     char isp[4];
     int icat;
     int printobj = 0;
+    int nndec;
+    char nform[64];
+    struct StarCat *starcat;
 
     isp[2] = 0;
     isp[3] = 0;
@@ -580,8 +601,8 @@ int	*region_char;	/* Character for SAOimage region file output */
     /* Read world coordinate system information from the image header */
     if ((header = GetFITShead (filename)) == NULL)
 	return;
-    wcs = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-		      &imw, &imh, &sysout, &eqout);
+    wcs = GetFITSWCS (filename, header, verbose, &cra, &cdec, &dra, &ddec,
+		      &secpix, &imw, &imh, &sysout, &eqout);
     free (header);
     if (nowcs (wcs))
 	return;
@@ -655,6 +676,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	free ((char *)wcs);
 	return;
 	}
+    for (i = 0; i < ngmax; i++)
+	gmb[i] = 0.0;
     if (debug)
 	nlog = 100;
     else
@@ -672,6 +695,9 @@ int	*region_char;	/* Character for SAOimage region file output */
     else if (refcat == UJC)
 	ng = ujcread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
 		      uplate,ngmax,gnum,gra,gdec,gm,gc,nlog);
+    else if (refcat == ACT)
+	ng = actread (cra,cdec,dra,ddec,drad,sysout,eqout,epout,
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,nlog);
     else if (refcat == SAO)
 	ng = binread ("SAOra",cra,cdec,dra,ddec,drad,sysout,eqout,epout,
 		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,nlog);
@@ -684,18 +710,29 @@ int	*region_char;	/* Character for SAOimage region file output */
     else if (refcat == TYCHO)
 	ng = binread ("tychora",cra,cdec,dra,ddec,drad,sysout,eqout,epout,
 		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,nlog);
-    else if (refcat == BINCAT)
+    else if (refcat == HIP)
+	ng = binread ("hipparcosra",cra,cdec,dra,ddec,drad,sysout,eqout,epout,
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,nlog);
+    else if (refcat == BINCAT) {
 	ng = binread (refcatname[icat],cra,cdec,dra,ddec,drad,sysout,eqout,
 		      epout,mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,gobj,nlog);
+	starcat = binopen (refcatname[icat]);
+	nndec = starcat->nndec;
+	binclose (starcat);
+	}
     else if (refcat == TABCAT) {
 	ng = tabread (refcatname[icat],cra,cdec,dra,ddec,drad,sysout,eqout,
 		      epout,mag1,mag2,ngmax,gnum,gra,gdec,gm,gc,nlog);
 	if (keyword != NULL)
 	    tabrkey (refcatname[icat], ng, gnum, keyword, gobj);
 	}
-    else
+    else {
 	ng = catread (refcatname[icat],cra,cdec,dra,ddec,drad,sysout,eqout,
 		      epout,mag1,mag2,ngmax,gnum,gra,gdec,gm,gobj,nlog);
+	starcat = catopen (refcatname[icat]);
+	nndec = starcat->nndec;
+	catclose (starcat);
+	}
     if (gobj[0] == NULL)
 	gobj1 = NULL;
     else
@@ -749,7 +786,11 @@ int	*region_char;	/* Character for SAOimage region file output */
 
     /* Open plate catalog file */
     if (wfile && icat == 0) {
-	strcpy (outfile,filename);
+	fname = strrchr (filename, '/');
+	if (fname != NULL)
+	    strcpy (outfile, fname+1);
+	else
+	    strcpy (outfile, filename);
 	for (i = 0; i < ncat; i++) {
 	    strcat (outfile,".");
 	    strcat (outfile,refcatname[i]);
@@ -814,7 +855,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 	    if (icat > 0)
 		region_char[icat] = region_char[icat - 1] + 1;
 	    else
-		region_radius[icat] = WCS_CIRCLE;
+		region_char[icat] = WCS_CIRCLE;
 	    }
 	switch (region_char[icat]) {
 	    case WCS_SQUARE:
@@ -857,7 +898,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (snum,"%9.4f", gnum[i]);
 		else if (refcat==SAO || refcat==PPM || refcat==IRAS )
 		    sprintf (snum,"%d", (int)gnum[i]);
-		else if (refcat == TYCHO)
+		else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
 		    sprintf (snum,"%10.5f", gnum[i]);
 		else {
 		    if (gobj != NULL && gobj[i] != NULL) {
@@ -925,6 +966,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 	sprintf (headline, "CATALOG	IRAS Point Source");
     else if (refcat == TYCHO)
 	sprintf (headline, "CATALOG	Tycho");
+    else if (refcat == HIP)
+	sprintf (headline, "CATALOG	Hipparcos");
+    else if (refcat == ACT)
+	sprintf (headline, "CATALOG	ACT");
     else
 	sprintf (headline, "CATALOG     %s", refcatname[icat]);
     if (wfile)
@@ -982,6 +1027,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcpy (headline,"iras_id  	");
     else if (refcat == TYCHO)
 	strcpy (headline,"tycho_id  	");
+    else if (refcat == HIP)
+	strcpy (headline,"hip_id  	");
+    else if (refcat == ACT)
+	strcpy (headline,"act_id  	");
     else
 	strcpy (headline,"id    	");
     if (sysout == WCS_B1950)
@@ -995,7 +1044,7 @@ int	*region_char;	/* Character for SAOimage region file output */
     if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
 	refcat == USAC || refcat == USA1 || refcat == USA2)
 	strcat (headline,"magb  	magr  	x    	y    	");
-    else if (refcat == TYCHO)
+    else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
 	strcat (headline,"magb  	magv  	x    	y    	");
     else
 	strcat (headline,"mag   	x    	y    	");
@@ -1004,7 +1053,8 @@ int	*region_char;	/* Character for SAOimage region file output */
     else if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
 	    refcat == USAC || refcat == USA1 || refcat == USA2 || refcat == UJC)
 	strcat (headline,"plate	");
-    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==TYCHO)
+    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==TYCHO ||
+	     refcat==HIP || refcat==ACT)
 	strcat (headline,"type 	");
     else
 	strcat (headline,"peak	");
@@ -1018,8 +1068,9 @@ int	*region_char;	/* Character for SAOimage region file output */
     if (tabout)
 	printf ("%s\n", headline);
 
-    if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
-	refcat == USAC || refcat == USA1 || refcat == USA2 || refcat == TYCHO)
+    if (refcat == UAC  || refcat == UA1  || refcat == UA2 || refcat == HIP ||
+	refcat == USAC || refcat == USA1 || refcat == USA2 || refcat == TYCHO ||
+	refcat == ACT)
 	sprintf(headline,"----------	--------	---------	----	-----	-----	-----	-----	----");
     else
         sprintf (headline,"----------	------------	------------	------	----	-------	----");
@@ -1055,6 +1106,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 		printf ("No IRAS Point Sources Found\n");
 	    else if (refcat == TYCHO)
 		printf ("No Tycho Stars Found\n");
+	    else if (refcat == HIP)
+		printf ("No Hipparcos Stars Found\n");
+	    else if (refcat == ACT)
+		printf ("No ACT Stars Found\n");
 	    else
 		printf ("No Stars Found\n");
 	    }
@@ -1083,6 +1138,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 		printf ("IRAS number");
 	    else if (refcat == TYCHO)
 		printf ("Tycho number ");
+	    else if (refcat == HIP)
+		printf ("Hip number   ");
+	    else if (refcat == ACT)
+		printf ("ACT number   ");
 	    else
 		printf (" Number    ");
 	    if (sysout == WCS_B1950) {
@@ -1120,14 +1179,20 @@ int	*region_char;	/* Character for SAOimage region file output */
 	    if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
 		refcat == USAC || refcat == USA1 || refcat == USA2)
 		printf ("MagB  MagR    X      Y   Plate Arcsec\n");
+	    else if (refcat == UJC)
+		printf ("  Mag     X      Y   Plate Arcsec\n");
 	    else if (refcat == GSC)
 		printf (" Mag     X      Y   Class Arcsec\n");
 	    else if (refcat == SAO || refcat == PPM || refcat == IRAS)
 		printf (" Mag     X      Y   Type  Arcsec\n");
-	    else if (refcat == TYCHO)
+	    else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
 		printf (" MagR MagV     X      Y   Type  Arcsec\n");
 	    else if (refcat == TABCAT && keyword != NULL)
 		printf (" Mag     X      Y   Peak  Arcsec  %s\n", keyword);
+	    else if (refcat == BINCAT)
+		printf (" Mag     X      Y   Type  Arcsec   Object\n");
+	    else if (refcat == TXTCAT)
+		printf (" Mag     X      Y   Arcsec   Object\n");
 	    else
 		printf (" Mag     X      Y   Peak  Arcsec\n");
 	    }
@@ -1162,15 +1227,27 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline, "%9d	%s	%s	%.2f	%.1f	%.1f	%2s	%.2f",
 		     (int)(gnum[i]+0.5), rastr, decstr, gm[i], gx[i], gy[i], isp, gdist);
 		    }
-		else if (refcat==TYCHO) {
+		else if (refcat==TYCHO || refcat == HIP || refcat == ACT) {
 		    isp[0] = gc[i] / 1000;
 		    isp[1] = gc[i] % 1000;
 		    sprintf (headline, "%10.5f	%s	%s	%.2f	%.2f	%.1f	%.1f	%2s	%.2f",
 		     gnum[i], rastr, decstr, gmb[i], gm[i], gx[i], gy[i], isp, gdist);
 		    }
+		else if (refcat == BINCAT && nndec > 0) {
+		    sprintf (nform, "%%%d.%df	%%s	%%s	%%.2f	%%.1f	%%.1f	%%d	%%.2f",
+			     nndec+5, nndec);
+		    sprintf (headline, nform, gnum[i], rastr, decstr, gm[i],
+			     gx[i], gy[i], gc[i], gdist);
+		    }
 		else if (refcat == BINCAT)
 		    sprintf (headline, "%10.0f	%s	%s	%.2f	%.1f	%.1f	%d	%.2f",
 		     gnum[i], rastr, decstr, gm[i], gx[i], gy[i], gc[i], gdist);
+		else if (nndec > 0) {
+		    sprintf (nform, "%%%d.%df	%%s	%%s	%%.2f	%%.1f	%%.1f	%%d	%%.2f",
+			     nndec+5, nndec);
+		    sprintf (headline, nform, gnum[i], rastr, decstr, gm[i],
+			     gx[i], gy[i], gc[i], gdist);
+		    }
 		else
 		    sprintf (headline, "%9.4f	%s	%s	%.2f	%.1f	%.1f	%d	%.2f",
 		     gnum[i], rastr, decstr, gm[i], gx[i], gy[i], gc[i], gdist);
@@ -1180,56 +1257,73 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    printf ("%s\n", headline);
 		}
 	    else if (!tabout) {
-		if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
-		    refcat == USAC || refcat == USA1 || refcat == USA2)
-		    printf ("%13.8f %s %s %5.1f %5.1f %6.1f %6.1f %4d %7.2f\n",
-			gnum[i],rastr,decstr,gmb[i],gm[i],gx[i],gy[i],gc[i],gdist);
+		if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
+		    refcat == UAC  || refcat == UA1  || refcat == UA2)
+		    sprintf (headline,"%13.8f %s %s %5.1f %5.1f %.1f %.1f %4d ",
+			gnum[i],rastr,decstr,gmb[i],gm[i],gx[i],gy[i],gc[i]);
 		else if (refcat == UJC)
-		    printf ("%12.7f %s %s %6.2f %6.1f %6.1f %4d %7.2f\n",
-			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i],gdist);
+		    sprintf (headline,"%12.7f %s %s %6.2f %.1f %.1f %4d",
+			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i]);
 		else if (refcat == GSC)
-		    printf ("%9.4f %s %s %6.2f %6.1f %6.1f  %3d %7.2f\n",
-			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i],gdist);
+		    sprintf (headline,"%9.4f %s %s %6.2f %.1f %.1f %2d",
+			gnum[i], rastr, decstr, gm[i], gx[i], gy[i], gc[i]);
 		else if (refcat==SAO || refcat==PPM || refcat==IRAS ) {
 		    isp[0] = gc[i] / 1000;
 		    isp[1] = gc[i] % 1000;
-		    printf ("%8d %s %s %6.2f %6.1f %6.1f  %2s  %7.2f\n",
-			(int)gnum[i], rastr, decstr, gm[i],gx[i],gy[i],isp,gdist);
+		    sprintf (headline,"%8d  %s %s %6.2f  %2s",
+			(int)(gnum[i]+0.5),rastr,decstr,gm[i],isp);
+		    sprintf (temp, "  %.1f  %.1f", gx[i], gy[i]);
+		    strcat (headline, temp);
 		    }
-		else if (refcat == TYCHO) {
+		else if (refcat == TYCHO || refcat == HIP || refcat == ACT) {
 		    isp[0] = gc[i] / 1000;
 		    isp[1] = gc[i] % 1000;
-		    printf ("%10.5f %s %s %6.2f %6.2f %6.1f %6.1f  %2s  %7.2f\n",
-			gnum[i],rastr,decstr,gmb[i],gm[i],gx[i],gy[i],isp,gdist);
+		    sprintf (headline,"%10.5f %s %s %6.2f %6.2f  %2s",
+			gnum[i],rastr,decstr,gmb[i],gm[i],isp);
+		    sprintf (temp, "  %.1f  %.1f", gx[i], gy[i]);
+		    strcat (headline, temp);
 		    }
-		else if (refcat == TABCAT) {
-		    if (gobj != NULL && gobj[i] != NULL)
-			printf ("%9d %s %s %6.2f %6.1f %6.1f  %d  %7.2f %s\n",
-			(int)gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i],
-			gdist, gobj[i]);
-		    else
-			printf ("%9.4f %s %s %6.2f %6.1f %6.1f  %d  %7.2f\n",
-			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i],gdist);
-		    }
+		else if (refcat == TABCAT)
+		    sprintf (headline,"%9.4f %s %s %6.2f %.1f %.1f%7d",
+			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i]);
 		else if (refcat == BINCAT) {
 		    isp[0] = gc[i] / 1000;
 		    isp[1] = gc[i] % 1000;
-		    if (gobj != NULL && gobj[i] != NULL)
-			printf ("%9d %s %s %6.2f %6.1f %6.1f %2s %7.2f %s\n",
-			(int)gnum[i], rastr, decstr, gm[i], gx[i], gy[i],
-			isp, gdist, gobj[i]);
+		    if (nndec > 0) {
+			sprintf (nform,"%%%d.%df %%s %%s %%6.2f %%2s",
+				 nndec+5,nndec);
+			sprintf (headline,nform,gnum[i],rastr,decstr,gm[i],isp);
+			}
 		    else
-			printf ("%9d %s %s %6.2f %6.1f %6.1f %2s %7.2f\n",
-			(int)gnum[i], rastr, decstr, gm[i], gx[i], gy[i],
-			isp, gdist);
+			sprintf (headline,"%8d %s %s %6.2f %2s",
+				(int)(gnum[i]+0.5), rastr, decstr, gm[i], isp);
+		    sprintf (temp, "  %.1f  %.1f", gx[i], gy[i]);
+		    strcat (headline, temp);
 		    }
-		else if (gobj != NULL && gobj[i] != NULL)
-		    printf ("%9d %s %s %6.2f %6.1f %6.1f  %7.2f %s\n",
-			(int)gnum[i], rastr, decstr, gm[i], gx[i], gy[i],
-			gdist, gobj[i]);
-		else
-		    printf ("%9d %s %s %6.2f %6.1f %6.1f  %7.2f\n",
-			(int)gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gdist);
+		else {
+		    if (nndec > 0) {
+			sprintf (nform,"%%%d.%df %%s %%s %%6.2f",
+				 nndec+5,nndec);
+			sprintf (headline,nform, gnum[i], rastr, decstr, gm[i]);
+			}
+		    else
+			sprintf (headline, "%8d %s %s %6.2f",
+				(int)(gnum[i]+0.5), rastr, decstr, gm[i]);
+		    sprintf (temp, "  %.1f  %.1f", gx[i], gy[i]);
+		    strcat (headline, temp);
+		    }
+		sprintf (temp, "  %7.2f", gdist);
+		strcat (headline, temp);
+		if (refcat == TABCAT && keyword != NULL) {
+		    sprintf (temp, " %s", gobj[i]);
+		    strcat (headline, temp);
+		    }
+		else if ((refcat == BINCAT || refcat == TXTCAT) &&
+			 gobj1 != NULL && gobj[i] != NULL) {
+		    sprintf (temp, " %s", gobj[i]);
+		    strcat (headline, temp);
+		    }
+		printf ("%s\n", headline);
 		}
 	    }
 	}
@@ -1324,4 +1418,17 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Nov 20 1998	Add support for USNO A-2.0 and SA-2.0 catalogs
  * Nov 30 1998	Add x command for new reference pixel
  * Nov 30 1998	Add version and help commands for consistency
+ * Dec  8 1998	Add support for Hipparcos and ACT catalogs
+ * Dec 21 1998	Fix formats for text catalogs
+ * Dec 21 1998	Write output file to current working directory
+ *
+ * Jan 25 1999	Add -i for IRAF formatted output (X Y RA Dec)
+ * Jan 26 1999	Drop -i; add similar feature to immatch
+ * Feb 12 1999	Finish adding support for ACT catalog
+ * Feb 18 1998	Add variable number of decimal places to TDC catalog output
+ * Mar  2 1999	Add x and y to non-tab output (bug fix)
+ * Apr  7 1999	Add filename argument to GetFITSWCS
+ * Apr 13 1999	Fix progname to drop / when full pathname
+ * Apr 20 1999	Fix minor bug in character assignment code
+ * May 12 1999	Adjust command listing
  */

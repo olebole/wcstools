@@ -1,5 +1,5 @@
 /* File imsize.c
- * November 30, 1998
+ * April 7, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -293,8 +293,8 @@ char *name;
 	}
 
     /* Read world coordinate system information from the image header */
-    wcs = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-                &wp, &hp, &eqsys, &equinox);
+    wcs = GetFITSWCS (name, header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
+		      &wp, &hp, &eqsys, &equinox);
     if (nowcs (wcs)) {
 	printf ("%s: No WCS for file, cannot compute image size\n", name);
 	return;
@@ -447,4 +447,6 @@ char *name;
  * Sep 29 1998	Change call to GetFITSWCS()
  * Oct 14 1998	Use isiraf() to determine file type
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Apr  7 1999	Add file name argument to GetFITSWCS
  */

@@ -1,5 +1,5 @@
 /* File getpix.c
- * November 30, 1998
+ * April 29, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -94,6 +94,8 @@ int n, *x, *y;
     int nbhead;		/* Actual number of bytes in FITS header */
     char *irafheader;	/* IRAF image header */
     char *image;	/* FITS or IRAF image */
+    double bzero;	/* Zero point for pixel scaling */
+    double bscale;	/* Scale factor for pixel scaling */
     int iraffile;
     double dpix;
     int bitpix,xdim,ydim, ipix, i;
@@ -148,11 +150,17 @@ int n, *x, *y;
 
 /* Get value of specified pixel */
     hgeti4 (header,"BITPIX",&bitpix);
+    xdim = 1;
     hgeti4 (header,"NAXIS1",&xdim);
+    ydim = 1;
     hgeti4 (header,"NAXIS2",&ydim);
+    bzero = 0.0;
+    hgetr8 (header,"BZERO",&bzero);
+    bscale = 1.0;
+    hgetr8 (header,"BZERO",&bscale);
 
     for (i = 0; i < n; i++) {
-        dpix = getpix (image, bitpix, xdim, ydim, x[i]-1, y[i]-1);
+        dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x[i]-1,y[i]-1);
         if (bitpix > 0) {
 	    if (dpix > 0)
         	ipix = (int) (dpix + 0.5);
@@ -180,4 +188,7 @@ int n, *x, *y;
  * Aug  6 1998	Change fitsio.h to fitsfile.h
  * Oct 14 1998	Use isiraf() to determine file type
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Feb 12 1999	Initialize dxisn to 1 so it works for 1-D images
+ * Apr 29 1999	Add BZERO and BSCALE
  */

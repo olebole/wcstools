@@ -1,5 +1,5 @@
 /* File libwcs/sortstar.c
- * November 20, 1998
+ * May 19, 1999
  * By Doug Mink
  */
 
@@ -11,7 +11,6 @@
  * int StarRASort()		Return star with lowest right ascension
  * void XSortStars()		Sort stars based on X coordinate in image
  * int StarXSort()		Return star with lowest X coordinate
- * int RefCat()			Return catalog type code, title, coord. system
  */
 
 #include <stdlib.h>
@@ -367,148 +366,6 @@ void *ssp1, *ssp2;
 	return (0);
 }
 
-
-/* Return code for reference catalog or its type */
-
-int
-RefCat (refcatname, title, syscat, eqcat, epcat)
-
-char	*refcatname;	/* Name of reference catalog */
-char	*title;		/* Description of catalog (returned) */
-int	*syscat;	/* Catalog coordinate system (returned) */
-double	*eqcat;		/* Equinox of catalog (returned) */
-double	*epcat;		/* Epoch of catalog (returned) */
-{
-    struct StarCat *starcat;
-
-    if (strncmp(refcatname,"gs",2)==0 ||
-	strncmp (refcatname,"GS",2)== 0) {
-	strcpy (title, "HST Guide Stars");
-	*syscat = WCS_J2000;
-	*eqcat = 2000.0;
-	*epcat = 2000.0;
-	return (GSC);
-	}
-    else if (strncmp(refcatname,"us",2)==0 ||
-	strncmp(refcatname,"US",2)==0) {
-	*syscat = WCS_J2000;
-	*eqcat = 2000.0;
-	*epcat = 2000.0;
-	if (index (refcatname, '1') != NULL) {
-	    strcpy (title, "USNO SA-1.0 Catalog Stars");
-	    return (USA1);
-	    }
-	else if (index (refcatname, '2') != NULL) {
-	    strcpy (title, "USNO SA-2.0 Catalog Stars");
-	    return (USA2);
-	    }
-	else {
-	    strcpy (title, "USNO SA Catalog Stars");
-	    return (USAC);
-	    }
-	}
-    else if (strncmp(refcatname,"ua",2)==0 ||
-	strncmp(refcatname,"UA",2)==0) {
-	*syscat = WCS_J2000;
-	*eqcat = 2000.0;
-	*epcat = 2000.0;
-	if (index (refcatname, '1') != NULL) {
-	    strcpy (title, "USNO A-1.0 Catalog Stars");
-	    return (UA1);
-	    }
-	else if (index (refcatname, '2') != NULL) {
-	    strcpy (title, "USNO A-2.0 Catalog Stars");
-	    return (UA2);
-	    }
-	else {
-	    strcpy (title, "USNO A Catalog Stars");
-	    return (UAC);
-	    }
-	}
-    else if (strncmp(refcatname,"uj",2)==0 ||
-	strncmp(refcatname,"UJ",2)==0) {
-	strcpy (title, "USNO J Catalog Stars");
-	*syscat = WCS_J2000;
-	*eqcat = 2000.0;
-	*epcat = 2000.0;
-	return (UJC);
-	}
-    else if (strncmp(refcatname,"sao",3)==0 ||
-	strncmp(refcatname,"SAO",3)==0) {
-	strcpy (title, "SAO Catalog Stars");
-	if ((starcat = binopen ("SAO")) == NULL)
-	    return (0);
-	*syscat = starcat->insys;
-	*eqcat = starcat->equinox;
-	*epcat = starcat->epoch;
-	binclose (starcat);
-	return (SAO);
-	}
-    else if (strncmp(refcatname,"ppm",3)==0 ||
-	strncmp(refcatname,"PPM",3)==0) {
-	strcpy (title, "PPM Catalog Stars");
-	if ((starcat = binopen ("PPM")) == NULL)
-	    return (0);
-	*syscat = starcat->insys;
-	*eqcat = starcat->equinox;
-	*epcat = starcat->epoch;
-	binclose (starcat);
-	return (PPM);
-	}
-    else if (strncmp(refcatname,"iras",4)==0 ||
-	strncmp(refcatname,"IRAS",4)==0) {
-	strcpy (title, "IRAS Point Sources");
-	if ((starcat = binopen ("IRAS")) == NULL)
-	    return (0);
-	*syscat = starcat->insys;
-	*eqcat = starcat->equinox;
-	*epcat = starcat->epoch;
-	binclose (starcat);
-	return (IRAS);
-	}
-    else if (strncmp(refcatname,"tyc",3)==0 ||
-	strncmp(refcatname,"TYC",3)==0) {
-	strcpy (title, "Tycho Catalog Stars");
-	if ((starcat = binopen ("tycho")) == NULL)
-	    return (0);
-	*syscat = starcat->insys;
-	*eqcat = starcat->equinox;
-	*epcat = starcat->epoch;
-	binclose (starcat);
-	return (TYCHO);
-	}
-    else if (isbin (refcatname)) {
-	strcpy (title, refcatname);
-	strcat (title, " Catalog Sources");
-	if ((starcat = binopen (refcatname)) == NULL)
-	    return (0);
-	*syscat = starcat->insys;
-	*eqcat = starcat->equinox;
-	*epcat = starcat->epoch;
-	binclose (starcat);
-	return (BINCAT);
-	}
-    else if (istab (refcatname)) {
-	strcpy (title, refcatname);
-	strcat (title, " Catalog Sources");
-	*syscat = WCS_J2000;
-	*eqcat = 2000.0;
-	*epcat = 2000.0;
-	return (TABCAT);
-	}
-    else {
-	strcpy (title, refcatname);
-	strcat (title, " Catalog Sources");
-	if ((starcat = catopen (refcatname)) == NULL)
-	    return (0);
-	*syscat = starcat->insys;
-	*eqcat = starcat->equinox;
-	*epcat = starcat->epoch;
-	catclose (starcat);
-	return (TXTCAT);
-	}
-}
-
 /* Jun 13 1996	New program
  * Oct 18 1996	Add sorting by X value
  * Nov 13 1996	Add second magnitude
@@ -519,4 +376,10 @@ double	*epcat;		/* Epoch of catalog (returned) */
  * Oct 26 1998	Include object names in star catalog entry structure
  * Oct 29 1998	Return coordinate system and title from RefCat
  * Nov 20 1998	Add USNO A-2.0 catalog and return different code
+ * Dec  9 1998	Add Hipparcos and Tycho catalogs
+ *
+ * Jan 26 1999	Add subroutines to deal with ranges of numbers
+ * Feb  8 1999	Fix bug initializing ACT catalog
+ * Feb 11 1999	Change starcat.insys to starcat.coorsys
+ * May 19 1999	Move catalog subroutines to catutil()
  */

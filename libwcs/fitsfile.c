@@ -1,6 +1,6 @@
 /*** File libwcs/fitsfile.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** December 8, 1998
+ *** May 25, 1999
 
  * Module:      fitsfile.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -81,6 +81,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     char *ext;		/* Desired FITS extension name, if any */
     char *ext1;		/* End of desired FITS extension name */
     char *pheader;	/* Primary header (naxis is 0) */
+    char cext;
 
     pheader = NULL;
     lprim = 0;
@@ -91,25 +92,32 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 
 	/* Check for FITS extension and ignore for file opening */
 	ext = strchr (filename, ',');
-	if (ext != NULL)
-	    ext = ext + 1;
-	else {
+	if (ext == NULL)
+	    ext = strchr (filename, '%');
+	if (ext == NULL) {
 	    ext = strchr (filename, '[');
 	    if (ext != NULL) {
-		ext = ext + 1;
-		ext1 = strchr (ext, ']');
+		ext1 = strchr (ext+1, ']');
 		if (ext1 != NULL)
 		    *ext1 = (char) 0;
 		}
+	    }
+	if (ext != NULL) {
+	    cext = *ext;
+	    *ext = (char) 0;
+	    ext = ext + 1;
 	    }
 
 	fd = -1;
 	fd = fitsropen (filename);
 	if (fd < 0) {
 	    fprintf (stderr, "FITSRHEAD:  cannot read file %s\n", filename);
+	    if (ext != NULL)
+		*(ext-1) = cext;
 	    return (NULL);
 	    }
 	if (ext != NULL) {
+	    *(ext-1) = cext;
 	    if (isnum (ext))
 		extnum = atoi (ext);
 	    else
@@ -381,13 +389,21 @@ char	*header;	/* FITS header for image (previously read) */
     bitpix = 0;
     hgeti4 (header,"BITPIX",&bitpix);
     if (bitpix == 0) {
-	fprintf (stderr, "FITSRIMAGE:  BITPIX is 0; image not read\n");
+	/* fprintf (stderr, "FITSRIMAGE:  BITPIX is 0; image not read\n"); */
 	close (fd);
-	return (0);
+	return (NULL);
 	}
     bytepix = bitpix / 8;
     if (bytepix < 0) bytepix = -bytepix;
-    nbimage = naxis1 * naxis2 * bytepix;
+
+    /* If either dimension is one and image is 3-D, read all three dimensions */
+    if (naxis == 3 && (naxis1 ==1 | naxis2 == 1)) {
+	int naxis3;
+	hgeti4 (header,"NAXIS3",&naxis3);
+	nbimage = naxis1 * naxis2 * naxis3 * bytepix;
+	}
+    else
+	nbimage = naxis1 * naxis2 * bytepix;
 
     /* Set number of bytes to integral number of 2880-byte blocks */
     nblocks = nbimage / FITSBLOCK;
@@ -427,17 +443,22 @@ char	*inpath;	/* Pathname for FITS tables file to read */
     int ntry;
     int fd;		/* file descriptor for FITS tables file (returned) */
     char *ext;		/* extension name or number */
+    char cext;
 
 /* Check for FITS extension and ignore for file opening */
     ext = strchr (inpath, ',');
+    if (ext == NULL)
+	ext = strchr (inpath, '%');
 
 /* Open input file */
     for (ntry = 0; ntry < 3; ntry++) {
-	if (ext != NULL)
+	if (ext != NULL) {
+	    cext = *ext;
 	    *ext = 0;
+	    }
 	fd = open (inpath, O_RDONLY);
 	if (ext != NULL)
-	    *ext = ',';
+	    *ext = cext;
 	if (fd >= 0)
 	    break;
 	else if (ntry == 2) {
@@ -452,6 +473,9 @@ char	*inpath;	/* Pathname for FITS tables file to read */
     return (fd);
 }
 
+
+static int offset1=0;
+static int offset2=0;
 
 /* FITSRTOPEN -- Open FITS table file and return header and pointers to
  *		 selected keywords, as well as file descriptor
@@ -496,6 +520,8 @@ int	*nbhead;	/* Number of characters before table starts */
 	    }
 	else {
 	    fd = fitsropen (inpath);
+	    offset1 = 0;
+	    offset2 = 0;
 	    return (fd);
 	    }
 	}
@@ -631,9 +657,6 @@ int	*nchar;		/* Number of characters in one table row (returned) */
     return (0);
 }
 
-
-static int offset1=0;
-static int offset2=0;
 
 int
 fitsrtline (fd, nbhead, lbuff, tbuff, irow, nbline, line)
@@ -805,8 +828,9 @@ char	*image;		/* FITS image pixels */
 {
     int fd;
     int nbhead, nbimage, nblocks, bytepix;
-    int bitpix, naxis, naxis1, naxis2, nbytes, nbw;
-    char *endhead, *lasthead;
+    int bitpix, naxis, naxis1, naxis2, nbytes, nbw, nbpad, nbwp;
+    char *endhead, *lasthead, *padding;
+    double bzero, bscale;
 
     /* Open the output file */
     if (!access (filename, 0)) {
@@ -821,6 +845,19 @@ char	*image;		/* FITS image pixels */
 	if (fd < 3) {
 	    fprintf (stderr, "FITSWIMAGE:  cannot create file %s\n", filename);
 	    return (0);
+	    }
+	}
+
+    /* Change BITPIX=-16 files to BITPIX=16 with BZERO and BSCALE */
+    bitpix = 0;
+    hgeti4 (header,"BITPIX",&bitpix);
+    if (bitpix == -16) {
+	if (!hgetr8 (header, "BZERO", &bzero) &&
+	    !hgetr8 (header, "BSCALE", &bscale)) {
+	    bitpix = 16;
+	    hputi4 (header, "BITPIX", bitpix);
+	    hputr8 (header, "BZERO", 32768.0);
+	    hputr8 (header, "BSCALE", 1.0);
 	    }
 	}
 
@@ -852,16 +889,23 @@ char	*image;		/* FITS image pixels */
     hgeti4 (header,"NAXIS1",&naxis1);
     naxis2 = 1;
     hgeti4 (header,"NAXIS2",&naxis2);
-    bitpix = 0;
-    hgeti4 (header,"BITPIX",&bitpix);
     if (bitpix == 0) {
-	fprintf (stderr, "FITSWIMAGE:  BITPIX is 0; image not written\n");
+	/* fprintf (stderr, "FITSWIMAGE:  BITPIX is 0; image not written\n"); */
 	close (fd);
 	return (0);
 	}
     bytepix = bitpix / 8;
     if (bytepix < 0) bytepix = -bytepix;
-    nbimage = naxis1 * naxis2 * bytepix;
+
+    /* If either dimension is one and image is 3-D, read all three dimensions */
+    if (naxis == 3 && (naxis1 ==1 | naxis2 == 1)) {
+	int naxis3;
+	hgeti4 (header,"NAXIS3",&naxis3);
+	nbimage = naxis1 * naxis2 * naxis3 * bytepix;
+	}
+    else
+	nbimage = naxis1 * naxis2 * bytepix;
+
     nblocks = nbimage / FITSBLOCK;
     if (nblocks * FITSBLOCK < nbimage)
 	nblocks = nblocks + 1;
@@ -869,19 +913,27 @@ char	*image;		/* FITS image pixels */
 
     /* Byte-reverse image before writing, if necessary */
     if (imswapped ())
-	imswap (bitpix, image, nbytes);
+	imswap (bitpix, image, nbimage);
 
     /* Write image to file */
-    nbw = write (fd, image, nbytes);
+    nbw = write (fd, image, nbimage);
+
+    /* Write extra to make integral number of 2880-byte blocks */
+    nbpad = nbytes - nbimage;
+    padding = (char *)calloc (1,nbpad);
+    nbwp = write (fd, padding, nbpad);
+    nbw = nbw + nbwp;
+    free (padding);
+
     close (fd);
 
     /* Byte-reverse image after writing, if necessary */
     if (imswapped ())
-	imswap (bitpix, image, nbytes);
+	imswap (bitpix, image, nbimage);
 
     if (nbw < nbimage) {
 	fprintf (stderr, "FITSWIMAGE:  wrote %d / %d bytes of image to file %s\n",
-		 nbw, nbytes, filename);
+		 nbw, nbimage, filename);
 	return (0);
 	}
     return (nbw);
@@ -1021,4 +1073,11 @@ char    *filename;      /* Name of file for which to find size */
  * Oct  9 1998	Assume stdin and STDIN to be FITS files in isfits()
  * Nov 30 1998	Fix bug found by Andreas Wicenec when reading large headers
  * Dec  8 1998	Fix bug introduced by previous bug fix
+ *
+ * Jan  4 1999	Do not print error message if BITPIX is 0
+ * Jan 27 1999	Read and write all of 3D images if one dimension is 1
+ * Jan 27 1999	Pad out data to integral number of 2880-byte blocks
+ * Apr 29 1999	Write BITPIX=-16 files as BITPIX=16 with BSCALE and BZERO
+ * Apr 30 1999	Add % as alternative to , to denote sub-images
+ * May 25 1999	Set buffer offsets to 0 when FITS table file is opened
  */

@@ -525,9 +525,9 @@ ujcplate (magetc)
 int magetc;	/* Quality, plate, and magnitude from UJ catalog entry */
 {
     if (magetc < 0)
-	return ((double) (-magetc % 10000000) / 10000);
+	return ( (-magetc % 10000000) / 10000);
     else
-	return ((double) (magetc % 10000000) / 10000);
+	return ( (magetc % 10000000) / 10000);
 }
 
 

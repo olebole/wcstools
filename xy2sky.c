@@ -1,5 +1,5 @@
 /* File xy2sky.c
- * November 30, 1998
+ * June 2, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,12 +14,12 @@
 #include "wcs.h"
 
 static void usage();
-extern struct WorldCoor *GetWCSFITS ();	/* Read WCS from FITS or IRAF header */
-extern int pix2wcst();
+extern struct WorldCoor *GetWCSFITS();	/* Read WCS from FITS or IRAF header */
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int append = 0;		/* append input line flag */
 static int tabtable = 0;	/* tab table output flag */
+static int identifier = 0;	/* 1st column=id flag */
 static char coorsys[16];
 static int linmode = -1;
 static int face = 1;
@@ -43,7 +43,7 @@ char **av;
     char *fn;
     struct WorldCoor *wcs;
     char xstr[32], ystr[32];
-    char temp[32];
+    char temp[64];
     *coorsys = 0;
 
     /* Check for help or version command first */
@@ -94,6 +94,10 @@ char **av;
 	    strcpy (coorsys,"galactic");
             degout++;
     	    break;
+
+	case 'i':	/* 1st column = star id */
+	    identifier++;
+	    break;
 
 	case 'j':	/* Output J2000 coordinates */
 	    strcpy (coorsys,"j2000");
@@ -151,22 +155,27 @@ char **av;
 	setwcslin (wcs, linmode);
     if (*coorsys)
 	wcsoutinit (wcs, coorsys);
+
+    /* Print tab table header */
     if (tabtable) {
 	wcs->tabsys = 1;
 	if (!append) {
-	    printf ("X    	Y    	");
+	    printf ("IMAGE	%s\n", fn);
+	    printf ("RADECSYS	%s\n",wcs->radecout);
+	    printf ("EPOCH	%.4f\n",wcs->epoch);
+	    printf ("x       	y       	");
 	    if (wcs->naxes > 2)
 		printf ("Z    	");
 	    if (wcs->sysout == WCS_B1950 || wcs->sysout == WCS_J2000)
-		printf ("RA      	Dec     	Equinox\n");
+		printf ("ra         	dec         	system\n");
 	    else if (wcs->sysout == WCS_GALACTIC)
-		printf ("Gal Long 	Gal Lat 	Equinox\n");
+		printf ("glon        	glat        	system\n");
 	    else if (wcs->sysout == WCS_ECLIPTIC)
-		printf ("Ecl Long 	Ecl Lat 	Equinox\n");
-	    printf ("-----	-----	");
+		printf ("elon        	elat        	system\n");
+	    printf ("--------	--------	");
 	    if (wcs->naxes > 2)
 		printf ("-----	");
-	    printf ("--------	--------	-------\n");
+	    printf ("------------	------------	------\n");
 	    }
 	}
     if (degout) {
@@ -178,7 +187,11 @@ char **av;
 	}
     if (ndecset)
 	wcs->ndec = ndec;
+
+    /* Loop through arguments */
     while (ac-- > 1) {
+
+	/* Process file of image coordinates */
 	listname = *av;
 	if (listname[0] == '@') {
 	    ln = listname;
@@ -190,7 +203,10 @@ char **av;
 		fd = fopen (listname, "r");
 	    if (fd != NULL) {
 		while (fgets (line, 200, fd)) {
-		    sscanf (line,"%s %s", xstr, ystr);
+		    if (identifier)
+			sscanf (line,"%s %s %s", temp, xstr, ystr);
+		    else
+			sscanf (line,"%s %s", xstr, ystr);
 		    x = atof (xstr);
 		    y = atof (ystr);
 		    if (pix2wcst (wcs, x, y, wcstring, lstr)) {
@@ -246,6 +262,8 @@ char **av;
 		fprintf (stderr, "Cannot read file %s\n", listname);
 	    av++;
 	    }
+
+	/* Process image coordinates from the command line */
 	else if (ac > 1) {
 	    x = atof (*av);
 	    ac--;
@@ -292,6 +310,7 @@ usage ()
     fprintf (stderr,"  -e: ecliptic longitude and latitude output\n");
     fprintf (stderr,"  -f: Number of face to use for 3-d projection\n");
     fprintf (stderr,"  -g: galactic longitude and latitude output\n");
+    fprintf (stderr,"  -i: first column is star id; 2nd, 3rd are x,y position\n");
     fprintf (stderr,"  -j: J2000 (FK5) output\n");
     fprintf (stderr,"  -m: mode for output of LINEAR WCS coordinates\n");
     fprintf (stderr,"  -n: number of decimal places in output RA seconds\n");
@@ -329,4 +348,8 @@ usage ()
  * Jul  7 1998	Add -f for face to use in 3-d projection
  * Jul  7 1998	Add 3rd dimension in output
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Mar 29 1999	Add -i option for X,Y after ID in input file (J.-B. Marquette)
+ * Apr 29 1999	Drop pix2wcst declaration; it is in wcs.h
+ * Jun  2 1999	Make tab output completely-defined catalog
  */

@@ -1,5 +1,5 @@
 /* File fixpix.c
- * November 30, 1998
+ * April 29, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -170,6 +170,8 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
     int iraffile;		/* 1 if IRAF image */
     char *irafheader;		/* IRAF image header */
     int i, nbytes, nhb, nhblk, lname, lext, lroot;
+    double  bzero;		/* Zero point for pixel scaling */
+    double  bscale;		/* Scale factor for pixel scaling */
     char *head, *headend, *hlast, *imext, *imext1;
     char headline[160];
     char newname[128];
@@ -233,11 +235,15 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
     hgeti4 (header,"BITPIX",&bitpix);
     hgeti4 (header,"NAXIS1",&xdim);
     hgeti4 (header,"NAXIS2",&ydim);
+    bzero = 0.0;
+    hgetr8 (header,"BZERO",&bzero);
+    bscale = 1.0;
+    hgetr8 (header,"BZERO",&bscale);
 
     /* Fix pixels over regions from a command line coordinate list */
     if (nfix > 0) {
 	for (i = 0; i < nfix; i++) {
-	    FixReg (image, bitpix, xdim, ydim, xl[i], yl[i], xr[i], yr[i]);
+	    FixReg (image,bitpix,xdim,ydim,bzero,bscale,xl[i],yl[i],xr[i],yr[i]);
 
 	    /* Note addition as history line in header */
 	    sprintf (history, "FIXPIX: region x: %d-%d, y: %d-%d replaced",
@@ -257,7 +263,7 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
 		}
 	while (fgets (line, 128, freg) != NULL) {
 	    sscanf (line,"%d %d %d %d", xl[1], yl[1], xl[1], yr[1]);
-	    FixReg (image, bitpix, xdim, ydim, xl[i], yl[i], xr[i], yr[i]);
+	    FixReg (image,bitpix,xdim,ydim,bzero,bscale,xl[i],yl[i],xr[i],yr[i]);
 
 	    /* Note addition as history line in header */
 	    sprintf (history, "FIXPIX: region x: %d-%d, y: %d-%d replaced",
@@ -344,14 +350,16 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
 }
 
 static void
-FixReg (image, bitpix, xdim, ydim, ixl, iyl, ixr, iyr)
+FixReg (image, bitpix, xdim, ydim, bzero, bscale, ixl, iyl, ixr, iyr)
 
-char *image;		/* FITS image */
-int bitpix;	/* Number of bits in each pixel */
-int xdim;	/* Number of pixels in image horizontally */
-int ydim;	/* Number of pixels in image vertically */
-int ixl, iyl;	/* Lower left corner of region (1 based) */
-int ixr, iyr;	/* Upper right corner of region (1 based) */
+char	*image;		/* FITS image */
+int	bitpix;		/* Number of bits in each pixel */
+int	xdim;		/* Number of pixels in image horizontally */
+int	ydim;		/* Number of pixels in image vertically */
+double  bzero;		/* Zero point for pixel scaling */
+double  bscale;		/* Scale factor for pixel scaling */
+int	ixl, iyl;	/* Lower left corner of region (1 based) */
+int	ixr, iyr;	/* Upper right corner of region (1 based) */
 
 {
     int xdiff, ydiff, it, ix, iy;
@@ -380,12 +388,12 @@ int ixr, iyr;	/* Upper right corner of region (1 based) */
 	if (iyl - 1 < 0 || iyr + 1 > ydim - 1)
 	    return;
 	for (ix = ixl; ix <= ixr; ix++) {
-	    pixl = getpix (image, bitpix, xdim, ydim, ix, iyl-1);
-	    pixr = getpix (image, bitpix, xdim, ydim, ix, iyr+1);
+	    pixl = getpix (image,bitpix,xdim,ydim,bzero,bscale,ix,iyl-1);
+	    pixr = getpix (image,bitpix,xdim,ydim,bzero,bscale,ix,iyr+1);
 	    dpix = (pixr - pixl) / (double)(ydiff + 1);
 	    for (iy = iyl; iy <= iyr; iy++) {
 		pixl = pixl + dpix;
-		putpix (image, bitpix, xdim, ydim, ix, iy, pixl);
+		putpix (image,bitpix,xdim,ydim,bzero,bscale,ix,iy,pixl);
 		}
 	    }
 	}
@@ -395,12 +403,12 @@ int ixr, iyr;	/* Upper right corner of region (1 based) */
 	if (ixl - 1 < 0 || ixr + 1 > xdim - 1)
 	    return;
 	for (iy = iyl; iy <= iyr; iy++) {
-	    pixl = getpix (image, bitpix, xdim, ydim, ixl-1, iy);
-	    pixr = getpix (image, bitpix, xdim, ydim, ixr+1, iy);
+	    pixl = getpix (image,bitpix,xdim,ydim,bzero,bscale,ixl-1,iy);
+	    pixr = getpix (image,bitpix,xdim,ydim,bzero,bscale,ixr+1,iy);
 	    dpix = (pixr - pixl) / (double)(ydiff + 1);
 	    for (ix = ixl; ix <= ixr; ix++) {
 		pixl = pixl + dpix;
-		putpix (image, bitpix, xdim, ydim, ix, iy, pixl);
+		putpix (image,bitpix,xdim,ydim,bzero,bscale,ix,iy,pixl);
 		}
 	    }
 	}
@@ -418,4 +426,6 @@ int ixr, iyr;	/* Upper right corner of region (1 based) */
  * Aug 14 1998	Preserve extension when creating new file name
  * Oct 14 1998	Use isiraf() to determine file type
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Apr 29 1999	Add BZERO and BSCALE
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/iget.c
- *** July 9, 1998
+ *** May 5, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	iget.c (Get IRAF FITS Header parameter values)
@@ -14,7 +14,7 @@
  * Subroutine:	igetc  (hstring,keyword) returns character string
  * Subroutine:	isearch (hstring,keyword) returns pointer to header string entry
 
- * Copyright:   1998 Smithsonian Astrophysical Observatory
+ * Copyright:   1999 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -28,10 +28,10 @@
 #include "fitshead.h"	/* FITS header extraction subroutines */
 #include <stdlib.h>
 #ifndef VMS
-#include <values.h>
+#include <limits.h>
 #else
-#define MAXINT  2147483647 /* Biggest number that can fit in long */
-#define MAXSHORT 32767
+#define INT_MAX  2147483647 /* Biggest number that can fit in long */
+#define SHRT_MAX 32767
 #endif
 
 static char *igetc();
@@ -167,11 +167,11 @@ int minint;
 
 /* Translate value from ASCII to binary */
 	if (value != NULL) {
-	    minint = -MAXINT - 1;
+	    minint = -INT_MAX - 1;
 	    strcpy (val, value);
 	    dval = atof (val);
-	    if (dval+0.001 > MAXINT)
-		*ival = MAXINT;
+	    if (dval+0.001 > INT_MAX)
+		*ival = INT_MAX;
 	    else if (dval >= 0)
 		*ival = (int) (dval + 0.001);
 	    else if (dval-0.001 < minint)
@@ -211,9 +211,9 @@ int minshort;
 	if (value != NULL) {
 	    strcpy (val, value);
 	    dval = atof (val);
-	    minshort = -MAXSHORT - 1;
-	    if (dval+0.001 > MAXSHORT)
-		*ival = MAXSHORT;
+	    minshort = -SHRT_MAX - 1;
+	    if (dval+0.001 > SHRT_MAX)
+		*ival = SHRT_MAX;
 	    else if (dval >= 0)
 		*ival = (short) (dval + 0.001);
 	    else if (dval-0.001 < minshort)
@@ -501,4 +501,6 @@ char *keyword;	/* character string containing the name of the variable
  * Apr 24 1998	Add MGETI4(), MGETR8(), and MGETS() for single step IRAF ext.
  * Jun  1 1998	Add VMS patch from Harry Payne at STScI
  * Jul  9 1998	Fix bracket token extraction after Paul Sydney
+
+ * May  5 1999	values.h -> POSIX limits.h: MAXINT->INT_MAX, MAXSHORT->SHRT_MAX
  */

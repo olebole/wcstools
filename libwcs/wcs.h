@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
-   December 2, 1998
+   January 20, 1999
    By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 #ifndef _wcs_h_
@@ -188,11 +188,13 @@ extern "C" {
     /* WCS subroutines in wcs.c */
     struct WorldCoor *wcsinit (const char* hstring);
     struct WorldCoor *wcsninit (const char* hstring, int len);
+    void wcsfree (
+	struct WorldCoor *wcs);	/* World coordinate system structure */
 
     int iswcs(			/* Returns 1 if wcs structure set, else 0 */
-	WorldCoor *wcs);	/* World coordinate system structure */
+	struct WorldCoor *wcs);	/* World coordinate system structure */
     int nowcs(			/* Returns 0 if wcs structure set, else 1 */
-	WorldCoor *wcs);	/* World coordinate system structure */
+	struct WorldCoor *wcs);	/* World coordinate system structure */
 
     int pix2wcst (
         struct WorldCoor *wcs,  /* World coordinate system structure */
@@ -377,6 +379,7 @@ struct WorldCoor *wcsinit(); /* set up a WCS structure from a FITS image header 
 struct WorldCoor *wcsninit(); /* set up a WCS structure from a FITS image header */
 struct WorldCoor *wcsxinit(); /* set up a WCS structure from arguments */
 struct WorldCoor *wcskinit(); /* set up a WCS structure from keyword values */
+void wcsfree();		/* Free a WCS structure and its contents */
 int wcstype();		/* Set projection type from header CTYPEs */
 void wcscdset();	/* Set scaling and rotation from CD matrix */
 void wcsdeltset();	/* set scaling and rotation from CDELTs and CROTA2 */
@@ -498,4 +501,6 @@ void wcscstr();		/* Return system string from system code, equinox, epoch */
  * Sep 17 1998	Add wcscstr()
  * Sep 21 1998	Add wcsconp() to convert proper motions, too.
  * Dec  2 1998	Add WCS type for planet surface
+
+ * Jan 20 1999	Add declaration of wcsfree()
  */

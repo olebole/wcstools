@@ -1,3 +1,34 @@
+Version 2.6 (June 4, 1999)
+conpix.c: Operate on all pixels of an image (new)
+gettab.c: Extract values from a tab table file (new)
+newfits.c: Make dataless or blank FITS image files (new)
+imextract.c: Extract 1D file from 2D file or 2D file from 3D file (new)
+imwcs.c, imcat.c, immatch.c, scat.c:  Add support for ACT catalog
+scat.c: Add number ranges, search from catalog file of centers
+immatch.c, imwcs.c: Add catalog selection through symbolic link to executable
+skycoor.c: Add options to get separations and convert in and out of cartesian
+           equatorial coordinates
+gethead.c, delhead.c, keyhead.c, sethead.c: Deal gracefully with any number of
+           command line arguments, ignoring those past limiting number
+getpix.c and setpix.c:  Now work with 1-d images as well as 2-d images
+actread.c: New subroutines to read ACT catalog (new)
+catutil.c: Repackaging and new subroutines for catalog identification, range
+           decoding and date format conversion
+binread.c: Fix bug with 0h wraparound searches
+catread.c: Rewrote parser, allow coordinate system per star
+fitsfile.c: Allow 0-data-byte files and BITPIX=0 for data-free WCS fits
+imgetwcs.c: Allow negated scales to flip axes
+tabread.c: Rewrote and generalized tab table access to use same structures as
+           binread() and catread()
+wcs.c: Fix latitude for NPA and SPA coordinate systems
+       For quad cube projections, z=0-5 (faces) instead of 1-6
+       Add file name to error messages, if available
+wcsinit.c: Set rotation angle correctly for DSS projection
+           Add PIXSCALE as possible plate scale keyword (arcsec/pixel)
+           Return an error message for all WCS failures
+           Fix bug in dealing with EPOCHless non-equatorial coordinates
+wcshead.c: Change name of subroutine to avoid conflict with wcslib subroutine
+
 Version 2.5 (December 8, 1998)
 edhead.c: make temporary file in /tmp and delete it when done
 imcat.c, scat.c imwcs.c, immatch.c: Add code to read TDC ASCII, USNO-A2.0,

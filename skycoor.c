@@ -1,5 +1,5 @@
 /* File skycoor.c
- * November 30, 1998
+ * April 16, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -37,11 +37,13 @@ char **av;
     char csys[32];
     int sys0;
     int sys1 = -1;
-    double ra, dec;
+    double ra, dec, r, ra1, dec1;
+    int lstr = 32;
     int degout = 0;
     int ndec = 3;		/* Number of decimal places in RA seconds */
     int ndecset = 0;
     char coorout[16];
+    double pos[3];
 
     listname = NULL;
     coorout[0] = (char) 0;
@@ -102,6 +104,64 @@ char **av;
 	    ac--;
     	    break;
 
+	case 'r':
+	    if (ac < 5)
+		usage();
+	    ra = str2ra (*++av);
+	    ac--;
+	    dec = str2dec (*++av);
+	    ac--;
+	    ra1 = str2ra (*++av);
+	    ac--;
+	    dec1 = str2dec (*++av);
+	    ac--;
+	    ra2str (rastr0, lstr, ra, 3);
+	    dec2str (decstr0, lstr, dec, 2);
+	    printf ("ra1, dec1: %s %s\n",
+		    rastr0, decstr0);
+	    ra2str (rastr0, lstr, ra1, 3);
+	    dec2str (decstr0, lstr, dec1, 2);
+	    printf ("ra2, dec2: %s %s\n",
+		    rastr0, decstr0);
+	    r = wcsdist (ra, dec, ra1, dec1);
+	    if (r < 1.0) {
+		r = r / 3600.0;
+		printf ("Distance is %.3f arcsec\n", r);
+		}
+	    else {
+		printf ("Distance is %.5f degrees\n", r);
+		}
+	    break;
+
+	case 'w':
+	    if (ac < 3)
+		usage();
+	    ra = str2ra (*++av);
+	    ac--;
+	    dec = str2dec (*++av);
+	    ac--;
+	    r = 1.0;
+	    s2v3 (degrad(ra), degrad(dec), r, pos);
+	    printf (" x,y,z:  %.6f %.6f %.6f\n",
+		    pos[0],pos[1],pos[2]);
+	    break;
+
+	case 'x':
+	    if (ac < 4)
+		usage();
+	    pos[0] = atof (*++av);
+	    ac--;
+	    pos[1] = atof (*++av);
+	    ac--;
+	    pos[2] = atof (*++av);
+	    ac--;
+	    v2s3 (pos, &ra, &dec, &r);
+	    ra2str (rastr0, lstr, raddeg(ra), 3);
+	    dec2str (decstr0, lstr, raddeg(dec), 2);
+	    printf ("ra, dec, r: %s %s %.6f\n",
+		    rastr0, decstr0, r);
+	    break;
+
 	case 'y':
 	    if (ac < 2)
 		usage();
@@ -150,7 +210,7 @@ char **av;
 			else
 			    sys1 = WCS_J2000;
 			}
-		    skycons (rastr0,decstr0,sys0,rastr1,decstr1,sys1,32,ndec);
+		    skycons (rastr0,decstr0,sys0,rastr1,decstr1,sys1,lstr,ndec);
 		    wcscstr (csys0, sys0, 0.0, 0.0);
 		    wcscstr (csys1, sys1, 0.0, 0.0);
 		    if (verbose)
@@ -193,7 +253,7 @@ char **av;
 	    if (strlen (coorout) == 0)
 		wcscstr (coorout, sys1, 0.0, 0.0);
 	    eqout = wcsceq (coorout);
-	    skycons (rastr0, decstr0, sys0, rastr1, decstr1, sys1, 32, ndec);
+	    skycons (rastr0, decstr0, sys0, rastr1, decstr1, sys1, lstr, ndec);
 	    if (degout) {
 		ra = str2ra (rastr1);
 		dec = str2dec (decstr1);
@@ -266,16 +326,20 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Convert coordinates\n");
-    fprintf (stderr,"Usage [-bdegjv] [-y epoch] [-q system] [-n ndec] ra1 dec1 sys1 ... ran decn sysn\n");
-    fprintf (stderr,"Usage: [-vbejg] [-y epoch] [-q system] [-n ndec] @listfile\n");
+    fprintf (stderr,"Usage [-bdegjv] [-y epoch] [-q system] [-n ndec] [-r RA Dec RA Dec]\n");
+    fprintf (stderr,"      [-w RA Dec] [-x x y z] ra1 dec1 sys1 ... ran decn sysn\n");
+    fprintf (stderr,"      [ra1 dec1 sys1 ... ran decn sysn] or [@listfile]\n");
     fprintf (stderr,"  -b: B1950 (FK4) output\n");
     fprintf (stderr,"  -d: RA and Dec output in degrees\n");
-    fprintf (stderr,"  -e: ecliptic longitude and latitude output\n");
-    fprintf (stderr,"  -g: galactic longitude and latitude output\n");
+    fprintf (stderr,"  -e: Ecliptic longitude and latitude output\n");
+    fprintf (stderr,"  -g: Galactic longitude and latitude output\n");
     fprintf (stderr,"  -j: J2000 (FK5) output\n");
-    fprintf (stderr,"  -n: number of decimal places in output RA seconds\n");
-    fprintf (stderr,"  -q: output system, including equinox\n");
+    fprintf (stderr,"  -n: Number of decimal places in output RA seconds\n");
+    fprintf (stderr,"  -q: Output system, including equinox\n");
+    fprintf (stderr,"  -r: Angular separation between two RA, Dec pairs\n");
     fprintf (stderr,"  -v: verbose\n");
+    fprintf (stderr,"  -w: Convert RA, Dec equatorial coordinates to x,y,z\n");
+    fprintf (stderr,"  -x: Convert x,y,z equatorial coordinates to RA, Dec\n");
     fprintf (stderr,"  -y: Epoch of coordinates in years\n");
     exit (1);
 }
@@ -291,4 +355,6 @@ usage ()
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  * Aug  6 1998	Do not include fitshead.h; it is in wcs.h
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Apr 16 1999	Add xyz <-> RA/DEC conversions using w and x arguments
  */

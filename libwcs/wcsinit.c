@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** December 2, 1998
+ *** April 7, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcsinit.c (World Coordinate Systems)
@@ -90,16 +90,30 @@ char *hstring;	/* character string containing FITS header information
 
     /* Initialize to no CD matrix */
     cdelt1 = 0.0;
+    cdelt2 = 0.0;
     cd[0] = 0.0;
     pc[0] = 0.0;
     wcs->rotmat = 0;
     wcs->rot = 0.0;
 
     /* Header parameters independent of projection */
+    naxes = 0;
     hgeti4 (hstring, "NAXIS", &naxes);
+    if (naxes < 1) {
+	setwcserr ("WCSINIT: No NAXIS keyword");
+	free (wcs);
+	return (NULL);
+	}
     wcs->naxes = naxes;
     wcs->lin.naxis = naxes;
+    wcs->nxpix = 0;
     hgetr8 (hstring, "NAXIS1", &wcs->nxpix);
+    if (wcs->nxpix < 1) {
+	setwcserr ("WCSINIT: No NAXIS1 keyword");
+	free (wcs);
+	return (NULL);
+	}
+    wcs->nypix = 0;
     hgetr8 (hstring, "NAXIS2", &wcs->nypix);
     hgets (hstring, "INSTRUME", 16, wcs->instrument);
     hgeti4 (hstring, "DETECTOR", &wcs->detector);
@@ -112,8 +126,7 @@ char *hstring;	/* character string containing FITS header information
 
 	/* Read second coordinate type */
 	if (!hgets (hstring,"CTYPE2", 16, ctype2)) {
-	    (void)sprintf (wcserrmsg,"WCSINIT: No CTYPE2 -> no WCS\n");
-	    setwcserr (wcserrmsg);
+	    setwcserr ("WCSINIT: No CTYPE2 -> no WCS");
 	    free (wcs);
 	    return (NULL);
 	    }
@@ -245,8 +258,49 @@ char *hstring;	/* character string containing FITS header information
 
 	/* Else get scaling from CDELT1 and CDELT2 */
 	else if (hgetr8 (hstring,"CDELT1",&cdelt1) != 0) {
-	    cdelt2 = cdelt1;
 	    hgetr8 (hstring,"CDELT2",&cdelt2);
+
+	    /* If CDELT1 or CDELT2 is 0 or missing */
+	    if (cdelt1 == 0.0 || (wcs->nypix > 1 && cdelt2 == 0.0)) {
+		if (ksearch (hstring,"SECPIX") != NULL ||
+		    ksearch (hstring,"PIXSCALE") != NULL ||
+		    ksearch (hstring,"PIXSCAL1") != NULL ||
+		    ksearch (hstring,"SECPIX1") != NULL) {
+		    secpix = 0.0;
+		    hgetr8 (hstring,"SECPIX",&secpix);
+		    if (secpix == 0.0)
+			hgetr8 (hstring,"PIXSCALE",&secpix);
+		    if (secpix == 0.0) {
+			hgetr8 (hstring,"SECPIX1",&secpix);
+			if (secpix != 0.0) {
+			    if (cdelt1 == 0.0)
+				cdelt1 = -secpix / 3600.0;
+			    if (cdelt2 == 0.0) {
+				hgetr8 (hstring,"SECPIX2",&secpix);
+				cdelt2 = secpix / 3600.0;
+				}
+			    }
+			else {
+			    if (cdelt1 == 0.0) {
+				hgetr8 (hstring,"PIXSCAL1",&secpix);
+				cdelt1 = -secpix / 3600.0;
+				}
+			    if (cdelt2 == 0.0) {
+				hgetr8 (hstring,"PIXSCAL2",&secpix);
+				cdelt2 = secpix / 3600.0;
+				}
+			    }
+			}
+		    else {
+			if (cdelt1 == 0.0)
+			    cdelt1 = -secpix / 3600.0;
+			if (cdelt2 == 0.0)
+			    cdelt2 = secpix / 3600.0;
+			}
+		    }
+		}
+	    if (cdelt2 == 0.0 && wcs->nypix > 1)
+		cdelt2 = -cdelt1;
 	    wcs->cdelt[2] = 1.0;
 	    wcs->cdelt[3] = 1.0;
 
@@ -311,8 +365,7 @@ char *hstring;	/* character string containing FITS header information
 	    wcs->cdelt[1] = 1.0;
 	    wcs->rot = 0.0;
 	    wcs->rotmat = 0;
-	    (void)sprintf (wcserrmsg,"WCSINIT: setting CDELT to 1\n");
-	    setwcserr (wcserrmsg);
+	    setwcserr ("WCSINIT: setting CDELT to 1");
 	    }
 
 	/* Initialize TNX, defaulting to TAN if there is a problem */
@@ -417,6 +470,7 @@ char *hstring;	/* character string containing FITS header information
 	/* Compute image rotation angle */
 	wcs->wcson = 1;
 	wcsrotset (wcs);
+	rot = degrad (wcs->rot);
 
 	/* Compute image scale at center */
 	dsspos (wcs->crpix[0]+cos(rot),
@@ -431,10 +485,13 @@ char *hstring;	/* character string containing FITS header information
 
     /* Approximate world coordinate system if plate scale is known */
     else if (ksearch (hstring,"SECPIX") != NULL ||
+	     ksearch (hstring,"PIXSCALE") != NULL ||
 	     ksearch (hstring,"PIXSCAL1") != NULL ||
 	     ksearch (hstring,"SECPIX1") != NULL) {
 	secpix = 0.0;
 	hgetr8 (hstring,"SECPIX",&secpix);
+	if (secpix == 0.0)
+	    hgetr8 (hstring,"PIXSCALE",&secpix);
 	if (secpix == 0.0) {
 	    hgetr8 (hstring,"SECPIX1",&secpix);
 	    if (secpix != 0.0) {
@@ -514,15 +571,13 @@ char *hstring;	/* character string containing FITS header information
 
 	wcs->crval[0] = 0.0;
 	if (!hgetra (hstring,"RA",&wcs->crval[0])) {
-	    (void)sprintf (wcserrmsg,"WCSINIT: No RA with SECPIX, no WCS\n");
-	    setwcserr (wcserrmsg);
+	    setwcserr ("WCSINIT: No RA with SECPIX, no WCS");
 	    free (wcs);
 	    return (NULL);
 	    }
 	wcs->crval[1] = 0.0;
 	if (!hgetdec (hstring,"DEC",&wcs->crval[1])) {
-	    (void)sprintf (wcserrmsg,"WCSINIT No DEC with SECPIX, no WCS\n");
-	    setwcserr (wcserrmsg);
+	    setwcserr ("WCSINIT No DEC with SECPIX, no WCS");
 	    free (wcs);
 	    return (NULL);
 	    }
@@ -558,6 +613,7 @@ char *hstring;	/* character string containing FITS header information
 	}
 
     else {
+	setwcserr ("WCSINIT: No image scale");
 	free (wcs);
 	return (NULL);
 	}
@@ -657,7 +713,8 @@ struct WorldCoor *wcs;
     if (ieq == 0) {
 	wcs->equinox = 2000.0;
 	ieq = 2000;
-	strcpy (systring,"FK5");
+	if (wcs->c1type[0] == 'R' || wcs->c1type[0] == 'D')
+	    strcpy (systring,"FK5");
 	}
 
     /* Epoch of image (from observation date, if possible) */
@@ -730,4 +787,10 @@ struct WorldCoor *wcs;
  * Sep 29 1998  Initialize additional WCS commands from the environment
  * Sep 29 1998	Fix bug which read DATE as number rather than formatted date
  * Dec  2 1998	Read projection constants from header (bug fix)
+ *
+ * Feb  9 1999	Set rotation angle correctly when using DSS projection
+ * Feb 19 1999	Fill in CDELTs from scale keyword if absent or zero
+ * Feb 19 1999	Add PIXSCALE as possible default arcseconds per pixel
+ * Apr  7 1999	Add error checking for NAXIS and NAXIS1 keywords
+ * Apr  7 1999	Do not set systring if epoch is 0 and not RA/Dec
  */

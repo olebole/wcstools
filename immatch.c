@@ -1,5 +1,5 @@
 /* File immatch.c
- * November 30, 1998
+ * April 13, 1999
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -17,7 +17,7 @@
 #include "wcs.h"
 
 static void usage();
-static void FitWCS ();
+static void MatchCat();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int overwrite = 0;	/* allow overwriting of input image file */
@@ -28,8 +28,8 @@ static int imsearch = 1;	/* set to 0 if image catalog provided */
 static char *refcatname;	/* Name of reference catalog to match */
 static int version = 0;		/* If 1, print only program name and version */
 
-extern int RotFITS ();
-extern int SetWCSFITS ();
+extern int RotFITS();
+extern int SetWCSFITS();
 extern int DelWCSFITS();
 extern int PrintWCS();
 extern void settolerance();
@@ -65,16 +65,102 @@ char **av;
     FILE *flist;
     char *listfile;
     double x, y;
+    int i;
+    char *refcatn;
+    char progpath[128];
+    char *progname;		/* Name of program as executed */
 
     setfitwcs (0);
+
+    /* Check name used to execute programe and set catalog name accordingly */
+    strcpy (progpath, av[0]);
+    progname = progpath;
+    for (i = strlen (progpath); i > -1; i--) {
+	if (progpath[i] > 63 && progpath[i] < 90)
+	    progpath[i] = progpath[i] + 32;
+	if (progpath[i] == '/') {
+	    progname = progpath + i + 1;
+	    break;
+	    }
+	}
+    if (strsrch (progname,"gsc") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "gsc");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"uac") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "uac");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"ua1") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "ua1");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"ua2") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "ua2");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"usac") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "usac");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"usa1") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "usa1");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"usa2") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "usa2");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"ujc") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "ujc");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"sao") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "sao");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"ppm") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "ppm");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"ira") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "iras");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"tyc") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "tycho");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"hip") != NULL) {
+	refcatn = (char *) calloc (1,16);
+	strcpy (refcatn, "hipparcos");
+	refcatname = refcatn;
+	}
+    else if (strsrch (progname,"act") != NULL) {
+	refcatn = (char *) calloc (1,8);
+	strcpy (refcatn, "act");
+	refcatname = refcatn;
+	}
 
     /* Check for help or version command first */
     str = *(av+1);
     if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
-	usage();
+	usage (progname);
     if (!strcmp (str, "version") || !strcmp (str, "-version")) {
 	version = 1;
-	usage();
+	usage (progname);
 	}
 
     /* Decode arguments */
@@ -86,14 +172,14 @@ char **av;
     	switch (c) {
     	case 'a':	/* Initial rotation angle in degrees */
     	    if (ac < 2)
-    		usage();
+    		usage (progname);
     	    setrot (atof (*++av));
     	    ac--;
     	    break;
 
     	case 'b':	/* initial coordinates on command line in B1950 */
     	    if (ac < 3)
-    		usage();
+    		usage (progname);
 	    setsys (WCS_B1950);
 	    strcpy (rastr, *++av);
 	    ac--;
@@ -104,14 +190,14 @@ char **av;
 
 	case 'c':       /* Set reference catalog */
 	    if (ac < 2)
-		usage();
+		usage (progname);
 	    refcatname = *++av;
 	    ac--;
 	    break;
 
 	case 'd':	/* Read image star positions from DAOFIND file */
 	    if (ac < 2)
-		usage();
+		usage (progname);
 	    setimcat (*++av);
 	    imsearch = 0;
 	    ac--;
@@ -119,14 +205,18 @@ char **av;
 
 	case 'e':	/* Set WCS projection
 	    if (ac < 2)
-		usage();
+		usage (progname);
 	    setwcsproj (*++av);
 	    ac--;
 	    break; */
-	    
+
+	case 'f':	/* Set IRAF output format */
+	    setirafout();
+	    break;
+
     	case 'j':	/* center coordinates on command line in J2000 */
     	    if (ac < 3)
-    		usage();
+    		usage (progname);
 	    setsys (WCS_J2000);
 	    strcpy (rastr, *++av);
 	    ac--;
@@ -137,21 +227,21 @@ char **av;
 
 	case 'g':	/* Guide Star object class */
     	    if (ac < 2)
-    		usage();
+    		usage (progname);
     	    setclass ((int) atof (*++av));
     	    ac--;
     	    break;
 
 	case 'h':	/* Maximum number of reference stars */
     	    if (ac < 2)
-    		usage();
+    		usage (progname);
     	    setmaxcat ((int) atof (*++av));
     	    ac--;
     	    break;
 
 	case 'i':       /* Image star minimum peak value */
 	    if (ac < 2)
-		usage();
+		usage (progname);
 	    bmin = atof (*++av);
 	    if (bmin < 0)
 		setstarsig (-bmin);
@@ -166,7 +256,7 @@ char **av;
 
     	case 'm':	/* Limiting reference star magnitude */
     	    if (ac < 2)
-    		usage();
+    		usage (progname);
 	    maglim1 = -99.0;
     	    maglim2 = atof (*++av);
     	    ac--;
@@ -180,35 +270,35 @@ char **av;
 
     	case 'p':	/* Initial plate scale in arcseconds per pixel */
     	    if (ac < 2)
-    		usage();
+    		usage (progname);
     	    setsecpix (atof (*++av));
     	    ac--;
     	    break;
 
     	case 'r':	/* Angle in degrees to rotate before fitting */
     	    if (ac < 2)
-    		usage();
+    		usage (progname);
     	    rot = (int) atof (*++av);
     	    ac--;
     	    break;
 
     	case 's':   /* this fraction more image stars than GSC or vice versa */
     	    if (ac < 2)
-    		usage();
+    		usage (progname);
     	    setfrac (atof (*++av));
     	    ac--;
     	    break;
 
     	case 't':	/* +/- this many pixels is a hit */
     	    if (ac < 2)
-    		usage();
+    		usage (progname);
     	    settolerance (atof (*++av));
     	    ac--;
     	    break;
 
 	case 'u':	/* UJ Catalog plate number */
     	    if (ac < 2)
-    		usage();
+    		usage (progname);
     	    setplate ((int) atof (*++av));
     	    ac--;
     	    break;
@@ -219,7 +309,7 @@ char **av;
 
 	case 'x':	/* X and Y coordinates of reference pixel */
 	    if (ac < 3)
-		usage();
+		usage (progname);
 	    x = atof (*++av);
 	    ac--;
 	    y = atof (*++av);
@@ -229,7 +319,7 @@ char **av;
 
 	case 'y':	/* Multiply dimensions of image by fraction */
 	    if (ac < 2)
-		usage();
+		usage (progname);
 	    setimfrac (atof (*++av));
     	    break;
 
@@ -244,7 +334,7 @@ char **av;
 	    av++;
 	    ac--;
     	default:
-    	    usage();
+    	    usage (progname);
     	    break;
     	}
     }
@@ -254,12 +344,12 @@ char **av;
 	if ((flist = fopen (listfile, "r")) == NULL) {
 	    fprintf (stderr,"IMMATCH: List file %s cannot be read\n",
 		     listfile);
-	    usage ();
+	    usage (progname);
 	    }
 	while (fgets (filename, 128, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
 	    if (*lastchar < 32) *lastchar = 0;
-	    FitWCS (filename);
+	    MatchCat (progname, filename);
 	    if (verbose)
 		printf ("\n");
 	    }
@@ -268,7 +358,7 @@ char **av;
 
     /* If no arguments left, print usage */
     if (ac == 0)
-	usage();
+	usage (progname);
 
     while (ac-- > 0) {
     	char *fn = *av++;
@@ -276,7 +366,7 @@ char **av;
 	    break;
     	if (verbose)
     	    printf ("%s:\n", fn);
-    	FitWCS (fn);
+    	MatchCat (progname, fn);
     	if (verbose)
     	    printf ("\n");
 	}
@@ -285,11 +375,41 @@ char **av;
 }
 
 static void
-usage ()
+usage (progname)
+
+char	*progname;		/* Name of program being executed */
+
 {
     if (version)
 	exit (-1);
-    fprintf (stderr,"Match catalog and image stars from WCS in image file\n");
+    if (strsrch (progname,"gsc") != NULL)
+	fprintf (stderr,"Match HST Guide Star Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"ujc") != NULL)
+	fprintf (stderr,"Match USNO J Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"uac") != NULL)
+	fprintf (stderr,"Match USNO A Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"ua1") != NULL)
+	fprintf (stderr,"Match USNO A1.0 Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"ua2") != NULL)
+	fprintf (stderr,"Match USNO A2.0 Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"usac") != NULL)
+	fprintf (stderr,"Match USNO SA Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"usa1") != NULL)
+	fprintf (stderr,"Match USNO SA1.0 Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"usa2") != NULL)
+	fprintf (stderr,"Match USNO SA2.0 Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"act") != NULL)
+	fprintf (stderr,"Match USNO ACT Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"iras") != NULL)
+	fprintf (stderr,"Match IRAS Point Source Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"sao") != NULL)
+	fprintf (stderr,"Match SAO Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"ppm") != NULL)
+	fprintf (stderr,"Match PPM Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"tycho") != NULL)
+	fprintf (stderr,"Match Tycho Catalog to image stars from WCS in image file\n");
+    else
+	fprintf (stderr,"Match catalog to image stars from WCS in image file\n");
     fprintf(stderr,"Usage: [-vl] [-m mag] [-n frac] [-s mode] [-g class] [-h maxref] [-i peak]\n");
     fprintf(stderr,"       [-c catalog] [-p scale] [-b ra dec] [-j ra dec] [-r deg] [-t tol] [-x x y] [-y frac]\n");
     fprintf(stderr,"       FITS or IRAF file(s)\n");
@@ -297,7 +417,8 @@ usage ()
     fprintf(stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
     fprintf(stderr,"  -c: reference catalog (gsc, uac, ujc, tab table file\n");
     fprintf(stderr,"  -d: Use following DAOFIND output catalog instead of search\n");
-    fprintf(stderr,"  -e: WCS type (TAN default)\n");
+    /* fprintf(stderr,"  -e: WCS type (TAN default)\n"); */
+    fprintf(stderr,"  -f: Write output X Y RA Dec, instead of N RA Dec X Y\n");
     fprintf(stderr,"  -g: Guide Star Catalog class (-1=all,0,3 (default -1)\n");
     fprintf(stderr,"  -h: maximum number of reference stars to use (10-200, default 25\n");
     fprintf(stderr,"  -i: minimum peak value for star in image (<0=-sigma)\n");
@@ -318,8 +439,11 @@ usage ()
 
 
 static void
-FitWCS (name)
-char *name;
+MatchCat (progname, name)
+
+char	*progname;		/* Name of program being executed */
+char	*name;			/* Name of FITS or IRAF image file */
+
 {
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
@@ -435,4 +559,7 @@ char *
  * Oct 14 1998	Use isiraf() to determine file type
  * Nov 13 1998	Pass reference catalog name to SetWCSFITS
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Jan 26 1999	Add option to format output for IRAF coord fitting task
+ * Apr 13 1999	Fix progname to drop / when full pathname
  */

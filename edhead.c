@@ -1,5 +1,5 @@
 /* File edhead.c
- * December 2, 1998
+ * December 30, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -96,6 +96,8 @@ char	*filename;	/* FITS or IRAF file filename */
     int iraffile;		/* 1 if IRAF image */
     char *irafheader;		/* IRAF image header */
     int i, nbytes, nhb, nhblk, lname, lext, lroot;
+    int fdw;
+    int imageread = 0;
     char *head, *headend, *hlast;
     char headline[160];
     char newname[128];
@@ -132,9 +134,10 @@ char	*filename;	/* FITS or IRAF file filename */
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
 	    if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
 		fprintf (stderr, "Cannot read FITS image %s\n", filename);
-		free (header);
-		return;
+		imageread = 0;
 		}
+	    else
+		imageread = 1;
 	    }
 	else {
 	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
@@ -293,12 +296,21 @@ char	*filename;	/* FITS or IRAF file filename */
 	    printf ("%s could not be written.\n", newname);
 	free (irafheader);
 	}
-    else {
+    else if (imageread) {
 	if (fitswimage (newname, header, image) > 0 && verbose)
 	    printf ("%s: rewritten successfully.\n", newname);
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
 	free (image);
+	}
+    else {
+	if ((fdw = fitswhead (newname, header)) > 0) {
+	    if (verbose)
+		printf ("%s: rewritten successfully.\n", newname);
+	    close (fdw);
+	    }
+	else if (verbose)
+	    printf ("%s could not be written.\n", newname);
 	}
 
     free (header);
@@ -324,4 +336,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Oct 14 1998	Use isiraf() to determine file type
  * Nov 30 1998	Add version and help commands for consistency
  * Dec  2 1998	Create and delete temporary file for header being edited
+ * Dec 30 1998	Write header without image if no image is present
  */

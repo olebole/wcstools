@@ -1,5 +1,5 @@
 /* File keyhead.c
- * November 30, 1998
+ * April 2, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -15,6 +15,8 @@
 
 #define MAXKWD 50
 #define MAXFILES 1000
+static int maxnkwd = MAXKWD;
+static int maxnfile = MAXFILES;
 
 static void usage();
 static void ChangeKeyNames ();
@@ -23,7 +25,6 @@ static int verbose = 0;		/* verbose/debugging flag */
 static int newimage = 0;	/* write new image with modified header */
 static int replace = 0;		/* replace value of first keyword with second */
 static int nfile = 0;
-static int maxlfn = 0;
 static int keyset = 0;
 static int histset = 0;
 static int version = 0;		/* If 1, print only program name and version */
@@ -34,12 +35,14 @@ int ac;
 char **av;
 {
     char *str;
-    char *kwd[MAXKWD];
-    int ifile;
+    char **kwd;
     int nkwd = 0;
-    char *fn[MAXFILES];
+    int nxkwd = 0;
+    char **fn;
+    int nfile = 0;
+    int nxfile = 0;
+    int ifile;
     int readlist = 0;
-    int lfn;
     char *lastchar;
     char filename[128];
     FILE *flist;
@@ -60,12 +63,26 @@ char **av;
 	while (c = *++str)
 	switch (c) {
 
+	case 'f':	/* maximum number of files, overrides MAXFILES */
+	    if (ac < 2)
+		usage();
+	    maxnfile = (int) (atof (*++av));
+	    ac--;
+	    break;
+
 	case 'h':	/* set HISTORY */
 	    histset++;
 	    break;
 
-	case 'k':	/* set SETHEAD keyword */
+	case 'k':	/* set KEYHEAD keyword */
 	    keyset++;
+	    break;
+
+	case 'm':	/* maximum number of keywords, overrides MAXKWD */
+	    if (ac < 2)
+		usage();
+	    maxnkwd = (int) (atof (*++av));
+	    ac--;
 	    break;
 
 	case 'n':	/* write to new file */
@@ -80,13 +97,6 @@ char **av;
 	    verbose++;
 	    break;
 
-	case '@':	/* List of files to be read */
-	    readlist++;
-	    listfile = ++str;
-	    str = str + strlen (str) - 1;
-	    av++;
-	    ac--;
-
 	default:
 	    usage();
 	    break;
@@ -100,17 +110,31 @@ char **av;
     /* Make keyword and filename lists from rest of arguments */
     nkwd = 0;
     nfile = 0;
-    while (ac-- > 0  && nfile < MAXFILES && nkwd < MAXKWD) {
-	if (strsrch (*av,"=") != NULL) {
-	    kwd[nkwd] = *av;
-	    nkwd++;
+    nxfile = 0;
+    nxkwd = 0;
+    fn = (char **)calloc (maxnfile, sizeof(char *));
+    kwd = (char **)calloc (maxnkwd, sizeof(char *));
+    while (ac-- > 0) {
+	if (*av[0] == '@') {
+	    readlist++;
+	    listfile = *av + 1;
+	    nfile = 2;
 	    }
-	else {
-	    fn[nfile] = *av;
-	    lfn = strlen (fn[nfile]);
-	    if (lfn > maxlfn)
-		maxlfn = lfn;
-	    nfile++;
+	else if (isfits (*av) || isiraf (*av)) {
+	    if (nfile < maxnfile) {
+		fn[nfile] = *av;
+		nfile++;
+		}
+	    else
+		nxfile++;
+	    }
+	else if (strsrch (*av,"=") != NULL) {
+	    if (nkwd < maxnkwd) {
+		kwd[nkwd] = *av;
+		nkwd++;
+		}
+	    else
+		nxkwd++;
 	    }
 	av++;
 	}
@@ -121,7 +145,7 @@ char **av;
 	/* Read through headers of images in listfile */
 	if (readlist) {
 	    if ((flist = fopen (listfile, "r")) == NULL) {
-		fprintf (stderr,"GETHEAD: List file %s cannot be read\n",
+		fprintf (stderr,"KEYHEAD: List file %s cannot be read\n",
 		     listfile);
 		usage ();
 		}
@@ -141,6 +165,14 @@ char **av;
 	    	ChangeKeyNames (fn[ifile], nkwd, kwd);
 	    }
 	}
+
+    /* Print error message(s) if the command line got too long */
+    if (nxfile > 0)
+	fprintf (stderr, "KEYHEAD limit of %d files exceeded by %d\n",
+		 maxnfile, nxfile);
+    if (nxkwd > 0)
+	fprintf (stderr, "KEYHEAD limit of %d keywords exceeded by %d\n",
+		 maxnkwd, nxkwd);
     return (0);
 }
 
@@ -150,8 +182,12 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Change FITS or IRAF header keyword names\n");
-    fprintf(stderr,"Usage: [-vn] file.fit [file.fits...] kw1=kw1a ... kwn=kwna\n");
-    fprintf(stderr,"Usage: [-nrv] @filelist kw1=kw1a kw2=kw2a ... kwn=kwna\n");
+    fprintf(stderr,"Usage: [-hknv][-f num][-m num] file.fit [file.fits...] kw1=kw1a ... kwn=kwna\n");
+    fprintf(stderr,"Usage: [-nhkrv][-f num][-m num] @filelist kw1=kw1a kw2=kw2a ... kwn=kwna\n");
+    fprintf(stderr,"  -f: Max number of files if not %d\n", maxnfile);
+    fprintf(stderr,"  -h: save procesing in HISTORY keyword in files\n");
+    fprintf(stderr,"  -k: save procesing in DELHEAD keyword in files\n");
+    fprintf(stderr,"  -m: Max number of keywords if not %d\n", maxnkwd);
     fprintf(stderr,"  -n: write new file\n");
     fprintf(stderr,"  -r: replace value of 1st keyword with value of 2nd keyword\n");
     fprintf(stderr,"  -v: verbose\n");
@@ -442,4 +478,8 @@ char	*kwd[];		/* Names and values of those keywords */
  * Oct 28 1998	Add option to replace keyword value with that of other keyword
  * Nov 25 1998	Fix bug in keyword name change code
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Mar 18 1999	Fix bug so that reading filenames from a file works
+ * Apr  2 1999	Add warning if too many files or keywords on command line
+ * Apr  2 1999	Add -f and -m to change maximum number of files or keywords
  */

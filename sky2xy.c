@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * November 30, 1998
+ * March 17, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -129,7 +129,9 @@ char **av;
 		    else
 			printf ("%s %s %s -> %.3f %.3f",
 				rastr, decstr, csys, x, y);
-		    if (offscale)
+		    if (offscale == 2)
+			printf (" (off image)\n");
+		    else if (offscale)
 			printf (" (offscale)\n");
 		    else
 			printf ("\n");
@@ -188,7 +190,9 @@ char **av;
 	    printf ("%s %s %s -> %.3f %.3f",rastr, decstr, csys, x, y);
 	    if (wcs->wcsl.cubeface)
 		printf (" %d", wcszout (wcs));
-	    if (offscale)
+	    if (offscale == 2)
+		printf (" (off image)\n");
+	    else if (offscale)
 		printf (" (offscale)\n");
 	    else
 		printf ("\n");
@@ -246,4 +250,6 @@ usage ()
  * Jul 16 1998	Print face if cube face is returned
  * Aug  6 1998	Change fitsio.h to fitsfile.h
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Mar 17 1999	Add flag for positions off image but within projection
  */

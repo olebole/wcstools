@@ -1,5 +1,5 @@
 /* File remap.c
- * November 30, 1998
+ * April 29, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,10 +17,12 @@
 static void usage();
 static int verbose = 0;		/* verbose flag */
 static int debug = 0;		/* debugging flag */
-static char *newname = "remap.fit";
+static char *outname0 = "remap.fits";
+static char *outname;
 
 static int nfiles = 0;
 static int nbstack = 0;
+static int fitsout = 0;
 static FILE *fstack = NULL;
 static int RemapImage();
 extern struct WorldCoor *GetFITSWCS();
@@ -44,6 +46,9 @@ char **av;
     FILE *flist;
     int ifile, nblocks, nbytes, i, nbw, nx, ny;
     char *blanks;
+    double x, y;
+
+    outname = outname0;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -81,12 +86,9 @@ char **av;
 	    setcenter (rastr, decstr);
     	    break;
 
-	case 'e':	/* Set WCS projection
-	    if (ac < 2)
-		usage();
-	    setwcsproj (*++av);
-	    ac--;
-	    break; */
+	case 'f':	/* Force FITS output */
+	    fitsout++;
+	    break;
 	    
     	case 'j':	/* Output image center on command line in J2000 */
     	    if (ac < 3)
@@ -103,11 +105,6 @@ char **av;
 	    verbose++;
 	    break;
 
-	case 'f':	/* Write FITS header to output file */
-	    wfits++;
-	    strcpy (newname,"imstack.fit");
-	    break;
-
 	case 'k':	/* Print extra debugging information */
 	    debug++;
 	    break;
@@ -115,13 +112,8 @@ char **av;
     	case 'o':	/* Specifiy output image filename */
     	    if (ac < 2)
     		usage();
-	    strcpy (outname, *++av);
+	    outname = *++av;
 	    ac--;
-	    if (outname[0] == '-')
-		overwrite++;
-	    else
-		overwrite = 0;
-    	    writeheader++;
     	    break;
 
     	case 'p':	/* Output image plate scale in arcseconds per pixel */
@@ -130,6 +122,13 @@ char **av;
     	    setsecpix (atof (*++av));
     	    ac--;
     	    break;
+
+	case 'w':	/* Set WCS projection */
+	    if (ac < 2)
+		usage();
+	    setwcsproj (*++av);
+	    ac--;
+	    break;
 
 	case 'x':	/* X and Y coordinates of output image reference pixel */
 	    if (ac < 3)
@@ -201,7 +200,7 @@ char **av;
 	if (readlist) {
 	    if (fgets (filename, 128, flist) != NULL) {
 		filename[strlen (filename) - 1] = 0;
-		if (RemapImage (wcs, ifile, filename))
+		if (RemapImage (ifile, filename))
 		    break;
 		}
 	    }
@@ -240,18 +239,15 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Remap FITS or IRAF images into single FITS image using WCS\n");
-    fprintf(stderr,"usage: remap [-vf] file1.fit file2.fit ... filen.fit\n", progname);
-    fprintf(stderr,"       remap [-vf] @filelist\n", progname);
-    fprintf(stderr,"Usage: [-vodfl] [-m mag] [-n frac] [-s mode] [-g class] [-h maxref] [-i peak]\n");
-    fprintf(stderr,"       [-c catalog] [-p scale] [-b ra dec] [-j ra dec] [-r deg] [-t tol] [-x x y] [-y frac]\n");
-    fprintf(stderr,"       FITS or IRAF file(s)\n");
+    fprintf(stderr,"usage: remap [-vf] file1.fit file2.fit ... filen.fit\n");
+    fprintf(stderr,"       remap [-vf] @filelist\n");
     fprintf(stderr,"  -a: output rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: output center in B1950 (FK4) RA and Dec\n");
-    fprintf(stderr,"  -e: WCS type (TAN default)\n");
     fprintf(stderr,"  -j: output center in J2000 (FK5) RA and Dec\n");
-    fprintf(stderr,"  -o: name for output image, - to overwrite\n");
+    fprintf(stderr,"  -o: name for output image\n");
     fprintf(stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
     fprintf(stderr,"  -v: verbose\n");
+    fprintf(stderr,"  -w: WCS type (TAN default)\n");
     fprintf(stderr,"  -x: X and Y coordinates of reference pixel (default is center)\n");
     fprintf(stderr,"  -y: output image dimensions (default is first input image)\n");
     exit (1);
@@ -265,17 +261,23 @@ int	ifile;		/* Sequence number of input file */
 char	*filename;	/* FITS or IRAF file filename */
 
 {
-    char *image;		/* FITS image */
+    char *image;		/* FITS input image */
+    char *imout;		/* FITS output image */
     char *header;		/* FITS header */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     char *irafheader;		/* IRAF image header */
     int nbimage, naxis, naxis1, naxis2, naxis3, naxis4, bytepix;
     int bitpix, nblocks, nbytes;
+    double cra, cdec, dra, ddec, secpix;
+    char *headout;
     int iraffile;
-    int i, hpout, wpout;
+    int i, j, hpin, wpin, hpout, wpout, nbout;
+    int offscl;
     char pixname[128];
     struct WorldCoor *wcsin;
+    double bzin, bsin, bzout, bsout;
+    double xout, yout, xin, yin, xpos, ypos, dpix;
 
     /* Read IRAF header and image */
     if (isiraf (filename)) {
@@ -319,112 +321,68 @@ char	*filename;	/* FITS or IRAF file filename */
 	}
     if (ifile < 1 && verbose)
 
-    /* Set output world coordinate system from command line and first image header */
-    if (wcsout == NULL) {
-	wcsout = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-			     &wpout, &hpout, &eqsys, &equinox);
-
-    /* Set output header from command line and first image header */
-	strcpy (headout, header);
-	hputi4 (headout,"NAXIS", 2);
-	hputi4 (headout,"NAXIS1", hpout);
-	hputi4 (headout,"NAXIS2", wpout);
-	SetFITSWCS (headout, wcsout);
-
-    /* Set input world coordinate system for this image */
+    /* Set input world coordinate system from first image header */
     wcsin = wcsinit (header);
 
-    hgeti4 (header,"BITPIX",&bitpix);
-    bytepix = bitpix / 8;
-    if (bytepix < 0) bytepix = -bytepix;
-    nbimage = naxis1 * naxis2 * naxis3 * bytepix;
-    nbstack = nbstack + nbimage;
+    /* Set output WCS from command line and first image header */
+    wcsout = GetFITSWCS (filename, header, verbose, &cra, &cdec, &dra,
+			 &ddec, &secpix, &wpout, &hpout, &eqsys, &equinox);
 
-    /* Set NAXIS2 to # of images stacked; pad out FITS header to 2880 blocks */
-    if (ifile < 1) {
-	if (naxis == 1) {
-	    hputi4 (header,"NAXIS", 2);
-	    hputi4 (header,"NAXIS2", nfiles);
+    /* Set output header from command line and first image header */
+    strcpy (headout, header);
+    hputi4 (headout,"NAXIS", 2);
+    hputi4 (headout,"NAXIS1", wpout);
+    hputi4 (headout,"NAXIS2", hpout);
+    SetFITSWCS (headout, wcsout);
+
+    /* Allocate space for output image */
+    hgeti4 (headout, "BITPIX", &bitpix);
+    nbout = hpout * wpout * bitpix / 8;
+    if (nbout < 0) nbout = -nbout;
+    imout = (char * ) calloc (nbout, 1);
+
+    /* Fill output image */
+    bsin = 1.0;
+    hgetr8 (header, "BSCALE", &bsin);
+    bzin = 0.0;
+    hgetr8 (header, "BZERO", &bzin);
+    bsout = 1.0;
+    hgetr8 (header, "BSCALE", &bsout);
+    bzout = 0.0;
+    hgetr8 (header, "BZERO", &bzout);
+    for (i = 1; i <= wpout; i++) {
+	xout = (double) i;
+	for (j = 1; j <= hpout; j++) {
+	    yout = (double) j;
+	    pix2wcs (wcsout, xout, yout, &xpos, &ypos);
+	    if (!wcsout->offscl) {
+		wcs2pix (wcsin, xpos, ypos, &xin, &yin, &offscl);
+		if (!offscl) {
+		    dpix = getpix (image,bitpix,wpin,hpin,bzin,bsin,xin,yin);
+		    putpix (imout,bitpix,wpout,hpout,bzout,bsout,xout,yout);
+		    }
+		}
 	    }
-	else if (naxis == 2) {
-	    hputi4 (header,"NAXIS", 3);
-	    hputi4 (header,"NAXIS3", nfiles);
-	    }
-	else {
-	    hputi4 (header,"NAXIS", 4);
-	    hputi4 (header,"NAXIS4", nfiles);
-	    }
-	nbhead = strlen (header);
-	nblocks = nbhead / FITSBLOCK;
-	if (nblocks * FITSBLOCK < nbhead)
-	    nblocks = nblocks + 1;
-	nbytes = nblocks * FITSBLOCK;
-	for (i = nbhead+1; i < nbytes; i++)
-	    header[i] = ' ';
-	nbhead = nbytes;
 	}
 
-    /* If first file open to write and, optionally, write FITS header */
-    if (ifile == 0) {
-	fstack = fopen (newname, "w");
-	if (fstack == NULL) {
-	    fprintf (stderr, "Cannot write image %s\n", newname);
-	    return (1);
-	    }
-	if (fwrite (header, (size_t) 1, (size_t) nbhead, fstack)) {
-	    if (verbose)
-		printf ("%d-byte FITS header from %s written to %s\n",
-			nbhead, filename, newname);
-	    }
-	else
-	    printf ("FITS file %s cannot be written.\n", newname);
-	}
-    else if (fstack == NULL) {
-	fstack = fopen (newname, "a");
-	if (fstack == NULL) {
-	    fprintf (stderr, "Cannot write image %s\n", newname);
-	    return (1);
-	    }
-	}
-    if (fwrite (image, (size_t) 1, (size_t) nbimage, fstack)) {
-	if (verbose) {
-	    if (iraffile)
-		printf ("IRAF file %s %d bytes added to %s[%d]\n",
-			filename, nbimage, newname, ifile+1);
-	    else
-		printf ("FITS file %s %d bytes added to %s[%d]\n",
-			filename, nbimage, newname, ifile+1);
-	    }
-	}
+    /* Write output image */
+    if (iraffile && !fitsout) {
+        if (irafwimage (outname, lhead, irafheader, header, image) > 0 && verbose)
+            printf ("%s: written successfully.\n", outname);
+        }
     else {
-	if (iraffile)
-	    printf ("IRAF file %s NOT added to %s[%d]\n",
-		    filename, newname, ifile+1);
-	else
-	    printf ("FITS file %s NOT added to %s[%d]\n",
-		    filename, newname, ifile+1);
-	}
-
-    if (ifile < 1) {
-	fclose (fstack);
-	fstack = NULL;
-	}
+        if (fitswimage (outname, header, image) > 0 && verbose)
+            printf ("%s: written successfully.\n", outname);
+        }
 
     free (header);
     free (image);
+    wcsfree (wcsin);
+    free (headout);
+    wcsfree (wcsout);
+    free (imout);
     return (0);
 }
 
-/* May 15 1997	New program
- * May 30 1997	Fix FITS data padding to integral multiple of 2880 bytes
- *
- * Apr 24 1998	change coordinate setting to setsys() from setfk4()
- * Apr 28 1998	Change coordinate system flags to WCS_*
- * May 28 1998	Include fitsio.h instead of fitshead.h
- * Jul 24 1998	Make irafheader char instead of int
- * Aug  6 1998	Change fitsio.h to fitsfile.h
- * Sep 17 1998	Add coordinate system to GetFITSWCS() argument list
- * Sep 29 1998	Change arguments to GetFITSWCS()
- * Oct 14 1998	Use isiraf() to determine file type
- * Nov 30 1998	Add version and help commands for consistency
+/* Apr 29 1999	New program
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** November 9, 1998
+ *** February 11, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -41,7 +41,7 @@ static int nentry = 0;
 
 int
 binread (bincat,cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-	  nstarmax,tnum,tra,tdec,tmag,tmagb,tpeak,tobj,nlog)
+	 nstarmax,tnum,tra,tdec,tmag,tmagb,tpeak,tobj,nlog)
 
 char	*bincat;	/* Name of reference star catalog file */
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -134,7 +134,7 @@ int	nlog;
     if (ra2 > 360.0)
 	ra2 = ra2 - 360.0;
 
-    sysref = starcat->insys;
+    sysref = starcat->coorsys;
     eqref = starcat->equinox;
     epref = starcat->epoch;
     rcra = cra;
@@ -232,7 +232,7 @@ int	nlog;
     jstar = 0;
 
     /* Loop through wraps (do not cross 360 degrees in search */
-    for (iwrap = 0; iwrap <= wrap; iwrap++) {
+    for (iwrap = 0; iwrap <= rwrap; iwrap++) {
 
 	/* Set first and last stars to check */
 	if (starcat->rasorted) {
@@ -410,7 +410,7 @@ int	nlog;
 /* BINRNUM -- Read binary catalog stars with specified numbers */
 
 int
-binrnum (bincat, nnum, sysout, eqout, epout,
+binrnum (bincat, nnum, sysout, eqout, epout, match,
 	 tnum,tra,tdec,tmag,tmagb,tpeak,tobj,nlog)
 
 char	*bincat;	/* Name of reference star catalog file */
@@ -418,6 +418,7 @@ int	nnum;		/* Number of stars to look for */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
+int	match;		/* If 1, match number exactly, else number is sequence*/
 double	*tnum;		/* Array of star numbers to look for */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
@@ -456,9 +457,15 @@ int	nlog;
 	return (0);
 	}
 
-    sysref = starcat->insys;
+    sysref = starcat->coorsys;
     eqref = starcat->equinox;
     epref = starcat->epoch;
+    if (!sysout)
+	sysout = sysref;
+    if (!eqout)
+	eqout = eqref;
+    if (!epout)
+	epout = epref;
 
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
@@ -468,13 +475,28 @@ int	nlog;
     for (jnum = 0; jnum < nnum; jnum++) {
 
 	/* Find star in catalog */
-	if (starcat->stnum == 2)
-	    istar = (int) (10000.0 * tnum[jnum] + 0.5) ;
-	else if (starcat->stnum == 3)
-	    istar = (int) (100000.0 * tnum[jnum] + 0.5) ;
-	else
-	    istar = (int) tnum[jnum];
-	if (binstar (starcat, star, istar)) {
+	istar = (int) tnum[jnum];
+	if (match) {
+	    istar = 1;
+	    while (istar <= starcat->nstars) {
+		if (binstar (starcat, star, istar)) {
+		    fprintf (stderr,"BINRNUM: Cannot read star %d\n", istar);
+		    tra[jnum] = 0.0;
+		    tdec[jnum] = 0.0;
+		    tmag[jnum] = 0.0;
+		    tmagb[jnum] = 0.0;
+		    tpeak[jnum] = 0;
+		    continue;
+		    }
+		if (star->num == tnum[jnum])
+		    break;
+		istar++;
+		}
+	    if (star->num != tnum[jnum])
+		continue;
+	    }
+
+	else if (binstar (starcat, star, istar)) {
 	    fprintf (stderr,"BINRNUM: Cannot read star %d\n", istar);
 	    tra[jnum] = 0.0;
 	    tdec[jnum] = 0.0;
@@ -510,6 +532,7 @@ int	nlog;
 	isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 
 	/* Save star position and magnitude in table */
+	tnum[jnum] = num;
 	tra[jnum] = ra;
 	tdec[jnum] = dec;
 	tmag[jnum] = mag;
@@ -612,6 +635,14 @@ char *bincat;	/* Binary catalog file name */
     else
 	sc->ncobj = 0;
 
+    /* Set number of decimal places in star numbers */
+    if (sc->stnum == 2)
+	sc->nndec = 4;
+    else if (sc->stnum == 3)
+	sc->nndec = 5;
+    else
+	sc->nndec = 0;
+
     strcpy (sc->incdir, bindir);
     strcpy (sc->incfile, bincat);
 
@@ -629,21 +660,21 @@ char *bincat;	/* Binary catalog file name */
     /* Set other catalog information in structure */
     if (sc->nmag < 0) {
 	sc->inform = 'J';
-	sc->insys = WCS_J2000;
+	sc->coorsys = WCS_J2000;
 	sc->epoch = 2000.0;
 	sc->equinox = 2000.0;
 	sc->nmag = -sc->nmag;
 	}
     else if (sc->nstars < 0) {
 	sc->inform = 'J';
-	sc->insys = WCS_J2000;
+	sc->coorsys = WCS_J2000;
 	sc->epoch = 2000.0;
 	sc->equinox = 2000.0;
 	sc->nstars = -sc->nstars;
 	}
     else {
 	sc->inform = 'B';
-	sc->insys = WCS_B1950;
+	sc->coorsys = WCS_B1950;
 	sc->epoch = 1950.0;
 	sc->equinox = 1950.0;
 	}
@@ -1019,4 +1050,8 @@ char    *filename;      /* Name of file to check */
  * Oct 30 1998	Fix convergence at edges of catalog
  * Nov  9 1998	Add flag to catalog structure for RA-sorted catalogs
  * Dec  8 1998	Have binstar() return 0 instead of null
+ *
+ * Feb  1 1999	Add match argument to binrnum() 
+ * Feb  2 1999	Set number of decimal places in star number
+ * Feb 11 1999	Change starcat.insys to starcat.coorsys
  */

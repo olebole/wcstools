@@ -1,5 +1,5 @@
 /* File conpix.c
- * December 2, 1998
+ * April 29, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -192,6 +192,8 @@ double	*opcon;		/* Constants for operations */
     char echar;
     double *imvec, *dvec, *endvec;
     int bitpix, xdim, ydim, x, y, pixoff, iop;
+    double bzero;		/* Zero point for pixel scaling */
+    double bscale;		/* Scale factor for pixel scaling */
 
     strcpy (tempname, "fitshead.temp");
 
@@ -238,8 +240,14 @@ double	*opcon;		/* Constants for operations */
 
     /* Add specified value to specified pixel */
     hgeti4 (header,"BITPIX",&bitpix);
+    xdim = 1;
     hgeti4 (header,"NAXIS1",&xdim);
+    ydim = 1;
     hgeti4 (header,"NAXIS2",&ydim);
+    bzero = 0.0;
+    hgetr8 (header,"BZERO",&bzero);
+    bscale = 1.0;
+    hgetr8 (header,"BZERO",&bscale);
 
     if (!(imvec = (double *) calloc (xdim, sizeof (double))))
 	return;
@@ -247,7 +255,7 @@ double	*opcon;		/* Constants for operations */
 
     pixoff = 0;
     for (y = 0; y < ydim; y++) {
-	getvec (image, bitpix, pixoff, xdim, imvec);
+	getvec (image, bitpix, bzero, bscale, pixoff, xdim, imvec);
 	for (iop = 0; iop < nop; iop++) {
 	    double dpix = opcon[iop];
 	    switch (op[iop]) {
@@ -422,4 +430,7 @@ double	*opcon;		/* Constants for operations */
 }
 
 /* Dec  2 1998	New program
+ *
+ * Feb 12 1999	Initialize dimensions to one so it works with 1-D images
+ * Apr 29 1999	Add BZERO and BSCALE
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** October 29, 1998
+ *** May 25, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -9,11 +9,13 @@
 #include "fitsfile.h"
 #include "wcs.h"
 
-char cdn[64]="/data/gsc1";	/* pathname of northern hemisphere GSC CDROM */
-char cds[64]="/data/gsc2";	/* pathname of southern hemisphere GSC CDROM */
+char cdn[64]="/data/gsc1";	/* Pathname of northern hemisphere GSC CDROM */
+char cds[64]="/data/gsc2";	/* Pathname of southern hemisphere GSC CDROM */
 
 static void gscpath();
 static int gscreg();
+static char *table = NULL;	/* FITS table buffer */
+static int ltab;		/* Length of FITS table buffer */
 
 /* GSCREAD -- Read HST Guide Star Catalog stars from CDROM */
 
@@ -47,7 +49,6 @@ int	nlog;		/* 1 for diagnostics */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
     double *gdist;	/* Array of distances to stars */
-    char *table;	/* FITS table */
     int nreg;		/* Number of input FITS tables files */
     double xnum;		/* Guide Star number */
     int rlist[100];	/* List of input FITS tables files */
@@ -62,7 +63,7 @@ int	nlog;		/* 1 for diagnostics */
 
     int verbose;
     int wrap;
-    int rnum, num0, num, itot,ireg,ltab;
+    int rnum, num0, num, itot,ireg;
     int ik,nk,itable,ntable,jstar;
     int nbline,npos,nbhead;
     int nbr,nrmax,nstar,i;
@@ -78,8 +79,10 @@ int	nlog;		/* 1 for diagnostics */
 	verbose = 1;
     else
 	verbose = 0;
-    ltab = 10000;
-    table = malloc (10000);
+    if (table == NULL) {
+	ltab = 10000;
+	table = malloc (10000);
+	}
     for (i = 0; i < 100; i++)
 	entry[i] = 0;
 
@@ -158,7 +161,6 @@ int	nlog;		/* 1 for diagnostics */
     nreg = gscreg (rra1,rra2,rdec1,rdec2,ltab,table,nrmax,rlist,verbose);
     if (nreg <= 0) {
 	fprintf (stderr,"GSCREAD:  no Guide Star regions found\n");
-	free (table);
 	return (0);
 	}
 
@@ -380,7 +382,6 @@ int	nlog;		/* 1 for diagnostics */
 	else
 	    fprintf (stderr,"GSCREAD: 1 region: %d / %d found\n",nstar,itable);
 	}
-    free (table);
     if (nstar > nstarmax) {
 	if (nlog > 0)
 	    fprintf (stderr,"GSCREAD: %d stars found; only %d returned\n",
@@ -427,8 +428,10 @@ int	nlog;		/* 1 for diagnostics */
     char *str;
 
     itot = 0;
-    ltab = 10000;
-    table = malloc (10000);
+    if (table == NULL) {
+	ltab = 10000;
+	table = malloc (10000);
+	}
     for (i = 0; i < 100; i++)
 	entry[i] = 0;
 
@@ -585,7 +588,6 @@ int	nlog;		/* 1 for diagnostics */
 	}
 
 /* close output file and summarize transfer */
-    free (table);
     return (nstars);
 }
 
@@ -964,4 +966,6 @@ char *path;	/* Pathname of GSC region FITS file */
  * Sep 22 1998	Convert to desired output coordinate system
  * Oct 26 1998	Fix bug in region selection
  * Oct 29 1998	Correctly assign numbers when too many stars are found
+ *
+ * May 25 1999	Allocate table buffer only once
  */

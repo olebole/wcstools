@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** July 30, 1998
+ *** April 28, 1999
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -90,6 +90,7 @@ int	verbose;	/* 1 to print each star's position */
     double *svec, *svb, *sv, *sv1, *sv2, *svlim;
     double background;
     double rmax;
+    double bz, bs;		/* Pixel value scaling */
     int lwidth;
     int nspix = NSTATPIX;
     int ispix = ISTATPIX;
@@ -98,6 +99,10 @@ int	verbose;	/* 1 to print each star's position */
     hgeti4 (header,"NAXIS1", &w);
     hgeti4 (header,"NAXIS2", &h);
     hgeti4 (header,"BITPIX", &bitpix);
+    bz = 0.0;
+    hgetr8 (header,"BZERO", &bz);
+    bs = 1.0;
+    hgetr8 (header,"BSCALE", &bs);
 
     /* Allocate the position, flux, and peak intensity arrays
      * it's ok to do now because we claim caller should always free these.
@@ -131,7 +136,7 @@ int	verbose;	/* 1 to print each star's position */
     y2 = (h / 2) + 25;
     if (y2 > h)
 	y2 = h;
-    mean2d (image, bitpix, w, h, x1, x2, y1, y2, &noise, &nsigma);
+    mean2d (image,bitpix,w,h,bz,bs, x1, x2, y1, y2, &noise, &nsigma);
 
     /* Fill in borders of the image line buffer with noise */
     svlim = svec + w;
@@ -149,7 +154,7 @@ int	verbose;	/* 1 to print each star's position */
 
 	/* Get one line of the image minus the noise-filled borders */
 	nextline = (w * (y-1)) + fsborder - 1;
-	getvec (image, bitpix, nextline, lwidth, svb);
+	getvec (image, bitpix, bz, bs, nextline, lwidth, svb);
 
 	/* Search row for bright pixels */
 	for (x = fsborder; x < w-fsborder; x++) {
@@ -206,16 +211,16 @@ int	verbose;	/* 1 to print each star's position */
 		    continue;
 
 		/* Ignore hot pixels */
-		if (!HotPixel (image,bitpix,w,h, x, y, minll))
+		if (!HotPixel (image,bitpix,w,h,bz,bs, x, y, minll))
 		    continue;
 
 		/* Walkabout a little to find brightest in neighborhood.  */
-		if (BrightWalk (image, bitpix, w, h, x, y, maxw, &sx, &sy, &b) < 0)
+		if (BrightWalk (image,bitpix,w,h,bz,bs, x, y, maxw, &sx, &sy, &b) < 0)
 		    continue;
 
 		/* Ignore really bright stars */
-		if (b >= BURNEDOUT)
-		    continue;
+		/* if (b >= BURNEDOUT)
+		    continue; */
 
 		/* Do not do the same one again */
 		for (i = 0; i < nstars; i++) {
@@ -229,7 +234,7 @@ int	verbose;	/* 1 to print each star's position */
 
 		/* Keep it if it is within the size range for stars */
 		rmax = maxrad;
-		r = starRadius (image, bitpix, w, h, sx, sy, b, rmax, minsig,
+		r = starRadius (image,bitpix,w,h,bz,bs, sx, sy, b, rmax, minsig,
 			       &background);
 		if (r > minrad && r <= maxrad) {
 
@@ -239,7 +244,7 @@ int	verbose;	/* 1 to print each star's position */
 		    *ya= (double *) realloc(*ya, nstars*sizeof(double));
 		    *ba= (double *) realloc(*ba, nstars*sizeof(double));
 		    *pa= (int *) realloc(*pa, nstars*sizeof(int));
-		    starCentroid (image, bitpix, w, h, sx, sy, &xai, &yai); 
+		    starCentroid (image,bitpix,w,h,bz,bs, sx, sy, &xai, &yai); 
 		    (*xa)[nstars-1] = xai;
 		    (*ya)[nstars-1] = yai;
 		    (*pa)[nstars-1] = (int) b;
@@ -249,11 +254,11 @@ int	verbose;	/* 1 to print each star's position */
 		    sx = (int) (xai + 0.5);
 		    sy = (int) (yai + 0.5);
 		    rmax = 2.0 * (double) maxrad;
-		    rf = starRadius (image, bitpix, w, h, sx, sy, b, rmax,
+		    rf = starRadius (image,bitpix,w,h,bz,bs, sx, sy, b, rmax,
 				    minsig, &background);
 
 		/* Find flux from star */
-		    bai = FindFlux (image, bitpix, w, h, sx, sy, rf, background);
+		    bai = FindFlux (image,bitpix,w,h,bz,bs, sx, sy, rf, background);
 		    (*ba)[nstars-1] = bai;
 		    if (verbose) {
 			fprintf (stderr," %d: (%d %d) -> (%7.3f %7.3f)",
@@ -282,12 +287,14 @@ int	verbose;	/* 1 to print each star's position */
  */
 
 static int
-HotPixel (image, bitpix, w, h, x, y, llimit)
+HotPixel (image, bitpix, w, h, bz, bs, x, y, llimit)
 
-char	*image;
-int	bitpix;
-int	w;
-int	h;
+char	*image;		/* Image array origin pointer */
+int	bitpix;		/* Bits per pixel, negative for floating point or unsigned int */
+int	w;		/* Image width in pixels */
+int	h;		/* Image height in pixels */
+double	bz;		/* Zero point for pixel scaling */
+double	bs;		/* Scale factor for pixel scaling */
 int	x, y;
 double	llimit;
 
@@ -295,36 +302,36 @@ double	llimit;
     double pix1, pix2, pix3;
 
     /* Check for hot row */
-    pix1 = getpix (image,bitpix,w,h,x-1,y-1);
-    pix2 = getpix (image,bitpix,w,h,x,y-1);
-    pix3 = getpix (image,bitpix,w,h,x+1,y-1);
+    pix1 = getpix (image,bitpix,w,h,bz,bs,x-1,y-1);
+    pix2 = getpix (image,bitpix,w,h,bz,bs,x,y-1);
+    pix3 = getpix (image,bitpix,w,h,bz,bs,x+1,y-1);
     if (pix1 > llimit || pix2 > llimit || pix3 > llimit)
 	return (-1);
-    pix1 = getpix (image,bitpix,w,h,x-1,y+1);
-    pix2 = getpix (image,bitpix,w,h,x,y+1);
-    pix3 = getpix (image,bitpix,w,h,x+1,y+1);
+    pix1 = getpix (image,bitpix,w,h,bz,bs,x-1,y+1);
+    pix2 = getpix (image,bitpix,w,h,bz,bs,x,y+1);
+    pix3 = getpix (image,bitpix,w,h,bz,bs,x+1,y+1);
     if (pix1 > llimit || pix2 > llimit || pix3 > llimit)
 	return (-1);
 
     /* Check for hot column */
-    pix1 = getpix (image,bitpix,w,h,x-1,y-1);
-    pix2 = getpix (image,bitpix,w,h,x-1,y);
-    pix3 = getpix (image,bitpix,w,h,x-1,y+1);
+    pix1 = getpix (image,bitpix,w,h,bz,bs,x-1,y-1);
+    pix2 = getpix (image,bitpix,w,h,bz,bs,x-1,y);
+    pix3 = getpix (image,bitpix,w,h,bz,bs,x-1,y+1);
     if (pix1 > llimit || pix2 > llimit || pix3 > llimit)
 	return (-1);
-    pix1 = getpix (image,bitpix,w,h,x+1,y-1);
-    pix2 = getpix (image,bitpix,w,h,x+1,y);
-    pix3 = getpix (image,bitpix,w,h,x+1,y+1);
+    pix1 = getpix (image,bitpix,w,h,bz,bs,x+1,y-1);
+    pix2 = getpix (image,bitpix,w,h,bz,bs,x+1,y);
+    pix3 = getpix (image,bitpix,w,h,bz,bs,x+1,y+1);
     if (pix1 > llimit || pix2 > llimit || pix3 > llimit)
 	return (-1);
 
     /* Check for hot pixel */
-    pix1 = getpix (image,bitpix,w,h,x-1,y);
-    pix3 = getpix (image,bitpix,w,h,x+1,y);
+    pix1 = getpix (image,bitpix,w,h,bz,bs,x-1,y);
+    pix3 = getpix (image,bitpix,w,h,bz,bs,x+1,y);
     if (pix1 > llimit || pix3 > llimit)
 	return (-1);
-    pix1 = getpix (image,bitpix,w,h,x,y-1);
-    pix3 = getpix (image,bitpix,w,h,x,y+1);
+    pix1 = getpix (image,bitpix,w,h,bz,bs,x,y-1);
+    pix3 = getpix (image,bitpix,w,h,bz,bs,x,y+1);
     if (pix1 > llimit || pix3 > llimit)
 	return (-1);
 
@@ -339,15 +346,17 @@ double	llimit;
  */
 
 static int
-starRadius (imp, bitpix, w, h, x0, y0, b, rmax, minsig, mean)
+starRadius (imp, bitpix, w, h, bz, bs, x0, y0, b, rmax, minsig, mean)
 
-char	*imp;
-int	bitpix;
-int	w;
-int	h;
-int	x0, y0;
-double	b;
-double	rmax;
+char	*imp;		/* Image array origin pointer */
+int	bitpix;		/* Bits per pixel, negative for floating point or unsigned int */
+int	w;		/* Image width in pixels */
+int	h;		/* Image height in pixels */
+double	bz;		/* Zero point for pixel scaling */
+double	bs;		/* Scale factor for pixel scaling */
+int	x0, y0;		/* Coordinates of center pixel of star */
+double	b;		/* Value of brightest pixel in star */
+double	rmax;		/* Maximum allowable radius of star */
 double	minsig;
 double	*mean;
 
@@ -372,7 +381,7 @@ double	*mean;
 		int xyrr = x*x + yrr;
 		if (xyrr >= inrr && xyrr < outrr) {
 		    double dp;
-		    dp = getpix (imp,bitpix,w,h,x0+x,y0+y);
+		    dp = getpix (imp,bitpix,w,h,bz,bs,x0+x,y0+y);
 		    sum += dp;
 		    np++;
 		    }
@@ -390,11 +399,14 @@ double	*mean;
 /* Compute the fine location of the star located at [x0,y0].  */
 
 static void
-starCentroid (imp, bitpix, w, h, x0, y0, xp, yp)
+starCentroid (imp, bitpix, w, h, bz, bs, x0, y0, xp, yp)
 
 char	*imp;
 int	bitpix;
 int	w;
+int	h;
+double	bz;		/* Zero point for pixel scaling */
+double	bs;		/* Scale factor for pixel scaling */
 int	x0, y0;
 double	*xp, *yp;
 
@@ -405,16 +417,16 @@ double	*xp, *yp;
      * see Bevington, page 210
      */
 
-    p1 = getpix (imp,bitpix,w,h,x0-1,y0);
-    p2 = getpix (imp,bitpix,w,h,x0,y0);
+    p1 = getpix (imp,bitpix,w,h,bz,bs,x0-1,y0);
+    p2 = getpix (imp,bitpix,w,h,bz,bs,x0,y0);
     p22 = 2*p2;
-    p3 = getpix (imp,bitpix,w,h,x0+1,y0);
+    p3 = getpix (imp,bitpix,w,h,bz,bs,x0+1,y0);
     d = p3 - p22 + p1;
     *xp = (d == 0) ? x0 : x0 + 0.5 - (p3 - p2)/d;
     *xp = *xp + 1.0;
 
-    p1 = getpix (imp,bitpix,w,h,x0,y0-1);
-    p3 = getpix (imp,bitpix,w,h,x0,y0+1);
+    p1 = getpix (imp,bitpix,w,h,bz,bs,x0,y0-1);
+    p3 = getpix (imp,bitpix,w,h,bz,bs,x0,y0+1);
     d = p3 - p22 + p1;
     *yp = (d == 0) ? y0 : y0 + 0.5 - (p3 - p2)/d;
     *yp = *yp + 1.0;
@@ -430,12 +442,14 @@ static int dx[8]={1,0,-1,1,-1,1,0,-1};
 static int dy[8]={1,1,1,0,0,-1,-1,-1};
 
 static int
-BrightWalk (image, bitpix, w, h, x0, y0, maxr, xp, yp, bp)
+BrightWalk (image, bitpix, w, h, bz, bs, x0, y0, maxr, xp, yp, bp)
 
 char	*image;
 int	bitpix;
 int	w;
 int	h;
+double	bz;		/* Zero point for pixel scaling */
+double	bs;		/* Scale factor for pixel scaling */
 int	x0;
 int	y0;
 int	maxr;
@@ -446,40 +460,47 @@ double	*bp;
 {
 
     double b, tmpb, newb;
-    int x, y, x1, y1, i;
+    int x, y, x1, y1, i, xa, ya;
 
     /* start by assuming seed point is brightest */
-    b = getpix (image,bitpix,w,h, x0,y0);
+    b = getpix (image,bitpix,w,h,bz,bs, x0,y0);
     x = x0;
     y = y0;
+    xa = x0;
+    ya = y0;
 
     /* walk towards any brighter pixel */
     for (;;) {
 	int newx, newy;
 
-    /* Find brightest pixel in 3x3 region */
+	/* Find brightest pixel in 3x3 region */
 	newb = b;
 	for (i = 0; i < 8; i++) {
-	x1 = x + dx[i];
-	y1 = y + dy[i];
-	tmpb = getpix (image,bitpix,w,h, x1, y1);
-	if (tmpb > newb) {
-	    newx = x1;
-	    newy = y1;
-	    newb = tmpb;
+	    x1 = x + dx[i];
+	    y1 = y + dy[i];
+	    tmpb = getpix (image,bitpix,w,h,bz,bs, x1, y1);
+	    if (tmpb >= newb) {
+		if (x1 == xa && y1 == ya)
+		    break;
+		xa = x;
+		ya = y;
+		newx = x1;
+		newy = y1;
+		newb = tmpb;
+		}
 	    }
-	}
  
-    /* If brightest pixel is one in center of region, quit */
+	/* If brightest pixel is one in center of region, quit */
 	if (newb == b)
-	break;
+	    break;
 
+	/* Otherwise, set brightest pixel to new center */
 	x = newx;
 	y = newy;
 	b = newb;
 	if (abs(x-x0) > maxr || abs(y-y0) > maxr)
-	return (-1);
-    }
+	    return (-1);
+	}
 
     *xp = x;
     *yp = y;
@@ -492,12 +513,14 @@ double	*bp;
  */
 
 static void
-mean2d (image, bitpix, w, h, x1, x2, y1, y2, mean, sigma)
+mean2d (image, bitpix, w, h, bz, bs, x1, x2, y1, y2, mean, sigma)
 
 char	*image;
 int	bitpix;
 int	w;
 int	h;
+double	bz;		/* Zero point for pixel scaling */
+double	bs;		/* Scale factor for pixel scaling */
 int	x1,x2;
 int	y1, y2;
 double	*mean;
@@ -520,7 +543,7 @@ double	*sigma;
     /* Compute mean */
 	for (y = y1; y < y2; y++) {
 	    for (x = x1; x < x2; x++) {
-		p = getpix (image,bitpix,w,h, x, y);
+		p = getpix (image,bitpix,w,h,bz,bs, x, y);
 		if (p > pmin && p < pmax) {
 		    sum += p;
 		    npix++;
@@ -535,7 +558,7 @@ double	*sigma;
 	sum = 0.0;
 	for (y = y1; y < y2; y++) {
 	    for (x = x1; x < x2; x++) {
-		p = getpix (image,bitpix,w,h, x, y);
+		p = getpix (image,bitpix,w,h,bz,bs, x, y);
 		if (p > pmin && p < pmax) {
 		    sum += fabs (p - pmean);
 		    npix++;
@@ -589,11 +612,14 @@ double *sigma;		/* Average deviation of pixels (returned) */
 /* Find total flux within a circular region minus a mean background level */
 
 static double
-FindFlux (image, bitpix, w, h, x0, y0, r, background)
+FindFlux (image, bitpix, w, h, bz, bs, x0, y0, r, background)
 
 char	*image;
 int	bitpix;
 int	w;
+int	h;
+double	bz;		/* Zero point for pixel scaling */
+double	bs;		/* Scale factor for pixel scaling */
 int	x0;
 int	y0;
 int	r;
@@ -626,7 +652,7 @@ double	background;
 	for (x = x1; x <= x2; x++) {
 	    xxyy = x*x + yy;
 	    if (xxyy <= rr) {
-		dp = getpix (image, bitpix, w,h, x0+x, y0+y);
+		dp = getpix (image, bitpix, w,h,bz,bs, x0+x, y0+y);
 		if (dp > background) {
 		    sum += dp - background;
 		    }
@@ -655,4 +681,8 @@ double	background;
  *
  * May 27 1998	Include imio.h
  * Jul 30 1998	Deal with too-small sigmas
+
+ * Feb  4 1999	Keep overexposed (pixel value > BURNEDOUT) stars
+ * Apr 26 1999	Fix Bright Walk() to slide along bleeding rows or columns
+ * Apr 28 1999	Add scaling to getpix and getvec
  */

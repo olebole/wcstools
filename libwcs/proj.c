@@ -4,6 +4,7 @@
 *   Copyright (C) 1995,1996 Mark Calabretta
 *   wcstrig function names changed by Doug Mink, SAO, April 15, 1998
 *   proj.h include file added to wcslib.h by Doug Mink, SAO, September 28, 1998
+*   tanfwd returns error if sin(theta) <= 0.0, not == 0.0, Doug Mink, 1998-03-16
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -346,7 +347,7 @@ double *x, *y;
    }
 
    s = sindeg(theta);
-   if (s == 0.0) return 2;
+   if (s <= 0.0) return 2;
 
    r =  prj->r0*cosdeg(theta)/s;
    *x =  r*sindeg(phi);
@@ -3436,4 +3437,6 @@ double *phi, *theta;
 }
 /* Apr 30 1998	Define copysign only if it is not defined
  * Sep 28 1998	Include wcslib.h instead of proj.h
+ *
+ * Mar 16 1999	In tanfwd(), return error if s <= 0.0, not if s == 0.0
  */

@@ -1,5 +1,5 @@
 /* File gethead.c
- * November 30, 1998
+ * April 2, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,7 +14,9 @@
 #include "fitsfile.h"
 
 #define MAXKWD 100
-#define MAXFILES 1000
+#define MAXFILES 2000
+static int maxnkwd = MAXKWD;
+static int maxnfile = MAXFILES;
 
 static void usage();
 static void PrintValues();
@@ -30,16 +32,20 @@ static int listpath = 0;
 static int tabout = 0;
 static int printhead = 0;
 static int version = 0;		/* If 1, print only program name and version */
+static int printfill=0;		/* If 1, print ___ for unfound keyword values */
+static char *rootdir=NULL;	/* Root directory for input files */
 
 main (ac, av)
 int ac;
 char **av;
 {
     char *str;
-    char *kwd[MAXKWD];
-    int ifile;
+    char **kwd;
     int nkwd = 0;
-    char *fn[MAXFILES];
+    int nxkwd = 0;
+    char **fn;
+    int nxfile = 0;
+    int ifile;
     int readlist = 0;
     int lfn;
     char *lastchar;
@@ -70,12 +76,30 @@ char **av;
 	    listall++;
 	    break;
 
-	case 'v':	/* more verbosity */
-	    verbose++;
+	case 'd':	/* root directory for input */
+	    if (ac < 2)
+		usage();
+	    rootdir = *++av;
+	    ac--;
+	    break;
+	    break;
+
+	case 'f':	/* maximum number of files, overrides MAXFILES */
+	    if (ac < 2)
+		usage();
+	    maxnfile = (int) (atof (*++av));
+	    ac--;
 	    break;
 
 	case 'h':	/* output column headings */
 	    printhead++;
+	    break;
+
+	case 'm':	/* maximum number of keywords, overrides MAXKWD */
+	    if (ac < 2)
+		usage();
+	    maxnkwd = (int) (atof (*++av));
+	    ac--;
 	    break;
 
 	case 'n':	/* number of decimal places in output */
@@ -93,6 +117,10 @@ char **av;
 	    tabout++;
 	    break;
 
+	case 'v':	/* more verbosity */
+	    verbose++;
+	    break;
+
 	default:
 	    usage();
 	    break;
@@ -105,32 +133,44 @@ char **av;
 
     nkwd = 0;
     nfile = 0;
-    while (ac-- > 0  && nfile < MAXFILES && nkwd < MAXKWD) {
+    nxfile = 0;
+    nxkwd = 0;
+    fn = (char **)calloc (maxnfile, sizeof(char *));
+    kwd = (char **)calloc (maxnkwd, sizeof(char *));
+    while (ac-- > 0) {
 	if (*av[0] == '@') {
 	    readlist++;
 	    listfile = *av + 1;
 	    nfile = 2;
 	    }
 	else if (isfits (*av) || isiraf (*av)) {
-	    fn[nfile] = *av;
+	    if (nfile < maxnfile) {
+		fn[nfile] = *av;
 
-	    if (listpath || (name = strrchr (fn[nfile],'/')) == NULL)
-		name = fn[nfile];
+		if (listpath || (name = strrchr (fn[nfile],'/')) == NULL)
+		    name = fn[nfile];
+		else
+		    name = name + 1;
+		lfn = strlen (name);
+		if (lfn > maxlfn)
+		    maxlfn = lfn;
+		nfile++;
+		}
 	    else
-		name = name + 1;
-	    lfn = strlen (name);
-	    if (lfn > maxlfn)
-		maxlfn = lfn;
-	    nfile++;
+		nxfile++;
 	    }
-	else {
+	else if (nkwd < maxnkwd) {
 	    kwd[nkwd] = *av;
 	    nkwd++;
 	    }
+	else
+	    nxkwd++;
 	av++;
 	}
 
     if (nkwd > 0) {
+	if (nkwd > 1)
+	    printfill = 1;
 
 	/* Print column headings if tab table or headings requested */
 	if (printhead) {
@@ -215,6 +255,14 @@ char **av;
 	    }
 	}
 
+    /* Print error message(s) if the command line got too long */
+    if (nxfile > 0)
+	fprintf (stderr, "GETHEAD limit of %d files exceeded by %d\n",
+		 maxnfile, nxfile);
+    if (nxkwd > 0)
+	fprintf (stderr, "GETHEAD limit of %d keywords exceeded by %d\n",
+		 maxnkwd, nxkwd);
+
     return (0);
 }
 
@@ -224,10 +272,13 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF header keyword values\n");
-    fprintf(stderr,"usage: gethead [-ahtv][-n num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
-    fprintf(stderr,"       gethead [-ahptv][-n num] @filelist kw1 kw2 ... kwn\n");
+    fprintf(stderr,"usage: gethead [-ahtv][-d dir][-f num][-m num][-n num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
+    fprintf(stderr,"       gethead [-ahptv][-d dir][-f num][-m num][-n num] @filelist kw1 kw2 ... kwn\n");
     fprintf(stderr,"  -a: List file even if keywords are not found\n");
+    fprintf(stderr,"  -d: Root directory for input files (default is cwd)\n");
+    fprintf(stderr,"  -f: Max number of files if not %d\n", maxnfile);
     fprintf(stderr,"  -h: Print column headings\n");
+    fprintf(stderr,"  -m: Max number of keywords if not %d\n", maxnkwd);
     fprintf(stderr,"  -n: Number of decimal places in numeric output\n");
     fprintf(stderr,"  -p: Print full pathnames of files\n");
     fprintf(stderr,"  -t: Output in tab-separated table format\n");
@@ -254,11 +305,21 @@ char	*kwd[];	/* Names of keywords for which to print values */
     char *filename;
     char outline[1000];
     char mstring[800];
-    char *kw, *kwe;
-    int ikwd, lkwd, nfound;
+    char *kw, *kwe, *filepath;
+    int ikwd, lkwd, nfound, notfound, nch;
+
+    if (rootdir) {
+	nch = strlen (rootdir) + strlen (name) + 1;
+	filepath = (char *) calloc (1, nch);
+	strcat (filepath, rootdir);
+	strcat (filepath, "/");
+	strcat (filepath, name);
+	}
+    else
+	filepath = name;
 
     /* Retrieve FITS header from FITS or IRAF .imh file */
-    if ((header = GetFITShead (name)) == NULL)
+    if ((header = GetFITShead (filepath)) == NULL)
 	return;
 
     if (verbose) {
@@ -273,6 +334,8 @@ char	*kwd[];	/* Names of keywords for which to print values */
     /* Find file name */
     if (listpath || (filename = strrchr (name,'/')) == NULL)
 	filename = name;
+    else if (rootdir)
+	filename = name;
     else
 	filename = filename + 1;
 
@@ -285,6 +348,7 @@ char	*kwd[];	/* Names of keywords for which to print values */
 	}
     nfound = 0;
 
+    notfound = 0;
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
 	lkwd = strlen (kwd[ikwd]);
 	kwe = kwd[ikwd] + lkwd;
@@ -311,8 +375,10 @@ char	*kwd[];	/* Names of keywords for which to print values */
 	    }
 	else if (verbose)
 	    printf ("%s not found", kwd[ikwd]);
-	else
+	else if (printfill)
 	    strcat (outline, "___");
+	else
+	    notfound = 1;
 
 	if (verbose)
 	    printf ("\n");
@@ -323,7 +389,7 @@ char	*kwd[];	/* Names of keywords for which to print values */
 		strcat (outline, " ");
 	    }
 	}
-    if (!verbose && (nfile < 2 || nfound > 0 || listall))
+    if (!verbose && (nfound > 0 || printfill) && (nfile < 2 || nfound > 0 || listall))
 	printf ("%s\n", outline);
 
     free (header);
@@ -405,4 +471,9 @@ char *string;
  * Sep  1 1998	Set number of decimal places in floating output with -n
  * Oct  5 1998	Check more carefully for FITS and IRAF files on command line
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Feb 12 1999	Print null string if single keyword is not found
+ * Feb 17 1999	Add -d option to set root input directory
+ * Apr  1 1999	Add warning if too many files or keywords on command line
+ * Apr  2 1999	Add -f and -m to change maximum number of files or keywords
  */

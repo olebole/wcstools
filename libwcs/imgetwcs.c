@@ -1,5 +1,5 @@
 /* File libwcs/imgetwcs.c
- * October 28, 1998
+ * June 2, 1999
  * By Doug Mink, remotely based on UIowa code
  */
 
@@ -25,6 +25,8 @@ static double secpix0 = PSCALE;		/* Set image scale--override header */
 static double secpix2 = PSCALE;		/* Set image scale 2--override header */
 static double rot0 = 361.0;		/* Initial image rotation */
 static int comsys = WCS_J2000;		/* Command line center coordinte system */
+static int wp0 = 0;			/* Initial width of image */
+static int hp0 = 0;			/* Initial height of image */
 static double ra0 = -99.0;		/* Initial center RA in degrees */
 static double dec0 = -99.0;		/* Initial center Dec in degrees */
 static double rad0 = 10.0;		/* Search box radius in arcseconds */
@@ -40,8 +42,10 @@ static char ctypes[28][4];		/* 3-letter codes for projections */
  */
 
 struct WorldCoor *
-GetFITSWCS (header, verbose, cra, cdec, dra, ddec, secpix,wp,hp,sysout,eqout)
+GetFITSWCS (filename, header, verbose, cra, cdec, dra, ddec, secpix, wp, hp,
+	    sysout, eqout)
 
+char	*filename;	/* FITS or IRAF file name */
 char	*header;	/* Image FITS header */
 int	verbose;	/* Extra printing if =1 */
 double	*cra;		/* Center right ascension in degrees (returned) */
@@ -63,7 +67,18 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 
     /* Set image dimensions */
     nax = 0;
-    if (hgeti4 (header,"NAXIS",&nax) < 1)
+    if (hp0 > 0 || wp0 > 0) {
+	*hp = hp0;
+	*wp = wp0;
+	if (*hp > 0 && *wp > 0)
+	    nax = 2;
+	else
+	    nax = 1;
+	hputi4 (header, "NAXIS", nax);
+	hputi4 (header, "NAXIS1", *wp);
+	hputi4 (header, "NAXIS2", *hp);
+	}
+    else if (hgeti4 (header,"NAXIS",&nax) < 1)
 	return (NULL);
     else {
 	if (hgeti4 (header,"NAXIS1",wp) < 1)
@@ -115,28 +130,24 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	hputnr8 (header, "CRPIX2", 3, yref);
 	}
 
-    /* Set X and Y plate scales from command line, if both are there */
-    if (secpix2 > 0.0) {
-	*secpix = 0.5 * (secpix0 + secpix2);
-	hputnr8 (header, "SECPIX1", 5, secpix0);
-	hputnr8 (header, "SECPIX2", 5, secpix2);
-	degpix = secpix0 / 3600.0;
-	hputnr8 (header, "CDELT1", 8, degpix);
-	degpix = secpix2 / 3600.0;
-	hputnr8 (header, "CDELT2", 8, degpix);
-	if (!ksearch (header,"CTYPE1")) {
-	    hputc (header, "CTYPE1", "RA---TAN");
-	    hputc (header, "CTYPE2", "DEC--TAN");
+    /* Set plate scale from command line, if it is there */
+    if (secpix0 != 0.0) {
+        if (secpix2 != 0.0) {
+	    *secpix = 0.5 * (secpix0 + secpix2);
+	    hputnr8 (header, "SECPIX1", 5, secpix0);
+	    hputnr8 (header, "SECPIX2", 5, secpix2);
+	    degpix = -secpix0 / 3600.0;
+	    hputnr8 (header, "CDELT1", 8, degpix);
+	    degpix = secpix2 / 3600.0;
+	    hputnr8 (header, "CDELT2", 8, degpix);
 	    }
-	}
-
-    /* Set single plate scale from command line, if it is there */
-    else if (secpix0 > 0.0) {
-	*secpix = secpix0;
-	hputnr8 (header, "SECPIX", 5, *secpix);
-	degpix = *secpix / 3600.0;
-	hputnr8 (header, "CDELT1", 8, -degpix);
-	hputnr8 (header, "CDELT2", 8, degpix);
+	else {
+	    *secpix = secpix0;
+	    hputnr8 (header, "SECPIX", 5, *secpix);
+	    degpix = *secpix / 3600.0;
+	    hputnr8 (header, "CDELT1", 8, -degpix);
+	    hputnr8 (header, "CDELT2", 8, degpix);
+	    }
 	if (!ksearch (header,"CRVAL1")) {
 	    hgetra (header, "RA", &ra0);
 	    hgetdec (header, "DEC", &dec0);
@@ -166,6 +177,7 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 
     /* If incomplete WCS in header, drop out */
     if (nowcs (wcs)) {
+	setwcsfile (filename);
 	wcserr();
 	if (verbose)
 	    fprintf (stderr,"Insufficient information for initial WCS\n");
@@ -270,6 +282,11 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     return (wcs);
 }
 
+
+void
+setnpix (nx, ny)		/* Set image size */
+int nx, ny;
+{ wp0 = nx; hp0 = ny; return; }
 
 void
 setrot (rot)
@@ -412,4 +429,8 @@ char*	ptype;
  * Sep 17 1998	Add sysout to argument list and use scscon() for conversion
  * Sep 25 1998	Make sysout==0 indicate output in image coordinate system
  * Oct 28 1998	Set coordinate system properly to sysout/eqout in GetFITSWCS()
+ *
+ * Apr  7 1999	Add filename argument to GetFITSWCS
+ * Apr 29 1999	Add option to set image size
+ * Jun  2 1999	Fix sign of CDELT1 if secpix2 and secpix0 are set
  */

@@ -1,5 +1,5 @@
 /* File libwcs/fitswcs.c
- * October 28, 1998
+ * April 7, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
@@ -40,8 +40,10 @@ char *filename;	/* FITS or IRAF file filename */
 
     /* Set the world coordinate system from the image header */
     wcs = wcsinit (header);
-    if (wcs == NULL)
+    if (wcs == NULL) {
+	setwcsfile (filename);
 	wcserr ();
+	}
     free (header);
 
     return (wcs);
@@ -133,6 +135,7 @@ int verbose;
     if (verbose && n == 0)
 	printf ("DelWCSFITS: No WCS in header\n");
 
+    /* Delete RA DEC EPOCH, replacing with saved values, if present */
     if (ksearch (header,"WRA")) {
 	hdel (header, "RA");
 	n++;
@@ -190,6 +193,7 @@ int verbose;
 	    printf ("DelWCS: EPOCH, but not EQUINOX found\n");
 	}
 
+    /* Delete SAO polynomial, if present */
     if (ksearch (header, "CO1_1")) {
 	int i;
 	char keyword[16];
@@ -209,6 +213,22 @@ int verbose;
 	    n++;
 	    }
 	}
+
+    /* Delete rotation matrix, if present */
+    if (ksearch (header, "CO1_1")) {
+	int i, j;
+	char keyword[16];
+	for (i = 1; i < 6; i++) {
+	    for (j = 1; i < 6; i++) {
+		sprintf (keyword,"PC%03d%03d", i, j);
+		hdel (header, keyword);
+		if (verbose)
+		    printf ("%s deleted\n", keyword);
+		n++;
+		}
+	    }
+	}
+
     if (n > 0 && verbose)
 	printf ("%d keywords deleted\n", n);
 
@@ -455,4 +475,6 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Aug  6 1998	Change fitsio.h to fitsfile.h
  * Oct  5 1998	Use isiraf() to determine file type
  * Oct 28 1998	Delete EQUINOX, RADECSYS, SECPIX1, SECPIX2 from imwcs
+ *
+ * Apr  7 1999	Add file name to error message if WCS error
  */

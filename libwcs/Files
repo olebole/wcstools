@@ -1,9 +1,14 @@
 WCSTools libwcs Subroutines
 
+actread.c
+  Return stars from the USNO ACT Reference Catalog
 binread.c
   Return stars from catalog files in the TDC binary catalog format
 catread.c
   Return stars from catalog files in the TDC ASCII catalog format
+catutil.c
+  Subroutines for catalog identification, range decoding, and date format
+  conversion.
 cel.c
   WCSLIB spherical coordinate transformation drivers
 dsspos.c

@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * December 1, 1998
+ * April 21, 1999
  * By Doug Mink, based on UIowa code
  */
 
@@ -50,6 +50,7 @@ static double imfrac0 = 0.0;		/* If > 0.0, multiply image dimensions
 static int iterate0 = 0;		/* If 1, search field again */
 static int recenter0 = 0;		/* If 1, search again with new center*/
 static char matchcat[32]="";		/* Match catalog name */
+static int irafout = 0;			/* if 1, write X Y RA Dec out */
 static void PrintRes();
 extern void SetFITSPlate();
 
@@ -113,13 +114,19 @@ int	verbose;
     double imfrac = imfrac0;
 
     /* Set reference catalog coordinate system and epoch */
-    refcat = RefCat (refcatname, title, &refsys, &refeq, &refep);
-    wcscstr (refcoor, refsys, refeq, refep);
+    if (nofit) {
+	refsys = 0;
+	refeq = 0.0;
+	}
+    else {
+	refcat = RefCat (refcatname, title, &refsys, &refeq, &refep);
+	wcscstr (refcoor, refsys, refeq, refep);
+	}
 
     /* get nominal position and scale */
 getfield:
-    wcs = GetFITSWCS (header,verbose,&cra,&cdec,&dra,&ddec,&secpix,&imw,&imh,
-		      &refsys, &refeq);
+    wcs = GetFITSWCS (filename,header,verbose,&cra,&cdec,&dra,&ddec,&secpix,
+		      &imw,&imh,&refsys, &refeq);
     if (nowcs (wcs)) {
 	ret = 0;
 	goto out;
@@ -171,6 +178,9 @@ getfield:
     else if (refcat == GSC)
 	ng = gscread (cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,mag1,mag2,
 		      classd,ngmax,gnum,gra,gdec,gm,gc,verbose*100);
+    else if (refcat == ACT)
+	ng = actread (cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,verbose*100);
     else if (refcat == SAO)
 	ng = binread ("SAOra",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
 		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
@@ -182,6 +192,9 @@ getfield:
 		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
     else if (refcat == TYCHO)
 	ng = binread ("tychora",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
+    else if (refcat == HIP)
+	ng = binread ("hipparcosra",cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
 		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
     else if (refcat == BINCAT)
 	ng = binread (refcatname,cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
@@ -254,8 +267,10 @@ getfield:
 		printf (" %12.7f",gnum[ig]);
 	    else if (refcat == GSC)
 		printf (" %9.4f",gnum[ig]);
+	    else if (refcat == ACT || refcat == TYCHO || refcat == HIP)
+		printf (" %10.5f",gnum[ig]);
 	    else
-		printf (" %9.4f",gnum[ig]);
+		printf (" %9d",(int)gnum[ig]);
 	    printf (" %s %s %5.2f %6.1f %6.1f\n",
 		    rstr,dstr,gm[ig],gx[ig],gy[ig]);
 	    }
@@ -568,13 +583,14 @@ int	refcat;		/* Reference catalog code */
 {
     int i, goff;
     double gx, gy, dx, dy, dx2, dy2, dxy;
-    double sep, rsep, rsep2, dsep, dsep2;
-    double dmatch, sra, sdec;
+    double sep, sep2, rsep, rsep2, dsep, dsep2;
+    double dmatch, dmatch1, sra, sdec;
     double sepsum = 0.0;
     double rsepsum = 0.0;
     double rsep2sum = 0.0;
     double dsepsum = 0.0;
     double dsep2sum = 0.0;
+    double sep2sum = 0.0;
     double dxsum = 0.0;
     double dysum = 0.0;
     double dx2sum = 0.0;
@@ -596,7 +612,7 @@ int	refcat;		/* Reference catalog code */
 	dxysum = dxysum + sqrt (dxy);
 	pix2wcs (wcs, sx1[i], sy1[i], &sra, &sdec);
 	sep = 3600.0 * wcsdist(gra1[i],gdec1[i],sra,sdec);
-	rsep = 3600.0 * ((gra1[i]-sra) / cos(degrad(sdec)));
+	rsep = 3600.0 * ((gra1[i]-sra) * cos(degrad(sdec)));
 	rsep2 = rsep * rsep;
 	dsep = 3600.0 * (gdec1[i] - sdec);
 	dsep2 = dsep * dsep;
@@ -605,8 +621,11 @@ int	refcat;		/* Reference catalog code */
 	dsepsum = dsepsum + dsep;
 	rsep2sum = rsep2sum + rsep2;
 	dsep2sum = dsep2sum + dsep2;
+	sep2sum = sep2sum + (sep*sep);
 	ra2str (rstr, 32, gra1[i], 3);
 	dec2str (dstr, 32, gdec1[i], 2);
+	if (irafout)
+	    printf (" %6.1f %6.1f %s %s %5.2f ",sx1[i],sy1[i],rstr,dstr,gm1[i]);
 	if (refcat == UAC || refcat == UA1 || refcat == UA2 ||
 	    refcat == USAC || refcat == USA1 || refcat == USA2)
 	    printf (" %13.8f",gnum1[i]);
@@ -614,27 +633,31 @@ int	refcat;		/* Reference catalog code */
 	    printf (" %12.7f",gnum1[i]);
 	else if (refcat == GSC)
 	    printf (" %9.4f",gnum1[i]);
+	else if (refcat == ACT || refcat == TYCHO || refcat == HIP)
+	    printf (" %10.5f",gnum1[i]);
 	else
-	    printf (" %9.4f",gnum1[i]);
-	printf (" %s %s %5.2f", rstr, dstr, gm1[i]);
-	printf (" %6.1f %6.1f %6.2f %6.2f %6.2f\n",
-		sx1[i], sy1[i], rsep, dsep, sep);
+	    printf (" %9d", (int)gnum1[i]);
+	if (!irafout)
+	    printf (" %s %s %5.2f %6.1f %6.1f ",rstr,dstr,gm1[i],sx1[i],sy1[i]);
+	printf ("%6.2f %6.2f %6.2f\n", rsep, dsep, sep);
 	}
     dmatch = (double) nmatch;
+    dmatch1 = (double) (nmatch - 1);
     dx = dxsum / dmatch;
     dy = dysum / dmatch;
-    dx2 = sqrt (dx2sum / dmatch);
-    dy2 = sqrt (dy2sum / dmatch);
+    dx2 = sqrt (dx2sum / dmatch1);
+    dy2 = sqrt (dy2sum / dmatch1);
     dxy = dxysum / dmatch;
     rsep = rsepsum / dmatch;
     dsep = dsepsum / dmatch;
-    rsep2 = sqrt (rsep2sum / dmatch);
-    dsep2 = sqrt (dsep2sum / dmatch);
+    rsep2 = sqrt (rsep2sum / dmatch1);
+    dsep2 = sqrt (dsep2sum / dmatch1);
     sep = sepsum / dmatch;
+    sep2 = sqrt (sep2sum / dmatch1);
     printf ("# Mean  dx= %.4f/%.4f  dy= %.4f/%.4f  dxy= %.4f\n",
 	    dx, dx2, dy, dy2, dxy);
-    printf ("# Mean dra= %.4f/%.4f  ddec= %.4f/%.4f sep= %.4f\n",
-	    rsep, rsep2, dsep, dsep2, sep);
+    printf ("# Mean dra= %.4f/%.4f  ddec= %.4f/%.4f sep= %.4f/%.4f\n",
+	    rsep, rsep2, dsep, dsep2, sep, sep2);
 
     return;
 }
@@ -645,6 +668,10 @@ void
 settolerance (tol)
 double tol;
 { tolerance = tol; return; }
+
+void
+setirafout ()
+{ irafout = 1; return; }
 
 void
 setmatch (cat)
@@ -818,4 +845,11 @@ int recenter;
  * Oct 28 1998	Only search for sources in image once
  * Nov 19 1998	Add catalog name to uacread() call
  * Dec  1 1998	Add version 2.0 of USNO A and SA catalogs
+ * Dec  8 1998	Add support for ACT and Hipparcos catalogs
+
+ * Jan  9 1999	Fix bug so that no fit option works
+ * Jan 26 1999	Add option to output matched image/catalog stars
+ * Feb 10 1999	Finish support for ACT reference catalog
+ * Apr  7 1999	Add file name to GetFITSWCS call
+ * Apr 21 1999	Fix RA residual bug: *cos(dec), not /cos(dec)
  */

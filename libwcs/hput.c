@@ -1,5 +1,5 @@
 /*** File libwcs/hput.c
- *** October 1, 1998
+ *** January 28, 1999
  *** By Doug Mink
 
  * Module:	hput.c (Put FITS Header parameter values)
@@ -292,7 +292,7 @@ char *value;	/* character string containing the value for variable
     char newcom[50];
     char blank[80];
     char *v, *vp, *v1, *v2, *q1, *q2, *c1, *ve;
-    int lkeyword, lcom, lval, lc, i;
+    int lkeyword, lcom, lval, lc, i, lv1;
     char *blsearch();
 
     for (i = 0; i < 80; i++)
@@ -320,8 +320,13 @@ char *value;	/* character string containing the value for variable
 	for (vp = v1+lkeyword; vp < v2; vp++)
 	    *vp = ' ';
 
+	if (lval > 71)
+	    lv1 = 71;
+	else
+	    lv1 = lval;
+
 	/* Insert comment */
-	strncpy (v1+9,value,lval);
+	strncpy (v1+9,value,lv1);
 	return;
 	}
 
@@ -1103,4 +1108,6 @@ getutime ()
  * Aug 31 1998	Add getltime() and getutime()
  * Sep 28 1998	Null-terminate comment in HPUTCOM (Allan Brighton)
  * Oct  1 1998	Change clock declaration in getltime() from int (Allan Brighton)
+ *
+ * Jan 28 1999	Fix bug to avoid writing HISTORY or COMMENT past 80 characters
  */

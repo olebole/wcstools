@@ -1,5 +1,5 @@
 /* File setpix.c
- * November 30, 1998
+ * April 29, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -109,6 +109,8 @@ char	**value;		/* value to insert into pixel */
     char *irafheader;		/* IRAF image header */
     int i, nbytes, nhb, nhblk, lname, lext, lroot;
     char *head, *headend, *hlast, *imext, *imext1;
+    double bzero;		/* Zero point for pixel scaling */
+    double bscale;		/* Scale factor for pixel scaling */
     char headline[160];
     char newname[128];
     char pixname[128];
@@ -168,14 +170,21 @@ char	**value;		/* value to insert into pixel */
 
     /* Change value of specified pixel */
     hgeti4 (header,"BITPIX",&bitpix);
+    xdim = 1;
     hgeti4 (header,"NAXIS1",&xdim);
+    ydim = 1;
     hgeti4 (header,"NAXIS2",&ydim);
+    bzero = 0.0;
+    hgetr8 (header,"BZERO",&bzero);
+    bscale = 1.0;
+    hgetr8 (header,"BZERO",&bscale);
+
     for (i = 0; i < n; i++) {
 	if (strchr (value[i],(int)'.'))
 	    dpix = (double) atoi (value[i]);
 	else
 	    dpix = atof (value[i]);
-	putpix (image, bitpix, xdim, ydim, x[i]-1, y[i]-1, dpix);
+	putpix (image,bitpix,xdim,ydim,bzero,bscale,x[i]-1,y[i]-1,dpix);
 
 	/* Note addition as history line in header */
 	if (bitpix > 0) {
@@ -280,4 +289,7 @@ char	**value;		/* value to insert into pixel */
  * Aug 14 1998	Preserve extension when creating new file name
  * Oct 14 1998	Use isiraf() to determine file type
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Feb 12 1999	Initialize dxisn to 1 so it works for 1-D images
+ * Apr 29 1999	Add BZERO and BSCALE
  */

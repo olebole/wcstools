@@ -1,5 +1,5 @@
 /*** File libwcs/catread.c
- *** December 8, 1998
+ *** May 20, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -19,15 +19,27 @@
 #include "wcs.h"
 #include "wcscat.h"
 
+#define MAXTOKENS 20	/* Maximum number of tokens to parse */
+#define MAXWHITE 20	/* Maximum number of whitespace characters */
+struct Tokens {
+    char *line;		/* Line which has been parsed */
+    int lline;		/* Number of characters in line */
+    int ntok;		/* Number of tokens on line */
+    int nwhite;		/* Number of whitespace characters */
+    char white[MAXWHITE];	/* Whitespace (separator) characters */
+    char *tok1[MAXTOKENS];	/* Pointers to start of tokens */
+    int ltok[MAXTOKENS];	/* Lengths of tokens */
+    int itok;		/* Current token number */
+};
+
 /* default pathname for catalog,  used if catalog file not found in current
    working directory, but overridden by WCS_CATDIR environment variable */
 char catdir[64]="/data/catalogs";
 
-struct StarCat *catopen();
 int catstar();
-void catclose();
 static double cat2ra();
 static double cat2dec();
+double dt2ep();		/* Julian Date to epoch (fractional year) */
 
 
 /* CATREAD -- Read ASCII stars in specified region */
@@ -163,9 +175,6 @@ int	nlog;
 	    free (star);
 	return (0);
 	}
-    sysref = starcat->insys;
-    eqref = starcat->equinox;
-    epref = starcat->epoch;
 
     jstar = 0;
 
@@ -175,6 +184,11 @@ int	nlog;
 	    fprintf (stderr,"CATREAD: Cannot read star %d\n", istar);
 	    break;
 	    }
+
+	/* Set coordinate system for this star */
+	sysref = star->coorsys;
+	eqref = star->equinox;
+	epref = star->epoch;
 
 	/* Extract selected fields  */
 	num = star->num;
@@ -316,13 +330,14 @@ int	nlog;
 /* CATRNUM -- Read ASCII stars with specified numbers */
 
 int
-catrnum (catfile, nnum, sysout, eqout, epout, tnum,tra,tdec,tmag,tobj,nlog)
+catrnum (catfile,nnum,sysout,eqout,epout,match,tnum,tra,tdec,tmag,tobj,nlog)
 
 char	*catfile;	/* Name of reference star catalog file */
 int	nnum;		/* Number of stars to look for */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
+int	match;		/* 1 to match star number exactly, else sequence num.*/
 double	*tnum;		/* Array of star numbers to look for */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
@@ -346,15 +361,22 @@ int	nlog;
     struct Star *star;
     char *objname;
     int lname;
+    int starfound;
 
     nstar = 0;
     if ((starcat = catopen (catfile)) == NULL) {
 	fprintf (stderr,"CATRNUM: Cannot read catalog %s\n", catfile);
 	return (0);
 	}
-    sysref = starcat->insys;
+    sysref = starcat->coorsys;
     eqref = starcat->equinox;
     epref = starcat->epoch;
+    if (!sysout)
+	sysout = sysref;
+    if (!eqout)
+	eqout = eqref;
+    if (!epout)
+	epout = epref;
 
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
@@ -364,14 +386,17 @@ int	nlog;
     for (jnum = 0; jnum < nnum; jnum++) {
 
 	/* Loop through catalog to star */
-	if (starcat->stnum > 0 && starcat->stnum < 5) {
+	starfound = 0;
+	if (match && starcat->stnum > 0 && starcat->stnum < 5) {
 	    for (istar = 1; istar <= starcat->nstars; istar++) {
 		if (catstar (istar, starcat, star)) {
 		    fprintf (stderr,"CATRNUM: Cannot read star %d\n", istar);
 		    break;
 		    }
-		if (star->num == tnum[jnum])
+		if (star->num == tnum[jnum]) {
+		    starfound = 1;
 		    break;
+		    }
 		}
 	    }
 	else {
@@ -380,16 +405,23 @@ int	nlog;
 		fprintf (stderr,"CATRNUM: Cannot read star %d\n", istar);
 		continue;
 		}
+	    starfound = 1;
 	    }
 
 	/* If star has been found in catalog */
-	if (star->num == tnum[jnum]) {
+	if (starfound) {
 
 	    /* Extract selected fields  */
 	    ra = star->ra;
 	    dec = star->dec;
 	    rapm = star->rapm;
 	    decpm = star->decpm;
+
+	    /* Set coordinate system for this star */
+	    sysref = star->coorsys;
+	    eqref = star->equinox;
+	    epref = star->epoch;
+    
 	    if (starcat->mprop)
 		wcsconp (sysref, sysout, eqref, eqout, epref, epout,
 			 &ra, &dec, &rapm, &decpm);
@@ -399,6 +431,7 @@ int	nlog;
 	    peak = 0;
 
 	    /* Save star position and magnitude in table */
+	    tnum[jnum] = star->num;
 	    tra[jnum] = ra;
 	    tdec[jnum] = dec;
 	    tmag[jnum] = mag;
@@ -447,6 +480,7 @@ catopen (catfile)
 char *catfile;	/* ASCII catalog file name */
 {
     struct StarCat *sc;
+    struct Tokens tokens;
     FILE *fcat;
     char *headbuff;
     char header[80];
@@ -454,6 +488,10 @@ char *catfile;	/* ASCII catalog file name */
     char *str;
     int nr, lfile, ientry, lhead, ldesc;
     char *catnew, *catline, *lastline, *catdesc;
+    char ctemp, *line, *linend, *cdot;
+    char token[80];
+    int ntok, itok;
+    int ltok;
 
 /* Find length of ASCII catalog */
     lfile = catsize (catfile);
@@ -507,12 +545,14 @@ char *catfile;	/* ASCII catalog file name */
 
     /* Extract catalog information from first line */
     sc->inform = 'H';
-    sc->insys = WCS_B1950;
+    sc->coorsys = WCS_B1950;
     sc->epoch = 1950.0;
     sc->equinox = 1950.0;
     sc->nmag = 1;
     sc->mprop = 0;
     sc->rasorted = 0;
+    sc->stnum = 1;
+    sc->entepoch = 0;
 
     catdesc = strchr (sc->catbuff, newline) + 1;
     lhead = catdesc - sc->catbuff;
@@ -524,42 +564,71 @@ char *catfile;	/* ASCII catalog file name */
 	strncpy (header, sc->catbuff, 79);
 	header[79] = (char) 0;
 	}
+
+    /* Catalog positions are in B1950 (FK4) coordinates */
     if (strsrch (header, "/b") || strsrch (header, "/B")) {
-	sc->insys = WCS_B1950;
+	sc->coorsys = WCS_B1950;
 	sc->epoch = 1950.0;
 	sc->equinox = 1950.0;
 	}
+
+    /* Catalog positions are in ecliptic coordinates */
     if (strsrch (header, "/e") || strsrch (header, "/E")) {
-	sc->insys = WCS_ECLIPTIC;
+	sc->coorsys = WCS_ECLIPTIC;
 	sc->inform = 'D';
 	sc->epoch = 2000.0;
 	sc->equinox = 2000.0;
 	}
+
+    /* Catalog positions are galactic coordinates */
     if (strsrch (header, "/g") || strsrch (header, "/G")) {
-	sc->insys = WCS_GALACTIC;
+	sc->coorsys = WCS_GALACTIC;
 	sc->inform = 'D';
 	sc->epoch = 2000.0;
 	sc->equinox = 2000.0;
 	}
+
+    /* Catalog positions are in hh.mmsssss dd.mmssss format */
     if (strsrch (header, "/h") || strsrch (header, "/H"))
 	sc->inform = 'H';
+
+    /* Catalog positions are J2000 (FK5) coordinates */
     if (strsrch (header, "/j") || strsrch (header, "/J")) {
-	sc->insys = WCS_J2000;
+	sc->coorsys = WCS_J2000;
 	sc->epoch = 2000.0;
 	sc->equinox = 2000.0;
 	}
-    if (strsrch (header, "/m") || strsrch (header, "/M"))
-	sc->nmag = 0;
+    if (strsrch (header, "/q") || strsrch (header, "/Q")) {
+	sc->coorsys = 0;
+	sc->epoch = 0.0;
+	sc->equinox = 0.0;
+	}
+
+    /* No number in first column, RA or object name first */
     if (strsrch (header, "/n") || strsrch (header, "/N"))
 	sc->stnum = 0;
+
+    /* Object name instead of number in first column */
     if (strsrch (header, "/o") || strsrch (header, "/O"))
 	sc->stnum = 5;
+
+    /* No magnitude */
+    if (strsrch (header, "/m") || strsrch (header, "/M"))
+	sc->nmag = 0;
+    else
+	sc->nmag = 1;
+
+    /* Proper motion */
     if (strsrch (header, "/p") || strsrch (header, "/P"))
 	sc->mprop = 1;
-    if (strsrch (header, "/t") || strsrch (header, "/T"))
-	sc->inform = 'T';
     if (strsrch (header, "/r") || strsrch (header, "/R"))
 	sc->rasorted = 1;
+    if (strsrch (header, "/t") || strsrch (header, "/T"))
+	sc->inform = 'T';
+    if (strsrch (header, "/y") || strsrch (header, "/Y"))
+	sc->nepoch = 1;
+    else
+	sc->nepoch = 0;
 
     /* Second line is description */
     sc->catdata = strchr (catdesc, newline) + 1;
@@ -579,6 +648,32 @@ char *catfile;	/* ASCII catalog file name */
     sc->catline = sc->catdata;
     sc->catlast = sc->catdata + lfile;
     sc->istar = 1;
+
+    /* Check number of decimal places in star number, if present */
+    if (sc->stnum == 1) {
+
+	/* Temporarily terminate line with 0 */
+	line = sc->catline;
+	linend = strchr (sc->catline, newline);
+	if (linend == NULL)
+	    linend = sc->catlast;
+	ctemp = *linend;
+	*linend = (char) 0;
+
+	/* Extract information from line of catalog */
+	ntok = setoken (&tokens, line, NULL);
+	ltok = nextoken (&tokens, token);
+	if (ltok > 0) {
+	    sc->nndec = 0;
+	    if ((cdot = strchr (token,'.')) != NULL) {
+		while (*(++cdot) != (char)0)
+		    sc->nndec++;
+		}
+	    }
+	else
+	    sc->nndec = 0;
+	*linend = ctemp;
+	}
 
     (void) fclose (fcat);
     return (sc);
@@ -607,15 +702,13 @@ int istar;	/* Star sequence number in ASCII catalog */
 struct StarCat *sc; /* Star catalog data structure */
 struct Star *st; /* Star data structure, updated on return */
 {
+    struct Tokens tokens;
+    double ydate, dj;
     char *line;
     char *nextline;
-    int ntok;
     char token[80];
     char ctemp, *linend;
-    int tok1[21];
-    int tok2[21];
-    int ntmax = 20;
-    int itok;
+    int ntok, itok;
     int ltok;
     int nmag, imag;
     double dno;
@@ -635,6 +728,7 @@ struct Star *st; /* Star data structure, updated on return */
 	    sc->catline = line;
 	}
 
+    /* If star is before current star, read from start of catalog */
     else if (istar < sc->istar) {
 	sc->istar = 1;
 	sc->catline = sc->catdata;
@@ -646,7 +740,9 @@ struct Star *st; /* Star data structure, updated on return */
 	    sc->istar++;
 	    }
 	}
-    else {
+
+    /* If star is after current star, read forward to it */
+    else if (istar > sc->istar) {
 	while (sc->istar < istar) {
 	    nextline = strchr (sc->catline, newline) + 1;
 	    if (nextline == NULL)
@@ -665,12 +761,11 @@ struct Star *st; /* Star data structure, updated on return */
     *linend = (char) 0;
 
     /* Extract information from line of catalog */
-    ntok = setoken (line, ntmax, NULL, tok1, tok2);
-    itok = 0;
+    ntok = setoken (&tokens, line, NULL);
 
     /* Source number */
     if (sc->stnum > 0 && sc->stnum < 5) {
-	ltok = nextoken (line, ntok, tok1, tok2, &itok, token);
+	ltok = nextoken (&tokens, token);
 	if (ltok > 0) {
 	    st->num = atof (token);
 	    if (dno - ((double) ((int) dno)) < 0.000001)
@@ -684,7 +779,7 @@ struct Star *st; /* Star data structure, updated on return */
 
     /* Object name, if at start of line */
     if (sc->stnum == 5) {
-	ltok = nextoken (line, ntok, tok1, tok2, &itok, token);
+	ltok = nextoken (&tokens, token);
 	if (ltok > 31) {
 	    strncpy (st->objname, token, 31);
 	    st->objname[31] = 0;
@@ -694,7 +789,7 @@ struct Star *st; /* Star data structure, updated on return */
 	}
 
     /* Right ascension or longitude */
-    ltok = nextoken (line, ntok, tok1, tok2, &itok, token);
+    ltok = nextoken (&tokens, token);
     if (ltok < 1)
 	return (-1);
 
@@ -704,11 +799,11 @@ struct Star *st; /* Star data structure, updated on return */
 	double sec;
 
 	hr = (int) (atof (token) + 0.5);
-	ltok = nextoken (line, ntok, tok1, tok2, &itok, token);
+	ltok = nextoken (&tokens, token);
 	if (ltok < 1)
 	    return (-1);
 	mn = (int) (atof (token) + 0.5);
-	ltok = nextoken (line, ntok, tok1, tok2, &itok, token);
+	ltok = nextoken (&tokens, token);
 	if (ltok < 1)
 	    return (-1);
 	sec = atof (token);
@@ -720,7 +815,7 @@ struct Star *st; /* Star data structure, updated on return */
 	st->ra = cat2ra (token);
 
     /* Declination or latitude */
-    ltok = nextoken (line, ntok, tok1, tok2, &itok, token);
+    ltok = nextoken (&tokens, token);
     if (ltok < 1)
 	return (-1);
 
@@ -730,11 +825,11 @@ struct Star *st; /* Star data structure, updated on return */
 	double sec;
 
 	deg = (int) (atof (token) + 0.5);
-	ltok = nextoken (line, ntok, tok1, tok2, &itok, token);
+	ltok = nextoken (&tokens, token);
 	if (ltok < 1)
 	    return (-1);
 	min = (int) (atof (token) + 0.5);
-	ltok = nextoken (line, ntok, tok1, tok2, &itok, token);
+	ltok = nextoken (&tokens, token);
 	if (ltok < 1)
 	    return (-1);
 	sec = atof (token);
@@ -745,10 +840,28 @@ struct Star *st; /* Star data structure, updated on return */
     else
 	st->dec = cat2dec (token);
 
+    /* Equinox, if not set by header flag */
+    if (sc->coorsys == 0) {
+	ltok = nextoken (&tokens, token);
+	if (ltok < 1)
+	    return (-1);
+	st->coorsys = wcscsys (token);
+	st->equinox = wcsceq (token);
+	st->epoch = sc->epoch;
+	if (st->epoch == 0.0)
+	    st->epoch = st->equinox;
+	}
+
+    else {
+	st->coorsys = sc->coorsys;
+	st->equinox = sc->equinox;
+	st->epoch = sc->epoch;
+	}
+
     /* Magnitude, if present */
     if (sc->nmag > 0) {
 	for (imag = 0; imag < sc->nmag; imag++) {
-	    ltok = nextoken (line, ntok, tok1, tok2, &itok, token);
+	    ltok = nextoken (&tokens, token);
 	    if (ltok > 0)
 		st->xmag[imag] = atof (token);
 	    }
@@ -756,18 +869,26 @@ struct Star *st; /* Star data structure, updated on return */
 
     /* Proper motion, if present */
     if (sc->mprop) {
-	ltok = nextoken (line, ntok, tok1, tok2, &itok, token);
+	ltok = nextoken (&tokens, token);
 	if (ltok > 1)
 	    st->rapm = atof (token) / 3600.0;
-	ltok = nextoken (line, ntok, tok1, tok2, &itok, token);
+	ltok = nextoken (&tokens, token);
 	if (ltok > 1)
 	    st->decpm = atof (token) / 3600.0;
 	}
 
+    /* Epoch, if present */
+    if (sc->nepoch) {
+	ltok = nextoken (&tokens, token);
+	ydate = atof (token);
+	st->epoch = dt2ep (ydate, 12.0);
+	}
+
     /* Object name */
-    if (sc->stnum < 5 && itok < ntok-1) {
+    itok = tokens.itok;
+    if (sc->stnum < 5 && itok < ntok) {
 	itok = -(itok+1);
-	ltok = getoken (line, ntok, tok1, tok2, &itok, token);
+	ltok = getoken (&tokens, itok, token);
 	if (ltok > 31) {
 	    strncpy (st->objname, token, 31);
 	    st->objname[31] = 0;
@@ -814,71 +935,82 @@ char	*filename;	/* Name of file for which to find size */
 /* -- SETOKEN -- tokenize a string for easy decoding */
 
 int
-setoken (string, ntmax, cwhite, tok1, tok2)
+setoken (tokens, string, cwhite)
 
+struct Tokens *tokens;	/* Token structure returned */
 char	*string;	/* character string to tokenize */
-int	ntmax;		/* maximum number of tokens */
 char	*cwhite;	/* additional whitespace characters
 			 * if = tab, disallow spaces and commas */
-int	*tok1;		/* indices of first characters of tokens (returned) */
-int	*tok2;		/* indices of last characters of tokens (returned) */
 {
     int ntok;		/* number of tokens found (returned) */
     char squote,dquote,jch;
-    char white[20];
     char token[32];
-    char *iq, *stri, *wtype;
-    int i0,i,j,lstr,nwhite,naddw,l1,l2;
+    char *iq, *stri, *wtype, *str0;
+    int i0,i,j,naddw;
 
     squote = (char) 39;
     dquote = (char) 34;
     if (string == NULL)
 	return (0);
-    lstr = strlen (string);
+
+    /* Line is terminated by newline or NULL */
+    if (strchr (string, newline))
+	tokens->lline = strchr (string, newline) - string - 1;
+    else
+	tokens->lline = strlen (string);
+
+    /* Save current line in structure */
+    tokens->line = string;
+
+    /* Add extra whitespace characters */
     if (cwhite == NULL)
 	naddw = 0;
     else
 	naddw = strlen (cwhite);
 
-    /* if chite is tab, allow only tabs and nulls as separators */
+    /* if character is tab, allow only tabs and nulls as separators */
     if (naddw > 0 && !strncmp (cwhite, "tab", 3)) {
-	white[0] = (char) 9;
-	white[1] = (char) 0;
-	nwhite = 2;
+	tokens->white[0] = (char) 9;
+	tokens->white[1] = (char) 0;
+	tokens->nwhite = 2;
 	}
 
     /* otherwise, allow spaces, tabs, commas, nulls, and cwhite */
     else {
-	nwhite = 3 + naddw;;
-	white[0] = ' ';
-	white[1] = (char) 9;
-	white[2] = ',';
-	white[3] = (char) 0;
-	if (nwhite > 20)
-	    nwhite = 20;
+	tokens->nwhite = 3 + naddw;;
+	tokens->white[0] = ' ';
+	tokens->white[1] = (char) 9;
+	tokens->white[2] = ',';
+	tokens->white[3] = (char) 0;
+	if (tokens->nwhite > 20)
+	    tokens->nwhite = 20;
 	if (naddw > 0) {
 	    i = 0;
-	    for (j = 3; j < nwhite; j++) {
-		white[j] = cwhite[i];
+	    for (j = 3; j < tokens->nwhite; j++) {
+		tokens->white[j] = cwhite[i];
 		i++;
 		}
 	    }
 	}
-    white[nwhite] = (char) 0;
+    tokens->white[tokens->nwhite] = (char) 0;
 
-    ntok = 0;
+    tokens->ntok = 0;
+    tokens->itok = 0;
     iq = string - 1;
-    l1 = 0;
-    l2 = 0;
+    for (i = 0; i < MAXTOKENS; i++) {
+	tokens->tok1[i] = NULL;
+	tokens->ltok[i] = 0;
+	}
 
     /* Process string one character at a time */
-    for (stri = string; stri < string+lstr; stri++) {
+    stri = string;
+    str0 = string;
+    while (stri < string+tokens->lline) {
 
 	/* Keep stuff between quotes in one token */
 	if (stri <= iq)
 	    continue;
 	jch = *stri;
-	i0 = stri - string;
 
 	/* Handle quoted strings */
 	if (jch == squote)
@@ -888,109 +1020,97 @@ int	*tok2;		/* indices of last characters of tokens (returned) */
 	else
 	    iq = stri;
 	if (iq > stri) {
-	    ntok = ntok + 1;
-	    if (ntok < ntmax) return (ntmax);
-	    tok1[ntok] = i0 + 1;
-	    tok2[ntok] = i0 + (iq - string) - 1;
-	    l1 = tok2[ntok] + 1;
-	    l2 = 0;
+	    tokens->ntok = tokens->ntok + 1;
+	    if (tokens->ntok < MAXTOKENS) return (MAXTOKENS);
+	    tokens->tok1[tokens->ntok] = stri + 1;
+	    tokens->ltok[tokens->ntok] = (iq - stri) - 1;
+	    stri = iq + 1;
+	    str0 = iq + 1;
 	    continue;
 	    }
 
 	/* Search for unquoted tokens */
-	wtype = strchr (white, jch);
+	wtype = strchr (tokens->white, jch);
 
 	/* If this is one of the additional whitespace characters,
 	 * pass as a separate token */
-	if (wtype > white + 2) {
+	if (wtype > tokens->white + 2) {
 
 	    /* Terminate token before whitespace */
-	    if (l2 > 0) {
-		ntok = ntok + 1;
-		if (ntok > ntmax) return (ntmax);
-		tok1[ntok] = l1;
-		l2 = i0 - 1;
-		tok2[ntok] = l2;
+	    if (stri > str0) {
+		tokens->ntok = tokens->ntok + 1;
+		if (tokens->ntok > MAXTOKENS) return (MAXTOKENS);
+		tokens->tok1[tokens->ntok] = str0;
+		tokens->ltok[tokens->ntok] = stri - str0;
 		}
 
 	    /* Make whitespace character next token; start new one */
-	    ntok = ntok + 1;
-	    if (ntok < ntmax) return (ntmax);
-	    if (i0 > lstr) i0 = lstr;
-	    tok1[ntok] = i0;
-	    tok2[ntok] = i0;
-	    l1 = i0 + 1;
-	    l2 = 0;
+	    tokens->ntok = tokens->ntok + 1;
+	    if (tokens->ntok < MAXTOKENS) return (MAXTOKENS);
+	    tokens->tok1[tokens->ntok] = stri;
+	    tokens->ltok[tokens->ntok] = 1;
+	    stri++;
+	    str0 = stri;
 	    }
 
 	/* Pass previous token if regular whitespace or NULL */
 	else if (wtype != NULL || jch == (char) 0) {
 
 	    /* Ignore leading whitespace */
-	    if (l2 <= 0)
-		l1 = i0 + 1;
+	    if (stri == str0) {
+		stri++;
+		str0 = stri;
+		}
 
 	    /* terminate token before whitespace; start new one */
 	    else {
-		l2 = i0 - 1;
-		ntok = ntok + 1;
-		if (ntok > ntmax) return (ntmax);
-		tok1[ntok] = l1;
-		if (l2 > lstr) l2 = lstr;
-		tok2[ntok] = l2;
-		l1 = i0 + 1;
-		l2 = 0;
+		tokens->ntok = tokens->ntok + 1;
+		if (tokens->ntok > MAXTOKENS) return (MAXTOKENS);
+		tokens->tok1[tokens->ntok] = str0;
+		tokens->ltok[tokens->ntok] = stri - str0;
+		stri++;
+		str0 = stri;
 		}
 	    }
 
 	/* Keep going if not whitespace */
-	else {
-	    if (l1 <= 0)
-		l1 = i0;
-	    l2 = i0;
-	    }
+	else
+	    stri++;
 	}
 
     /* Add token terminated by end of line */
-    if (l2 > 0) {
-	ntok = ntok + 1;
-	if (ntok > ntmax)
-	    return (ntmax);
-	tok1[ntok] = l1;
-	if (l2 > lstr)
-	    l2 = lstr;
-	tok2[ntok] = l2;
+    if (str0 < stri) {
+	tokens->ntok = tokens->ntok + 1;
+	if (tokens->ntok > MAXTOKENS)
+	    return (MAXTOKENS);
+	tokens->tok1[tokens->ntok] = str0;
+	tokens->ltok[tokens->ntok] = stri - str0;
 	}
 
-    return (ntok);
+    tokens->itok = 0;
+
+    return (tokens->ntok);
 }
 
 
 /* NEXTOKEN -- get next token from tokenized string */
 
 int
-nextoken (string, ntok, tok1, tok2, itok, token)
+nextoken (tokens, token)
  
-char	*string;	/* tokenized character string */
-int	ntok;		/* number of tokens found */
-int	*tok1;		/* indices of first characters of tokens */
-int	*tok2;		/* indices of last characters of tokens */
-int	*itok;		/* token sequence number of token (incremented) */
+struct Tokens *tokens;	/* Token structure returned */
 char	*token;		/* token (returned) */
 {
-    int ltok;		/* length of token string (returned) */
-    int it, i1, i2;
+    int it, ltok;
 
-    *itok = *itok + 1;
-    it = *itok;
-    if (it > ntok)
-	it = ntok;
+    tokens->itok = tokens->itok + 1;
+    it = tokens->itok;
+    if (it > tokens->ntok)
+	it = tokens->ntok;
     else if (it < 1)
 	it = 1;
-    i1 = tok1[it];
-    i2 = tok2[it];
-    ltok = i2 - i1 + 1;
-    strncpy (token, string+i1, ltok);
+    ltok = tokens->ltok[it];
+    strncpy (token, tokens->tok1[it], ltok);
     token[ltok] = (char) 0;
     return (ltok);
 }
@@ -999,40 +1119,34 @@ char	*token;		/* token (returned) */
 /* GETOKEN -- get specified token from tokenized string */
 
 int
-getoken (string, ntok, tok1, tok2, itok, token)
+getoken (tokens, itok, token)
 
-char *string;		/* tokenized character string */
-int ntok;		/* number of tokens found */
-int *tok1;		/* indices of first characters of tokens */
-int *tok2;		/* indices of last characters of tokens */
+struct Tokens *tokens;	/* Token structure returned */
 int itok;		/* token sequence number of token
 			 * if <0, get whole string after token -itok
 			 * if =0, get whole string */
 char *token;		/* token (returned) */
 {
     int ltok;		/* length of token string (returned) */
-    int i1, i2;
     int it;
 
     it = itok;
     if (it > 0 ) {
-	if (it > ntok)
-	    it = ntok;
-	i1 = tok1[it];
-	i2 = tok2[it];
+	if (it > tokens->ntok)
+	    it = tokens->ntok;
+	ltok = tokens->ltok[it];
+	strncpy (token, tokens->tok1[it], ltok);
 	}
     else if (it < 0) {
-	if (it < -ntok)
-	    it  = -ntok;
-	i1 = tok1[it];
-	i2 = tok2[ntok];
+	if (it < -tokens->ntok)
+	    it  = -tokens->ntok;
+	ltok = tokens->line + tokens->lline - tokens->tok1[-it];
+	strncpy (token, tokens->tok1[-it], ltok);
 	}
     else {
-	i1 = tok1[1];
-	i2 = tok2[ntok];
+	ltok = tokens->lline;
+	strncpy (token, tokens->tok1[1], ltok);
 	}
-    ltok = i2 - i1 + 1;
-    strncpy (token, string+i1, ltok);
     token[ltok] = (char) 0;
 
     return (ltok);
@@ -1072,23 +1186,25 @@ char	*in;	/* Character string */
 
     /* Translate value from ASCII colon-delimited string to binary */
     if (!in[0])
+	return (dec);
+    else
 	value = in;
 
     /* Set sign */
-    if (!strsrch (value,"-"))
+    if (!strchr (value,'-'))
 	sign = 1.0;
     else {
 	sign = -1.0;
-	value = strsrch (value,"-") + 1;
+	value = strchr (value,'-') + 1;
 	}
 
     /* Translate value from ASCII colon-delimited string to binary */
-    if ((c1 = strsrch (value,":")) != NULL) {
+    if ((c1 = strchr (value,':')) != NULL) {
 	*c1 = 0;
 	deg = (double) atoi (value);
 	*c1 = ':';
 	value = c1 + 1;
-	if ((c1 = strsrch (value,":")) != NULL) {
+	if ((c1 = strchr (value,':')) != NULL) {
 	    *c1 = 0;
 	    min = (double) atoi (value);
 	    *c1 = ':';
@@ -1097,7 +1213,7 @@ char	*in;	/* Character string */
 	    }
 	else {
 	    sec = 0.0;
-	    if ((c1 = strsrch (value,".")) != NULL)
+	    if ((c1 = strchr (value,'.')) != NULL)
 		min = atof (value);
 	    if (strlen (value) > 0)
 		min = (double) atoi (value);
@@ -1106,7 +1222,7 @@ char	*in;	/* Character string */
 	}
     
     /* Translate value from dd.mmssss */
-    else if ((c1 = strsrch (value,".")) != NULL) {
+    else if ((c1 = strchr (value,'.')) != NULL) {
 	double xnum, deg, min, sec;
 	xnum = atof (value);
 	deg = (double)((int) (xnum + 0.000000001));
@@ -1130,4 +1246,16 @@ char	*in;	/* Character string */
  * Oct 30 1998	Fix epoch and equinox for J2000
  * Nov  9 1998	Drop out of star loop if rasorted catalog and past max RA
  * Dec  8 1998	Do not declare catsize() static
+ * Dec 21 1998	Fix parsing so first character of line is not dropped
+
+ * Jan 20 1999	Use strchr() instead of strsrch() for single char searches
+ * Jan 29 1999	Default to star id number present
+ * Feb  1 1999	Rewrite tokenizing subroutines for clarity
+ * Feb  1 1999	Add match argument to catrnum()
+ * Feb  2 1999	Add code to count decimal places in numbers
+ * Feb  2 1999	Set sysout, eqout, and epout in catrnum() if not set
+ * Feb 10 1999	Implement per star coordinate system
+ * Feb 11 1999	Change starcat.insys to starcat.coorsys for consistency
+ * Feb 17 1999	Fix per star coordinate system bugs
+ * May 20 1999	Add option to read epoch of coordinates
  */

@@ -3,8 +3,8 @@ $CC= cc
 
 OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \
 	slasubs.o fitswcs.o wcsinit.o wcs.o \
-	gscread.o ujcread.o uacread.o tabread.o binread.o catread.o \
-	imrotate.o fitsfile.o imhfile.o hget.o hput.o imio.o \
+	gscread.o ujcread.o uacread.o tabread.o binread.o catread.o actread.o \
+	catutil.o imrotate.o fitsfile.o imhfile.o hget.o hput.o imio.o \
 	worldpos.o tnxpos.o dsspos.o platepos.o \
 	sortstar.o platefit.o tnxfit.o iget.o \
 	wcslib.o lin.o cel.o proj.o sph.o wcstrig.o 
@@ -13,8 +13,10 @@ libwcs.a:	$(OBJS)
 	ar rv $@ $?
 	ranlib $@
 
-binread.o:	wcs.h wcscat.h
-catread.o:	wcs.h wcscat.h
+actread.o:	wcscat.h wcs.h
+binread.o:	wcscat.h wcs.h
+catread.o:	wcscat.h wcs.h
+catutil.o:	wcscat.h wcs.h
 cel.o:		wcslib.h
 dsspos.o:	wcs.h
 findstar.o:	fitshead.h lwcs.h
@@ -27,13 +29,14 @@ iget.o:		fitshead.h
 imgetwcs.o:	fitshead.h wcs.h lwcs.h
 imhfile.o:	fitsfile.h
 imio.o:		fitshead.h
-imsetwcs.o:	fitshead.h wcs.h lwcs.h
+imsetwcs.o:	fitshead.h wcs.h lwcs.h wcscat.h
 imrotate.o:	fitshead.h
 lin.o:		wcslib.h
 matchstar.o:	fitshead.h wcs.h lwcs.h
 platefit.o:	wcs.h
 platepos.o:	wcs.h
 proj.o:		wcslib.h
+sortstar.o:	wcscat.h
 sph.o:		wcslib.h
 tabread.o:	fitshead.h wcs.h
 tnxpos.o:	wcs.h

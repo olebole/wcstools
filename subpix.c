@@ -1,5 +1,5 @@
 /* File subpix.c
- * November 30, 1998
+ * April 29, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -120,6 +120,8 @@ char	**value;	/* value to insert into pixel */
     char echar;
     char newline[1];
     double dpix, dpix0, dpix1;
+    double bzero;		/* Zero point for pixel scaling */
+    double bscale;		/* Scale factor for pixel scaling */
     int bitpix,xdim,ydim;
 
     newline[0] = 10;
@@ -170,15 +172,19 @@ char	**value;	/* value to insert into pixel */
     hgeti4 (header,"BITPIX",&bitpix);
     hgeti4 (header,"NAXIS1",&xdim);
     hgeti4 (header,"NAXIS2",&ydim);
+    bzero = 0.0;
+    hgetr8 (header,"BZERO",&bzero);
+    bscale = 1.0;
+    hgetr8 (header,"BZERO",&bscale);
 
     for (i = 0; i < n; i++) {
 	if (strchr (value[i],(int)'.'))
 	    dpix = (double) atoi (value[i]);
 	else
 	    dpix = atof (value[i]);
-	dpix0 = getpix (image, bitpix, xdim, ydim, x[i]-1, y[i]-1);
+	dpix0 = getpix (image,bitpix,xdim,ydim,bzero,bscale,x[i]-1,y[i]-1);
 	dpix1 = dpix0 - dpix;
-	putpix (image, bitpix, xdim, ydim, x[i]-1, y[i]-1, dpix1);
+	putpix (image,bitpix,xdim,ydim,bzero,bscale,x[i]-1,y[i]-1,dpix1);
 
 	/* Note addition as history line in header */
 	if (bitpix > 0) {
@@ -284,4 +290,6 @@ char	**value;	/* value to insert into pixel */
  * Aug 14 1998	Preserve extension when creating new file name
  * Oct 14 1998	Use isiraf() to determine file type
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Apr 29 1999	Add BZERO and BSCALE
  */

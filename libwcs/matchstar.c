@@ -958,6 +958,15 @@ int	*nfunk;
 }
 
 void
+setresid_refine (refine)
+int refine;
+{ resid_refine = refine; return; }
+
+int
+getresid_refine ()
+{ return (resid_refine); }
+
+void
 setnfit (nfit)
 int nfit;
 {
@@ -1008,4 +1017,6 @@ int nfit;
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  * Oct  8 1998	Initialize bestdx and bestdy to zero
  * Dec  8 1998	Fix declaration of amotry()
+ *
+ * Apr 21 1999	Add subroutines to set and retrieve resid_refine independently
  */ 

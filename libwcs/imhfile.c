@@ -1,5 +1,5 @@
 /* File imhfile.c
- * November 16, 1998
+ * January 27, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
@@ -44,7 +44,7 @@
  *		Return 1 if IRAF .imh file, else 0
 
 
- * Copyright:   1998 Smithsonian Astrophysical Observatory
+ * Copyright:   1999 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -237,7 +237,7 @@ char	*fitsheader;	/* FITS image header (filled) */
 {
     FILE *fd;
     char *bang;
-    int naxis1, naxis2, bitpix, bytepix, pixswap;
+    int naxis, naxis1, naxis2, bitpix, bytepix, pixswap;
     char *image;
     int nbr, nbimage;
     char *pixheader;
@@ -294,6 +294,7 @@ char	*fitsheader;	/* FITS image header (filled) */
     free (pixheader);
 
     /* Find number of bytes to read */
+    hgeti4 (fitsheader,"NAXIS",&naxis);
     hgeti4 (fitsheader,"NAXIS1",&naxis1);
     hgeti4 (fitsheader,"NAXIS2",&naxis2);
     hgeti4 (fitsheader,"BITPIX",&bitpix);
@@ -301,7 +302,16 @@ char	*fitsheader;	/* FITS image header (filled) */
 	bytepix = -bitpix / 8;
     else
 	bytepix = bitpix / 8;
-    nbimage = naxis1 * naxis2 * bytepix;
+
+    /* If either dimension is one and image is 3-D, read all three dimensions */
+    if (naxis == 3 && (naxis1 ==1 | naxis2 == 1)) {
+	int naxis3;
+	hgeti4 (fitsheader,"NAXIS3",&naxis3);
+	nbimage = naxis1 * naxis2 * naxis3 * bytepix;
+	}
+    else
+	nbimage = naxis1 * naxis2 * bytepix;
+
     image =  (char *) calloc (nbimage, 1);
     if (image == NULL) {
 	(void)fprintf(stderr, "IRAFRIMAGE Cannot allocate %d-byte image buffer\n",
@@ -438,7 +448,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 	return(NULL);
 	}
     if (imhver == 2) {
-	nlines = 16 + ((nbiraf - LEN_IM2HDR) / 81);
+	nlines = 24 + ((nbiraf - LEN_IM2HDR) / 81);
 	imndim = IM2_NDIM;
 	imphyslen = IM2_PHYSLEN;
 	impixtype = IM2_PIXTYPE;
@@ -447,7 +457,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 	immin = IM2_MIN;
 	}
     else {
-	nlines = 16 + ((nbiraf - LEN_IMHDR) / 162);
+	nlines = 24 + ((nbiraf - LEN_IMHDR) / 162);
 	imndim = IM_NDIM;
 	imphyslen = IM_PHYSLEN;
 	impixtype = IM_PIXTYPE;
@@ -775,7 +785,7 @@ char	*image;		/* IRAF image */
 {
     int fd;
     char *bang;
-    int nbw, bytepix, bitpix, naxis1, naxis2, nbimage, lphead;
+    int nbw, bytepix, bitpix, naxis, naxis1, naxis2, nbimage, lphead;
     char *pixn, pixname[SZ_IM2PIXFILE+1];
     int imhver, pixswap;
 
@@ -796,6 +806,7 @@ char	*image;		/* IRAF image */
         }
 
     /* Find number of bytes to write */
+    hgeti4 (fitsheader,"NAXIS",&naxis);
     hgeti4 (fitsheader,"NAXIS1",&naxis1);
     hgeti4 (fitsheader,"NAXIS2",&naxis2);
     hgeti4 (fitsheader,"BITPIX",&bitpix);
@@ -803,7 +814,15 @@ char	*image;		/* IRAF image */
 	bytepix = -bitpix / 8;
     else
 	bytepix = bitpix / 8;
-    nbimage = naxis1 * naxis2 * bytepix;
+
+    /* If either dimension is one and image is 3-D, read all three dimensions */
+    if (naxis == 3 && (naxis1 ==1 | naxis2 == 1)) {
+	int naxis3;
+	hgeti4 (fitsheader,"NAXIS3",&naxis3);
+	nbimage = naxis1 * naxis2 * naxis3 * bytepix;
+	}
+    else
+	nbimage = naxis1 * naxis2 * bytepix;
 
     /* Write IRAF header file */
     if (irafwhead (hdrname, lhead, irafheader, fitsheader))
@@ -1708,4 +1727,6 @@ char	*filename;	/* Name of file for which to find size */
  * Oct  1 1998	Set irafswap flag only once per file
  * Oct  5 1998	Add subroutines irafsize() and isiraf()
  * Nov 16 1998	Fix byte-swap checking
+ *
+ * Jan 27 1999	Read and write all of 3D image if one dimension is =1
  */

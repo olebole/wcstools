@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * November 20, 1998
+ * June 4, 1999
  * By Doug Mink, SAO
  */
 
@@ -17,32 +17,32 @@
 #define UA2		10	/* refcat value for USNO A-2.0 Star Catalog */
 #define USA1		11	/* refcat value for USNO SA-1.0 Star Catalog */
 #define USA2		12	/* refcat value for USNO SA-2.0 Star Catalog */
+#define HIP		13	/* refcat value for Hipparcos Star Catalog */
+#define ACT		14	/* refcat value for USNO ACT Star Catalog */
 #define TABCAT		-1	/* refcat value for StarBase tab table catalog */
 #define BINCAT		-2	/* refcat value for TDC binary catalog */
 #define TXTCAT		-3	/* refcat value for TDC ASCII catalog */
 
+/* Subroutines for dealing with catalogs */
 int RefCat();
+void CatNum();
+int CatNumLen();
 
 /* Subroutines for extracting sources from catalogs by sky region */
-int gscread();
-int uacread();
-int usacread();
-int ujcread();
-int tabread();
-int binread();
-int catread();
+int gscread();		/* Read sources from HST Guide Star Catalog */
+int uacread();		/* Read sources from USNO A or SA Catalog */
+int ujcread();		/* Read sources from USNO J Catalog */
+int tabread();		/* Read sources from tab table catalog */
+int binread();		/* Read sources from SAO TDC binary format catalog */
+int catread();		/* Read sources from SAO TDC ASCII format catalog */
 
 /* Subroutines for extracting sources from catalogs by ID number */
-int gscrnum();
-int uacrnum();
-int usacrnum();
-int ujcrnum();
-int tabrnum();
-int binrnum();
-int catrnum();
-
-/* Subroutines for extracting supplemental information by ID number */
-int tabrkey();	/* Keyword values from tab table catalogs */
+int gscrnum();		/* Read sources from HST Guide Star Catalog */
+int uacrnum();		/* Read sources from USNO A or SA Catalog */
+int ujcrnum();		/* Read sources from USNO J Catalog */
+int tabrnum();		/* Read sources from tab table catalog */
+int binrnum();		/* Read sources from SAO TDC binary format catalog */
+int catrnum();		/* Read sources from SAO TDC ASCII format catalog */
 
 /* Subroutines for sorting tables of star positions and magnitudes */
 void XSortStars();
@@ -62,7 +62,11 @@ struct Star {
     double decpm;	/* Dec proper motion (degrees per year) */
     double xmag[11];	/* Up to 10 Magnitudes */
     double num;		/* Actual star number */
+    int coorsys;	/* Coordinate system (WCS_J2000, WCS_B1950,...) */
+    double equinox;	/* Equinox of coordinate system as fractional year */
+    double epoch;	/* Epoch of position as fractional year */
     char objname[32];	/* Object name */
+    int peak;		/* Peak flux per pixel in star image */
 };
 
 struct StarCat {
@@ -86,7 +90,7 @@ struct StarCat {
     char isfil[24];	/* Star catalog file name */
     char isname[64];	/* Star catalog description */
     int  byteswapped;	/* 1 if catalog is byte-reversed from CPU */
-    int  insys;		/* Coordinate system
+    int  coorsys;	/* Coordinate system
 			   B1950 J2000 Galactic Ecliptic */
     double epoch;	/* Epoch of catalog coordinates in years */
     double equinox;	/* Equinox of catalog coordinates in years */
@@ -95,20 +99,77 @@ struct StarCat {
     char incdir[128];	/* Catalog directory pathname */
     char incfile[32];	/* Catalog file name */
     int ncobj;		/* Length of object name in binary star entry */
+    int nndec;		/* Number of decimal places in star number */
+    int nepoch;		/* 1 if epoch of coordinates is present */
     char *catbuff;	/* Pointer to start of catalog */
     char *catdata;	/* Pointer to first entry in catalog */
     char *catline;	/* Pointer to current entry in catalog */
     char *catlast;	/* Pointer to one past end of last entry in catalog */
     int  istar;		/* Number of current catalog entry */
+    struct TabTable *startab;	/* Structure for tab table catalog */
+    int entid;		/* Entry number for ID */
+    int entra;		/* Entry number for right ascension */
+    int entdec;		/* Entry number for declination */
+    int entmag;		/* Entry number for magnitude */
+    int entpeak;	/* Entry number for peak counts */
+    int entepoch;	/* Entry number for epoch of observation */
+    int entname;	/* Entry number for object name */
+    int entprop;	/* Entry number for proper motion */
 };
 
 /* Subroutines for reading headers of TDC binary and ASCII catalogs */
-int istab();
 int isbin();
 struct StarCat *binopen();
 void binclose();
 struct StarCat *catopen();
 void catclose();
+
+/* Data structure for tab table files */
+struct TabTable {
+    char *filename;	/* Name of tab table file */
+    int nlines;		/* Number of entries in table */
+    char *tabbuff;	/* Pointer to start of saved tab table in memory */
+    char *tabhead;	/* Pointer to start of line containing table header */
+    char *tabdata;	/* Pointer to start of first line of table data */
+    int iline;		/* Number of current line (1=first) */
+    char *tabline;	/* Pointer to start of current line */
+    int ncols;		/* Number of columns per table entry */
+    char **colname;	/* Column names */
+    int *lcol;		/* Lengths of column header names */
+    int *lcfld;		/* Number of columns in field (hyphens) */
+};
+
+/* Subroutines for extracting tab table information */
+struct TabTable *tabopen();	/* Open tab table file */
+struct StarCat *tabcatopen();	/* Open tab table catalog */
+void tabcatclose();	/* Close tab table catalog */
+char *tabline();	/* Find a specified line in a tab table */
+int tabrkey();		/* Keyword values from tab table catalogs */
+int tabcol();		/* Find column for name */
+int tabgetk();		/* Get tab table entries for named column */
+int tabgetc();		/* Get tab table entry for named column */
+void tabclose();	/* Free all arrays left open by tab table structure */
+int istab();
+
+#define MAXRANGE 20
+
+/* Structure for dealing with ranges */
+struct Range {
+    double first;	/* Current minimum value */
+    double last;	/* Current maximum value */
+    double step;	/* Current step in value */
+    double value;	/* Current value */
+    double ranges[MAXRANGE*3];	/* nranges sets of first, last, step */
+    int nvalues;	/* Total number of values in all ranges */
+    int nranges;	/* Number of ranges */
+    int irange;		/* Index of current range */
+};
+
+/* Subroutines for dealing with ranges */
+struct Range *RangeInit();	/* Initialize range structure from string */
+int rgetn();		/* Return number of values in all ranges */
+int rgeti4();		/* Return next number in range as integer */
+double rgetr8();	/* Return next number in range as double */
 
 /* Shapes for SAOimage region file output */
 #define WCS_CIRCLE 1	/* shape for SAOimage plotting */
@@ -126,4 +187,14 @@ void catclose();
  * Oct 27 1998	Add SAOimage region shapes
  * Nov  9 1998	Add rasorted flag to catalog structure
  * Nov 20 1998	Add support for USNO A-2.0 and SA-2.0 catalogs
- */
+ * Dec  8 1998	Add support for the Hipparcos and ACT catalogs
+ *
+ * Jan 25 1999	Add declarations for tab table access
+ * Jan 25 1999	Add declarations for dealing with ranges of numbers
+ * Feb  2 1999	Add number of decimal places in star number to StarCat
+ * Feb 11 1999	Add coordinate system info to star structure
+ * Feb 11 1999	Change starcat.insys to starcat.coorsys for consistency
+ * May 14 1999	Update Star and StarCat structure to cover tab tables
+ * May 19 1999	Update StarCat structure to include epoch from catalog
+ * June 4 1999	Add CatNumLen()
+*/

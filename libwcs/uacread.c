@@ -1,6 +1,8 @@
 /*** File libwcs/uacread.c
- *** November 24, 1998
+ *** February 9, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+
+ * Subroutines to read from the USNO A and SA catalogs
  */
 
 #include <unistd.h>
@@ -18,15 +20,21 @@
 #define	USNOSA20	3	/* USNO SA-2.0 Catalog */
 static int ucat=USNOA10;
 
-/* Pathname of USNO SA-1.0 directory; replaced by USA_PATH environment variable */
+/* USNO SA-1.0 directory pathname; replaced by USA1_PATH environment variable */
 static char usa1path[64]="/data/usnosa10";
+
+/* USNO SA-2.0 directory pathname; replaced by USA2_PATH environment variable */
 static char usa2path[64]="/data/usnosa20";
 static char *usapath;
 
-/* Pathname of USNO A-1.0 directory; replaced by UA_PATH environment variable */
+/* USNO A-1.0 directory pathname; replaced by UA1_PATH environment variable */
 /* Use this if CDROMs have been transferred to a single hard disk */
 /* Otherwise set to null string ("") and use cdroot */
 static char ua1path[64]="/data/ua";
+
+/* USNO A-2.0 directory pathname; replaced by UA2_PATH environment variable */
+/* Use this if CDROMs have been transferred to a single hard disk */
+/* Otherwise set to null string ("") and use cdroot */
 static char ua2path[64]="/data/ua2";
 static char *uapath;
 
@@ -1034,4 +1042,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Oct 29 1998	Correctly assign numbers when too many stars are found
  * Nov 20 1998	Add support for USNO A-2.0 and SA-2.0 catalogs
  * Nov 24 1998	Fix bug reading SA-2.0 catalog
+ *
+ * Feb  9 1999	Improve documentation
  */
