@@ -1,5 +1,5 @@
 /* File imcat.c
- * September 20, 2001
+ * April 10, 2002
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -18,7 +18,10 @@
 #include "libwcs/lwcs.h"
 #include "libwcs/fitsfile.h"
 
-static void usage();
+#define MAXFILES 1000
+static int maxnfile = MAXFILES;
+
+static void PrintUsage();
 static void ListCat();
 extern void fk524e();
 extern struct WorldCoor *GetFITSWCS();
@@ -27,6 +30,8 @@ extern void setsys();
 extern void setcenter();
 extern void setsecpix();
 extern void setrefpix();
+extern void setdateobs();
+extern void setparm();
 
 
 static int verbose = 0;		/* verbose/debugging flag */
@@ -51,6 +56,7 @@ static struct StarCat *starcat[5]; /* Star catalog data structure */
 static int nmagmax = 4;
 static int sortmag = 0;		/* Magnitude by which to sort stars */
 static webdump = 0;
+static char *progname;		/* Name of program as executed */
 
 main (ac, av)
 int ac;
@@ -62,10 +68,12 @@ char **av;
     int readlist = 0;
     char *lastchar;
     char filename[128];
+    char errmsg[256];
     FILE *flist;
     char *listfile;
     char *cstr;
     char cs, cs1;
+    char **fn;
     int i, ic;
     double x, y;
     char *refcatname[5];	/* reference catalog name */
@@ -75,10 +83,13 @@ char **av;
     int region_char[5];		/* Character for SAOimage region file output */
     int region_pixel;
     char *refcatn;
+    int ifile, nfile;
     int lcat;
     int scat = 0;
-    char *progname;		/* Name of program as executed */
-    char c1;
+    char c1, c, *ccom;
+
+    nfile = 0;
+    fn = (char **)calloc (maxnfile, sizeof(char *));
 
     for (i = 0; i< 5; i++)
 	starcat[i] = NULL;
@@ -97,351 +108,408 @@ char **av;
 	ncat++;
 	}
 
-    /* Check for help or version command first */
-    str = *(av+1);
-    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
-	usage (progname);
-    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
-	version = 1;
-	usage (progname);
-	}
+    if (ac == 1)
+	PrintUsage (NULL);
 
-    /* Decode arguments */
-    for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
-	char c;
-	if (*str == '@')
-	    str = str - 1;
-	while (c = *++str)
-    	switch (c) {
+    /* Loop through the arguments */
+    for (av++; --ac > 0; av++) {
+	str = *av;
 
-    	case 'b':	/* initial coordinates on command line in B1950 */
-	    str1 = *(av+1);
-	    ic = (int)str1[0];
-	    if (*(str+1) || ic < 48 || ic > 58) {
-		setsys(WCS_B1950);
-		sysout = WCS_B1950;
-		eqout = 1950.0;
-		}
-	    else if (ac < 3)
-		usage (progname);
-	    else {
-		setsys(WCS_B1950);
-		sysout = WCS_B1950;
-		eqout = 1950.0;
-		strcpy (rastr, *++av);
-		ac--;
-		strcpy (decstr, *++av);
-		ac--;
-		setcenter (rastr, decstr);
-		}
-    	    break;
+	/* Check for help command first */
+	if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	    PrintUsage (NULL);
 
-	case 'c':       /* Set reference catalog */
-	    if (ac < 2)
-		usage(progname);
-	    lcat = strlen (*++av);
-	    refcatn = (char *) calloc (1, lcat + 1);
-	    strcpy (refcatn, *av);
-	    refcatname[ncat] = refcatn;
-	    ncat = ncat + 1;
-	    ac--;
-	    break;
+	/* Check for version command */
+	else if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	    version = 1;
+	    PrintUsage ("version");
+	    }
 
-	case 'd':
-	    degout0++;
-	    break;
+	else if (strchr (str, '='))
+	    setparm (str);
 
-	case 'e':
-	    sysout = WCS_ECLIPTIC;
-	    break;
-
-	case 'g':
-	    sysout = WCS_GALACTIC;
-	    break;
-
-	case 'h':	/* ouput descriptive header */
-	    printhead++;
-	    break;
-
-	case 'i':	/* Label region with name, not number */
-	    if (ncat > 0)
-		obname[ncat-1]++;
-	    else
-		obname[0]++;
-	    break;
-
-    	case 'j':	/* center coordinates on command line in J2000 */
-	    str1 = *(av+1);
-	    ic = (int)str1[0];
-	    if (*(str+1) || ic < 48 || ic > 58) {
-		setsys(WCS_J2000);
-		sysout = WCS_J2000;
-		eqout = 2000.0;
-		}
-	    else if (ac < 3)
-		usage (progname);
-	    else {
-		setsys(WCS_J2000);
-		sysout = WCS_J2000;
-		eqout = 2000.0;
-		strcpy (rastr, *++av);
-		ac--;
-		strcpy (decstr, *++av);
-		ac--;
-		setcenter (rastr, decstr);
-		}
-    	    break;
-
-	case 'k':	/* Keyword (column) to add to output from tab table */
-	    if (ac < 2)
-		usage (progname);
-	    keyword = *++av;
-	    settabkey (keyword);
-	    if (ncat > 0)
-		obname[ncat-1]++;
-	    else
-		obname[0]++;
-	    ac--;
-	    break;
-
-    	case 'm':	/* Limiting reference star magnitude */
-    	    if (ac < 2)
-    		usage(progname);
-    	    maglim2 =  atof (*++av);
-    	    ac--;
-	    if (ac > 1 && isnum (*(av+1))) {
-		maglim1 = maglim2;
-		maglim2 = atof (*++av);
-		ac--;
-		}
-	    else if (maglim1 == 0.0)
-		maglim1 = -2.0;
-    	    break;
-
-	case 'n':	/* Number of brightest stars to read */
-	    if (ac < 2)
-		usage (progname);
-	    nstars = atoi (*++av);
-	    ac--;
-	    break;
-
-	case 'o':	/* Guide Star object class */
-    	    if (ac < 2)
-    		usage(progname);
-    	    classd = (int) atof (*++av);
-	    setgsclass (classd);
-    	    ac--;
-    	    break;
-
-    	case 'p':	/* Initial plate scale in arcseconds per pixel */
-    	    if (ac < 2)
-    		usage(progname);
-    	    setsecpix (atof (*++av));
-    	    ac--;
-    	    break;
-
-	case 'q':	/* Output region file shape for SAOimage */
-    	    if (ac < 2)
-    		usage(progname);
-	    cstr = *++av;
-	    if (strlen(cstr) > 1)
-		region_pixel = 0;
-		if (cstr[0] == 'p') {
-		    c1 = cstr[1];
-		    region_pixel = 10;
-		    }
-		else if (cstr[1] == 'p') {
-		    c1 = cstr[0];
-		    region_pixel = 10;
-		    }
-	    switch (c1){
-		case 'c':
-		    if (cstr[1] == 'i')
-			region_char[scat] = WCS_CIRCLE;
-		    else
-			region_char[scat] = WCS_CROSS;
-		    break;
-		case 'd':
-		    region_char[scat] = WCS_DIAMOND;
-		    break;
-		case 'p':
-		    region_char[scat] = WCS_PCIRCLE;
-		    break;
-		case 's':
-		    region_char[scat] = WCS_SQUARE;
-		    break;
-		case 'x':
-		    region_char[scat] = WCS_EX;
-		    break;
-		case 'v':
-		    region_char[scat] = WCS_VAR;
-		    break;
-		case '+':
-		    region_char[scat] = WCS_CROSS;
-		    break;
-
-		case 'o':
-		default:
-		    region_char[scat] = WCS_CIRCLE;
-		}
-	    region_char[scat] = region_char[scat] + region_pixel;
-	    if (region_radius[scat] == 0)
-		region_radius[scat] = -1;
-	    scat++;
-    	    wfile++;
-    	    ac--;
-	    break;
-
-	case 'r':	/* Output region file with shape radius for SAOimage */
-    	    if (ac < 2)
-    		usage(progname);
-	    region_radius[rcat] = atoi (*++av);
-	    if (region_radius[rcat] == 0)
-		region_radius[rcat] = -1;
-	    rcat++;
-    	    wfile++;
-    	    ac--;
-	    break;
-
-	case 's':	/* sort by RA, Dec, magnitude or nothing */
-	    catsort = SORT_RA;
-	    if (ac > 1) {
-		cs = *(av+1)[0];
-		if (strchr ("dmnrxy",(int)cs)) {
-		    av++;
-		    ac--;
-		    }
-		else
-		    cs = 'r';
-		}
-	    else
-		cs = 'r';
-	    if (cs) {
-
-		/* Declination */
-		if (cs == 'd')
-		    catsort = SORT_DEC;
-
-		/* Magnitude (brightest first) */
-		else if (cs == 'm') {
-		    catsort = SORT_MAG;
-		    cs1 = (*av)[1];
-		    if (cs1 != (char) 0)
-			sortmag = (int) cs1 - 48;
-		    }
-
-		/* No sorting */
-		else if (cs == 'n')
-		    catsort = NOSORT;
-
-		/* X coordinate */
-		else if (cs == 'x')
-		    catsort = SORT_X;
-
-		/* Y coordinate */
-		else if (cs == 'y')
-		    catsort = SORT_Y;
-
-		/* Right ascension */
-		else if (cs == 'r')
-		    catsort = SORT_RA;
-		else
-		    catsort = SORT_RA;
-		}
-	    else
-		catsort = SORT_RA;
-	    break;
-
-	case 't':	/* tab table to stdout */
-	    tabout = 1;
-	    break;
-
-	case 'u':	/* UJ Catalog plate number */
-    	    if (ac < 2)
-    		usage(progname);
-    	    uplate = (int) atof (*++av);
-	    setuplate (uplate);
-    	    ac--;
-    	    break;
-
-    	case 'v':	/* more verbosity */
-	    if (debug) {
-		webdump++;
-		debug = 0;
-		verbose = 0;
-		}
-	    else if (verbose)
-		debug++;
-	    else
-		verbose++;
-    	    break;
-
-    	case 'w':	/* write output file */
-    	    wfile++;
-    	    break;
-
-	case 'x':	/* X and Y coordinates of reference pixel */
-	    if (ac < 3)
-		usage(progname);
-	    x = atof (*++av);
-	    ac--;
-	    y = atof (*++av);
-	    ac--;
-    	    setrefpix (x, y);
-    	    break;
-
-	case 'z':       /* Use AIPS classic WCS */
-	    setdefwcs (WCS_ALT);
-	    break;
-
-	case '@':       /* List of files to be read */
+	/* Image list file */
+	else if (str[0] == '@') {
 	    readlist++;
 	    listfile = ++str;
 	    str = str + strlen (str) - 1;
 	    av++;
 	    ac--;
+	    }
 
+	/* Decode arguments */
+	else if (str[0] == '-') {
 
-    	default:
-    	    usage(progname);
-    	    break;
-    	}
-    }
+	    while ((c = *++str) != 0) {
+    		switch (c) {
+
+		case 'b':	/* initial coordinates on command line in B1950 */
+		    str1 = *(av+1);
+		    ic = (int)str1[0];
+		    if (*(str+1) || ic < 48 || ic > 58) {
+			setsys(WCS_B1950);
+			sysout = WCS_B1950;
+			eqout = 1950.0;
+			}
+		    else if (ac < 3)
+			PrintUsage (str);
+		    else {
+			setsys(WCS_B1950);
+			sysout = WCS_B1950;
+			eqout = 1950.0;
+			strcpy (rastr, *++av);
+			ac--;
+			strcpy (decstr, *++av);
+			ac--;
+			setcenter (rastr, decstr);
+			}
+		    break;
+
+		case 'c':       /* Set reference catalog */
+		    if (ac < 2)
+			PrintUsage (str);
+		    lcat = strlen (*++av);
+		    refcatn = (char *) calloc (1, lcat + 1);
+		    strcpy (refcatn, *av);
+		    refcatname[ncat] = refcatn;
+		    ncat = ncat + 1;
+		    ac--;
+		    break;
+
+		case 'd':
+		    degout0++;
+		    break;
+
+		case 'e':
+		    sysout = WCS_ECLIPTIC;
+		    break;
+
+		case 'g':
+		    sysout = WCS_GALACTIC;
+		    break;
+
+		case 'h':	/* ouput descriptive header */
+		    printhead++;
+		    break;
+
+		case 'i':	/* Label region with name, not number */
+		    if (ncat > 0)
+			obname[ncat-1]++;
+		    else
+			obname[0]++;
+		    break;
+
+		case 'j':	/* center coordinates on command line in J2000 */
+		    str1 = *(av+1);
+		    ic = (int)str1[0];
+		    if (*(str+1) || ic < 48 || ic > 58) {
+			setsys(WCS_J2000);
+			sysout = WCS_J2000;
+			eqout = 2000.0;
+			}
+		    else if (ac < 3)
+			PrintUsage (str);
+		    else {
+			setsys(WCS_J2000);
+			sysout = WCS_J2000;
+			eqout = 2000.0;
+			strcpy (rastr, *++av);
+			ac--;
+			strcpy (decstr, *++av);
+			ac--;
+			setcenter (rastr, decstr);
+			}
+		    break;
+
+		case 'k':	/* Keyword (column) to add to output from tab table */
+		    if (ac < 2)
+			PrintUsage (str);
+		    keyword = *++av;
+		    settabkey (keyword);
+		    if (ncat > 0)
+			obname[ncat-1]++;
+		    else
+			obname[0]++;
+		    ac--;
+		    break;
+
+		case 'm':	/* Limiting reference star magnitude */
+		    if (ac < 2)
+			PrintUsage (str);
+		    cs1 = *(str+1);
+		    if (cs1 != (char) 0) {
+			++str;
+			if (cs1 > '9')
+			    sortmag = (int) cs1;
+			else
+			    sortmag = (int) cs1 - 48;
+			}
+		    ac--;
+		    av++;
+		    if ((ccom = strchr (*av, ',')) != NULL) {
+			*ccom = (char) 0;
+			maglim1 = atof (*av);
+			maglim2 = atof (ccom+1);
+			}
+		    else {
+			maglim2 = atof (*av);
+			if (ac > 1 && isnum (*(av+1))) {
+			    av++;
+			    ac--;
+			    maglim1 = maglim2;
+			    maglim2 = atof (*av);
+			    }
+		        else if (MAGLIM1 == MAGLIM2)
+			    maglim1 = -2.0;
+			}
+		    break;
+
+		case 'n':	/* Number of brightest stars to read */
+		    if (ac < 2)
+			PrintUsage (str);
+		    nstars = atoi (*++av);
+		    ac--;
+		    break;
+
+		case 'o':	/* Guide Star object class */
+		    if (ac < 2)
+			PrintUsage (str);
+		    classd = (int) atof (*++av);
+		    setgsclass (classd);
+		    ac--;
+		    break;
+
+		case 'p':	/* Initial plate scale in arcseconds per pixel */
+		    if (ac < 2)
+			PrintUsage (str);
+		    setsecpix (atof (*++av));
+		    ac--;
+		    break;
+
+		case 'q':	/* Output region file shape for SAOimage */
+		    if (ac < 2)
+			PrintUsage (str);
+		    cstr = *++av;
+		    c1 = cstr[0];
+		    region_pixel = 0;
+		    if (strlen(cstr) > 1) {
+			if (cstr[0] == 'p') {
+			    c1 = cstr[1];
+			    region_pixel = 10;
+			    }
+			else if (cstr[1] == 'p')
+			    region_pixel = 10;
+			}
+		    switch (c1){
+			case 'c':
+			    if (cstr[1] == 'i')
+				region_char[scat] = WCS_CIRCLE;
+			    else
+				region_char[scat] = WCS_CROSS;
+			    break;
+			case 'd':
+			    region_char[scat] = WCS_DIAMOND;
+			    break;
+			case 'p':
+			    region_char[scat] = WCS_PCIRCLE;
+			    break;
+			case 's':
+			    region_char[scat] = WCS_SQUARE;
+			    break;
+			case 'x':
+			    region_char[scat] = WCS_EX;
+			    break;
+			case 'v':
+			    region_char[scat] = WCS_VAR;
+			    break;
+			case '+':
+			    region_char[scat] = WCS_CROSS;
+			    break;
+			case 'o':
+			default:
+			    region_char[scat] = WCS_CIRCLE;
+			}
+		    region_char[scat] = region_char[scat] + region_pixel;
+		    if (region_radius[scat] == 0)
+			region_radius[scat] = -1;
+		    scat++;
+		    wfile++;
+		    ac--;
+		    break;
+
+		case 'r':	/* Output region file with shape radius for SAOimage */
+		    if (ac < 2)
+			PrintUsage (str);
+		    region_radius[rcat] = atoi (*++av);
+		    if (region_radius[rcat] == 0)
+			region_radius[rcat] = -1;
+		    rcat++;
+		    wfile++;
+		    ac--;
+		    break;
+
+		case 's':	/* sort by RA, Dec, magnitude or nothing */
+		    catsort = SORT_RA;
+		    if (ac > 1) {
+			str1 = *(av + 1);
+			cs = str1[0];
+			if (strchr ("dmnrxy",(int)cs)) {
+			    cs1 = str1[1];
+			    av++;
+			    ac--;
+			    }
+			else
+			    cs = 'r';
+			}
+		    else
+			cs = 'r';
+		    if (cs) {
+
+			/* Declination */
+			if (cs == 'd')
+			    catsort = SORT_DEC;
+
+			/* Magnitude (brightest first) */
+			else if (cs == 'm') {
+			    catsort = SORT_MAG;
+			    if (cs1 != (char) 0) {
+				if (cs1 > '9')
+				    sortmag = (int) cs1;
+				else
+				    sortmag = (int) cs1 - 48;
+				}
+			    }
+
+			/* No sorting */
+			else if (cs == 'n')
+			    catsort = NOSORT;
+
+			/* X coordinate */
+			else if (cs == 'x')
+			    catsort = SORT_X;
+
+			/* Y coordinate */
+			else if (cs == 'y')
+			    catsort = SORT_Y;
+
+			/* Right ascension */
+			else if (cs == 'r')
+			    catsort = SORT_RA;
+			else
+			    catsort = SORT_RA;
+			}
+		    else
+			catsort = SORT_RA;
+		    break;
+
+		case 't':	/* tab table to stdout */
+		    tabout = 1;
+		    break;
+
+		case 'u':	/* UJ Catalog plate number */
+		    if (ac < 2)
+			PrintUsage (str);
+		    uplate = (int) atof (*++av);
+		    setuplate (uplate);
+		    ac--;
+		    break;
+
+		case 'v':	/* more verbosity */
+		    if (debug) {
+			webdump++;
+			debug = 0;
+			verbose = 0;
+			}
+		    else if (verbose)
+			debug++;
+		    else
+			verbose++;
+		    break;
+
+		case 'w':	/* write output file */
+		    wfile++;
+		    break;
+
+		case 'x':	/* X and Y coordinates of reference pixel */
+		    if (ac < 3)
+			PrintUsage (str);
+		    x = atof (*++av);
+		    ac--;
+		    y = atof (*++av);
+		    ac--;
+		    setrefpix (x, y);
+		    break;
+
+		case 'y':	/* Epoch of image in FITS date format */
+		    if (ac < 2)
+			PrintUsage (str);
+		    setdateobs (*++av);
+		    ac--;
+		    break;
+
+		case 'z':       /* Use AIPS classic WCS */
+		    setdefwcs (WCS_ALT);
+		    break;
+
+		default:
+		    sprintf (errmsg, "* Illegal command -%c-", c);
+		    PrintUsage (errmsg);
+		    break;
+		}
+		}
+	    }
+
+	/* Image file */
+	else if (isfits (str) || isiraf (str)) {
+	    if (nfile >= maxnfile) {
+		maxnfile = maxnfile * 2;
+		fn = (char **) realloc ((void *)fn, maxnfile);
+		}
+	    fn[nfile] = str;
+	    nfile++;
+	    }
+
+	else {
+	    sprintf (errmsg, "* %s is not a FITS or IRAF file.", str);
+	    PrintUsage (errmsg);
+	    }
+	}
+
     /* if (!verbose && !wfile)
 	verbose = 1; */
 
-    /* Find number of images to search and leave listfile open for reading */
+    /* Process image files from list file */
     if (readlist) {
 	if ((flist = fopen (listfile, "r")) == NULL) {
-	    fprintf (stderr,"IMCAT: List file %s cannot be read\n",
-		     listfile);
-	    usage (progname);
+	    sprintf (errmsg,"* List file %s cannot be read\n", listfile);
+	    PrintUsage (errmsg);
 	    }
 	while (fgets (filename, 128, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
 	    if (*lastchar < 32) *lastchar = 0;
-    	    if (debug)
-    		printf ("%s:\n", filename);
+	    if (debug)
+		printf ("%s:\n", filename);
 	    ListCat (progname,filename,ncat,refcatname,region_radius,region_char);
 	    }
 	fclose (flist);
 	}
 
-    /* If no arguments left, print usage */
-    if (ac == 0) {
-	for (i = 0; i < 5; i++)
-	    if (starcat[i] != NULL) ctgclose (starcat[i]);
-	usage (progname);
+    /* Process image files */
+    else if (nfile > 0) {
+	for (ifile = 0; ifile < nfile; ifile++) {
+	    if ( verbose)
+		printf ("%s:\n", fn[ifile]);
+	    ListCat (progname,fn[ifile], ncat, refcatname, region_radius, region_char);
+	    if (verbose)
+		printf ("\n");
+	    }
 	}
 
-    while (ac-- > 0) {
-    	char *fn = *av++;
-    	if (debug)
-    	    printf ("%s:\n", fn);
-    	ListCat (progname,fn, ncat, refcatname, region_radius, region_char);
-    	if (debug)
-    	    printf ("\n");
-	}
+    /* Print error message if no image files to process */
+    else
+	PrintUsage ("* No files to process.");
+
+    /* Close source catalogs */
     for (i = 0; i < 5; i++)
 	if (starcat[i] != NULL) ctgclose (starcat[i]);
 
@@ -449,11 +517,20 @@ char **av;
 }
 
 static void
-usage (progname)
-char	*progname;
+PrintUsage (command)
+char	*command;
 {
     if (version)
+	exit (0);
+
+    if (command != NULL) {
+	if (command[0] == '*')
+	    fprintf (stderr, "%s\n", command);
+	else
+	    fprintf (stderr, "* Missing argument for command: %c\n", command[0]);
 	exit (1);
+	}
+
     if (strsrch (progname,"gsca") != NULL) {
 	fprintf (stderr,"List GSC-ACT Stars in FITS and IRAF image files\n");
 	fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-g class]\n");
@@ -524,29 +601,32 @@ char	*progname;
 	fprintf (stderr,"Usage: [-vwhst][-m [mag1] mag2][-c or f catalog][-x x y]\n");
 	}
     fprintf (stderr,"       [-p scale][-q osd+x][-b ra dec][-j ra dec][-r arcsec] FITS or IRAF file(s)\n");
-    fprintf (stderr,"  -b: Output, (center) in B1950 (FK4) RA and Dec\n");
-    fprintf (stderr,"  -c: Reference catalog (gsc, ua2, local file, etc.\n");
+    fprintf (stderr,"  -b [RA Dec]: Output, (center) in B1950 (FK4) RA and Dec\n");
+    fprintf (stderr,"  -c name: Reference catalog (gsc, ua2, local file, etc.\n");
     fprintf (stderr,"  -d: Output RA,Dec positions in fractional degrees\n");
     fprintf (stderr,"  -e: Output in ecliptic longitude and latitude\n");
     fprintf (stderr,"  -g: Output in galactic longitude and latitude\n");
     fprintf (stderr,"  -h: Print heading, else do not \n");
     fprintf (stderr,"  -i: Print name instead of number in region file \n");
-    fprintf (stderr,"  -j: Output (center) in J2000 (FK5) RA and Dec\n");
-    fprintf (stderr,"  -k: Add this keyword to output from tab table search\n");
-    fprintf (stderr,"  -m: Limiting catalog magnitude(s) (default none)\n");
-    fprintf (stderr,"  -n: Number of brightest stars to print \n");
-    fprintf (stderr,"  -o: Set HST Guide Star object class to print \n");
-    fprintf (stderr,"  -p: Initial plate scale in arcsec per pixel (default 0)\n");
-    fprintf (stderr,"  -q: Write SAOimage region file of this shape (filename.cat)\n");
-    fprintf (stderr,"  -r: Write SAOimage region file of this radius (filename.cat)\n");
-    fprintf (stderr,"  -s d|m|n|r|x|y: Sort by r=RA d=Dec m=Mag n=none x=X y=Y\n");
+    fprintf (stderr,"  -j [RA Dec]: Output (center) in J2000 (FK5) RA and Dec\n");
+    fprintf (stderr,"  -k keyword: Add this keyword to output from tab table search\n");
+    fprintf (stderr,"  -mx m1 [m2]: Catalog magnitude #x limit(s) (only one set allowd, default none)\n");
+    fprintf (stderr,"  -n num: Number of brightest stars to print \n");
+    fprintf (stderr,"  -o name: Set HST Guide Star object class to print \n");
+    fprintf (stderr,"  -p num: Initial plate scale in arcsec per pixel (default 0)\n");
+    fprintf (stderr,"  -q code: Write SAOimage region file of this shape (filename.cat)\n");
+    fprintf (stderr,"  -r num: Write SAOimage region file of this radius (filename.cat)\n");
+    fprintf (stderr,"  -s d|mx|n|r|x|y: Sort by r=RA d=Dec mx=Mag#x n=none x=X y=Y\n");
     fprintf (stderr,"  -t: Tab table to standard output as well as file\n");
-    fprintf (stderr,"  -u: USNO catalog single plate number to accept\n");
+    fprintf (stderr,"  -u num: USNO catalog single plate number to accept\n");
     fprintf (stderr,"  -v: Verbose\n");
     fprintf (stderr,"  -w: Write tab table output file [imagename].[catalog]\n");
-    fprintf (stderr,"  -x: X and Y coordinates of reference pixel (default is center)\n");
+    fprintf (stderr,"  -x x y: X and Y coordinates of reference pixel (default is center)\n");
+    fprintf (stderr,"  -y date: Epoch of image in FITS date format or year\n");
     fprintf (stderr,"  -z: Use AIPS classic projections instead of WCSLIB\n");
     exit (1);
+    fprintf (stderr,"   x: Number of magnitude must be same for sort and limits\n");
+    fprintf (stderr,"      and x may be omitted from either or both -m and -s m\n");
 }
 
 
@@ -660,13 +740,6 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (title, " stars");
     else if (classd == 3)
 	strcat (title, " nonstars");
-    if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==TYCHO ||
-	refcat==HIP || refcat==BSC)
-	sptype = 1;
-    else if (refcat == TMPSC)
-	sptype = 2;
-    else
-	sptype = 0;
 
     /* Read world coordinate system information from the image header */
     if ((header = GetFITShead (filename)) == NULL)
@@ -710,6 +783,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	mag1 = mag2;
 	mag2 = mag;
 	}
+    if (sortmag > 9)
+	sortmag = CatMagNum (sortmag, refcat);
 
     if (nstars > 0)
 	ngmax = nstars;
@@ -802,6 +877,17 @@ int	*region_char;	/* Character for SAOimage region file output */
 	    break;
 	    }
 	} */
+
+    /* Set flag if spectral type is present */
+    if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==TYCHO ||
+	refcat==HIP || refcat==BSC)
+	sptype = 1;
+    else if (refcat == TMPSC)
+	sptype = 2;
+    else if (starcat[icat] != NULL && starcat[icat]->sptype > 0)
+	sptype = 1;
+    else
+	sptype = 0;
 
     if (refcat == BINCAT || refcat == TABCAT || refcat == TXTCAT)
 	nndec = starcat[icat]->nndec;
@@ -1666,4 +1752,14 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Sep 14 2001	Add option to print catalog as returned over the web
  * Sep 18 2001	Add flags to IRAS and 2MASS point sources
  * Sep 20 2001	Get magnitude name for limits from CatMagName()
+ * Oct 19 2001	Add -y to set epoch of observation
+ * Oct 25 2001	Allow arbitrary argument order on command line
+ * Oct 31 2001	Print complete help message if no arguments
+ * Nov  6 2001	Declare undeclared subroutine setparm()
+ *
+ * Feb  1 2002	Print spectral type for TDC format catalogs, if present
+ * Apr  3 2002	Add magnitude number to sort options
+ * Apr  8 2002	Add magnitude number to magnitude limit setting
+ * Apr  8 2002	Fix bug so that characters other than circles can be plotted
+ * Apr 10 2002	Fix magnitude number bug and add magnitude letter
  */

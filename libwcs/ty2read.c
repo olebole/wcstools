@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** September 11, 2001
+ *** April 10, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
-#include <math.h>
 #include "fitsfile.h"
 #include "wcs.h"
 #include "wcscat.h"
@@ -17,7 +16,7 @@
 #define MAXREG 100
 
 /* pathname of Tycho 2 CDROM or catalog search engine URL */
-char ty2cd[64]="/data/catalogs/tycho2";
+char ty2cd[64]="/data/astrocat/tycho2";
 
 static double *gdist;	/* Array of distances to stars */
 static int ndist = 0;
@@ -77,7 +76,7 @@ int	nlog;		/* 1 for diagnostics */
     int verbose;
     int wrap;
     int ireg;
-    int magsort;
+    int magsort, magsort1;
     int jstar, iw;
     int nrmax = MAXREG;
     int nstar,i, ntot;
@@ -125,10 +124,14 @@ int	nlog;		/* 1 for diagnostics */
 	mag1 = mag;
 	}
 
-   if (sortmag > 0 && sortmag < 3)
-	magsort = sortmag - 1;
-    else
+   if (sortmag == 2) {
+	magsort = 0;
+	magsort1 = 1;
+	}
+    else {
 	magsort = 1;
+	magsort1 = 0;
+	}
 
     /* Allocate table for distances of stars from search center */
     if (nstarmax > ndist) {
@@ -212,6 +215,7 @@ int	nlog;		/* 1 for diagnostics */
 		/* Magnitude */
 		magv = star->xmag[0];
 		magb = star->xmag[1];
+		mag = star->xmag[magsort];
 
 		/* Spectral Type */
 		isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
@@ -290,8 +294,8 @@ int	nlog;		/* 1 for diagnostics */
 
 			/* Find new faintest star */
 			for (i = 0; i < nstarmax; i++) {
-			    if (gmag[magsort][i] > faintmag) {
-				faintmag = gmag[magsort][i];
+			    if (gmag[magsort1][i] > faintmag) {
+				faintmag = gmag[magsort1][i];
 				faintstar = i;
 				}
 			    }
@@ -472,7 +476,7 @@ int	nlog;		/* 1 for diagnostics */
 	/* gtype[jstar] = isp; */
 	if (nlog == 1)
 	    fprintf (stderr,"TY2RNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %s  \n",
-		     num, ra, dec, magb, mag, star->isp);
+		     num, ra, dec, magb, magv, star->isp);
 
 	/* End of star loop */
 	}
@@ -989,4 +993,10 @@ char	*filename;	/* Name of file for which to find size */
  * Jun 27 2001	Allocate gdist only if needed
  * Sep 11 2001	Change to single magnitude argeument
  * Sep 11 2001	Add sort magnitude argument to uacread()
+ * Nov 20 2001	Change cos(degrad()) to cosdeg()
+ * Dec  3 2001	Change default directory to /data/astrocat/tycho2
+ *
+ * Apr  3 2002	Fix bug so magnitude filtering is actually done (all passed)
+ * Apr  8 2002	Fix uninitialized variable
+ * Apr 10 2002	Separate catalog and output sort mags (in:vb out: bv)
  */

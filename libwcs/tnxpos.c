@@ -1,5 +1,5 @@
 /*** File wcslib/tnxpos.c
- *** February 14, 2001
+ *** April 11, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** After IRAF mwcs/wftnx.x and mwcs/wfgsurfit.x
@@ -545,6 +545,8 @@ char    *astr;		/* the input mwcs attribute string */
     estr = astr;
     while (*estr != (char) 0) {
 	dval = strtod (astr, &estr);
+	if (*estr == '.')
+	    estr++;
 	if (*estr != (char) 0) {
 	    npar++;
 	    if (npar >= szcoeff) {
@@ -1185,4 +1187,6 @@ double	*coeff;
  * Dec 10 1999	Compute wcs->rot using wcsrotset() in tnxinit()
  *
  * Feb 14 2001	Fixed off-by-one bug in legendre evaluation (Mike Jarvis)
+ *
+ * Apr 11 2002	Fix bug when .-terminated substring in wf_gsopen()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** September 27, 2001
+ *** March 12, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -127,7 +127,7 @@ int	nlog;
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == TYCHO2)
             nstar = ty2read (cra,cdec,dra,ddec,drad,distsort,
-			     sysout,eqout,epout,mag1,mag2,nsmax,sortmag,
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == SAO)
             nstar = binread ("SAOra", distsort,cra,cdec,dra,ddec,drad,
@@ -232,6 +232,11 @@ int	nlog;
 	return (0);
 	}
 
+    if (sortmag > 0 && sortmag <= sc->nmag)
+	magsort = sortmag - 1;
+    else 
+	magsort = 1;
+
     jstar = 0;
     if (tobj == NULL || sc->ignore)
 	nameobj = 0;
@@ -306,9 +311,13 @@ int	nlog;
 		tdist[nstar] = dist;
 		if (nameobj) {
 		    lname = strlen (star->objname) + 1;
-		    objname = (char *)calloc (lname, 1);
-		    strcpy (objname, star->objname);
-		    tobj[nstar] = objname;
+		    if (lname > 1) {
+			objname = (char *)calloc (lname, 1);
+			strcpy (objname, star->objname);
+			tobj[nstar] = objname;
+			}
+		    else
+			tobj[nstar] = NULL;
 		    }
 		if (dist > maxdist) {
 			maxdist = dist;
@@ -336,9 +345,13 @@ int	nlog;
 		    if (nameobj) {
 			free (tobj[farstar]);
 			lname = strlen (star->objname) + 1;
-			objname = (char *)calloc (lname, 1);
-			strcpy (objname, star->objname);
-			tobj[farstar] = objname;
+			if (lname > 1) {
+			    objname = (char *)calloc (lname, 1);
+			    strcpy (objname, star->objname);
+			    tobj[farstar] = objname;
+			    }
+			else
+			    tobj[farstar] = NULL;
 			}
 
 		    /* Find new farthest star */
@@ -367,9 +380,13 @@ int	nlog;
 		if (nameobj) {
 		    free (tobj[faintstar]);
 		    lname = strlen (star->objname) + 1;
-		    objname = (char *)calloc (lname, 1);
-		    strcpy (objname, star->objname);
-		    tobj[faintstar] = objname;
+		    if (lname > 1) {
+			objname = (char *)calloc (lname, 1);
+			strcpy (objname, star->objname);
+			tobj[faintstar] = objname;
+			}
+		    else
+			tobj[faintstar] = NULL;
 		    }
 		faintmag = 0.0;
 
@@ -600,9 +617,13 @@ int	nlog;
 
 	    if (nameobj) {
 		lname = strlen (star->objname) + 1;
-		objname = (char *)calloc (lname, 1);
-		strcpy (objname, star->objname);
-		tobj[nstar] = objname;
+		if (lname > 1) {
+		    objname = (char *)calloc (lname, 1);
+		    strcpy (objname, star->objname);
+		    tobj[nstar] = objname;
+		    }
+		else
+		    tobj[nstar] = NULL;
 		}
 	    nstar++;
 	    if (nlog == 1)
@@ -761,6 +782,10 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	sc->epoch = 1950.0;
 	sc->equinox = 1950.0;
 	}
+
+    /* Catalog positions are in radians */
+    if (strsrch (header, "/a") || strsrch (header, "/A"))
+	sc->inform = 'R';
 
     /* Catalog positions are in degrees */
     if (strsrch (header, "/d") || strsrch (header, "/D"))
@@ -1100,6 +1125,10 @@ struct Star *st; /* Star data structure, updated on return */
     else if (sc->inform == 'D')
 	st->ra = atof (token);
 
+    /* Translate single-token right ascension as radians */
+    else if (sc->inform == 'R')
+	st->ra = raddeg (atof (token));
+
     /* Translate single-token right ascension as X image coordinate */
     else if (sc->inform == 'X')
 	st->ra = atof (token);
@@ -1142,6 +1171,10 @@ struct Star *st; /* Star data structure, updated on return */
     /* Translate single-token declination as degrees */
     else if (sc->inform == 'D')
 	st->dec = atof (token);
+
+    /* Translate single-token declination as radians */
+    else if (sc->inform == 'R')
+	st->dec = raddeg (atof (token));
 
     /* Translate single-token declination from ddmmss.ss */
     else if (sc->inform == 'F') {
@@ -1455,4 +1488,9 @@ char	*in;	/* Character string */
  * Sep 11 2001	Add sort magnitude as argument to *read() subroutines
  * Sep 19 2001	Drop fitshead.h; it is in wcs.h
  * Sep 27 2001	Fix bug which reset number of magnitudes to 1 if /m not last
+ * Oct 17 2001	Fix argument sequence bug in ty2read() call
+ * Dec 11 2001	Set magsort which was unitialized in ctgread()
+ *
+ * Jan 31 2002	Always return NULL for object if no object name in catalog
+ * Mar 12 2002	Add /a flag for positions in radians
  */

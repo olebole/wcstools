@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** September 21, 2001
+ *** April 10, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -256,8 +256,8 @@ int	nlog;		/* Logging interval */
 	mag2 = mag1;
 	mag1 = mag;
 	}
-    if (sortmag > 0 && sortmag < 3)
-	magsort = sortmag - 1;
+    if (sortmag == 1)
+	magsort = 0;
     else
 	magsort = 1;
 
@@ -286,7 +286,7 @@ int	nlog;		/* Logging interval */
 	if (drad != 0.0)
 	    printf ("radmin     %.1f\n", drad*60.0);
 	else {
-	    printf ("dramin     %.1f\n", dra*60.0* cos(degrad(cdec)));
+	    printf ("dramin     %.1f\n", dra*60.0* cosdeg (cdec));
 	    printf ("ddecmin    %.1f\n", ddec*60.0);
 	    }
 	printf ("radecsys       %s\n", cstr);
@@ -1123,4 +1123,7 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Sep 11 2001	Add sort magnitude argument to uacread()
  * Sep 19 2001	Drop fitshead.h; it is in wcs.h
  * Sep 21 2001	Add commented-out URL of ESO web catalog server
+ * Nov 20 2001	Change cos(degrad()) to cosdeg()
+ *
+ * Apr 10 2002	Simplify use of magsort
  */

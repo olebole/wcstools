@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
- * March 20, 2001
+ * April 9, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 #ifndef _wcs_h_
@@ -105,40 +105,43 @@ struct WorldCoor {
   int		idpix[2];	/* First pixel to use in image (x, y) */
   int		ndpix[2];	/* Number of pixels to use in image (x, y) */
   struct WorldCoor *wcs;	/* WCS upon which this WCS depends */
+  struct WorldCoor *wcsdep;	/* WCS depending on this WCS */
 };
 
 /* Projections (1-26 are WCSLIB) */
 #define WCS_PIX -1	/* Pixel WCS */
 #define WCS_LIN  0	/* Linear projection */
 #define WCS_AZP  1	/* Zenithal/Azimuthal Perspective */
-#define WCS_TAN  2	/* Gnomonic = Tangent Plane */
-#define WCS_SIN  3	/* Orthographic/synthesis */
-#define WCS_STG  4	/* Stereographic */
-#define WCS_ARC  5	/* Zenithal/azimuthal equidistant */
-#define WCS_ZPN  6	/* Zenithal/azimuthal PolyNomial */
-#define WCS_ZEA  7	/* Zenithal/azimuthal Equal Area */
-#define WCS_AIR  8	/* Airy */
-#define WCS_CYP  9	/* CYlindrical Perspective */
-#define WCS_CAR 10	/* Cartesian */
-#define WCS_MER 11	/* Mercator */
-#define WCS_CEA 12	/* Cylindrical Equal Area */
-#define WCS_CPS 13	/* Conic PerSpective (COP) */
-#define WCS_COD 14	/* COnic equiDistant */
-#define WCS_COE 15	/* COnic Equal area */
-#define WCS_COO 16	/* COnic Orthomorphic */
-#define WCS_BON 17	/* Bonne */
-#define WCS_PCO 18	/* Polyconic */
-#define WCS_GLS 19	/* Sanson-Flamsteed (GLobal Sinusoidal) */
-#define WCS_PAR 20	/* Parabolic */
-#define WCS_AIT 21	/* Hammer-Aitoff */
-#define WCS_MOL 22	/* Mollweide */
-#define WCS_CSC 23	/* COBE quadrilateralized Spherical Cube */
-#define WCS_QSC 24	/* Quadrilateralized Spherical Cube */
-#define WCS_TSC 25	/* Tangential Spherical Cube */
-#define WCS_NCP 26	/* Special case of SIN */
-#define WCS_DSS 27	/* Digitized Sky Survey plate solution */
-#define WCS_PLT 28	/* Plate fit polynomials (SAO) */
-#define WCS_TNX 29	/* Gnomonic = Tangent Plane (NOAO with corrections) */
+#define WCS_SZP  2	/* Zenithal/Azimuthal Perspective */
+#define WCS_TAN  3	/* Gnomonic = Tangent Plane */
+#define WCS_SIN  4	/* Orthographic/synthesis */
+#define WCS_STG  5	/* Stereographic */
+#define WCS_ARC  6	/* Zenithal/azimuthal equidistant */
+#define WCS_ZPN  7	/* Zenithal/azimuthal PolyNomial */
+#define WCS_ZEA  8	/* Zenithal/azimuthal Equal Area */
+#define WCS_AIR  9	/* Airy */
+#define WCS_CYP 10	/* CYlindrical Perspective */
+#define WCS_CAR 11	/* Cartesian */
+#define WCS_MER 12	/* Mercator */
+#define WCS_CEA 13	/* Cylindrical Equal Area */
+#define WCS_COP 14	/* Conic PerSpective (COP) */
+#define WCS_COD 15	/* COnic equiDistant */
+#define WCS_COE 16	/* COnic Equal area */
+#define WCS_COO 17	/* COnic Orthomorphic */
+#define WCS_BON 18	/* Bonne */
+#define WCS_PCO 19	/* Polyconic */
+#define WCS_SFL 20	/* Sanson-Flamsteed (GLobal Sinusoidal) */
+#define WCS_PAR 21	/* Parabolic */
+#define WCS_AIT 22	/* Hammer-Aitoff */
+#define WCS_MOL 23	/* Mollweide */
+#define WCS_CSC 24	/* COBE quadrilateralized Spherical Cube */
+#define WCS_QSC 25	/* Quadrilateralized Spherical Cube */
+#define WCS_TSC 26	/* Tangential Spherical Cube */
+#define WCS_NCP 27	/* Special case of SIN */
+#define WCS_GLS 28	/* Same as SFL */
+#define WCS_DSS 29	/* Digitized Sky Survey plate solution */
+#define WCS_PLT 30	/* Plate fit polynomials (SAO) */
+#define WCS_TNX 31	/* Gnomonic = Tangent Plane (NOAO with corrections) */
 
 /* Coordinate systems */
 #define WCS_J2000	1	/* J2000(FK5) right ascension and declination */
@@ -583,4 +586,7 @@ void wcscstr();		/* Return system string from system code, equinox, epoch */
  * Jan 31 2001	Add wcsinitn(), wcsninitn(), wcsinitc(), and wcsninitc()
  * Feb 20 2001	Add wcs->wcs to main data structure
  * Mar 20 2001	Close unclosed comment in wcsconv() argument list
+ *
+ * Apr  3 2002	Add SZP and second GLS/SFL projection
+ * Apr  9 2002	Add wcs->wcsdep for pointer to WCS depending on this WCS
  */

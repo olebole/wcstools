@@ -14,7 +14,7 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.0.5 of the WCSTools package developed by Doug Mink
+This is version 3.1.0 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 
@@ -56,8 +56,11 @@ in the WCSTools package, including SAOimage when used for WCS work:
      Systems VIII, A.S.P. Conference Series, Vol. 172, 1999, Dave Mehringer,
      Ray Plante, Doug Roberts, eds., pp.  498-501. 
 
-A paper will be presented at the 2001 ADASS conference describing how the
+A paper presented at the 2001 ADASS conference describes how the
 WCSTools package uses the web, among other new features.
+     "WCSTools 3.0: More Tools for Image Astrometry and Catalog Searching",
+     Douglas J. Mink, 2001, to be published in Astronomical Data Analysis
+     Software and Systems XI, whenever it comes out.
 
 Program Descriptions
 
@@ -139,4 +142,4 @@ wcshead	Print basic world coordinate system information on one line per image
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
 
--Doug Mink, SAO, 2001-09-13
+-Doug Mink, SAO, 2002-03-28

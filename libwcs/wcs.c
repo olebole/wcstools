@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** September 12, 2001
+ *** April 9, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -312,39 +312,41 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 
 {
     int i, iproj;
-    int nctype = 30;
-    char ctypes[30][4];
+    int nctype = 32;
+    char ctypes[32][4];
 
     strcpy (ctypes[0], "LIN");
     strcpy (ctypes[1], "AZP");
-    strcpy (ctypes[2], "TAN");
-    strcpy (ctypes[3], "SIN");
-    strcpy (ctypes[4], "STG");
-    strcpy (ctypes[5], "ARC");
-    strcpy (ctypes[6], "ZPN");
-    strcpy (ctypes[7], "ZEA");
-    strcpy (ctypes[8], "AIR");
-    strcpy (ctypes[9], "CYP");
-    strcpy (ctypes[10], "CAR");
-    strcpy (ctypes[11], "MER");
-    strcpy (ctypes[12], "CEA");
-    strcpy (ctypes[13], "COP");
-    strcpy (ctypes[14], "COD");
-    strcpy (ctypes[15], "COE");
-    strcpy (ctypes[16], "COO");
-    strcpy (ctypes[17], "BON");
-    strcpy (ctypes[18], "PCO");
-    strcpy (ctypes[19], "GLS");
-    strcpy (ctypes[20], "PAR");
-    strcpy (ctypes[21], "AIT");
-    strcpy (ctypes[22], "MOL");
-    strcpy (ctypes[23], "CSC");
-    strcpy (ctypes[24], "QSC");
-    strcpy (ctypes[25], "TSC");
-    strcpy (ctypes[26], "NCP");
-    strcpy (ctypes[27], "DSS");
-    strcpy (ctypes[28], "PLT");
-    strcpy (ctypes[29], "TNX");
+    strcpy (ctypes[2], "SZP");
+    strcpy (ctypes[3], "TAN");
+    strcpy (ctypes[4], "SIN");
+    strcpy (ctypes[5], "STG");
+    strcpy (ctypes[6], "ARC");
+    strcpy (ctypes[7], "ZPN");
+    strcpy (ctypes[8], "ZEA");
+    strcpy (ctypes[9], "AIR");
+    strcpy (ctypes[10], "CYP");
+    strcpy (ctypes[11], "CAR");
+    strcpy (ctypes[12], "MER");
+    strcpy (ctypes[13], "CEA");
+    strcpy (ctypes[14], "COP");
+    strcpy (ctypes[15], "COD");
+    strcpy (ctypes[16], "COE");
+    strcpy (ctypes[17], "COO");
+    strcpy (ctypes[18], "BON");
+    strcpy (ctypes[19], "PCO");
+    strcpy (ctypes[20], "SFL");
+    strcpy (ctypes[21], "PAR");
+    strcpy (ctypes[22], "AIT");
+    strcpy (ctypes[23], "MOL");
+    strcpy (ctypes[24], "CSC");
+    strcpy (ctypes[25], "QSC");
+    strcpy (ctypes[26], "TSC");
+    strcpy (ctypes[27], "NCP");
+    strcpy (ctypes[28], "GLS");
+    strcpy (ctypes[29], "DSS");
+    strcpy (ctypes[30], "PLT");
+    strcpy (ctypes[31], "TNX");
 
     if (!strncmp (ctype1, "LONG",4))
 	strncpy (ctype1, "XLON",4);
@@ -400,23 +402,23 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 		wcs->prjcode = i;
 	    }
 
-	/* Handle "obsolete" NCP projection */
+	/* Handle "obsolete" NCP projection (now WCSLIB should be OK)
 	if (wcs->prjcode == WCS_NCP) {
 	    if (wcs->wcsproj == WCS_BEST)
 		wcs->wcsproj = WCS_OLD;
 	    else if (wcs->wcsproj == WCS_ALT)
 		wcs->wcsproj = WCS_NEW;
-	    }
+	    } */
 
-	/* Work around bug in WCSLIB handling of CAR projection */
+	/* Work around bug in WCSLIB handling of CAR projection
 	else if (wcs->prjcode == WCS_CAR) {
 	    if (wcs->wcsproj == WCS_BEST)
 		wcs->wcsproj = WCS_OLD;
 	    else if (wcs->wcsproj == WCS_ALT)
 		wcs->wcsproj = WCS_NEW;
-	    }
+	    } */
 
-	/* Work around bug in WCSLIB handling of COE projection */
+	/* Work around bug in WCSLIB handling of COE projection
 	else if (wcs->prjcode == WCS_COE) {
 	    if (wcs->wcsproj == WCS_BEST)
 		wcs->wcsproj = WCS_OLD;
@@ -424,13 +426,14 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 		wcs->wcsproj = WCS_NEW;
 	    }
 
-	else if (wcs->wcsproj == WCS_BEST)
+	else if (wcs->wcsproj == WCS_BEST) */
+	if (wcs->wcsproj == WCS_BEST)
 	    wcs->wcsproj = WCS_NEW;
 
 	else if (wcs->wcsproj == WCS_ALT)
 	    wcs->wcsproj = WCS_OLD;
 
-	if (wcs->wcsproj == WCS_OLD && (
+	/* if (wcs->wcsproj == WCS_OLD && (
 	    wcs->prjcode != WCS_STG && wcs->prjcode != WCS_AIT &&
 	    wcs->prjcode != WCS_MER && wcs->prjcode != WCS_GLS &&
 	    wcs->prjcode != WCS_ARC && wcs->prjcode != WCS_TAN &&
@@ -438,7 +441,7 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	    wcs->prjcode != WCS_PIX && wcs->prjcode != WCS_LIN &&
 	    wcs->prjcode != WCS_CAR && wcs->prjcode != WCS_COE &&
 	    wcs->prjcode != WCS_NCP))
-	    wcs->wcsproj = WCS_NEW;
+	    wcs->wcsproj = WCS_NEW; */
 
 	/* Handle NOAO corrected TNX as uncorrected TAN if oldwcs is set */
 	if (wcs->wcsproj == WCS_OLD && wcs->prjcode == WCS_TNX) {
@@ -822,7 +825,7 @@ double crota;		/* Rotation counterclockwise in degrees */
 	    }
 	else if (wcs->cdelt[0] > 0 && wcs->cdelt[1] > 0) {
 	    wcs->imflip = 1;
-	    wcs->imrot = wcs->rot;
+	    wcs->imrot = -wcs->rot;
 	    wcs->pa_north = wcs->imrot + 90.0;
 	    if (wcs->pa_north > 180.0) wcs->pa_north = wcs->pa_north - 360.0;
 	    wcs->pa_east = wcs->rot;
@@ -2112,6 +2115,7 @@ char	*coorsys;	/* Input world coordinate system:
 double	*xpix,*ypix;	/* Image coordinates in pixels */
 int	*offscl;	/* 0 if within bounds, else off scale */
 {
+    struct WorldCoor *depwcs;	/* Dependent WCS structure */
     double xp, yp, xpi, ypi;
     double eqin, eqout;
     int sysin;
@@ -2199,6 +2203,14 @@ int	*offscl;	/* 0 if within bounds, else off scale */
     wcs->ypos = ypos;
     wcs->xpix = *xpix;
     wcs->ypix = *ypix;
+
+    /* If this WCS is converted to another WCS rather than pixels, convert now */
+    if (wcs->wcsdep != NULL) {
+	xpos = *xpix;
+	ypos = *ypix;
+	depwcs = wcs->wcsdep;
+	wcsc2pix (wcs->wcsdep, xpos, ypos, depwcs->radecin, xpix, ypix, offscl);
+	}
     return;
 }
 
@@ -2661,4 +2673,11 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Mar 20 2001	Add braces to avoid ambiguity in if/else groupings
  * Mar 22 2001	Free WCS structure in wcsfree even if it is not filled
  * Sep 12 2001	Fix bug which omitted tab in pix2wcst() galactic coord output
+ *
+ * Mar  7 2002	Fix bug which gave wrong pa's and rotation for reflected RA
+ *		(but correct WCS conversions!)
+ * Mar 28 2002	Add SZP projection
+ * Apr  3 2002	Synchronize projection types with other subroutines
+ * Apr  3 2002	Drop special cases of projections
+ * Apr  9 2002	Implement inversion of multiple WCSs in wcsc2pix()
  */

@@ -1,5 +1,5 @@
 /* File keyhead.c
- * June 8, 2000
+ * February 5, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <math.h>
 #include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
 
 #define MAXKWD 50
 #define MAXFILES 1000
@@ -27,6 +28,8 @@ static int replace = 0;		/* replace value of first keyword with second */
 static int keyset = 0;
 static int histset = 0;
 static int version = 0;		/* If 1, print only program name and version */
+static int logfile = 0;
+static int nproc = 0;
 
 
 main (ac, av)
@@ -76,6 +79,10 @@ char **av;
 	
 		case 'k':	/* set KEYHEAD keyword */
 		    keyset++;
+		    break;
+	
+		case 'l':	/* Log files changed */
+		    logfile++;
 		    break;
 	
 		case 'n':	/* write to new file */
@@ -214,6 +221,8 @@ int	nkwd;		/* Number of keywords for which to set values */
 char	*kwd[];		/* Names and values of those keywords */
 
 {
+    float rnum;
+    double dnum;
     char *header;	/* FITS image header */
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
@@ -222,9 +231,11 @@ char	*kwd[];		/* Names and values of those keywords */
     int lext, lroot, lhist;
     char *image, *imext, *imext1;
     char newname[128];
+    char oldvalue[64];
+    char newvalue[32];
     char *ext, *fname;
     char *kw, *kwv, *kwl, *kwn;
-    char *value, *q, *line;
+    char *value, *q, *line, *ccol;
     char echar;
     int ikwd, lkwd, lkwn;
     int squote = 39;
@@ -232,6 +243,7 @@ char	*kwd[];		/* Names and values of those keywords */
     char cval[24];
     int fdr, fdw, ipos, nbr, nbw, naxis, nchange;
     char history[72];
+    char comment[72];
     char *endchar;
     char *ltime;
 
@@ -315,7 +327,35 @@ char	*kwd[];		/* Names and values of those keywords */
 	    if (q == NULL)
 		q = strchr (line, dquote);
 	    value = hgetc (header, kwn);
-	    if (q != NULL && q < line+80) {
+
+	    /* Some special replacements to standardize 2dF data */
+	    if (!strcmp (kwn, "UTDATE") && !strcmp (kwd[ikwd], "DATE-OBS")) {
+		if ((ccol = strchr (value, ':')) != NULL)
+		    *ccol = '-';
+		if ((ccol = strchr (value, ':')) != NULL)
+		    *ccol = '-';
+		hputs (header, kwd[ikwd], value);
+		if (verbose)
+		    printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, value);
+		}
+	    else if (!strcmp (kwn, "OBSRA") && !strcmp (kwd[ikwd], "RA")) {
+		rnum = atof (value);
+		dnum = raddeg (rnum);
+		ra2str (newvalue, 32, dnum, 3);
+		hputs (header, kwd[ikwd], newvalue);
+		if (verbose)
+		    printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, newvalue);
+		}
+	    else if (!strcmp (kwn, "OBSDEC") && !strcmp (kwd[ikwd], "DEC")) {
+		rnum = atof (value);
+		dnum = raddeg (rnum);
+		dec2str (newvalue, 32, dnum, 3);
+		hputs (header, kwd[ikwd], newvalue);
+		if (verbose)
+		    printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, newvalue);
+		}
+
+	    else if (q != NULL && q < line+80) {
 		hputs (header, kwd[ikwd], value);
 		if (verbose)
 		    printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, value);
@@ -331,7 +371,15 @@ char	*kwd[];		/* Names and values of those keywords */
 	else {
 	    if ((line = ksearch (header, kwd[ikwd])) == NULL)
 		continue;
-	    hchange (header, kwd[ikwd], kwn);
+	    if (!strcmp (kwn, "SIMPLE")) {
+		hgets (header, kwd[ikwd], 32, oldvalue);
+		sprintf (comment, " %s was %s", kwd[ikwd], oldvalue);
+		hchange (header, kwd[ikwd], kwn);
+		hputl (header, kwn, 1);
+		hputcom (header, kwn, comment);
+		}
+	    else
+		hchange (header, kwd[ikwd], kwn);
 	    if (verbose)
 		printf ("%s => %s\n", kwd[ikwd], kwn);
 	    }
@@ -475,6 +523,13 @@ char	*kwd[];		/* Names and values of those keywords */
 	    free (image);
 	    }
 	}
+
+    /* Log the processing of this file, if requested */
+    if (logfile) {
+	nproc++;
+	fprintf (stderr, "%d: %s processed.\r", nproc, newname);
+	}
+
     free (header);
     return;
 }
@@ -504,4 +559,8 @@ char	*kwd[];		/* Names and values of those keywords */
  *
  * Mar 22 2000	Use lt2fd() instead of getltime()
  * Jun  8 2000	If no files or keywords specified, say so
+ *
+ * Jan 30 2002	If changing keyword name to SIMPLE, set to T
+ * Feb  4 2002	Add time and angle conversions for 2dF keyword changes
+ * Feb  5 2002	Add -l command to log files as they are processed
  */

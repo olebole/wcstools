@@ -1,5 +1,5 @@
 /*** File libwcs/imgetwcs.c
- *** September 19, 2001
+ *** October 19, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (remotely based on UIowa code)
@@ -35,8 +35,9 @@ static double xref0 = -99999.0;		/* Reference pixel X coordinate */
 static double yref0 = -99999.0;		/* Reference pixel Y coordinate */
 static int ptype0 = -1;			/* Projection type to fit */
 static int  nctype = 28;		/* Number of possible projections */
-static char ctypes[28][4];		/* 3-letter codes for projections */
+static char ctypes[32][4];		/* 3-letter codes for projections */
 static int usecdelt = 0;		/* Use CDELT if 1, else CD matrix */
+static char *dateobs0 = NULL;		/* Initial DATE-OBS value in FITS date format */
 
 /* Set a nominal world coordinate system from image header info.
  * If the image center is not FK5 (J2000) equinox, convert it
@@ -207,13 +208,17 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	hputnr8 (header, "CROTA2", 5, rot0);
 	}
 
+    /* Set observation date for epoch, if it is there */
+    if (dateobs0 != NULL)
+	hputs (header, "DATE-OBS", dateobs0);
+
     /* Initialize WCS structure from FITS header */
     wcs = wcsinit (header);
 
     /* If incomplete WCS in header, drop out */
     if (nowcs (wcs)) {
 	setwcsfile (filename);
-	wcserr();
+	/* wcserr(); */
 	if (verbose)
 	    fprintf (stderr,"Insufficient information for initial WCS\n");
 	return (NULL);
@@ -429,34 +434,38 @@ char*	ptype;
     int i;
 
     /* Set up array of projection types */
-    strcpy (ctypes[0], "DSS");
+    strcpy (ctypes[0], "LIN");
     strcpy (ctypes[1], "AZP");
-    strcpy (ctypes[2], "TAN");
-    strcpy (ctypes[3], "SIN");
-    strcpy (ctypes[4], "STG");
-    strcpy (ctypes[5], "ARC");
-    strcpy (ctypes[6], "ZPN");
-    strcpy (ctypes[7], "ZEA");
-    strcpy (ctypes[8], "AIR");
-    strcpy (ctypes[9], "CYP");
-    strcpy (ctypes[10], "CAR");
-    strcpy (ctypes[11], "MER");
-    strcpy (ctypes[12], "CEA");
-    strcpy (ctypes[13], "COP");
-    strcpy (ctypes[14], "COD");
-    strcpy (ctypes[15], "COE");
-    strcpy (ctypes[16], "COO");
-    strcpy (ctypes[17], "BON");
-    strcpy (ctypes[18], "PCO");
-    strcpy (ctypes[19], "GLS");
-    strcpy (ctypes[20], "PAR");
-    strcpy (ctypes[21], "AIT");
-    strcpy (ctypes[22], "MOL");
-    strcpy (ctypes[23], "CSC");
-    strcpy (ctypes[24], "QSC");
-    strcpy (ctypes[25], "TSC");
-    strcpy (ctypes[26], "NCP");
-    strcpy (ctypes[27], "TNX");
+    strcpy (ctypes[2], "SZP");
+    strcpy (ctypes[3], "TAN");
+    strcpy (ctypes[4], "SIN");
+    strcpy (ctypes[5], "STG");
+    strcpy (ctypes[6], "ARC");
+    strcpy (ctypes[7], "ZPN");
+    strcpy (ctypes[8], "ZEA");
+    strcpy (ctypes[9], "AIR");
+    strcpy (ctypes[10], "CYP");
+    strcpy (ctypes[11], "CAR");
+    strcpy (ctypes[12], "MER");
+    strcpy (ctypes[13], "CEA");
+    strcpy (ctypes[14], "COP");
+    strcpy (ctypes[15], "COD");
+    strcpy (ctypes[16], "COE");
+    strcpy (ctypes[17], "COO");
+    strcpy (ctypes[18], "BON");
+    strcpy (ctypes[19], "PCO");
+    strcpy (ctypes[20], "SFL");
+    strcpy (ctypes[21], "PAR");
+    strcpy (ctypes[22], "AIT");
+    strcpy (ctypes[23], "MOL");
+    strcpy (ctypes[24], "CSC");
+    strcpy (ctypes[25], "QSC");
+    strcpy (ctypes[26], "TSC");
+    strcpy (ctypes[27], "NCP");
+    strcpy (ctypes[28], "GLS");
+    strcpy (ctypes[29], "DSS");
+    strcpy (ctypes[30], "PLT");
+    strcpy (ctypes[31], "TNX");
 
     ptype0 = -1;
     for (i = 0; i < nctype; i++) {
@@ -465,6 +474,13 @@ char*	ptype;
 	}
     return;
 }
+
+void
+setdateobs (dateobs)
+char *dateobs;
+{ dateobs0 = calloc (strlen (dateobs), sizeof (char));
+  strcpy (dateobs0, dateobs);
+  return; }
 
 
 /* Feb 29 1996	New program
@@ -535,4 +551,7 @@ char*	ptype;
  *
  * Jan 11 2001	All printing to stderr
  * Sep 19 2001	Drop fitshead.h; it is in wcs.h
+ * Oct 19 2001	Allow DATE-OBS to be set
+ *
+ * Apr  3 2002	Update projection types to match list in wcs.h and wcs.c
  */

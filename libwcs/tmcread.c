@@ -1,5 +1,5 @@
 /*** File libwcs/tmcread.c
- *** September 18, 2001
+ *** February 13, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -19,7 +19,7 @@
 
 /* pathname of 2MASS point source catalog root directory
    or catalog search engine URL */
-char tmccd[64]="/data/mc4/2MASS";
+char tmccd[64]="/data/astrocat/2MASS";
 static double *gdist;	/* Array of distances to stars */
 static int ndist = 0;
 static int linedump = 0;
@@ -32,6 +32,7 @@ struct StarCat *tmcopen();
 void tmcclose();
 static int tmcstar();
 static int tmcsize();
+static int tmcsdec();
 
 /* TMCREAD -- Read 2MASS point source catalog stars from CDROM */
 
@@ -99,13 +100,13 @@ int	nlog;		/* 1 for diagnostics */
     /* If pathname is a URL, search and return */
     if ((str = getenv("TMC_PATH")) != NULL ) {
 	if (!strncmp (str, "http:",5)) {
-	    return (webread (str,"tmcsc",distsort,cra,cdec,dra,ddec,drad,
+	    return (webread (str,"tmc",distsort,cra,cdec,dra,ddec,drad,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	    }
 	}
     if (!strncmp (tmccd, "http:",5)) {
-	return (webread (tmccd,"tmcsc",distsort,cra,cdec,dra,ddec,drad,
+	return (webread (tmccd,"tmc",distsort,cra,cdec,dra,ddec,drad,
 			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			 gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
@@ -174,7 +175,7 @@ int	nlog;		/* 1 for diagnostics */
 	if (drad != 0.0)
 	    printf ("radsec	%.1f\n", drad*3600.0);
 	else {
-	    printf ("drasec	%.1f\n", dra*3600.0* cos(degrad(cdec)));
+	    printf ("drasec	%.1f\n", dra*3600.0* cosdeg (cdec));
 	    printf ("ddecsec	%.1f\n", ddec*3600.0);
 	    }
 	printf ("radecsys	%s\n", cstr);
@@ -416,12 +417,12 @@ int	nlog;		/* 1 for diagnostics */
     /* If pathname is a URL, search and return */
     if ((str = getenv("TMC_PATH")) != NULL ) {
 	if (!strncmp (str, "http:",5)) {
-	    return (webrnum (str,"tycho2",nstars,sysout,eqout,epout,
+	    return (webrnum (str,"tmc",nstars,sysout,eqout,epout,
 			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	    }
 	}
     if (!strncmp (tmccd, "http:",5)) {
-	return (webrnum (tmccd,"tycho2",nstars,sysout,eqout,epout,
+	return (webrnum (tmccd,"tmc",nstars,sysout,eqout,epout,
 			 gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
 
@@ -889,4 +890,9 @@ char	*filename;	/* Name of file for which to find size */
  * Sep 17 2001	Print line from catalog if nlog is < 0
  * Sep 17 2001	Flag bad magnitudes by adding 100 to them
  * Sep 18 2001	Fix bug in magnitudes returned if not distance sorted
+ * Nov 20 2001	Change cos(degrad()) to cosdeg()
+ * Nov 29 2001	Declare undeclared subroutine tmcsdec
+ * Dec  3 2001	Change default catalog directory to /data/astrocat/2MASS
+ *
+ * Feb 13 2002	Fix catalog name in web access
  */

@@ -1,0 +1,3 @@
+.TP
+.B \-s <code>
+Sort by RA, Dec, Mag(n), X, or Y

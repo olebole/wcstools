@@ -1,3 +1,67 @@
+Version 3.1.0 (April 12, 2002)
+Implement WCSLIB 2.9
+scat: Add web query sr= option for search radius in degrees
+scat: Fix implementation of velocities in TDC binary catalogs
+imcat,scat,imwcs,immatch: select any magnitude for sorting and limits (number or letter)
+imcat: Fix bug so characters other than circles can be plotted
+binread.c: Fix object name and velocity code
+ty2read.c: Fix bug so magnitudes limits are used correctly
+wcslib.c: Fix bug in WCSLIB 2.8.2 wcs.c code
+wcsinit.c: Support PV entry of constants and PCi_j rotation matrices
+wcs.c and wcsinit.c: Support inversion of multiple WCSs
+hget.c: Add hgetri4c(), hgetr8c(), and hgetsc() for multiple WCS handling
+edhead.c, fixpix.c, addpix.c, setpix.c, subpix.c, conpix.c, gettab.c,
+newfits.c, imstack.c, imextract.c, remap.c, getcol.c, and getdate.c:
+getcol: Add -g for medians of absolute values of selected columns,
+-j for means of absolute values of selected columns,  -q for mean of
+selected columns added in quadrature, and -x for ignorable value.
+tnxpos.c: Fix bug parsing parameter strings with ddd. in them
+Fix minor bugs found by True Unix C compiler
+
+Version 3.0.7 (March 4, 2002)
+gethead: Add -l option to return values to end of line
+gettab:  Improve line range implementation
+imcat and scat: Print spectral type for TDC format catalogs, if present
+keyhead: Add time and angle conversions for 2dF keyword changes and
+sethead and keyhead: Add -l command to log files as they are processed
+catutil.c: Fix agets() to work with keywords at start of line
+catutil.c: Add option in agets() to return value to end of line or /
+tmcread.c: Fix catalog name in web access
+wcscon.c: Fix precession units problem in ecl2fk5() and fk52ecl()
+wcsinit.c: Add XPIXSIZE/YPIXSIZE (KPNO) as additional image scale keywords
+
+Version 3.0.6 (January 24, 2002)
+imwcs, immatch: Allow arbitrary argument order on command line
+imwcs: After first pass, use WCS and tolerance for matching, if possible
+imwcs: set minimum number of matches to cut matching loop (minmatch=value)
+       (default 40)
+       and minimum number of stars for WCS fit (minstars=value) (default 3)
+imcat: Add -y to set epoch of image
+scat, imcat, skycoor: accept fractional year or FITS date for epoch
+scat: If RA search size is given, divide by cos(dec) for true arcseconds
+scat, imcat, imwcs, immatch: Improve error reporting
+getcol:  Add sum, mean, sigma for hh:mm:ss and dd:mm:ss entries
+  Add -e option to print medians of values in selected columns
+  Add -f option to print ranges of values in selected columns
+  Add -p option to print only sum, mean, sigma, or range, not entries
+  Ignore non-numeric values for sums, means, ranges, and medians
+gettab: Fix bugs to deal with conditions correctly
+skycoor: Add -o argument to offset coordinates by arcseconds
+xy2sky: Add option to prepend RA and Dec to input tab table (-a -t) for output
+conpix: Use random() instead of drand48() for portability
+imrot, imwcs, immatch, imstar: Fix rotation of 8-bit images
+imstar: Add istat=0 option to avoid recomputing noise; improve code
+sethead: Add options to add comments to keywords from files and command line
+sethead: Allow use of stdin for input of keyword assignments
+sethead: Add -s to set character used for spaces in argument strings
+wcsinit.c: Use WCSDIM for number of axes if NAXIS is zero or absent
+ctgread.c: Fix Tycho-2 call argument error so scat, imcat, imwcs, immatch work
+matchstar.c: Try matching with current WCS before trying all possible offsets.
+uacread.c, gscread.c: Include math.h
+lin.c: Include stdlib.h instead of malloc.h for portability
+imio.c: Add 8-bit to 8-bit transfers to movepix()
+tabread.c: Fix initialization problems in header reading subroutine tabhgetc()
+
 Version 3.0.5 (September 27, 2001)
 Implement WCSLIB 2.7
 Fix bugs in tabread() which didn't appear on Solaris, but did on Linux and Alpha Unix

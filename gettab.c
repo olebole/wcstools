@@ -1,5 +1,5 @@
 /* File gettab.c
- * June 29, 2001
+ * April 10, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -35,11 +35,13 @@ static int printhead = 0;
 static int assign = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int nlines = 0;
-static int *keeplines;		/* List of lines to keep if nlines > 0 */
-static int ncond=0;             /* Number of keyword conditions to check */
-static int condand=1;           /* If 1, AND comparisons, else OR */
-static char **cond;             /* Conditions to check */
-static char **ccond;            /* Condition characters */
+static int nkeep = 0;
+static int *keeplines;		/* List of lines to keep if nkeep > 0 */
+static int ncond=0;		/* Number of keyword conditions to check */
+static int condand=1;		/* If 1, AND comparisons, else OR */
+static char **cond;		/* Conditions to check */
+static char **ccond;		/* Comparison characters */
+static char *tcond;		/* Condition character */
 struct TabTable *tabtable;
 
 main (ac, av)
@@ -63,12 +65,15 @@ char **av;
     int ikwd, lkwd, i;
     int lfield;
     char *kw1;
+    char *cstr, *nstr;
     char string[80];
-    int icond,ncond;
+    int icond;
     char *vali, *calias, *valeq, *valgt, *vallt;
     char *ranges = NULL;
     char *temp;
     int nldef = 1;
+    int lstr;
+    double dnum;
     struct Range *range; /* Range of sequence numbers to list */
 
     /* Check for help or version command first */
@@ -82,6 +87,7 @@ char **av;
 
     cond = (char **)calloc (maxncond, sizeof(char *));
     ccond = (char **)calloc (maxncond, sizeof(char *));
+    tcond = (char *)calloc (maxncond, sizeof(char));
 
     nkwd = 0;
     ncond = 0;
@@ -186,13 +192,13 @@ char **av;
 	    continue;
 	    }
 
-	/* Record condition */
+	/* Record condition
 	else if (strchr (*av, '=') || strchr (*av, '<') || strchr (*av, '>')) {
 	    cond[ncond] = *av;
 	    if (ncond < MAXCOND)
 		ncond++;
 	    continue;
-	    }
+	    } */
 
 	/* Record column name with output alias */
 	else if (strchr (*av, '@')) {
@@ -226,18 +232,48 @@ char **av;
 		 strchr (*av, '>') != NULL || strchr (*av, '<') != NULL ) {
 	    if (ncond >= maxncond) {
 		maxncond = maxncond * 2;
-		cond = (char **)realloc((void *)cond, maxncond*sizeof(void *));
-		ccond = (char **)realloc((void *)cond, maxncond*sizeof(void *));
+		cond = (char **)realloc((void *)cond,maxncond*sizeof(void *));
+		ccond = (char **)realloc((void *)ccond,maxncond*sizeof(void *));
+		tcond = (char *)realloc((void *)tcond,maxncond*sizeof(char));
 		}
 	    cond[ncond] = *av;
-	    ccond[ncond] = strchr (*av, '=');
-	    if (ccond[ncond] == NULL)
-		ccond[ncond] = strchr (*av, '#');
-	    if (ccond[ncond] == NULL)
-		ccond[ncond] = strchr (*av, '>');
-	    if (ccond[ncond] == NULL)
-		ccond[ncond] = strchr (*av, '<');
-	    ncond++;
+	    cstr = strchr (*av, '=');
+	    if (cstr != NULL)
+		tcond[ncond] = '=';
+	    else {
+		cstr = strchr (*av, '#');
+		if (cstr != NULL)
+		    tcond[ncond] = '#';
+		else {
+		    cstr = strchr (*av, '>');
+		    if (cstr != NULL)
+			tcond[ncond] = '>';
+		    else {
+			cstr = strchr (*av, '<');
+			if (cstr != NULL)
+			    tcond[ncond] = '<';
+			else
+			    tcond[ncond] = (char) 0;
+			}
+		    }
+		}
+	    if (tcond[ncond]) {
+		cstr[0] = (char) 0;
+		cstr++;
+		strclean (cstr);
+		if (strchr (cstr, ':')) {
+		    dnum = str2dec (cstr);
+		    nstr = (char *) calloc (32, sizeof(char));
+		    num2str (nstr, dnum, 0, 7);
+		    ccond[ncond] = nstr;
+		    }
+		else {
+		    lstr = strlen (cstr);
+		    ccond[ncond] = (char *) calloc (lstr+2, sizeof(char));
+		    strcpy (ccond[ncond], cstr);
+		    }
+		ncond++;
+		}
 	    }
 
 	/* Record column name */
@@ -264,9 +300,9 @@ char **av;
     /* Decode ranges */
     if (ranges != NULL) {
 	range = RangeInit (ranges, nldef);
-	nlines = rgetn (range);
-	keeplines = (int *) calloc (1, nlines);
-	for (i = 0; i < nlines; i++)
+	nkeep = rgetn (range);
+	keeplines = (int *) calloc (1, nkeep);
+	for (i = 0; i < nkeep; i++)
 	    keeplines[i] = rgeti4 (range);
 	}
 
@@ -276,7 +312,7 @@ char **av;
 	if (printhead || tabout) {
 
 	    /* Open the input tab table */
-	    if ((tabtable = tabopen (name, 0)) == NULL) {
+	    if ((tabtable = tabopen (fn[0], 0)) == NULL) {
 		fprintf (stderr,"%s\n", gettaberr());
 		return (1);
 		}
@@ -305,9 +341,11 @@ char **av;
 		    }
 		else if (tabout) {
 		    if (condand || icond == 0)
-			printf ("condition	%s\n", cond[icond]);
+			printf ("condition	%s %c %s\n",
+				cond[icond], tcond[icond], ccond[icond]);
 		    else
-			printf ("condition	or %s\n", cond[icond]);
+			printf ("condition	or %s %c %s\n",
+				cond[icond], tcond[icond], ccond[icond]);
 		    }
 		}
 
@@ -399,7 +437,7 @@ char **av;
 
 	    /* Open the input tab table */
 	    if (strcasecmp (name, "stdin")) {
-		if ((tabtable = tabopen (name, 0)) == NULL) {
+		if ((tabtable = tabopen (fn[0], 0)) == NULL) {
 		    fprintf (stderr,"%s\n", gettaberr());
 		    return (1);
 		    }
@@ -429,9 +467,11 @@ char **av;
 		    }
 		else if (tabout) {
 		    if (condand || icond == 0)
-			printf ("condition	%s\n", cond[icond]);
+			printf ("condition	%s %c %s\n",
+				cond[icond], tcond[icond], ccond[icond]);
 		    else
-			printf ("condition	or %s\n", cond[icond]);
+			printf ("condition	or %s %c %s\n",
+				cond[icond], tcond[icond], ccond[icond]);
 		    }
 		}
 
@@ -458,10 +498,15 @@ char **av;
 	    PrintValues (fn[ifile],nkwd,kwd,alias);
 	}
 
-    if (ccond != NULL)
+    if (ccond != NULL) {
+	for (i = 0; i < ncond; i++)
+	    free (ccond[i]);
 	free (ccond);
+	}
     if (cond != NULL)
 	free (cond);
+    if (tcond != NULL)
+	free (tcond);
     return (0);
 }
 
@@ -502,7 +547,6 @@ char	*alias[]; /* Output names of keywords if different from input */
     int drop;
     int jval, jcond, icond, i, lstr;
     double dval, dcond, dnum;
-    char tcond;
     char fnform[8];
     char string[80];
     char *filename;
@@ -517,6 +561,13 @@ char	*alias[]; /* Output names of keywords if different from input */
     int *col;
     int *ccol;
     int ntok;
+    int *nextkeep;
+    int lastkeep;
+
+    if (nkeep > 0) {
+	nextkeep = keeplines;
+	lastkeep = keeplines[nkeep - 1];
+	}
 
     /* Figure out conditions first, separating out keywords to check */
 
@@ -552,12 +603,8 @@ char	*alias[]; /* Output names of keywords if different from input */
     if (ncond > 0) {
 	ccol = (int *) calloc (ncond, sizeof (int));
 	ccol[0] = 0;
-	for (icond = 0; icond < ncond; icond++) {
-	    tcond = *ccond[icond];
-	    *ccond[icond] = (char) 0;
-            ccol[icond] = tabcol (tabtable, ccond[icond]);
-	    *ccond[icond] = tcond;
-	    }
+	for (icond = 0; icond < ncond; icond++)
+            ccol[icond] = tabcol (tabtable, cond[icond]);
 	}
 
     /* Find column numbers for column names to speed up extraction */
@@ -576,34 +623,26 @@ char	*alias[]; /* Output names of keywords if different from input */
 	    /* Check line number if extracting specific lines */
 	    iline++;
 	    drop = 0;
-	    if (nlines > 0) {
-		keep = 0;
-		for (i = 0; i < nlines; i++) {
-		    if (iline == keeplines[i])
-			keep = 1;
+	    if (nkeep > 0) {
+		if (iline != *nextkeep)
+		    pass = 0;
+		else if (*nextkeep < lastkeep) {
+		    pass = 1;
+		    nextkeep++;
 		    }
-		if (!keep)
-		continue;
 		}
+	    else
+		pass = 0;
 
 	    /* Check conditions */
 	    ntok = setoken (&tokens, line, "tab");
-	    pass = 0;
 	    if (ncond > 0) {
 		for (icond = 0; icond < ncond; icond++) {
 		    if (condand)
 			pass = 0;
 
 		/* Extract test value from comparison string */
-		tcond = *ccond[icond];
-		*ccond[icond] = (char) 0;
-		cstr = ccond[icond]+1;
-		if (strchr (cstr, ':')) {
-		    dnum = str2dec (cstr);
-		    num2str (numstr, dnum, 0, 7);
-		    cstr = numstr;
-		    }
-		strclean (cstr);
+		cstr = ccond[icond];
 
 		/* Read comparison value from tab table */
 		if (tabgetc (&tokens, ccol[icond], cvalue, 64))
@@ -618,47 +657,52 @@ char	*alias[]; /* Output names of keywords if different from input */
 
 		/* Compare floating point numbers */
 		if (isnum (cstr) == 2 && isnum (cval)) {
-		    *ccond[icond] = tcond;
 		    dcond = atof (cstr);
 		    dval = atof (cval);
-		    if (tcond == '=' && dval == dcond)
+		    if (tcond[icond] == '=' && dval == dcond)
 			pass = 1;
-		    if (tcond == '#' && dval != dcond)
+		    else if (tcond[icond] == '#' && dval != dcond)
 			pass = 1;
-		    if (tcond == '>' && dval > dcond)
+		    else if (tcond[icond] == '>' && dval > dcond)
 			pass = 1;
-		    if (tcond == '<' && dval < dcond)
+		    else if (tcond[icond] == '<' && dval < dcond)
 			pass = 1;
 		    }
 
-	    /* Compare integers */
-	    else if (isnum (cstr) == 1 && isnum (cval)) {
-		*ccond[icond] = tcond;
-		jcond = atoi (cstr);
-		jval = atoi (cval);
-		if (tcond == '=' && jval == jcond)
-		    pass = 1;
-		if (tcond == '#' && jval != jcond)
-		    pass = 1;
-		if (tcond == '>' && jval > jcond)
-		    pass = 1;
-		if (tcond == '<' && jval < jcond)
-		    pass = 1;
-		}
+		/* Compare integers */
+		else if (isnum (cstr) == 1 && isnum (cval)) {
+		    jcond = atoi (cstr);
+		    jval = atoi (cval);
+		    if (tcond[icond] == '=' && jval == jcond)
+			pass = 1;
+		    else if (tcond[icond] == '#' && jval != jcond)
+			pass = 1;
+		    else if (tcond[icond] == '>' && jval > jcond)
+			pass = 1;
+		    else if (tcond[icond] == '<' && jval < jcond)
+			pass = 1;
+		    }
 
 		/* Compare strings (only equal or not equal */
 		else {
-		    *ccond[icond] = tcond;
-		    if (tcond == '=' && !strcmp (cstr, cval))
+		    if (tcond[icond] == '=' && !strcmp (cstr, cval))
 			pass = 1;
-		    if (tcond == '#' && strcmp (cstr, cval))
+		    else if (tcond[icond] == '#' && strcmp (cstr, cval))
 			pass = 1;
 		    }
 		if (condand && !pass)
 		    break;
 		}
-	    if (!pass)
+	    if (!pass) {
+		line = strchr (line+1, newline);
+		if (line == NULL)
+		    break;
+		if (strlen (line) < 1)
+		    break;
+		if (*++line == (char) 0)
+		    break;
 		continue;
+		}
 	    }
 
 	/* Extract desired columns */
@@ -723,6 +767,8 @@ char	*alias[]; /* Output names of keywords if different from input */
 	if (strlen (line) < 1)
 	    break;
 	if (*++line == (char) 0)
+	    break;
+	if (nkeep > 0 && *nextkeep == lastkeep)
 	    break;
 	}
 
@@ -813,4 +859,8 @@ char *string;
  * Jun 11 2001	Add buffer size argument to tabopen()
  * Jun 18 2001	Use token parsing to speed column extraction
  * Jun 29 2001	Open stdin only once
+ * Oct 10 2001	Fix bugs in condition handling
+ *
+ * Feb 21 2002	Improve line range implementation
+ * Apr 10 2002	Fix bug dealing with ranges
  */

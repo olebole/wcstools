@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** September 19, 2001
+ *** March 26, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -91,6 +91,7 @@ int	nlog;
     int imag;
     char *objname;
     int lname;
+    int nmag;		/* Real number of magnitudes per entry (- rv) */
     int jstar;
     int nstar;
     double mag;
@@ -100,6 +101,7 @@ int	nlog;
     int istar;
     int isp;
     int verbose;
+    int mrv;
     char cstr[16];
     char str[128];
 
@@ -233,6 +235,13 @@ int	nlog;
     else
 	rwrap = 0;
 
+    if (sc->entrv > 0) {
+	nmag = sc->nmag - 1;
+	mrv = nmag;
+	}
+    else
+	nmag = sc->nmag;
+
     /* If output RA range includes zero, set flag */
     if (ra1 > ra2)
 	wrap = 1;
@@ -280,10 +289,11 @@ int	nlog;
 
 	    /* Radial velocity */
 	    if (sc->entrv > 0)
-		star->xmag[sc->nmag-1] = star->radvel;
+		star->xmag[mrv] = star->radvel;
 
 	    /* Magnitude */
-	    mag = star->xmag[magsort];
+	    if (sc->entmag1 > 0)
+		mag = star->xmag[magsort];
 
 	    /* Spectral Type */
 	    isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
@@ -316,7 +326,7 @@ int	nlog;
 			}
 		    tpeak[nstar] = isp;
 		    tdist[nstar] = dist;
-		    if (tobj != NULL) {
+		    if (sc->ncobj > 0 && tobj != NULL) {
 			lname = strlen (star->objname) + 1;
 			objname = (char *)calloc (lname, 1);
 			strcpy (objname, star->objname);
@@ -349,7 +359,7 @@ int	nlog;
 			    }
 			tpeak[farstar] = isp;
 			tdist[farstar] = dist;
-			if (tobj != NULL) {
+			if (sc->ncobj > 0 && tobj != NULL) {
 			    free ((void *)tobj[farstar]);
 			    lname = strlen (star->objname) + 1;
 			    objname = (char *)calloc (lname, 1);
@@ -383,7 +393,7 @@ int	nlog;
 			}
 		    tpeak[faintstar] = isp;
 		    tdist[faintstar] = dist;
-		    if (tobj != NULL) {
+		    if (sc->ncobj > 0 && tobj != NULL) {
 			free ((void *)tobj[faintstar]);
 			lname = strlen (star->objname) + 1;
 			objname = (char *)calloc (lname, 1);
@@ -476,6 +486,7 @@ int	nlog;
     struct Star *star;
     char str[128];
     int binset;
+    int mrv, nmag;
 
     nstar = 0;
     starcat = binopen (bincat);
@@ -510,6 +521,13 @@ int	nlog;
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
     star->num = 0.0;
+    if (starcat->entrv > 0) {
+	nmag = starcat->nmag - 1;
+	mrv = nmag;
+	}
+    else
+	nmag = starcat->nmag;
+    
 
     /* Loop through star list */
     for (jnum = 0; jnum < nnum; jnum++) {
@@ -577,16 +595,18 @@ int	nlog;
 
 	/* Radial velocity, if present */
 	if (starcat->entrv > 0)
-	    star->xmag[starcat->nmag - 1] = star->radvel;
+	    tmag[mrv][nstar] = star->radvel;
 
 	/* Magnitudes */
-	for (imag = 0; imag < starcat->nmag; imag++) {
-	    if (tmag[imag] != NULL)
-		tmag[imag][nstar] = star->xmag[imag];
+	if (nmag > 0) {
+	    for (imag = 0; imag < nmag; imag++) {
+		if (tmag[imag] != NULL)
+		    tmag[imag][nstar] = star->xmag[imag];
+		}
 	    }
 
 	tpeak[jnum] = isp;
-	if (tobj != NULL) {
+	if (starcat->ncobj > 0 && tobj != NULL) {
 	    lname = strlen (star->objname) + 1;
 	    objname = (char *)calloc (lname, 1);
 	    strcpy (objname, star->objname);
@@ -760,7 +780,10 @@ char *bincat;	/* Binary catalog file name */
     sc->entra = nb;
     sc->entdec = nb + 8;
     sc->entpeak = nb + 16;
-    sc->entmag1 = nb + 18;
+    if (sc->nmag > 0)
+	sc->entmag1 = nb + 18;
+    else
+	sc->entmag1 = 0;
     nb = nb + 18 + (sc->nmag * 2);
     if (sc->mprop == 1) {
 	sc->entrpm = nb;
@@ -819,6 +842,8 @@ char *bincat;	/* Binary catalog file name */
 	}
     sc->entadd = fcat;
     sc->sptype = 1;
+    if (sc->mprop == 2)
+	sc->nmag = sc->nmag + 1;
 
     /* Check name to see if file is RA-sorted */
     lf = strlen (binfile);
@@ -1038,7 +1063,7 @@ int istar;	/* Star sequence number in binary catalog */
     else if (sc->mprop == 2) {
 	moveb (sc->catline, (char *) &radvel, 8, sc->entrv, 0);
 	if (sc->byteswapped)
-	    binswap4 (&radvel);
+	    binswap8 (&radvel);
 	st->radvel = radvel;
 	nmag = nmag - 1;
 	}
@@ -1047,11 +1072,13 @@ int istar;	/* Star sequence number in binary catalog */
     moveb (sc->catline, (char *) st->isp, 2, sc->entpeak, 0);
 
     /* Magnitudes */
-    for (i = 0; i < nmag; i++) {
-	moveb (sc->catline, (char *) st->mag, 2, sc->entmag1+(i*2), i*2);
-	if (sc->byteswapped)
-	    binswap2 (&st->mag[i], 2);
-	st->xmag[i] = 0.01 * (double) st->mag[i];
+    if (sc->entmag1 > 0) {
+	for (i = 0; i < nmag; i++) {
+	    moveb (sc->catline, (char *) st->mag, 2, sc->entmag1+(i*2), i*2);
+	    if (sc->byteswapped)
+		binswap2 (&st->mag[i], 2);
+	    st->xmag[i] = 0.01 * (double) st->mag[i];
+	    }
 	}
     return (0);
 }
@@ -1259,4 +1286,7 @@ char *from, *last, *to;
  * Sep 11 2001	Add sort magnitude argument
  * Sep 18 2001	Fix magnitude number in binrnum()
  * Sep 19 2001	Drop fitshead.h; it is in wcs.h
+ *
+ * Mar 25 2002	Fix bugs dealing with radial velocity
+ * Mar 26 2002	Don't set object name unless header says it is there
  */

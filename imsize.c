@@ -1,5 +1,5 @@
 /* File imsize.c
- * September 14, 2000
+ * April 8, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -176,6 +176,7 @@ char **av;
 	    str = str + strlen (str) - 1;
 	    av++;
 	    ac--;
+	    break;
 
 	default:
 	    usage();
@@ -294,6 +295,8 @@ char *name;
 		return;
 	    }
 	}
+    sysim = 0;
+    eqim = 0;
 
     /* Read world coordinate system information from the image header */
     wcs = GetFITSWCS (name, header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
@@ -303,15 +306,14 @@ char *name;
 	hgeti4 (header,"NAXIS2", &hp);
 	hgeti4 (header,"BITPIX", &bp);
 	printf ("%s %d x %d,  %d bits/pixel\n", name, wp, hp, bp);
+	wcsfree (wcs);
+	wcs = NULL;
 	return;
 	}
 
     /* Convert to desired output coordinates */
-    if (sysim < 5)
-	wcscon (sysim, sysout, eqim, eqout, &cra, &cdec, wcs->epoch);
-
-    /* Image center */
     if (sysim < 5) {
+	wcscon (sysim, sysout, eqim, eqout, &cra, &cdec, wcs->epoch);
 	ra2str (rstr, 16, cra, ndec);
 	dec2str (dstr, 16, cdec, ndec-1);
 	}
@@ -320,8 +322,14 @@ char *name;
 	num2str (dstr, cdec, 0, ndec);
 	}
 
+    /* Image size in degrees or whatever */
+    if (sysim > 5) {
+	dra = 2 * dra;
+	ddec = 2.0 * ddec;
+	}
+
     /* Image size in arcminutes */
-    if (sysim > 4) {
+    else if (sysim > 4) {
 	dra = 2.0 * dra * 60.0 * cos (degrad(cdec));
 	ddec = 2.0 * ddec * 60.0;
 	}
@@ -336,7 +344,11 @@ char *name;
 	wcsoutinit (wcs, coorsys);
 
     /* Print information */
-    if (sysim > 4) {
+    if (sysim > 5) {
+	dra = dra;
+	ddec = ddec;
+	}
+    else if (sysim > 4) {
 	dra = dra * 3600.0;
 	ddec = ddec * 3600.0;
 	}
@@ -427,6 +439,7 @@ char *name;
 	}
 
     wcsfree (wcs);
+    wcs = NULL;
     free (header);
     return;
 }
@@ -478,4 +491,7 @@ char *name;
  * Aug 14 2000	Reformat for LINEAR and other non-angular coordinates
  * Aug 15 2000	Add -n option to set number of decimal places
  * Sep 14 2000	Print size in arcminutes if WCS is sky
+ *
+ * Apr  8 2002	Free wcs structure if no WCS is found in file header
+ * Apr  8 2002	Fix bug so list files work
  */

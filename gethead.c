@@ -1,5 +1,5 @@
 /* File gethead.c
- * September 25, 2001
+ * April 2, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -36,6 +36,7 @@ static int maxlfn = 0;
 static int listall = 0;
 static int listpath = 0;
 static int tabout = 0;
+static int logfile = 0;
 static int printhead = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int printfill=0;		/* If 1, print ___ for unfound keyword values */
@@ -46,8 +47,10 @@ static int keyeqvaln=0;		/* If 1, print keyword=value<nl> */
 static char *rootdir=NULL;	/* Root directory for input files */
 static int ncond=0;		/* Number of keyword conditions to check */
 static int condand=1;		/* If 1, AND comparisons, else OR */
+static int toeol = 0;		/* If 1, return values from ASCII file to EOL */
 static char **cond;		/* Conditions to check */
 static char **ccond;		/* Condition characters */
+static int nproc = 0;
 
 main (ac, av)
 int ac;
@@ -129,6 +132,14 @@ char **av;
 	
 		case 'h': /* Output column headings */
 		    printhead++;
+		    break;
+
+                case 'i':       /* Log files changed */
+                    logfile++;
+                    break;
+	
+		case 'l': /* Return values to end of line */
+		    toeol++;
 		    break;
 	
 		case 'n': /* Number of decimal places in output */
@@ -352,17 +363,19 @@ char **av;
 	    }
 
 	/* Print field-defining hyphens if tab table output requested */
-	if (printfile && tabout) {
-	    strcpy (string, "-----------------------------------");
-	    if (maxlfn > 8)
-		string[maxlfn] = (char) 0;
-	    else
-		string[8] = (char) 0;
-	    printf ("%s",string);
-	    if (verbose || ikwd == nkwd - 1)
-		printf ("\n");
-	    else
-		printf ("	");
+	if (printhead && tabout) {
+	    if (printfile) {
+		strcpy (string, "-----------------------------------");
+		if (maxlfn > 8)
+		    string[maxlfn] = (char) 0;
+		else
+		    string[8] = (char) 0;
+		printf ("%s",string);
+		if (verbose || ikwd == nkwd - 1)
+		    printf ("\n");
+		else
+		    printf ("	");
+		}
 
 	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
 		strcpy (string, "--------------");
@@ -373,6 +386,7 @@ char **av;
 		    printf ("\n");
 		else
 		    printf ("	");
+		string[lkwd] = '-';
 		}
 	    }
 	}
@@ -403,6 +417,12 @@ char **av;
 
 	if (verbose)
 	    printf ("\n");
+
+	/* Log the processing of this file, if requested */
+	if (logfile) {
+	    nproc++;
+	    fprintf (stderr, "%d: %s processed.\r", nproc, filename);
+	    }
 	}
     if (ilistfile != NULL)
 	fclose (flist);
@@ -605,8 +625,12 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	strcpy (keyword, kwd[ikwd]);
 
 	/* Read keyword value from ASCII file */
+	if (toeol)
+	    lstr = -80;
+	else
+	    lstr = 80;
 	if (filetype == FILE_ASCII &&
-	    agets (header, keyword, 80, string)) {
+	    agets (header, keyword, lstr, string)) {
 	    str = string;
 	    strclean (str);
 	    if (ndec > -9 && isnum (str) && strchr (str, '.'))
@@ -847,4 +871,8 @@ char *string;
  * Feb 27 2001	Add space or tab between wildcard multiple WCS keyword values
  * Apr 23 2001	Add -g for keyword=val<lf> and print same way if -v
  * Sep 25 2001	Allow file and command line lists of ASCII files
+ *
+ * Jan 31 2002	Fix bug to always add underlines if printing tab table headers
+ * Feb 26 2002	Return values to end of line if -l option set
+ * Apr  2 2002	Add option to log processing to stderr
  */

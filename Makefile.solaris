@@ -86,6 +86,9 @@ imextract: imextract.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
 imstar: imstar.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h libwcs/lwcs.h libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/imstar imstar.c $(CATLIBS)
 
+isnum: isnum.c $(LIBWCS) libwcs/fitshead.h
+	$(CC) $(CFLAGS) -o $(BIN)/isnum isnum.c $(LIBS)
+
 imwcs: imwcs.c $(LIBWCS) libwcs/fitsfile.h libwcs/lwcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/imwcs imwcs.c $(CATLIBS)
 

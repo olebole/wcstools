@@ -1,17 +1,20 @@
 /*** File libwcs/hget.c
- *** September 20, 2001
+ *** April 3, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
  * Purpose:	Extract values for variables from FITS header string
  * Subroutine:	hgeti2 (hstring,keyword,ival) returns short integer
+ * Subroutine:	hgeti4c (hstring,keyword,wchar,ival) returns long integer
  * Subroutine:	hgeti4 (hstring,keyword,ival) returns long integer
  * Subroutine:	hgetr4 (hstring,keyword,rval) returns real
  * Subroutine:	hgetra (hstring,keyword,ra) returns double RA in degrees
  * Subroutine:	hgetdec (hstring,keyword,dec) returns double Dec in degrees
+ * Subroutine:	hgetr8c (hstring,keyword,wchar,dval) returns double
  * Subroutine:	hgetr8 (hstring,keyword,dval) returns double
  * Subroutine:	hgetl  (hstring,keyword,lval) returns logical int (0=F, 1=T)
+ * Subroutine:	hgetsc (hstring,keyword,wchar,lstr,str) returns character string
  * Subroutine:	hgets  (hstring,keyword, lstr, str) returns character string
  * Subroutine:	hgetm  (hstring,keyword, lstr, str) returns multi-keyword string
  * Subroutine:	hgetdate (hstring,keyword,date) returns date as fractional year
@@ -83,6 +86,36 @@ char	*header; /* FITS header */
 	return (lhead0);
     else
 	return (hlength (header, 0));
+}
+
+
+/* Extract Integer*4 value for variable from FITS header string */
+
+int
+hgeti4c (hstring,keyword,wchar,ival)
+
+char	*hstring;	/* character string containing FITS header information
+			   in the format <keyword>= <value> {/ <comment>} */
+char	*keyword;	/* character string containing the name of the keyword
+			   the value of which is returned.  hget searches for
+			   a line beginning with this string.  if "[n]" is
+			   present, the n'th token in the value is returned.
+			   (the first 8 characters must be unique) */
+unsigned char wchar;	/* Character of multiple WCS header; =0 if unused */
+int	*ival;		/* Keyword value returned */
+{
+    char keyword1[16];
+    int lkey;
+
+    if (wchar > 0)
+	return (hgeti4 (hstring, keyword, ival));
+    else {
+	strcpy (keyword1, keyword);
+	lkey = strlen (keyword);
+	keyword1[lkey] = wchar;
+	keyword1[lkey+1] = (char) 0;
+	return (hgeti4 (hstring, keyword1, ival));
+	}
 }
 
 
@@ -280,6 +313,37 @@ double *dval;	/* Right ascension in degrees (returned) */
     else
 	return (0);
 }
+
+
+/* Extract real*8 value for variable from FITS header string */
+
+int
+hgetr8c (hstring,keyword,wchar,dval)
+
+char	*hstring;	/* character string containing FITS header information
+			   in the format <keyword>= <value> {/ <comment>} */
+char	*keyword;	/* character string containing the name of the keyword
+			   the value of which is returned.  hget searches for
+			   a line beginning with this string.  if "[n]" is
+			   present, the n'th token in the value is returned.
+			   (the first 8 characters must be unique) */
+unsigned char wchar;	/* Character of multiple WCS header; =0 if unused */
+double	*dval;		/* Keyword value returned */
+{
+    char keyword1[16];
+    int lkey;
+
+    if (wchar > 0)
+	return (hgetr8 (hstring, keyword, dval));
+    else {
+	strcpy (keyword1, keyword);
+	lkey = strlen (keyword);
+	keyword1[lkey] = wchar;
+	keyword1[lkey+1] = (char) 0;
+	return (hgetr8 (hstring, keyword1, dval));
+	}
+}
+
 
 
 /* Extract real*8 value for variable from FITS header string */
@@ -598,6 +662,37 @@ char *str;	/* String (returned) */
 	return (1);
     else
 	return (0);
+}
+
+
+/* Extract string value for variable from FITS header string */
+
+int
+hgetsc (hstring,keyword,wchar,lstr,str)
+
+char	*hstring;	/* character string containing FITS header information
+			   in the format <keyword>= <value> {/ <comment>} */
+char	*keyword;	/* character string containing the name of the keyword
+			   the value of which is returned.  hget searches for
+			   a line beginning with this string.  if "[n]" is
+			   present, the n'th token in the value is returned.
+			   (the first 8 characters must be unique) */
+unsigned char wchar;	/* Character of multiple WCS header; =0 if unused */
+int	lstr;		/* Size of str in characters */
+char	*str;		/* String (returned) */
+{
+    char keyword1[16];
+    int lkey;
+
+    if (wchar > 0)
+	return (hgets (hstring, keyword, lstr, str));
+    else {
+	strcpy (keyword1, keyword);
+	lkey = strlen (keyword);
+	keyword1[lkey] = wchar;
+	keyword1[lkey+1] = (char) 0;
+	return (hgets (hstring, keyword1, lstr, str));
+	}
 }
 
 
@@ -1398,4 +1493,6 @@ int set_saolib(hstring)
  * Sep 12 2001	Read yyyy/mm/dd dates as well as dd/mm/yyyy
  * Sep 20 2001	Ignore leading spaces in str2dec()
  * Sep 20 2001	Ignore trailing spaces in isnum()
+ *
+ * Apr  3 2002	Add hgetr8c(), hgeti4c(), and hgetsc() for multiple WCS handling
  */

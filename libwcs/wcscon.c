@@ -1,5 +1,5 @@
 /*** File wcscon.c
- *** March 21, 2001
+ *** February 13, 2002
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Some subroutines are based on Starlink subroutines by Patrick Wallace
 
@@ -1755,12 +1755,13 @@ double	epoch;	/* Besselian epoch in years */
     double v1[3], v2[3];
     void fk5prec();
 
-    rtheta = degrad (*dtheta);
-    rphi = degrad (*dphi);
-
     /* Precess coordinates from J2000 to epoch */
     if (epoch != 2000.0)
-	fk5prec (2000.0, epoch, &rtheta, &rphi);
+	fk5prec (2000.0, epoch, dtheta, dphi);
+
+    /* Convert from degrees to radians */
+    rtheta = degrad (*dtheta);
+    rphi = degrad (*dphi);
 
     /* Convert RA,Dec to x,y,z */
     slaDcs2c (rtheta, rphi, v1);
@@ -1864,16 +1865,18 @@ double	epoch;	/* Besselian epoch in years */
     if (rtheta > 2.0 * PI)
 	rtheta = rtheta - (2.0 * PI);
 
-    /* Precess coordinates from epoch to J2000 */
-    if (epoch != 2000.0)
-	fk5prec (epoch, 2000.0, &rtheta, &rphi);
+    /* Convert from radians to degrees */
     *dtheta = raddeg (rtheta);
     *dphi = raddeg (rphi);
+
+    if (epoch != 2000.0)
+	fk5prec (epoch, 2000.0, dtheta, dphi);
 }
 
 
 /* The following routines are almost verbatim from Patrick Wallace's SLALIB */
 
+/* Precess coordinates between epochs in FK4 */
 void
 fk4prec (ep0, ep1, ra, dec)
 
@@ -2093,4 +2096,6 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
  *
  * Jan 11 2001	Print all messages to stderr
  * Mar 21 2001	Move braces around bgal[] and jgal[] matrix initialization
+ *
+ * Feb 13 2002	Fix precession units problem in ecl2fk5() and fk52ecl()
  */

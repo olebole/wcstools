@@ -1,5 +1,5 @@
 /*** File imhfile.c
- *** August 24, 2001
+ *** April 8, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -1079,7 +1079,7 @@ int	*nbiraf;	/* Length of returned IRAF header */
 	    pixtype = TY_DOUBLE;
 	    break;
 	default:
-	    (void)fprintf(stderr,"Unsupported data type: %d\n", pixtype);
+	    (void)fprintf(stderr,"Unsupported data type: %d\n", nbits);
 	    return (NULL);
 	}
     irafputi4 (irafheader, impixtype, pixtype);
@@ -1831,4 +1831,6 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  *
  * Jan 11 2001	Print all messages to stderr
  * Aug 24 2001	In isiraf(), return 0 if argument contains an equal sign
+ *
+ * Apr  8 2002	Fix bug in error message for unidentified nbits in fits2iraf()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** August 24, 2001
+ *** January 28, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -96,56 +96,31 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     lprim = 0;
     header = NULL;
 
-    /* Open the image file and read the header */
-    if (strcmp (filename,"stdin") && strcmp (filename,"STDIN") ) {
+    /* Check for FITS WCS specification and ignore for file opening */
+    mwcs = strchr (filename, '%');
+    if (mwcs != NULL)
+	*mwcs = (char) 0;
 
-	/* Check for FITS WCS specification and ignore for file opening */
-	mwcs = strchr (filename, '%');
-	if (mwcs != NULL)
-	    *mwcs = (char) 0;
-
-	/* Check for FITS extension and ignore for file opening */
-	rbrac = NULL;
-	ext = strchr (filename, ',');
-	if (ext == NULL) {
-	    ext = strchr (filename, '[');
-	    if (ext != NULL) {
-		rbrac = strchr (filename, ']');
-		if (rbrac != NULL)
-		    *rbrac = (char) 0;
-		}
-	    }
+    /* Check for FITS extension and ignore for file opening */
+    rbrac = NULL;
+    ext = strchr (filename, ',');
+    if (ext == NULL) {
+	ext = strchr (filename, '[');
 	if (ext != NULL) {
-	    cext = *ext;
-	    *ext = (char) 0;
+	    rbrac = strchr (filename, ']');
+	    if (rbrac != NULL)
+		*rbrac = (char) 0;
 	    }
+	}
+    if (ext != NULL) {
+	cext = *ext;
+	*ext = (char) 0;
+	}
 
+    /* Open the image file and read the header */
+    if (strncasecmp (filename,"stdin",5)) {
 	fd = -1;
 	fd = fitsropen (filename);
-
-	if (ext != NULL) {
-	    if (isnum (ext+1))
-		extnum = atoi (ext+1);
-	    else {
-		extnum = -2;
-		strcpy (extnam, ext+1);
-		}
-	    }
-	else
-	    extnum = -1;
-
-	/* Repair the damage done to the file-name string during parsing */
-	if (ext != NULL)
-	    *ext = cext;
-	if (rbrac != NULL)
-	    *rbrac = ']';
-	if (mwcs != NULL)
-	    *mwcs = '%';
-
-	if (fd < 0) {
-	    fprintf (stderr, "FITSRHEAD:  cannot read file %s\n", filename);
-	    return (NULL);
-	    }
 	}
 #ifndef VMS
     else {
@@ -153,6 +128,30 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	extnum = -1;
 	}
 #endif
+
+    if (ext != NULL) {
+	if (isnum (ext+1))
+	    extnum = atoi (ext+1);
+	else {
+	    extnum = -2;
+	    strcpy (extnam, ext+1);
+	    }
+	}
+    else
+	extnum = -1;
+
+    /* Repair the damage done to the file-name string during parsing */
+    if (ext != NULL)
+	*ext = cext;
+    if (rbrac != NULL)
+	*rbrac = ']';
+    if (mwcs != NULL)
+	*mwcs = '%';
+
+    if (fd < 0) {
+	fprintf (stderr, "FITSRHEAD:  cannot read file %s\n", filename);
+	return (NULL);
+	}
 
     nbytes = FITSBLOCK;
     *nbhead = 0;
@@ -394,7 +393,7 @@ char	*header;	/* FITS header for image (previously read) */
     char *image, *imleft;
 
     /* Open the image file and read the header */
-    if (strcmp (filename,"stdin") && strcmp (filename,"STDIN") ) {
+    if (strncasecmp (filename,"stdin", 5)) {
 	fd = -1;
 
 	fd = fitsropen (filename);
@@ -1171,7 +1170,7 @@ char	*filename0;	/* Name of input FITS image file */
     free (oldhead);
 
     /* Open the input file and skip over the header */
-    if (strcmp (filename0,"stdin") && strcmp (filename0,"STDIN") ) {
+    if (strncasecmp (filename0,"stdin", 5)) {
 	fdin = -1;
 	fdin = fitsropen (filename0);
 	if (fdin < 0) {
@@ -1339,7 +1338,7 @@ char    *filename;      /* Name of file for which to find size */
 	return (1);
 
     /* Check for stdin (input from pipe) */
-    else if (!strcmp (filename,"stdin") || !strcmp (filename,"STDIN"))
+    else if (!strncasecmp (filename,"stdin", 5))
 	return (1);
 
     /* If no FITS file extension, try opening the file */
@@ -1454,4 +1453,6 @@ char	*header;	/* FITS header */
  * Apr 24 2001	When matching column names, use longest length
  * Jun 27 2001	In fitsrthead(), allocate pw and lpnam only if more space needed
  * Aug 24 2001	In isfits(), return 0 if argument contains an equal sign
+ *
+ * Jan 28 2002	In fitsrhead(), allow stdin to include extension and/or WCS selection
  */

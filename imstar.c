@@ -1,5 +1,5 @@
 /* File imstar.c
- * July 25, 2001
+ * January 23, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -20,13 +20,16 @@
 #define CAT_STARBASE	2
 #define CAT_DAOFIND	3
 
+#define MAXFILES 1000
+static int maxnfile = MAXFILES;
+
 static int verbose = 0;		/* verbose flag */
 static int debug = 0;		/* debugging flag */
 static int version = 0;		/* If 1, print only program name and version */
 static int rot = 0;		/* Angle to rotate image (multiple of 90 deg) */
 static int mirror = 0;		/* If 1, flip image right-left before rotating*/
 
-static void usage();
+static void PrintUsage();
 static void ListStars();
 extern char *RotFITS();
 extern void setstarsig();
@@ -41,6 +44,9 @@ extern void setsys();
 extern void setsecpix();
 extern void setsecpix2();
 extern void setrefpix();
+extern void setmirror();
+extern void setrotate();
+
 extern struct WorldCoor *GetFITSWCS();
 
 static int wfile = 0;		/* True to print output file */
@@ -67,36 +73,46 @@ char **av;
     char *lastchar;
     char *cstr;
     char filename[128];
+    char errmsg[256];
     FILE *flist;
     char *listfile;
     int maxrad;
+    char **fn;
+    int ifile, nfile;
+    char c;
 
-    /* Check for help or version command first */
-    str = *(av+1);
-    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
-	usage();
-    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
-	version = 1;
-	usage();
-	}
+    nfile = 0;
+    fn = (char **)calloc (maxnfile, sizeof(char *));
 
     /* crack arguments */
     for (av++; --ac > 0; av++) {
    	str = *av; 
-	if (*str == '@') {
+
+	/* Check for help command first */
+	if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	    PrintUsage (NULL);
+
+	/* Check for version command */
+	if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	    version = 1;
+	    PrintUsage (NULL);
+	    }
+
+	else if (*str == '@') {
 	    readlist++;
 	    listfile = ++str;
 	    str = str + strlen (str) - 1;
 	    av++;
 	    ac--;
 	    }
+
 	else if (strchr (str, '='))
 	    setparm (str);
 
         /* Set RA, Dec, and equinox if WCS-generated argument */
-	if (strsrch (*av,":") != NULL) {
+	else if (strsrch (str,":") != NULL) {
 	    if (ac < 3)
-		usage();
+		PrintUsage (str);
 	    else {
 		strcpy (rastr, *av);
 		ac--;
@@ -112,7 +128,6 @@ char **av;
 	    }
 
 	else if (*str == '-') {
-	    char c;
 	    while (c = *++str) {
 		switch (c) {
 		case 'v':	/* more verbosity */
@@ -121,11 +136,12 @@ char **av;
 	
 		case 'a':       /* Initial rotation angle in degrees */
 		    if (ac < 2)
-			usage();
+			PrintUsage (str);
 		    drot = atof (*++av);
 		    arot = fabs (drot);
 		    if (arot != 90.0 && arot != 180.0 && arot != 270.0) {
 			setrot (drot);
+			setrotate (rot);
 			rot = 0;
 			}
 		    else
@@ -140,7 +156,7 @@ char **av;
 	
 		case 'd':	/* Read image star positions from DAOFIND file */
 		    if (ac < 2)
-			usage();
+			PrintUsage (str);
 		    setimcat (*++av);
 		    imsearch = 0;
 		    ac--;
@@ -148,8 +164,8 @@ char **av;
 	
 		case 'e':	/* Number of pixels to ignore around image edge */
 		    if (ac < 2)
-			usage();
-		    setborder (atof (*++av));
+			PrintUsage (str);
+		    setborder (atoi (*++av));
 		    ac--;
 		    break;
 	
@@ -163,7 +179,7 @@ char **av;
 	
 		case 'i':	/* Image star minimum peak value (or minimum sigma */
 		    if (ac < 2)
-			usage();
+			PrintUsage (str);
 		    bmin = atof (*++av);
 		    if (bmin < 0)
 			setstarsig (-bmin);
@@ -183,18 +199,19 @@ char **av;
 	
     		case 'l':	/* Left-right reflection before rotating */
 		    mirror = 1;
+		    setmirror (mirror);
     		    break;
 	
 		case 'm':	/* Magnitude offset */
 		    if (ac < 2)
-			usage();
+			PrintUsage (str);
 		    magoff = atof (*++av);
 		    ac--;
 		    break;
 	
 		case 'n':	/* Number of brightest stars to read */
 		    if (ac < 2)
-			usage();
+			PrintUsage (str);
 		    nstar = atoi (*++av);
 		    ac--;
 		    break;
@@ -205,7 +222,7 @@ char **av;
 	
     		case 'p':	/* Plate scale in arcseconds per pixel */
     		    if (ac < 2)
-    			usage();
+			PrintUsage (str);
     		    setsecpix (atof (*++av));
     		    ac--;
 		    if (ac > 1 && isnum (*(av+1))) {
@@ -216,7 +233,7 @@ char **av;
 	
 		case 'q':	/* Output region file shape for SAOimage */
     		    if (ac < 2)
-    			usage();
+			PrintUsage (str);
 		    cstr = *++av;
 		    switch (cstr[0]){
 			case 'c':
@@ -252,7 +269,7 @@ char **av;
 	
 		case 'r':	/* Maximum acceptable radius for a star */
 		    if (ac < 2)
-			usage();
+			PrintUsage (str);
 		    maxrad = (int) atof (*++av);
 		    region_radius = maxrad;
 		    setmaxrad (maxrad);
@@ -277,7 +294,7 @@ char **av;
 
 		case 'x':	/* X and Y coordinates of reference pixel */
 		    if (ac < 3)
-			usage();
+			PrintUsage (str);
     		    setrefpix (atof (*++av), atof (*++av));
 		    ac--;
 		    ac--;
@@ -288,26 +305,34 @@ char **av;
 		    break;
 
 		default:
-		    usage();
+		    sprintf (errmsg, "* Illegal command -%s-", str);
+		    PrintUsage (str);
 		}
 		}
 	    }
 
-	/* Otherwise assume that this argument is a FITS or IRAF file */
-	else {
-	    char *fn = str;
-	    ListStars (fn);
-	    if (verbose)
-		printf ("\n");
-	    }
+	/* Save a FITS or IRAF file */
+        else if (isfits (str) || isiraf (str)) {
+            if (nfile >= maxnfile) {
+                maxnfile = maxnfile * 2;
+                fn = (char **) realloc ((void *)fn, maxnfile);
+                }
+            fn[nfile] = str;
+            nfile++;
+            }
+
+        else {
+            sprintf (errmsg, "* %s is not a FITS or IRAF file.", str);
+            PrintUsage (errmsg);
+            }
 	}
 
     /* Find number of images to search and leave listfile open for reading */
     if (readlist) {
 	if ((flist = fopen (listfile, "r")) == NULL) {
-	    fprintf (stderr,"IMSTAR: List file %s cannot be read\n",
+	    sprintf (errmsg,"IMSTAR: List file %s cannot be read\n",
 		     listfile);
-	    usage();
+	    PrintUsage (errmsg);
 	    }
 	while (fgets (filename, 128, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
@@ -317,14 +342,41 @@ char **av;
 	fclose (flist);
 	}
 
+    /* Process image files */
+    else if (nfile > 0) {
+        for (ifile = 0; ifile < nfile; ifile++) {
+            if (verbose)
+                printf ("%s:\n", fn[ifile]);
+            ListStars (fn[ifile]);
+            if (verbose)
+                printf ("\n");
+            }
+        }
+
+    /* Print error message if no image files to process */
+    else
+        PrintUsage ("* No files to process.");
+
     return (0);
 }
 
 static void
-usage ()
+PrintUsage (command)
+
+char	*command;	/* Name of program being executed */
+
 {
     if (version)
 	exit (-1);
+
+    if (command != NULL) {
+	if (command[0] == '*')
+	    fprintf (stderr, "%s\n", command);
+	else
+	    fprintf (stderr, "* Missing argument for command: %c\n", command[0]);
+	exit (1);
+	}
+
     fprintf (stderr,"Find stars in FITS and IRAF image files\n");
     fprintf(stderr,"usage: imstar [-vbsjt] [-m mag_off] [-n num] [-d file][ra dec sys] file.fits ...\n");
     fprintf(stderr,"  -a: Rotation angle in degrees (default 0)\n");
@@ -469,7 +521,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	outform = CAT_DAOFIND;
 
     /* Discover star-like things in the image, in pixels */
-    ns = FindStars (header, image, &sx, &sy, &smag, &sp, debug);
+    ns = FindStars (header, image, &sx, &sy, &smag, &sp, debug, 1);
     if (ns < 1) {
 	fprintf (stderr,"ListStars: no stars found in image %s\n", filename);
 	wcsfree (wcs);
@@ -821,4 +873,9 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jan 22 2001	Drop declaration of wcsinit()
  * Jul 25 2001	FindStar() now returns magnitude instead of flux
  * Jul 25 2001	Print to stdout unless writing to a file
+ * Oct 25 2001	Allow arbitrary argument order on command line
+ * Dec 17 2001	Set mirror and rotation in FindStars()
+ *
+ * Jan 22 2002	Set edge pixels as integer, not float
+ * Jan 23 2002	Add zap=1 to FindStars() call
  */

@@ -1,5 +1,5 @@
 /* File remap.c
- * July 10, 2001
+ * April 9, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -388,7 +388,6 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	else {
 	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
-	    free (header);
 	    return (1);
 	    }
 	}
@@ -651,4 +650,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jul  9 2001	Write projection type into CRVALn of output file
  * Jul 10 2001	Fix -w help message so it correctly notes input proj is default
  * Jul 10 2001	Set CTYPEn correctly for ecliptic or galactic output
+ *
+ * Apr  9 2002	Do not free unallocated header
  */

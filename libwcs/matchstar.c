@@ -1,10 +1,10 @@
 /*** File libwcs/matchstar.c
- *** September 24, 2001
+ *** November 16, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
 
-/* StarMatch (ns, sx, sy, ng, gra, gdec, gx, gy, tol, wcs, nfit, debug)
+/* StarMatch (ns, sx, sy, ng, gra, gdec, goff, gx, gy, tol, wcs, nfit, debug)
  *  Find shift, scale, and rotation of image stars to best-match reference stars
  *
  * ReadMatch (filename, sx, sy, gra, gdec, debug)
@@ -49,7 +49,9 @@ static int	nfit;	/* Number of parameters to fit */
 static int	pfit0 = 0;	/* List of parameters to fit, 1 per digit */
 static int	cdfit = 0;	/* 1 if CD matrix has been fit */
 static int	resid_refine = 0;
-static int	minbin=2;		/* Minimum number of coincidence hits needed */
+static int	minbin=2;	/* Minimum number of coincidence hits needed */
+static int	minmatch0 = MINMATCH;	/* matches to drop out of loop */
+static int	nitmax0 = NMAX;		/* max iterations to stop fit */
 static int	vfit[NPAR1]; /* Parameters being fit: index to value vector
 				1= RA,		  2= Dec,
 				3= X plate scale, 4= Y plate scale
@@ -65,14 +67,17 @@ static int	vfit[NPAR1]; /* Parameters being fit: index to value vector
  */
 
 int
-StarMatch (ns, sx, sy, ng, gra, gdec, gx, gy, tol, wcs, debug)
+StarMatch (ns,sx,sy,refcat,ng,gnum,gra,gdec,goff,gx,gy,tol,wcs,debug)
 
 int	ns;		/* Number of image stars */
 double	*sx;		/* Image star X coordinates in pixels */
 double	*sy;		/* Image star Y coordinates in pixels */
+int	refcat;		/* Reference Catalog code */
 int	ng;		/* Number of reference stars */
+double	*gnum;		/* Reference star catalog numbers */
 double	*gra;		/* Reference star right ascensions in degrees */
 double	*gdec;		/* Reference star right ascensions in degrees */
+int	*goff;		/* Reference star offscale flags */
 double	*gx;		/* Reference star X coordinates in pixels */
 double	*gy;		/* Reference star Y coordinates in pixels */
 double	tol;		/* +/- this many pixels is a hit */
@@ -82,8 +87,10 @@ int	debug;
 {
     double dx, bestdx, dxi;
     double dy, bestdy, dyi;
+    double dx2, dy2, dxy, dxys, dxs, dys, dxsum, dysum;
+    double *mx, *my, *mxy;
     int nmatch;
-    int s, g, si, gi;
+    int s, g, si, gi, igs;
     int nbin;
     double *sbx, *sby;	/* malloced array of s stars in best bin */
     double *gbra, *gbdec;	/* malloced array of g stars in best bin */
@@ -93,7 +100,7 @@ int	debug;
     int maxnbin, i, nmatchd;
     int minmatch;
     int *is, *ig, *ibs, *ibg;
-    char rastr[16], decstr[16];
+    char rastr[16], decstr[16], numstr[16];
     double xref0, yref0, xinc0, yinc0, rot0, xrefpix0, yrefpix0, cd0[4];
     int bestbin;	/* Number of coincidences for refit */
     int pfit;		/* List of parameters to fit, 1 per digit */
@@ -101,115 +108,239 @@ int	debug;
     char *vi;
     char vc;
     int ParamFit();
+    double tol2 = tol * tol;
+    double maxnum;
+    int nnfld = 0;
 
-    /* Do coarse alignment assuming no rotation required.
-     * This will allow us to collect a set of stars that correspond and
-     * establish an initial guess of the solution.
-     */
-    npeaks = 0;
-    nmatch = 0;
-    for (i = 0; i < NPEAKS; i++) {
-	peaks[i] = 0;
-	dxpeaks[i] = 0;
-	dypeaks[i] = 0;
-	}
-    bestdx = 0.0;
-    bestdy = 0.0;
-    maxnbin = ns;
-    if (ng > ns)
-	maxnbin = ng;
-    minmatch = 0.5 * ns;
-    if (minmatch > 40)
-	minmatch = 0.25 * ns;
-    if (ns > ng)
+    /* Set minimum number of matches between image and reference stars to fit */
+    if (ns > ng) {
 	minmatch = 0.5 * ng;
+	if (minmatch > minmatch0)
+	    minmatch = 0.25 * ng;
+	if (minmatch > minmatch0)
+	    minmatch = minmatch0;
+	}
+    else {
+	minmatch = 0.5 * ns;
+	if (minmatch > minmatch0)
+	    minmatch = 0.25 * ns;
+	if (minmatch > minmatch0)
+	    minmatch = minmatch0;
+	}
 
+    /* Set format for numbers, if listed */
+    if (debug) {
+	maxnum = gnum[0];
+	for (gi = 1; gi < ng; gi++) {
+	    if (gnum[gi] > maxnum)
+		maxnum = gnum[gi];
+	    }
+	nnfld = CatNumLen (refcat, maxnum, 0);
+        }
+
+    /* Set maximum number of matches and allocate match indices */
+    if (ng > ns)
+	maxnbin = (int) ((double) ng * 1.25);
+    else
+	maxnbin = (int) ((double) ns * 1.25);
     if (debug)
 	fprintf (stderr,"Match history: nim=%d nref=%d tol=%3.0f minbin=%d minmatch=%d):\n",
-		ns, ng, tol, minbin, minmatch);
+		 ns, ng, tol, minbin, minmatch);
 
+    /* Allocate arrays in which to save match information */
+    mx = (double *) calloc (maxnbin, sizeof(double));
+    my = (double *) calloc (maxnbin, sizeof(double));
+    mxy = (double *) calloc (maxnbin, sizeof(double));
     is = (int *) calloc (maxnbin, sizeof(int));
     ig = (int *) calloc (maxnbin, sizeof(int));
     ibs = (int *) calloc (maxnbin, sizeof(int));
     ibg = (int *) calloc (maxnbin, sizeof(int));
+
+    /* Try matching stars using the current WCS first */
+    nmatch = 0;
+    bestdx = 0.0;
+    bestdy = 0.0;
+    dxsum = 0.0;
+    dysum = 0.0;
+
+    /* Loop through image stars */
     for (s = 0; s < ns; s++) {
+	dxys = tol2;
+	igs = -1;
+
+	/* Loop through reference catalog stars */
 	for (g = 0; g < ng; g++) {
-	    dx = gx[g] - sx[s];
-	    dy = gy[g] - sy[s];
-	    nbin = 1;
-	    is[0] = s;
-	    ig[0] = g;
-	    for (gi = 0; gi < ng; gi++) {
-		for (si = 0; si < ns; si++) {
-		    if (si != s && gi != g) {
-			dxi = ABS (gx[gi] - sx[si] - dx);
-			dyi = ABS (gy[gi] - sy[si] - dy);
+
+	    /* Try reference catalog star only if it is on the image */
+	    /* if (!goff[g]) { */
+		dx = gx[g] - sx[s];
+		dy = gy[g] - sy[s];
+		dx2 = dx * dx;
+		dy2 = dy * dy;
+		dxy = dx2 + dy2;
+
+		/* Check offset less than tolerance or this star's closest match */
+		if (dxy < dxys) {
+		    dxys = dxy;
+		    dxs = dx;
+		    dys = dy;
+		    igs = g;
+		    ibs[nmatch] = s;
+		    ibg[nmatch] = g;
+		    }
+		/* } */
+	    }
+
+	/* If a match was found */
+	if (igs > -1) {
+
+	    /* if new match is closer than old match, replace it */
+	    if (mxy[igs] > 0.0) {
+		if (dxy < mxy[igs]) {
+		    dxsum = dxsum - mx[igs];
+		    dysum = dysum - my[igs];
+		    dxsum = dxsum + dxs;
+		    dysum = dysum + dys;
+		    if (debug) {
+			CatNum (refcat, nnfld, 0, gnum[ibg[nmatch]], numstr);
+			ra2str (rastr, 16, gra[ibg[nmatch]], 3);
+			dec2str (decstr, 16, gdec[ibg[nmatch]], 2);
+			fprintf (stderr, "*%3d %s %s %s %7.2f %7.2f %7.2f %7.2f %5.2f %5.2f %5.2f\n",
+				 nmatch, numstr, rastr, decstr, 
+				 gx[ibg[nmatch]], gy[ibg[nmatch]], 
+				 sx[ibs[nmatch]], sy[ibs[nmatch]], 
+				 dxs, dys, sqrt (dxys));
+			}
+		    }
+		}
+
+	    /* If not matched before, use new match */
+	    else {
+		dxsum = dxsum + dxs;
+		dysum = dysum + dys;
+		if (debug) {
+		    CatNum (refcat, nnfld, 0, gnum[ibg[nmatch]], numstr);
+		    ra2str (rastr, 16, gra[ibg[nmatch]], 3);
+		    dec2str (decstr, 16, gdec[ibg[nmatch]], 2);
+		    fprintf (stderr, " %3d %s %s %s %7.2f %7.2f %7.2f %7.2f %5.2f %5.2f %5.2f\n",
+			     nmatch, numstr, rastr, decstr, 
+			     gx[ibg[nmatch]], gy[ibg[nmatch]], 
+			     sx[ibs[nmatch]], sy[ibs[nmatch]], 
+			     dxs, dys, sqrt (dxys));
+		    }
+		nmatch++;
+		mx[igs] = dxs;
+		my[igs] = dys;
+		mxy[igs] = dxy;
+		}
+	    }
+	}
+    free (mxy);
+    free (mx);
+    free (my);
+
+    /* If we found enough matches, we can proceed with this offset */
+    if (nmatch > minmatch) {
+	bestdx = dxsum / (double) nmatch;
+	bestdy = dysum / (double) nmatch;
+	if (debug)
+	    fprintf (stderr, "%d matches found at mean offset %6.3f %6.3f\n",
+		nmatch, bestdx, bestdy);
+	}
+
+    /* Otherwise, we will look for a coarse alignment assuming no additional rotation.
+     * This will allow us to collect a set of stars that correspond and
+     * establish an initial guess of the solution.
+     */
+    else {
+	npeaks = 0;
+	nmatch = 0;
+	for (i = 0; i < NPEAKS; i++) {
+	    peaks[i] = 0;
+	    dxpeaks[i] = 0;
+	    dypeaks[i] = 0;
+	    }
+	bestdx = 0.0;
+	bestdy = 0.0;
+	for (s = 0; s < ns; s++) {
+	    for (g = 0; g < ng; g++) {
+		dx = gx[g] - sx[s];
+		dy = gy[g] - sy[s];
+		nbin = 0;
+		for (gi = 0; gi < ng; gi++) {
+		    for (si = 0; si < ns; si++) {
+			dxi = gx[gi] - sx[si] - dx;
+			if (dxi < 0)
+			    dxi = -dxi;
+			dyi = gy[gi] - sy[si] - dy;
+			if (dyi < 0)
+			    dyi = -dyi;
 			if (dxi <= tol && dyi <= tol) {
-			    /* if (debug)
-				fprintf (stderr,"%d %d %d %d %5.1f %5.1f %5.1f %5.1f\n",
-					g,s,gi,si,dx,dy,dxi,dyi); */
+			/* if (debug)
+			    fprintf (stderr,"%d %d %d %d %5.1f %5.1f %5.1f %5.1f\n",
+				     g,s,gi,si,dx,dy,dxi,dyi); */
 			    is[nbin] = si;
 			    ig[nbin] = gi;
 			    nbin++;
 			    }
 			}
 		    }
-		}
-	    /* if (debug)
-		fprintf (stderr,"%d %d %d %d %d\n", g,s,gi,si,nbin); */
-	    if (nbin > 1 && nbin >= nmatch) {
-		int i;
-		nmatch = nbin;
-		bestdx = (double) dx;
-		bestdy = (double) dy;
-		for (i = 0; i < nbin; i++) {
-		    ibs[i] = is[i];
-		    ibg[i] = ig[i];
-		    }
-	
-		/* keep last NPEAKS nmatchs, dx and dy;
-		 * put newest first in arrays */
-		if (npeaks > 0) {
-		    for (i = npeaks; i > 0; i--) {
-			peaks[i] = peaks[i-1];
-			dxpeaks[i] = dxpeaks[i-1];
-			dypeaks[i] = dypeaks[i-1];
+		/* if (debug)
+		    fprintf (stderr,"%d %d %d %d %d\n", g,s,gi,si,nbin); */
+		if (nbin > 1 && nbin >= nmatch) {
+		    int i;
+		    nmatch = nbin;
+		    bestdx = (double) dx;
+		    bestdy = (double) dy;
+		    for (i = 0; i < nbin; i++) {
+			ibs[i] = is[i];
+			ibg[i] = ig[i];
 			}
+	
+		    /* keep last NPEAKS nmatchs, dx and dy;
+		     * put newest first in arrays */
+		    if (npeaks > 0) {
+			for (i = npeaks; i > 0; i--) {
+			    peaks[i] = peaks[i-1];
+			    dxpeaks[i] = dxpeaks[i-1];
+			    dypeaks[i] = dypeaks[i-1];
+			    }
+			}
+		    peaks[0] = nmatch;
+		    if (bestdx > 0.0)
+			dxpeaks[0] = (int) (bestdx + 0.5);
+		    else
+			dxpeaks[0] = (int) (bestdx - 0.5);
+		    if (bestdy > 0)
+			dypeaks[0] = (int) (bestdy + 0.5);
+		    else
+			dypeaks[0] = (int) (bestdy - 0.5);
+		    if (npeaks < NPEAKS)
+			npeaks++;
+		    if (debug)
+			fprintf (stderr,"%d: %d/%d matches at image %d cat %d: dx= %d dy= %d\n",
+				npeaks, nmatch, minmatch, s, g, dxpeaks[0], dypeaks[0]);
 		    }
-		peaks[0] = nmatch;
-		if (bestdx > 0.0)
-		    dxpeaks[0] = (int) (bestdx + 0.5);
-		else
-		    dxpeaks[0] = (int) (bestdx - 0.5);
-		if (bestdy > 0)
-		    dypeaks[0] = (int) (bestdy + 0.5);
-		else
-		    dypeaks[0] = (int) (bestdy - 0.5);
-		if (npeaks < NPEAKS)
-		    npeaks++;
-		if (debug)
-		    fprintf (stderr,"%d: %d matches at image %d cat %d: dx= %d dy= %d\n",
-			    npeaks, nmatch, s, g, dxpeaks[0], dypeaks[0]);
+		if (nmatch > minmatch)
+		    break;
 		}
 	    if (nmatch > minmatch)
 		break;
 	    }
-	if (nmatch > minmatch)
-	    break;
-	}
 
-    /* if (debug) {
-	int i;
-	for (i = 0; i < npeaks; i++)
-	    fprintf (stderr," %d bins at dx=%d dy=%d\n",
-		    peaks[i], dxpeaks[i], dypeaks[i]);
-	} */
+	/* if (debug) {
+	    int i;
+	    for (i = 0; i < npeaks; i++)
+		fprintf (stderr," %d bins at dx=%d dy=%d\n",
+			 peaks[i], dxpeaks[i], dypeaks[i]);
+	    } */
 
-    /* peak is broad */
-    if (npeaks < 2 || peaks[1] == peaks[0]) {
-	if (debug)
-	    fprintf (stderr,"  Broad peak of %d bins at dx=%.0f dy=%.0f\n",
-		     peaks[0], bestdx, bestdy);
+	/* peak is broad */
+	if (npeaks < 2 || peaks[1] == peaks[0]) {
+	    if (debug)
+		fprintf (stderr,"  Broad peak of %d bins at dx=%.0f dy=%.0f\n",
+		         peaks[0], bestdx, bestdy);
+	    }
 	}
 
     /* too few hits */
@@ -226,11 +357,11 @@ int	debug;
 	fprintf (stderr," Could not allocate %d bytes for GBRA\n", nmatchd);
     if (!(gbdec = (double *) malloc (nmatchd)))
 	fprintf (stderr," Could not allocate %d bytes for GBDEC\n", nmatchd);
-    for (nbin = 0; nbin < nmatch; nbin++) {
-	sbx[nbin] = sx[ibs[nbin]];
-	sby[nbin] = sy[ibs[nbin]];
-	gbra[nbin] = gra[ibg[nbin]];
-	gbdec[nbin] = gdec[ibg[nbin]];
+    for (i = 0; i < nmatch; i++) {
+	sbx[i] = sx[ibs[i]];
+	sby[i] = sy[ibs[i]];
+	gbra[i] = gra[ibg[i]];
+	gbdec[i] = gdec[ibg[i]];
 	}
 
     /* Reset image center based on star matching */
@@ -248,10 +379,10 @@ int	debug;
     yref_p = wcs->yref;
     xrefpix = wcs->xrefpix;
     yrefpix = wcs->yrefpix;
-    nbin_p = nbin;
+    nbin_p = nmatch;
 
     /* Number of parameters to fit from command line or number of matches */
-    pfit = ParamFit (nbin);
+    pfit = ParamFit (nmatch);
 
     /* Get parameters to fit from digits of pfit */
     sprintf (vpar, "%d", pfit);
@@ -1018,7 +1149,7 @@ struct WorldCoor *wcs0;
     char rastr[16],decstr[16];
     int nitmax;
 
-    nitmax = NMAX;
+    nitmax = nitmax0;
     if (nfit > NPAR)
 	nfit = NPAR;
     nfit1 = nfit + 1;
@@ -1462,8 +1593,7 @@ double ytry,ysave,sum,rtol,*psum;
 	if (rtol < ftol)
 	    break;
 	if (*nfunk >= itmax) {
-	    fprintf (stderr,"Numerical Recipes run-time error...\n");
-	    fprintf (stderr,"Too many iterations in AMOEBA %d > %d",*nfunk,itmax);
+	    fprintf (stderr,"Too many iterations in amoeba fit %d > %d",*nfunk,itmax);
 	    return;
 	    }
 	ytry = amotry (p, y, psum, ndim, funk, ihi, nfunk, -ALPHA);
@@ -1559,6 +1689,21 @@ int
 iscdfit ()
 { return (cdfit); }
 
+void
+setminmatch (minmatch)
+int minmatch;
+{ minmatch0 = minmatch; return; }
+
+void
+setminbin (minbin1)
+int minbin1;
+{ minbin = minbin1; return; }
+
+void
+setnitmax (nitmax)
+int nitmax;
+{ nitmax0 = nitmax; return; }
+
 /* Aug  6 1996	New subroutine
  * Sep  1 1996	Move constants to lwcs.h
  * Sep  3 1996	Use offscale pixels for chi^2 computation
@@ -1613,4 +1758,12 @@ iscdfit ()
  * Aug  2 2001	Separate parameter listing and counting into subroutines
  * Sep 19 2001	Drop fitshead.h; it is in wcs.h
  * Sep 24 2001	Ease match numeric criterium if half num is > 40
+ * Oct 15 2001	Simplify error message
+ * Oct 16 2001	Read minimum match to drop out of loop from lwcs.h
+ * Oct 31 2001	Simplify innermost loop to try for more speed
+ * Nov  1 2001	Add goff to StarMatch() arguments
+ * Nov  5 2001	Use current WCS with no offset before trying offset matching
+ * Nov  6 2001	Add setnitmax() to set maximum number of amoeba iterations
+ * Nov  7 2001	Add setminbin to set minimum number of matches for fit
+ * Nov 16 2001	Allocate slightly more than maxbin to handle dense fields
  */ 

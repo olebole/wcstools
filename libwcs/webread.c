@@ -1,5 +1,5 @@
 /*** File webread.c
- *** September 21, 2001
+ *** April 8, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -309,7 +309,7 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
     else if (!strncmp (caturl+lurl-12,"usnoa-server",12)) {
 	ireg = (int) unum[0];
 	istar = (int) (100000000.0 * (unum[0] - (double) ireg) + 0.5);
-	sprintf (srchurl, "?object=U%04d_%08d&n=1&format=8&");
+	sprintf (srchurl, "?object=U%04d_%08d&n=1&format=8&", ireg, istar);
 	if (nlog > 0)
 	    fprintf (stderr,"%s%s\n", caturl, srchurl);
 	}
@@ -752,4 +752,6 @@ FileINetParse(file, port, adrinet)
  * Sep 14 2001	Pass sort type, if distance or magnitude
  * Sep 14 2001	Add option to print entire returned file if nlog < 0
  * Sep 21 2001	Debug searches of ESO USNO-A2.0 and GSC catalogs
+ *
+ * Apr  8 2002	Fix bug in ESO USNO-A2.0 server code
  */

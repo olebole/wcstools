@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** September 11, 2001
+ *** April 8, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -561,7 +561,6 @@ int regnum;	/* ACT Catalog region number */
     int lfile, lpath;
     char *actfile;
     char *path;		/* Full pathname for catalog file */
-    static int actsize();
     char *cdpath;
 
     /* Set the pathname using the appropriate ACT CDROM directory */
@@ -861,4 +860,6 @@ char	*filename;	/* Name of file for which to find size */
  * Jun 14 2001	Drop spectral type approximation
  * Sep 11 2001	Change to single magnitude argeument
  * Sep 11 2001	Add sort magnitude argument to actread()
+ *
+ * Apr  8 2002	Fix extraneous declaration of actsize()
  */

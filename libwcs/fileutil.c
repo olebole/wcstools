@@ -1,5 +1,5 @@
 /*** File libwcs/fileutil.c
- *** September 25, 2001
+ *** March 23, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -17,8 +17,12 @@
  *		Return 1 if file is list of readable files, else 0
  * Subroutine:	isfile (filename)
  *		Return 1 if file is a readable file, else 0
+ * Subroutine:  stc2s (spchar, string)
+ *		Replace character in string with space
+ * Subroutine:  sts2c (spchar, string)
+ *		Replace spaces in string with character
 
- * Copyright:   2001 Smithsonian Astrophysical Observatory
+ * Copyright:   2002 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -79,8 +83,35 @@ char    *filename;      /* Name of file for which to find number of lines */
 {
 
     FILE *diskfile;
-    int lfile, nr;
-    char *buffer;
+    int lfile, nr, lbuff, ipt, ibuff;
+    char *buffer, *newbuff, *nextbuff;
+
+    /* Treat stdin differently */
+    if (!strcmp (filename, "stdin")) {
+	lbuff = 5000;
+	lfile = lbuff;
+	buffer = NULL;
+	ipt = 0;
+	for (ibuff = 0; ibuff < 10; ibuff++) {
+	    if ((newbuff = realloc (buffer, lfile+1)) != NULL) {
+		buffer = newbuff;
+		nextbuff = buffer + ipt;
+        	nr = fread (nextbuff, 1, lbuff, stdin);
+		if (nr == lbuff)
+		    break;
+		else {
+		    ipt = ipt + lbuff;
+		    lfile = lfile + lbuff;
+		    }
+		}
+	    else {
+		fprintf (stderr,"GETFILEBUFF: No room for %d-byte buffer\n",
+			 lfile);
+		break;
+		}
+	    }
+	return (buffer);
+	}
 
     /* Open file */
     if ((diskfile = fopen (filename, "r")) == NULL)
@@ -201,7 +232,7 @@ char    *filename;      /* Name of possible list file */
 int
 isfile (filename)
 
-char    *filename;      /* Name of file for which to find size */
+char    *filename;      /* Name of file to check */
 {
     if (access (filename, R_OK))
 	return (0);
@@ -252,6 +283,48 @@ next_token ()
 }
 
 
+/* Replace character in string with space */
+
+int
+stc2s (spchar, string)
+
+char	spchar;	/* Character to replace with spaces */
+char	*string;
+{
+    int i, lstr, n;
+    lstr = strlen (string);
+    n = 0;
+    for (i = 0; i < lstr; i++) {
+	if (string[i] == spchar) {
+	    n++;
+	    string[i] = ' ';
+	    }
+	}
+    return (n);
+}
+
+
+/* Replace spaces in string with character */
+
+int
+sts2c (spchar, string)
+
+char	spchar;	/* Character wth which to replace spaces */
+char	*string;
+{
+    int i, lstr, n;
+    lstr = strlen (string);
+    n = 0;
+    for (i = 0; i < lstr; i++) {
+	if (string[i] == ' ') {
+	    n++;
+	    string[i] = spchar;
+	    }
+	}
+    return (n);
+}
+
+
 /*
  * Jul 14 1999	New subroutines
  * Jul 15 1999	Add getfilebuff()
@@ -260,4 +333,8 @@ next_token ()
  * Dec  9 1999	Add next_token(); set pointer to next token in first_token
  *
  * Sep 25 2001	Add isfilelist(); move isfile() from catutil.c
+ *
+ * Jan  4 2002	Allow getfilebuffer() to read from stdin
+ * Jan  8 2002	Add sts2c() and stc2s() for space-replaced strings
+ * Mar 22 2002	Clean up isfilelist()
  */

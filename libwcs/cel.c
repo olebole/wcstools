@@ -1,7 +1,7 @@
 /*=============================================================================
 *
 *   WCSLIB - an implementation of the FITS WCS proposal.
-*   Copyright (C) 1995-2000, Mark Calabretta
+*   Copyright (C) 1995-2002, Mark Calabretta
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -153,19 +153,19 @@
 *         reference point of the projection.  These are given by the CRVALn
 *         keywords in FITS.
 *
-*         The second pair of values are the native longitude and latitude of
-*         the pole of the celestial coordinate system and correspond to the
-*         FITS keywords LONGPOLE and LATPOLE.
+*         The second pair of values are the native longitude of the celestial
+*         pole and the celestial latitude of the native pole and correspond to
+*         FITS keywords LONPOLE and LATPOLE.
 *
-*         LONGPOLE defaults to 0 degrees if the celestial latitude of the
+*         LONPOLE defaults to 0 degrees if the celestial latitude of the
 *         reference point of the projection is greater than the native
 *         latitude, otherwise 180 degrees.  (This is the condition for the
 *         celestial latitude to increase in the same direction as the native
 *         latitude at the reference point.)  ref[2] may be set to 999.0 to
 *         indicate that the correct default should be substituted.
 *
-*         In some circumstances the latitude of the native pole may be
-*         determined by the first three values only to within a sign and
+*         In some circumstances the celestial latitude of the native pole may
+*         be determined by the first three values only to within a sign and
 *         LATPOLE is used to choose between the two solutions.  LATPOLE is
 *         set in ref[3] and the solution closest to this value is used to
 *         reset ref[3].  It is therefore legitimate, for example, to set
@@ -173,7 +173,7 @@
 *         if the LATPOLE card is omitted from the FITS header.  For the
 *         special case where the reference point of the projection is at
 *         native latitude zero, its celestial latitude is zero, and
-*         LONGPOLE = +/- 90 then the native latitude of the pole is not
+*         LONPOLE = +/- 90 then the celestial latitude of the pole is not
 *         determined by the first three reference values and LATPOLE
 *         specifies it completely.
 *
@@ -229,7 +229,7 @@
 *      QSC: quadrilateralized spherical cube
 *
 *   Author: Mark Calabretta, Australia Telescope National Facility
-*   $Id: cel.c,v 2.11 2000/12/17 23:23:16 mcalabre Exp $
+*   $Id: cel.c,v 2.14 2002/04/03 01:25:29 mcalabre Exp $
 *===========================================================================*/
 
 #include <math.h>
@@ -464,8 +464,11 @@ double *lng, *lat;
 
 /* Dec 20 1999	Doug Mink - Change cosd() and sind() to cosdeg() and sindeg()
  * Dec 20 1999	Doug Mink - Include wcslib.h, which includes wcsmath.h and cel.h
+ *
  * Dec 18 2000	Doug Mink - Include string.h for strcmp()
  *
  * Mar 20 2001	Doug Mink - Add () around err assignments in if statements
  * Sep 19 2001	Doug Mink - Add above changes to WCSLIB-2.7 cel.c
+ *
+ * Mar 12 2002	Doug Mink - Add changes to WCSLIB-2.8.2 cel.c
  */

@@ -1,2 +1,1 @@
-#!/bin/sh
 saoimage -reg `imgsc2 -r 10 $1` -wcscom sgsc2_-ha_%s $*

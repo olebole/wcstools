@@ -1,5 +1,5 @@
 /* File getdate.c
- * May 25, 2001
+ * April 9, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -33,7 +33,7 @@
 #define DTDOY	16	/* Year and day of year (including fraction) */
 
 static void usage();
-static int ConvertDate();
+static void ConvertDate();
 
 static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
@@ -204,9 +204,11 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Convert date and time between various formats\n");
     fprintf (stderr,"Usage: [-dv][-n dec][-f format] itype2otype [date and/or time]\n");
-    fprintf(stderr,"  itype: fd=FITS, dt=yyyy.mmdd, ep=epoch, jd=Julian Date\n");
+    fprintf(stderr,"  itype: fd=FITS, dt=yyyy.mmdd, jd=Julian Date, mjd=Modified Julian Date\n");
+    fprintf(stderr,"         ep=epoch, epj=Julian epoch, epb=Besselian epoch\n");
     fprintf(stderr,"         lt=local time, ut=UT, ts=seconds since 1950-01-01\n");
-    fprintf(stderr,"  otype: fd=FITS, dt=yyyy.mmdd, ep=epoch, jd=Julian Date\n");
+    fprintf(stderr,"  otype: fd=FITS, dt=yyyy.mmdd, jd=Julian Date, mjd=Modified Julian Date\n");
+    fprintf(stderr,"         ep=epoch, epj=Julian epoch, epb=Besselian epoch\n");
     fprintf(stderr,"         ts=seconds since 1950-01-01, tsu=Unix sec, tsi=IRAF sec\n");
     fprintf(stderr,"     -d: Print date without time\n");
     fprintf(stderr,"     -f: Format for output number (C printf)\n");
@@ -216,7 +218,7 @@ usage ()
     exit (1);
 }
 
-static int
+static void
 ConvertDate (intype, outtype, datestring, timestring)
 
 int	intype;		/* Type of input date */
@@ -237,7 +239,7 @@ char	*timestring;	/* Input time string */
     struct tm *ltm;	/* Local time structure */
     int lt;		/* Local time return */
     int its, its1;
-    long lts;
+    time_t lts;
 
     strcpy (ts0, "00:00:00");
     if (outform == NULL) {
@@ -468,8 +470,8 @@ char	*timestring;	/* Input time string */
 		    case DTUNIX:
 			lts = fd2tsu (fitsdate);
 			if (oldfits && timestring) {
-			    ts1 = (int) fd2ts (timestring);
-			    lts = lts + (long) its1;
+			    its1 = (int) fd2ts (timestring);
+			    lts = lts + (time_t) its1;
 			    }
 			printf (outform, lts);
 			break;
@@ -545,12 +547,6 @@ char	*timestring;	/* Input time string */
 			break;
 		    case DTVIG:
 			doy2dt (vyear, vdoy, &vdate, &vtime);
-			if (oldfits) {
-			    if (timestring == NULL)
-				vtime = 0.0;
-			    else
-				vtime = time1;
-			    }
 			if (dateonly)
 			    printf ("%9.4f\n", vdate);
 			else
@@ -584,7 +580,7 @@ char	*timestring;	/* Input time string */
 			printf (outform, epoch);
 			break;
 		    case DTMJD:
-			jd = jd2mjd (fitsdate);
+			jd = jd2mjd (jd);
 			printf (outform, jd);
 			break;
 		    case DTVIG:
@@ -648,7 +644,7 @@ char	*timestring;	/* Input time string */
 			printf (outform, epoch);
 			break;
 		    case DTJD:
-			jd = mjd2jd (fitsdate);
+			jd = mjd2jd (jd);
 			printf (outform, jd);
 			break;
 		    case DTVIG:
@@ -767,7 +763,7 @@ char	*timestring;	/* Input time string */
 	case DTUNIX:
 	    if (datestring != NULL) {
     		if (strcmp (datestring, "now"))
-		    lts = (long) (atof (datestring) + 0.5);
+		    lts = (time_t) (atof (datestring) + 0.5);
 		if (verbose)
 		    printf ("%d -> ", lts);
 		switch (outtype) {
@@ -789,7 +785,7 @@ char	*timestring;	/* Input time string */
 			break;
 		    case DTIRAF:
 			its = tsu2tsi (lts);
-			printf (outform, ts);
+			printf (outform, its);
 			break;
 		    case DT1950:
 			ts = tsu2ts (lts);
@@ -1054,4 +1050,7 @@ char	*timestring;	/* Input time string */
  * May 31 2000	Fix bug which failed to convert to Julian or Bessellian epochs
  *
  * May 25 2001	Add year,day-of-year conversions
+ *
+ * Apr  8 2002	Change all long declarations to time_t
+ * Apr  9 2002	Fix declaration of ConvertDate(); fix other bugs
  */

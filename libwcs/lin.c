@@ -1,7 +1,7 @@
 /*=============================================================================
 *
 *   WCSLIB - an implementation of the FITS WCS proposal.
-*   Copyright (C) 1995-2000, Mark Calabretta
+*   Copyright (C) 1995-2002, Mark Calabretta
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -160,9 +160,14 @@
 *   leak will result.
 *
 *   Author: Mark Calabretta, Australia Telescope National Facility
-*   $Id: lin.c,v 2.5 2000/03/10 01:14:42 mcalabre Exp $
+*   $Id: lin.c,v 2.8 2002/01/30 06:04:03 mcalabre Exp $
 *===========================================================================*/
 
+#if defined(__convexc__) || defined(__APPLE__)
+#include <stdlib.h>
+#else
+#include <malloc.h>
+#endif
 #include <math.h>
 #include "wcslib.h"
 
@@ -181,13 +186,6 @@ const char *linrev_errmsg[] = {
    0,
    "Memory allocation error",
    "PC matrix is singular"};
-
-
-#ifdef __convexc__
-#include <stdlib.h>
-#else
-#include <malloc.h>
-#endif
 
 int linset(lin)
 
@@ -446,5 +444,7 @@ double inv[];
  *
  * Feb 15 2001	Doug Mink - Add comments for WCSLIB 2.6; no code changes
  * Sep 19 2001	Doug Mink - Add above change to WCSLIB 2.7 code
+ * Nov 20 2001	Doug Mink - Always include stdlib.h
+ *
+ * Jan 15 2002	Bill Joye - Add ifdef so this compiles on MacOS/X
  */
-

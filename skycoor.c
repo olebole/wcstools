@@ -1,5 +1,5 @@
 /* File skycoor.c
- * April 9, 2001
+ * December 12, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -42,6 +42,7 @@ char **av;
     FILE *fd;
     char *ln, *listname;
     char line[80];
+    char rastr[32], *decstr;
     char rastr0[32], decstr0[32];
     char rastr1[32], decstr1[32];
     char csys0[32], csys1[32];
@@ -50,6 +51,8 @@ char **av;
     int sys0;
     int sys1 = -1;
     double ra, dec, r, ra1, dec1;
+    double offra = 0.0;
+    double offdec = 0.0;
     int lstr = 32;
     int degout = 0;
     int ndec = 3;		/* Number of decimal places in RA seconds */
@@ -107,9 +110,55 @@ char **av;
 		ndec = 5;
     	    break;
 
+	case 'i':	/* Input units (r=radians, d=degrees, ...) */
+	    if (ac < 2)
+		usage("Missing input units for -i");
+	    cunit = *(*++av);
+	    if (cunit == 'r')
+		inrad = 1;
+	    ac--;
+	    break;
+
 	case 'j':	/* Output in J2000/FK5 coordinates */
 	    sys1 = WCS_J2000;
     	    break;
+
+	case 'n':	/* Number of decimal places in output */
+	    if (ac < 2)
+		usage("Missing number of decimal places for -n");
+	    ndec = atoi (*++av);
+	    ndecset++;
+	    ac--;
+    	    break;
+
+	case 'o':	/* offset in seconds to add to coordinates */
+	    if (ac < 2) {
+		usage("Missing arcseconds for -a");
+		}
+	    strcpy (rastr, *++av);
+	    decstr = strchr (rastr, ',');
+	    if (decstr) {
+		*decstr = (char) 0;
+		decstr++;
+		offra = atof (rastr);
+		offdec = atof (decstr);
+		}
+	    else {
+		offra = atof (rastr);
+		offdec = offra;
+		}
+	    ac--;
+    	    break;
+
+	case 'p':	/* Proper motions in mas/year */
+	    if (ac < 3)
+		usage("Missing proper motion for -p");
+	    mprop++;
+	    rapm = atof (*++av);
+	    ac--;
+	    decpm = atof (*++av);
+	    ac--;
+	    break;
 
 	case 'q':	/* Output coordinate system */
 	    if (ac < 2) {
@@ -132,33 +181,31 @@ char **av;
 	    ac--;
 	    ra2str (rastr0, lstr, ra, 3);
 	    dec2str (decstr0, lstr, dec, 2);
-	    printf ("ra1, dec1: %s %s\n",
-		    rastr0, decstr0);
+	    if (verbose)
+	    if (verbose)
+		printf ("ra1, dec1: %s %s\n", rastr0, decstr0);
 	    ra2str (rastr0, lstr, ra1, 3);
 	    dec2str (decstr0, lstr, dec1, 2);
-	    printf ("ra2, dec2: %s %s\n",
-		    rastr0, decstr0);
+	    if (verbose) 
+		printf ("ra2, dec2: %s %s\n", rastr0, decstr0);
 	    r = wcsdist (ra, dec, ra1, dec1);
-	    if (r < 1.0) {
-		r = r * 3600.0;
-		printf ("Distance is %.3f arcsec\n", r);
+	    if (degout) {
+		if (verbose)
+		    printf ("Distance is %.5f degrees\n", r);
+		else
+		    printf ("%.7f degrees\n", r);
 		}
 	    else {
-		printf ("Distance is %.5f degrees\n", r);
+		r = r * 3600.0;
+		if (verbose)
+		    printf ("Distance is %.3f arcsec\n", r);
+		else
+		    printf ("%.3f\n", r);
 		}
 	    break;
 
 	case 's':	/* Output ra= dec= epoch= radecsys= for sethead */
 	    keyeqval++;
-	    break;
-
-	case 'i':	/* Input units (r=radians, d=degrees, ...) */
-	    if (ac < 2)
-		usage("Missing input units for -i");
-	    cunit = *(*++av);
-	    if (cunit == 'r')
-		inrad = 1;
-	    ac--;
 	    break;
 
 	case 'w':	/* Convert RA, Dec to X, Y, Z */
@@ -193,29 +240,14 @@ char **av;
 	case 'y':	/* Epoch of coordinates */
 	    if (ac < 2)
 		usage("Missing epoch for -y");
-	    epin = fd2ep (*++av);
+	    if (strchr (*++av, '.') != NULL)
+		epin = atof (*av);
+	    else
+		epin = fd2ep (*av);
 	    epout = epin;
 	    epset++;
 	    ac--;
     	    break;
-
-	case 'n':	/* Number of decimal places in output */
-	    if (ac < 2)
-		usage("Missing number of decimal places for -n");
-	    ndec = atoi (*++av);
-	    ndecset++;
-	    ac--;
-    	    break;
-
-	case 'p':	/* Proper motions in mas/year */
-	    if (ac < 3)
-		usage("Missing proper motion for -p");
-	    mprop++;
-	    rapm = atof (*++av);
-	    ac--;
-	    decpm = atof (*++av);
-	    ac--;
-	    break;
 
     	default:
 	    if (notnum (str)) {
@@ -226,7 +258,7 @@ char **av;
     	}
     }
 
-    if (verbose)
+    if (ac > 1 || verbose)
 
     while (ac-- > 0) {
 	listname = *av;
@@ -249,11 +281,14 @@ char **av;
 		    if (sys1 < 0) {
 			if (degout)
 			    sys1 = sys0;
+			else if (offra != 0.0 || offdec != 0.0)
+			    sys1 = sys0;
 			else if (sys0 == WCS_J2000)
 			    sys1 = WCS_B1950;
 			else
 			    sys1 = WCS_J2000;
 			}
+		    
 		    skycons (rastr0,decstr0,sys0,rastr1,decstr1,sys1,lstr,ndec);
 		    wcscstr (csys0, sys0, 0.0, 0.0);
 		    wcscstr (csys1, sys1, 0.0, 0.0);
@@ -297,6 +332,8 @@ char **av;
 	    if (sys1 < 0) {
 		if (degout)
 		    sys1 = sys0;
+		else if (offra != 0.0 || offdec != 0.0)
+		    sys1 = sys0;
 		else if (sys0 == WCS_J2000)
 		    sys1 = WCS_B1950;
 		else
@@ -305,6 +342,17 @@ char **av;
 	    if (strlen (coorout) == 0)
 		wcscstr (coorout, sys1, 0.0, 0.0);
 	    eqout = wcsceq (coorout);
+
+	    if (offra != 0.0) {
+		ra = str2ra (rastr0);
+		ra = ra + (offra / 3600.0);
+		ra2str (rastr0, 32, ra, 4);
+		}
+	    if (offdec != 0.0) {
+		dec = str2dec (decstr0);
+		dec = dec + (offdec / 3600.0);
+		dec2str (decstr0, 32, dec, 3);
+		}
 	    skycons (rastr0, decstr0, sys0, rastr1, decstr1, sys1, lstr, ndec);
 	    if (degout) {
 		ra = str2ra (rastr1);
@@ -435,17 +483,18 @@ char *errstring;
     fprintf (stderr,"  -d: RA and Dec output in degrees\n");
     fprintf (stderr,"  -e: Ecliptic longitude and latitude output\n");
     fprintf (stderr,"  -g: Galactic longitude and latitude output\n");
-    fprintf (stderr,"  -i: Input units (r=radians, d=degrees, ...\n");
+    fprintf (stderr,"  -i code: Input units (r=radians, d=degrees, ...\n");
     fprintf (stderr,"  -j: J2000 (FK5) output\n");
-    fprintf (stderr,"  -n: Number of decimal places in output RA seconds\n");
-    fprintf (stderr,"  -p: RA and Dec proper motion in milliarcseconds/year\n");
-    fprintf (stderr,"  -q: Output system, including equinox\n");
-    fprintf (stderr,"  -r: Angular separation between two RA, Dec pairs\n");
+    fprintf (stderr,"  -n num: Number of decimal places in output RA seconds\n");
+    fprintf (stderr,"  -o num1[,num2] : Add arcseconds to position (both same if 1 arg)\n");
+    fprintf (stderr,"  -p rapm decpm: RA and Dec proper motion in milliarcseconds/year\n");
+    fprintf (stderr,"  -q sys: Output system, including equinox\n");
+    fprintf (stderr,"  -r ra dec ra dec: Angular separation between two RA, Dec pairs\n");
     fprintf (stderr,"  -s: Output ra= dec= epoch= radecsys= for sethead\n");
     fprintf (stderr,"  -v: verbose\n");
     fprintf (stderr,"  -w: Convert RA, Dec equatorial coordinates to x,y,z\n");
     fprintf (stderr,"  -x: Convert x,y,z equatorial coordinates to RA, Dec\n");
-    fprintf (stderr,"  -y: Epoch of coordinates in years\n");
+    fprintf (stderr,"  -y date: Epoch of coordinates in years\n");
     exit (1);
 }
 /* Oct 30 1996	New program
@@ -476,4 +525,7 @@ char *errstring;
  * Mar 28 2000	Add line specifying formats for RA and Dec
  *
  * Apr  9 2001	Add -i option to specify radian input
+ * Oct 19 2001	Allow FITS date or fractional year as epoch
+ * Oct 31 2001	Add -o to add offsets in arcseconds to coordinates
+ * Dec 12 2001	If not verbose, -r option only prints separation number
  */

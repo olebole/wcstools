@@ -1,5 +1,5 @@
 /* File xy2sky.c
- * July 25, 2001
+ * December 13, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,6 +17,7 @@
 
 static void usage();
 extern struct WorldCoor *GetWCSFITS();	/* Read WCS from FITS or IRAF header */
+static void PrintHead();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int append = 0;		/* append input line flag */
@@ -25,6 +26,7 @@ static int identifier = 0;	/* 1st column=id flag */
 static char coorsys[16];
 static int linmode = -1;
 static int face = 1;
+static int ncm = 0;
 static int printhead = 0;
 static int version = 0;		/* If 1, print only program name and version */
 
@@ -39,26 +41,27 @@ char **av;
     int ndecset = 0;
     int degout = 0;
     int ndec = 3;
+    int nlines, iline, entx, enty, entmag;
     int i;
-    int lsys;
     double x, y, mag;
     FILE *fd;
     char *ln, *listname;
-    char line[200];
+    char linebuff[1024];
+    char *line;
     char *fn;
     struct WorldCoor *wcs;
     char xstr[32], ystr[32], mstr[32];
-    char token[32];
     char keyword[16];
     char temp[64];
-    int ncm = 0;
     int ncx = 0;
     char *cofile;
     char *cobuff;
+    char *ctab;
     int nterms;
     double mag0, magx;
     double coeff[5];
     struct Tokens tokens;
+    struct TabTable *tabxy;
 
     *coorsys = 0;
     cofile = NULL;
@@ -87,7 +90,7 @@ char **av;
     	    break;
 
 	case 'b':	/* Output B1950 coordinates */
-	    strcpy (coorsys,"b1950");
+	    strcpy (coorsys,"B1950");
     	    break;
 
 	case 'c':	/* Magnitude conversion coefficients */
@@ -128,7 +131,7 @@ char **av;
 	    break;
 
 	case 'j':	/* Output J2000 coordinates */
-	    strcpy (coorsys,"j2000");
+	    strcpy (coorsys,"J2000");
     	    break;
 
 	case 'l':	/* Mode for output of linear coordinates */
@@ -182,77 +185,53 @@ char **av;
 	usage ();
 
     fn = *av++;
-    if (verbose)
-	printf ("%s:\n", fn);
-    wcs = GetWCSFITS (fn);
-    if (nowcs (wcs)) {
-	printf ("%s: No WCS for file, cannot compute image size\n", fn);
-	exit(1);
-	}
-    if (linmode > -1)
-	setwcslin (wcs, linmode);
-    if (*coorsys)
-	wcsoutinit (wcs, coorsys);
+    if (isfits (fn) || isiraf (fn)) {
+	wcs = GetWCSFITS (fn);
+	if (nowcs (wcs)) {
+	    printf ("%s: No WCS for file, cannot compute image size\n", fn);
+	    wcsfree (wcs);
+	    exit(1);
+	    }
+	if (linmode > -1)
+	    setwcslin (wcs, linmode);
+	if (wcs->sysout == WCS_B1950)
+	    wcsoutinit (wcs, "B1950");
+	if (wcs->sysout == WCS_J2000)
+	    wcsoutinit (wcs, "J2000");
+	if (*coorsys)
+	    wcsoutinit (wcs, coorsys);
 
-    /* Get magnitude conversion polynomial coefficients */
-    if (cofile != NULL) {
-	cobuff = getfilebuff (cofile);
-	mag0 = 0.0;
-	(void) agetr8 (cobuff, "mag0", &mag0);
-	for (i = 0; i < 5; i++) {
-	    coeff[i] = 0.0;
-	    sprintf (keyword, "mcoeff%d", i);
-	    (void) agetr8 (cobuff, keyword, &coeff[i]);
-	    if (coeff[i] != 0.0) nterms = i + 1;
+	/* Get magnitude conversion polynomial coefficients */
+	if (cofile != NULL) {
+	    cobuff = getfilebuff (cofile);
+	    mag0 = 0.0;
+	    (void) agetr8 (cobuff, "mag0", &mag0);
+	    for (i = 0; i < 5; i++) {
+		coeff[i] = 0.0;
+		sprintf (keyword, "mcoeff%d", i);
+		(void) agetr8 (cobuff, keyword, &coeff[i]);
+		if (coeff[i] != 0.0) nterms = i + 1;
+		}
+	    if (ncm == 0)
+		ncm = 3;
 	    }
-	if (ncm == 0)
-	    ncm = 3;
+	if (degout) {
+	    wcs->degout = degout;
+            if (!ndecset) {
+        	ndec = 5;
+		ndecset++;
+		}
+	    }
+	if (tabtable)
+	    wcs->tabsys = 1;
+	if (ndecset)
+	    wcs->ndec = ndec;
 	}
 
-    /* Print tab table header */
-    if (tabtable) {
-	wcs->tabsys = 1;
-	if (!append) {
-	    printf ("image	%s\n", fn);
-	    printf ("radecsys	%s\n",wcs->radecout);
-	    printf ("epoch	%.4f\n",wcs->epoch);
-	    if (wcs->sysout == WCS_B1950 || wcs->sysout == WCS_J2000)
-		printf ("ra         	dec         	");
-	    else if (wcs->sysout == WCS_GALACTIC)
-		printf ("glon     	glat     	");
-	    else if (wcs->sysout == WCS_ECLIPTIC)
-		printf ("elon     	elat     	");
-	    if (ncm)
-		printf ("mag   	");
-	    else
-		printf ("sys     	");
-	    printf ("x       	y       	");
-	    if (wcs->naxes > 2)
-		printf ("z    	");
-	    printf ("\n");
-	    if (wcs->degout)
-		printf ("---------	---------	");
-	    else
-		printf ("------------	------------	");
-	    if (ncm)
-		printf ("------	");
-	    else
-		printf ("--------	");
-	    printf ("--------	--------	");
-	    if (wcs->naxes > 2)
-		printf ("-----");
-	    printf ("\n");
-	    }
+    else {
+	fprintf (stderr, "*** XY2SKY error: Image filename must be first argument ***\n");
+	exit (1);
 	}
-    if (degout) {
-	wcs->degout = degout;
-        if (!ndecset) {
-            ndec = 5;
-	    ndecset++;
-	    }
-	}
-    if (ndecset)
-	wcs->ndec = ndec;
 
     /* Loop through arguments */
     while (ac-- > 1) {
@@ -263,12 +242,72 @@ char **av;
 	    ln = listname;
 	    while (*ln++)
 		*(ln-1) = *ln;
-	    if (strcmp (listname,"STDIN")==0 || strcmp (listname,"stdin")==0)
+	    if (strcmp (listname,"STDIN")==0 || strcmp (listname,"stdin")==0) {
 		fd = stdin;
-	    else
+		nlines = 10000;
+		tabxy = NULL;
+		if (printhead || verbose || tabtable)
+		    PrintHead (fn, wcs, NULL, listname);
+		}
+	    else if (istab (listname)) {
+		tabxy = tabopen (listname);
+		nlines = tabxy->nlines;
+		tabtable = 1;
+		wcs->tabsys = 1;
+		if (append) {
+		    tabtable++;
+		    PrintHead (fn, wcs, tabxy, listname);
+		    }
+		else
+		    PrintHead (fn, wcs, NULL, listname);
+
+		/* Find columns for X and Y */
+		if (!(entx = tabcol (tabxy, "X")))
+		    entx = tabcol (tabxy, "x");
+		if (!(enty = tabcol (tabxy, "Y")))
+		    enty = tabcol (tabxy, "y");
+
+		/* Find column for magnitude */
+		if (!(entmag = tabcol (tabxy, "MAG"))) {
+		    if (!(entmag = tabcol (tabxy, "mag"))) {
+			if (!(entmag = tabcol (tabxy, "magv"))) {
+			    if (!(entmag = tabcol (tabxy, "magj")))
+				entmag = tabcol (tabxy, "magr");
+			    }
+			}
+		    }
+		}
+	    else {
+		if (printhead || verbose || tabtable)
+		    PrintHead (fn, wcs, NULL, listname);
+		tabxy = NULL;
+		nlines = getfilelines (listname);
 		fd = fopen (listname, "r");
-	    if (fd != NULL) {
-		while (fgets (line, 200, fd)) {
+		if (fd == NULL) {
+		    fprintf (stderr, "Cannot read file %s\n", listname);
+		    nlines = 0;
+		    }
+		}
+	    for (iline = 0; iline < nlines; iline++) {
+		if (tabxy != NULL) {
+
+		    /* Read line for next position */
+		    if ((line = gettabline (tabxy, iline+1)) == NULL) {
+			fprintf (stderr,"Cannot read star %d\n", iline);
+			break;
+			}
+
+		    /* Extract x, y, and magnitude */
+		    (void) setoken (&tokens, line, "tab");
+		    x = tabgetr8 (&tokens, entx);
+		    y = tabgetr8 (&tokens, enty);
+		    if (ncm)
+			mag = tabgetr8 (&tokens, entmag);
+		    }
+		else {
+		    if (!fgets (linebuff, 1023, fd))
+			break;
+		    line = linebuff;
 		    if (line[1] == '#')
 			continue;
 		    if (ncm || ncx)
@@ -288,106 +327,120 @@ char **av;
 			getoken (&tokens, ncm, mstr, 31);
 			mag = atof (mstr);
 			}
-		    if (pix2wcst (wcs, x, y, wcstring, lstr)) {
-			if (wcs->sysout == WCS_ECLIPTIC) {
-			    sprintf(temp,"%.5f",wcs->epoch);
-			    strcat (wcstring, " ");
-			    strcat (wcstring, temp);
-			    }
-			if (ncm) {
-			    magx = polcomp (mag, mag0, nterms, coeff);
+		    }
+		if (pix2wcst (wcs, x, y, wcstring, lstr)) {
+		    /* Remove coordinate system if tab table output */
+		    if (tabtable) {
+			ctab = strrchr (wcstring, (char) 9);
+			*ctab = (char) 0;
+			}
+		    if (wcs->sysout == WCS_ECLIPTIC) {
+			sprintf(temp,"%.5f",wcs->epoch);
+			strcat (wcstring, " ");
+			strcat (wcstring, temp);
+			}
+		    if (ncm) {
+			magx = polcomp (mag, mag0, nterms, coeff);
+			if (tabtable)
+			    sprintf(temp,"	%6.2f", magx);
+			else
+			    sprintf(temp," %6.2f", magx);
+			strcat (wcstring, temp);
+			}
+		    if (append) {
+			if (tabtable)
+			    printf ("%s	%s", wcstring, line);
+			else
+			    printf ("%s %s", wcstring, line);
+			}
+		    else {
+			if (tabtable)
+			    printf ("%s	", wcstring);
+			else
+			    printf ("%s ", wcstring);
+
+			if (verbose && !tabtable)
+			    printf (" <- ");
+			if (wcs->nxpix > 9999 || wcs->nypix > 9999) {
 			    if (tabtable)
-				sprintf(temp,"	%6.2f", magx);
+				printf ("%9.3f	%9.3f	",x, y);
 			    else
-				sprintf(temp," %6.2f", magx);
-			    strcat (wcstring, temp);
+				printf ("%9.3f %9.3f ",x, y);
 			    }
-			if (append) {
+			else if (wcs->nxpix > 999 || wcs->nypix > 999) {
 			    if (tabtable)
-				printf ("%s	%s", wcstring, line);
+				printf ("%8.3f	%8.3f	",x, y);
 			    else
-				printf ("%s %s", wcstring, line);
+				printf ("%8.3f %8.3f ",x, y);
 			    }
 			else {
 			    if (tabtable)
-				printf ("%s	", wcstring);
+				printf ("%7.3f	%7.3f	",x, y);
 			    else
-				printf ("%s ", wcstring);
-			    if (wcs->nxpix > 9999 || wcs->nypix > 9999) {
-				if (tabtable)
-				    printf ("%9.3f	%9.3f	",x, y);
-				else
-				    printf ("%9.3f %9.3f ",x, y);
-				}
-			    else if (wcs->nxpix > 999 || wcs->nypix > 999) {
-				if (tabtable)
-				    printf ("%8.3f	%8.3f	",x, y);
-				else
-				    printf ("%8.3f %8.3f ",x, y);
-				}
-			    else {
-				if (tabtable)
-				    printf ("%7.3f	%7.3f	",x, y);
-				else
-				    printf ("%7.3f %9.3f ",x, y);
-				}
-			    if (wcs->naxes > 2) {
-				if (tabtable)
-				    printf ("%2d	", face);
-				else
-				    printf ("%2d  ", face);
-				}
+				printf ("%7.3f %9.3f ",x, y);
 			    }
-			printf ("\n");
+			if (wcs->naxes > 2) {
+			    if (tabtable)
+				printf ("%2d	", face);
+			    else
+				printf ("%2d  ", face);
+			    }
 			}
+		    printf ("\n");
 		    }
 		}
-	    else
-		fprintf (stderr, "Cannot read file %s\n", listname);
 	    av++;
 	    }
 
 	/* Process image coordinates from the command line */
 	else if (ac > 1) {
+	    if (printhead || verbose) {
+		PrintHead (fn, wcs, NULL, NULL);
+		printhead = 0;
+		}
 	    x = atof (*av);
 	    ac--;
 	    y = atof (*++av);
 	    if (pix2wcst (wcs, x, y, wcstring, lstr)) {
-		printf ("%s", wcstring);
-		lsys = strlen (wcs->radecout);
-		if (lsys < 8) {
-		    for (i = lsys; i < 8; i++)
-			printf (" ");
-		    }
 		if (wcs->sysout == WCS_ECLIPTIC) {
 		    sprintf(temp,"%.5f",wcs->epoch);
-		    strcat (wcstring, "	");
+		    strcat (wcstring, " ");
 		    strcat (wcstring, temp);
 		    }
-		if (tabtable) {
-		    if (x >= 1000.0 || x <= -100.0)
-			printf ("	%.3f	", x);
-		    else if (x >= 100.0 || x <= -10.0)
-			printf ("	%.3f 	", x);
-		    else if (x >= 10.0 || x < 0.0)
-			printf ("	%.3f  	", x);
+		if (ncm) {
+		    magx = polcomp (mag, mag0, nterms, coeff);
+		    if (tabtable)
+			sprintf(temp,"	%6.2f", magx);
 		    else
-			printf ("	%.3f   	", x);
-		    if (y >= 1000.0 || y <= -100.0)
-			printf ("%.3f	", y);
-		    else if (y >= 100.0 || y <= -10.0)
-			printf ("%.3f 	", y);
-		    else if (y >= 10.0 || y < 0.0)
-			printf ("%.3f  	", y);
+			sprintf(temp," %6.2f", magx);
+		    strcat (wcstring, temp);
+		    }
+		printf ("%s ", wcstring);
+		if (verbose && !tabtable)
+		    printf (" <- ");
+		if (wcs->nxpix > 9999 || wcs->nypix > 9999) {
+		    if (tabtable)
+			printf ("%9.3f	%9.3f	",x, y);
 		    else
-			printf ("%.3f   	", y);
-		    if (wcs->naxes > 2)
-			printf ("%2d	", face);
+			printf ("%9.3f %9.3f ",x, y);
+		    }
+		else if (wcs->nxpix > 999 || wcs->nypix > 999) {
+		    if (tabtable)
+			printf ("%8.3f	%8.3f	",x, y);
+		    else
+			printf ("%8.3f %8.3f ",x, y);
 		    }
 		else {
-		    printf ("  %.3f %.3f ", x, y);
-		    if (wcs->naxes > 2)
-			printf ("%2d ", face);
+		    if (tabtable)
+			printf ("%7.3f	%7.3f	",x, y);
+		    else
+			printf ("%7.3f %9.3f ",x, y);
+		    }
+		if (wcs->naxes > 2) {
+		    if (tabtable)
+			printf ("%2d	", face);
+		    else
+			printf ("%2d  ", face);
 		    }
 		printf ("\n");
 		}
@@ -426,6 +479,100 @@ usage ()
     fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     exit (1);
 }
+
+static void
+PrintHead (fn, wcs, tabxy, listfile)
+
+char	*fn;		/* Name of file containing list of x,y coordinates */
+struct WorldCoor *wcs;	/* World coordinate system structure */
+struct TabTable *tabxy;	/* tab table structure */
+char *listfile;		/* Name of file with list of input coordinates */
+
+{
+    char newline = (char) 10;
+    char *eol;
+    char *ctab, *tabhead;
+    int lhead, i;
+
+    if (tabtable) {
+	printf ("image	%s\n", fn);
+	if (listfile != NULL)
+	    printf ("listfile	%s\n", listfile);
+	printf ("radecsys	%s\n",wcs->radecout);
+	printf ("epoch	%.4f\n",wcs->epoch);
+	if (wcs->sysout == WCS_B1950 || wcs->sysout == WCS_J2000)
+	    printf ("ra         	dec         	");
+	else if (wcs->sysout == WCS_GALACTIC)
+	    printf ("glon     	glat     	");
+	else if (wcs->sysout == WCS_ECLIPTIC)
+	    printf ("elon     	elat     	");
+	if (ncm)
+	    printf ("mag   	");
+	if (tabxy != NULL) {
+	    eol = strchr (tabxy->tabhead, newline);
+	    *eol = (char) 0;
+	    if (wcs->sysout == WCS_B1950 || wcs->sysout == WCS_J2000) {
+		lhead = strlen (tabxy->tabhead);
+		tabhead = (char *) calloc (lhead+4, sizeof (char));
+		ctab = tabhead;
+		for (i = 0; i < lhead; i++) {
+		    *ctab++ = tabxy->tabhead[i];
+		    if (*(ctab-2) == 'r' && *(ctab-1) == 'a')
+			*ctab++ = '0';
+		    if (*(ctab-3) == 'd' && *(ctab-2) == 'e' && *(ctab-1) == 'c')
+			*ctab++ = '0';
+		    }
+		printf ("%s", tabhead);
+		}
+	    else
+		printf ("%s", tabxy->tabhead);
+	    *eol = newline;
+	    }
+	else {
+	    printf ("x       	y       	");
+	    if (wcs->naxes > 2)
+		printf ("z    	");
+	    }
+	printf ("\n");
+	if (wcs->degout)
+	    printf ("---------	---------	");
+	else
+	    printf ("------------	------------	");
+	if (ncm)
+	    printf ("------	");
+	if (tabxy != NULL) {
+	    eol = strchr (tabxy->tabdash, newline);
+	    *eol = (char) 0;
+	    printf ("%s", tabxy->tabdash);
+	    *eol = newline;
+	    }
+	else {
+	    printf ("--------	--------");
+	    if (wcs->naxes > 2)
+		printf ("	-----");
+	    }
+	printf ("\n");
+	}
+    else {
+	if (listfile == NULL)
+	    fprintf (stderr,
+		"Print sky coordinates from %s image coordinates\n", fn);
+	else
+	    fprintf (stderr,
+		"Print sky coordinates from %s image coordinates in %s\n",
+		fn, listfile);
+	if (wcs->sysout == WCS_ECLIPTIC || wcs->sysout == WCS_GALACTIC)
+	    printf ("Longitude  Latitude   Sys    ");
+	else
+	    printf ("    RA           Dec       Sys  ");
+	if (wcs->sysout == WCS_ECLIPTIC)
+	    printf("  Epoch    ",wcs->epoch);
+	if (verbose) printf ("    ");
+	printf ("    X        Y\n");
+	}
+    return;
+}
+
 /*
  * Feb 23 1996	New program
  * Apr 24 1996	Version 1.1: Add B1950, J2000, or galactic coordinate output options
@@ -469,4 +616,10 @@ usage ()
  * Jul 23 2001	Add code to calibrate magnitudes using polynomial from immatch
  * Jul 25 2001	Ignore lines with # in first column
  * Sep 12 2001	Fix output to match column headings
+ * Oct 16 2001	Increase maximum input line length from 200 to 1024
+ * Oct 16 2001	Add option to prepend coordinates to tab-separated table
+ * Oct 19 2001	Change names of old ra and dec columns if prepending ra and dec
+ * Dec 13 2001	Add -h for headings and add to verbose output
+ *
+ * Apr  8 2002	Free wcs structure if no WCS is found in file header
  */

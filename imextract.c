@@ -1,5 +1,5 @@
 /* File imextract.c
- * December 11, 2000
+ * April 9, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -255,6 +255,7 @@ char	*kwd[];		/* Names and values of those keywords */
     char *fname, *ext, *imext, *imext1;
     char echar;
     char temp[64];
+    char oldvalue[64], comment[80];
     struct Range *range; /* Range of sequence numbers to list */
     char newname[256];
     char newkey[10];
@@ -284,7 +285,6 @@ char	*kwd[];		/* Names and values of those keywords */
 	    }
 	else {
 	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
-	    free (header);
 	    return (1);
 	    }
 	}
@@ -354,12 +354,22 @@ char	*kwd[];		/* Names and values of those keywords */
 	}
     if (imext != NULL) {
 	ranges = (char *) calloc (strlen(imext+1) + 1, 1);
-	strcpy (ranges, imext);
+	strcpy (ranges, imext+1);
 	}
 
     /* Figure out how much to write out and where to start */
     range = RangeInit (ranges, nidef);
     nimages = rgetn (range);
+
+    /* If only one image, replace XTENSION with SIMPLE=t on first line */
+    if (nimages == 1) {
+	if (hgets (header, "XTENSION", 32, oldvalue)) {
+	    sprintf (comment, " XTENSION was %s extension", oldvalue);
+	    hchange (header, "XTENSION", "SIMPLE");
+	    hputl (header, "SIMPLE", 1);
+	    hputcom (header, "SIMPLE", comment);
+	    }
+	}
 
     for (i = 0; i < nimages; i++) {
 	nimage = rgeti4 (range);
@@ -577,4 +587,9 @@ char	*kwd[];		/* Names and values of those keywords */
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  * Sep 28 2000	Read only first token of listfile
  * Dec 11 2000	Set character to 0, not null
+ *
+ * Jan 28 2002	Fix bug assigning image extension to range
+ * Jan 30 2002	If extracting a single image extension, put SIMPLE=T on line 1
+ * Apr  9 2002	Do not free unallocated header
+ * Apr  9 2002	Fix bugs dealing with single input image
  */

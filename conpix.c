@@ -1,5 +1,5 @@
 /* File conpix.c
- * March 23, 2000
+ * April 9, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -258,7 +258,6 @@ double	*opcon;		/* Constants for operations */
 	    }
 	else {
 	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
-	    free (header);
 	    return;
 	    }
 	}
@@ -558,8 +557,10 @@ double	flux;	/* Square root of this is 1/2.35 of Gaussian FWHM */
 
     if (iset == 0) {
 	do {
-	    v1 = 2.0 * drand48() - 1.0;
-	    v2 = 2.0 * drand48() - 1.0;
+	    v1 = 2.0 * ((double) random() / (pow (2.0, 31.0) - 1.0)) - 1.0;
+	    v2 = 2.0 * ((double) random() / (pow (2.0, 31.0) - 1.0)) - 1.0;
+/*	    v1 = 2.0 * drand48() - 1.0;
+	    v2 = 2.0 * drand48() - 1.0; */
 	    rsq = v1 * v1 + v2 * v2;
 	    } while (rsq >= 1.0 || rsq == 0.0);
 
@@ -588,4 +589,8 @@ double	flux;	/* Square root of this is 1/2.35 of Gaussian FWHM */
  * Feb  1 2000	Always write new file if Gaussian noise; add 'g' to filename
  * Feb  1 2000	Add option to add Gaussian noise; add 'ag' to filename
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
+ *
+ * Nov 20 2001	Use random() instead of drand48() for portability
+ *
+ * Apr  9 2002	Do not free unallocated header
  */

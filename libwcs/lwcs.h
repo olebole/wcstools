@@ -1,5 +1,5 @@
 /* File lwcs.h
- * February 15, 2000
+ * October 16, 2001
  * By Doug Mink
  */
 
@@ -20,6 +20,7 @@
 #define	FTOL	0.0000001	/* Fractional change of chisqr() to be done */
 #define NMAX		3000	/* Maximum number of minimization iterations */
 #define	NPEAKS		20	/* Binning peak history */
+#define MINMATCH	50	/* Stars to match to drop out of loop */
 
 /* The following are used in world coordinate system fitting (imsetwcs.c) */
 #define MINSTARS	3	/* Minimum stars from reference and image */
@@ -35,4 +36,5 @@
 /* Jun 11 1999	Set BURNEDOUT to 0 so it is ignored
  *
  * Feb 15 2000	Drop MAXREF; add MAXCAT for imcat and scat; MAXSTARS from 25 to 50
+ * Oct 31 2001	Add MINMATCH and set default value to 50
  */

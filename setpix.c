@@ -1,5 +1,5 @@
 /* File setpix.c
- * June 21, 2000
+ * April 9, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -237,7 +237,6 @@ char	**value;	/* value to insert into pixel */
 	    }
 	else {
 	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
-	    free (header);
 	    return;
 	    }
 	}
@@ -623,4 +622,6 @@ char	**value;	/* value to insert into pixel */
  *
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  * Jun 21 2000	Add options to operate on existing image
+ *
+ * Apr  9 2002	Do not free unallocated header
  */

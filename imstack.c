@@ -1,5 +1,5 @@
 /* File imstack.c
- * September 8, 2000
+ * April 9, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -229,7 +229,6 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	else {
 	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
-	    free (header);
 	    return (1);
 	    }
 	}
@@ -371,4 +370,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  * Sep  6 2000	Add -o option to set output filename
  * Sep  8 2000	Default ntimes to 1 so program works
+ *
+ * Apr  9 2002	Do not free unallocated header
  */

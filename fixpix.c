@@ -1,5 +1,5 @@
 /* File fixpix.c
- * March 23, 2000
+ * April 9, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -206,7 +206,6 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
 	    }
 	else {
 	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
-	    free (header);
 	    return;
 	    }
 	}
@@ -432,4 +431,6 @@ int	ixr, iyr;	/* Upper right corner of region (1 based) */
  * Oct 22 1999	Drop unused variables after lint
  *
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
+ *
+ * Apr  9 2002	Do not free unallocated header
  */

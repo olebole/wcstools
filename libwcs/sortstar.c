@@ -1,5 +1,5 @@
 /*** File libwcs/sortstar.c
- *** September 18, 2001
+ *** April 8, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -52,7 +52,7 @@ int	ns;
 
 {
     StarInfo *stars;
-    static int StarFluxSort ();
+    int StarFluxSort ();
     int i;
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
@@ -80,7 +80,7 @@ int	ns;
 
 /* StarFluxSort -- Order stars in decreasing flux called by qsort */
 
-static int
+int
 StarFluxSort (ssp1, ssp2)
 
 void *ssp1, *ssp2;
@@ -100,6 +100,7 @@ void *ssp1, *ssp2;
 
 /* MagSortStars -- Sort image stars by increasing magnitude */
 static int magsort = 0;
+
 void
 MagSortStars (sn, sra, sdec, spra, spdec, sx, sy, sm, sc, sobj, ns, nm, ms)
 
@@ -119,8 +120,8 @@ int	ms;		/* Magnitude by which to sort (1 to nmag) */
 
 {
     StarInfo *stars;
-    int i, j, hasnum, haspos, hasobj, haspm;
-    static int StarMagSort ();
+    int i, j, hasnum, haspos, hasobj, haspm, hasxy;
+    int StarMagSort();
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
 
@@ -139,6 +140,10 @@ int	ms;		/* Magnitude by which to sort (1 to nmag) */
 	haspm = 1;
     else
 	haspm = 0;
+    if (sx != NULL && sy != NULL)
+	hasxy = 1;
+    else
+	hasxy = 0;
     if (sobj == NULL)
 	hasobj = 0;
     else
@@ -155,8 +160,10 @@ int	ms;		/* Magnitude by which to sort (1 to nmag) */
 	    stars[i].pra = spra[i];
 	    stars[i].pdec = spdec[i];
 	    }
-	stars[i].x = sx[i];
-	stars[i].y = sy[i];
+	if (hasxy) {
+	    stars[i].x = sx[i];
+	    stars[i].y = sy[i];
+	    }
 	for (j = 0; j < nm; j++)
 	    stars[i].m[j] = sm[j][i];
 	stars[i].c = sc[i];
@@ -177,8 +184,10 @@ int	ms;		/* Magnitude by which to sort (1 to nmag) */
 	    spra[i] = stars[i].pra;
 	    spdec[i] = stars[i].pdec;
 	    }
-	sx[i] = stars[i].x;
-	sy[i] = stars[i].y;
+	if (hasxy) {
+	    sx[i] = stars[i].x;
+	    sy[i] = stars[i].y;
+	    }
 	for (j = 0; j < nm; j++)
 	    sm[j][i] = stars[i].m[j];
 	sc[i] = stars[i].c;
@@ -193,7 +202,7 @@ int	ms;		/* Magnitude by which to sort (1 to nmag) */
 
 /* StarMagSort -- Order stars in decreasing flux called by qsort */
 
-static int
+int
 StarMagSort (ssp1, ssp2)
 
 void *ssp1, *ssp2;
@@ -254,8 +263,8 @@ int	ns;		/* Number of stars to sort */
 int	nm;		/* Number of magnitudes per star */
 {
     StarInfo *stars;
-    int i, j, hasnum, hasobj, haspm;
-    static int StarRASort ();
+    int i, j, hasnum, hasobj, haspm, hasxy;
+    int StarRASort();
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
 
@@ -265,8 +274,10 @@ int	nm;		/* Number of magnitudes per star */
 	hasnum = 1;
     if (spra != NULL && spdec != NULL)
 	haspm = 1;
+    if (sx != NULL && sy != NULL)
+	hasxy = 1;
     else
-	haspm = 0;
+	hasxy = 0;
     if (sobj == NULL)
 	hasobj = 0;
     else
@@ -281,8 +292,10 @@ int	nm;		/* Number of magnitudes per star */
 	    stars[i].pra = spra[i];
 	    stars[i].pdec = spdec[i];
 	    }
-	stars[i].x = sx[i];
-	stars[i].y = sy[i];
+	if (hasxy) {
+	    stars[i].x = sx[i];
+	    stars[i].y = sy[i];
+	    }
 	for (j = 0; j < nm; j++)
 	    stars[i].m[j] = sm[j][i];
 	stars[i].c = sc[i];
@@ -301,8 +314,10 @@ int	nm;		/* Number of magnitudes per star */
 	    spra[i] = stars[i].pra;
 	    spdec[i] = stars[i].pdec;
 	    }
-	sx[i] = stars[i].x;
-	sy[i] = stars[i].y;
+	if (hasxy) {
+	    sx[i] = stars[i].x;
+	    sy[i] = stars[i].y;
+	    }
 	for (j = 0; j < nm; j++)
 	    sm[j][i] = stars[i].m[j];
 	sc[i] = stars[i].c;
@@ -317,7 +332,7 @@ int	nm;		/* Number of magnitudes per star */
 
 /* Order stars in increasing right ascension (called by qsort) */
 
-static int
+int
 StarRASort (ssp1, ssp2)
 
 void *ssp1, *ssp2;
@@ -354,8 +369,8 @@ int	ns;		/* Number of stars to sort */
 int	nm;		/* Number of magnitudes per star */
 {
     StarInfo *stars;
-    int i, j, hasnum, hasobj, haspm;
-    static int StarDecSort ();
+    int i, j, hasnum, hasobj, haspm, hasxy;
+    int StarDecSort ();
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
 
@@ -367,6 +382,10 @@ int	nm;		/* Number of magnitudes per star */
 	haspm = 1;
     else
 	haspm = 0;
+    if (sx != NULL && sy != NULL)
+	hasxy = 1;
+    else
+	hasxy = 0;
     if (sobj == NULL)
 	hasobj = 0;
     else
@@ -381,8 +400,10 @@ int	nm;		/* Number of magnitudes per star */
 	    stars[i].pra = spra[i];
 	    stars[i].pdec = spdec[i];
 	    }
-	stars[i].x = sx[i];
-	stars[i].y = sy[i];
+	if (hasxy) {
+	    stars[i].x = sx[i];
+	    stars[i].y = sy[i];
+	    }
 	for (j = 0; j < nm; j++)
 	    stars[i].m[j] = sm[j][i];
 	stars[i].c = sc[i];
@@ -401,8 +422,10 @@ int	nm;		/* Number of magnitudes per star */
 	    spra[i] = stars[i].pra;
 	    spdec[i] = stars[i].pdec;
 	    }
-	sx[i] = stars[i].x;
-	sy[i] = stars[i].y;
+	if (hasxy) {
+	    sx[i] = stars[i].x;
+	    sy[i] = stars[i].y;
+	    }
 	for (j = 0; j < nm; j++)
 	    sm[j][i] = stars[i].m[j];
 	sc[i] = stars[i].c;
@@ -417,7 +440,7 @@ int	nm;		/* Number of magnitudes per star */
 
 /* Order stars in increasing declination (called by qsort) */
 
-static int
+int
 StarDecSort (ssp1, ssp2)
 
 void *ssp1, *ssp2;
@@ -454,14 +477,18 @@ int	ns;		/* Number of stars to sort */
 int	nm;		/* Number of magnitudes per star */
 {
     StarInfo *stars;
-    int i, j, hasnum, hasobj, haspm;
-    static int StarXSort ();
+    int i, j, hasnum, hasobj, haspos, haspm;
+    int StarXSort ();
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
     if (sn == NULL)
 	hasnum = 0;
     else
 	hasnum = 1;
+    if (sra != NULL && sdec != NULL)
+	haspos = 1;
+    else
+	haspos = 0;
     if (spra != NULL && spdec != NULL)
 	haspm = 1;
     else
@@ -474,8 +501,10 @@ int	nm;		/* Number of magnitudes per star */
     for (i = 0; i < ns; i++) {
 	if (hasnum)
 	    stars[i].n = sn[i];
-	stars[i].ra = sra[i];
-	stars[i].dec = sdec[i];
+	if (haspos) {
+	    stars[i].ra = sra[i];
+	    stars[i].dec = sdec[i];
+	    }
 	if (haspm) {
 	    stars[i].pra = spra[i];
 	    stars[i].pdec = spdec[i];
@@ -494,8 +523,10 @@ int	nm;		/* Number of magnitudes per star */
     for (i = 0; i < ns; i++) {
 	if (hasnum)
 	    sn[i] = stars[i].n;
-	sra[i] = stars[i].ra;
-	sdec[i] = stars[i].dec;
+	if (haspos) {
+	    sra[i] = stars[i].ra;
+	    sdec[i] = stars[i].dec;
+	    }
 	if (haspm) {
 	    spra[i] = stars[i].pra;
 	    spdec[i] = stars[i].pdec;
@@ -516,7 +547,7 @@ int	nm;		/* Number of magnitudes per star */
 
 /* StarXSort -- Order stars in decreasing X value called by qsort */
 
-static int
+int
 StarXSort (ssp1, ssp2)
 
 void *ssp1, *ssp2;
@@ -553,14 +584,18 @@ int	ns;		/* Number of stars to sort */
 int	nm;		/* Number of magnitudes per star */
 {
     StarInfo *stars;
-    int i, j, hasnum, hasobj, haspm;
-    static int StarYSort ();
+    int i, j, hasnum, hasobj, haspm, haspos;
+    int StarYSort ();
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
     if (sn == NULL)
 	hasnum = 0;
     else
 	hasnum = 1;
+    if (sra != NULL && sdec != NULL)
+	haspos = 1;
+    else
+	haspos = 0;
     if (spra != NULL && spdec != NULL)
 	haspm = 1;
     else
@@ -573,8 +608,10 @@ int	nm;		/* Number of magnitudes per star */
     for (i = 0; i < ns; i++) {
 	if (hasnum)
 	    stars[i].n = sn[i];
-	stars[i].ra = sra[i];
-	stars[i].dec = sdec[i];
+	if (haspos) {
+	    stars[i].ra = sra[i];
+	    stars[i].dec = sdec[i];
+	    }
 	if (haspm) {
 	    stars[i].pra = spra[i];
 	    stars[i].pdec = spdec[i];
@@ -593,8 +630,10 @@ int	nm;		/* Number of magnitudes per star */
     for (i = 0; i < ns; i++) {
 	if (hasnum)
 	    sn[i] = stars[i].n;
-	sra[i] = stars[i].ra;
-	sdec[i] = stars[i].dec;
+	if (haspos) {
+	    sra[i] = stars[i].ra;
+	    sdec[i] = stars[i].dec;
+	    }
 	if (haspm) {
 	    spra[i] = stars[i].pra;
 	    spdec[i] = stars[i].pdec;
@@ -615,7 +654,7 @@ int	nm;		/* Number of magnitudes per star */
 
 /* StarYSort -- Order stars in decreasing Y value called by qsort */
 
-static int
+int
 StarYSort (ssp1, ssp2)
 
 void *ssp1, *ssp2;
@@ -658,4 +697,8 @@ void *ssp1, *ssp2;
  * Sep 12 2001	Allow up to 11 magnitudes; add nm and magsort
  * Sep 13 2001	Add YSortStars() to sort by Y coordinate
  * Sep 18 2001	Subtract 100 in MagSort if magnitude is greater than 100
+ * Nov  6 2001	Allow missing x and y in MagSort, RASort, and DecSort
+ * Nov  6 2001	Allow missing ra and dec in XSort and YSort
+ *
+ * Apr  8 2002	Drop static subroutine declarations
  */

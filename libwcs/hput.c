@@ -1,5 +1,5 @@
 /*** File libwcs/hput.c
- *** January 11, 2001
+ *** January 4, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -27,7 +27,7 @@
  * Subroutine:  getltime () returns current local time as ISO-style string
  * Subroutine:  getutime () returns current UT as ISO-style string
 
- * Copyright:   2001 Smithsonian Astrophysical Observatory
+ * Copyright:   2002 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -527,7 +527,7 @@ hputcom (hstring,keyword,comment)
 {
     char squot;
     char line[100];
-    int lkeyword, lcom, lhead;
+    int lkeyword, lcom, lhead, i, lblank;
     char *vp, *v1, *v2, *c0, *c1, *q1, *q2;
     char *ksearch();
 
@@ -586,7 +586,7 @@ hputcom (hstring,keyword,comment)
 	if (q2 == NULL || q2-line < 31)
 	    c0 = v1 + 31;
 	else
-	    c0 = v1 + (q2-line) + 2; /* allan: 1997-09-30, was c0=q2+2 */
+	    c0 = v1 + (q2 - line) + 2; /* allan: 1997-09-30, was c0=q2+2 */
 
 	/* If comment will not fit, do not add it */
 	if (c0 - v1 > 77)
@@ -598,8 +598,12 @@ hputcom (hstring,keyword,comment)
     if (lcom > 0) {
 	c1 = c0 + 2;
 	if (c1+lcom > v2)
-	    lcom = v2 - c1;
+	    lcom = v2 - c1 - 2;
 	strncpy (c1, comment, lcom);
+	lblank = v2 - c1 - lcom;
+	c1 = c1 + lcom;
+	for (i = 0; i < lblank; i++)
+	    *c1++ = ' ';
 	}
 
     if (verbose) {
@@ -1152,4 +1156,6 @@ int	ndec;		/* Number of decimal places in degree string */
  *
  * Jan 11 2001	Print all messages to stderr
  * Jan 18 2001	Drop declaration of blsearch(); it is in fitshead.h
+ *
+ * Jan  4 2002	Fix placement of comments
  */

@@ -1,5 +1,5 @@
 /* File imwcs.c
- * September 13, 2001
+ * April 10, 2002
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -17,7 +17,10 @@
 #include "libwcs/wcscat.h"
 #include "libwcs/lwcs.h"
 
-static void usage();
+#define MAXFILES 1000
+static int maxnfile = MAXFILES;
+
+static void PrintUsage();
 static void FitWCS();
 
 static int verbose = 0;		/* verbose/debugging flag */
@@ -33,6 +36,7 @@ char outname[128];		/* Name for output image */
 static char *refcatname;	/* Name of reference catalog to match */
 static int version = 0;		/* If 1, print only program name and version */
 static char *matchfile;		/* File of X Y RA Dec matches for initial fit */
+static char *progname;		/* Name of program as executed */
 
 extern char *RotFITS();
 extern int SetWCSFITS();
@@ -65,6 +69,9 @@ extern void setrecenter();
 extern void setmatch();
 extern void setimfrac();
 extern void setsortmag();
+extern void setparm();
+extern void setmirror();
+extern void setrotate();
 
 main (ac, av)
 int ac;
@@ -77,318 +84,353 @@ char **av;
     int readlist = 0;
     char *lastchar;
     char filename[128];
+    char errmsg[256];
     FILE *flist;
+    char **fn;
     char *listfile;
     double x, y;
     int i, imag;
+    int ifile, nfile;
     char *refcatn;		/* Name of reference ctalog used */
-    char *progname;		/* Name of program as executed */
 
     outname[0] = 0;
     refcatname = NULL;
     matchfile = NULL;
+    nfile = 0;
+    fn = (char **)calloc (maxnfile, sizeof(char *));
 
     /* Check name used to execute programe and set catalog name accordingly */
     progname = ProgName (av[0]);
     refcatname = ProgCat (progname);
 
-    /* Check for help or version command first */
-    str = *(av+1);
-    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
-	usage (progname);
-    if (!strcmp (str, "version") || !strcmp (str, "-version")) {
-	version = 1;
-	usage (progname);
-	}
+    if (ac == 1)
+	PrintUsage (NULL);
 
-    /* Decode arguments */
-    for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
-	char c;
-	if (*str == '@')
-	    str = str - 1;
-	while ((c = *++str) != 0)
-    	switch (c) {
+    /* Loop through the arguments */
+    for (av++; --ac > 0; av++) {
+	str = *av;
 
-	case 'a':       /* Initial rotation angle in degrees */
-	    if (ac < 2)
-		usage (progname);
-	    drot = atof (*++av);
-	    arot = fabs (drot);
-	    if (arot != 90.0 && arot != 180.0 && arot != 270.0) {
-		setrot (drot);
-		rot = 0;
-		}
-	    else
-		rot = atoi (*av);
-	    ac--;
-	    break;
+	/* Check for help command first */
+	if (str == NULL || !strcmp (str, "help") || !strcmp (str, "-help"))
+	    PrintUsage (NULL);
 
-    	case 'b':	/* initial coordinates on command line in B1950 */
-    	    if (ac < 3)
-    		usage (progname);
-	    setsys (WCS_B1950);
-	    strcpy (rastr, *++av);
-	    ac--;
-	    strcpy (decstr, *++av);
-	    ac--;
-	    setcenter (rastr, decstr);
-    	    break;
+	/* Check for version command */
+	else if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	    version = 1;
+	    PrintUsage ("version");
+	    }
 
-	case 'c':       /* Set reference catalog */
-	    if (ac < 2)
-		usage (progname);
-	    refcatname = *++av;
-	    ac--;
-	    break;
+	else if (strchr (str, '='))
+	    setparm (str);
 
-	case 'd':	/* Read image star positions from DAOFIND file */
-	    if (ac < 2)
-		usage (progname);
-	    setimcat (*++av);
-	    imsearch = 0;
-	    ac--;
-	    break;
-
-	case 'e':	/* Erase WCS projection in image header */
-	    erasewcs++;
-	    break;
-
-    	case 'f':	/* Write FITS file */
-	    fitsout = 1;
-    	    break;
-
-	case 'g':	/* Guide Star object class */
-    	    if (ac < 2)
-    		usage (progname);
-    	    setclass ((int) atof (*++av));
-    	    ac--;
-    	    break;
-
-	case 'h':	/* Maximum number of reference stars */
-    	    if (ac < 2)
-    		usage (progname);
-    	    setmaxcat ((int) atof (*++av));
-    	    ac--;
-    	    break;
-
-	case 'i':       /* Image star minimum peak value */
-	    if (ac < 2)
-		usage (progname);
-	    bmin = atof (*++av);
-	    if (bmin < 0)
-		setstarsig (-bmin);
-	    else
-		setbmin (bmin);
-	    ac--;
-	    break;
-
-    	case 'j':	/* center coordinates on command line in J2000 */
-    	    if (ac < 3) {
-		fprintf (stderr, "IMWCS: Missing RA Dec or coordinate system\n");
-    		usage (progname);
-		}
-	    setsys (WCS_J2000);
-	    strcpy (rastr, *++av);
-	    ac--;
-	    strcpy (decstr, *++av);
-	    ac--;
-	    setcenter (rastr, decstr);
-    	    break;
-
-    	case 'k':	/* select magnitude to use from reference catalog */
-    	    if (ac < 2)
-    		usage (progname);
-    	    imag = atoi (*++av);
-	    setsortmag (imag);
-    	    ac--;
-	    break;
-
-    	case 'l':	/* Left-right reflection before rotating */
-	    mirror = 1;
-    	    break;
-
-    	case 'm':	/* Limiting reference star magnitude */
-    	    if (ac < 2)
-    		usage (progname);
-	    maglim1 = -99.0;
-    	    maglim2 = atof (*++av);
-    	    ac--;
-	    if (ac > 1 && isnum (*(av+1))) {
-		maglim1 = maglim2;
-		maglim2 = atof (*++av);
-		ac--;
-		}
-    	    setreflim (maglim1, maglim2);
-    	    break;
-
-    	case 'n':	/* Number of parameters to fit */
-    	    if (ac < 2)
-    		usage (progname);
-    	    setnfit ((int) atof (*++av));
-    	    ac--;
-    	    break;
-
-    	case 'o':	/* Specifiy output image filename */
-    	    if (ac < 2)
-    		usage (progname);
-	    if (*(av+1)[0] == '-' || *(str+1) != (char)0)
-		overwrite++;
-	    else {
-		strcpy (outname, *(av+1));
-		overwrite = 0;
-		av++;
-		ac--;
-		}
-    	    writeheader++;
-    	    break;
-
-    	case 'p':	/* Initial plate scale in arcseconds per pixel */
-    	    if (ac < 2) {
-		fprintf (stderr, "IMWCS: Missing arcseconds per pixel\n");
-    		usage (progname);
-		}
-    	    setsecpix (atof (*++av));
-    	    ac--;
-	    if (ac > 1 && isnum (*(av+1))) {
-		setsecpix2 (atof (*++av));
-		ac--;
-		}
-    	    break;
-
-    	case 'q':	/* Fit again */
-    	    if (ac < 2) {
-		fprintf (stderr, "IMWCS: Missing q option\n");
-    		usage (progname);
-		}
-	    str1 = *++av;
-	    ac--;
-	    while ((c1 = *str1) != 0) {
-    	    switch (c1) {
-
-		case 'i':		/* Iterate fit: new area */
-		    c2 = *(str1+1);
-		    if ((int)c2 > 47 && (int)c2 < 58) {
-			i = (int) c2 - 48;
-			str1++;
-			}
-		    else
-			i = 1;
-    		    setiterate (i);
-		    break;
-
-		case 'r':		/* Recenter fit and rerun */
-    		    setrecenter (1);
-		    break;
-
-		case 's':		/* Use only matches within 2 sigma */
-    		    setresid_refine(1);
-		    break;
-
-		case 't':		/* Iterate fit: tighten up */
-		    c2 = *(str1+1);
-		    if ((int)c2 > 47 && (int)c2 < 58) {
-			i = (int) c2 - 48;
-			str1++;
-			}
-		    else
-			i = 1;
-    		    setiteratet (i);
-		    break;
-
-		case 'p':		/* Use polynomial WCS */
-		    c2 = *(str1+1);
-		    if ((int)c2 > 47 && (int)c2 < 58) {
-			i = (int) c2;
-			str1++;
-			}
-		    else
-			i = 6;
-    		    setfitplate (i);
-		    break;
-
-		case '8':		/* Fit 8 polynomial parameters */
-		    setfitplate (8);
-		    break;
-
-		default:
-		    fprintf (stderr, "IMWCS: Illegal q option -%s-\n", str1);
-		    usage(progname);
-		    break;
-		}
-		str1++;
-		}
-    	    break;
-
-    	case 'r':	/* Angle in degrees to rotate before fitting */
-    	    if (ac < 2)
-    		usage (progname);
-    	    rot = (int) atof (*++av);
-    	    ac--;
-    	    break;
-
-    	case 's':   /* this fraction more image stars than reference stars or vice versa */
-    	    if (ac < 2)
-    		usage (progname);
-    	    setfrac (atof (*++av));
-    	    ac--;
-    	    break;
-
-    	case 't':	/* tolerance in pixels for star match */
-    	    if (ac < 2)
-    		usage (progname);
-    	    settolerance (atof (*++av));
-    	    ac--;
-    	    break;
-
-	case 'u':	/* UJ Catalog plate number */
-    	    if (ac < 2)
-    		usage (progname);
-	    matchfile = *++av;
-    	    setmatch (matchfile);
-    	    ac--;
-    	    break;
-
-    	case 'v':	/* more verbosity */
-    	    verbose++;
-    	    break;
-
-    	case 'w':	/* update the fields */
-    	    writeheader++;
-    	    break;
-
-	case 'x':	/* X and Y coordinates of reference pixel */
-	    if (ac < 3)
-		usage (progname);
-	    x = atof (*++av);
-	    ac--;
-	    y = atof (*++av);
-	    ac--;
-    	    setrefpix (x, y);
-    	    break;
-
-	case 'y':	/* Multiply dimensions of image by fraction */
-	    if (ac < 2)
-		usage (progname);
-	    setimfrac (atof (*++av));
-	    ac--;
-    	    break;
-
-	case 'z':       /* Use AIPS classic WCS */
-	    setdefwcs (WCS_ALT);
-	    break;
-
-	case '@':	/* List of files to be read */
+	/* Image list file */
+	else if (str[0] == '@') {
 	    readlist++;
 	    listfile = ++str;
 	    str = str + strlen (str) - 1;
 	    av++;
 	    ac--;
-    	default:
-	    fprintf (stderr, "IMWCS: Illegal command -%s-\n", c);
-    	    usage(progname);
-    	    break;
-    	}
-    }
+	    }
+
+	/* Decode arguments */
+	else if (str[0] == '-') {
+
+	    /* Loop through possibly combined arguments */
+	    while ((c = *++str) != 0) {
+		switch (c) {
+
+		case 'a':       /* Initial rotation angle in degrees */
+		    if (ac < 2)
+			PrintUsage (str);
+		    drot = atof (*++av);
+		    arot = fabs (drot);
+		    if (arot != 90.0 && arot != 180.0 && arot != 270.0) {
+			setrot (drot);
+			rot = 0;
+			}
+		    else
+			rot = atoi (*av);
+		    ac--;
+		    break;
+
+    		case 'b':   /* initial coordinates on command line in B1950 */
+    		    if (ac < 3)
+    			PrintUsage (str);
+		    setsys (WCS_B1950);
+		    strcpy (rastr, *++av);
+		    ac--;
+		    strcpy (decstr, *++av);
+		    ac--;
+		    setcenter (rastr, decstr);
+    		    break;
+
+		case 'c':       /* Set reference catalog */
+		    if (ac < 2)
+			PrintUsage (str);
+		    refcatname = *++av;
+		    ac--;
+		    break;
+
+		case 'd':  /* Read image star positions from DAOFIND file */
+		    if (ac < 2)
+			PrintUsage (str);
+		    setimcat (*++av);
+		    imsearch = 0;
+		    ac--;
+		    break;
+
+		case 'e':	/* Erase WCS projection in image header */
+		    erasewcs++;
+		    break;
+
+    		case 'f':	/* Write FITS file */
+		    fitsout = 1;
+    		    break;
+
+		case 'g':	/* Guide Star object class */
+    		    if (ac < 2)
+    			PrintUsage (str);
+    		    setclass ((int) atof (*++av));
+    		    ac--;
+    		    break;
+
+		case 'h':	/* Maximum number of reference stars */
+    		    if (ac < 2)
+    			PrintUsage (str);
+    		    setmaxcat ((int) atof (*++av));
+    		    ac--;
+    		    break;
+
+		case 'i':       /* Image star minimum peak value */
+		    if (ac < 2)
+			PrintUsage (str);
+		    bmin = atof (*++av);
+		    if (bmin < 0)
+			setstarsig (-bmin);
+		    else
+			setbmin (bmin);
+		    ac--;
+		    break;
+
+    		case 'j':  /* center coordinates on command line in J2000 */
+    		    if (ac < 3)
+    			PrintUsage ("* Missing RA Dec or coordinate system");
+		    setsys (WCS_J2000);
+		    strcpy (rastr, *++av);
+		    ac--;
+		    strcpy (decstr, *++av);
+		    ac--;
+		    setcenter (rastr, decstr);
+    		    break;
+
+    		case 'k':  /* select magnitude to use from reference catalog */
+    		    if (ac < 2)
+    			PrintUsage (str);
+		    av++;
+		    c1 = (*av)[0];
+		    if (c1 > '9')
+			imag = (int) c1;
+		    else
+			imag = (int) c1 - 48;
+		    setsortmag (imag);
+    		    ac--;
+		    break;
+
+    		case 'l':	/* Left-right reflection before rotating */
+		    mirror = 1;
+		    setmirror (mirror);
+    		    break;
+
+    		case 'm':	/* Limiting reference star magnitude */
+    		    if (ac < 2)
+    			PrintUsage (str);
+		    maglim1 = -99.0;
+    		    maglim2 = atof (*++av);
+    		    ac--;
+		    if (ac > 1 && isnum (*(av+1))) {
+			maglim1 = maglim2;
+			maglim2 = atof (*++av);
+			ac--;
+			}
+    		    setreflim (maglim1, maglim2);
+    		    break;
+
+		case 'n':	/* Number of parameters to fit */
+    		    if (ac < 2)
+    			PrintUsage (str);
+    		    setnfit ((int) atof (*++av));
+    		    ac--;
+    		    break;
+
+    		case 'o':	/* Specifiy output image filename */
+    		    if (ac < 2)
+    			PrintUsage (str);
+		    if (*(av+1)[0] == '-' || *(str+1) != (char)0)
+			overwrite++;
+		    else {
+			strcpy (outname, *(av+1));
+			overwrite = 0;
+			av++;
+			ac--;
+			}
+    		    writeheader++;
+    		    break;
+
+    		case 'p':  /* Initial plate scale in arcseconds per pixel */
+    		    if (ac < 2)
+    			PrintUsage ("* Missing arcseconds per pixel");
+    		    setsecpix (atof (*++av));
+    		    ac--;
+		    if (ac > 1 && isnum (*(av+1))) {
+			setsecpix2 (atof (*++av));
+			ac--;
+			}
+    		    break;
+
+    		case 'q':	/* Fit again */
+    		    if (ac < 2)
+    			PrintUsage ("* Missing -q option");
+		    str1 = *++av;
+		    ac--;
+		    while ((c1 = *str1) != 0) {
+    		    switch (c1) {
+	
+			case 'i':	/* Iterate fit: new area */
+			    c2 = *(str1+1);
+			    if ((int)c2 > 47 && (int)c2 < 58) {
+				i = (int) c2 - 48;
+				str1++;
+				}
+			    else
+				i = 1;
+    			    setiterate (i);
+			    break;
+	
+			case 'r':	/* Recenter fit and rerun */
+    			    setrecenter (1);
+			    break;
+	
+			case 's':	/* Use only matches within 2 sigma */
+    			    setresid_refine(1);
+			    break;
+	
+			case 't':	/* Iterate fit: tighten up */
+			    c2 = *(str1+1);
+			    if ((int)c2 > 47 && (int)c2 < 58) {
+				i = (int) c2 - 48;
+				str1++;
+				}
+			    else
+				i = 1;
+    			    setiteratet (i);
+			    break;
+	
+			case 'p':	/* Use polynomial WCS */
+			    c2 = *(str1+1);
+			    if ((int)c2 > 47 && (int)c2 < 58) {
+				i = (int) c2;
+				str1++;
+				}
+			    else
+				i = 6;
+    			    setfitplate (i);
+			    break;
+	
+			case '8':	/* Fit 8 polynomial parameters */
+			    setfitplate (8);
+			    break;
+	
+			default:
+			    sprintf (errmsg, "* Illegal q option -%s-", str1);
+			    PrintUsage (errmsg);
+			    break;
+			}
+			str1++;
+			}
+    		    break;
+
+    		case 'r':	/* Angle in degrees to rotate before fitting */
+    		    if (ac < 2)
+    			PrintUsage (str);
+    		    rot = (int) atof (*++av);
+		    setrotate (rot);
+    		    ac--;
+    		    break;
+
+		case 's':   /* fraction image stars over reference stars */
+	    	    if (ac < 2)
+    			PrintUsage (str);
+    		    setfrac (atof (*++av));
+    		    ac--;
+    		    break;
+
+    		case 't':	/* tolerance in pixels for star match */
+    		    if (ac < 2)
+    			PrintUsage (str);
+    		    settolerance (atof (*++av));
+    		    ac--;
+    		    break;
+
+		case 'u':	/* UJ Catalog plate number */
+    		    if (ac < 2)
+    			PrintUsage (str);
+		    matchfile = *++av;
+    		    setmatch (matchfile);
+    		    ac--;
+    		    break;
+
+		case 'v':	/* more verbosity */
+    		    verbose++;
+    		    break;
+
+    		case 'w':	/* update the fields */
+    		    writeheader++;
+    		    break;
+
+		case 'x':	/* X and Y coordinates of reference pixel */
+		    if (ac < 3)
+			PrintUsage (str);
+		    x = atof (*++av);
+		    ac--;
+		    y = atof (*++av);
+		    ac--;
+    		    setrefpix (x, y);
+    		    break;
+
+		case 'y':	/* Multiply dimensions of image by fraction */
+		    if (ac < 2)
+			PrintUsage (str);
+		    setimfrac (atof (*++av));
+		    ac--;
+    		    break;
+
+		case 'z':       /* Use AIPS classic WCS */
+		    setdefwcs (WCS_ALT);
+		    break;
+
+    		default:
+		    sprintf (errmsg, "* Illegal command -%c-", c);
+    		    PrintUsage (errmsg);
+    		    break;
+    		}
+		}
+	    }
+
+	/* Image file */
+	else if (isfits (str) || isiraf (str)) {
+	    if (nfile >= maxnfile) {
+		maxnfile = maxnfile * 2;
+		fn = (char **) realloc ((void *)fn, maxnfile);
+		}
+	    fn[nfile] = str;
+	    nfile++;
+	    }
+
+	else {
+	    sprintf (errmsg, "* %s is not a FITS or IRAF file.", str);
+    	    PrintUsage (errmsg);
+	    }
+	}
 
     /* If reference catalog is not set, use HST GSC */
     if (refcatname == NULL && matchfile == NULL) {
@@ -397,16 +439,15 @@ char **av;
 	refcatname = refcatn;
 	}
 
-    /* Find number of images to search and leave listfile open for reading */
+    if (!writeheader && !verbose) {
+	PrintUsage ("* Must have either w or v argument");
+	}
+
+    /* Process image files from list file */
     if (readlist) {
-	if (!writeheader && !verbose) {
-	    fprintf (stderr, "IMWCS: Must have either w or v argument.\n");
-	    usage (progname);
-	    }
 	if ((flist = fopen (listfile, "r")) == NULL) {
-	    fprintf (stderr,"IMWCS: List file %s cannot be read\n",
-		     listfile);
-	    usage (progname);
+	    sprintf (errmsg,"* List file %s cannot be read", listfile);
+	    PrintUsage (errmsg);
 	    }
 	while (fgets (filename, 128, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
@@ -418,37 +459,41 @@ char **av;
 	fclose (flist);
 	}
 
-    /* If no arguments left, print usage */
-    if (ac == 0)
-	usage (progname);
-
-    if (!writeheader && !verbose) {
-	fprintf (stderr, "IMWCS: Must have either w or v argument.\n");
-	usage (progname);
-	}
-
-    while (ac-- > 0) {
-    	char *fn = *av++;
-	if (fn != NULL) {
+    /* Process image files */
+    else if (nfile > 0) {
+	for (ifile = 0; ifile < nfile; ifile++) {
 	    if ( verbose)
-    		printf ("%s:\n", fn);
-	    FitWCS (progname, fn);
+    		printf ("%s:\n", fn[ifile]);
+	    FitWCS (progname, fn[ifile]);
 	    if (verbose)
 		printf ("\n");
 	    }
 	}
 
+    /* Print error message if no image files to process */
+    else
+	PrintUsage ("* No files to process.");
+
     return (0);
 }
 
 static void
-usage (progname)
+PrintUsage (command)
 
-char    *progname;
+char    *command;
 
 {
     if (version)
 	exit (-1);
+
+    if (command != NULL) {
+	if (command[0] == '*')
+	    fprintf (stderr, "%s\n", command);
+	else
+	    fprintf (stderr, "* Missing argument for command %c\n", command[0]);
+	exit (1);
+	}
+
     if (strsrch (progname,"gsc") != NULL)
 	fprintf (stderr,"Set WCS in FITS and IRAF image files using HST Guide Stars)\n");
     else if (strsrch (progname,"gsca") != NULL)
@@ -484,6 +529,7 @@ char    *progname;
 	fprintf (stderr,"Set WCS in FITS and IRAF image files using Tycho Catalog stars)\n");
     else
 	fprintf (stderr,"Set WCS in FITS and IRAF image files (after UIowa SETWCS)\n");
+
     fprintf(stderr,"Usage: [-vwdfl][-o filename][-m mag][-n frac][-s mode][-g class]\n");
     fprintf(stderr,"       [-h maxref][-i peak][-c catalog][-p scale][-b ra dec][-j ra dec]\n");
     fprintf(stderr,"       [-r deg][-t tol][-u matchfile][-x x y][-y frac] FITS or IRAF file(s)\n");
@@ -869,5 +915,12 @@ char *
  * Dec 11 2000	Fix last argument test
  *
  * Jan 30 2001	Fix -o option to overwrite an image
- * May 21 2001	Add GSC-ACT and 2MASS POint Source Catalogs
+ * May 21 2001	Add GSC-ACT and 2MASS Point Source Catalogs
+ * Oct 16 2001	Add command line parameters setting using keyword=value
+ * Oct 24 2001	Improve error handling
+ * Oct 25 2001	Allow arbitrary argument order on command line
+ * Oct 31 2001	Print complete help message if no arguments
+ * Dec 17 2001	Set mirror and rotation in FindStars()
+ *
+ * Apr 10 2002	Accept letter as well as number for magnitude
  */

@@ -1,5 +1,5 @@
 /* File edhead.c
- * November 29, 1999
+ * April 9, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -138,7 +138,6 @@ char	*filename;	/* FITS or IRAF file filename */
 
 	else {
 	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
-	    free (header);
 	    return;
 	    }
 	}
@@ -371,4 +370,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Nov 24 1999	Add -e to set editor on command line
  * Nov 24 1999	Set characters less than 32 in header string to space
  * Nov 29 1999	Fix bug so environment editor is used correctly
+ *
+ * Apr  9 2002	Do not free unallocated header
  */

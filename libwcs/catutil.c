@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** September 20, 2001
+ *** April 10, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -24,6 +24,8 @@
  *	Return number of decimal places in source number, if known
  * void CatMagName (imag, refcat, magname)
  *	Returns name of specified magnitude
+ * int CatMagNum (imag, refcat)
+ *	Returns number of magnitude specified by letter as int
  * int StrNdec (string)
  *	Returns number of decimal places in a numeric string (-1=not number)
  * int NumNdec (number)
@@ -841,18 +843,11 @@ char	*magname;	/* Name of magnitude, returned */
 	else
 	    strcpy (magname, "MagB");
 	}
-    if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
-	refcat == USAC || refcat == USA1 || refcat == USA2) {
-	if (imag == 2)
-	    strcpy (magname, "MagR");
-	else
-	    strcpy (magname, "MagB");
-	}
     else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT) {
-	if (imag == 1)
-	    strcpy (magname, "MagB");
-	else
+	if (imag == 2)
 	    strcpy (magname, "MagV");
+	else
+	    strcpy (magname, "MagB");
 	}
     else if (refcat==GSC2) {
 	if (imag == 2)
@@ -875,6 +870,55 @@ char	*magname;	/* Name of magnitude, returned */
     else
 	strcpy (magname, "Mag");
     return;
+}
+
+/* Return number of magnitude specified by int of letter */
+
+int
+CatMagNum (imag, refcat)
+
+int	imag;		/* int of magnitude letter */
+int	refcat;		/* Catalog code */
+{
+    char cmag = (char) imag;	/* Letter name of magnitude */
+
+    /* Make letter upper case */
+    if (cmag > 96)
+	cmag = cmag - 32;
+ 
+    if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
+	refcat == USAC || refcat == USA1 || refcat == USA2) {
+	if (cmag == 'R')
+	    return (2);
+	else
+	    return (1);	/* B */
+	}
+    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT) {
+	if (cmag == 'B')
+	    return (1);
+	else
+	    return (2);	/* V */
+	}
+    else if (refcat==GSC2) {
+	if (cmag == 'J')
+	    return (2);
+	else if (cmag == 'V')
+	    return (3);
+	else if (cmag == 'N')
+	    return (4);
+	else
+	    return (1);	/* F */
+	}
+    else if (refcat==TMPSC) {
+	if (cmag == 'J')
+	    return (1);
+	else if (cmag == 'H')
+	    return (2);
+	else
+	    return (3);	/* K */
+	}
+    else
+	return (1);
 }
 
 
@@ -1654,15 +1698,16 @@ char *keyword0;  /* character string containing the name of the keyword
                    the value of which is returned.  hget searches for a
                    line beginning with this string.  if "[n]" or ",n" is
 		   present, the n'th token in the value is returned. */
-int lval;       /* Size of str in characters */
+int lval;       /* Size of value in characters
+		   If negative, value ends at end of line */
 char *value;      /* String (returned) */
 {
     char skey[16];
     char keyword[81];
-    char *pval;
+    char *pval, *str, *pkey;
     char squot[2], dquot[2], lbracket[2], rbracket[2], comma[2];
     char *lastval, *rval, *brack1, *brack2, *lastring;
-    int ipar, i;
+    int ipar, i, lkey;
 
     squot[0] = (char) 39;
     squot[1] = (char) 0;
@@ -1685,39 +1730,48 @@ char *value;      /* String (returned) */
 	*brack1 = '\0';
 	brack1++;
 	}
+    lkey = strlen (keyword);
 
-    /* First look for keyword= value */
-    skey[0] = ' ';
-    skey[1] = (char) 0;
-    strcat (skey, keyword);
-    strcat (skey, "=");
-    pval = strsrch (string, skey);
-
-    /* Look for keyword = value */
-    if (pval == NULL) {
-	skey[0] = ' ';
-	skey[1] = (char) 0;
-	strcat (skey, keyword);
-	strcat (skey, " =");
-	pval = strsrch (string, skey);
-	}
-
-    /* Look for keyword:  value */
-    if (pval == NULL) {
-	skey[0] = ' ';
-	skey[1] = (char) 0;
-	strcat (skey, keyword);
-	strcat (skey, ": ");
-	pval = strsrch (string, skey);
-	}
+    /* First check for the existence of the keyword in the string */
+    pkey = strsrch (string, keyword);
 
     /* If keyword has not been found, return 0 */
-    if (pval == NULL)
+    if (pkey == NULL)
 	return (0);
 
-    /* Otherwise, bump pointer past keyword */
-    else
-	pval = pval + strlen (skey);
+    /* If it has been found, check for = or : and preceding characters */
+    pval = NULL;
+    while (pval == NULL) {
+
+	/* Must be at start of file or after control character or space */
+	if (pkey != string && *(pkey-1) > 32) {
+	    str = pkey;
+	    pval == NULL;
+	    }
+
+	/* Must have "=" or ":" or " =" following */
+	else if ((*(pkey+lkey) != '=' && *(pkey+lkey) != ':') ||
+		(*(pkey+lkey) == ' ' && *(pkey+lkey) != '=')) {
+	    str = pkey;
+	    pval == NULL;
+	    }
+
+	/* If found, bump pointer past keyword */
+	else {
+	    pval = pkey + lkey + 1;
+	    if (*pval == '=')
+		pval++;
+	    break;
+	    }
+	str = str + lkey;
+	if (str > lastring)
+	    break;
+	pkey = strsrch (str, keyword);
+	if (pkey == NULL)
+	    break;
+	}
+    if (pval == NULL)
+	return (0);
 
     /* Drop leading spaces */
     while (*pval == ' ') pval++;
@@ -1744,10 +1798,16 @@ char *value;      /* String (returned) */
 
     /* Transfer token value to returned string */
     rval = value;
-    lastval = value + lval - 1;
-    while (*pval != ' ' && *pval != '\n' && *pval != '/' &&
-	   pval < lastring && rval < lastval)
+    if (lval < 0)
+	lastval = value - lval - 1;
+    else
+	lastval = value + lval - 1;
+    while (*pval != '\n' && *pval != '/' &&
+	   pval < lastring && rval < lastval) {
+	if (lval > 0 && *pval == ' ')
+	    break;
 	*rval++ = *pval++;
+	}
     if (rval < lastval)
 	*rval = (char) 0;
     else
@@ -2069,4 +2129,9 @@ FILE	*fd;		/* Output file descriptor; none if NULL */
  * Aug 20 2001	Add NumNdec() and guess number of decimal places if needed
  * Sep 20 2001	Add CatMagName()
  * Sep 25 2001	Move isfile() to fileutil.c
+ *
+ * Feb 26 2002	Fix agets() to work with keywords at start of line
+ * Feb 26 2002	Add option in agets() to return value to end of line or /
+ * Mar 25 2002	Fix bug in agets() to find second occurence of string 
+ * Apr 10 2002	Add CatNagNum() to translate single letters to mag sequence number
  */

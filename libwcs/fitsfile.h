@@ -1,5 +1,5 @@
 /* fitsfile.h  FITS and IRAF file access subroutines
- * September 25, 2001
+ * April 8, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -88,7 +88,7 @@ double doy2jd(); /* year and day of year to Julian date */
 double doy2mjd(); /* year and day of year to modified Julian date */
 double doy2ts(); /* year and day of year to seconds since 1950.0 */ 
 int doy2tsi();	/* year and day of year to IRAF seconds since 1980-01-01 */
-long doy2tsu();	/* year and day of year to Unix seconds since 1970-01-01 */
+time_t doy2tsu();	/* year and day of year to Unix seconds since 1970-01-01 */
 void dt2doy();	/* yyyy.mmdd hh.mmss to year and day of year */
 double dt2ep();	/* yyyy.ddmm and hh.mmsss to fractional year (epoch) */
 double dt2epb(); /* yyyy.ddmm and hh.mmsss to Besselian epoch */
@@ -99,7 +99,7 @@ double dt2jd();	/* yyyy.ddmm and hh.mmsss to Julian date */
 double dt2mjd(); /* yyyy.ddmm and hh.mmsss to modified Julian date */
 double dt2ts();	/* yyyy.ddmm and hh.mmsss to seconds since 1950.0 */ 
 int dt2tsi();	/* yyyy.ddmm and hh.mmsss to IRAF seconds since 1980-01-01 */
-long dt2tsu();	/* yyyy.ddmm and hh.mmsss to Unix seconds since 1970-01-01 */
+time_t dt2tsu();	/* yyyy.ddmm and hh.mmsss to Unix seconds since 1970-01-01 */
 void ep2dt();	/* Fractional year to yyyy.mmdd hh.mmssss */
 void epb2dt();	/* Besselian epoch to yyyy.mmdd hh.mmssss */
 void epj2dt();	/* Julian epoch to yyyy.mmdd hh.mmssss */
@@ -136,7 +136,7 @@ double fd2jd();	/* FITS standard date string to Julian date */
 double fd2mjd(); /* FITS standard date string to modified Julian date */
 double fd2ts();	/* FITS standard date to seconds since 1950-01-01 */
 int fd2tsi();	/* FITS standard date to IRAF seconds since 1980-01-01 */
-long fd2tsu();	/* FITS standard date to Unix seconds since 1970-01-01 */
+time_t fd2tsu();	/* FITS standard date to Unix seconds since 1970-01-01 */
 void jd2doy();	/* Julian date to year and day of year */
 void jd2dt();	/* Julian date to yyyy.mmdd hh.mmssss */
 double jd2ep();	/* Julian date to fractional year */
@@ -146,10 +146,10 @@ char *jd2fd();	/* Julian date to FITS date string yyyy-mm-ddThh:mm:ss.ss */
 void jd2i();	/* Julian date to year, month, day, hours, min., sec. */
 double jd2mjd(); /* Julian date to modified Julian date */
 double jd2ts();	/* Julian date to seconds since 1950.0 */
-void lt2dt(); /* Current local time to date (yyyy.mmdd), time (hh.mmsss) */
-char *lt2fd(); /* Current local time to FITS ISO date string */
-int lt2tsi(); /* Current local time to IRAF seconds since 1980-01-01T00:00 */
-long lt2tsu(); /* Current local time to Unix seconds since 1970-01-01T00:00 */
+void lt2dt();	/* Current local time to date (yyyy.mmdd), time (hh.mmsss) */
+char *lt2fd();	/* Current local time to FITS ISO date string */
+int lt2tsi();	/* Current local time to IRAF seconds since 1980-01-01T00:00 */
+time_t lt2tsu();	/* Current local time to Unix seconds since 1970-01-01T00:00 */
 double lt2ts(); /* Current local time to IRAF seconds since 1950-01-01T00:00 */
 void mjd2dt();	/* Modified Julian date to yyyy.mmdd hh.mmssss */
 double mjd2ep(); /* Modified Julian date to fractional year */
@@ -173,19 +173,21 @@ double tsi2ts(); /* Seconds since 1980-01-01 to seconds since 1950-01-01 */
 void tsu2dt();	/* Seconds since 1970-01-01 to date yyyy.ddmm, time hh.mmsss */
 char *tsu2fd();	/* Seconds since 1970-01-01 to FITS standard date string */
 double tsu2ts(); /* Seconds since 1970-01-01 to seconds since 1950-01-01 */
-int tsu2tsi(); /* Seconds since 1970-01-01 to local seconds since 1980-01-01 */
+int tsu2tsi();	/* Seconds since 1970-01-01 to local seconds since 1980-01-01 */
 int isdate();	/* Return 1 if string is FITS old or ISO date */
-void ut2dt(); /* Current Universal Time to date (yyyy.mmdd), time (hh.mmsss) */
+void ut2dt();	/* Current Universal Time to date (yyyy.mmdd), time (hh.mmsss) */
 void ut2doy(); /* Current Universal Time to year, day of year */
 double ut2ep(); /* Current Universal Time to fractional year */
 double ut2epb(); /* Current Universal Time to Besselian Epoch */
 double ut2epj(); /* Current Universal Time to Julian Epoch */
-char *ut2fd(); /* Current Universal Time to FITS ISO date string */
-double ut2jd(); /* Current Universal Time to Julian Date */
+char *ut2fd();	/* Current Universal Time to FITS ISO date string */
+double ut2jd();	/* Current Universal Time to Julian Date */
 double ut2mjd(); /* Current Universal Time to Modified Julian Date */
-int ut2tsi(); /* Current UT to IRAF seconds since 1980-01-01T00:00 */
-long ut2tsu(); /* Current UT to Unix seconds since 1970-01-01T00:00 */
+int ut2tsi();	/* Current UT to IRAF seconds since 1980-01-01T00:00 */
+time_t ut2tsu();	/* Current UT to Unix seconds since 1970-01-01T00:00 */
 double ut2ts(); /* Current UT to IRAF seconds since 1950-01-01T00:00 */
+int sts2c();	/* Replaces spaces in a string with a specified character */
+int stc2s();	/* Replaces a specified character in a string with spaces */
 
 #endif /* fitsfile_h_ */
 
@@ -222,4 +224,7 @@ double ut2ts(); /* Current UT to IRAF seconds since 1950-01-01T00:00 */
  * Apr 24 2001	Add length of column name to column data structure
  * May 22 2001	Add day of year date conversion subroutines
  * Sep 25 2001	Add isfilelist() and isfile()
+ *
+ * Jan  8 2002	Add sts2c() and stc2s()
+ * Apr  8 2002	Change all long declarations to time_t for compatibility
  */

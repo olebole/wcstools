@@ -1,4 +1,4 @@
-.TH imcat(1) WCSTools "6 July 2001"
+.TH imcat(1) WCSTools "8 November 2001"
 .SH Name
 imcat \- List catalog stars in FITS and IRAF image files
 .SH Synopsis
@@ -68,13 +68,14 @@ zero, the output radii will scale between 5 and dim/100 over the range of
 magnitudes of sources found in the image area. If the -q option is specified
 with a 'p' in it, this number is assumed to be in pixels instead of arcseconds.
 .TP
-.B \-s
-Sort by RA instead of flux 
+.B \-s d|m|n|p|r|x|y
+Sort by (d)eclination, (m)agnitude, (n)o sort, (p)distance from center, 
+(r)ight ascension, image (x) or (y).
 .TP
 .B \-t
 Tab table to standard output as well as file
 .TP
-.B \-u
+.B \-u num
 USNO catalog single plate number to accept
 .TP
 .B \-v
@@ -83,8 +84,11 @@ Verbose listing of processing intermediate results
 .B \-w
 Write tab table output file imagename.cat
 .TP
-.B \-x
+.B \-x x y
 X and Y coordinates of reference pixel (default is CRPIXn or center of image)
+.TP
+.B \-y epoch
+Epoch of image for proper motions
 .TP
 .B \-z
 Use AIPS classic projections instead of WCSLIB; use CD matrix or CDELT

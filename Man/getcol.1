@@ -1,4 +1,4 @@
-.TH getcol(1) WCSTools "6 July 2001"
+.TH getcol(1) WCSTools "8 November 2001"
 .SH Name
 getcol \- Extract specified columns from an ASCII table file
 .SH Synopsis
@@ -38,6 +38,12 @@ Add count of number of lines in each column at end
 .B \-d <number>
 Number of decimal places in f.p. output
 .TP
+.B \-e
+Compute medians of selected columns
+.TP
+.B \-f
+Print range of values in selected columns
+.TP
 .B \-h
 Print Starbase tab table header
 .TP
@@ -63,6 +69,9 @@ been skipped.
 .TP
 .B \-o
 OR conditions insted of ANDing them
+.TP
+.B \-p
+Print only sum, mmean, sigma, median, or range, not entries
 .TP
 .B \-r @listfile
 .B \-r line range

@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** September 7, 2001
+ *** April 3, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -15,7 +15,7 @@
  * Subroutine:	wcseq (hstring, wcs) set radecsys and equinox from image header
  * Subroutine:	wcseqm (hstring, wcs, mchar) set radecsys and equinox if multiple
 
- * Copyright:   2001 Smithsonian Astrophysical Observatory
+ * Copyright:   2002 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -198,15 +198,17 @@ char	*hstring;	/* character string containing FITS header information
 			   in the format <keyword>= <value> [/ <comment>] */
 char	mchar;		/* Suffix character for one of multiple WCS */
 {
-    struct WorldCoor *wcs;
+    struct WorldCoor *wcs, *depwcs;
     char ctype1[32], ctype2[32];
+    char pvkey1[8],pvkey2[8],pvkey3[8];
     char *hcoeff;		/* pointer to first coeff's in header */
     char decsign;
     double rah,ram,ras, dsign,decd,decm,decs;
     double dec_deg,ra_hours, secpix, ra0, ra1, dec0, dec1;
     double cdelt1, cdelt2, cd[4], pc[16];
-    char keyword[16], keycdelt[16];
+    char keyword[16];
     int ieq, i, naxes, cd11p, cd12p, cd21p, cd22p;
+    int ilat;	/* coordinate for latitude or declination */
     /*
     int ix1, ix2, iy1, iy2, idx1, idx2, idy1, idy2;
     double dxrefpix, dyrefpix;
@@ -245,8 +247,10 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     /* Header parameters independent of projection */
     naxes = 0;
     hgeti4 (hstring, "NAXIS", &naxes);
+    if (naxes == 0)
+	hgeti4 (hstring, "WCSDIM", &naxes);
     if (naxes < 1) {
-	setwcserr ("WCSINIT: No NAXIS keyword");
+	setwcserr ("WCSINIT: No NAXIS or WCSDIM keyword");
 	wcsfree (wcs);
 	return (NULL);
 	}
@@ -268,38 +272,39 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     for (i = 0; i < naxes; i++) wcs->pc[(i*naxes)+i] = 1.0;
 
     /* If the current world coordinate system depends on another, set it now */
-    sprintf (keyword,"WCSDEP%c",mchar);
-    if (hgets (hstring, keyword, 16, wcsname)) {
+    if (hgetsc (hstring, "WCSDEP",mchar, 16, wcsname)) {
 	if ((wcs->wcs = wcsinitn (hstring, wcsname)) == NULL) {
 	    setwcserr ("WCSINIT: depended on WCS could not be set");
 	    wcsfree (wcs);
 	    return (NULL);
 	    }
+	depwcs = wcs->wcs;
+	depwcs->wcsdep = wcs;
 	}
     else
 	wcs->wcs = NULL;
 
     /* World coordinate system reference coordinate information */
-    sprintf (keyword,"CTYPE1%c",mchar);
-    if (hgets (hstring, keyword, 16, ctype1)) {
+    if (hgetsc (hstring, "CTYPE1", mchar, 16, ctype1)) {
 
 	/* Read second coordinate type */
-	sprintf (keyword,"CTYPE2%c",mchar);
 	strcpy (ctype2, ctype1);
-	if (!hgets (hstring, keyword, 16, ctype2))
+	if (!hgetsc (hstring, "CTYPE2", mchar, 16, ctype2))
 	    twod = 0;
 	else
 	    twod = 1;
-
-	/* Read third and fourth coordinate types, if present */
 	strcpy (wcs->ctype[0], ctype1);
 	strcpy (wcs->ctype[1], ctype2);
+	if (strsrch (ctype2, "LAT") || strsrch (ctype2, "DEC"))
+	    ilat = 2;
+	else
+	    ilat = 1;
+
+	/* Read third and fourth coordinate types, if present */
 	strcpy (wcs->ctype[2], "");
-	sprintf (keyword,"CTYPE3%c",mchar);
-	hgets (hstring, keyword, 9, wcs->ctype[2]);
+	hgetsc (hstring, "CTYPE3", mchar, 9, wcs->ctype[2]);
 	strcpy (wcs->ctype[3], "");
-	sprintf (keyword,"CTYPE4%c",mchar);
-	hgets (hstring, keyword, 9, wcs->ctype[3]);
+	hgetsc (hstring, "CTYPE4", mchar, 9, wcs->ctype[3]);
 
 	/* Set projection type in WCS data structure */
 	if (wcstype (wcs, ctype1, ctype2)) {
@@ -309,15 +314,13 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 
 	/* Get units, if present, for linear coordinates */
 	if (wcs->prjcode == WCS_LIN) {
-	    sprintf (keyword,"CUNIT1%c",mchar);
-	    if (!hgets (hstring, keyword, 16, wcs->units[0])) {
+	    if (!hgetsc (hstring, "CUNIT1", mchar, 16, wcs->units[0])) {
 		if (!mgets (hstring, "WAT1", "units", 16, wcs->units[0])) {
 		    wcs->units[0][0] = 0;
 		    }
 		}
 	    if (twod) {
-		sprintf (keyword,"CUNIT2%c",mchar);
-		if (!hgets (hstring, "CUNIT2", 16, wcs->units[1])) {
+		if (!hgetsc (hstring, "CUNIT2", mchar, 16, wcs->units[1])) {
 		    if (!mgets (hstring, "WAT2", "units", 16, wcs->units[1])) {
 			wcs->units[1][0] = 0;
 			}
@@ -327,19 +330,16 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 
 	/* Reference pixel coordinates and WCS value */
 	wcs->crpix[0] = 1.0;
-	sprintf (keyword,"CRPIX1%c",mchar);
-	hgetr8 (hstring, keyword, &wcs->crpix[0]);
+	hgetr8c (hstring, "CRPIX1", mchar, &wcs->crpix[0]);
 	wcs->crpix[1] = 1.0;
-	sprintf (keyword,"CRPIX2%c",mchar);
-	hgetr8 (hstring, keyword, &wcs->crpix[1]);
+	hgetr8c (hstring, "CRPIX2", mchar, &wcs->crpix[1]);
 	wcs->xrefpix = wcs->crpix[0];
 	wcs->yrefpix = wcs->crpix[1];
 	wcs->crval[0] = 0.0;
 	sprintf (keyword,"CRVAL1%c",mchar);
-	hgetr8 (hstring, keyword, &wcs->crval[0]);
+	hgetr8c (hstring, "CRVAL1", mchar, &wcs->crval[0]);
 	wcs->crval[1] = 0.0;
-	sprintf (keyword,"CRVAL2%c",mchar);
-	hgetr8 (hstring, keyword, &wcs->crval[1]);
+	hgetr8c (hstring, "CRVAL2", mchar, &wcs->crval[1]);
 	if (wcs->syswcs == WCS_NPOLE)
 	    wcs->crval[1] = 90.0 - wcs->crval[1];
 	if (wcs->syswcs == WCS_SPA)
@@ -355,12 +355,10 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	    wcs->cel.ref[1] = wcs->crval[1];
 	    }
 	wcs->longpole = 999.0;
-	sprintf (keyword,"LONPOLE%c",mchar);
-	hgetr8 (hstring, keyword, &wcs->longpole);
+	hgetr8c (hstring, "LONPOLE", mchar, &wcs->longpole);
 	wcs->cel.ref[2] = wcs->longpole;
 	wcs->latpole = 999.0;
-	sprintf (keyword,"LATPOLE%c",mchar);
-	hgetr8 (hstring, keyword, &wcs->latpole);
+	hgetr8 (hstring, "LATPOLE", mchar, &wcs->latpole);
 	wcs->cel.ref[3] = wcs->latpole;
 	wcs->lin.crpix = wcs->crpix;
 	wcs->lin.cdelt = wcs->cdelt;
@@ -368,29 +366,70 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 
 	/* Projection constants (this should be projection-dependent */
 	wcs->prj.r0 = 0.0;
-	sprintf (keyword,"PROJR0%c", mchar);
-	hgetr8 (hstring, keyword, &wcs->prj.r0);
+	hgetr8c (hstring, "PROJR0", mchar, &wcs->prj.r0);
 
-	/* This is the original format proposed for projection constants */
+	/* FITS WCS interim proposal projection constants */
 	for (i = 1; i < 10; i++) {
 	    wcs->prj.p[i] = 0.0;
-	    sprintf (keyword,"PROJP%d%c",i, mchar);
+	    sprintf (keyword,"PROJP%d",i);
 	    wcs->prj.p[i] = 0.0;
-	    hgetr8 (hstring, keyword, &wcs->prj.p[i]);
+	    hgetr8c (hstring, keyword, mchar, &wcs->prj.p[i]);
+	    }
+
+	sprintf (pvkey1, "PV%d_1", ilat);
+	sprintf (pvkey2, "PV%d_2", ilat);
+	sprintf (pvkey3, "PV%d_3", ilat);
+
+	/* FITS WCS standard projection constants (projection-dependent) */
+	if (wcs->syswcs == WCS_AZP || wcs->syswcs == WCS_SIN ||
+	    wcs->syswcs == WCS_COP || wcs->syswcs == WCS_COE ||
+	    wcs->syswcs == WCS_COD || wcs->syswcs == WCS_COO) {
+	    wcs->prj.p[0] = 0.0;
+	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
+	    wcs->prj.p[1] = 0.0;
+	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[1]);
+	    }
+	else if (wcs->syswcs == WCS_SZP) {
+	    wcs->prj.p[0] = 0.0;
+	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
+	    wcs->prj.p[1] = 0.0;
+	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[1]);
+	    wcs->prj.p[2] = 90.0;
+	    hgetr8c (hstring, pvkey3, mchar, &wcs->prj.p[2]);
+	    }
+	else if (wcs->syswcs == WCS_CEA) {
+	    wcs->prj.p[0] = 1.0;
+	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
+	    }
+	else if (wcs->syswcs == WCS_CYP) {
+	    wcs->prj.p[0] = 1.0;
+	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
+	    wcs->prj.p[1] = 1.0;
+	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[1]);
+	    }
+	else if (wcs->syswcs == WCS_AIR) {
+	    wcs->prj.p[0] = 90.0;
+	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
+	    }
+	else if (wcs->syswcs == WCS_BON) {
+	    wcs->prj.p[0] = 0.0;
+	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
+	    }
+	else if (wcs->syswcs == WCS_ZPN) {
+	    for (i = 0; i < 99; i++) {
+		wcs->prj.p[i] = 0.0;
+		sprintf (keyword,"PV%d_%d", ilat, i+1);
+		hgetr8c (hstring, keyword, mchar, &wcs->prj.p[i]);
+		}
 	    }
 
 	/* Use polynomial fit instead of projection, if present */
 	wcs->ncoeff1 = 0;
 	wcs->ncoeff2 = 0;
-	sprintf (keyword,"CD1_1%c",mchar);
-	cd11p = hgetr8 (hstring,keyword,&cd[0]);
-	sprintf (keyword,"CD1_2%c",mchar);
-	cd12p = hgetr8 (hstring,keyword,&cd[1]);
-	sprintf (keyword,"CD2_1%c",mchar);
-	cd21p = hgetr8 (hstring,keyword,&cd[2]);
-	sprintf (keyword,"CD2_2%c",mchar);
-	cd22p = hgetr8 (hstring,keyword,&cd[3]);
-	sprintf (keycdelt, "CDELT1%c", mchar);
+	cd11p = hgetr8c (hstring, "CD1_1", mchar, &cd[0]);
+	cd12p = hgetr8c (hstring, "CD1_2", mchar, &cd[1]);
+	cd21p = hgetr8c (hstring, "CD2_1", mchar, &cd[2]);
+	cd22p = hgetr8c (hstring, "CD2_2", mchar, &cd[3]);
 	if (wcs->wcsproj != WCS_OLD &&
 	    (hcoeff = ksearch (hstring,"CO1_1")) != NULL) {
 	    wcs->prjcode = WCS_PLT;
@@ -446,15 +485,15 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	    }
 
 	/* Else get scaling from CDELT1 and CDELT2 */
-	else if (hgetr8 (hstring, keycdelt, &cdelt1) != 0) {
-	    sprintf (keyword, "CDELT2%c", mchar);
-	    hgetr8 (hstring, keyword, &cdelt2);
+	else if (hgetr8c (hstring, "CDELT1", mchar, &cdelt1) != 0) {
+	    hgetr8c (hstring, "CDELT2", mchar, &cdelt2);
 
 	    /* If CDELT1 or CDELT2 is 0 or missing */
 	    if (cdelt1 == 0.0 || (wcs->nypix > 1 && cdelt2 == 0.0)) {
 		if (ksearch (hstring,"SECPIX") != NULL ||
 		    ksearch (hstring,"PIXSCALE") != NULL ||
 		    ksearch (hstring,"PIXSCAL1") != NULL ||
+		    ksearch (hstring,"XPIXSIZE") != NULL ||
 		    ksearch (hstring,"SECPIX1") != NULL) {
 		    secpix = 0.0;
 		    hgetr8 (hstring,"SECPIX",&secpix);
@@ -471,13 +510,23 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 				}
 			    }
 			else {
-			    if (cdelt1 == 0.0) {
-				hgetr8 (hstring,"PIXSCAL1",&secpix);
-				cdelt1 = -secpix / 3600.0;
+			    hgetr8 (hstring,"XPIXSIZE",&secpix);
+			    if (secpix != 0.0) {
+				if (cdelt1 == 0.0)
+				    cdelt1 = -secpix / 3600.0;
+				if (cdelt2 == 0.0) {
+				    hgetr8 (hstring,"YPIXSIZE",&secpix);
+				    cdelt2 = secpix / 3600.0;
+				    }
 				}
-			    if (cdelt2 == 0.0) {
-				hgetr8 (hstring,"PIXSCAL2",&secpix);
-				cdelt2 = secpix / 3600.0;
+			    else {
+				hgetr8 (hstring,"PIXSCAL1",&secpix);
+				if (secpix != 0.0 && cdelt1 == 0.0)
+				    cdelt1 = -secpix / 3600.0;
+				if (cdelt2 == 0.0) {
+				    hgetr8 (hstring,"PIXSCAL2",&secpix);
+				    cdelt2 = secpix / 3600.0;
+				    }
 				}
 			    }
 			}
@@ -497,6 +546,8 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	    /* Use rotation matrix, if present */
 	    for (i = 0; i < 16; i++)
 		wcs->pc[i] = 0.0;
+
+	    /* FITS WCS interim rotation matrix */
 	    if (!mchar && hgetr8 (hstring,"PC001001",&pc[0]) != 0) {
 		hgetr8 (hstring,"PC001002",&pc[1]);
 		if (naxes < 3) {
@@ -537,14 +588,53 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 		wcspcset (wcs, cdelt1, cdelt2, pc);
 		}
 
+	    /* FITS WCS standard rotation matrix */
+	    else if (hgetr8c (hstring, "PC1_1", mchar, &pc[0]) != 0) {
+		hgetr8c (hstring, "PC1_2", mchar, &pc[1]);
+		if (naxes < 3) {
+		    hgetr8c (hstring, "PC2_1", mchar, &pc[2]);
+		    pc[3] = wcs->pc[0];
+		    hgetr8c (hstring, "PC2_2", mchar, &pc[3]);
+		    }
+		if (naxes == 3) {
+		    hgetr8c (hstring, "PC1_3", mchar, &pc[2]);
+		    hgetr8c (hstring, "PC2_1", mchar, &pc[3]);
+		    pc[4] = wcs->pc[0];
+		    hgetr8c (hstring, "PC2_2", mchar, &pc[4]);
+		    hgetr8c (hstring, "PC2_3", mchar, &pc[5]);
+		    hgetr8c (hstring, "PC3_1", mchar, &pc[6]);
+		    hgetr8c (hstring, "PC3_2", mchar, &pc[7]);
+		    pc[8] = 1.0;
+		    hgetr8c (hstring, "PC3_3", mchar, &pc[8]);
+		    }
+		if (naxes > 3) {
+		    hgetr8c (hstring, "PC1_3", mchar, &pc[2]);
+		    hgetr8c (hstring, "PC1_4", mchar, &pc[3]);
+		    hgetr8c (hstring, "PC2_1", mchar, &pc[4]);
+		    pc[5] = wcs->pc[0];
+		    hgetr8c (hstring, "PC2_2", mchar, &pc[5]);
+		    hgetr8c (hstring, "PC2_3", mchar, &pc[6]);
+		    hgetr8c (hstring, "PC2_4", mchar, &pc[7]);
+		    hgetr8c (hstring, "PC3_1", mchar, &pc[8]);
+		    hgetr8c (hstring, "PC3_2", mchar, &pc[9]);
+		    pc[10] = 1.0;
+		    hgetr8c (hstring, "PC3_3", mchar, &pc[10]);
+		    hgetr8c (hstring, "PC3_4", mchar, &pc[11]);
+		    hgetr8c (hstring, "PC4_1", mchar, &pc[12]);
+		    hgetr8c (hstring, "PC4_2", mchar, &pc[13]);
+		    hgetr8c (hstring, "PC4_3", mchar, &pc[14]);
+		    pc[15] = 1.0;
+		    hgetr8c (hstring, "PC4_4", mchar, &pc[15]);
+		    }
+		wcspcset (wcs, cdelt1, cdelt2, pc);
+		}
+
 	    /* Otherwise, use CROTAn */
-	    else if (!mchar) {
+	    else {
 		rot = 0.0;
-		sprintf (keyword,"CROTA2%c",mchar);
-		hgetr8 (hstring,keyword,&rot);
+		hgetr8c (hstring, "CROTA2", mchar, &rot);
 		if (rot == 0.) {
-		    sprintf (keyword,"CROTA1%c",mchar);
-		    hgetr8 (hstring,keyword,&rot);
+		    hgetr8c (hstring,"CROTA1", mchar, &rot);
 		    }
 		wcsdeltset (wcs, cdelt1, cdelt2, rot);
 		}
@@ -564,6 +654,8 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	/* Initialize TNX, defaulting to TAN if there is a problem */
 	if (wcs->prjcode == WCS_TNX) {
 	    if (tnxinit (hstring, wcs)) {
+		wcs->ctype[0][6] = 'A';
+		wcs->ctype[0][7] = 'N';
 		wcs->ctype[1][6] = 'A';
 		wcs->ctype[1][7] = 'N';
 		wcs->prjcode = WCS_TAN;
@@ -681,6 +773,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     else if (ksearch (hstring,"SECPIX") != NULL ||
 	     ksearch (hstring,"PIXSCALE") != NULL ||
 	     ksearch (hstring,"PIXSCAL1") != NULL ||
+	     ksearch (hstring,"XPIXSIZE") != NULL ||
 	     ksearch (hstring,"SECPIX1") != NULL) {
 	secpix = 0.0;
 	hgetr8 (hstring,"SECPIX",&secpix);
@@ -694,10 +787,18 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 		cdelt2 = secpix / 3600.0;
 		}
 	    else {
-		hgetr8 (hstring,"PIXSCAL1",&secpix);
-		cdelt1 = -secpix / 3600.0;
-		hgetr8 (hstring,"PIXSCAL2",&secpix);
-		cdelt2 = secpix / 3600.0;
+		hgetr8 (hstring,"XPIXSIZE",&secpix);
+		if (secpix != 0.0) {
+		    cdelt1 = -secpix / 3600.0;
+		    hgetr8 (hstring,"YPIXSIZE",&secpix);
+		    cdelt2 = secpix / 3600.0;
+		    }
+		else {
+		    hgetr8 (hstring,"PIXSCAL1",&secpix);
+		    cdelt1 = -secpix / 3600.0;
+		    hgetr8 (hstring,"PIXSCAL2",&secpix);
+		    cdelt2 = secpix / 3600.0;
+		    }
 		}
 	    }
 	else {
@@ -783,7 +884,8 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	wcs->cel.ref[0] = wcs->crval[0];
 	wcs->cel.ref[1] = wcs->crval[1];
 	wcs->cel.ref[2] = 999.0;
-	hgetr8 (hstring,"LONGPOLE",&wcs->cel.ref[2]);
+	if (!hgetr8 (hstring,"LONPOLE",&wcs->cel.ref[2]))
+	    hgetr8 (hstring,"LONGPOLE",&wcs->cel.ref[2]);
 	wcs->cel.ref[3] = 999.0;
 	hgetr8 (hstring,"LATPOLE",&wcs->cel.ref[3]);
 	    
@@ -881,11 +983,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	strcpy (eqkey, "EQUINOX");
     if (!hgets (hstring, eqkey, 16, eqstring))
 	hgets (hstring, "EQUINOX", 16, eqstring);
-    if (mchar)
-	sprintf (radeckey,"RADESYS%c", mchar);
-    else
-	strcpy (radeckey, "RADECSYS");
-    if (!hgets (hstring, radeckey, 16, systring))
+    if (!hgetsc (hstring, "RADECSYS", mchar, 16, systring))
 	hgets (hstring, "RADECSYS", 16, systring);
 
     if (eqstring[0] == 'J') {
@@ -895,7 +993,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	}
     else if (eqstring[0] == 'B') {
 	wcs->equinox = atof (eqstring+1);
-	ieq = atoi (eqstring+1);
+	ieq = (int) atof (eqstring+1);
 	strcpy (systring, "FK4");
 	}
     else if (hgeti4 (hstring, eqkey, &ieq)) {
@@ -1047,4 +1145,11 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Mar 21 2001	Move ic declaration into commented out code
  * Jul 12 2001	Read PROJPn constants into proj.p array instead of PVn
  * Sep  7 2001	Set system to galactic or ecliptic based on CTYPE, not RADECSYS
+ * Oct 11 2001	Set ctype[0] as well as ctype[1] to TAN for TNX projections
+ * Oct 19 2001	WCSDIM keyword overrides zero value of NAXIS
+ *
+ * Feb 19 2002	Add XPIXSIZE/YPIXSIZE (KPNO) as default image scale keywords
+ * Mar 12 2002	Add LONPOLE as well as LONGPOLE for WCSLIB 2.8
+ * Apr  3 2002	Implement hget8c() and hgetsc() to simplify code
+ * Apr  3 2002	Add PVj_n projection constants in addition to PROJPn
  */

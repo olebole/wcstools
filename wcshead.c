@@ -1,5 +1,5 @@
 /* File wcshead.c
- * August 4, 2000
+ * April 8, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -152,8 +152,10 @@ char	*filename;	/* FITS or IRAF image file name */
     double wlast;
 
     wcs = GetWCSFITS (filename);
-    if (nowcs (wcs))
+    if (nowcs (wcs)) {
+	wcsfree (wcs);
 	return;
+	}
 
     if (wcs->ctype[0][0] == (char) 0)
 	return;
@@ -286,4 +288,6 @@ char	*filename;	/* FITS or IRAF image file name */
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  * Jun 21 2000	Add -w option to print limits for 1-d WCS
  * Aug  4 2000	Add -w option to printed option list
+ *
+ * Apr  8 2002	Free wcs structure if no WCS is found in file header
  */

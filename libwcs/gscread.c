@@ -1,32 +1,32 @@
 /*** File libwcs/gscread.c
- *** September 21, 2001
+ *** March 28, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
 
 #include <stdlib.h>
 #include <unistd.h>
-#include <string.h>
 #include <stdio.h>
+#include <string.h>
 #include "fitsfile.h"
 #include "wcs.h"
 #include "wcscat.h"
 
 /* Pathname of northern hemisphere GSC CDROM  or search engine URL */
-char cdn[64]="/data/gsc1";
+char cdn[64]="/data/astrocat/gsc1";
 
 /* Uncomment following line to use ESO GSC server for GSC
 static char cdn[64]="http://archive.eso.org/skycat/servers/gsc-server";
  */
 
 /* Pathname of southern hemisphere GSC CDROM */
-char cds[64]="/data/gsc2";
+char cds[64]="/data/astrocat/gsc2";
 
 /* Pathname of northern hemisphere GSC-ACT CDROM  or search engine URL */
-char cdna[64]="/data/mc4/gscact1";
+char cdna[64]="/data/astrocat/gscact1";
 
 /* Pathname of southern hemisphere GSC-ACT CDROM */
-char cdsa[64]="/data/mc4/gscact2";
+char cdsa[64]="/data/astrocat/gscact2";
 
 static void gscpath();
 static int gscreg();
@@ -238,7 +238,7 @@ int	nlog;		/* 1 for diagnostics */
 	if (drad != 0.0)
 	    printf ("radmin     %.1f\n", drad*60.0);
 	else {
-	    printf ("dramin     %.1f\n", dra*60.0* cos(degrad(cdec)));
+	    printf ("dramin     %.1f\n", dra*60.0* cosdeg (cdec));
 	    printf ("ddecmin    %.1f\n", ddec*60.0);
 	    }
 	printf ("radecsys       %s\n", cstr);
@@ -1117,4 +1117,7 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Jun 27 2001	Add gscfree() to free table buffer and distance array
  * Sep 11 2001	Use single magnitude argument to gscread() and webread()
  * Sep 21 2001	Clean up web interface
+ * Nov 20 2001	Change cos(degrad)) to cosdeg()
+ *
+ * Mar 28 2002	Change pathnames to /data/astrocat
  */

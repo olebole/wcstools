@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * September 25, 2001
+ * April 10, 2002
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -43,6 +43,8 @@ void CatNum();		/* Return formatted source number */
 int CatNumLen();	/* Return length of source numbers */
 int CatNdec();		/* Return number of decimal places in source numbers */
 void CatMagName();	/* Return name of specified magnitude */
+int CatMagNum();	/* Returns number of magnitude specified by letter as int */
+
 
 int StrNdec();		/* Return number of decimal places in numeric string */
 void SearchLim();	/* Compute limiting RA and Dec */
@@ -231,6 +233,7 @@ struct TabTable {
     char *tabbuff;	/* Pointer to start of saved tab table in memory */
     char *tabheader;	/* Pointer to start of line containing table header */
     char *tabhead;	/* Pointer to start of line containing column heading */
+    char *tabdash;	/* Pointer to start of line with dashes after column headings */
     char *tabdata;	/* Pointer to start of first line of table data */
     int lhead;		/* Number of bytes before first data line */
     int iline;		/* Number of current line (1=first) */
@@ -261,7 +264,7 @@ double tabgetdec();	/* Return declination in degrees from tab table*/
 double tabgetpm();	/* Return RA or Dec p.m. in degrees from tab table*/
 double tabgetr8();	/* Return double number from tab table line */
 void tabclose();	/* Free all arrays left open by tab table structure */
-char *tgettaberr();	/* Retrun most recent tab table error message */
+char *gettaberr();	/* Return most recent tab table error message */
 int istab();
 int gettabndec();	/* Return number of decimal places in tab catalog ids */
 
@@ -402,4 +405,8 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * Sep 14 2001	Add lbuff to TabTable structure
  * Sep 20 2001	Add CatMagName()
  * Sep 25 2001	Move isfile() to fitsfile.h
+ * Oct 16 2001	Add tabdash pointer to tabtable data structure
+ *
+ * Apr  9 2002	Fix typo in gettaberr() declaration
+ * Apr 10 2002	Add CatMagNum()
  */

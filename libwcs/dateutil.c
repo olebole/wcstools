@@ -1,5 +1,5 @@
 /*** File libwcs/dateutil.c
- *** May 25, 2001
+ *** April 8, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -423,7 +423,7 @@ double	*date;	/* Date as yyyy.mmdd (returned) */
 double	*time;	/* Time as hh.mmssxxxx (returned) */
 
 {
-    long tsec;
+    time_t tsec;
     struct timeval tp;
     struct timezone tzp;
     struct tm *ts;
@@ -491,10 +491,10 @@ lt2tsi()
 
 /* LT2TSU-- Return local time as Unix seconds since 1970-01-01 00:00 */
 
-long
+time_t
 lt2tsu()
 {
-    return ((long)(lt2ts() - 631152000.0));
+    return ((time_t)(lt2ts() - 631152000.0));
 }
 
 /* LT2TS-- Return local time as Unix seconds since 1950-01-01 00:00 */
@@ -562,7 +562,7 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 
 /* MJD2DOY-- convert Modified Julian Date to Year,Day-of-Year */
 
-double
+void
 mjd2doy (dj, year, doy)
 
 double	dj;	/* Modified Julian Date */
@@ -1142,7 +1142,7 @@ double	doy;	/* Day of year with fraction */
 
 /* DOY2TSU-- convert from FITS date to Unix seconds since 1970-01-01T0:00 */
 
-long
+time_t
 doy2tsu (year, doy)
 
 int	year;	/* Year */
@@ -1494,7 +1494,7 @@ char *string;	/* FITS date string, which may be:
 
 /* FD2TSU-- convert from FITS date to Unix seconds since 1970-01-01T0:00 */
 
-long
+time_t
 fd2tsu (string)
 
 char *string;	/* FITS date string, which may be:
@@ -1757,14 +1757,14 @@ char *string;	/* FITS date string, which may be:
 
 /* DT2TSU-- convert from date and time to Unix seconds since 1970-01-01T0:00 */
 
-long
+time_t
 dt2tsu (date,time)
 
 double	date;	/* Date as yyyy.mmdd */
 double	time;	/* Time as hh.mmssxxxx
 		 *if time<0, it is time as -(fraction of a day) */
 {
-    return ((long)(dt2ts (date, time) - 631152000.0));
+    return ((time_t)(dt2ts (date, time) - 631152000.0));
 }
 
 
@@ -1917,7 +1917,7 @@ int	isec;	/* Seconds past 1980-01-01 */
 
 char *
 tsu2fd (isec)
-long	isec;	/* Seconds past 1970-01-01 */
+time_t	isec;	/* Seconds past 1970-01-01 */
 {
     return (ts2fd (tsu2ts (isec)));
 }
@@ -1927,7 +1927,7 @@ long	isec;	/* Seconds past 1970-01-01 */
 
 void
 tsu2dt (isec,date,time)
-long	isec;	/* Seconds past 1970-01-01 */
+time_t	isec;	/* Seconds past 1970-01-01 */
 double	*date;	/* Date as yyyy.mmdd (returned) */
 double	*time;	/* Time as hh.mmssxxxx (returned) */
 {
@@ -1939,7 +1939,7 @@ double	*time;	/* Time as hh.mmssxxxx (returned) */
 
 double
 tsu2ts (isec)
-long	isec;	/* Seconds past 1970-01-01 */
+time_t	isec;	/* Seconds past 1970-01-01 */
 {
     return ((double) isec + 631152000.0);
 }
@@ -1948,7 +1948,7 @@ long	isec;	/* Seconds past 1970-01-01 */
 
 int
 tsu2tsi (isec)
-long	isec;	/* Seconds past 1970-01-01 */
+time_t	isec;	/* Seconds past 1970-01-01 */
 {
     double date, time;
     struct tm *ts;
@@ -2308,7 +2308,7 @@ ut2dt(date, time)
 double	*date;	/* Date as yyyy.mmdd (returned) */
 double	*time;	/* Time as hh.mmssxxxx (returned) */
 {
-    long tsec;
+    time_t tsec;
     struct timeval tp;
     struct timezone tzp;
     struct tm *ts;
@@ -2365,7 +2365,7 @@ char *
 ut2fd()
 {
     int year, month, day, hour, minute, second;
-    long tsec;
+    time_t tsec;
     struct timeval tp;
     struct timezone tzp;
     struct tm *ts;
@@ -2434,10 +2434,10 @@ ut2tsi()
 
 /* UT2TSU-- current Universal Time as IRAF seconds since 1970-01-01T00:00 */
 
-long
+time_t
 ut2tsu()
 {
-    return ((long)(ut2ts () - 631152000.0));
+    return ((time_t)(ut2ts () - 631152000.0));
 }
 
 
@@ -2724,4 +2724,6 @@ double	dnum, dm;
  * Jan 11 2001	Print all messages to stderr
  * May 21 2001	Add day of year conversions
  * May 25 2001	Allow fraction of day in FITS date instead of time
+ *
+ * Apr  8 2002	Change all long declaration to time_t
  */

@@ -1,5 +1,5 @@
 /* File newfits.c
- * January 18, 2001
+ * April 9, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -305,6 +305,8 @@ char *name;
 	hputi4 (header, "NAXIS", 0);
 	hputl (header, "EXTEND", 1);
 	image = NULL;
+	hputc (header, "COMMENT", "FITS (Flexible Image Transport System) format is defined in 'Astronomy");
+	hputc (header, "COMMENT", "and Astrophysics' vol 376, page 359; bibcode: 2001A&A...376..359H.");
 	if (fitswimage (name, header, image) == 0)
 	    printf ("%s: dataless FITS image header not written.\n", name);
 	else {
@@ -333,6 +335,8 @@ char *name;
 	sprintf (extname, "EXT%d", extend-1);
 	hputs (header, "EXTNAME", extname);
 	hputi4 (header, "EXTVER", extend-1);
+	hputc (header, "COMMENT", "FITS (Flexible Image Transport System) format is defined in 'Astronomy");
+	hputc (header, "COMMENT", "and Astrophysics' vol 376, page 359; bibcode 2001A&A...376..359H.");
 	if (fitswimage (name, header, image) == 0)
 	    printf ("%s: FITS image extension %s not written.\n",name,extname);
 	else {
@@ -410,13 +414,16 @@ char *name;
 	wcsfree (wcs);
 	}
 
+    hputc (header, "COMMENT", "FITS (Flexible Image Transport System) format is defined in 'Astronomy");
+    hputc (header, "COMMENT", "and Astrophysics' vol 376, page 359; bibcode 2001A&A...376..359H.");
+
     if (fitswimage (name, header, image) > 0 && verbose) {
 	if (image == NULL)
 	    printf ("%s: dataless FITS image header written successfully.\n",
 		name);
 	else
 	    printf ("%s: %d-byte FITS image written successfully.\n",
-		nbimage, name);
+		name, nbimage);
 	}
 
     free (header);
@@ -436,4 +443,7 @@ char *name;
  * Aug  1 2000	Add -i option to add image from binary file
  *
  * Jan 18 2001	Add -e option to build FITS extension file
+ * Oct 11 2001	Add COMMENT with FITS reference to each header that is written
+ *
+ * Apr  9 2002	Fix bug in final print statement
  */

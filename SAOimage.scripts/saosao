@@ -1,2 +1,1 @@
-#!/bin/sh
 saoimage -reg `imsao -r 15 $1` -wcscom ssao_-ha_%s $*

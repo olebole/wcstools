@@ -4,7 +4,7 @@
 /*=============================================================================
 *
 *   WCSLIB - an implementation of the FITS WCS proposal.
-*   Copyright (C) 1995-2000, Mark Calabretta
+*   Copyright (C) 1995-2002, Mark Calabretta
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -29,7 +29,7 @@
 *                      AUSTRALIA
 *
 *   Author: Mark Calabretta, Australia Telescope National Facility
-*   $Id: proj.h,v 2.11 2000/12/05 02:11:52 mcalabre Exp $
+*   $Id: wcs.h,v 2.9 2002/04/03 01:25:29 mcalabre Exp $
 *===========================================================================*/
 
 #ifdef __cplusplus
@@ -43,15 +43,15 @@ extern "C" {
 #endif
 
 extern int npcode;
-extern char pcodes[25][4];
+extern char pcodes[26][4];
 
 struct prjprm {
+   char   code[4];
    int flag;
+   double phi0, theta0;
    double r0;
    double p[10];
-   char   code[4];
-   double theta0;
-   double w[10];
+   double w[20];
    int    n;
 
 #if __STDC__  || defined(__cplusplus)
@@ -74,6 +74,12 @@ struct prjprm {
    int azpset(struct prjprm *);
    int azpfwd(const double, const double, struct prjprm *, double *, double *);
    int azprev(const double, const double, struct prjprm *, double *, double *);
+   int szpset(struct prjprm *);
+   int szpfwd(const double, const double, struct prjprm *, double *, double *);
+   int szprev(const double, const double, struct prjprm *, double *, double *);
+   int szpset(struct prjprm *);
+   int szpfwd(const double, const double, struct prjprm *, double *, double *);
+   int szprev(const double, const double, struct prjprm *, double *, double *);
    int tanset(struct prjprm *);
    int tanfwd(const double, const double, struct prjprm *, double *, double *);
    int tanrev(const double, const double, struct prjprm *, double *, double *);
@@ -149,6 +155,7 @@ struct prjprm {
 #else
    int prjset(), prjfwd(), prjrev();
    int azpset(), azpfwd(), azprev();
+   int szpset(), szpfwd(), szprev();
    int tanset(), tanfwd(), tanrev();
    int stgset(), stgfwd(), stgrev();
    int sinset(), sinfwd(), sinrev();
@@ -379,4 +386,6 @@ extern const char *wcsmix_errmsg[];
  *
  * Feb 15 2001	Doug Mink - Undefine math constants if already defined
  * Sep 19 2001	Doug Mink - Update for WCSLIB 2.7, especially proj.h and cel.h
+ *
+ * Mar 12 2002	Doug Mink - Update for WCSLIB 2.8.2, especially proj.h
  */

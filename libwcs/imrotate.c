@@ -1,5 +1,5 @@
 /*** File libwcs/imrotate.c
- *** January 18, 2001
+ *** November 27, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -54,14 +54,23 @@ int	verbose;
 
     /* Get image size */
     nax = 0;
-    if (hgeti4 (header,"NAXIS",&nax) < 1)
+    if (hgeti4 (header,"NAXIS",&nax) < 1) {
+	if (verbose)
+	    printf ("RotFITS: Not an image (NAXIS=%d)\n",nax);
 	return (NULL);
+	}
     else {
-	if (hgeti4 (header,"NAXIS1",&nx) < 1)
+	if (hgeti4 (header,"NAXIS1",&nx) < 1) {
+	    if (verbose)
+		printf ("RotFITS: Not an image (NAXIS1=%d)\n",nx);
 	    return (NULL);
+	    }
 	else {
-	    if (hgeti4 (header,"NAXIS2",&ny) < 1)
+	    if (hgeti4 (header,"NAXIS2",&ny) < 1) {
+		if (verbose)
+		    printf ("RotFITS: Not an image (NAXIS2=%d)\n",ny);
 		return (NULL);
+		}
 	    }
 	}
     bitpix1 = 16;
@@ -75,6 +84,9 @@ int	verbose;
 
     /* Compute size of image in bytes */
     switch (bitpix2) {
+	case 8:
+	    nbytes = nx * ny;
+	    break;
 	case 16:
 	    nbytes = nx * ny * 2;
 	    break;
@@ -91,13 +103,18 @@ int	verbose;
 	    nbytes = nx * ny * 8;
 	    break;
 	default:
+	    if (verbose)
+		printf ("RotFITS: Illegal BITPIX (%d)\n", bitpix2);
 	    return (NULL);
 	}
 
     /* Allocate buffer for rotated image */
     rotimage = (char *) malloc (nbytes);
-    if (rotimage == NULL)
+    if (rotimage == NULL) {
+	if (verbose)
+	    printf ("RotFITS: Cannot allocate %d bytes for new image\n", nbytes);
 	return (NULL);
+	}
 
     if (bitpix1 != bitpix2) {
 	sprintf (history,"Copy of image %s bits per pixel %d -> %d",
@@ -535,4 +552,6 @@ int	verbose;	/* Print progress if 1 */
  * Jan 11 2001	Print all messages to stderr
  * Jan 17 2001	Reset coordinate direction if image is mirrored
  * Jan 18 2001	Reset WCS scale if image is binned
+ * Nov 27 2001	Add error messages for all null returns
+ * Nov 27 2001	Add bitpix=8
  */

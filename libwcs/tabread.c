@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** September 21, 2001
+ *** December 3, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -610,13 +610,21 @@ int	nlog;
 	return (0);
 	}
 
-    /* Find columns for X, Y, and magnitude */
+    /* Find columns for X and Y */
     if (!(entx = tabcol (startab, "X")))
         entx = tabcol (startab, "x");
     if (!(enty = tabcol (startab, "Y")))
         enty = tabcol (startab, "y");
-    if (!(entmag = tabcol (startab, "MAG")))
-        entmag = tabcol (startab, "mag");
+
+    /* Find column for magnitude */
+    if (!(entmag = tabcol (startab, "MAG"))) {
+	if (!(entmag = tabcol (startab, "mag"))) {
+	    if (!(entmag = tabcol (startab, "magv"))) {
+		if (!(entmag = tabcol (startab, "magj")))
+		    entmag = tabcol (startab, "magr");
+		}
+	    }
+	}
 
     /* Allocate vectors for x, y, magnitude, and flux */
     nstars = startab->nlines;
@@ -645,7 +653,7 @@ int	nlog;
     for (istar = 0; istar < nstars; istar++) {
 
 	/* Read line for next star */
-	if ((line = gettabline (startab, istar)) == NULL) {
+	if ((line = gettabline (startab, istar+1)) == NULL) {
 	    fprintf (stderr,"TABXYREAD: Cannot read star %d\n", istar);
 	    break;
 	    }
@@ -659,7 +667,7 @@ int	nlog;
 	(*xa)[istar] = xi;
 	(*ya)[istar] = yi;
 	(*ba)[istar] = magi;
-	flux = pow (10.0, (-magi / 2.5));
+	flux = 1000000000.0 * pow (10.0, (-magi / 2.5));
 	(*pa)[istar] = (int) flux;
 
 	if (nlog == 1)
@@ -1546,6 +1554,7 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	    return (NULL);
 	    }
 	tabtable->tabhead = lastline;
+	tabtable->tabdash = tabline;
 	tabtable->tabdata = strchr (tabline, newline) + 1;
 
 	/* Extract positions of keywords we will want to use */
@@ -1874,6 +1883,7 @@ char	*result;
 
     /* Make all-upper-case and all-lower-case versions of keyword */
     lkey = strlen (keyword);
+    if (lkey > 24) lkey = 24;
     for (i = 0; i < lkey; i++) {
 	if (keyword[i] > 96 && keyword[i] < 123)
 	    keyup[i] = keyword[i] - 32;
@@ -1884,6 +1894,8 @@ char	*result;
 	else
 	    keylow[i] = keyword[i];
 	}
+    keyup[lkey] = (char) 0;
+    keylow[lkey] = (char) 0;
 
     /* Find keyword or all-upper-case or all-lower-case version in header */
     while (head < tabtable->tabhead) {
@@ -1896,7 +1908,7 @@ char	*result;
 	    break;
 	if (line == tabtable->tabbuff || line[-1] == newline) {
 	    str0 = strchr (line, tab) + 1;
-	    str1 = strchr (line, newline);
+	    str1 = strchr (str0, newline);
 	    break;
 	    }
 	else
@@ -2198,4 +2210,8 @@ char    *filename;      /* Name of file to check */
  * Sep 20 2001	Clean up pointers for Alpha and Linux; drop tabgetpm()
  * Sep 20 2001	Change _ to . in ESO server USNO-A2.0 numbers
  * Sep 21 2001	Rearrange ESO server GSC numbers
+ * Oct 12 2001	Check for additional column names for magnitude
+ * Oct 15 2001	Read first star only once, compute relative flux in tabxyread() (bug fix)
+ * Oct 16 2001	Add pointer to line of dashes to table structure
+ * Dec  3 2001	Initialize keyword search variables in tabhgetc()
  */

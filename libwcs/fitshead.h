@@ -1,5 +1,5 @@
 /* fitshead.h  FITS header access subroutines
- * March 27, 2000
+ * April 8, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -7,6 +7,8 @@
 
 #ifndef _fitshead_h_
 #define _fitshead_h_
+
+#include <sys/types.h>
 
 #ifdef __cplusplus /* C++ prototypes */
 extern "C" {
@@ -16,6 +18,11 @@ extern "C" {
 	const char* hstring,	/* FITS header string */
 	const char* keyword,	/* FITS keyword */
 	short* val);		/* short integer value (returned) */
+    int hgeti4c(		/* Extract int value from FITS header */
+	const char* hstring,	/* FITS header string */
+	const char* keyword,	/* FITS keyword */
+	const char mchar,	/* WCS to use */
+	int* val);		/* integer value (returned) */
     int hgeti4(			/* Extract int value from FITS header */
 	const char* hstring,	/* FITS header string */
 	const char* keyword,	/* FITS keyword */
@@ -24,6 +31,11 @@ extern "C" {
 	const char* hstring,	/* FITS header string */
 	const char* keyword,	/* FITS keyword */
 	float* val);		/* float value (returned) */
+    int hgetr8c(			/* Extract double value from FITS header */
+	const char* hstring,	/* FITS header string */
+	const char* keyword,	/* FITS keyword */
+	const char mchar,	/* WCS to use */
+	double* val);		/* double value (returned) */
     int hgetr8(			/* Extract double value from FITS header */
 	const char* hstring,	/* FITS header string */
 	const char* keyword,	/* FITS keyword */
@@ -44,6 +56,12 @@ extern "C" {
 	const char* hstring,	/* FITS header string */
 	const char* keyword,	/* FITS keyword */
 	int* lval);		/* 1 if T, 0 if F (returned) */
+    int hgetsc(			/* Extract string value from FITS header */
+	const char* hstring,	/* FITS header string */
+	const char* keyword,	/* FITS keyword */
+	const char mchar,	/* WCS to use */
+	const int lstr,		/* maximum length of returned string */
+	char* string);		/* null-terminated string value (returned) */
     int hgets(			/* Extract string value from FITS header */
 	const char* hstring,	/* FITS header string */
 	const char* keyword,	/* FITS keyword */
@@ -221,15 +239,18 @@ extern "C" {
 /* Subroutines in hget.c */
 
 /* Extract a value from a FITS header for given keyword */
-extern int hgeti4();	/* int */
+extern int hgeti4();	/* int (Multiple WCS) */
+extern int hgeti4c();	/* int */
 extern int hgeti2();	/* short */
 extern int hgetr4();	/* float */
 extern int hgetr8();	/* double */
+extern int hgetr8c();	/* double (Multiple WCS) */
 extern int hgetra();	/* Right ascension in degrees from string */
 extern int hgetdec();	/* Declination in degrees from string */
 extern int hgetdate();	/* Date in years from FITS date string */
 extern int hgetl();	/* T->1, F->0 from FITS logical entry */
 extern int hgets();	/* Previously allocated string */
+extern int hgetsc();	/* Previously allocated string (Multiple WCS) */
 extern int hgetm();	/* Previously allocated string from multiple keywords */
 extern char *hgetc();	/* Return pointer to string */
 extern int hgetndec();	/* Number of decimal places in keyword value */
@@ -335,4 +356,7 @@ extern char *getutime(); /* Return current UT as an ISO-format string */
  *
  * Mar 22 2000	Add int to iget*() declarations
  * Mar 27 2000	Add hputm() declaration
+ *
+ * Apr  3 2002	Add hgeti4c(), hgetr8c(), and hgetsc()
+ * Apr  8 2002	Include sys/types.h
  */

@@ -15,16 +15,17 @@ saoact - USNO ACT catalog from CDROM or hard disk
 saobsc - Yale Bright Star Catalog from SAO binary format catalog file
 saocata - First argument is catalog name, second is image, reset go to SAOimage
 saogsc - HST Guide Star Catalog from 2 CDROMs (or same files on hard disk)
+saogsca - GSC-ACT Catalog from 2 CDROMs (or same files on hard disk)
+saogsc2 - GSC II Catalog over the Internet
 saoiras - IRAS Point Source Catalog from SAO binary format catalog file
 saoppm - PPM Catalog from SAO binary format catalog file
 saosao - SAO Catalog from SAO binary format catalog file
+saoty2 - Tycho-2 Catalog from CDROM or hard disk
 saoua1 - USNO-A1.0 Catalog from 10 CDROMs (or same files on hard disk)
 saoua2 - USNO-A2.0 Catalog from 11 CDROMs (or same files on hard disk)
-saouac - Either USNO-A Catalog from CDROMs or hard disk
 saoujc - USNO J Catalog from CDROM or hard disk
 saousa1 - USNO-SA1.0 Catalog from CDROM or hard disk
 saousa2 - USNO-SA2.0 Catalog from CDROM or hard disk
-saousac - Either USNO-SA Catalog from CDROM or hard disk
 
 The following two programs do the same overplotting as saogsc and saoua2
 above, but invoke scat with the X and Y coordinates of the previous C
@@ -38,4 +39,7 @@ initializing a world coordinate system fit to the image, using imwcs -u,
 or to any other program which fits a world coordinate system.
 
 saomgsc - HST Guide Star Catalog from 2 CDROMs (or same files on hard disk)
+saomgsca - GSC-ACT Catalog from 2 CDROMs (or same files on hard disk)
+saomgsc2 - GSC II Catalog over the Internet
+saomtmc - 2MASS Point Source Catalog from 11 CDROMs (or same files on hard disk)
 saomua2 - USNO-A2.0 Catalog from 11 CDROMs (or same files on hard disk)

@@ -1,5 +1,5 @@
 /* File getcol.c
- * July 17, 2001
+ * April 12, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,19 +14,28 @@
 #include "libwcs/wcscat.h"
 #include "libwcs/fitshead.h"
 
-#define	MAX_LTOK	80
+#define	MAX_LTOK	256
+#define	MAX_NTOK	256
 
 static void usage();
 static int ListFile();
 static int iscolop();
+static int iscol();
+static double median();
 
+static double badval = 0.0;	/* Value to ignore */
+static int isbadval = 0;	/* 1 if badval is set */
 static int maxncond = 100;
 static int maxnop = 100;
 static int verbose = 0;		/* Verbose/debugging flag */
 static int debug = 0;		/* True for extra information */
-static int sumcol = 0;		/* True to sum columns */
-static int meancol = 0;		/* True to compute mean of columns */
+static int sumcol = 0;		/* True to sum column values */
+static int ameancol = 0;	/* True for absolute mean of column values */
+static int meancol = 0;		/* True to compute mean of column values */
+static int amedcol = 0;		/* True for absolute median of column values */
+static int medcol = 0;		/* True to compute median of column values */
 static int countcol = 0;	/* True to count entries in columns */
+static int rangecol = 0;	/* True to print range of column values */
 static int version = 0;		/* If 1, print only program name and version */
 static int nread = 0;		/* Number of lines to read (0=all) */
 static int nskip = 0;		/* Number of lines to skip */
@@ -44,8 +53,12 @@ static char **cop;		/* Operation characters */
 static void strclean();
 static int napp=0;		/* Number of lines to append */
 static int ndec=-1;		/* Number of decimal places in f.p. output */
+static int printcol = 1;	/* Flag to print extracted data */
 static char *cwhite;
-
+static int *frstchar;		/* First character of column to use (1-n) */
+static int *lastchar;		/* Last character of column to use (1-n) */
+static int qmeancol = 0;	/* If 1, print mean of columns added in quadrature */
+				/* 0 = no mean of quadruature */
 main (ac, av)
 int ac;
 char **av;
@@ -56,6 +69,8 @@ char **av;
     char *ranges = NULL;
     char *lfile = NULL;
     char *lranges = NULL;
+    char *cdot, *ccol;
+    int icol;
     int match, newbytes;
     int nrbytes = 0;
 
@@ -68,6 +83,8 @@ char **av;
     ccond = (char **)calloc (maxncond, sizeof(char *));
     op = (char **)calloc (maxnop, sizeof(char *));
     cop = (char **)calloc (maxnop, sizeof(char *));
+    frstchar = (int *) calloc (MAX_NTOK, sizeof (int));
+    lastchar = (int *) calloc (MAX_NTOK, sizeof (int));
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -82,9 +99,29 @@ char **av;
     for (av++; --ac > 0; av++) {
 
 	/* Set column number */
-	if (isnum (*av)) {
-	    if (strchr (*av,'.'))
-		match = 1;
+	if (iscol (*av)) {
+	    cdot = strchr (*av,'.');
+	    if (cdot) {
+		ccol = strchr (*av, ':');
+		if (ccol) {
+		    *cdot = (char) 0;
+		    icol = atoi (*av);
+		    *ccol = (char) 0;
+		    if (icol > 0 && icol < MAX_NTOK) {
+			if (strlen (cdot+1) > 0)
+			    frstchar[icol] = atoi (cdot+1);
+			else
+			    frstchar[icol] = 1;
+			if (strlen (ccol+1) > 0)
+			    lastchar[icol] = atoi (ccol+1);
+			else
+			    lastchar[icol] = 0;
+			}
+		    }
+		else
+		    match = 1;
+		}
+		
 	    if (ranges) {
 		newbytes = strlen(ranges) + strlen(*av) + 2;
 		newbytes = ((newbytes / 16) + 1) * 16;
@@ -174,6 +211,18 @@ char **av;
 		ac--;
 		break;
 
+	    case 'e':	/* Compute median of each numeric column */
+		medcol++;
+		break;
+
+	    case 'f':	/* Range of values in column */
+		rangecol++;
+		break;
+
+	    case 'g':	/* Compute absolute median of each numeric column */
+		amedcol++;
+		break;
+
 	    case 'h':	/* Print Starbase tab table header */
 		printhead++;
 		break;
@@ -181,6 +230,10 @@ char **av;
 	    case 'i':	/* tab-separated input */
 		cwhite = (char *) calloc (4,1);
 		strcpy (cwhite, "tab");
+		break;
+
+	    case 'j':	/* Compute absolute mean of each numeric column */
+		ameancol++;
 		break;
 
 	    case 'k':	/* Count columns on first line */
@@ -207,6 +260,14 @@ char **av;
 
 	    case 'o': /* OR conditions insted of ANDing them */
 		condand = 0;
+		break;
+
+	    case 'p': /* Print sum or mean only */
+		printcol = 0;
+		break;
+
+	    case 'q':	/* Compute mean in quadrature of selected numeric columns */
+		qmeancol = 1;
 		break;
 
 	    case 'r':	/* Range of lines to read */
@@ -236,6 +297,14 @@ char **av;
 
 	    case 'v':	/* More verbosity */
 		verbose++;
+		break;
+
+	    case 'x':	/* Value to ignore */
+		if (ac < 2)
+		    usage ();
+		badval = atof (*++av);
+		isbadval++;
+		ac--;
 		break;
 
 	    default:
@@ -284,22 +353,30 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Extract specified columns from an ASCII table file\n");
-    fprintf (stderr,"Usage: [-amv][-d num][-l num][-n num][-r lines][-s num] filename [column number range]\n");
-    fprintf(stderr,"  -a: Sum numeric colmuns\n");
+    fprintf (stderr,"Usage: [-abcefghijkmopqtv][-d num][-l num][-n num][-r lines][-s num] filename [col] [col] ...\n");
+    fprintf(stderr," col: Number range (n1-n2,n3-n4...) or col.c1:c2\n");
+    fprintf(stderr,"  -a: Sum selected numeric column(s)\n");
     fprintf(stderr,"  -b: Input is bar-separate table file\n");
     fprintf(stderr,"  -c: Add count of number of lines in each column at end\n");
-    fprintf(stderr,"  -d: Number of decimal places in f.p. output\n");
+    fprintf(stderr,"  -d num: Number of decimal places in f.p. output\n");
+    fprintf(stderr,"  -e: Median values of selected numeric column(s)\n");
+    fprintf(stderr,"  -f: Print range of values in selected column(s)\n");
+    fprintf(stderr,"  -g: Median absolute values of selected column(s)\n");
     fprintf(stderr,"  -h: Print Starbase tab table header\n");
     fprintf(stderr,"  -i: Input is tab-separate table file\n");
+    fprintf(stderr,"  -j: Print means of absolute values of selected column(s)\n");
     fprintf(stderr,"  -k: Print number of columns on first line\n");
-    fprintf(stderr,"  -l: Number of lines to add to each line\n");
-    fprintf(stderr,"  -m: Compute mean of numeric columns\n");
-    fprintf(stderr,"  -n: Number of lines to read, if not all\n");
+    fprintf(stderr,"  -l num: Number of lines to add to each line\n");
+    fprintf(stderr,"  -m: Print means of selected numeric column(s)\n");
+    fprintf(stderr,"  -n num: Number of lines to read, if not all\n");
     fprintf(stderr,"  -o: OR conditions insted of ANDing them\n");
+    fprintf(stderr,"  -p: Print only sum or mean, not individual values\n");
+    fprintf(stderr,"  -q: Compute mean of selected columns added in quadrature\n");
     fprintf(stderr,"  -r: Range or @file of lines to read, if not all\n");
     fprintf(stderr,"  -s: Number of lines to skip\n");
     fprintf(stderr,"  -t: Starbase tab table output\n");
     fprintf(stderr,"  -v: Verbose\n");
+    fprintf(stderr,"  -x num: Set value to ignore\n");
     exit (1);
 }
 
@@ -324,11 +401,16 @@ char	*lfile;		/* Name of file with lines to list */
     struct Range *lrange;
     int *iline;
     int nline;
+    int idnum;
     int iln;
     int nfdef = 9;
-    double *sum;
+    double *sum, *asum, *colmin, *colmax, **med, **amed;
+    double *qmed, qsum = 0.0;
+    double qsum1;
     int *nsum;
     int *nent;
+    int *hms;		/* Flag for hh:mm:ss or dd:mm:ss format */
+    int *limset;	/* Flag for range initialization */
     int nlmax;
     double dtok, dnum;
     int nfind, ntok, nt, ltok,iop;
@@ -338,12 +420,24 @@ char	*lfile;		/* Name of file with lines to list */
     char numstr[32], numstr1[32];
     double dcond, dval;
     int pass;
+    int nchar, k;
     int iapp;
     int jcond, jval;
+    int unset;
     char token[MAX_LTOK];
+    int nq, nqsum = 0;
 
+    nent = NULL;
+    sum = NULL;
+    inum = NULL;
+    nsum = NULL;
+    colmin = NULL;
+    colmax = NULL;
     lrange = NULL;
     iline = NULL;
+    hms = NULL;
+    med = NULL;
+    limset = NULL;
 
     if (verbose)
 
@@ -385,7 +479,7 @@ char	*lfile;		/* Name of file with lines to list */
 	il = 0;
 	nextline = line;
 	for (ir = 0; ir < nread; ir++) {
-	    if (fgets (nextline, 1024, lfd) == NULL)
+	    if (fgets (nextline, 1023, lfd) == NULL)
 		break;
 
 	    /* Skip lines with comments */
@@ -443,7 +537,7 @@ char	*lfile;		/* Name of file with lines to list */
     /* Skip lines into input file */
     if (nskip > 0) {
 	for (i = 0; i < nskip; i++) {
-	    if (fgets (line, 80, fd) == NULL)
+	    if (fgets (line, 1023, fd) == NULL)
 		break;
 	    }
 	}
@@ -455,7 +549,7 @@ char	*lfile;		/* Name of file with lines to list */
 	iapp = 0;
 	nextline = line;
 	for (ir = 0; ir < nread; ir++) {
-	    if (fgets (nextline, 1024, fd) == NULL)
+	    if (fgets (nextline, 1023, fd) == NULL)
 		break;
 
 	    /* Skip lines with comments */
@@ -490,7 +584,12 @@ char	*lfile;		/* Name of file with lines to list */
 		    iln++;
 		}
 
-	    /* Turn linefeed into end of string */
+	    /* Drop control character at end of string */
+	    lastchar = line + strlen(line) - 1;
+	    if (*lastchar < 32)
+		*lastchar = (char) 0;
+
+	    /* Drop second control character at end of string */
 	    lastchar = line + strlen(line) - 1;
 	    if (*lastchar < 32)
 		*lastchar = (char) 0;
@@ -569,11 +668,13 @@ char	*lfile;		/* Name of file with lines to list */
 			if (tcond == '#' && strcmp (cstr, cval))
 			    pass = 1;
 			}
+		    if (condand && !pass)
+			break;
 		    }
-		if (condand && !pass)
-		    break;
+		if (pass)
+		    printf ("%s\n", line);
 		}
-	    if (pass)
+	    else
 		printf ("%s\n", line);
 	    }
 	}
@@ -588,9 +689,66 @@ char	*lfile;		/* Name of file with lines to list */
 	    if (fd != stdin) fclose (fd);
 	    return (-1);
 	    }
+	if (!(asum = (double *) calloc (nfind, sizeof (double))) ) {
+	    fprintf (stderr, "Could not calloc %d bytes for asum\n", nbytes);
+	    if (fd != stdin) fclose (fd);
+	    return (-1);
+	    }
+	if (!(colmin = (double *) calloc (nfind, sizeof (double))) ) {
+	    fprintf (stderr, "Could not calloc %d bytes for colmin\n", nbytes);
+	    if (fd != stdin) fclose (fd);
+	    return (-1);
+	    }
+	if (!(colmax = (double *) calloc (nfind, sizeof (double))) ) {
+	    fprintf (stderr, "Could not calloc %d bytes for colmax\n", nbytes);
+	    if (fd != stdin) fclose (fd);
+	    return (-1);
+	    }
+	if (!(med = (double **) calloc (nfind, sizeof (double *))) ) {
+	    fprintf (stderr, "Could not calloc %d bytes for med\n", nbytes);
+	    if (fd != stdin) fclose (fd);
+	    return (-1);
+	    }
+	if (!(amed = (double **) calloc (nfind, sizeof (double *))) ) {
+	    fprintf (stderr, "Could not calloc %d bytes for amed\n", nbytes);
+	    if (fd != stdin) fclose (fd);
+	    return (-1);
+	    }
+	else {
+	    nbytes = nread * sizeof (double);
+	    if (!(qmed = calloc (nread, sizeof(double)))) {
+		fprintf (stderr, "Could not calloc %d bytes for qmed\n", nbytes);
+		if (fd != stdin) fclose (fd);
+		return (-1);
+		}
+	    for (i = 0; i < nfind; i++) {
+		if (!(med[i] = calloc (nread, sizeof(double)))) {
+		    fprintf (stderr, "Could not calloc %d bytes for med%d\n",
+			     nbytes, i);
+		    if (fd != stdin) fclose (fd);
+		    return (-1);
+		    }
+		if (!(amed[i] = calloc (nread, sizeof(double)))) {
+		    fprintf (stderr, "Could not calloc %d bytes for amed%d\n",
+			     nbytes, i);
+		    if (fd != stdin) fclose (fd);
+		    return (-1);
+		    }
+		}
+	    }
 	nbytes = nfind * sizeof (int);
 	if (!(nsum = (int *) calloc (nfind, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for nsum\n", nbytes);
+	    if (fd != stdin) fclose (fd);
+	    return (-1);
+	    }
+	if (!(hms = (int *) calloc (nfind, sizeof(int))) ) {
+	    fprintf (stderr, "Could not calloc %d bytes for hms\n", nbytes);
+	    if (fd != stdin) fclose (fd);
+	    return (-1);
+	    }
+	if (!(limset = (int *) calloc (nfind, sizeof(int))) ) {
+	    fprintf (stderr, "Could not calloc %d bytes for limset\n", nbytes);
 	    if (fd != stdin) fclose (fd);
 	    return (-1);
 	    }
@@ -612,10 +770,15 @@ char	*lfile;		/* Name of file with lines to list */
 	iapp = 0;
 	nextline = line;
 	for (il = 0; il < nread; il++) {
-	    if (fgets (nextline, 1024, fd) == NULL)
+	    if (fgets (nextline, 1023, fd) == NULL)
 		break;
 
-	    /* Turn linefeed into end of string */
+	    /* Clear control character at end of string */
+	    lastchar = line + strlen(line) - 1;
+	    if (*lastchar < 32)
+		*lastchar = (char) 0;
+
+	    /* Clear second control character at end of string */
 	    lastchar = line + strlen(line) - 1;
 	    if (*lastchar < 32)
 		*lastchar = (char) 0;
@@ -780,28 +943,82 @@ char	*lfile;		/* Name of file with lines to list */
 		}
 
 	    /* Print requested columns */
+	    qsum1 = 0;
+	    nq = 0;
 	    for (i = 0; i < nfind; i++) {
 		if (getoken (tokens, inum[i], token, MAX_LTOK)) {
-		    if (i > 0) {
-			if (tabout)
-			    printf ("	");
+
+		    /* Get substring of column, if requested */
+		    if (frstchar[i] > 0) {
+			ltok = strlen (token);
+			if (lastchar[i] > 0)
+			    nchar = lastchar[i] - frstchar[i] + 1;
 			else
-			    printf (" ");
+			    nchar = ltok - frstchar[i] + 1;
+			k = frstchar[i];
+			for (j = 0; j < nchar; j++)
+			    token[j] = token[k++];
+			for (j = nchar; j < ltok; j++);
+			    token[j] = (char) 0;
 			}
-		    if (inum[i] > tokens.ntok || inum[i] < 1)
-			printf ("___");
-		    else if (ndec > -1 && isnum (token) == 2) {
-			num2str (numstr, atof (token), 0, ndec);
-			printf ("%s", numstr);
+
+		    if (isnum (token)) {
+			dval = atof (token);
+			hms[i] = 0;
+			idnum = 1;
 			}
-		    else
-			printf ("%s", token);
+		    else if (strchr (token, ':')) {
+			dval = str2dec (token);
+			hms[i] = 1;
+			idnum = 1;
+			}
+		    else {
+			dval = 0.0;
+			idnum = 0;
+			}
+		    if (idnum) {
+			if (!isbadval || (isbadval && dval != badval)) {
+			    qsum1 = qsum1 + dval * dval;
+			    nq++;
+			    sum[i] = sum[i] + dval;
+			    asum[i] = asum[i] + fabs (dval);
+			    if (!limset[i]) {
+				colmin[i] = dval;
+				colmax[i] = dval;
+				limset[i]++;
+				}
+			    else if (dval < colmin[i])
+				colmin[i] = dval;
+			    else if (dval > colmax[i])
+				colmax[i] = dval;
+			    med[i][nsum[i]] = dval;
+			    amed[i][il] = fabs (dval);
+			    nsum[i]++;
+			    }
+			}
+		    if (printcol) {
+			if (i > 0) {
+			    if (tabout)
+				printf ("	");
+			    else
+				printf (" ");
+			    }
+			if (inum[i] > tokens.ntok || inum[i] < 1)
+			    printf ("___");
+			else if (ndec > -1 && isnum (token) == 2) {
+			    num2str (numstr, atof (token), 0, ndec);
+			    printf ("%s", numstr);
+			    }
+			else
+			    printf ("%s", token);
+			}
 		    nt++;
 		    nent[i]++;
-		    if (isnum (token)) {
-			sum[i] = sum[i] + atof (token);
-			nsum[i]++;
-			}
+		    }
+		if (nq > 1) {
+		    qmed[nqsum] = sqrt (qsum1);
+		    nqsum++;
+		    qsum = qsum + sqrt (qsum1);
 		    }
 		}
 
@@ -847,12 +1064,12 @@ char	*lfile;		/* Name of file with lines to list */
 			printf ("___");
 		    }
 		}
-	    if (nt > 0)
+	    if (nt > 0 && printcol)
 		printf ("\n");
 	    }
         }
 
-    /* Print sums of numeric columns */
+    /* Print sums of values in numeric columns */
     if (sumcol) {
 	for (i = 0; i < nfind; i++) {
 	    if (nsum[i] > 0) {
@@ -870,19 +1087,120 @@ char	*lfile;		/* Name of file with lines to list */
 	    printf ("\n");
 	}
 
-    /* Print means of numeric columns */
-    if (meancol) {
+    /* Print means of absolute values in numeric columns */
+    if (ameancol) {
 	for (i = 0; i < nfind; i++) {
 	    if (nsum[i] > 0) {
-		if (i < nfind-1)
-		    printf ("%f ", sum[i]/(double)nsum[i]);
+		dval = asum[i] / (double)nsum[i];
+		if (hms[i])
+		    dec2str (numstr, 32, dval, 3);
 		else
-		    printf ("%f", sum[i]/(double)nsum[i]);
+		    sprintf (numstr, "%f", dval);
+		strclean (numstr);
+		if (i < nfind-1)
+		    printf ("%s ", numstr);
+		else
+		    printf ("%s", numstr);
 		}
 	    else if (i < nfind-1)
 		printf ("___ ");
 	    else
 		printf ("___");
+	    }
+	if (nfind > 0)
+	    printf ("\n");
+	}
+
+    /* Print means of values in numeric columns */
+    if (meancol) {
+	for (i = 0; i < nfind; i++) {
+	    if (nsum[i] > 0) {
+		dval = sum[i] / (double)nsum[i];
+		if (hms[i])
+		    dec2str (numstr, 32, dval, 3);
+		else
+		    sprintf (numstr, "%f", dval);
+		strclean (numstr);
+		if (i < nfind-1)
+		    printf ("%s ", numstr);
+		else
+		    printf ("%s", numstr);
+		}
+	    else if (i < nfind-1)
+		printf ("___ ");
+	    else
+		printf ("___");
+	    }
+	if (nfind > 0)
+	    printf ("\n");
+	}
+
+    /* Print medians of absolute values in numeric columns */
+    if (amedcol) {
+	for (i = 0; i < nfind; i++) {
+	    if (nsum[i] > 0) {
+		dval = median (amed[i], nsum[i]);
+		if (hms[i])
+		    dec2str (numstr, 32, dval, 3);
+		else
+		    sprintf (numstr, "%f", dval);
+		strclean (numstr);
+		if (i < nfind-1)
+		    printf ("%s ", numstr);
+		else
+		    printf ("%s", numstr);
+		}
+	    else if (i < nfind-1)
+		printf ("___ ");
+	    else
+		printf ("___");
+	    }
+	if (nfind > 0)
+	    printf ("\n");
+	}
+
+    /* Print medians of values in numeric columns */
+    if (medcol) {
+	for (i = 0; i < nfind; i++) {
+	    if (nsum[i] > 0) {
+		dval = median (med[i], nsum[i]);
+		if (hms[i])
+		    dec2str (numstr, 32, dval, 3);
+		else
+		    sprintf (numstr, "%f", dval);
+		strclean (numstr);
+		if (i < nfind-1)
+		    printf ("%s ", numstr);
+		else
+		    printf ("%s", numstr);
+		}
+	    else if (i < nfind-1)
+		printf ("___ ");
+	    else
+		printf ("___");
+	    }
+	if (nfind > 0)
+	    printf ("\n");
+	}
+
+    /* Print ranges of values in numeric columns */
+    if (rangecol) {
+	for (i = 0; i < nfind; i++) {
+	    if (hms[i])
+		dec2str (numstr, 32, colmin[i], 3);
+	    else
+		sprintf (numstr, "%f", colmin[i]);
+	    strclean (numstr);
+	    printf ("%s-", numstr);
+	    if (hms[i])
+		dec2str (numstr, 32, colmax[i], 6);
+	    else
+		sprintf (numstr, "%f", colmax[i]);
+	    strclean (numstr);
+	    if (i < nfind-1)
+		printf ("%s ", numstr);
+	    else
+		printf ("%s", numstr);
 	    }
 	if (nfind > 0)
 	    printf ("\n");
@@ -900,6 +1218,20 @@ char	*lfile;		/* Name of file with lines to list */
 	    }
 	if (nfind > 0)
 	    printf ("\n");
+	}
+
+    /* Print mean of all numeric columns added in quadrature */
+    if (qmeancol) {
+	if (nqsum > 0) {
+	    dval = qsum / (double)nqsum;
+	    sprintf (numstr, "%f", dval);
+	    strclean (numstr);
+	    printf ("%s", numstr);
+	    dval = median (qmed, nqsum);
+	    sprintf (numstr, "%f", dval);
+	    strclean (numstr);
+	    printf (" %s\n", numstr);
+	    }
 	}
 
     /* Free memory used for search results */
@@ -1001,6 +1333,89 @@ char *string;
 	return (0);
 }
 
+static double
+median (x, n)
+
+int	n;
+double	*x;
+{
+    int rhs, lhs;
+    int NComp();
+
+    if (n <= 0)
+	return (0.0);
+   else if (n == 1)
+	return (x[0]);
+
+    qsort (x, n, sizeof (double), NComp);
+
+    lhs = (n - 1) / 2;
+    rhs = n / 2;
+
+    if (lhs == rhs)
+	return (x[lhs]);
+    else
+	return ((x[lhs] + x[rhs]) / 2.0);
+}
+
+iscol (string)
+
+char *string;   /* Character string */
+{
+    int lstr, i, nd;
+    char cstr, cstr1;
+    int fpcode;
+
+    /* Return 0 if string is NULL */
+    if (string == NULL)
+        return (0);
+
+    lstr = strlen (string);
+    nd = 0;
+    fpcode = 1;
+
+    /* Remove trailing spaces */
+    while (string[lstr-1] == ' ')
+        lstr--;
+
+    /* Column strings contain 0123456789 and . or : for subranges */
+    for (i = 0; i < lstr; i++) {
+        cstr = string[i];
+        if (cstr == '\n')
+            break;
+
+        /* Ignore leading spaces */
+        if (cstr == ' ' && nd == 0)
+            continue;
+
+        if ((cstr < 48 || cstr > 57) &&
+            cstr != ':' && cstr != '.' )
+            return (0);
+	else if (cstr >= 47 && cstr <= 57)
+	    nd++;
+        }
+    if (nd > 0)
+        return (1);
+    else
+        return (0);
+}
+
+
+int
+NComp (pd1, pd2)
+
+void *pd1, *pd2;
+{
+    double d1 = *((double *)pd1);
+    double d2 = *((double *)pd2);
+
+    if (d1 > d2)
+	return (1);
+    else if (d1 < d2)
+	return (-1);
+    else
+	return (0);
+}
 
 /* Nov  2 1999	New program
  * Nov  3 1999	Add option to read from stdin as input filename
@@ -1025,4 +1440,18 @@ char *string;
  * Mar 19 2001	Drop type declarations from intcompare argument list
  * Jun 18 2001	Add maximum length of returned string to getoken()
  * Jul 17 2001	Check operations for stdin as well as file
+ * Oct 10 2001	Add sum, mean, sigma for hh:mm:ss and dd:mm:ss entries
+ * Oct 10 2001	Add -p option to print only sum, mean, sigma, not entries
+ * Oct 11 2001	Add -f option to print range of values in selected columns
+ * Oct 16 2001	Add -e option to compute medians
+ * Oct 16 2001	Ignore non-numeric values for sums, means, and medians
+ * Nov 13 2001	Add option to specifiy characters of column to use
+ * Dec 28 2001	Clear second control character at the end of a line (CR/LF)
+ *
+ * Apr  9 2002	NComp() cannot be static as it is passed to qsort()
+ * Apr 10 2002	Add option to print means and medians of absolute values
+ * Apr 11 2002	Add option to print mean of selected columns added in quadrature
+ * Apr 12 2002	Add option to print median of selected columns added in quadrature
+ * Apr 12 2002	Fix bug in computing median of filtered file
+ * Apr 12 2002	Add -x option to set ignorable value
  */

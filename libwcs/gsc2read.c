@@ -1,5 +1,5 @@
 /*** File libwcs/gsc2read.c
- *** September 20, 2001
+ *** April 8, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  */
@@ -192,10 +192,11 @@ int	nlog;		/* 1 for diagnostics */
 	verbose = 0;
 
     nstars = 0;
+    nstar = 0;
 
 /* Summarize search */
     if (nlog > 0)
-	fprintf (stderr,"GSC2RNUM: %d / %d found\n",nstar);
+	fprintf (stderr,"GSC2RNUM: %d / %d found\n",nstar, nstars);
 
     return (nstar);
 }
@@ -206,4 +207,6 @@ int	nlog;		/* 1 for diagnostics */
  * Sep 13 2001	Pass array of magnitudes, not vector
  * Sep 14 2001	Add option to print entire returned file if nlog < 0
  * Sep 20 2001	Make argument starcat, not *starcat in tabcatclose()
+ *
+ * Apr  8 2002	Fix bugs in null subroutine gsc2rnum()
  */

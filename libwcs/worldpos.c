@@ -1,5 +1,5 @@
 /*  worldpos.c -- WCS Algorithms from Classic AIPS.
- *  October 21, 1999
+ *  April 3, 2002
  *  Copyright (C) 1994-1999
  *  Associated Universities, Inc. Washington DC, USA.
  *  With code added by Doug Mink, Smithsonian Astrophysical Observatory
@@ -35,8 +35,8 @@
 
     These two ANSI C functions, worldpos() and worldpix(), perform
     forward and reverse WCS computations for 8 types of projective
-    geometries ("-SIN", "-TAN", "-ARC", "-NCP", "-GLS", "-MER", "-AIT"
-    "-STG", "CAR", and "COE"):
+    geometries ("-SIN", "-TAN", "-ARC", "-NCP", "-GLS" or "-SFL", "-MER",
+     "-AIT", "-STG", "CAR", and "COE"):
 
 	worldpos() converts from pixel location to RA,Dec 
 	worldpix() converts from RA,Dec         to pixel location   
@@ -92,7 +92,7 @@ worldpos (xpix, ypix, wcs, xpos, ypos)
 
 /* Routine to determine accurate position for pixel coordinates */
 /* returns 0 if successful otherwise 1 = angle too large for projection; */
-/* does: -SIN, -TAN, -ARC, -NCP, -GLS, -MER, -AIT projections */
+/* does: -SIN, -TAN, -ARC, -NCP, -GLS or -SFL, -MER, -AIT projections */
 /* anything else is linear */
 
 /* Input: */
@@ -255,6 +255,7 @@ double	*ypos;		/* y (dec) coordinate (deg) */
       break;
 
     case WCS_GLS:   /* -GLS global sinusoid */
+    case WCS_SFL:   /* -SFL Samson-Flamsteed */
       dect = dec0 + m;
       if (fabs(dect)>twopi/4.0) return 1;
       coss = cos (dect);
@@ -370,7 +371,7 @@ worldpix (xpos, ypos, wcs, xpix, ypix)
 /* returns 0 if successful otherwise:                                    */
 /*  1 = angle too large for projection;                                  */
 /*  2 = bad values                                                       */
-/* does: SIN, TAN, ARC, NCP, GLS, MER, AIT, STG, CAR, COE projections    */
+/* does: SIN, TAN, ARC, NCP, GLS or SFL, MER, AIT, STG, CAR, COE projections    */
 /* anything else is linear                                               */
 
 /* Input: */
@@ -480,6 +481,7 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 	break;
 
     case WCS_GLS:   /* -GLS global sinusoid */
+    case WCS_SFL:   /* -SFL Samson-Flamsteed */
 	dt = ra - ra0;
 	if (fabs(dec)>twopi/4.0) return 1;
 	if (fabs(dec0)>twopi/4.0) return 1;
@@ -651,4 +653,6 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
  * Sep 30 1998	Fix bug in COE inverse code to get sign correct
  *
  * Oct 21 1999	Drop unused y from worldpix()
+ *
+ * Apr  3 2002	Use GLS and SFL interchangeably
  */

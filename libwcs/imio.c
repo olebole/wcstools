@@ -1,5 +1,5 @@
 /*** File wcslib/imio.c
- *** September 20, 2000
+ *** January 23, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -34,7 +34,7 @@
  * Subroutine	imswapped ()
  *		Return 1 if PC/DEC byte order, else 0
 
- * Copyright:   1996 Smithsonian Astrophysical Observatory
+ * Copyright:   1996-2002 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -45,6 +45,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "imio.h"
+
+static int scale = 1;	/* If 0, skip scaling step */
+void
+setscale (scale0)
+{scale = scale0; return;}
 
 /* GETPIX1 -- Get pixel from 2D FITS image of any numeric type */
 
@@ -132,7 +137,10 @@ int	y;		/* Zero-based vertical pixel number */
 	default:
 	  dpix = 0.0;
 	}
-    return (bzero + (bscale * dpix));
+    if (scale)
+	return (bzero + (bscale * dpix));
+    else
+	return (dpix);
 }
 
 
@@ -189,7 +197,8 @@ double	dpix;
     if (y < 0 || y >= h)
 	return;
 
-    dpix = (dpix - bzero) / bscale;
+    if (scale)
+	dpix = (dpix - bzero) / bscale;
 
     switch (bitpix) {
 
@@ -293,7 +302,8 @@ double	dpix;		/* Value to add to pixel */
     if (y < 0 || y >= h)
 	return;
 
-    dpix = (dpix - bzero) / bscale;
+    if (scale)
+	dpix = (dpix - bzero) / bscale;
     ipix = (y * w) + x;
 
     switch (bitpix) {
@@ -372,6 +382,9 @@ int	x2, y2;		/* Row and column for output pixel */
 
 	case 8:
 	    switch (bitpix2) {
+		case 8:
+		    image2[(y2*w2) + x2] = image1[(y1*w1) + x1];
+		    break;
 		case 16:
 		    ims2 = (short *)image2;
 		    ims2[(y2*w2) + x2] = image1[(y1*w1) + x1];
@@ -651,7 +664,7 @@ double	*dpix;		/* Vector of pixels (returned) */
 	}
 
     /* Scale data if either BZERO or BSCALE keyword has been set */
-    if (bzero != 0.0 || bscale != 1.0) {
+    if (scale && (bzero != 0.0 || bscale != 1.0)) {
 	double *dp = dpix;
 	for (ipix = pix1; ipix < pix2; ipix++) {
 	    *dp = (*dp * bscale) + bzero;
@@ -690,7 +703,7 @@ double	*dpix;		/* Vector of pixels to copy */
     pix2 = pix1 + npix;
 
     /* Scale data if either BZERO or BSCALE keyword has been set */
-    if (bzero != 0.0 || bscale != 1.0) {
+    if (scale && (bzero != 0.0 || bscale != 1.0)) {
 	for (ipix = pix1; ipix < pix2; ipix++) {
 	    *dp = (*dp - bzero) / bscale;
 	    dp++;
@@ -924,4 +937,8 @@ imswapped ()
  * Dec 14 1999	In putpix(), addpix(), putvec(), round when output is integer
  *
  * Sep 20 2000	In getvec(), scale only if necessary
+ *
+ * Nov 27 2001	In movepix(), add char to char move
+ *
+ * Jan 23 2002	Add global scale switch to turn off scaling
  */

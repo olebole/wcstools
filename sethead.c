@@ -1,5 +1,5 @@
 /* File sethead.c
- * August 24, 2001
+ * April 2, 2002
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -28,7 +28,10 @@ static int histset = 0;
 static int krename = 0;
 static char prefix[2];
 static int version = 0;		/* If 1, print only program name and version */
+static int logfile = 0;
 static int first = 1;
+static char spchar = (char) 0;
+static int nproc = 0;
 
 
 main (ac, av)
@@ -37,19 +40,25 @@ char **av;
 {
     char *str;
     char **kwd;
+    char **comment;
     int nkwd = 0;
     char **fn;
     int nfile = 0;
     int readlist = 0;
     int ifile;
+    int icom, lcom;
     char filename[128];
-    char *keybuff, *kw1, *kw2;
+    char *keybuff, *kw1, *kw2, *kwdi, *kwdc;
     FILE *flist;
     char *listfile;
     char *ilistfile;
     char *klistfile;
-    int ikwd;
-    char newline = 10;
+    int ikwd, i, nc;
+    char *dq, *sq, *sl;
+    char lf = (char) 10;
+    char cr = (char) 13;
+    char dquote = (char) 34;
+    char squote = (char) 39;
 
     ilistfile = NULL;
     klistfile = NULL;
@@ -57,7 +66,14 @@ char **av;
     nkwd = 0;
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
+    for (ifile = 0; ifile < maxnfile; ifile++)
+	fn[ifile] = NULL;
     kwd = (char **)calloc (maxnkwd, sizeof(char *));
+    comment = (char **)calloc (maxnkwd, sizeof(char *));
+    for (ikwd = 0; ikwd < maxnkwd; ikwd++) {
+	kwd[ikwd] = NULL;
+	comment[ikwd] = NULL;
+	}
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -82,6 +98,10 @@ char **av;
 		case 'k':	/* Set SETHEAD keyword */
 		    keyset++;
 		    break;
+	
+		case 'l':	/* Log files changed */
+		    logfile++;
+		    break;
 
 		case 'n':	/* Write new file */
 		    newimage0++;
@@ -98,6 +118,13 @@ char **av;
 		    prefix[1] = (char) 0;
 		    break;
 
+		case 's':	/* Replace this character with spaces in string arguments */
+		    if (ac > 1) {
+			spchar= *++av[0];
+			ac--;
+			}
+		    break;
+
 		case 'v':	/* more verbosity */
 		    verbose++;
 		    break;
@@ -112,7 +139,7 @@ char **av;
 	else if (*av[0] == '@') {
 	    readlist++;
 	    listfile = *av + 1;
-	    if (isimlist (listfile)) {
+	    if (nfile == 0 && isimlist (listfile)) {
 		ilistfile = listfile;
 		nfile = getfilelines (ilistfile);
 		}
@@ -128,17 +155,77 @@ char **av;
 		    keybuff = getfilebuff (klistfile);
 		    if (keybuff != NULL) {
 			kw1 = keybuff;
+
+			/* One keyword per line of buffer */
 			for (ikwd = 0; ikwd < nkwd; ikwd++) {
 			    kwd[ikwd] = kw1;
+			    kwdi = kw1;
+
+			    /* Replace LF and/or CR with NULL */
 			    if (ikwd < nkwd - 1) {
-				kw2 = strchr (kw1, newline);
-				kw1 = kw2 + 1;
+				kw2 = strchr (kwdi, lf);
+				if (kw2 != NULL) {
+				    kw1 = kw2 + 1;
+				    *kw2 = (char) 0;
+				    }
+				kw2 = strchr (kwdi, cr);
+				if (kw2 != NULL) {
+				    kw1 = kw2 + 1;
+				    *kw2 = (char) 0;
+				    if (kw1 == (char) 0)
+					kw1 = kw1 + 1;
+				    }
+				}
+
+			    /* Replace final LF and/or CR with NULL */
+			    else if (ikwd < nkwd) {
+				kw2 = strchr (kwdi, cr);
+				if (kw2 != NULL)
+				    *kw2 = (char) 0;
+				kw2 = strchr (kwdi, lf);
+				if (kw2 != NULL)
+				    *kw2 = (char) 0;
+				}
+
+			    /* Check for presence of a comment past quotes */
+			    sq = strchr (kwdi, squote);
+			    dq = strchr (kwdi, dquote);
+			    kwdc = kwdi;
+			    if (sq != NULL && (dq > sq || dq == NULL)) {
+				kwdc = strchr (sq, squote);
+				if (kwdc != NULL)
+				    kwdc = kwdc + 1;
+				}
+			    else if (dq != NULL && (sq > dq || sq == NULL)) {
+				kwdc = strchr (dq, dquote);
+				if (kwdc != NULL)
+				    kwdc = kwdc + 1;
+				}
+			    if (kwdc != NULL) {
+				sl = strsrch (kwdc, " / ");
+				if (sl != NULL) {
+				    *sl = (char) 0;
+				    comment[ikwd] = sl + 3;
+				    if (spchar)
+					stc2s (spchar, comment[ikwd]);
+				    }
 				}
 			    }
 			}
 		    else
 			nkwd = 0;
 		    }
+		}
+	    }
+
+	/* Comment for preceding keyword */
+	else if (*av[0] == '/' && strlen (*av) == 1) {
+	    av++;
+	    ac--;
+	    if (nkwd > 0) {
+		if (spchar)
+		    stc2s (spchar, *av);
+		comment[nkwd-1] = *av;
 		}
 	    }
 
@@ -157,6 +244,9 @@ char **av;
 	    if (nkwd >= maxnkwd) {
 		maxnkwd = maxnkwd * 2;
 		kwd = (char **) realloc ((void *)kwd, maxnkwd);
+		comment = (char **) realloc ((void *)comment, maxnkwd);
+    		for (ikwd = maxnkwd/2; ikwd < maxnkwd; ikwd++)
+		    comment[ikwd] = NULL;
 		}
 	    kwd[nkwd] = *av;
 	    nkwd++;
@@ -187,10 +277,10 @@ char **av;
     for (ifile = 0; ifile < nfile; ifile++) {
 	if (ilistfile != NULL) {
 	    first_token (flist, 254, filename);
-	    SetValues (filename, nkwd, kwd);
+	    SetValues (filename, nkwd, kwd, comment);
 	    }
 	else
-	    SetValues (fn[ifile], nkwd, kwd);
+	    SetValues (fn[ifile], nkwd, kwd, comment);
 	}
     if (ilistfile != NULL)
 	fclose (flist);
@@ -207,25 +297,30 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Set FITS or IRAF header keyword values\n");
-    fprintf(stderr,"Usage: [-nhkv][-f num][-m num][-r char] file1.fits [... filen.fits] kw1=val1 [ ... kwn=valuen]\n");
-    fprintf(stderr,"  or : [-hknv][-f num][-m num][-r char] file1.fits [... filen.fits] @keywordfile]\n");
-    fprintf(stderr,"  or : [-hknv][-f num][-m num][-r char] @listfile kw1=val1 [ ... kwn=valuen]\n");
-    fprintf(stderr,"  or : [-hknv][-f num][-m num][-r char] @listfile @keywordfile\n");
+    fprintf(stderr,"Usage: [-hknv][-r [char]][-s char] file1.fits [... filen.fits] kw1=val1 [ / comment] [ ... kwn=valuen]\n");
+    fprintf(stderr,"  or : [-hknv][-r [char]][-s char] file1.fits [... filen.fits] @keywordfile]\n");
+    fprintf(stderr,"  or : [-hknv][-r [char]][-s char] @listfile kw1=val1 [ ... kwn=valuen]\n");
+    fprintf(stderr,"  or : [-hknv][-r [char]][-s char] @listfile @keywordfile\n");
     fprintf(stderr,"  -h: Write HISTORY line\n");
+    fprintf(stderr,"  -i: Log files as processed (on one line)\n");
     fprintf(stderr,"  -k: Write SETHEAD keyword\n");
+    fprintf(stderr,"  -l: Log files as processed (on one line)\n");
     fprintf(stderr,"  -n: Write a new file (add e before the extension)\n");
-    fprintf(stderr,"  -r: Rename reset keywords with prefix following\n");
+    fprintf(stderr,"  -r [char]: Rename reset keywords with char or X prefixed\n");
+    fprintf(stderr,"  -s [char]: Replace this character with space in string values\n");
     fprintf(stderr,"  -v: Verbose\n");
+    fprintf(stderr,"  / comment: Add this comment to previous keyword\n");
     exit (1);
 }
 
 
 static void
-SetValues (filename, nkwd, kwd)
+SetValues (filename, nkwd, kwd, comment)
 
 char	*filename;	/* Name of FITS or IRAF image file */
 int	nkwd;		/* Number of keywords for which to set values */
 char	*kwd[];		/* Names and values of those keywords */
+char	*comment[];	/* Comments for those keywords (none if NULL) */
 
 {
     char *header;	/* FITS image header */
@@ -257,6 +352,7 @@ char	*kwd[];		/* Names and values of those keywords */
     char keyroot[8];
     char ctemp;
     int lval, ii, lv, lnl;
+    int bitpix;
     char newline = 10;
 
     newimage = newimage0;
@@ -282,7 +378,8 @@ char	*kwd[];		/* Names and values of those keywords */
 	iraffile = 0;
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
 	    hgeti4 (header,"NAXIS",&naxis);
-	    if (naxis > 0) {
+	    hgeti4 (header,"BITPIX",&bitpix);
+	    if (naxis > 0 && bitpix != 0) {
 		if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
 		    if (verbose)
 			fprintf (stderr, "No FITS image in %s\n", filename);
@@ -291,7 +388,7 @@ char	*kwd[];		/* Names and values of those keywords */
 		else
 		    imageread = 1;
 		}
-	    else {
+	    else if (bitpix != 0) {
 		if (verbose)
 		    fprintf (stderr, "Rewriting primary header, copying rest\n");
 		newimage = 1;
@@ -317,9 +414,17 @@ char	*kwd[];		/* Names and values of those keywords */
     /* Set keywords one at a time */
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
         strcpy (cval,"                    ");
-	kwv0 = strchr (kwd[ikwd],'=');
+	lkwd = strlen (kwd[ikwd]);
+	if (!strncmp (kwd[ikwd], "COMMENT", 7) || !strncmp (kwd[ikwd], "HISTORY", 7) ||
+	    !strncmp (kwd[ikwd], "comment", 7) || !strncmp (kwd[ikwd], "history", 7)) {
+	    if (lkwd > 8)
+		kwv0 = kwd[ikwd] + 7;
+	    else
+		kwv0 = NULL;
+	    }
+	else
+	    kwv0 = strchr (kwd[ikwd],'=');
 	if (kwv0 == NULL) {
-	    lkwd = strlen (kwd[ikwd]);
 
 	    /* Get current length of header buffer */
 	    lhead = gethlength (header);
@@ -330,10 +435,19 @@ char	*kwd[];		/* Names and values of those keywords */
 		if (*kw > 96 && *kw < 123)
 		    *kw = *kw - 32;
 		}
-	    if (hgets (header, kwd[ikwd], 80, value)) {
+	    if (!strcmp (kwd[ikwd], "COMMENT") || !strcmp (kwd[ikwd], "HISTORY"))
+		hputc (header, kwd[ikwd], "");
+	    else if (hgets (header, kwd[ikwd], 80, value)) {
 		if (isdate (value)) {
 		    newval = fd2fd (value);
 		    hputs (header, kwd[ikwd], newval);
+		    }
+		}
+	    if (comment[ikwd]) {
+		hputcom (header, kwd[ikwd], comment[ikwd]);
+		if (verbose) {
+		    hgets (header, kwd[ikwd], 80, value);
+		    printf ("%s = %s / %s\n", kwd[ikwd], value, comment[ikwd]);
 		    }
 		}
 	    }
@@ -369,8 +483,15 @@ char	*kwd[];		/* Names and values of those keywords */
 		hchange (header, kwd[ikwd], newkey);
 		}
 
+	    /* Write comment without quotes, filling spaces first */
+	    if (!strcmp (kwd[ikwd], "COMMENT") || !strcmp (kwd[ikwd], "HISTORY")) {
+		if (spchar)
+		    stc2s (spchar, kwv);
+		hputc (header, kwd[ikwd], kwv);
+		}
+
 	    /* Write numeric value to keyword */
-	    if (isnum (kwv)) {
+	    else if (isnum (kwv)) {
 		i = 21 - lkwv;
 		for (v = kwv; v < kwv+lkwv; v++)
 		    cval[i++] = *v;
@@ -411,22 +532,30 @@ char	*kwd[];		/* Names and values of those keywords */
 
 	    /* Write character string to keyword */
 	    else {
-		if ((vq0 = strchr (kwv,dquote))) {
+
+		/* Remove double quotes from character string */
+		if ((vq0 = strchr (kwv,dquote)) != NULL) {
 		    vq0 = vq0 + 1;
 		    vq1 = strchr (vq0,dquote);
-		    if (vq0 && vq1) {
+		    if (vq0 != NULL && vq1 != NULL) {
 			kwv = vq0;
-			*vq1 = 0;
+			*vq1 = (char) 0;
 			}
 		    }
-		else if ((vq0 = strchr (kwv,squote))) {
+
+		/* Remove single quotes from character string */
+		else if ((vq0 = strchr (kwv,squote)) != NULL) {
 		    vq0 = vq0 + 1;
 		    vq1 = strchr (vq0,squote);
-		    if (vq0 && vq1) {
+		    if (vq0 != NULL && vq1 != NULL) {
 			kwv = vq0;
-			*vq1 = 0;
+			*vq1 = (char) 0;
 			}
 		    }
+
+		/* Replace special characters with spaces if not quoted */
+		else if (spchar)
+		    stc2s (spchar, kwv);
 
 		/* Remove trailing blanks */
 		lval = strlen (kwv);
@@ -482,7 +611,12 @@ char	*kwd[];		/* Names and values of those keywords */
 		    kwv = kwv0 + 1;
 		    }
 		}
-	    if (verbose)
+	    if (comment[ikwd]) {
+		hputcom (header, kwd[ikwd], comment[ikwd]);
+		if (verbose)
+		    printf ("%s = %s / %s\n", kwd[ikwd], kwv, comment[ikwd]);
+		}
+	    else if (verbose)
 		printf ("%s = %s\n", kwd[ikwd], kwv);
 	    *kwv0 = '=';
 	    }
@@ -602,6 +736,13 @@ char	*kwd[];		/* Names and values of those keywords */
 	    printf ("%s could not be written.\n", newname);
 	free (irafheader);
 	}
+    else if (bitpix == 0) {
+	if ((fdw = fitswhead (newname, header)) > 0) {
+	    if (verbose)
+		printf ("%s: rewritten successfully.\n", newname);
+	    close (fdw);
+	    }
+	}
     else if (naxis > 0 && imageread) {
 	if (fitswimage (newname, header, image) > 0 && verbose)
 	    printf ("%s: rewritten successfully.\n", newname);
@@ -625,6 +766,12 @@ char	*kwd[];		/* Names and values of those keywords */
 		printf ("%s: rewritten successfully.\n", newname);
 	    free (image);
 	    }
+	}
+
+    /* Log the processing of this file, if requested */
+    if (logfile) {
+	nproc++;
+	fprintf (stderr, "%d: %s processed.\r", nproc, newname);
 	}
 
     free (header);
@@ -671,6 +818,14 @@ char	*kwd[];		/* Names and values of those keywords */
  * May  1 2000	Drop -d option; it was unneeded for date-valued keywords
  * Jun  8 2000	Print revision message on only first of multiple files
  * Jun  8 2000	If no files or keywords specified, say so
-
+ *
  * Aug 24 2001	If argument contains an equal sign, assume it not a file
+ * Oct 31 2001	Do not write image if BITPIX or NAXIS is zero
+ *
+ * Jan  4 2002	Add / to add comments to keywords
+ * Jan  4 2002	Replace newlines with nulls in keyword file buffer
+ * Jan  4 2002	Allow null COMMENT and HISTORY values for spacing
+ * Jan  4 2002	Allow stdin to be keyword input file if image file is set
+ * Jan  9 2002	Add -s command to replace char with space in input value strings
+ * Feb  5 2002	Add -l command to log files as they are processed
  */

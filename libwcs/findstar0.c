@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** January 23, 2002
+ *** December 19, 2001
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -114,7 +114,7 @@ int rotate1;
  */
 
 int
-FindStars (header, image, xa, ya, ba, pa, verbose, zap)
+FindStars (header, image, xa, ya, ba, pa, verbose)
 
 char	*header;	/* FITS header */
 char	*image;		/* image pixels */
@@ -122,14 +122,13 @@ double	**xa, **ya;	/* X and Y coordinates of stars, array returned */
 double	**ba;		/* Fluxes of stars in counts, array returned */
 int	**pa;		/* Peak counts of stars in counts, array returned */
 int	verbose;	/* 1 to print each star's position */
-int	zap;		/* If 1, set star to background after reading */
 
 {
     double noise, nsigma;
     int nstars;
     double minll;
     int bitpix;
-    int w, h, ilp, irp, i, idx, idy;
+    int w, h, ilp, irp, i;
     int x, y, x1, x2, y1, y2;
     double xai, yai, bai;
     double minsig, sigma;
@@ -137,12 +136,10 @@ int	zap;		/* If 1, set star to background after reading */
     double background;
     double rmax;
     double bz, bs;		/* Pixel value scaling */
-    int *ixa, *iya;
     int lwidth;
     int nextline;
     int xborder1, xborder2, yborder1, yborder2;
     char trimsec[32];
-    int nstarmax = 100;
 
     hgeti4 (header,"NAXIS1", &w);
     hgeti4 (header,"NAXIS2", &h);
@@ -151,18 +148,14 @@ int	zap;		/* If 1, set star to background after reading */
     hgetr8 (header,"BZERO", &bz);
     bs = 1.0;
     hgetr8 (header,"BSCALE", &bs);
-    if (bz == 0.0 && bs == 0.0)
-	setscale (0);
 
     /* Allocate the position, flux, and peak intensity arrays
      * it's ok to do now because we claim caller should always free these.
      */
-    *xa = (double *) calloc (nstarmax, sizeof(double));
-    *ya = (double *) calloc (nstarmax, sizeof(double));
-    *ba = (double *) calloc (nstarmax, sizeof(double));
-    *pa = (int *) calloc (nstarmax, sizeof(int));
-    ixa = (int *) calloc (nstarmax, sizeof (int));
-    iya = (int *) calloc (nstarmax, sizeof (int));
+    *xa = (double *) malloc (sizeof(double));
+    *ya = (double *) malloc (sizeof(double));
+    *ba = (double *) malloc (sizeof(double));
+    *pa = (int *) malloc (sizeof(int));
 
     /* Read star list from file */
     if (imcatname[0] != 0) {
@@ -205,22 +198,19 @@ int	zap;		/* If 1, set star to background after reading */
     svec = (double *) malloc (w * sizeof (double));
 
     /* Compute image noise from a central swath */
-    x1 = (w / 2) - 50;
-    if (x1 < 1)
+    x1 = xborder1;
+    x2 = w - xborder2;
+    if (x1 > x2) {
 	x1 = 1;
-    x2 = (w / 2) + 50;
-    if (x2 > w)
 	x2 = w;
-    y1 = (h / 2) - 50;
+	}
+    y1 = (h / 2) - 25;
     if (y1 < 1)
-	y1 = 1;
-    y2 = (h / 2) + 50;
+	y1 = 0;
+    y2 = (h / 2) + 25;
     if (y2 > h)
 	y2 = h;
     mean2d (image,bitpix,w,h,bz,bs, x1, x2, y1, y2, &noise, &nsigma);
-    if (verbose)
-	fprintf (stderr, "FindStar mean is %.2f, sigma is %.2f\n",
-		 noise, nsigma);
 
     /* Fill in borders of the image line buffer with noise */
     svlim = svec + w;
@@ -229,21 +219,6 @@ int	zap;		/* If 1, set star to background after reading */
 	*sv = noise;
     for (sv = svlim - xborder2; sv < svlim; sv++)
 	*sv = noise;
-    if (verbose) {
-	fprintf (stderr, "FindStar x=1-%d, %d-%d set to noise\n",
-		 xborder1, w-xborder2+1, w);
-	fprintf (stderr, "FindStar y=1-%d, %d-%d set to noise\n",
-		 yborder1, h-yborder2+1, h);
-	}
-    if (bmin > 0)
-	minll = bmin;
-    else
-	minll - noise + (starsig * nsigma);
-    sigma = sqrt (minll);
-    if (nsigma < sigma)
-	minsig = sigma;
-    else
-	minsig = nsigma;
 
     /* Scan for stars based on surrounding local noise figure */
     nstars = 0;
@@ -254,17 +229,12 @@ int	zap;		/* If 1, set star to background after reading */
 	/* Get one line of the image minus the noise-filled borders */
 	nextline = (w * (y-1)) + xborder1 - 1;
 	getvec (image, bitpix, bz, bs, nextline, lwidth, svb);
-	if (verbose)
-	    fprintf (stderr, "Row %5d Col     0:\r", y+1);
 
 	/* Search row for bright pixels */
 	for (x = xborder1; x < w-xborder2; x++) {
 
-	    if (verbose && x%100 == 0)
-		fprintf (stderr, "Row %5d Col %5d:\r", y+1, x+1);
-
 	    /* Redo stats once for every several pixels */
-	    if (ispix > 0 && nspix > 0 && ipix++ % ispix == 0) {
+	    if (ipix++ % ispix == 0) {
 
 		/* Find stats to the left */
 		ilp = x - (nspix / 2);
@@ -277,12 +247,18 @@ int	zap;		/* If 1, set star to background after reading */
 		else
 		    sv2 = svlim;
 		minsig = 0.0;
-		if (sv2 > sv1+1)
-		    mean1d (sv1, sv2, &noise, &minsig);
-		sigma = sqrt (noise);
-		if (minsig < sigma)
+		if (sv2 > sv1+1) {
+		    mean1d (sv1, sv2, &minll, &minsig);
+		    sigma = sqrt (minll);
+		    if (minsig < sigma)
+			minsig = sigma;
+		    }
+		else {
+		    minll = noise;
+		    sigma = sqrt (minll);
 		    minsig = sigma;
-		minll = noise + (starsig * minsig);
+		    }
+		minll = minll + (starsig * minsig);
 		}
 
 	    /* Pixel is a candidate if above the noise */
@@ -299,67 +275,53 @@ int	zap;		/* If 1, set star to background after reading */
 		if (!HotPixel (image,bitpix,w,h,bz,bs, x, y, minll))
 		    continue;
 
-		/* Walkabout to find brightest pixel in neighborhood */
-		if (BrightWalk (image,bitpix,w,h,bz,bs,x,y,maxw,&sx,&sy,&b) < 0)
+		/* Walkabout a little to find brightest in neighborhood.  */
+		if (BrightWalk (image,bitpix,w,h,bz,bs, x, y, maxw, &sx, &sy, &b) < 0)
 		    continue;
 
 		/* Ignore really bright stars */
 		if (burnedout > 0 && b >= burnedout)
 		    continue;
 
-		/* Skip star if already in list */
+		/* Do not do the same one again */
 		for (i = 0; i < nstars; i++) {
-		    idy = iya[i] - sy;
-		    if (idy < 0)
-			idy = -idy;
-		    if (idy <= minsep) {
-			idx = ixa[i] - sx;
-			if (idx < 0)
-			    idx = -idx;
-			if (idx <= minsep)
-			    break;
-			}
+		    ix = (int) ((*xa)[i] + 0.5);
+		    iy = (int) ((*ya)[i] + 0.5);
+		    if (abs (ix-sx) <= minsep && abs (iy-sy) <= minsep)
+			break;
 		    }
 		if (i < nstars)
 		    continue;
 
 		/* Keep it if it is within the size range for stars */
 		rmax = maxrad;
-		r = starRadius (image,bitpix,w,h,bz,bs, sx, sy, b, rmax,
-				minsig, noise);
+		r = starRadius (image,bitpix,w,h,bz,bs, sx, sy, b, rmax, minsig,
+			       &background);
 		if (r > minrad && r <= maxrad) {
 
-		/* Centroid star */
+		/* Find center of star */
 		    nstars++;
-		    if (nstars > nstarmax) {
-			nstarmax = nstarmax * 2;
-			*xa= (double *) realloc(*xa, nstarmax*sizeof(double));
-			*ya= (double *) realloc(*ya, nstarmax*sizeof(double));
-			ixa= (int *) realloc(ixa, nstarmax*sizeof(int));
-			iya= (int *) realloc(iya, nstarmax*sizeof(int));
-			*ba= (double *) realloc(*ba, nstarmax*sizeof(double));
-			*pa= (int *) realloc(*pa, nstarmax*sizeof(int));
-			}
+		    *xa= (double *) realloc(*xa, nstars*sizeof(double));
+		    *ya= (double *) realloc(*ya, nstars*sizeof(double));
+		    *ba= (double *) realloc(*ba, nstars*sizeof(double));
+		    *pa= (int *) realloc(*pa, nstars*sizeof(int));
 		    starCentroid (image,bitpix,w,h,bz,bs, sx, sy, &xai, &yai); 
 		    (*xa)[nstars-1] = xai;
 		    (*ya)[nstars-1] = yai;
-		    ixa[nstars-1] = (int) (xai + 0.5);
-		    iya[nstars-1] = (int) (yai + 0.5);
 		    (*pa)[nstars-1] = (int) b;
 
-		/* Find radius of star for photometry */
-		/* Outermost 1-pixel radial band is one sigma above background */
+		/* Find size of star for photometry */
+		/* (points more than three noise sigma above surroundings) */
 		    sx = (int) (xai + 0.5);
 		    sy = (int) (yai + 0.5);
 		    rmax = 2.0 * (double) maxrad;
 		    rf = starRadius (image,bitpix,w,h,bz,bs, sx, sy, b, rmax,
-				    minsig, noise);
+				    minsig, &background);
 
 		/* Find flux from star */
-		    bai = FindFlux (image,bitpix,w,h,bz,bs,sx,sy,rf,noise,zap);
+		    bai = FindFlux (image,bitpix,w,h,bz,bs, sx, sy, rf, background);
 		    (*ba)[nstars-1] = bai;
 		    if (verbose) {
-			fprintf (stderr, "Row %5d Col %5d: ", y+1, x+1);
 			fprintf (stderr," %d: (%d %d) -> (%7.3f %7.3f)",
 				 nstars, sx, sy, xai, yai);
 			fprintf (stderr," %8.1f -> %10.1f  %d -> %d    ",
@@ -455,7 +417,7 @@ double	llimit;
  */
 
 static int
-starRadius (imp, bitpix, w, h, bz, bs, x0, y0, b, rmax, minsig, background)
+starRadius (imp, bitpix, w, h, bz, bs, x0, y0, b, rmax, minsig, mean)
 
 char	*imp;		/* Image array origin pointer */
 int	bitpix;		/* Bits per pixel, negative for floating point or unsigned int */
@@ -466,32 +428,30 @@ double	bs;		/* Scale factor for pixel scaling */
 int	x0, y0;		/* Coordinates of center pixel of star */
 double	b;		/* Value of brightest pixel in star */
 double	rmax;		/* Maximum allowable radius of star */
-double	minsig;		/* Minimum level for signal */
-double	background;	/* Mean background level */
+double	minsig;
+double	*mean;
 
 {
     int r, irmax;
-    double dp, sum, mean;
-    int xyrr, yrr, np;
-    int inrr, outrr;
-    int x, y;
     irmax = (int) rmax;
 
     /* Compute star's radius.
-     * Scan in ever-greater circles until find one such that the mean at
-     * that radius is less than one sigma above the background level.
+     * Scan in ever-greater circles until find one such that the peak is
+     * n sigma above the mean at that radius.
      */
     for (r = 2; r <= irmax; r++) {
-	inrr = r*r;
-	outrr = (r+1)*(r+1);
-	np = 0;
-	sum = 0.0;
+	int inrr = r*r;
+	int outrr = (r+1)*(r+1);
+	int np = 0;
+	double sum = 0.0;
+	int x, y;
 
 	for (y = -r; y <= r; y++) { 
-	    yrr = y*y;
+	    int yrr = y*y;
 	    for (x = -r; x <= r; x++) {
-		xyrr = x*x + yrr;
+		int xyrr = x*x + yrr;
 		if (xyrr >= inrr && xyrr < outrr) {
+		    double dp;
 		    dp = getpix (imp,bitpix,w,h,bz,bs,x0+x,y0+y);
 		    sum += dp;
 		    np++;
@@ -499,15 +459,15 @@ double	background;	/* Mean background level */
 		}
 	    }
 
-	mean = (sum / np) - background;
-	if (mean < minsig)
+	*mean = sum / np;
+	if (b > *mean + minsig)
 	    break;
 	}
 
     return (r);
 }
 
-/* Compute the fine location of the star peaking at [x0,y0] */
+/* Compute the fine location of the star located at [x0,y0].  */
 
 static void
 starCentroid (imp, bitpix, w, h, bz, bs, x0, y0, xp, yp)
@@ -545,8 +505,9 @@ double	*xp, *yp;
 
 
 /* Given an image and a starting point, walk the gradient to the brightest
- * pixel and return its location, never going more than maxrad away.
- * Return 0 if brightest pixel found within maxsteps, else -1 */
+ * pixel and return its location. we never take more maxrad away.
+ * Return 0 if find brightest pixel within maxsteps else -1.
+ */
 
 static int dx[8]={1,0,-1,1,-1,1,0,-1};
 static int dy[8]={1,1,1,0,0,-1,-1,-1};
@@ -653,23 +614,12 @@ double	*sigma;
 	npix = 0;
 
     /* Compute mean */
-	if (i == 0) {
-	    for (y = y1; y < y2; y++) {
-		for (x = x1; x < x2; x++) {
-		    p = getpix (image,bitpix,w,h,bz,bs, x, y);
+	for (y = y1; y < y2; y++) {
+	    for (x = x1; x < x2; x++) {
+		p = getpix (image,bitpix,w,h,bz,bs, x, y);
+		if (p > pmin && p < pmax) {
 		    sum += p;
 		    npix++;
-		    }
-		}
-	    }
-	else {
-	    for (y = y1; y < y2; y++) {
-		for (x = x1; x < x2; x++) {
-		    p = getpix (image,bitpix,w,h,bz,bs, x, y);
-		    if (p > pmin && p < pmax) {
-			sum += p;
-			npix++;
-			}
 		    }
 		}
 	    }
@@ -767,7 +717,7 @@ double *sigma;		/* Average deviation of pixels (returned) */
 /* Find total flux within a circular region minus a mean background level */
 
 static double
-FindFlux (image, bitpix, w, h, bz, bs, x0, y0, r, background, zap)
+FindFlux (image, bitpix, w, h, bz, bs, x0, y0, r, background)
 
 char	*image;
 int	bitpix;
@@ -778,11 +728,10 @@ double	bs;		/* Scale factor for pixel scaling */
 int	x0;
 int	y0;
 int	r;
-double	background;	/* Background level (subtracted for flux) */
-int	zap;		/* If 1, set star to background after reading */
+double	background;
 {
     double sum = 0.0;
-    int x, y, x1, x2, y1, y2, yy, xxyy, xi, yi;
+    int x, y, x1, x2, y1, y2, yy, xxyy;
     int rr = r * r;
     double dp;
 
@@ -808,13 +757,9 @@ int	zap;		/* If 1, set star to background after reading */
 	for (x = x1; x <= x2; x++) {
 	    xxyy = x*x + yy;
 	    if (xxyy <= rr) {
-		xi = x0 + x;
-		yi = y0 + x;
-		dp = getpix (image, bitpix, w,h,bz,bs, xi, yi);
+		dp = getpix (image, bitpix, w,h,bz,bs, x0+x, y0+y);
 		if (dp > background) {
 		    sum += dp - background;
-		    if (zap)
-		        putpix (image, bitpix, w,h,bz,bs, xi, yi,background);
 		    }
 		}
 	    }
@@ -1007,8 +952,4 @@ int	h;	/* Original height of image */
  * Nov  6 2001	Add setnitmax() to setparm()
  * Nov  7 2001	Add setminstars() to setparm()
  * Dec 19 2001	Add setmirror() and setrotate() to rotate input catalog
- *
- * Jan 23 2002	If zap, set pixels in star to background after adding up flux
- * Jan 23 2002	Skip recomputation of noise if istat is zero
- * Jan 23 2002	Set scale flag if BSCALE and BZERO not used
  */
