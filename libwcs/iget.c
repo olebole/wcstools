@@ -1,5 +1,5 @@
 /*** File libwcs/iget.c
- *** May 5, 1999
+ *** October 21, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	iget.c (Get IRAF FITS Header parameter values)
@@ -345,7 +345,7 @@ char *keyword0;	/* character string containing the name of the keyword
 	char keyword[16];
 	char line[500];
 	char *vpos,*cpar;
-	char *q1, *q2, *v1, *v2, *c1, *brack1, *brack2;
+	char *c1, *brack1, *brack2;
 	int ipar, i;
 
 	squot[0] = 39;
@@ -503,4 +503,5 @@ char *keyword;	/* character string containing the name of the variable
  * Jul  9 1998	Fix bracket token extraction after Paul Sydney
 
  * May  5 1999	values.h -> POSIX limits.h: MAXINT->INT_MAX, MAXSHORT->SHRT_MAX
+ * Oct 21 1999	Fix declarations after lint
  */

@@ -1,6 +1,6 @@
 /*** File libwcs/fileutil.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** July 15, 1999
+ *** October 21, 1999
 
  * Module:      fileutil.c (ASCII file utilities)
  * Purpose:     Find out things about ASCII files
@@ -31,8 +31,6 @@
 #include <errno.h>
 #include <string.h>
 #include "fitsfile.h"
-
-static int verbose=0;		/* if 1 print diagnostics */
 
 
 /* GETFILELINES -- return number of lines in one file */
@@ -77,9 +75,7 @@ char    *filename;      /* Name of file for which to find number of lines */
 
     FILE *diskfile;
     int lfile, nr;
-    char *buffer, *bufline;
-    int nlines = 0;
-    char newline = 10;
+    char *buffer;
 
     /* Open file */
     if ((diskfile = fopen (filename, "r")) == NULL)
@@ -112,7 +108,7 @@ char    *filename;      /* Name of file for which to find number of lines */
 	return (buffer);
 	}
     else {
-	fprintf (stderr,"GETFILEBUFF: File %f: no room for %d-byte buffer\n",
+	fprintf (stderr,"GETFILEBUFF: File %s: no room for %d-byte buffer\n",
 		 filename, lfile);
 	fclose (diskfile);
 	return (NULL);
@@ -129,7 +125,6 @@ char    *filename;      /* Name of file for which to find size */
 {
     FILE *diskfile;
     long filesize;
-    long position;
 
     /* Open file */
     if ((diskfile = fopen (filename, "r")) == NULL)
@@ -158,7 +153,6 @@ char    *filename;      /* Name of file for which to find size */
 {
     FILE *diskfile;
     char token[256];
-    int nbr;
     int ncmax = 254;
 
     if ((diskfile = fopen (filename, "r")) == NULL)
@@ -202,4 +196,6 @@ char	*token;			/* First token on next line (returned) */
 /*
  * Jul 14 1999	New subroutines
  * Jul 15 1999	Add getfilebuff()
+ * Oct 15 1999	Fix format eror in error message
+ * Oct 21 1999	Fix declarations after lint
  */

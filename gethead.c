@@ -1,5 +1,5 @@
 /* File gethead.c
- * July 15, 1999
+ * October 22, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
+#include "libwcs/fitsfile.h"
 
 #define MAXKWD 100
 #define MAXFILES 2000
@@ -87,7 +87,6 @@ char **av;
 			usage();
 		    rootdir = *++av;
 		    ac--;
-		    break;
 		    break;
 	
 		case 'h': /* Output column headings */
@@ -299,12 +298,9 @@ char	*kwd[];	/* Names of keywords for which to print values */
 
 {
     char *header;	/* FITS image header */
-    int lhead;		/* Maximum number of bytes in FITS header */
-    int nbhead;		/* Actual number of bytes in FITS header */
     int iraffile;
     char fnform[8];
     char string[80];
-    char temp[80];
     char *filename;
     char outline[1000];
     char mstring[800];
@@ -486,4 +482,5 @@ char *string;
  * Jul 13 1999	Use only first token from line of list as filename
  * Jul 14 1999	Read lists of BOTH keywords and files simultaneously
  * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
+ * Oct 22 1999	Drop unused variables after lint
  */

@@ -1,13 +1,15 @@
 /*** File libwcs/gscread.c
- *** September 22, 1999
+ *** October 21, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdio.h>
 #include "fitsfile.h"
 #include "wcs.h"
+#include "wcscat.h"
 
 char cdn[64]="/data/gsc1";	/* Pathname of northern hemisphere GSC CDROM */
 char cds[64]="/data/gsc2";	/* Pathname of southern hemisphere GSC CDROM */
@@ -946,4 +948,5 @@ char *path;	/* Pathname of GSC region FITS file */
  * Sep 16 1999	Fix bug which didn't always return closest stars
  * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
  * Sep 22 1999	Rewrite table allocation so it works; make ltab static
+ * Oct 21 1999	Include wcscat.h, unistd.h
  */

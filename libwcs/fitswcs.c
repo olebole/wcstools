@@ -1,5 +1,5 @@
 /* File libwcs/fitswcs.c
- * July 21, 1999
+ * October 21, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
@@ -247,7 +247,7 @@ int	verbose;	/* 1 to print WCS header keyword values */
 {
     char str[80];
     double v;
-    int n, i, nc;
+    int n, i;
     char keyword[16];
 
     n = 0;
@@ -361,7 +361,7 @@ char	*header;	/* Image FITS header */
 struct WorldCoor *wcs;	/* WCS structure */
 
 {
-    double ep, ra, dec;
+    double ep;
     char wcstemp[16];
 
     /* Rename old center coordinates */
@@ -507,4 +507,5 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Apr  7 1999	Add file name to error message if WCS error
  * Jul  8 1999	Write RADECSYS as FK5 or FK4 instead of J2000 or B1950
  * Jul 21 1999	Add SECPIX plate scale output to SetFITSWCS()
+ * Oct 21 1999	Fix declarations after lint
  */

@@ -1,5 +1,5 @@
 /* fitshead.h  FITS header access subroutines
- * October 14, 1999
+ * October 21, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -43,6 +43,11 @@ extern "C" {
 	const char* keyword,	/* FITS keyword */
 	int* lval);		/* 1 if T, 0 if F (returned) */
     int hgets(			/* Extract string value from FITS header */
+	const char* hstring,	/* FITS header string */
+	const char* keyword,	/* FITS keyword */
+	const int lstr,		/* maximum length of returned string */
+	char* string);		/* null-terminated string value (returned) */
+    int hgetm (			/* Extract string from multiple keywords */
 	const char* hstring,	/* FITS header string */
 	const char* keyword,	/* FITS keyword */
 	const int lstr,		/* maximum length of returned string */
@@ -216,9 +221,10 @@ extern int hgetr4();	/* float */
 extern int hgetr8();	/* double */
 extern int hgetra();	/* Right ascension in degrees from string */
 extern int hgetdec();	/* Declination in degrees from string */
-extern int hgetdate(); /* Date in years from FITS date string */
+extern int hgetdate();	/* Date in years from FITS date string */
 extern int hgetl();	/* T->1, F->0 from FITS logical entry */
 extern int hgets();	/* Previously allocated string */
+extern int hgetm();	/* Previously allocated string from multiple keywords */
 extern char *hgetc();	/* Return pointer to string */
 extern int hgetndec();	/* Number of decimal places in keyword value */
 
@@ -268,6 +274,7 @@ extern int hputdec();	/* Declination in degrees into dd:mm:ss.ss */
 extern int hputl();	/* 0 -> F, else T FITS logical entry */
 extern int hputs();	/* Character string */
 extern int hputc();	/* Character string without quotes (returns 0 if OK) */
+extern int hputcom();	/* Comment after keyword=value (returns 0 if OK) */
 
 extern int hdel();	/* Delete a keyword line from a FITS header */
 extern int hadd();	/* Add a keyword line to a FITS header */
@@ -316,4 +323,6 @@ extern char *getutime(); /* Return current UT as an ISO-format string */
  *
  * Oct  6 1999	Add gethlength() to return current size of header
  * Oct 14 1999	All HPUT subroutines now return an error code, 0 if OK, else -1
+ * Oct 15 1999	Add hputcom() declaration
+ * Oct 21 1999	Add hgetm() declaration
  */

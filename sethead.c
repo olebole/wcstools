@@ -1,5 +1,5 @@
 /* File sethead.c
- * October 14, 1999
+ * October 22, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
+#include "libwcs/fitsfile.h"
 
 #define MAXKWD 50
 #define MAXFILES 1000
@@ -23,7 +23,6 @@ static void SetValues ();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int newimage0 = 0;
-static int listpath = 0;
 static int keyset = 0;
 static int histset = 0;
 static int krename = 0;
@@ -42,15 +41,13 @@ char **av;
     int nfile = 0;
     int readlist = 0;
     int ifile;
-    char *lastchar;
     char filename[128];
     char *keybuff, *kw1, *kw2;
-    char *name;
-    FILE *flist, *fdk;
+    FILE *flist;
     char *listfile;
     char *ilistfile;
     char *klistfile;
-    int ikwd, lkwd, i;
+    int ikwd;
     char newline = 10;
 
     ilistfile = NULL;
@@ -230,7 +227,7 @@ char	*kwd[];		/* Names and values of those keywords */
     char *irafheader;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
     int newimage;	/* 1 to awrite new image file, else 0 */
-    int i, lname, lext, lroot;
+    int i, lext, lroot;
     char *image;
     char newname[128];
     char *ext, *fname, *imext, *imext1;
@@ -622,4 +619,5 @@ char	*kwd[];		/* Names and values of those keywords */
  * Jul 15 1999	Add capability of writing multi-line keywords a la IRAF
  * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
  * Oct 14 1999	Reallocate header if length is exceeded
+ * Oct 22 1999	Drop unused variables after lint
  */

@@ -1,5 +1,5 @@
 /* File libwcs/imrotate.c
- * June 10, 1999
+ * October 21, 1999
  * By Doug Mink
  */
 
@@ -313,11 +313,11 @@ int	verbose;	/* Print progress if 1 */
     if (mirror) {
 	if (hgetr8 (header, "CROTA1", &ctemp1)) {
 	    hgetndec (header, "CROTA1", &ndec1);
-	    hputr8 (header, "CROTA1", ndec1, -ctemp1);
+	    hputnr8 (header, "CROTA1", ndec1, -ctemp1);
 	    }
 	if (hgetr8 (header, "CROTA2", &ctemp2)) {
 	    hgetndec (header, "CROTA2", &ndec2);
-	    hputr8 (header, "CROTA2", ndec2, -ctemp2);
+	    hputnr8 (header, "CROTA2", ndec2, -ctemp2);
 	    }
 	}
 
@@ -489,4 +489,5 @@ int	verbose;	/* Print progress if 1 */
  * Jun  8 1999	Return new image pointer instead of flag; do not free old image
  * Jun  9 1999	Make history buffer 128 instead of 72 to avoid overflows
  * Jun 10 1999	Drop image0; use image
+ * Oct 21 1999	Fix hputnr8() calls after lint
  */

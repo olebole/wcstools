@@ -1,5 +1,5 @@
 /* File skycoor.c
- * July 8, 1999
+ * October 22, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,10 +11,13 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "wcs.h"
+#include "libwcs/wcs.h"
+#include "libwcs/wcscat.h"
 
 static void usage();
 static void skycons();
+extern void s2v3();
+extern void v2s3();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static double epoch = 0.0;
@@ -197,7 +200,7 @@ char **av;
 		   csys[0] = 0;
 		    sscanf (line,"%s %s %s", rastr0, decstr0, csys);
 	    	    if (csys[0] == 0) {
-			if (sys1 = WCS_J2000)
+			if (sys1 == WCS_J2000)
 			    sys0 = WCS_B1950;
 			else
 			    sys0 = WCS_J2000;
@@ -205,7 +208,7 @@ char **av;
 		    else
 			sys0 = wcscsys (csys);
 		    if (sys1 < 0) {
-			if (sys0 = WCS_J2000)
+			if (sys0 == WCS_J2000)
 			    sys1 = WCS_B1950;
 			else
 			    sys1 = WCS_J2000;
@@ -359,4 +362,5 @@ usage ()
  * Apr 16 1999	Add xyz <-> RA/DEC conversions using w and x arguments
  * Jul  1 1999	Allow any legal FITS date format for epoch
  * Jul  8 1999	Fix bug in computing difference in arcseconds
+ * Oct 22 1999	Drop unused variables after lint; fix 2 == bugs
  */

@@ -1,5 +1,5 @@
 /* File imcat.c
- * September 16, 1999
+ * October 22, 1999
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -13,8 +13,8 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "wcs.h"
-#include "wcscat.h"
+#include "libwcs/wcs.h"
+#include "libwcs/wcscat.h"
 #include "libwcs/lwcs.h"
 #include "libwcs/fitsfile.h"
 
@@ -605,7 +605,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 
     /* Find title and coordinate system for catalog */
     if (!(refcat = RefCat (refcatname[icat],title,&sysref,&eqref,&epref))) {
-	fprintf (stderr,"ListCat: No catalog named %s\n", refcatname);
+	fprintf (stderr,"ListCat: No catalog named %s\n", refcatname[icat]);
 	return;
 	}
     if (classd == 0)
@@ -619,8 +619,10 @@ int	*region_char;	/* Character for SAOimage region file output */
     wcs = GetFITSWCS (filename, header, verbose, &cra, &cdec, &dra, &ddec,
 		      &secpix, &imw, &imh, &sysout, &eqout);
     free (header);
-    if (nowcs (wcs))
+    if (nowcs (wcs)) {
+	wcsfree (wcs);
 	return;
+	}
 
     /* Set up limits for search */
     SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, 0);
@@ -696,7 +698,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 	if (gx) free ((char *)gx);
 	if (gy) free ((char *)gy);
 	if (gobj) free ((char *)gobj);
-	free ((char *)wcs);
+	wcsfree (wcs);
 	return;
 	}
     for (i = 0; i < ngmax; i++)
@@ -715,11 +717,11 @@ int	*region_char;	/* Character for SAOimage region file output */
     /* Find the nearby reference stars, in ra/dec */
     drad = 0.0;
     if (refcat == BINCAT || refcat == TABCAT || refcat == TXTCAT) {
-	starcat = catopen (refcatname[icat], refcat);
+	starcat = ctgopen (refcatname[icat], refcat);
 	nndec = starcat->nndec;
-	catclose (starcat, refcat);
+	ctgclose (starcat, refcat);
 	}
-    ng = catread (refcatname[icat], refcat, 0,
+    ng = ctgread (refcatname[icat], refcat, 0,
 		  cra,cdec,dra,ddec,drad,sysout,eqout, epout,mag1,mag2,
 		  ngmax,gnum,gra,gdec,gm,gmb,gc,gobj,nlog);
 
@@ -811,7 +813,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 	    if (gx) free ((char *)gx);
 	    if (gy) free ((char *)gy);
 	    if (gobj) free ((char *)gobj);
-	    free ((char *)wcs);
+	    wcsfree (wcs);
             return;
 	    }
         }
@@ -1389,7 +1391,7 @@ int	*region_char;	/* Character for SAOimage region file output */
     if (gnum) free ((char *)gnum);
     if (gc) free ((char *)gc);
     if (gobj) free ((char *)gobj);
-    free ((char *)wcs);
+    wcsfree (wcs);
 
     return;
 }
@@ -1478,4 +1480,7 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Aug 25 1999	Add option to set circle radius in pixels if < -1
  * Sep 10 1999	Do all searches through catread() and catrnum()
  * Sep 16 1999	Add zero distsort argument to catread() call
+ * Oct 15 1999	Free wcs using wcsfree()
+ * Oct 22 1999	Drop unused variables after lint
+ * Oct 22 1999	Change catread() to ctgread() to avoid system conflict
  */

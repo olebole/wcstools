@@ -1,5 +1,5 @@
 /* File libwcs/dateutil.c
- * July 1, 1999
+ * November 2, 1999
  * By Doug Mink
  */
 
@@ -10,32 +10,42 @@
    ep = fractional year, often epoch of a position including proper motion
    fd = FITS date string (dd/mm/yy before 2000, then yyyy-mm-dd[Thh:mm:ss.ss])
 
-/* fd2jd (string)
+ * dt2ep (date, time)
+ *	convert date as yyyy.ddmm and time as hh.mmsss to fractional year
+ * dt2fd (date, time)
+ *	convert date as yyyy.ddmm and time as hh.mmsss to FITS date string
+ * dt2jd (date,time)
+ *	convert date as yyyy.ddmm and time as hh.mmsss to Julian date
+ * dt2ts (date,time)
+ *	convert date as yyyy.ddmm and time as hh.mmsss to seconds since 1950.0
+ * ep2dt (epoch,date, time)
+ *	convert fractional year to date as yyyy.ddmm and time as hh.mmsss
+ * ep2fd (epoch, string)
+ *	convert epoch to FITS ISO date string
+ * ep2jd (epoch)
+ *	convert fractional year as used in epoch to Julian date
+ * ep2ts (epoch)
+ *	convert fractional year to seconds since 1950.0
+ * fd2jd (string)
  *	convert FITS standard date string to Julian date
  * fd2ep (string)
  *	convert FITS date string to fractional year
- * dt2jd (date,time)
- *	convert date as yyyy.ddmm and time as hh.mmsss to Julian date
  * jd2dt (dj,date,time)
  *	convert Julian date to date as yyyy.mmdd and time as hh.mmssss
- * dt2ts (date,time)
- *	convert date as yyyy.ddmm and time as hh.mmsss to seconds since 1950.0
- * ts2dt (tsec,date,time)
- *	convert seconds since 1950.0 to date as yyyy.ddmm and time as hh.mmsss
- * dt2ep (date, time)
- *	convert date as yyyy.ddmm and time as hh.mmsss to fractional year
- * ep2dt (epoch,date, time)
- *	convert fractional year to date as yyyy.ddmm and time as hh.mmsss
- * jd2ts (dj)
- *	convert Julian day to seconds since 1950.0
- * ts2jd (tsec)
- *	convert seconds since 1950.0 to Julian day
  * jd2ep (dj)
  *	convert Julian date to fractional year as used in epoch
- * ep2jd (epoch)
- *	convert fractional year as used in epoch to Julian date
- * ts2i (tsec,iyr,imon,iday,ihr,imn,sec)
+ * jd2fd (epoch, string)
+ *	convert Julian date to FITS ISO date string
+ * jd2ts (dj)
+ *	convert Julian day to seconds since 1950.0
+ * ts2dt (tsec,date,time)
+ *	convert seconds since 1950.0 to date as yyyy.ddmm and time as hh.mmsss
+ * ts2fd (tsec)
+ *	convert seconds since 1950.0 to FITS standard date string
+ * ts2i (tsec,iyr,imon,iday,ihr,imn,sec, ndsec)
  *	convert sec since 1950.0 to year month day hours minutes seconds .1ms
+ * ts2jd (tsec)
+ *	convert seconds since 1950.0 to Julian day
  * dint (dnum)
  *	returns integer part of floating point number
  * dmod (dnum)
@@ -45,8 +55,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "wcs.h"
-#include "wcscat.h"
+#include <math.h>
+#include "fitsfile.h"
 
 double dint();
 double dmod();
@@ -127,6 +137,39 @@ double	dj;	/* Julian date */
 }
 
 
+/* EP2FD-- convert fractional year to FITS date, yyyy-mm-ddThh:mm:ss.ss */
+
+char *
+ep2fd (epoch)
+
+double	epoch;	/* Date as fractional year */
+{
+    double tsec; /* seconds since 1950.0 (returned) */
+
+    tsec = ep2ts (epoch);
+
+    return (ts2fd (tsec));
+}
+
+
+/* EP2TS-- convert fractional year to seconds since 1950.0 */
+
+double
+ep2ts (epoch)
+
+double	epoch;	/* Date as fractional year */
+{
+    double tsec; /* seconds since 1950.0 (returned) */
+    double dj;
+
+    dj = ep2jd (epoch);
+
+    tsec = (dj - 2433282.5) * 86400.0;
+    return (tsec);
+}
+
+
+
 /* EP2JD-- convert fractional year as used in epoch to Julian date */
 
 double
@@ -136,11 +179,26 @@ double	epoch;	/* Date as fractional year */
 
 {
     double dj;	/* Julian date (returned)*/
-    double dj0, dj1, date0, time0, date1, date, time;
+    double date, time;
 
     ep2dt (epoch, &date, &time);
     dj = dt2jd (date, time);
     return (dj);
+}
+
+
+/* JD2FD-- convert Julian date to FITS date, yyyy-mm-ddThh:mm:ss.ss */
+
+char *
+jd2fd (dj)
+
+double	dj;	/* Julian date */
+{
+    double tsec; /* seconds since 1950.0 (returned) */
+
+    tsec = (dj - 2433282.5) * 86400.0;
+
+    return (ts2fd (tsec));
 }
 
 
@@ -250,7 +308,7 @@ char *string;	/* FITS date string, which may be:
 {
     double epoch; /* Date as fractional year */
     double dj;	/* Julian date (returned)*/
-    double dj0, dj1, date0, time0, date1, date, time;
+    double date, time;
 
     epoch = fd2ep (string);
     ep2dt (epoch, &date, &time);
@@ -266,9 +324,9 @@ double
 fd2ep (string)
 
 char *string;	/* FITS date string, which may be:
-			fractional year
+			yyyy.ffff (fractional year)
 			dd/mm/yy (FITS standard before 2000)
-			dd-mm-yy (nonstandard use before 2000)
+			dd-mm-yy (nonstandard FITS use before 2000)
 			yyyy-mm-dd (FITS standard after 1999)
 			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
 
@@ -395,6 +453,8 @@ char *string;	/* FITS date string, which may be:
 		}
 	    return (epoch);
 	    }
+	else if (isnum (string))
+	    return (atof (string));
 	else
 	    return (0.0);
 	}
@@ -487,7 +547,7 @@ double	*time;	/* Time as hh.mmssxxxx (returned)
     int iyr,imon,iday,ihr,imn;
     double sec;
 
-    ts2i (tsec,&iyr,&imon,&iday,&ihr,&imn,&sec);
+    ts2i (tsec,&iyr,&imon,&iday,&ihr,&imn,&sec, 4);
 
     /* Convert date to yyyy.mmdd */
     *date = (double) iyr + 0.01 * (double) imon + 0.0001 * (double) iday;
@@ -499,10 +559,32 @@ double	*time;	/* Time as hh.mmssxxxx (returned)
 }
 
 
-/* TS2I-- convert sec since 1950.0 to year month day hours minutes seconds .1ms */
+/* TS2FD-- convert seconds since 1950.0 to FITS date, yyyy-mm-ddThh:mm:ss.ss */
+
+char *
+ts2fd (tsec)
+
+double	tsec;	/* Seconds past 1950.0 */
+{
+    int iyr,imon,iday,ihr,imn;
+    double sec;
+    char *string;
+
+    ts2i (tsec,&iyr,&imon,&iday,&ihr,&imn,&sec, 3);
+
+    /* Convert to ISO date format */
+    string = (char *) calloc (1, 32);
+    sprintf (string, "%4d-%02d-%02dT%02d:%02d:%06.3f",
+	     iyr, imon, iday, ihr, imn, sec);
+
+    return (string);
+}
+
+
+/* TS2I-- convert sec since 1950.0 to year month day hours minutes seconds */
 
 void
-ts2i (tsec,iyr,imon,iday,ihr,imn,sec)
+ts2i (tsec,iyr,imon,iday,ihr,imn,sec, ndsec)
 
 double	tsec;	/* seconds since 1/1/1950 0:00 */
 int	*iyr;	/* year (returned) */
@@ -511,13 +593,25 @@ int	*iday;	/* day (returned) */
 int	*ihr;	/* hours (returned) */
 int	*imn;	/* minutes (returned) */
 double	*sec;	/* seconds (returned) */
+int	ndsec;	/* Number of decimal places in seconds (0=int) */
 
 {
     double t,days;
     int isec,ihms,nc,nc4,nly,ny,m,im;
 
+    /* Round seconds to 0 - 4 decimal places */
+    if (ndsec < 1)
+	t = dint (tsec + 61530883200.5) * 10000.0;
+    else if (ndsec < 2)
+	t = dint ((tsec + 61530883200.0) * 10.0 + 0.5) * 1000.0;
+    else if (ndsec < 3)
+	t = dint ((tsec + 61530883200.0) * 100.0 + 0.5) * 100.0;
+    else if (ndsec < 3)
+	t = dint ((tsec + 61530883200.0) * 1000.0 + 0.5) * 10.0;
+    else
+	t = dint ((tsec + 61530883200.0) * 10000.0 + 0.5);
+
     /* Time of day (hours, minutes, seconds, .1 msec) */
-    t = dint ((tsec + 61530883200.0) * 10000.0 + 0.5);
     *ihr = (int) (dmod (t/36000000.0, 24.0));
     *imn = (int) (dmod (t/60000.0, 60.0));
     if (tsec >= 0) {
@@ -607,4 +701,6 @@ double	dnum, dm;
 }
 
 /* Jul  1 1999	New file, based on iolib/jcon.f and iolib/vcon.f and hgetdate()
+ * Oct 21 1999	Fix declarations after lint
+ * Oct 27 1999	Fix bug to return epoch if fractional year input
  */

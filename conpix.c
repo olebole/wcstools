@@ -1,5 +1,5 @@
 /* File conpix.c
- * June 29, 1999
+ * October 21, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
-#include "wcs.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
 
 #define PIX_ADD	1
 #define PIX_SUB	2
@@ -32,7 +32,6 @@ int ac;
 char **av;
 {
     char *str;
-    char *fn;
     int readlist = 0;
     char *lastchar;
     char filename[128];
@@ -180,18 +179,16 @@ double	*opcon;		/* Constants for operations */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
     char *irafheader;		/* IRAF image header */
-    int i, nbytes, nhb, nhblk, lname, lext, lroot;
-    char *head, *headend, *hlast, *imext, *imext1;
-    char headline[160];
+    int lext, lroot;
+    char *imext, *imext1;
     char newname[128];
     char pixname[128];
     char tempname[128];
     char history[64];
-    FILE *fd;
     char *ext, *fname;
     char echar;
     double *imvec, *dvec, *endvec;
-    int bitpix, xdim, ydim, x, y, pixoff, iop;
+    int bitpix, xdim, ydim, y, pixoff, iop;
     double bzero;		/* Zero point for pixel scaling */
     double bscale;		/* Scale factor for pixel scaling */
 
@@ -435,4 +432,5 @@ double	*opcon;		/* Constants for operations */
  * Apr 29 1999	Add BZERO and BSCALE
  * Jun 17 1999	Finish adding BZERO and BSCALE
  * Jun 29 1999	Fix typo in BSCALE setting
+ * Oct 21 1999	Drop unused variables after lint
  */

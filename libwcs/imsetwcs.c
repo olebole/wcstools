@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * September 16, 1999
+ * October 22, 1999
  * By Doug Mink, based on UIowa code
  */
 
@@ -38,8 +38,6 @@ static double refmag1 = MAGLIM1;	/* reference catalog magnitude limit */
 static double refmag2 = MAGLIM2;	/* reference catalog magnitude limit */
 static int refcat = GSC;		/* reference catalog switch */
 static char refcatname[32]="GSC";	/* reference catalog name */
-static int classd = -1;			/* Guide Star Catalog object classes */
-static int uplate = 0;			/* UJ Catalog plate number to use */
 static double frac = 1.0;		/* Additional catalog/image stars */
 static int nofit = 0;			/* if =1, do not fit WCS */
 static int maxcat = MAXSTARS;		/* Maximum number of catalog stars to use */
@@ -47,6 +45,8 @@ static int fitwcs = 1;			/* If 1, fit WCS, else use current WCS */
 static int fitplate = 0;		/* If 1, fit polynomial, else do not */
 static double imfrac0 = 0.0;		/* If > 0.0, multiply image dimensions
 					   by this for search */
+static int classd = -1;                 /* Guide Star Catalog object classes */
+static int uplate = 0;                  /* UJ Catalog plate number to use */
 static int iterate0 = 0;		/* If 1, search field again */
 static int recenter0 = 0;		/* If 1, search again with new center*/
 static char matchcat[32]="";		/* Match catalog name */
@@ -128,6 +128,25 @@ int	verbose;
 	wcscstr (refcoor, refsys, refeq, refep);
 	}
 
+    /* Use already-matched stars first, if they are present */
+    if (strlen (matchcat) > 0) {
+	wcs = GetFITSWCS (filename,header,verbose,&cra,&cdec,&dra,&ddec,
+			  &secpix, &imw,&imh,&refsys, &refeq);
+	nbin = FitMatch (nbin, sx, sy, gra, gdec, gx, gy, dx, dy, wcs, verbose);
+	imcatname = getimcat ();
+	if (strlen (imcatname) == 0)
+	    imcatname = filename;
+	hputs (header, "WCSRFCAT", refcatname);
+	hputs (header, "WCSIMCAT", imcatname);
+	hputi4 (header, "WCSMATCH", nbin);
+	if (ns < nbg)
+	    hputi4 (header, "WCSNREF", ns);
+	else
+	    hputi4 (header, "WCSNREF", nbg);
+
+	SetFITSWCS (header, wcs);
+	}
+
     /* get nominal position and scale */
 getfield:
     wcs = GetFITSWCS (filename,header,verbose,&cra,&cdec,&dra,&ddec,&secpix,
@@ -185,7 +204,7 @@ getfield:
 		 ngmax*sizeof(int));
 
     /* Find the nearby reference stars, in ra/dec */
-    ng = catread (refcatname,refcat, 0,
+    ng = ctgread (refcatname,refcat, 0,
 		  cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
 		  mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
     if (ng > ngmax)
@@ -358,8 +377,7 @@ getfield:
 
 	/* Match offsets between all pairs of image stars and reference stars
 	   and fit WCS to matches */
-	nbin = StarMatch (nbs,sx,sy, nbg,gra,gdec,gx,gy, tolerance, wcs,
-			  verbose);
+	nbin = StarMatch (nbs,sx,sy,nbg,gra,gdec,gx,gy,tolerance,wcs,verbose);
 
 	if (nbin < 0) {
 	    fprintf (stderr, "Star registration failed.\n");
@@ -410,7 +428,7 @@ getfield:
 		    rstr,dstr, wcs->xrefpix, wcs->yrefpix);
 	    }
 	else {
-	    (void)fk425e (&ra, &dec, wcs->epoch);
+	    fk425e (&ra, &dec, wcs->epoch);
 	    ra2str (rstr, 32, ra, 3);
 	    dec2str (dstr, 32, dec, 2);
 	    printf ("# Optical axis: %s  %s J2000 at (%.2f,%.2f)\n",
@@ -498,7 +516,7 @@ getfield:
 	    else {
 		printf ("# %d matches between %s and %s:\n",
 			nmatch, refcatname, imcatname);
-		PrintRes (header,wcs,nmatch,sx1,sy1,gra1,gdec1,gm1,gnum1,refcat);
+		PrintRes (header,wcs,nmatch,sx1,sy1,gra1,gdec1,gm1,gnum1,refcat,verbose);
 		SetFITSPlate (header, wcs);
 		}
 	    }
@@ -575,6 +593,7 @@ double	*gra1, *gdec1;	/* Reference catalog sky coordinates */
 double	*gm1;		/* Reference catalog magnitudes */
 double	*gnum1;		/* Reference catalog numbers */
 int	refcat;		/* Reference catalog code */
+int	verbose;	/* True for more information */
 
 {
     int i, goff;
@@ -673,8 +692,7 @@ char *cat;
 void
 setrefcat (cat)
 char *cat;
-{  RefCat (cat);
-    strcpy (refcatname, cat); return; }
+{ strcpy (refcatname, cat); return; }
 
 void
 setreflim (lim1, lim2)
@@ -853,4 +871,6 @@ int recenter;
  * Sep 13 1999	Do all catalog searches through catread()
  * Sep 15 1999	Fix improper uses of ng instead of nrg
  * Sep 16 1999	Add zero distsort argument to catread() call
+ * Sep 29 1999	Add option to start with pre-matched stars
+ * Oct 22 1999	Change catread() to ctgread() to avoid system conflict
  */

@@ -1,5 +1,5 @@
 /* File imhfile.c
- * October 14, 1999
+ * November 2, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
@@ -57,7 +57,6 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
-#include <sys/times.h>
 #include <time.h>
 #include "fitsfile.h"
 
@@ -130,6 +129,7 @@ char *irafgetc2();
 char *irafgetc();
 char *iraf2str();
 static void same_path();
+static void irafputr4();
 static void irafputi4();
 static void irafputc2();
 static void irafputc();
@@ -147,7 +147,6 @@ static int irafsize();
 
 #define SECONDS_1970_TO_1980    315532800L
 static int getclocktime();
-static long get_timezone();
 
 /* Subroutine:	irafrhead
  * Purpose:	Open and read the iraf .imh file, translating it to FITS, too.
@@ -165,7 +164,7 @@ int	*lihead;	/* Length of IRAF image header in bytes (returned) */
     FILE *fd;
     int nbr;
     char *irafheader;
-    int nbhead, nihead;
+    int nbhead, nbytes;
     int imhver;
 
     headswap = -1;
@@ -186,14 +185,14 @@ int	*lihead;	/* Length of IRAF image header in bytes (returned) */
 	}
 
     /* allocate initial sized buffer */
-    nihead = nbhead + 500;
-    irafheader = calloc (nihead, 1);
+    nbytes = nbhead + 5000;
+    irafheader = (char *) calloc (1, nbytes);
     if (irafheader == NULL) {
 	(void)fprintf(stderr, "IRAFRHEAD Cannot allocate %d-byte header\n",
-		      nihead);
+		      nbytes);
 	return (NULL);
 	}
-    *lihead = nihead;
+    *lihead = nbytes;
 
     /* Read IRAF header */
     nbr = fread (irafheader, 1, nbhead, fd);
@@ -305,7 +304,7 @@ char	*fitsheader;	/* FITS image header (filled) */
 	bytepix = bitpix / 8;
 
     /* If either dimension is one and image is 3-D, read all three dimensions */
-    if (naxis == 3 && (naxis1 ==1 | naxis2 == 1)) {
+    if (naxis == 3 && ((naxis1 == 1) | (naxis2 == 1))) {
 	int naxis3;
 	hgeti4 (fitsheader,"NAXIS3",&naxis3);
 	nbimage = naxis1 * naxis2 * naxis3 * bytepix;
@@ -404,8 +403,10 @@ int	nc;		/* Number of characters to compate */
 	free (line);
 	return (0);
 	}
-    else
+    else {
+	free (line);
 	return (1);
+	}
 }
 
 /* Convert IRAF image header to FITS image header, returning FITS header */
@@ -420,17 +421,19 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 
 {
     char *objname;	/* object name from FITS file */
-    int lstr, i, j, k, ib, nax, nbits, nbytes;
+    int lstr, i, j, k, ib, nax, nbits;
+    double tsec;
     char *pixname, *bang, *chead;
     char *fitsheader;
+    char *dstringl;
     int nblock, nlines;
     char *fhead, *fhead1, *fp, endline[81];
-    char *irafline;
     char irafchar;
     char fitsline[81];
+    char *dstring;
     int pixtype;
-    int imhver, n, imu, pixoff, impixoff, immax, immin;
-    int imndim, imphyslen, impixtype, pixswap, hpixswap;
+    int imhver, n, imu, pixoff, impixoff, immax, immin, imtime;
+    int imndim, imphyslen, impixtype, pixswap, hpixswap, mtime;
     float rmax, rmin;
 
     headswap = -1;
@@ -454,6 +457,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 	imphyslen = IM2_PHYSLEN;
 	impixtype = IM2_PIXTYPE;
 	impixoff = IM2_PIXOFF;
+	imtime = IM2_MTIME;
 	immax = IM2_MAX;
 	immin = IM2_MIN;
 	}
@@ -463,6 +467,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 	imphyslen = IM_PHYSLEN;
 	impixtype = IM_PIXTYPE;
 	impixoff = IM_PIXOFF;
+	imtime = IM_MTIME;
 	immax = IM_MAX;
 	immin = IM_MIN;
 	}
@@ -471,12 +476,12 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     nblock = (nlines * 80) / 2880;
     *nbfits = (nblock + 5) * 2880 + 4;
     fitsheader = (char *) calloc (*nbfits, 1);
-    hlength (fitsheader, *nbfits);
     if (fitsheader == NULL) {
 	(void)fprintf(stderr, "IRAF2FITS Cannot allocate %d-byte FITS header\n",
 		*nbfits);
 	return (NULL);
 	}
+    hlength (fitsheader, *nbfits);
     fhead = fitsheader;
     (void)strncpy (fitsheader, endline, 80);
     hputl (fitsheader, "SIMPLE", 1);
@@ -485,32 +490,32 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     /*  Set pixel size in FITS header */
     pixtype = irafgeti4 (irafheader, impixtype);
     switch (pixtype) {
-    case TY_CHAR:
-	nbits = 8;
-	break;
-    case TY_UBYTE:
-	nbits = 8;
-	break;
-    case TY_SHORT:
-	nbits = 16;
-	break;
-    case TY_USHORT:
-	nbits = -16;
-	break;
-    case TY_INT:
-    case TY_LONG:
-	nbits = 32;
-	break;
-    case TY_REAL:
-	nbits = -32;
-	break;
-    case TY_DOUBLE:
-	nbits = -64;
-	break;
-    default:
-	(void)fprintf(stderr,"Unsupported data type: %d\n", pixtype);
-	return (NULL);
-    }
+	case TY_CHAR:
+	    nbits = 8;
+	    break;
+	case TY_UBYTE:
+	    nbits = 8;
+	    break;
+	case TY_SHORT:
+	    nbits = 16;
+	    break;
+	case TY_USHORT:
+	    nbits = -16;
+	    break;
+	case TY_INT:
+	case TY_LONG:
+	    nbits = 32;
+	    break;
+	case TY_REAL:
+	    nbits = -32;
+	    break;
+	case TY_DOUBLE:
+	    nbits = -64;
+	    break;
+	default:
+	    (void)fprintf(stderr,"Unsupported data type: %d\n", pixtype);
+	    return (NULL);
+	}
     hputi4 (fitsheader,"BITPIX",nbits);
     hputcom (fitsheader,"BITPIX", "IRAF .imh pixel type");
     fhead = fhead + 80;
@@ -634,6 +639,15 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     hputcom (fitsheader,"PIXSWAP", "IRAF pixels, FITS byte orders differ if T");
     fhead = fhead + 80;
 
+    /* Read modification time */
+    mtime = irafgeti4 (irafheader, imtime);
+    tsec = (double) mtime + 946684800.0;
+    dstring = ts2fd (tsec);
+    hputs (fitsheader, "DATE-MOD", dstring);
+    hputcom (fitsheader,"DATE-MOD", "Date of latest file modification");
+    free (dstring);
+    fhead = fhead + 80;
+
     /* Add user portion of IRAF header to FITS header */
     fitsline[80] = 0;
     if (imhver == 2) {
@@ -720,7 +734,8 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 
     /* Find end of last 2880-byte block of header */
     fhead = ksearch (fitsheader, "END") + 80;
-    fhead1 = fitsheader + *nbfits;
+    nblock = *nbfits / 2880;
+    fhead1 = fitsheader + (nblock * 2880);
 
     /* Pad rest of header with spaces */
     strncpy (endline,"   ",3);
@@ -826,7 +841,7 @@ char	*image;		/* IRAF image */
 	bytepix = bitpix / 8;
 
     /* If either dimension is one and image is 3-D, read all three dimensions */
-    if (naxis == 3 && (naxis1 ==1 | naxis2 == 1)) {
+    if (naxis == 3 && ((naxis1 == 1) | (naxis2 == 1))) {
 	int naxis3;
 	hgeti4 (fitsheader,"NAXIS3",&naxis3);
 	nbimage = naxis1 * naxis2 * naxis3 * bytepix;
@@ -980,7 +995,6 @@ int	*nbiraf;	/* Length of returned IRAF header */
 	case -8:
 	    pixtype = TY_UBYTE;
 	    break;
-	break;
 	case 16:
 	    pixtype = TY_SHORT;
 	    break;
@@ -1038,8 +1052,8 @@ int	*nbiraf;	/* Length of returned IRAF header */
     rmax = 0.0;
     hgetr4 (fitsheader, "IRAFMAX", &rmax);
     if (rmin != rmax) {
-	irafputi4 (irafheader, immax, rmax);
-	irafputi4 (irafheader, immin, rmin);
+	irafputr4 (irafheader, immax, rmax);
+	irafputr4 (irafheader, immin, rmin);
 	}
 
     /* Replace pixel file name, if it is in the FITS header */
@@ -1607,50 +1621,31 @@ machswap ()
 
 
 /* Get the local standard (clock) time, in units of seconds since
-   00:00:00 01-Jan-80. */
+   1980-01-01T00:00:00. */
 
 static int
 getclocktime ()
 
 {
-    struct  tms t;
-    time_t  gmt_to_lst();
+    time_t ut0,utc;		/* UTC seconds since 1970-01-01T0:00 */
+    struct tm *ltm;		/* Local time structure */
+    int lt;			/* Local time returned */
 
-    times (&t);
-    return (gmt_to_lst ((time_t) time(0)));
-}
+    /* Get current UTC */
+    ut0 = (time_t) 0;
+    utc = time (&ut0);
 
-
-/* Convert gmt to local standard time, epoch 1980.  */
-
-time_t
-gmt_to_lst (gmt)
-
-time_t  gmt;
-{
-    struct  tm *localtime();
-    time_t  time_var;
-    extern  long timezone;
-
-    tzset();
-        
-    /* Subtract minutes westward from GMT */
-    time_var = gmt - timezone;
+    /* Subtract minutes westward from UTC */
+    ltm = localtime (&utc);
+    lt = utc - timezone;
 
     /* Correct for daylight savings time, if in effect */
-    if (localtime(&gmt)->tm_isdst)
-	time_var += 3600;
+    if (ltm->tm_isdst)
+	lt += 3600;
 
-    return (time_var - SECONDS_1970_TO_1980);
-}
-
-/* GET_TIMEZONE -- Get the local timezone, measured in seconds westward
- * from Greenwich, ignoring daylight savings time if in effect.  */
-
-static long
-get_timezone()
-{
-    return (timezone);
+    /* Change base from Unix 1970-01-01T0:00 to IRAF 1980-01-01T0:00 */
+    lt -= SECONDS_1970_TO_1980;
+    return (lt);
 }
 
 
@@ -1676,7 +1671,6 @@ irafsize (diskfile)
 FILE *diskfile;		/* Descriptor of file for which to find size */
 {
     long filesize;
-    long position;
     long offset;
 
     offset = (long) 0;
@@ -1742,4 +1736,7 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * Jul 13 1999	Improve error messages; change irafsize() argument to fd
  * Sep 22 1999	Don't copy OBJECT keyword from .imh file; use binary title
  * Oct 14 1999	Set FITS header length
+ * Oct 20 1999	Allocate 5000 extra bytes for IRAF header
+ * Nov  2 1999	Fix getclocktime() to use only time.h subroutines
+ * Nov  2 1999	Add modification date and time to FITS header in iraf2fits()
  */

@@ -1,5 +1,5 @@
 /* File libwcs/matchstar.c
- * October 1, 1999
+ * October 20, 1999
  * By Doug Mink, Smithsonian Astrophyscial Observatory
  */
 
@@ -21,6 +21,7 @@
 #include "fitshead.h"
 #include "wcs.h"
 #include "lwcs.h"
+#include "wcscat.h"
 
 #define NPAR 8
 #define NPAR1 9
@@ -422,6 +423,7 @@ int	debug;
 int
 ReadMatch (filename, sbx, sby, gbra, gbdec, debug)
 
+char	*filename;	/* Name of file containing matches */
 double	*sbx;		/* Image star X coordinates in pixels */
 double	*sby;		/* Image star Y coordinates in pixels */
 double	*gbra;		/* Reference star right ascensions in degrees */
@@ -1297,4 +1299,5 @@ int nfit;
  * Jul 21 1999	Add FitMatch() to fit WCS to already-matched stars
  * Sep  8 1999	Fix bug found by Jean-Baptiste Marquette
  * Oct  1 1999	Add ReadMatch() to read a set of matches from a file
+ * Oct 20 1999	Include wcscat.h
  */ 

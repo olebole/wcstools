@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
-   January 20, 1999
+   October 21, 1999
    By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 #ifndef _wcs_h_
@@ -336,6 +336,8 @@ extern "C" {
     void savewcscom(		/* Save WCS shell command */
 	char *wcscom);		/* Shell command using output WCS string */
     char *getwcscom();		/* Return WCS shell command */
+    void setwcsfile(		/* Set filename for WCS error message */
+	char *filename);	/* FITS or IRAF file name */
 
 
     /* Coordinate conversion subroutines in wcscon.c */
@@ -428,6 +430,7 @@ void savewcscom();	/* Save WCS shell command */
 char *getwcscom();	/* Return WCS shell command */
 void setwcscom();	/* Set WCS shell commands from stored values */
 void freewcscom();	/* Free memory used to store WCS shell commands */
+void setwcsfile();	/* Set filename for WCS error message */
 
 /* Coordinate conversion subroutines in wcscon.c */
 void wcscon();		/* Convert between coordinate systems and equinoxes */
@@ -512,4 +515,5 @@ void wcscstr();		/* Return system string from system code, equinox, epoch */
 
  * Jan 20 1999	Add declaration of wcsfree()
  * Jun 16 1999	Add declaration of wcsrange()
+ * Oct 21 1999	Add declaration of setwcsfile()
  */

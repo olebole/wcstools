@@ -1,5 +1,5 @@
 /* File remap.c
- * September 28, 1999
+ * October 22, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,17 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
-#include "wcs.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
+
+extern void setcenter();
+extern void setsys();
+extern void setrot();
+extern void setsecpix();
+extern void setsecpix2();
+extern void setrefpix();
+extern void setnpix();
+extern void setwcsproj();
 
 static void usage();
 static int verbose = 0;		/* verbose flag */
@@ -48,7 +57,7 @@ char **av;
     char *listfile;
     int readlist = 0;
     FILE *flist;
-    int ifile, nblocks, nbytes, i, nbw;
+    int ifile, nblocks, nbytes, i;
     char *blanks;
     double x, y;
 
@@ -143,6 +152,10 @@ char **av;
 	    secpix = atof (*++av);
     	    setsecpix (secpix);
     	    ac--;
+	    if (ac > 1 && isnum (*(av+1))) {
+		setsecpix2 (atof (*++av));
+		ac--;
+		}
     	    break;
 
 	case 'w':	/* Set WCS projection */
@@ -295,8 +308,7 @@ char	*filename;	/* FITS or IRAF file filename */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     char *irafheader;		/* IRAF image header */
-    int nbimage, naxis, naxis1, naxis2, naxis3, naxis4, bytepix;
-    int bitpix, nblocks, nbytes;
+    int bitpix;
     double cra, cdec, dra, ddec;
     char *headout;
     int iraffile;
@@ -414,7 +426,7 @@ char	*filename;	/* FITS or IRAF file filename */
     if (remappix == 0)
 	remappix = pixratio + 2;
     else if (pixratio > remappix) {
-	fprintf (stderr, "REMAP: remapping %d pixels from 1; %d too small\n",
+	fprintf (stderr, "REMAP: remapping %.1f pixels from 1; %d too small\n",
 		 pixratio, remappix);
 	}
 
@@ -450,7 +462,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	/* Loop through horizontal pixels */
 	for (j = 1; j <= wpin; j++) {
 	    dpixi = pfrac * getpix1 (image,bitpix,wpin,hpin,bzin,bsin,j,i);
-	    yin = (double) i - dx0;
+	    yin = (double) i - dy0;
 
 	    /* Break up each input pixel vertically */
 	    for (ii = 0; ii < remappix; ii++) {
@@ -508,4 +520,6 @@ char	*filename;	/* FITS or IRAF file filename */
 }
 
 /* Sep 28 1999	New program
+ * Oct 22 1999	Drop unused variables after lint
+ * Oct 22 1999	Add optional second plate scale argument
  */

@@ -1,5 +1,5 @@
 /* fitsfile.h  FITS and IRAF file access subroutines
- * September 28, 1999
+ * November 2, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -23,6 +23,7 @@ struct Keyword {
 extern int fitsropen();
 extern char *fitsrhead();
 extern char *fitsrimage();
+extern int fitswhead();
 extern int fitswimage();
 extern int isfits();
 
@@ -70,6 +71,26 @@ extern int getfilesize();
 extern int isimlist();
 extern int first_token();
 
+/* Subroutines for translating dates and times */
+double dt2ep();	/* yyyy.ddmm and hh.mmsss to fractional year (epoch) */
+double dt2fd();	/* yyyy.ddmm and hh.mmsss to FITS date string */
+double dt2jd();	/* yyyy.ddmm and hh.mmsss to Julian date */
+double dt2ts();	/* yyyy.ddmm and hh.mmsss to seconds since 1950.0 */ 
+void ep2dt();	/* fractional year to yyyy.mmdd hh.mmssss */
+char *ep2fd();	/* fractional year to FITS date string yyyy-mm-ddThh:mm:ss.ss */
+double ep2jd();	/* fractional year to Julian Date */
+double ep2ts();	/* fractional year to seconds since 1950.0 */
+double fd2ep();	/* FITS standard date string to fractional year (epoch) */
+double fd2jd();	/* FITS standard date string to Julian date */
+void jd2dt();	/* Julian date to yyyy.mmdd hh.mmssss */
+double jd2ep();	/* Julian date to fractional year */
+char *jd2fd();	/* Julian date to FITS date string yyyy-mm-ddThh:mm:ss.ss */
+double jd2ts();	/* Julian date to seconds since 1950.0 */
+void ts2dt();	/* seconds since 1950.0 to yyyy.mmdd hh.mmssss */
+char *ts2fd();	/* seconds since 1950.0 to FITS date, yyyy-mm-ddT00:00:00.000 */
+void ts2i();	/* seconds since 1950.0 to year, month, day, hours, min, sec */
+double ts2jd();	/* seconds since 1950.0 to Julian date */
+
 #endif /* fitsfile_h_ */
 
 /* May 31 1996	Use stream I/O for reading as well as writing
@@ -89,4 +110,6 @@ extern int first_token();
  *
  * Jul 15 1999	Add fileutil.c subroutines
  * Sep 28 1999	Add (1,1)-based image access subroutines
+ * Oct 21 1999	Add fitswhead()
+ * Nov  2 1999	Add date utilities from wcscat.h
  */

@@ -3,7 +3,7 @@ $CC= cc
 
 OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \
 	slasubs.o fitswcs.o wcsinit.o wcs.o \
-	gscread.o ujcread.o uacread.o tabread.o binread.o catread.o actread.o \
+	gscread.o ujcread.o uacread.o tabread.o binread.o ctgread.o actread.o \
 	catutil.o imrotate.o fitsfile.o imhfile.o hget.o hput.o imio.o \
 	dateutil.o worldpos.o tnxpos.o dsspos.o platepos.o \
 	sortstar.o platefit.o tnxfit.o iget.o fileutil.o \
@@ -15,24 +15,24 @@ libwcs.a:	$(OBJS)
 
 actread.o:	wcscat.h wcs.h
 binread.o:	wcscat.h wcs.h
-catread.o:	wcscat.h wcs.h
+ctgread.o:	wcscat.h wcs.h
 catutil.o:	wcscat.h wcs.h
 cel.o:		wcslib.h
 dateutil.o:	wcscat.h
 dsspos.o:	wcs.h
 fileutil.o:	fitshead.h
-findstar.o:	fitshead.h lwcs.h
+findstar.o:	fitshead.h lwcs.h imio.h
 fitsfile.o:	fitsfile.h
 fitswcs.o:	fitsfile.h wcs.h
-gscread.o:	fitsfile.h wcs.h
+gscread.o:	fitsfile.h wcs.h wcscat.h
 hget.o:		fitshead.h
 hput.o:		fitshead.h
 iget.o:		fitshead.h
 imgetwcs.o:	fitshead.h wcs.h lwcs.h
 imhfile.o:	fitsfile.h
-imio.o:		fitshead.h
+imio.o:		fitshead.h imio.h
 imsetwcs.o:	fitshead.h wcs.h lwcs.h wcscat.h
-imrotate.o:	fitshead.h
+imrotate.o:	fitshead.h imio.h
 lin.o:		wcslib.h
 matchstar.o:	fitshead.h wcs.h lwcs.h
 platefit.o:	wcs.h
@@ -42,8 +42,8 @@ sortstar.o:	wcscat.h
 sph.o:		wcslib.h
 tabread.o:	fitshead.h wcs.h
 tnxpos.o:	wcs.h
-uacread.o:	fitshead.h wcs.h
-ujcread.o:	fitshead.h wcs.h
+uacread.o:	fitshead.h wcs.h wcscat.h
+ujcread.o:	fitshead.h wcs.h wcscat.h
 wcs.o:		fitshead.h wcs.h
 wcsinit.o:	fitshead.h wcs.h
 wcscon.o:	wcs.h

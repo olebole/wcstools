@@ -1,5 +1,5 @@
 /* File imhead.c
- * November 30, 1998
+ * October 22, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,14 +11,13 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
+#include "libwcs/fitsfile.h"
 
 static void usage();
 static int PrintFITSHead();
 static void PrintHead();
 extern char *GetFITShead();
 
-static int nskip = 0;		/* Number of bytes to skip */
 static int nfiles = 0;		/* Nuber of files for headers */
 static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;		/* If 1, print only program name and version */
@@ -197,4 +196,6 @@ char	*header;	/* Image FITS header */
  * Aug  6 1998	Change fitsio.h to fitsfile.h
  * Oct 14 1998	Use isiraf() to determine file type
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Oct 22 1999	Drop unused variables after lint
  */

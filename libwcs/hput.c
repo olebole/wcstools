@@ -1030,8 +1030,7 @@ getltime ()
 {
     time_t clock;
     /* char *tstr, *ctime(); */
-    int i;
-    struct tm *localtime();
+    extern struct tm *localtime();
     struct tm *time;
     struct timeval tp;
     struct timezone tzp;

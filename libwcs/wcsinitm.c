@@ -1,14 +1,17 @@
-/*** File libwcs/wcsinit.c
+/*** File libwcs/wcsinitm.c
  *** October 21, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcsinit.c (World Coordinate Systems)
  * Purpose:	Convert FITS WCS to pixels and vice versa:
  * Subroutine:	wcsinit (hstring) sets a WCS structure from an image header
- * Subroutine:	wcsninit (hstring,lh) sets a WCS structure from an image header
+ * Subroutine:	wcsinitm (hstring, mchar) sets a WCS structure if multiple
+ * Subroutine:	wcsninit (hstring,lh) sets a WCS structure from fixed-length header
+ * Subroutine:	wcsninit (hstring,lh,mchar) sets a WCS structure if multiple
  * Subroutine:	wcseq (hstring, wcs) set radecsys and equinox from image header
+ * Subroutine:	wcseqm (hstring, wcs, mchar) set radecsys and equinox if multiple
 
- * Copyright:   1998 Smithsonian Astrophysical Observatory
+ * Copyright:   1999 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -27,9 +30,11 @@
 #endif
 
 static void wcseq();
+static void wcseqm();
 void wcsrotset();
 char wcserrmsg[80];
-extern int dsspos();
+struct WorldCoor *wcsninitm();
+struct WorldCoor *wcsinitm();
 
 /* set up a WCS structure from a FITS image header lhstring bytes long */
 
@@ -40,8 +45,24 @@ char	*hstring;	/* character string containing FITS header information
 		   	in the format <keyword>= <value> [/ <comment>] */
 int	lhstring;	/* Length of FITS header in bytes */
 {
+    char mchar;		/* Suffix character for one of multiple WCS */
+    mchar = (char) 0;
     hlength (hstring, lhstring);
-    return (wcsinit (hstring));
+    return (wcsinitm (hstring, mchar));
+}
+
+/* set up a WCS structure from a FITS image header lhstring bytes long */
+
+struct WorldCoor *
+wcsninitm (hstring, lhstring, mchar)
+
+char	*hstring;	/* character string containing FITS header information
+		   	in the format <keyword>= <value> [/ <comment>] */
+int	lhstring;	/* Length of FITS header in bytes */
+char	mchar;		/* Suffix character for one of multiple WCS */
+{
+    hlength (hstring, lhstring);
+    return (wcsinitm (hstring, mchar));
 }
 
 /* set up a WCS structure from a FITS image header */
@@ -49,8 +70,22 @@ int	lhstring;	/* Length of FITS header in bytes */
 struct WorldCoor *
 wcsinit (hstring)
 
-char *hstring;	/* character string containing FITS header information
-		   in the format <keyword>= <value> [/ <comment>] */
+char	*hstring;	/* character string containing FITS header information
+			   in the format <keyword>= <value> [/ <comment>] */
+{
+    char mchar;		/* Suffix character for one of multiple WCS */
+    mchar = (char) 0;
+    return (wcsinitm (hstring, mchar));
+}
+
+/* set up a WCS structure from a FITS image header */
+
+struct WorldCoor *
+wcsinitm (hstring, mchar)
+
+char	*hstring;	/* character string containing FITS header information
+			   in the format <keyword>= <value> [/ <comment>] */
+char	mchar;		/* Suffix character for one of multiple WCS */
 {
     struct WorldCoor *wcs;
     char ctype1[32], ctype2[32];
@@ -59,7 +94,7 @@ char *hstring;	/* character string containing FITS header information
     double rah,ram,ras, dsign,decd,decm,decs;
     double dec_deg,ra_hours, secpix, ra0, ra1, dec0, dec1;
     double cdelt1, cdelt2, cd[4], pc[16];
-    char keyword[16];
+    char keyword[16], keycd[16], keycdelt[16];
     int ieq, i, naxes;
     /* int ix1, ix2, iy1, iy2, idx1, idx2, idy1, idy2;
     double dxrefpix, dyrefpix;
@@ -69,6 +104,7 @@ char *hstring;	/* character string containing FITS header information
     double rot;
     extern int tnxinit();
     extern int platepos();
+    extern int dsspos();
 
     wcs = (struct WorldCoor *) calloc (1, sizeof(struct WorldCoor));
 
@@ -115,10 +151,12 @@ char *hstring;	/* character string containing FITS header information
     for (i = 0; i < naxes; i++) wcs->pc[(i*naxes)+i] = 1.0;
 
     /* World coordinate system reference coordinate information */
-    if (hgets (hstring,"CTYPE1", 16, ctype1)) {
+    sprintf (keyword,"CTYPE1%c",mchar);
+    if (hgets (hstring, keyword, 16, ctype1)) {
 
 	/* Read second coordinate type */
-	if (!hgets (hstring,"CTYPE2", 16, ctype2)) {
+	sprintf (keyword,"CTYPE2%c",mchar);
+	if (!hgets (hstring, keyword, 16, ctype2)) {
 	    setwcserr ("WCSINIT: No CTYPE2 -> no WCS");
 	    wcsfree (wcs);
 	    return (NULL);
@@ -128,9 +166,11 @@ char *hstring;	/* character string containing FITS header information
 	strcpy (wcs->ctype[0], ctype1);
 	strcpy (wcs->ctype[1], ctype2);
 	strcpy (wcs->ctype[2], "");
-	hgets (hstring, "CTYPE3", 9, wcs->ctype[2]);
+	sprintf (keyword,"CTYPE3%c",mchar);
+	hgets (hstring, keyword, 9, wcs->ctype[2]);
 	strcpy (wcs->ctype[3], "");
-	hgets (hstring, "CTYPE4", 9, wcs->ctype[3]);
+	sprintf (keyword,"CTYPE4%c",mchar);
+	hgets (hstring, keyword, 9, wcs->ctype[3]);
 
 	/* Set projection type in WCS data structure */
 	if (wcstype (wcs, ctype1, ctype2)) {
@@ -140,11 +180,13 @@ char *hstring;	/* character string containing FITS header information
 
 	/* Get units, if present, for linear coordinates */
 	if (wcs->prjcode == WCS_LIN) {
-	    if (!hgets (hstring, "CUNIT1", 16, wcs->units[0])) {
+	    sprintf (keyword,"CUNIT1%c",mchar);
+	    if (!hgets (hstring, keyword, 16, wcs->units[0])) {
 		if (!mgets (hstring, "WAT1", "units", 16, wcs->units[0])) {
 		    wcs->units[0][0] = 0;
 		    }
 		}
+	    sprintf (keyword,"CUNIT2%c",mchar);
 	    if (!hgets (hstring, "CUNIT2", 16, wcs->units[1])) {
 		if (!mgets (hstring, "WAT2", "units", 16, wcs->units[1])) {
 		    wcs->units[1][0] = 0;
@@ -154,15 +196,19 @@ char *hstring;	/* character string containing FITS header information
 
 	/* Reference pixel coordinates and WCS value */
 	wcs->crpix[0] = 1.0;
-	hgetr8 (hstring,"CRPIX1",&wcs->crpix[0]);
+	sprintf (keyword,"CRPIX1%c",mchar);
+	hgetr8 (hstring, keyword, &wcs->crpix[0]);
 	wcs->crpix[1] = 1.0;
-	hgetr8 (hstring,"CRPIX2",&wcs->crpix[1]);
+	sprintf (keyword,"CRPIX1%c",mchar);
+	hgetr8 (hstring, keyword, &wcs->crpix[1]);
 	wcs->xrefpix = wcs->crpix[0];
 	wcs->yrefpix = wcs->crpix[1];
 	wcs->crval[0] = 0.0;
-	hgetr8 (hstring,"CRVAL1",&wcs->crval[0]);
+	sprintf (keyword,"CRVAL1%c",mchar);
+	hgetr8 (hstring, keyword, &wcs->crval[0]);
 	wcs->crval[1] = 0.0;
-	hgetr8 (hstring,"CRVAL2",&wcs->crval[1]);
+	sprintf (keyword,"CRVAL2%c",mchar);
+	hgetr8 (hstring, keyword, &wcs->crval[1]);
 	if (wcs->syswcs == WCS_NPOLE)
 	    wcs->crval[1] = 90.0 - wcs->crval[1];
 	if (wcs->syswcs == WCS_SPA)
@@ -178,25 +224,36 @@ char *hstring;	/* character string containing FITS header information
 	    wcs->cel.ref[1] = wcs->crval[1];
 	    }
 	wcs->longpole = 999.0;
-	hgetr8 (hstring,"LONGPOLE",&wcs->longpole);
+	if (mchar)
+	    sprintf (keyword,"LONPOLE%c",mchar);
+	else
+	    strcpy (keyword,"LONGPOLE");
+	hgetr8 (hstring, keyword, &wcs->longpole);
 	wcs->cel.ref[2] = wcs->longpole;
 	wcs->latpole = 999.0;
-	hgetr8 (hstring,"LATPOLE",&wcs->latpole);
+	sprintf (keyword,"LATPOLE%c",mchar);
+	hgetr8 (hstring, keyword, &wcs->latpole);
 	wcs->cel.ref[3] = wcs->latpole;
 	wcs->lin.crpix = wcs->crpix;
 	wcs->lin.cdelt = wcs->cdelt;
 	wcs->lin.pc = wcs->pc;
 
-	/* Projection constants */
+	/* Projection constants (this should be projection-dependent */
 	for (i = 1; i < 10; i++) {
 	    wcs->prj.p[i] = 0.0;
-	    sprintf (keyword,"PROJP%d",i);
+	    if (mchar)
+		sprintf (keyword,"PV%d%c",i, mchar);
+	    else
+		sprintf (keyword,"PROJP%d",i);
+	    wcs->prj.p[i] = 0.0;
 	    hgetr8 (hstring, keyword, &wcs->prj.p[i]);
 	    }
 
 	/* Use polynomial fit instead of projection, if present */
 	wcs->ncoeff1 = 0;
 	wcs->ncoeff2 = 0;
+	sprintf (keycd, "CD1_1%c", mchar);
+	sprintf (keycdelt, "CDELT1%c", mchar);
 	if (!wcs->oldwcs && (hcoeff = ksearch (hstring,"CO1_1")) != NULL) {
 	    wcs->prjcode = WCS_PLT;
 	    (void)strcpy (wcs->ptype, "PLATE");
@@ -238,20 +295,24 @@ char *hstring;	/* character string containing FITS header information
 	    }
 
 	/* Else use CD matrix, if present */
-	else if (hgetr8 (hstring,"CD1_1",&cd[0]) != 0) {
+	else if (hgetr8 (hstring, keycd, &cd[0]) != 0) {
 	    wcs->rotmat = 1;
 	    cd[1] = 0.;
-	    hgetr8 (hstring,"CD1_2",&cd[1]);
+	    sprintf (keyword, "CD1_2%c", mchar);
+	    hgetr8 (hstring, keyword, &cd[1]);
 	    cd[2] = 0.;
-	    hgetr8 (hstring,"CD2_1",&cd[2]);
+	    sprintf (keyword, "CD2_1%c", mchar);
+	    hgetr8 (hstring, keyword, &cd[2]);
 	    cd[3] = wcs->cd[0];
-	    hgetr8 (hstring,"CD2_2",&cd[3]);
+	    sprintf (keyword, "CD2_2%c", mchar);
+	    hgetr8 (hstring, keyword, &cd[3]);
 	    wcscdset (wcs, cd);
 	    }
 
 	/* Else get scaling from CDELT1 and CDELT2 */
-	else if (hgetr8 (hstring,"CDELT1",&cdelt1) != 0) {
-	    hgetr8 (hstring,"CDELT2",&cdelt2);
+	else if (hgetr8 (hstring, keycdelt, &cdelt1) != 0) {
+	    sprintf (keyword, "CDELT2%c", mchar);
+	    hgetr8 (hstring, keyword, &cdelt2);
 
 	    /* If CDELT1 or CDELT2 is 0 or missing */
 	    if (cdelt1 == 0.0 || (wcs->nypix > 1 && cdelt2 == 0.0)) {
@@ -300,7 +361,7 @@ char *hstring;	/* character string containing FITS header information
 	    /* Use rotation matrix, if present */
 	    for (i = 0; i < 16; i++)
 		wcs->pc[i] = 0.0;
-	    if (hgetr8 (hstring,"PC001001",&pc[0]) != 0) {
+	    if (!mchar && hgetr8 (hstring,"PC001001",&pc[0]) != 0) {
 		hgetr8 (hstring,"PC001002",&pc[1]);
 		if (naxes < 3) {
 		    hgetr8 (hstring,"PC002001",&pc[2]);
@@ -341,7 +402,7 @@ char *hstring;	/* character string containing FITS header information
 		}
 
 	    /* Otherwise, use CROTAn */
-	    else {
+	    else if (!mchar) {
 		rot = 0.0;
 		hgetr8 (hstring,"CROTA2",&rot);
 		if (rot == 0.)
@@ -373,7 +434,7 @@ char *hstring;	/* character string containing FITS header information
 	/* Coordinate reference frame, equinox, and epoch */
 	if (strncmp (wcs->ptype,"LINEAR",6) &&
 	    strncmp (wcs->ptype,"PIXEL",5))
-	    wcseq (hstring,wcs);
+	    wcseqm (hstring,wcs, mchar);
 	else {
 	    wcs->degout = -1;
 	    wcs->ndec = 5;
@@ -643,17 +704,39 @@ char *hstring;	/* character string containing FITS header information
 static void
 wcseq (hstring, wcs)
 
-char	*hstring;
-struct WorldCoor *wcs;
+char	*hstring;	/* character string containing FITS header information
+		   	in the format <keyword>= <value> [/ <comment>] */
+struct WorldCoor *wcs;	/* World coordinate system data structure */
+{
+    char mchar;		/* Suffix character for one of multiple WCS */
+    mchar = (char) 0;
+    wcseqm (hstring, wcs, mchar);
+    return;
+}
+
+
+static void
+wcseqm (hstring, wcs, mchar)
+
+char	*hstring;	/* character string containing FITS header information
+		   	in the format <keyword>= <value> [/ <comment>] */
+struct WorldCoor *wcs;	/* World coordinate system data structure */
+char	mchar;		/* Suffix character for one of multiple WCS */
 {
     int ieq = 0;
     int eqhead = 0;
     char systring[32], eqstring[32];
+    char radeckey[16], eqkey[16];
 
     /* Set equinox from EQUINOX, EPOCH, or RADECSYS; default to 2000 */
     systring[0] = 0;
     eqstring[0] = 0;
-    hgets (hstring,"EQUINOX",16,eqstring);
+    sprintf (eqkey, "EQUINOX%c", mchar);
+    hgets (hstring, eqkey, 16, eqstring);
+    if (mchar)
+	sprintf (radeckey,"RADESYS%c", mchar);
+    else
+	strcpy (radeckey, "RADECSYS");
     if (eqstring[0] == 'J') {
 	wcs->equinox = atof (eqstring+1);
 	ieq = atoi (eqstring+1);
@@ -664,8 +747,8 @@ struct WorldCoor *wcs;
 	ieq = atoi (eqstring+1);
 	strcpy (systring, "FK4");
 	}
-    else if (hgeti4 (hstring,"EQUINOX",&ieq)) {
-	hgetr8 (hstring,"EQUINOX",&wcs->equinox);
+    else if (hgeti4 (hstring, eqkey, &ieq)) {
+	hgetr8 (hstring, eqkey, &wcs->equinox);
 	eqhead = 1;
 	}
 
@@ -680,7 +763,7 @@ struct WorldCoor *wcs;
 	    }
 	}
 
-    else if (hgets (hstring,"RADECSYS", 16, systring)) {
+    else if (hgets (hstring, radeckey, 16, systring)) {
 	if (!strncmp (systring,"FK4",3)) {
 	    wcs->equinox = 1950.0;
 	    ieq = 1950;
@@ -722,7 +805,7 @@ struct WorldCoor *wcs;
 
     /* Set coordinate system from keyword, if it is present */
     if (systring[0] == (char) 0)
-	 hgets (hstring,"RADECSYS", 16, systring);
+	 hgets (hstring, radeckey, 16, systring);
     if (systring[0] != (char) 0) {
 	strcpy (wcs->radecsys,systring);
 	if (!eqhead) {
@@ -788,5 +871,6 @@ struct WorldCoor *wcs;
  * Apr  7 1999	Do not set systring if epoch is 0 and not RA/Dec
  * Jul  8 1999	In RADECSYS, use FK5 and FK4 instead of J2000 and B1950
  * Oct 15 1999	Free wcs using wcsfree()
- * Oct 21 1999	Remove unused variables; declare dsspos() after lint
+ * Oct 20 1999	Add multiple WCS support using new subroutine names
+ * Oct 21 1999	Delete unused variables after lint; declare dsspos()
  */

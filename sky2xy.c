@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * October 14, 1999
+ * October 22, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "wcs.h"
-#include "fitsfile.h"
+#include "libwcs/wcs.h"
+#include "libwcs/fitsfile.h"
 
 static void usage();
 extern struct WorldCoor *GetWCSFITS ();	/* Read WCS from FITS or IRAF header */
@@ -203,8 +203,7 @@ char **av;
 	    }
 	}
 
-    if (wcs)
-	free ((char *)wcs);
+    wcsfree (wcs);
     return (0);
 }
 
@@ -257,4 +256,6 @@ usage ()
  *
  * Mar 17 1999	Add flag for positions off image but within projection
  * Oct 14 1999	Use command line coordinate flag if system not in coordinates
+ * Oct 15 1999	Free wcs using wcsfree()
+ * Oct 22 1999	Link included files to libwcs
  */

@@ -1,5 +1,5 @@
 /* File libwcs/sortstar.c
- * May 19, 1999
+ * August 26, 1999
  * By Doug Mink
  */
 
@@ -114,15 +114,15 @@ int	ns;		/* Number of stars to sort */
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
 
-    if (sn == 0)
+    if (sn == NULL)
 	hasnum = 0;
     else
 	hasnum = 1;
-    if (sr == 0)
+    if (sr == NULL)
 	hasmagr = 0;
     else
 	hasmagr = 1;
-    if (sobj == 0)
+    if (sobj == NULL)
 	hasobj = 0;
     else
 	hasobj = 1;
@@ -206,15 +206,15 @@ int	ns;		/* Number of stars to sort */
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
 
-    if (sn == 0)
+    if (sn == NULL)
 	hasnum = 0;
     else
 	hasnum = 1;
-    if (sm1 == 0)
+    if (sm1 == NULL)
 	hasmag1 = 0;
     else
 	hasmag1 = 1;
-    if (sobj == 0)
+    if (sobj == NULL)
 	hasobj = 0;
     else
 	hasobj = 1;
@@ -297,15 +297,15 @@ int	ns;		/* Number of stars to sort */
     static int StarXSort ();
 
     stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
-    if (sn == 0)
+    if (sn == NULL)
 	hasnum = 0;
     else
 	hasnum = 1;
-    if (sm1 == 0)
+    if (sm1 == NULL)
 	hasmag1 = 0;
     else
 	hasmag1 = 1;
-    if (sobj == 0)
+    if (sobj == NULL)
 	hasobj = 0;
     else
 	hasobj = 1;
@@ -382,4 +382,5 @@ void *ssp1, *ssp2;
  * Feb  8 1999	Fix bug initializing ACT catalog
  * Feb 11 1999	Change starcat.insys to starcat.coorsys
  * May 19 1999	Move catalog subroutines to catutil()
+ * Aug 26 1999	Compare pointers to NULL, not 0
  */

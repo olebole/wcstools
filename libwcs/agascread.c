@@ -1,13 +1,15 @@
 /*** File libwcs/agascread.c
- *** September 16, 1999
+ *** October 21, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <stdio.h>
 #include "fitsfile.h"
 #include "wcs.h"
+#include "wcscat.h"
 
 char cdn[64]="/data/gsc1";	/* pathname of northern hemisphere AGASC CDROM */
 char cds[64]="/data/gsc2";	/* pathname of southern hemisphere AGASC CDROM */
@@ -15,6 +17,8 @@ char cds[64]="/data/gsc2";	/* pathname of southern hemisphere AGASC CDROM */
 static void agascpath();
 static int agascreg();
 static int classd=-1;	/* Desired object class (-1=all, 0=stars, 3=nonstars) */
+static char *table;	/* FITS table buffer */
+static int ltab= 0;	/* Length of FITS table buffer */
 
 /* AGASCREAD -- Read AXAF Guide and Acquisition Star Catalog stars from CDROM */
 
@@ -48,7 +52,6 @@ int	nlog;		/* 1 for diagnostics */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
     double *gdist;	/* Array of distances to stars */
-    char *table;	/* FITS table */
     int nreg;		/* Number of input FITS tables files */
     double xnum;		/* Guide Star number */
     int rlist[100];	/* List of input FITS tables files */
@@ -57,13 +60,12 @@ int	nlog;		/* 1 for diagnostics */
     int class, class0;	/* Object class (0>star, 3>other) */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
     struct Keyword kw[8];	/* Keyword structure */
     struct Keyword *kwn;
 
     int verbose;
     int wrap;
-    int rnum, num0, num, itot,ireg,ltab;
+    int rnum, num0, num, itot,ireg;
     int ik,nk,itable,ntable,jstar;
     int nbline,npos,nbhead;
     int nbr,nrmax,nstar,i;
@@ -79,8 +81,10 @@ int	nlog;		/* 1 for diagnostics */
 	verbose = 1;
     else
 	verbose = 0;
-    ltab = 10000;
-    table = malloc (10000);
+    if (ltab < 1) {
+	ltab = 10000;
+	table = (char *) calloc (10000, sizeof (char));
+	}
     for (i = 0; i < 100; i++)
 	entry[i] = 0;
 
@@ -118,7 +122,7 @@ int	nlog;		/* 1 for diagnostics */
 	    &rra1, &rra2, &rdec1, &rdec2, verbose);
     if (rra1 > rra2)
 	wrap = 1;
-    nreg = agascreg (rra1,rra2,rdec1,rdec2,ltab,table,nrmax,rlist,verbose);
+    nreg = agascreg (rra1,rra2,rdec1,rdec2,table,nrmax,rlist,verbose);
     if (nreg <= 0) {
 	fprintf (stderr,"AGASCREAD:  no Guide Star regions found\n");
 	free (table);
@@ -376,11 +380,10 @@ int	nlog;		/* 1 for diagnostics */
     int class, class0;	/* Object class (0>star, 3>other) */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
     struct Keyword kw[8];	/* Keyword structure */
     struct Keyword *kwn;
 
-    int rnum, num0, num, itot,ltab;
+    int rnum, num0, num, itot;
     int ik,nk,itable,ntable,jstar;
     int nbline,npos,nbhead;
     int nbr,nstar,i, snum;
@@ -390,8 +393,10 @@ int	nlog;		/* 1 for diagnostics */
     char *str;
 
     itot = 0;
-    ltab = 10000;
-    table = malloc (10000);
+    if (ltab < 1) {
+	ltab = 10000;
+	table = (char *) calloc (10000, sizeof (char));
+	}
     for (i = 0; i < 100; i++)
 	entry[i] = 0;
 
@@ -576,11 +581,10 @@ static int nrkw = 13;
  */
 
 static int
-agascreg (ra1, ra2, dec1, dec2, ltab, table, nrmax, rgns, verbose)
+agascreg (ra1, ra2, dec1, dec2, table, nrmax, rgns, verbose)
 
 double	ra1, ra2;	/* Right ascension limits in degrees */
 double	dec1, dec2; 	/* Declination limits in degrees */
-int	ltab;		/* Maximum length of table buffer in bytes */
 char	*table;		/* Table data buffer */
 int	nrmax;		/* Maximum number of regions to find */
 int	*rgns;		/* Region numbers (returned)*/
@@ -904,4 +908,6 @@ char *path;	/* Pathname of AGASC region FITS file */
  * Aug 25 1999	Return real number of stars from agascread()
  * Sep 16 1999	Fix bug which didn't always return closest stars
  * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
+ * Sep 22 1999	Rewrite table allocation so it works; make ltab static
+ * Oct 21 1999	Fix declarations after lint
  */

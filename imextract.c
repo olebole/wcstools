@@ -1,5 +1,5 @@
 /* File imextract.c
- * September 30, 1999
+ * October 22, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,9 +11,9 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
-#include "wcs.h"
-#include "wcscat.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
+#include "libwcs/wcscat.h"
 
 #define MAXKWD 50
 
@@ -21,12 +21,9 @@ static void usage();
 static int ExtractImage();
 
 static int verbose = 0;		/* verbose flag */
-static int wfits = 0;		/* if 1, write FITS header before data */
-static char *newname = "imstack.out";
 static int krename = 0;
 static char prefix[2];
 static int nfiles = 0;
-static int nbstack = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int fitsout = 0;		/* If 1, write FITS output for IRAF input */
 static int nameout = 0;		/* If 1, write output file name */
@@ -47,8 +44,7 @@ char **av;
     int readlist = 0;
     char *temp;
     FILE *flist;
-    int ifile, nblocks, nbytes, i, nbw;
-    char *blanks;
+    int ifile;
     char *ranges = NULL;
 
     /* Check for help or version command first */
@@ -244,8 +240,8 @@ char	*kwd[];		/* Names and values of those keywords */
     int nbhead;			/* Actual number of bytes in FITS header */
     char *irafheader=NULL;	/* IRAF image header */
     char *outimage;
-    int nbimage, naxis, naxis1, naxis2, naxis3, naxis4, bytepix;
-    int bitpix, nblocks, nbytes;
+    int naxis, naxis1, naxis2, naxis3, bytepix;
+    int bitpix;
     int iraffile;
     int i, lext, lroot, nbskip;
     char *kw, *kwv, *kwl, *kwv0;
@@ -310,7 +306,7 @@ char	*kwd[];		/* Names and values of those keywords */
     hgeti4 (header,"NAXIS",&naxis);
     if (naxis == 1) {
 	printf ("IMEXTRACT: Image %s has only one dimension\n", filename);
-	return;
+	return (1);
 	}
     naxis1 = 1;
     hgeti4 (header,"NAXIS1",&naxis1);
@@ -320,7 +316,7 @@ char	*kwd[];		/* Names and values of those keywords */
     hgeti4 (header,"NAXIS3",&naxis3);
     if (naxis1 * naxis2 == 1 || naxis1 * naxis3 == 1 || naxis2 * naxis3 == 1) {
         printf ("IMEXTRACT: Image %s has only one real dimension\n", filename);
-        return;
+        return (1);
         }
     hgeti4 (header,"BITPIX",&bitpix);
     bytepix = bitpix / 8;
@@ -571,4 +567,6 @@ char	*kwd[];		/* Names and values of those keywords */
  * Mar  9 1999	Add option to write to a specific directory
  * May 18 1999	If suffix is null string, do not add _
  * Sep 30 1999	Refine range test to avoid getting signed header parameters
+ * Oct 15 1999	Always return erro code from ExtractImage()
+ * Oct 22 1999	Drop unused variables after lint
  */

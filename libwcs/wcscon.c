@@ -1,7 +1,7 @@
 /*** File wcscon.c
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Based on Starlink subroutines by Patrick Wallace
- *** December 2, 1998
+ *** October 20, 1999
 
  * Module:	wcscon.c (World Coordinate System conversion)
  * Purpose:	Convert between various sky coordinate systems
@@ -1391,7 +1391,7 @@ double	epoch;	/* Besselian epoch in years */
     double das2r=4.8481368110953599358991410235794797595635330237270e-6;
     void slaDeuler();
 
-    double pm[3][3], v1[3], v2[3], rra, rdec;
+    double v1[3], v2[3];
     void fk5prec();
 
     rtheta = degrad (*dtheta);

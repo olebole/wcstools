@@ -1,5 +1,5 @@
 /* File xy2sky.c
- * June 2, 1998
+ * October 22, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "wcs.h"
+#include "libwcs/wcs.h"
 
 static void usage();
 extern struct WorldCoor *GetWCSFITS();	/* Read WCS from FITS or IRAF header */
@@ -291,8 +291,7 @@ char **av;
 	    }
 	}
 
-    if (wcs)
-	free ((char *)wcs);
+    wcsfree (wcs);
     return (0);
 }
 
@@ -352,4 +351,6 @@ usage ()
  * Mar 29 1999	Add -i option for X,Y after ID in input file (J.-B. Marquette)
  * Apr 29 1999	Drop pix2wcst declaration; it is in wcs.h
  * Jun  2 1999	Make tab output completely-defined catalog
+ * Oct 15 1999	Free wcs using wcsfree()
+ * Oct 22 1999	Link includes to libwcs
  */

@@ -1,5 +1,5 @@
 /* File keyhead.c
- * July 15, 1999
+ * October 22, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
+#include "libwcs/fitsfile.h"
 
 #define MAXKWD 50
 #define MAXFILES 1000
@@ -24,7 +24,6 @@ static void ChangeKeyNames ();
 static int verbose = 0;		/* verbose/debugging flag */
 static int newimage = 0;	/* write new image with modified header */
 static int replace = 0;		/* replace value of first keyword with second */
-static int nfile = 0;
 static int keyset = 0;
 static int histset = 0;
 static int version = 0;		/* If 1, print only program name and version */
@@ -41,13 +40,12 @@ char **av;
     int nfile = 0;
     int ifile;
     int readlist = 0;
-    char *lastchar;
     char filename[128];
     FILE *flist, *fdk;
     char *listfile;
     char *ilistfile;
     char *klistfile;
-    int ikwd, i;
+    int ikwd;
 
     ilistfile = NULL;
     klistfile = NULL;
@@ -213,10 +211,9 @@ char	*kwd[];		/* Names and values of those keywords */
     int nbhead;		/* Actual number of bytes in FITS header */
     char *irafheader;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
-    int i, lname, lext, lroot, lhist;
+    int lext, lroot, lhist;
     char *image, *imext, *imext1;
     char newname[128];
-    char newkey[16];
     char *ext, *fname;
     char *kw, *kwv, *kwl, *kwn;
     char *value, *q, *line;
@@ -307,6 +304,8 @@ char	*kwd[];		/* Names and values of those keywords */
 	    if ((line = ksearch (header, kwn)) == NULL)
 		continue;
 	    q = strchr (line, squote);
+	    if (q == NULL)
+		q = strchr (line, dquote);
 	    value = hgetc (header, kwn);
 	    if (q != NULL && q < line+80) {
 		hputs (header, kwd[ikwd], value);
@@ -492,4 +491,5 @@ char	*kwd[];		/* Names and values of those keywords */
  * Jul 14 1999  Read lists of BOTH keywords and files simultaneously
  * Jul 14 1999  Reallocate keyword array if too many in file
  * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
+ * Oct 22 1999	Drop unused variables after lint
  */

@@ -1,5 +1,5 @@
 /* File getpix.c
- * July 2, 1999
+ * October 22, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,11 +11,10 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
-#include "wcscat.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcscat.h"
 
 static void usage();
-static int PrintFITSHead ();
 static void PrintPix ();
 
 static int verbose = 0;		/* verbose/debugging flag */
@@ -111,7 +110,7 @@ usage ()
     fprintf(stderr,"  -n: number of pixel values printed per page\n");
     fprintf(stderr,"  -v: label pixels\n");
     fprintf(stderr,"  -v: verbose\n");
-    fprintf(stderr,"   %: C format for each pixel value\n");
+    fprintf(stderr,"   %%: C format for each pixel value\n");
     exit (1);
 }
 
@@ -135,7 +134,7 @@ char *rrange;   /* Row range string */
     double dpix;
     char *c;
     int *yi;
-    int bitpix,xdim,ydim, ipix, i, nx, ny, ix, iy, x, y, n, iline;
+    int bitpix,xdim,ydim, ipix, i, nx, ny, ix, iy, x, y;
     char pixname[128];
     char nform[8];
     struct Range *xrange;    /* X range structure */
@@ -409,4 +408,6 @@ char *rrange;   /* Row range string */
  * Apr 29 1999	Add BZERO and BSCALE
  * Jun 29 1999	Fix typo in BSCALE setting
  * Jul  2 1999	Use ranges instead of individual pixels
+ * Oct 15 1999	Fix format statement
+ * Oct 22 1999	Drop unused variables after lint
  */

@@ -1,5 +1,5 @@
 /* File imsize.c
- * June 17, 1999
+ * October 22, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
-#include "wcs.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
 
 static void usage();
 static void PrintWCS ();
@@ -233,16 +233,13 @@ char *name;
 
 {
     char *header;		/* FITS image header */
-    int lhead, nbhead, nc;
-    int iraffile;		/* 1 if IRAF image */
+    int nc;
     char fileroot[64];
     char *filename, *ext;
     int nax;
     int hp, wp, i, lfroot;
     double cra, cdec, dra, ddec, secpix;
-    double xpos[4], ypos[4];
-    double xmin, xmax, ymin, ymax, dx, dx1, dx2, dy, dy1, dy2;
-    double xpix[4], ypix[4];
+    double xmin, xmax, ymin, ymax, dx, dy;
     struct WorldCoor *wcs;
     char *colon;
     char rstr[32], dstr[32], blanks[64];
@@ -379,7 +376,7 @@ char *name;
 	printf ("\n");
 	}
 
-    free (wcs);
+    wcsfree (wcs);
     free (header);
     return;
 }
@@ -423,4 +420,6 @@ char *name;
  *
  * Apr  7 1999	Add file name argument to GetFITSWCS
  * Jun 17 1999	Fix coordinate conversion
+ * Oct 15 1999	Free wcs using wcsfree()
+ * Oct 22 1999	Drop unused variables after lint
  */

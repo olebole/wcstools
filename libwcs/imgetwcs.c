@@ -1,5 +1,5 @@
 /* File libwcs/imgetwcs.c
- * July 9, 1999
+ * November 1, 1999
  * By Doug Mink, remotely based on UIowa code
  */
 
@@ -29,12 +29,13 @@ static int wp0 = 0;			/* Initial width of image */
 static int hp0 = 0;			/* Initial height of image */
 static double ra0 = -99.0;		/* Initial center RA in degrees */
 static double dec0 = -99.0;		/* Initial center Dec in degrees */
-static double rad0 = 10.0;		/* Search box radius in arcseconds */
 static double xref0 = -99999.0;		/* Reference pixel X coordinate */
 static double yref0 = -99999.0;		/* Reference pixel Y coordinate */
 static int ptype0 = -1;			/* Projection type to fit */
 static int  nctype = 28;		/* Number of possible projections */
 static char ctypes[28][4];		/* 3-letter codes for projections */
+static double rad0 = 10.0;              /* Search box radius in arcseconds */
+static int usecdelt = 0;		/* Use CDELT if 1, else CD matrix */
 
 /* Set a nominal world coordinate system from image header info.
  * If the image center is not FK5 (J2000) equinox, convert it
@@ -59,10 +60,8 @@ int	*sysout;	/* Coordinate system to return (0=image, returned) */
 double	*eqout;		/* Equinox to return (0=image, returned) */
 {
     int nax;
-    int equinox, eqcoor;
-    double eq1, epoch, xref, yref, degpix, ra1, dec1;
+    double eq1, xref, yref, degpix, ra1, dec1;
     struct WorldCoor *wcs;
-    int eqref;
     char rstr[64], dstr[64], temp[16], cstr[16];
 
     /* Set image dimensions */
@@ -109,6 +108,10 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	    degpix = *secpix / 3600.0;
 	    hputnr8 (header, "CDELT1", 8, -degpix);
 	    hputnr8 (header, "CDELT2", 8, degpix);
+	    hdel (header, "CD1_1");
+	    hdel (header, "CD1_2");
+	    hdel (header, "CD2_1");
+	    hdel (header, "CD2_2");
 	    } 
 	}
     if (ptype0 > -1 && ptype0 < nctype) {
@@ -142,6 +145,10 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	    hputnr8 (header, "CDELT1", 8, degpix);
 	    degpix = secpix2 / 3600.0;
 	    hputnr8 (header, "CDELT2", 8, degpix);
+	    hdel (header, "CD1_1");
+	    hdel (header, "CD1_2");
+	    hdel (header, "CD2_1");
+	    hdel (header, "CD2_2");
 	    }
 	else {
 	    *secpix = secpix0;
@@ -149,6 +156,10 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	    degpix = *secpix / 3600.0;
 	    hputnr8 (header, "CDELT1", 8, -degpix);
 	    hputnr8 (header, "CDELT2", 8, degpix);
+	    hdel (header, "CD1_1");
+	    hdel (header, "CD1_2");
+	    hdel (header, "CD2_1");
+	    hdel (header, "CD2_2");
 	    }
 	if (!ksearch (header,"CRVAL1")) {
 	    hgetra (header, "RA", &ra0);
@@ -189,10 +200,8 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     /* Set flag to get appropriate equinox for catalog search */
     if (!*sysout)
 	*sysout = wcs->syswcs;
-    equinox = (int) wcs->equinox;
     if (*eqout == 0.0)
 	*eqout = wcs->equinox;
-    eqref = (int) *eqout;
     eq1 = wcs->equinox;
     if (wcs->coorflip) {
 	ra1 = wcs->crval[1];
@@ -271,6 +280,26 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     strcpy (wcs->radecout, cstr);
     strcpy (wcs->radecin, cstr);
 
+    if (usecdelt) {
+	hputnr8 (header, "CDELT1", 9, wcs->xinc);
+	if (wcs->naxes > 1) {
+	    hputnr8 (header, "CDELT2", 9, wcs->yinc);
+	    hputnr8 (header, "CROTA2", 9, wcs->rot);
+	    }
+	hdel (header, "CD1_1");
+	hdel (header, "CD1_2");
+	hdel (header, "CD2_1");
+	hdel (header, "CD2_2");
+	}
+    else {
+	hputnr8 (header, "CD1_1", 9, wcs->cd[0]);
+	if (wcs->naxes > 1) {
+	    hputnr8 (header, "CD1_2", 9, wcs->cd[1]);
+	    hputnr8 (header, "CD2_1", 9, wcs->cd[2]);
+	    hputnr8 (header, "CD2_2", 9, wcs->cd[3]);
+	    }
+	}
+
     /* Print reference pixel position and value */
     if (verbose) {
 	ra2str (rstr, 32, ra1, 3);
@@ -286,8 +315,6 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	dec2str (dstr, 32, *cdec, 2);
 	wcscstr (cstr, *sysout, *eqout, wcs->epoch);
 	printf ("Search at %s %s %s", rstr, dstr, cstr);
-	ra2str (rstr, 32, *dra, 3);
-	dec2str (dstr, 32, *ddec, 2);
 	printf (" +- %s %s\n", rstr, dstr);
 	printf ("Image width=%d height=%d, %g arcsec/pixel\n",
 				*wp, *hp, *secpix);
@@ -296,6 +323,9 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     return (wcs);
 }
 
+void
+setcdelt()			/* Set flag to use CDELTn, not CD matrix */
+{usecdelt = 1; return;}
 
 void
 setnpix (nx, ny)		/* Set image size */
@@ -449,4 +479,7 @@ char*	ptype;
  * Jun  2 1999	Fix sign of CDELT1 if secpix2 and secpix0 are set
  * Jul  7 1999	Fix conversion of center coordinates to refsys
  * Jul  9 1999	Fix bug which reset command-line-set reference pixel coordinate
+ * Oct 21 1999	Fix declarations after lint
+ * Nov  1 1999	Add option to write CD matrix
+ * Nov  1 1999	If CDELTn set from command line delete previous header CD matrix
  */

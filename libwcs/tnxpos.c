@@ -1,5 +1,5 @@
 /* File wcslib/tnxpos.c
- * September 10, 1998
+ * October 22, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * After IRAF mwcs/wftnx.x and mwcs/wfgsurfit.x
  */
@@ -51,9 +51,6 @@ tnxinit (header, wcs)
 char	*header;		/* FITS header */
 struct WorldCoor *wcs;		/* pointer to WCS structure */
 {
-    int	i;
-    int	ira, idec;
-    double dec;
     struct IRAFsurface *wf_gsopen();
     char *str1, *str2, *lngstr, *latstr;
 
@@ -286,8 +283,6 @@ double	*xpix, *ypix;	/*o physical coordinates (x, y) */
     double s, r, dphi, z, dpi, dhalfpi, twopi, tx;
     double xm, ym, f, fx, fy, g, gx, gy, denom, dx, dy;
     double colatp, coslatp, sinlatp, longp, sphtol;
-    double w[2];	/*i input world (ra, dec) coordinates */
-    double p[2];	/*i output physical coordinates */
     double wf_gseval(), wf_gsder();
 
     /* get the axis numbers */
@@ -529,9 +524,8 @@ char    *astr;		/* the input mwcs attribute string */
 {
     double dval;
     char *estr;
-    int ip, npar, szcoeff;
+    int npar, szcoeff;
     double *coeff;
-    int nscan(), ctod();
     struct IRAFsurface *gs;
     struct IRAFsurface *wf_gsrestore();
 
@@ -956,11 +950,14 @@ double	*fit;			/* array containing the surface parameters
 	switch (sf->xterms) {
 	    case TNX_XNONE:
 		sf->ncoeff = sf->xorder + sf->yorder - 1;
+		break;
 	    case TNX_XHALF:
 		order = MIN (xorder, yorder);
 		sf->ncoeff = sf->xorder * sf->yorder - order * (order-1) / 2;
+		break;
 	    case TNX_XFULL:
 		sf->ncoeff = sf->xorder * sf->yorder;
+		break;
 	    }
 	}
     else {
@@ -1140,11 +1137,14 @@ double	*coeff;
 	switch (sf->xterms) {
 	    case TNX_XNONE:
 		sf->ncoeff = sf->xorder + sf->yorder - 1;
+		break;
 	    case TNX_XHALF:
 		order = MIN (xorder, yorder);
 		sf->ncoeff = sf->xorder * sf->yorder - order * (order-1) / 2;
+		break;
 	    case TNX_XFULL:
 		sf->ncoeff = sf->xorder * sf->yorder;
+		break;
 	    }
 	}
     else {
@@ -1173,4 +1173,6 @@ double	*coeff;
  * Sep  4 1998	Fix missed assignment in tnxpos from Allen Harris, SAO
  * Sep 10 1998	Fix bugs in tnxpix()
  * Sep 10 1998	Fix missed assignment in tnxpix from Allen Harris, SAO
+ *
+ * Oct 22 1999	Drop unused variables, fix case statements after lint
  */

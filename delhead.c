@@ -1,5 +1,5 @@
 /* File delhead.c
- * September 29, 1999
+ * October 21, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
+#include "libwcs/fitsfile.h"
 
 #define MAXKWD 500
 #define MAXFILES 1000
@@ -35,16 +35,12 @@ char **av;
     char **fn;
     int nfile = 0;
     int ifile;
-    char *lastchar;
     char filename[128];
-    char keyword[32];
-    char *name;
     FILE *flist, *fdk;
     char *listfile;
     char *ilistfile;
     char *klistfile;
-    int ikwd, i;
-    char *kw, *kwe;
+    int ikwd;
 
     ilistfile = NULL;
     klistfile = NULL;
@@ -193,13 +189,13 @@ char	*kwd[];		/* Names of those keywords */
     int nbhead;		/* Actual number of bytes in FITS header */
     char *irafheader;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
-    int i, lname, lext, lroot, naxis;
+    int lext, lroot, naxis;
     char *image;
     char newname[128];
     char *ext, *fname, *imext, *imext1;
     char *kw, *kwl;
     char echar;
-    int ikwd, lkwd, lkwv;
+    int ikwd;
     int fdr, fdw, ipos, nbr, nbw;
 
     /* Open IRAF image if .imh extension is present */
@@ -372,4 +368,5 @@ char	*kwd[];		/* Names of those keywords */
  * Jul 14 1999	Reallocate keyword array if too many in file
  * Jul 15 1999	Reallocate keyword and file lists if default limits exceeded
  * Sep 29 1999	Change maximum number of keywords from 100 to 500
+ * Oct 21 1999	Drop unused variables after lint
  */

@@ -6,7 +6,7 @@ image, using specific keywords in the image header which relate pixel
 position within the image to position on the sky.  Auxillary programs
 search star catalogs and manipulate images.
 
-This is version 2.6.7 of the WCSTools package developed by Doug Mink
+This is version 2.6.8 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 
@@ -15,10 +15,10 @@ Mark Calabretta of CSIRO (projection),
 Pat Wallace of Cambridge University (coordinate conversion), and
 Elwood Downey of the University of Iowa (WCS fitting procedure).
 
-Bill Joye and Eric Mandel of SAO and Allan Brighton of ESO helped
-debug the subroutine library.  Norm Grogan, Scott Kenyon, Susan
-Tokarz, and Dan Koranyi of SAO and Andreas Jaunsen helped debug
-the astrometry programs.
+Bill Joye and Eric Mandel of SAO, Allan Brighton of ESO, and Jean-Baptiste
+Marquette of the Institut d'Astrophysique de Paris helped debug the
+subroutine library.  Norm Grogan, Scott Kenyon, Susan Tokarz, and Dan
+Koranyi of SAO and Andreas Jaunsen helped debug the astrometry programs.
 
 Details of updates are in the Versions file.
 

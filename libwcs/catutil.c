@@ -1,5 +1,5 @@
 /* File libwcs/catutil.c
- * October 5, 1999
+ * November 3, 1999
  * By Doug Mink
  */
 
@@ -67,11 +67,11 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
-	if (index (refcatname, '1') != NULL) {
+	if (strchr (refcatname, '1') != NULL) {
 	    strcpy (title, "USNO SA-1.0 Catalog Stars");
 	    return (USA1);
 	    }
-	else if (index (refcatname, '2') != NULL) {
+	else if (strchr (refcatname, '2') != NULL) {
 	    strcpy (title, "USNO SA-2.0 Catalog Stars");
 	    return (USA2);
 	    }
@@ -85,11 +85,11 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
-	if (index (refcatname, '1') != NULL) {
+	if (strchr (refcatname, '1') != NULL) {
 	    strcpy (title, "USNO A-1.0 Catalog Stars");
 	    return (UA1);
 	    }
-	else if (index (refcatname, '2') != NULL) {
+	else if (strchr (refcatname, '2') != NULL) {
 	    strcpy (title, "USNO A-2.0 Catalog Stars");
 	    return (UA2);
 	    }
@@ -202,12 +202,12 @@ double	*epcat;		/* Epoch of catalog (returned) */
     else {
 	strcpy (title, refcatname);
 	strcat (title, " Catalog Sources");
-	if ((starcat = catopen (refcatname)) == NULL)
+	if ((starcat = ctgopen (refcatname, TXTCAT)) == NULL)
 	    return (0);
 	*syscat = starcat->coorsys;
 	*eqcat = starcat->equinox;
 	*epcat = starcat->epoch;
-	catclose (starcat);
+	ctgclose (starcat, TXTCAT);
 	return (TXTCAT);
 	}
 }
@@ -453,7 +453,7 @@ int	ndef;		/* Maximum allowable range value */
 
 {
     struct Range *range;
-    int ip, nvalues, irange;
+    int ip, irange;
     char *slast;
     double first, last, step;
 
@@ -497,15 +497,11 @@ int	ndef;		/* Maximum allowable range value */
 	    else
 		return (range);
 	    }
-	else if (string[ip] == '-' || string[ip] == ':')
-	    ;
-	else if (string[ip] == 'x')
-	    ;
 	else if (string[ip] > (char)47 && string[ip] < 58) {
 	    first = strtod (string+ip, &slast);
 	    ip = slast - string;
 	    }
-	else {
+	else if (strchr ("-:x", string[ip]) == NULL) {
 	    free (range);
 	    return (NULL);
 	    }
@@ -686,11 +682,9 @@ char	*string;	/* character string to tokenize */
 char	*cwhite;	/* additional whitespace characters
 			 * if = tab, disallow spaces and commas */
 {
-    int ntok;		/* number of tokens found (returned) */
     char squote,dquote,jch, newline;
-    char token[32];
     char *iq, *stri, *wtype, *str0, *inew;
-    int i0,i,j,naddw;
+    int i,j,naddw;
 
     newline = (char) 10;
     squote = (char) 39;
@@ -830,7 +824,7 @@ char	*cwhite;	/* additional whitespace characters
 	if (tokens->ntok > MAXTOKENS)
 	    return (MAXTOKENS);
 	tokens->tok1[tokens->ntok] = str0;
-	tokens->ltok[tokens->ntok] = stri - str0;
+	tokens->ltok[tokens->ntok] = stri - str0 + 1;
 	}
 
     tokens->itok = 0;
@@ -921,4 +915,7 @@ char *token;		/* token (returned) */
  * Aug 16 1999	Add RefLim() to set catalog search limits
  * Sep 21 1999	In isrange(), check for x
  * Oct  5 1999	Add setoken(), nextoken(), and getoken()
+ * Oct 20 1999	Use strchr() in range decoding
+ * Oct 21 1999	Fix arguments to catopen() and catclose() after lint
+ * Nov  3 1999	Fix bug which lost last character on a line in getoken
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** September 16, 1999
+ *** October 21, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include "fitshead.h"
 #include "wcs.h"
+#include "wcscat.h"
 
 static char cdu[64]="/data/ujcat/catalog"; /* pathname of UJ 1.0 CDROM */
 
@@ -73,7 +74,6 @@ int	verbose;	/* 1 for diagnostics */
     UJCstar star;	/* UJ catalog entry for one star */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
     char cstr[32];
     double num;		/* UJ number */
     int xplate;		/* If nonzero, use objects only from this plate */
@@ -319,8 +319,6 @@ int	nlog;		/* Logging interval */
     UJCstar star;	/* UJ catalog entry for one star */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
-    int xplate;		/* If nonzero, use objects only from this plate */
 
     int znum;
     int jnum;
@@ -330,8 +328,6 @@ int	nlog;		/* Logging interval */
     double mag;
     int istar, plate;
     char *str;
-
-    xplate = getuplate ();
 
     /* Set path to USNO J Catalog */
     if ((str = getenv("UJ_PATH")) != NULL )
@@ -736,4 +732,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Sep 10 1999	Set plate selection with subroutine, not argument
  * Sep 16 1999	Fix bug which didn't always return closest stars
  * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
+ * Oct 20 1999	Include wcscat.h
+ * Oct 21 1999	Delete unused variables after lint
  */

@@ -1,16 +1,12 @@
-/* File saoimage/wcslib/platepos.c
- * October 21, 1999
+/* File platepos.c
+ * May 5, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	platepos.c (Plate solution WCS conversion
  * Purpose:	Compute WCS from plate fit
  * Subroutine:	platepos() converts from pixel location to RA,Dec 
  * Subroutine:	platepix() converts from RA,Dec to pixel location   
-
-    These functions are based on the astrmcal.c portion of GETIMAGE by
-    J. Doggett and the documentation distributed with the Digital Sky Survey.
-
-*/
+ */
 
 #include <math.h>
 #include <string.h>
@@ -41,45 +37,12 @@ double	*ypos;		/* Declination or latitude in degrees */
     int ncoeff1 = wcs->ncoeff1;
     int ncoeff2 = wcs->ncoeff2;
 
-    /*  Ignore magnitude and color terms 
-    double mag = 0.0;
-    double color = 0.0; */
-
-    /* Convert from pixels to millimeters */
+    /* Convert from image pixels to pixels from reference pixel */
     x = xpix - wcs->crpix[0];
     y = ypix - wcs->crpix[1];
-    x2 = x * x;
-    y2 = y * y;
-    x3 = x * x2;
-    y3 = y * y2;
-    r2 = x2 + y2;
 
-    /*  Compute xi,eta coordinates in degrees from x,y and plate model */
-    xi =  wcs->x_coeff[ 0]		+ wcs->x_coeff[ 1]*x +
-	  wcs->x_coeff[ 2]*y	+ wcs->x_coeff[ 3]*x2 +
-	  wcs->x_coeff[ 4]*y2	+ wcs->x_coeff[ 5]*x*y;
-
-    if (ncoeff1 > 6)
-	  xi = xi + wcs->x_coeff[ 6]*x3	+ wcs->x_coeff[ 7]*y3;
-
-    if (ncoeff1 > 8) {
-	xi = xi + wcs->x_coeff[ 8]*x2*y	+ wcs->x_coeff[ 9]*x*y2 +
-		  wcs->x_coeff[10]*(r2)	+ wcs->x_coeff[11]*x*r2 +
-		  wcs->x_coeff[12]*y*r2;
-	}
-
-    eta = wcs->y_coeff[ 0]		+ wcs->y_coeff[ 1]*x +
-	  wcs->y_coeff[ 2]*y	+ wcs->y_coeff[ 3]*x2 +
-	  wcs->y_coeff[ 4]*y2	+ wcs->y_coeff[ 5]*x*y;
-
-    if (ncoeff2 > 6)
-	eta = eta + wcs->y_coeff[ 6]*x3	+ wcs->y_coeff[ 7]*y3;
-
-    if (ncoeff2 > 8) {
-	eta = eta + wcs->y_coeff[ 8]*x2*y + wcs->y_coeff[ 9]*y2*x +
-		    wcs->y_coeff[10]*r2   + wcs->y_coeff[11]*x*r2 +
-		    wcs->y_coeff[12]*y*r2;
-	}
+    /* Convert from pixels to angle from reference */
+    polyrev (x, y, wcs, xi, eta);
 
     /* Convert to radians */
     xir = degrad (xi);
@@ -118,7 +81,7 @@ double	*xpix;		/* x pixel number  (RA or long without rotation) */
 double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 
 {
-    double xi,eta,x,y,xy,x2,y2,x2y,y2x,x3,y3,r2,dx,dy;
+    double div,xi,eta,x,y,xy,x2,y2,x2y,y2x,x3,y3,r2,dx,dy;
     double tdec,ctan,ccos,traoff, craoff, etar, xir;
     double f,fx,fy,g,gx,gy;
     double ra0, dec0, ra, dec;
@@ -127,8 +90,9 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
     int    i;
     int	ncoeff1 = wcs->ncoeff1;
     int	ncoeff2 = wcs->ncoeff2;
+    double xr, yr; 	/* position in radians */
 
-    /* Convert RA and Dec in radians to standard coordinates on a plate */
+    /* Convert RA and Dec in radians to reference system of image */
     ra = degrad (xpos);
     dec = degrad (ypos);
     tdec = tan (dec);
@@ -143,114 +107,9 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
     xi = raddeg (xir);
     eta = raddeg (etar);
 
-    /* Set initial value for x,y */
-    if (wcs->x_coeff[1] == 0.0)
-	x = xi - wcs->x_coeff[0];
-    else
-	x = (xi - wcs->x_coeff[0]) / wcs->x_coeff[1];
-    if (wcs->y_coeff[2] == 0.0)
-	y = eta - wcs->y_coeff[0];
-    else
-	y = (eta - wcs->y_coeff[0]) / wcs->y_coeff[2];
+    polyfwd (xi, eta, wcs, &x, &y);
 
-    /* Iterate by Newton's method */
-    for (i = 0; i < max_iterations; i++) {
-
-	/* X plate model */
-	xy = x * y;
-	x2 = x * x;
-	y2 = y * y;
-	x3 = x2 * x;
-	y3 = y2 * y;
-	x2y = x2 * y;
-	y2x = y2 * x;
-	r2 = x2 + y2;
-
-	f = wcs->x_coeff[0]	+ wcs->x_coeff[1]*x +
-	    wcs->x_coeff[2]*y	+ wcs->x_coeff[3]*x2 +
-	    wcs->x_coeff[4]*y2	+ wcs->x_coeff[5]*xy;
-
-	/*  Derivative of X model wrt x */
-	fx = wcs->x_coeff[1]	+ wcs->x_coeff[3]*2.0*x +
-	     wcs->x_coeff[5]*y;
-
-	/* Derivative of X model wrt y */
-	fy = wcs->x_coeff[2]	+ wcs->x_coeff[4]*2.0*y +
-	     wcs->x_coeff[5]*x;
-
-	if (ncoeff1 > 6) {
-	    f = f + wcs->x_coeff[6]*x3	+ wcs->x_coeff[7]*y3;
-	    fx = fx + wcs->x_coeff[6]*3.0*x2;
-	    fy = fy + wcs->x_coeff[7]*3.0*y2;
-	    }
-
-	if (ncoeff1 > 8) {
-	    f = f +
-		wcs->x_coeff[8]*x2y	+ wcs->x_coeff[9]*y2x +
-		wcs->x_coeff[10]*r2 + wcs->x_coeff[11]*x*r2 +
-		wcs->x_coeff[12]*y*r2;
-
-	    fx = fx +	wcs->x_coeff[8]*2.0*xy + 
-			wcs->x_coeff[9]*y2 +
-	 		wcs->x_coeff[10]*2.0*x +
-			wcs->x_coeff[11]*(3.0*x2+y2) +
-			wcs->x_coeff[12]*2.0*xy;
-
-	    fy = fy +	wcs->x_coeff[8]*x2 +
-			wcs->x_coeff[9]*2.0*xy +
-			wcs->x_coeff[10]*2.0*y +
-			wcs->x_coeff[11]*2.0*xy +
-			wcs->x_coeff[12]*(3.0*y2+x2);
-	    }
-
-	/* Y plate model */
-	g = wcs->y_coeff[0]	+ wcs->y_coeff[1]*x +
-	    wcs->y_coeff[2]*y	+ wcs->y_coeff[3]*x2 +
-	    wcs->y_coeff[4]*y2	+ wcs->y_coeff[5]*xy;
-
-	/* Derivative of Y model wrt x */
-	gx = wcs->y_coeff[1]	+ wcs->y_coeff[3]*2.0*x +
-	     wcs->y_coeff[5]*y;
-
-	/* Derivative of Y model wrt y */
-	gy = wcs->y_coeff[2]	+ wcs->y_coeff[4]*2.0*y +
-	     wcs->y_coeff[5]*x;
-
-	if (ncoeff2 > 6) {
-	    g = g + wcs->y_coeff[6]*x3	+ wcs->y_coeff[7]*y3;
-	    gx = gx + wcs->y_coeff[6]*3.0*x2;
-	    gy = gy + wcs->y_coeff[7]*3.0*y2;
-	    }
-
-	if (ncoeff2 > 8) {
-	    g = g +
-		wcs->y_coeff[8]*x2y	+ wcs->y_coeff[9]*y2x +
-		wcs->y_coeff[10]*r2	+ wcs->y_coeff[11]*x*r2 +
-		wcs->y_coeff[12]*y*r2;
-
-	    gx = gx +	wcs->y_coeff[8]*2.0*xy + 
-			wcs->y_coeff[9]*y2 +
-	 		wcs->y_coeff[10]*2.0*x +
-			wcs->y_coeff[11]*(3.0*x2+y2) +
-			wcs->y_coeff[12]*2.0*xy;
-
-	    gy = gy +	wcs->y_coeff[8]*x2 +
-			wcs->y_coeff[9]*2.0*xy +
-			wcs->y_coeff[10]*2.0*y +
-			wcs->y_coeff[11]*2.0*xy +
-			wcs->y_coeff[12]*(3.0*y2+x2);
-	    }
-
-	f = f - xi;
-	g = g - eta;
-	dx = ((-f * gy) + (g * fy)) / ((fx * gy) - (fy * gx));
-	dy = ((-g * fx) + (f * gx)) / ((fx * gy) - (fy * gx));
-	x = x + dx;
-	y = y + dy;
-	if ((fabs(dx) < tolerance) && (fabs(dy) < tolerance)) break;
-	}
-
-    /* Convert from plate pixels to image pixels */
+    /* Convert from image pixels from relative pixels */
     *xpix = x + wcs->crpix[0];
     *ypix = y + wcs->crpix[1];
 
@@ -355,7 +214,4 @@ struct WorldCoor *wcs;  /* WCS structure */
  * Apr 10 1998	Allow different numbers of coefficients for x and y
  * Apr 16 1998	Drom NCOEFF header parameter
  * Apr 28 1998  Change projection flags to WCS_*
- * Sep 10 1998	Check for xc1 and yc2 divide by zero after Allen Harris, SAO
- *
- * Oct 21 1999	Drop unused variables after lint
  */

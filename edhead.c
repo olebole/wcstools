@@ -13,8 +13,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <math.h>
-#include "fitsfile.h"
-#include "wcs.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
 
 static void usage();
 static void EditHead();
@@ -95,7 +95,7 @@ char	*filename;	/* FITS or IRAF file filename */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
     char *irafheader;		/* IRAF image header */
-    int i, nbytes, nhb, nhblk, lname, lext, lroot;
+    int i, nbytes, nhb, nhblk, lext, lroot;
     int fdw;
     int imageread = 0;
     char *head, *headend, *hlast;
@@ -337,4 +337,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Nov 30 1998	Add version and help commands for consistency
  * Dec  2 1998	Create and delete temporary file for header being edited
  * Dec 30 1998	Write header without image if no image is present
+ *
+ * Oct 21 1999	Drop unused variables after lint
  */

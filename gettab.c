@@ -1,5 +1,5 @@
 /* File gettab.c
- * March 9, 1999
+ * October 22, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "wcs.h"
-#include "wcscat.h"
+#include "libwcs/wcs.h"
+#include "libwcs/wcscat.h"
 
 #define MAXCOL 100
 #define MAXCOND 10
@@ -55,7 +55,7 @@ char **av;
     char *listfile;
     int ikwd, lkwd, i;
     int lfield;
-    char *kw, *kw1, *kwe;
+    char *kw1;
     char string[80];
     int icond,ncond;
     char *vali, *calias;
@@ -447,17 +447,13 @@ double	*xcond;	  /* Values to be tested against */
 
 {
     char *str;
-    int lhead;		/* Maximum number of bytes in FITS header */
-    int nbhead;		/* Actual number of bytes in FITS header */
     int drop;
     int icond;
-    int iraffile;
     char fnform[8];
     char string[80];
     char *filename;
     char outline[1000];
-    char mstring[800];
-    char *kw, *line;
+    char *line;
     char newline = 10;
     int ikwd, nfound;
     int i, iline, keep;
@@ -683,4 +679,5 @@ char *string;
 /* Jan 22 1999	New program
  * Jan 25 1999	Keep header information
  * Mar  9 1999	Add range of lines; rework command line decoding logic
+ * Oct 22 1999	Drop unused variables after lint
  */

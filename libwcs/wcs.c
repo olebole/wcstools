@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** August 20, 1999
+ *** October 25, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -51,6 +51,7 @@
  * Subroutine:	savewcscom (i, wcscom)  Save specified WCS command 
  * Subroutine:	setwcscom (wcs)  Initialize WCS commands 
  * Subroutine:	getwcscom (i)  Return specified WCS command 
+ * Subroutine:	wcsfree (wcs)  Free storage used by WCS structure
  * Subroutine:	freewcscom (wcs)  Free storage used by WCS commands 
 
  * Copyright:   1999 Smithsonian Astrophysical Observatory
@@ -83,6 +84,9 @@ void
 wcsfree (wcs)
 struct WorldCoor *wcs;	/* WCS structure */
 {
+    if (nowcs (wcs))
+	return;
+
     freewcscom (wcs);
     if (wcs->lin.imgpix != NULL)
 	free (wcs->lin.imgpix);
@@ -156,7 +160,7 @@ char	*proj;	/* Projection */
     strcat (wcs->ctype[1],proj);
 
     if (wcstype (wcs, wcs->ctype[0], wcs->ctype[1])) {
-	free (wcs);
+	wcsfree (wcs);
 	return (NULL);
 	}
     
@@ -236,7 +240,7 @@ double	epoch;	/* Epoch of coordinates, used for FK4/FK5 conversion
     wcs->lin.crpix = wcs->crpix;
 
     if (wcstype (wcs, ctype1, ctype2)) {
-	free (wcs);
+	wcsfree (wcs);
 	return (NULL);
 	}
     if (wcs->latbase == 90)
@@ -521,7 +525,6 @@ double cdelt1, cdelt2;		/* scale in degrees/pixel, ignored if cd is not NULL */
 double crota;			/* Rotation angle in degrees, ignored if cd is not NULL */
 double *cd;			/* Rotation matrix, used if not NULL */
 {
-    extern int matinv();
 
     if (nowcs (wcs))
 	return (-1);
@@ -1936,7 +1939,7 @@ double	*xpos,*ypos;	/* RA and Dec in degrees (returned) */
     extern int platepos();
     extern int worldpos();
     extern int tnxpos();
-    extern void fk4prec(),fk5prec(), wcscon();
+    extern void wcscon();
 
     if (nowcs (wcs))
 	return;
@@ -2039,7 +2042,7 @@ int	*offscl;	/* 0 if within bounds, else off scale */
     extern int platepix();
     extern int worldpix();
     extern int tnxpix();
-    extern void fk4prec(), fk5prec(), wcscon();
+    extern void wcscon();
 
     if (nowcs (wcs))
 	return;
@@ -2547,4 +2550,7 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Aug 16 1999	Print dd:mm:ss dd:mm:ss if not J2000 or B1950 output
  * Aug 20 1999	Add WCS string argument to wcscom(); don't compute it there
  * Aug 20 1999	Change F3 WCS command default from Tycho to ACT
+ * Oct 15 1999	Free wcs using wcsfree()
+ * Oct 21 1999	Drop declarations of unused functions after lint
+ * Oct 25 1999	Drop out of wcsfree() if wcs is null pointer
  */

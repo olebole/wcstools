@@ -1,13 +1,14 @@
 /*** File libwcs/tabread.c
- *** September 16, 1999
+ *** October 29, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
 /* int tabread()	Read tab table stars in specified region
  * int tabrnum()	Read tab table stars with specified numbers
+ * int tabxyread()	Read x, y, and magnitude from tab table star list
  * int tabrkey()	Read single keyword from specified tab table stars
  * struct StarCat tabcatopen()	Open tab table catalog, return number of entries
- * int tabopen()	Open tab table, returning number of entries
+ * struct TabTable *tabopen()	Open tab table, returning number of entries
  * char *tabline()	Get tab table entry for one line
  * double tabgetra()	Return double right ascension in degrees
  * double tabgetdec()	Return double declination in degrees
@@ -15,8 +16,9 @@
  * int tabgeti4()	Return 4-byte integer from tab table line
  * int tabgetk()	Return character entry from tab table line for column
  * int tabgetc()	Return n'th character entry from tab table line
- * double tabhgetr8()	Return 8-byte floating point from tab table header
- * int tabhgeti4()	Return 4-byte integer from tab table header
+ * int tabhgetr8()	Return 8-byte floating point keyword value from header
+ * int tabhgeti4()	Return 4-byte integer keyword value from header
+ * int tabhgetc()	Return character keyword value from header
  * int tabparse()	Make a table of column headings
  * int tabcol()		Search a table of column headings for a particlar entry
  * int tabsize()	Return length of file in bytes
@@ -32,18 +34,13 @@
 #include "wcs.h"
 #include "wcscat.h"
 
-static int nstars;	/* Number of stars in catalog */
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 
-int tabparse();
-static int tabgeti4();
-static double tabgetra();
-static double tabgetdec();
-static double tabgetr8();
-
-static int iline = 0;	/* Current line of data */
-
-static char *tabdata;
+static int tabparse();
+static int tabhgetr8();
+static int tabhgeti4();
+static int tabhgetc();
+static int tabsize();
 
 static char *kwo = NULL;	/* Keyword returned by tabread(), tabrnum() */
 void settabkey (keyword0)
@@ -90,7 +87,6 @@ int	nlog;
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
     char cstr[32];
-    struct TabTable *startab;
     struct StarCat *starcat;
     struct Star *star;
 
@@ -105,7 +101,6 @@ int	nlog;
     int peak, i;
     int istar, nstars;
     int verbose;
-    char *line;
 
     if (nlog > 0)
 	verbose = 1;
@@ -130,7 +125,7 @@ int	nlog;
 
     /* Logging interval */
     nstar = 0;
-    tdist = (double *) malloc (nstarmax * sizeof (double));
+    tdist = (double *) calloc (nstarmax, sizeof (double));
 
     starcat = tabcatopen (tabcatname);
     if (starcat == NULL || starcat->nstars <= 0) {
@@ -333,7 +328,6 @@ int	nlog;
     char *line;
     int sysref;		/* Catalog coordinate system */
     double eqref;	/* Catalog equinox */
-    double epref;	/* Catalog epoch */
     char cstr[32];
     char *objname;
     int lname;
@@ -357,10 +351,6 @@ int	nlog;
 	eqref = starcat->equinox;
     else
 	eqref = eqout;
-    if (starcat->epoch != 0.0)
-	epref = starcat->epoch;
-    else
-	epref = epout;
     if (starcat->coorsys)
 	sysref = starcat->coorsys;
     else
@@ -393,37 +383,40 @@ int	nlog;
 	/* If star has been found in table, read rest of entry */
 	if (num == tnum[jnum]) {
 	    starcat->istar = startab->iline;
-	    tabstar (istar, starcat, star);
+	    if (tabstar (istar, starcat, star))
+		fprintf (stderr,"TABRNUM: Cannot read star %d\n", istar);
 
-	    /* Set coordinate system for this star */
-	    sysref = star->coorsys;
-	    eqref = star->equinox;
-	    epref = star->epoch;
+	    /* If star entry has been read successfully */
+	    else {
 
-	    /* Extract selected fields  */
-	    ra = star->ra;
-	    dec = star->dec;
-	    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
-	    mag = star->xmag[0];
-	    peak = star->peak;
+		/* Set coordinate system for this star */
+		sysref = star->coorsys;
+		eqref = star->equinox;
 
-	    /* Save star position and magnitude in table */
-	    tra[jnum] = ra;
-	    tdec[jnum] = dec;
-	    tmag[jnum] = mag;
-	    tpeak[jnum] = peak;
-	    if (kwo != NULL) {
-		lname = strlen (star->objname) + 1;
-		objname = (char *)calloc (lname, 1);
-		strcpy (objname, star->objname);
-		tkey[nstar] = objname;
+		/* Extract selected fields  */
+		ra = star->ra;
+		dec = star->dec;
+		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+		mag = star->xmag[0];
+		peak = star->peak;
+
+		/* Save star position and magnitude in table */
+		tra[jnum] = ra;
+		tdec[jnum] = dec;
+		tmag[jnum] = mag;
+		tpeak[jnum] = peak;
+		if (kwo != NULL) {
+		    lname = strlen (star->objname) + 1;
+		    objname = (char *)calloc (lname, 1);
+		    strcpy (objname, star->objname);
+		    tkey[nstar] = objname;
+		    }
+		nstar++;
+		if (nlog == 1)
+		    fprintf (stderr,"TABRNUM: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
+			     num,ra,dec,cstr,mag,peak);
+		/* End of accepted star processing */
 		}
-	    nstar++;
-	    if (nlog == 1)
-		fprintf (stderr,"TABRNUM: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
-			 num,ra,dec,cstr,mag,peak);
-
-	    /* End of accepted star processing */
 	    }
 
 	/* Log operation */
@@ -441,6 +434,125 @@ int	nlog;
 
     tabcatclose (starcat);
     return (nstar);
+}
+
+
+/* TABXYREAD -- Read X, Y, and magnitude of tab table stars */
+
+int
+tabxyread (tabcatname, xa, ya, ba, pa, nlog)
+
+char	*tabcatname;	/* Name of reference star catalog file */
+double	**xa;		/* Array of x coordinates (returned) */
+double	**ya;		/* Array of y coordinates (returned) */
+double	**ba;		/* Array of fluxes (returned) */
+int	**pa;		/* Array of magnitudes*100 (returned) */
+int	nlog;
+{
+    int jstar;
+    int nstar;
+    int lname;
+    double mag;
+    double num;
+    double xi, yi, magi, flux;
+    char *line;
+    int peak, i;
+    int istar, nstars;
+    int verbose;
+    struct TabTable *startab;
+    int entx, enty, entmag;
+
+    if (nlog > 0)
+	verbose = 1;
+    else
+	verbose = 0;
+
+    /* Logging interval */
+    nstar = 0;
+
+    /* Open tab table file */
+    startab = tabopen (tabcatname);
+    if (startab == NULL || startab->nlines <= 0) {
+	fprintf (stderr,"TABXYREAD: Cannot read catalog %s\n", tabcatname);
+	return (0);
+	}
+
+    /* Find columns for X, Y, and magnitude */
+    if (!(entx = tabcol (startab, "X")))
+        entx = tabcol (startab, "x");
+    if (!(enty = tabcol (startab, "Y")))
+        enty = tabcol (startab, "y");
+    if (!(entmag = tabcol (startab, "MAG")))
+        entmag = tabcol (startab, "mag");
+
+    /* Allocate vectors for x, y, magnitude, and flux */
+    nstars = startab->nlines;
+    *xa = (double *) realloc(*xa, nstars*sizeof(double));
+    if (*xa == NULL) {
+	fprintf (stderr,"TABXYREAD: Cannot allocate memory for x\n");
+	return (0);
+	}
+    *ya = (double *) realloc(*ya, nstars*sizeof(double));
+    if (*ya == NULL) {
+	fprintf (stderr,"TABXYREAD: Cannot allocate memory for y\n");
+	return (0);
+	}
+    *ba = (double *) realloc(*ba, nstars*sizeof(double));
+    if (*ba == NULL) {
+	fprintf (stderr,"TABXYREAD: Cannot allocate memory for mag\n");
+	return (0);
+	}
+    *pa = (int *) realloc(*pa, nstars*sizeof(int));
+    if (*pa == NULL) {
+	fprintf (stderr,"TABXYREAD: Cannot allocate memory for flux\n");
+	return (0);
+	}
+
+    jstar = 0;
+
+    /* Loop through catalog */
+    for (istar = 0; istar < nstars; istar++) {
+
+	/* Read line for next star */
+	if ((line = tabline (startab, istar)) == NULL) {
+	    fprintf (stderr,"TABXYREAD: Cannot read star %d\n", istar);
+	    break;
+	    }
+
+	/* Extract x, y, and magnitude */
+	xi = tabgetr8 (startab, line, entx);
+	yi = tabgetr8 (startab, line, enty);
+	magi = tabgetr8 (startab, line, entmag);
+
+	(*xa)[istar] = xi;
+	(*ya)[istar] = yi;
+	flux = 10000.0 * pow (10.0, (-magi / 2.5));
+	(*ba)[istar] = flux;
+	(*pa)[istar] = (int)(magi * 100.0);
+
+	if (nlog == 1)
+	    fprintf (stderr,"DAOREAD: %6d/%6d: %9.5f %9.5f %15.2f %6.2f\n",
+		     istar,nstars,xi,yi,flux,magi);
+
+	/* Log operation */
+	if (nlog > 1 && istar%nlog == 0)
+		fprintf (stderr,"TABXYREAD: %5d / %5d sources catalog %s\r",
+			istar,nstars,tabcatname);
+
+	/* End of star loop */
+	}
+
+    /* Summarize search */
+    if (nlog > 0)
+	fprintf (stderr,"TABXYREAD: Catalog %s : %d / %d found\n",tabcatname,
+		 istar,nstars);
+
+    /* Free table */
+    tabclose (startab);
+    if (istar < nstars-1)
+	return (istar + 1);
+    else
+	return (nstars);
 }
 
 
@@ -592,7 +704,6 @@ char *tabfile;	/* Tab table catalog file name */
     else
 	sc->stnum = 0;
 
-    iline = 1;
     return (sc);
 }
 
@@ -660,9 +771,8 @@ tabopen (tabfile)
 char *tabfile;	/* Tab table catalog file name */
 {
     FILE *fcat;
-    char *headbuff;
-    int nr, lfile, ientry, lfname;
-    char *headlast, *tabnew, *tabline, *lastline;
+    int nr, lfile, lfname;
+    char *tabnew, *tabline, *lastline;
     char headend[4];
     struct TabTable *tabtable;
 
@@ -687,21 +797,21 @@ char *tabfile;	/* Tab table catalog file name */
 	}
 
     /* Allocate tab table structure */
-    if ((tabtable=(struct TabTable *) malloc(sizeof(struct TabTable))) == NULL){
+    if ((tabtable=(struct TabTable *) calloc(1,sizeof(struct TabTable)))==NULL){
 	fprintf (stderr,"TABOPEN: cannot allocate Tab Table structure\n");
 	return (0);
 	}
 
     /* Allocate space in structure for filename and save it */
     lfname = strlen (tabfile) + 1;
-    if ((tabtable->filename = malloc (lfname)) == NULL) {
+    if ((tabtable->filename = (char *)calloc (1, lfname)) == NULL) {
 	fprintf (stderr,"TABOPEN: cannot allocate filename in sructure\n");
 	return (0);
 	}
     strncpy (tabtable->filename, tabfile, lfname);
 
     /* Allocate buffer to hold entire catalog and read it */
-    if ((tabtable->tabbuff = malloc (lfile)) != NULL) {
+    if ((tabtable->tabbuff = (char *) calloc (1, lfile)) != NULL) {
 	nr = fread (tabtable->tabbuff, 1, lfile, fcat);
 	if (fcat != stdin && nr < lfile) {
 	    fprintf (stderr,"TABOPEN: read only %d / %d bytes of file %s\n",
@@ -722,7 +832,6 @@ char *tabfile;	/* Tab table catalog file name */
 	tabtable->tabdata = strchr (tabline, newline) + 1;
 
 	/* Extract positions of keywords we will want to use */
-	ientry = 0;
 	if (!tabparse (tabtable)) {
 	    fprintf (stderr,"TABOPEN: No columns in tab table %s\n",tabfile);
 	    return (0);
@@ -945,7 +1054,7 @@ int	maxchar;	/* Maximum number of characters in returned string */
 
 /* TABHGETR8 -- read an 8-byte floating point number from a tab table header */
 
-int
+static int
 tabhgetr8 (tabtable, keyword, result)
 
 struct TabTable *tabtable;	/* Tab table structure */
@@ -965,7 +1074,7 @@ double	*result;
 
 /* TABHGETI4 -- read a 4-byte integer from a tab table header */
 
-int
+static int
 tabhgeti4 (tabtable, keyword, result)
 
 struct TabTable *tabtable;	/* Tab table structure */
@@ -992,7 +1101,7 @@ struct TabTable *tabtable;	/* Tab table structure */
 char	*keyword;		/* sequence of entry on line */
 char	*result;
 {
-    char *str0, *str1, *line, *head, str[24], keylow[24], keyup[24];
+    char *str0, *str1, *line, *head, keylow[24], keyup[24];
     int ncstr, lkey, i;
 
     head = tabtable->tabbuff;
@@ -1042,7 +1151,7 @@ char	*result;
 
 /* TABPARSE -- Make a table of column headings */
 
-int
+static int
 tabparse (tabtable)
 
 struct TabTable *tabtable;	/* Tab table structure */
@@ -1069,10 +1178,8 @@ struct TabTable *tabtable;	/* Tab table structure */
 	}
 
     /* Tabulate column names */
-    nbytes = tabtable->ncols * sizeof (char *);
-    tabtable->colname = (char **)malloc (nbytes);
-    nbytes = tabtable->ncols * sizeof (int);
-    tabtable->lcol = malloc (nbytes);
+    tabtable->colname = (char **)calloc (tabtable->ncols, sizeof (char *));
+    tabtable->lcol = calloc (tabtable->ncols, sizeof (int));
     colhead = tabtable->tabhead;
     while (colhead) {
 	nextab = strchr (colhead, tab);
@@ -1095,7 +1202,7 @@ struct TabTable *tabtable;	/* Tab table structure */
     hyphlast = strchr (hyphens, newline);
     if (hyphlast == hyphens)
 	return (0);
-    tabtable->lcfld = malloc (nbytes);
+    tabtable->lcfld = (int *) calloc (tabtable->ncols, sizeof(int));
     colhead = hyphens;
     i = 0;
     while (colhead) {
@@ -1137,14 +1244,13 @@ char	*keyword;		/* Column heading to find */
 
 /* TABSIZE -- return size of file in bytes */
 
-int
+static int
 tabsize (filename)
 
 char	*filename;	/* Name of file for which to find size */
 {
     FILE *diskfile;
     long filesize;
-    long position;
 
     /* Open file */
     if ((diskfile = fopen (filename, "r")) == NULL)
@@ -1249,4 +1355,8 @@ char    *filename;      /* Name of file to check */
  * Sep 13 1999	Fix comment for tabstar()
  * Sep 16 1999	Fix bug which didn't always return closest stars
  * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
+ * Oct 21 1999	Clean up code after lint
+ * Oct 25 1999	Fix subroutine declaration inconsistency
+ * Oct 25 1999	Replace malloc() calls with calloc()
+ * Oct 29 1999	Add tabxyread() for image catalogs
  */

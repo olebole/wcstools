@@ -1,5 +1,5 @@
 /*** File libwcs/platefit.c
- *** June 24, 1998
+ *** October 15, 1999
  *** By Doug Mink
  */
 
@@ -10,6 +10,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include "wcs.h"
 #include "lwcs.h"
@@ -240,7 +241,7 @@ int	iter;	/* Number of iterations */
 {
     double chsq;
     double xsp, ysp, dx, dy;
-    int i, j, offscale;
+    int i, j;
     extern int SetPlate();
 
     /* Set plate constants from fit parameter vector */
@@ -275,4 +276,5 @@ int	iter;	/* Number of iterations */
  * Apr 10 1998	Add second number of coefficients
  * May 14 1998	include stdio.h for stderr
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
+ * Oct 15 1999	Include stdlib.h for malloc() declaration
  */

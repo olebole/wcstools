@@ -1,5 +1,5 @@
 /* File imstar.c
- * September 20, 1999
+ * October 26, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,9 +11,9 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
-#include "wcs.h"
-#include "wcscat.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
+#include "libwcs/wcscat.h"
 
 static int verbose = 0;		/* verbose flag */
 static int debug = 0;		/* debugging flag */
@@ -32,6 +32,12 @@ extern void setmaxrad();
 extern void setborder();
 extern void setimcat();
 extern void setparm();
+extern void setrot();
+extern void setcenter();
+extern void setsys();
+extern void setsecpix();
+extern void setsecpix2();
+extern void setrefpix();
 extern struct WorldCoor *GetFITSWCS();
 
 static double magoff = 0.0;
@@ -40,8 +46,6 @@ static int printhead = 0;
 static int tabout = 0;
 static int tabfile = 1;
 static int nstar = 0;
-static double cra0 = 0.0;
-static double cdec0 = 0.0;
 static double eqout = 0.0;
 static int sysout = -1;
 static int daofile = 0;
@@ -87,6 +91,25 @@ char **av;
 	    }
 	else if (strchr (str, '='))
 	    setparm (str);
+
+        /* Set RA, Dec, and equinox if WCS-generated argument */
+	if (strsrch (*av,":") != NULL) {
+	    if (ac < 3)
+		usage();
+	    else {
+		strcpy (rastr, *av);
+		ac--;
+		strcpy (decstr, *++av);
+		ac--;
+		setcenter (rastr, decstr);
+		setsys (*++av);
+		if (sysout < 0) {
+		    sysout = wcscsys (*av);
+		    eqout = wcsceq (*av);
+		    }
+		}
+	    }
+
 	else if (*str == '-') {
 	    char c;
 	    while (c = *++str) {
@@ -191,6 +214,10 @@ char **av;
     			usage();
     		    setsecpix (atof (*++av));
     		    ac--;
+		    if (ac > 1 && isnum (*(av+1))) {
+			setsecpix2 (atof (*++av));
+			ac--;
+			}
     		    break;
 	
 		case 'q':	/* Output region file shape for SAOimage */
@@ -305,7 +332,7 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Find stars in FITS and IRAF image files\n");
-    fprintf(stderr,"usage: imstar [-vbsjt] [-m mag_off] [-n num] [-c ra dec]file.fits ...\n");
+    fprintf(stderr,"usage: imstar [-vbsjt] [-m mag_off] [-n num] [-c ra dec][ra dec sys]file.fits ...\n");
     fprintf(stderr,"  -a: initial rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: Output B1950 (FK4) coordinates \n");
     fprintf(stderr,"  -c: Use following RA and Dec as center \n");
@@ -356,7 +383,6 @@ char	*filename;	/* FITS or IRAF file filename */
     int ns;			/* n image stars */
     double *smag;		/* image star magnitudes */
     int *sp;			/* peak flux in counts */
-    double ra, dec;
     double cra,cdec,dra,ddec,secpix;
     int wp, hp;
     char rastr[32], decstr[32];
@@ -391,7 +417,6 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	else {
 	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
-	    free (header);
 	    return;
 	    }
 	}
@@ -454,6 +479,10 @@ char	*filename;	/* FITS or IRAF file filename */
     ns = FindStars (header, image, &sx, &sy, &sb, &sp, debug);
     if (ns < 1) {
 	fprintf (stderr,"ListStars: no stars found in image %s\n", filename);
+	wcsfree (wcs);
+	free (header);
+	if (imsearch)
+	    free (image);
 	return;
 	}
 
@@ -538,13 +567,24 @@ char	*filename;	/* FITS or IRAF file filename */
     fd = fopen (outfile, "w");
     if (fd == NULL) {
 	fprintf (stderr, "IMSTAR:  cannot write file %s\n", outfile);
+	if (sx) free ((char *)sx);
+	if (sy) free ((char *)sy);
+	if (sb) free ((char *)sb);
+	if (sp) free ((char *)sp);
+	if (sra) free ((char *)sra);
+	if (sdec) free ((char *)sdec);
+	if (smag) free ((char *)smag);
+	wcsfree (wcs);
+	free (header);
+	if (imsearch)
+	    free (image);
         return;
         }
 
     /* Write file of positions for SAOimage regions */
     if (region_char) {
 	int radius, ix, iy;
-	char snum[32], rstr[16];
+	char rstr[16];
 	fprintf (fd, "# stars in %s\n", filename);
 	switch (region_char) {
 	    case WCS_SQUARE:
@@ -570,6 +610,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    fprintf (fd, "%s(%d,%d,%d) # %s %d\n",
 		     rstr, ix, iy, radius, filename, i);
 	    }
+	printf ("%s\n", outfile);
 	}
     else {
 
@@ -653,10 +694,11 @@ char	*filename;	/* FITS or IRAF file filename */
     if (sx) free ((char *)sx);
     if (sy) free ((char *)sy);
     if (sb) free ((char *)sb);
+    if (sp) free ((char *)sp);
     if (sra) free ((char *)sra);
     if (sdec) free ((char *)sdec);
     if (smag) free ((char *)smag);
-    free ((char *)wcs);
+    wcsfree (wcs);
     free (header);
     if (imsearch)
 	free (image);
@@ -722,4 +764,8 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jul  7 1999	Do not add 0 to file name if no rotation
  * Jul  7 1999	If -n argument more than found stars, list only number found
  * Sep 20 1999	Drop second call to pix2wcs
+ * Oct 15 1999	Free wcs using wcsfree(); free sp
+ * Oct 22 1999	Drop unused variables after lint
+ * Oct 22 1999	Add optional second plate scale arg
+ * Oct 26 1999	Read reference pixel coordinate from command line without -c
  */

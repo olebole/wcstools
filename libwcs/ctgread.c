@@ -1,13 +1,13 @@
-/*** File libwcs/catread.c
+/*** File libwcs/ctgread.c
  *** October 22, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
-/* int catread()	Read ASCII catalog stars in specified region
- * int catrnum()	Read ASCII catalog stars with specified numbers
- * int catopen()	Open ASCII catalog, returning number of entries
- * int catstar()	Get ASCII catalog entry for one star
- * int catsize()	Return length of file in bytes
+/* int ctgread()	Read ASCII catalog stars in specified region
+ * int ctgrnum()	Read ASCII catalog stars with specified numbers
+ * int ctgopen()	Open ASCII catalog, returning number of entries
+ * int ctgstar()	Get ASCII catalog entry for one star
+ * int ctgsize()	Return length of file in bytes
  */
 
 #include <unistd.h>
@@ -23,9 +23,9 @@
    working directory, but overridden by WCS_CATDIR environment variable */
 char catdir[64]="/data/catalogs";
 
-static double cat2ra();
-static double cat2dec();
-static int catsize();
+static double ctg2ra();
+static double ctg2dec();
+static int ctgsize();
 double dt2ep();		/* Julian Date to epoch (fractional year) */
 
 static char cat = 9;
@@ -33,15 +33,15 @@ static char *cathead;
 static char newline = 10;
 
 
-/* CATREAD -- Read ASCII stars in specified region */
+/* CTGREAD -- Read ASCII stars in specified region */
 
 int
-catread (catfile, refcat, distsort, cra, cdec, dra, ddec, drad,
+ctgread (catfile, refcat, distsort, cra, cdec, dra, ddec, drad,
 	 sysout, eqout, epout, mag1, mag2, nsmax,
 	 tnum, tra, tdec, tmag, tmagb, tc, tobj, nlog)
 
 char	*catfile;	/* Name of reference star catalog file */
-int	refcat;		/* Catalog code from wcscat.h */
+int	refcat;		/* Catalog code from wcctg.h */
 int	distsort;	/* 1 to sort stars by distance from center */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
@@ -178,7 +178,7 @@ int	nlog;
     tdist = (double *) malloc (nsmax * sizeof (double));
 
     /* Open catalog file */
-    starcat = catopen (catfile, refcat);
+    starcat = ctgopen (catfile, refcat);
     if (starcat == NULL)
 	return (0);
     if (starcat->nstars <= 0) {
@@ -192,7 +192,7 @@ int	nlog;
 
     /* Loop through catalog */
     for (istar = 1; istar <= starcat->nstars; istar++) {
-	if (catstar (istar, starcat, star)) {
+	if (ctgstar (istar, starcat, star)) {
 	    fprintf (stderr,"CATREAD: Cannot read star %d\n", istar);
 	    break;
 	    }
@@ -332,21 +332,21 @@ int	nlog;
 		     nstar,nsmax);
 	}
 
-    catclose (starcat, TXTCAT);
+    ctgclose (starcat, TXTCAT);
     free ((char *)tdist);
     free (star);
     return (nstar);
 }
 
 
-/* CATRNUM -- Read ASCII stars with specified numbers */
+/* CTGRNUM -- Read ASCII stars with specified numbers */
 
 int
-catrnum (catfile,refcat,
+ctgrnum (catfile,refcat,
 	 nnum,sysout,eqout,epout,match,tnum,tra,tdec,tmag,tmagb,tc,tobj,nlog)
 
 char	*catfile;	/* Name of reference star catalog file */
-int	refcat;		/* Catalog code from wcscat.h */
+int	refcat;		/* Catalog code from wcctg.h */
 int	nnum;		/* Number of stars to look for */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
@@ -423,7 +423,7 @@ int	nlog;
 	return (nstar);
 	}
 
-    if ((starcat = catopen (catfile, refcat)) == NULL) {
+    if ((starcat = ctgopen (catfile, refcat)) == NULL) {
 	fprintf (stderr,"CATRNUM: Cannot read catalog %s\n", catfile);
 	return (0);
 	}
@@ -448,7 +448,7 @@ int	nlog;
 	starfound = 0;
 	if (match && starcat->stnum > 0 && starcat->stnum < 5) {
 	    for (istar = 1; istar <= starcat->nstars; istar++) {
-		if (catstar (istar, starcat, star)) {
+		if (ctgstar (istar, starcat, star)) {
 		    fprintf (stderr,"CATRNUM: Cannot read star %d\n", istar);
 		    break;
 		    }
@@ -460,7 +460,7 @@ int	nlog;
 	    }
 	else {
 	    istar = (int) (tnum[jnum] + 0.5);
-	    if (catstar (istar, starcat, star)) {
+	    if (ctgstar (istar, starcat, star)) {
 		fprintf (stderr,"CATRNUM: Cannot read star %d\n", istar);
 		continue;
 		}
@@ -522,18 +522,18 @@ int	nlog;
 	fprintf (stderr,"CATRNUM: Catalog %s : %d / %d found\n",
 		 catfile,nstar,starcat->nstars);
 
-    catclose(starcat, TXTCAT);
+    ctgclose(starcat, TXTCAT);
     free (star);
     return (nstar);
 }
 
-/* CATOPEN -- Open ASCII catalog, returning number of entries */
+/* CTGOPEN -- Open ASCII catalog, returning number of entries */
 
 struct StarCat *
-catopen (catfile, refcat)
+ctgopen (catfile, refcat)
 
 char	*catfile;	/* ASCII catalog file name */
-int	refcat;		/* Catalog code from wcscat.h (TXTCAT,BINCAT,TABCAT) */
+int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 {
     struct StarCat *sc;
     struct Tokens tokens;
@@ -559,7 +559,7 @@ int	refcat;		/* Catalog code from wcscat.h (TXTCAT,BINCAT,TABCAT) */
 	}
 
 /* Find length of ASCII catalog */
-    lfile = catsize (catfile);
+    lfile = ctgsize (catfile);
 
     /* Check for existence of catalog */
     if (lfile < 2) {
@@ -570,7 +570,7 @@ int	refcat;		/* Catalog code from wcscat.h (TXTCAT,BINCAT,TABCAT) */
 	strcpy (catpath, catdir);
 	strcat (catpath, "/");
 	strcat (catpath, catfile);
-	lfile = catsize (catpath);
+	lfile = ctgsize (catpath);
 	if (lfile < 2) {
 	    fprintf (stderr,"CATOPEN: ASCII catalog %s has no entries\n",catfile);
 	    return (NULL);
@@ -745,13 +745,13 @@ int	refcat;		/* Catalog code from wcscat.h (TXTCAT,BINCAT,TABCAT) */
 }
 
 
-/* CATCLOSE -- Close ASCII catalog and free associated data structures */
+/* CTGCLOSE -- Close ASCII catalog and free associated data structures */
 
 void
-catclose (sc, refcat)
+ctgclose (sc, refcat)
 
 struct	StarCat *sc;
-int	refcat;		/* Catalog code from wcscat.h (TXTCAT,BINCAT,TABCAT) */
+int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 {
     if (refcat == BINCAT)
 	binclose (sc);
@@ -766,10 +766,10 @@ int	refcat;		/* Catalog code from wcscat.h (TXTCAT,BINCAT,TABCAT) */
 
 
 
-/* CATSTAR -- Get ASCII catalog entry for one star; return 0 if successful */
+/* CTGSTAR -- Get ASCII catalog entry for one star; return 0 if successful */
 
 int
-catstar (istar, sc, st)
+ctgstar (istar, sc, st)
 
 int istar;	/* Star sequence number in ASCII catalog */
 struct StarCat *sc; /* Star catalog data structure */
@@ -884,7 +884,7 @@ struct Star *st; /* Star data structure, updated on return */
 
     /* Translate single-token RA (hh:mm:ss.ss or hh.mmssss) */
     else
-	st->ra = cat2ra (token);
+	st->ra = ctg2ra (token);
 
     /* Declination or latitude */
     ltok = nextoken (&tokens, token);
@@ -910,7 +910,7 @@ struct Star *st; /* Star data structure, updated on return */
 
     /* Translate single-token Dec (dd:mm:ss.ss or dd.mmssss) */
     else
-	st->dec = cat2dec (token);
+	st->dec = ctg2dec (token);
 
     /* Equinox, if not set by header flag */
     if (sc->coorsys == 0) {
@@ -974,10 +974,10 @@ struct Star *st; /* Star data structure, updated on return */
 }
 
 
-/* CATSIZE -- return size of ASCII catalog file in bytes */
+/* CTGSIZE -- return size of ASCII catalog file in bytes */
 
 static int
-catsize (filename)
+ctgsize (filename)
 
 char	*filename;	/* Name of file for which to find size */
 {
@@ -1003,17 +1003,17 @@ char	*filename;	/* Name of file for which to find size */
 }
 
 
-/* Read the right ascension, ra, in sexagesimal hours from in[] */
+/* CTG2RA -- Read the right ascension, ra, in sexagesimal hours from in[] */
 
 static double
-cat2ra (in)
+ctg2ra (in)
 
 char	*in;	/* Character string */
 
 {
     double ra;	/* Right ascension in degrees (returned) */
 
-    ra = cat2dec (in);
+    ra = ctg2dec (in);
     ra = ra * 15.0;
 
     return (ra);
@@ -1021,10 +1021,10 @@ char	*in;	/* Character string */
 
 
 
-/* Read the declination, dec, in sexagesimal degrees from in[] */
+/* CTG2DEC -- Read the declination, dec, in sexagesimal degrees from in[] */
 
 static double
-cat2dec (in)
+ctg2dec (in)
 
 char	*in;	/* Character string */
 
@@ -1118,4 +1118,5 @@ char	*in;	/* Character string */
  * Oct  5 1999	Move token subroutines to catutil.c
  * Oct 15 1999	Fix calls to catclose(); eliminate dno in catstar()
  * Oct 22 1999	Fix declarations after lint
+ * Oct 22 1999	Rename subroutines from cat* to ctg* to avoid system conflict
  */

@@ -1,8 +1,26 @@
-Version 2.6.7 (October 14, 1999)
+Version 2.6.8 (November 5, 1999)
+immatch, imstar, and imwcs now read Starbase files as well as DAOPHOT-format
+files for star x-y input (-d).
+sumpix: Add options to compute means, variances, and standard deviations
+newfits: bugs fixed
+getcol is a new task for gettting information from ASCII space-delimited tables.
+lint was run on all source code, and it was cleaned up
+iraf2fits:  Add keyword DATE-MOD with binary time translated to FITS date
+imhfile.c: A major memory leak fixed after Jean-Baptiste Marquette ran
+Insure++ on the code
+catfile.c change to ctgfile.c and cat*() subroutines renamed to ctg*() to
+avoid conflicts with standard C catopen() and catclose() calls.
+catutil.c: Fix bug in getoken() which lost last character on line
+tabread.c, fitsfile.c: memory allocation cleaned up
+findstar.c: Use of pointers cleaned up; read tab tables as well as DAOPHOT format
+dateutil.c: Fix bug to return epoch if fractional year given (-y arguments)
+
+Version 2.6.7 (October 21, 1999)
 fitsfile.c: Set header length lhead0 in hget.c when allocated or reallocated
 imhfile.c: Set header length lhead0 in hget.c when allocated
 hput.c: Check length of header and return error if trying to write beyond end.
 setpix.c, sethead.c: Reallocate header and try again if hput returns error
+setpix.c: Fix subroutine arguments after lint
 
 Version 2.6.6 (September 28, 1999)
 scat: Fix access to GSC by number

@@ -1,5 +1,5 @@
 /* File wcshead.c
- * June 3, 1999
+ * October 22, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,14 +11,12 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
-#include "wcs.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
 
 static void usage();
 static void ListWCS();
 
-static int nskip = 0;		/* Number of bytes to skip */
-static int nfiles = 0;		/* Nuber of files for headers */
 static int verbose = 0;		/* verbose/debugging flag */
 static int tabout = 0;		/* tab table output flag */
 static int ndec = 3;		/* maximum number of decimal places for output*/
@@ -112,7 +110,6 @@ char **av;
 
     if (verbose)
 
-    nfiles = ac;
     nf = 0;
     while (ac-- > 0) {
 	char *fn = *av++;
@@ -173,7 +170,7 @@ char	*filename;	/* FITS or IRAF image file name */
 	printf ("%s", str);
 	}
 
-    sprintf (fform,"%%%d.%ds",nchar);
+    sprintf (fform,"%%%d.%ds",nchar, nchar);
     if (tabout)
 	sprintf (str, fform, filename);
     else
@@ -243,7 +240,7 @@ char	*filename;	/* FITS or IRAF image file name */
 
     printf ("%s", str);
 
-    free (wcs);
+    wcsfree (wcs);
 
     return;
 }
@@ -256,4 +253,6 @@ char	*filename;	/* FITS or IRAF image file name */
  *
  * Apr  7 1999	Print lines all at once instead of one variable at a time
  * Jun  3 1999	Change PrintWCS to ListWCS to avoid name conflict
+ * Oct 15 1999	Free wcs using wcsfree()
+ * Oct 22 1999	Drop unused variables after lint
  */

@@ -1,5 +1,5 @@
 /* File sumpix.c
- * July 6, 1999
+ * October 29, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,15 +11,18 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
-#include "wcscat.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcscat.h"
 
 static void usage();
-static int PrintFITSHead ();
 static void SumPix ();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;	/* If 1, print only program name and version */
+static int compsum = 0;	/* If 1, compute sum over range */
+static int compmean = 0;/* If 1, compute mean over range */
+static int comprms = 0;	/* If 1, compute r.m.s. over range */
+static int compstd = 0;	/* If 1, compute standard deviation over range */
 
 main (ac, av)
 int ac;
@@ -51,6 +54,18 @@ char **av;
 	    while (c = *++str)
 	    switch (c) {
 
+		case 'd':	/* Compute standard deviation */
+		    compstd++;
+		    break;
+		case 'm':	/* Compute mean */
+		    compmean++;
+		    break;
+		case 'r':	/* Compute r.m.s. */
+		    comprms++;
+		    break;
+		case 's':	/* Compute sum */
+		    compsum++;
+		    break;
 		case 'v':	/* more verbosity */
 		    verbose++;
 		    break;
@@ -72,6 +87,8 @@ char **av;
 	else
 	    fn = *av;
 
+	if (!compmean && !comprms && !compstd)
+	    compsum++;
 	if (fn && crange && rrange)
             SumPix (fn, crange, rrange);
         }
@@ -86,6 +103,10 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Sum row, column, or region of a FITS or IRAF image\n");
     fprintf(stderr,"Usage: sumpix [-v] x_range  y_range file.fit ...\n");
+    fprintf(stderr,"  -d: compute and print standard deviation\n");
+    fprintf(stderr,"  -m: compute and print mean\n");
+    fprintf(stderr,"  -r: compute and print variance (r.m.s.)\n");
+    fprintf(stderr,"  -s: compute and print sum (default)\n");
     fprintf(stderr,"  -v: verbose\n");
     fprintf(stderr,"  a range of 0 implies the full dimension\n");
     exit (1);
@@ -109,8 +130,10 @@ char *rrange;	/* Row range string */
     double bscale;	/* Scale factor for pixel scaling */
     int iraffile;
     double dpix, sum;
-    int bitpix,xdim,ydim, ipix, i;
+    int bitpix,xdim,ydim;
     int nx, ny, ix, iy, x, y;
+    int np;
+    double dnp, mean, rms, std, sumsq;
     char pixname[128];
     struct Range *xrange;    /* X range structure */
     struct Range *yrange;    /* Y range structure */
@@ -186,11 +209,28 @@ char *rrange;	/* Row range string */
 	for (ix = 0; ix < nx; ix++) {
 	    x = rgeti4 (xrange) - 1;
 	    sum = 0.0;
+	    sumsq = 0.0;
+	    np = 0;
 	    for (y = 0; y < ny; y++) {
         	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
 		sum = sum + dpix;
+		sumsq = sumsq + (dpix * dpix);
+		np++;
 		}
-	    printf ("%f\n", sum);
+	    dnp = (double) np;
+	    if (compsum)
+		printf ("%f ", sum);
+	    mean = sum / dnp;
+	    if (compmean)
+		printf ("%f ", mean);
+	    rms = (sumsq / dnp) - (mean * mean);
+	    if (comprms)
+		printf ("%f ", rms);
+	    if (compstd) {
+		std = sqrt ((sumsq / dnp) - (mean * mean));
+		printf ("%f", std);
+		}
+	    printf ("\n");
 	    }
 	free (xrange);
 	}
@@ -203,11 +243,28 @@ char *rrange;	/* Row range string */
 	for (iy = 0; iy < ny; iy++) {
 	    y = rgeti4 (yrange) - 1;
 	    sum = 0.0;
+	    sumsq = 0.0;
+	    np = 0;
 	    for (x = 0; x < nx; x++) {
         	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
 		sum = sum + dpix;
+		sumsq = sumsq + (dpix * dpix);
+		np++;
 		}
-	    printf ("%f\n", sum);
+	    dnp = (double) np;
+	    if (compsum)
+		printf ("%f ", sum);
+	    mean = sum / dnp;
+	    if (compmean)
+		printf ("%f ", mean);
+	    rms = (sumsq / dnp) - (mean * mean);
+	    if (comprms)
+		printf ("%f ", rms);
+	    if (compstd) {
+		std = sqrt ((sumsq / dnp) - (mean * mean));
+		printf ("%f", std);
+		}
+	    printf ("\n");
 	    }
 	free (yrange);
 	}
@@ -217,6 +274,8 @@ char *rrange;	/* Row range string */
 	yrange = RangeInit (rrange, ydim);
 	ny = rgetn (yrange);
 	sum = 0.0;
+	sumsq = 0.0;
+	np = 0;
 	for (iy = 0; iy < ny; iy++) {
 	    y = rgeti4 (yrange) - 1;
 	    xrange = RangeInit (crange, xdim);
@@ -225,11 +284,26 @@ char *rrange;	/* Row range string */
 		x = rgeti4 (xrange) - 1;
         	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
 		sum = sum + dpix;
+		sumsq = sumsq + (dpix * dpix);
+		np++;
 		if (verbose)
 		    printf ("%s[%d,%d] = %f\n",name,x,y,dpix);
 		}
 	    }
-	printf ("%f\n", sum);
+	dnp = (double) np;
+	if (compsum)
+	    printf ("%f ", sum);
+	mean = sum / dnp;
+	if (compmean)
+	    printf ("%f ", mean);
+	rms = (sumsq / dnp) - (mean * mean);
+	if (comprms)
+	    printf ("%f ", rms);
+	if (compstd) {
+	    std = sqrt ((sumsq / dnp) - (mean * mean));
+	    printf ("%f", std);
+	    }
+	printf ("\n");
 	free (xrange);
 	free (yrange);
 	}
@@ -240,4 +314,6 @@ char *rrange;	/* Row range string */
 }
 /* Jul  2 1999	New program
  * Jul  6 1999	Fix bug with x computation in patch adding section
+ * Oct 22 1999	Drop unused variables after lint
+ * Oct 29 1999	Add option to computeand print mean, rms, std, and/or sum
  */

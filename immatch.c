@@ -1,5 +1,5 @@
 /* File immatch.c
- * August 25, 1999
+ * October 22, 1999
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -13,14 +13,13 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "fitsfile.h"
-#include "wcs.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
 
 static void usage();
 static void MatchCat();
 
 static int verbose = 0;		/* verbose/debugging flag */
-static int overwrite = 0;	/* allow overwriting of input image file */
 static int rot = 0;
 static int mirror = 0;
 static int bitpix = 0;
@@ -50,6 +49,8 @@ extern void setfrac();
 extern void setrefpix();
 extern void setwcsproj();
 extern void setfitwcs();
+extern void setirafout();
+extern void setimfrac();
 
 main (ac, av)
 int ac;
@@ -465,12 +466,7 @@ char	*name;			/* Name of FITS or IRAF image file */
     char *image;		/* Image */
     char *header;		/* FITS header */
     char *irafheader;		/* IRAF image header */
-    char newname[64];		/* Name for revised image */
     char pixname[64];		/* Pixel file name for revised image */
-    char temp[16];
-    char *ext;
-    char *fname;
-    int lext, lname;
     char *newimage;
 
     image = NULL;
@@ -588,4 +584,5 @@ char *
  * Jun 10 1999	If -a argument is multiple of 90, rotate image
  * Jul  7 1999	Fix bug setting rotation
  * Aug 25 1999	Add Bright Star Catalog, BSC
+ * Oct 22 1999	Drop unused variables after lint
  */

@@ -1,6 +1,6 @@
 /*** File libwcs/fitsfile.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** October 14, 1999
+ *** October 25, 1999
 
  * Module:      fitsfile.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -403,7 +403,7 @@ char	*header;	/* FITS header for image (previously read) */
     if (bytepix < 0) bytepix = -bytepix;
 
     /* If either dimension is one and image is 3-D, read all three dimensions */
-    if (naxis == 3 && (naxis1 ==1 | naxis2 == 1)) {
+    if (naxis == 3 && (naxis1 ==1 || naxis2 == 1)) {
 	int naxis3;
 	hgeti4 (header,"NAXIS3",&naxis3);
 	nbimage = naxis1 * naxis2 * naxis3 * bytepix;
@@ -418,7 +418,7 @@ char	*header;	/* FITS header for image (previously read) */
     nbytes = nblocks * FITSBLOCK;
 
     /* Allocate and read image */
-    image = malloc (nbytes);
+    image = (char *) malloc (nbytes);
     nbr = read (fd, image, nbytes);
 #ifndef VMS
     if (fd != STDIN_FILENO)
@@ -584,12 +584,12 @@ int	*nchar;		/* Number of characters in one table row (returned) */
     hgeti4 (header,"TFIELDS",&nfields);
     if (verbose)
 	printf ("FITSRTHEAD: %d fields per table entry\n", nfields);
-    pw = (struct Keyword *)malloc (nfields*sizeof(struct Keyword));
+    pw = (struct Keyword *) calloc (nfields, sizeof(struct Keyword));
     if (!pw) {
 	fprintf (stderr,"FITSRTHEAD: cannot allocate table structure\n");
 	return (-1);
 	}
-    lpnam = (int *)malloc (nfields*sizeof(int));
+    lpnam = (int *) calloc (nfields, sizeof(int));
     tverb = verbose;
     verbose = 0;
 
@@ -917,7 +917,7 @@ char	*image;		/* FITS image pixels */
     if (bytepix < 0) bytepix = -bytepix;
 
     /* If either dimension is one and image is 3-D, read all three dimensions */
-    if (naxis == 3 && (naxis1 ==1 | naxis2 == 1)) {
+    if (naxis == 3 && (naxis1 ==1 || naxis2 == 1)) {
 	int naxis3;
 	hgeti4 (header,"NAXIS3",&naxis3);
 	nbimage = naxis1 * naxis2 * naxis3 * bytepix;
@@ -969,8 +969,8 @@ char	*header;	/* FITS image header */
 
 {
     int fd;
-    int nbhead, nbimage, nblocks, bytepix;
-    int bitpix, naxis, naxis1, naxis2, nbytes, nbw;
+    int nbhead, nblocks;
+    int nbytes, nbw;
     char *endhead, *lasthead;
 
     /* Open the output file */
@@ -1102,4 +1102,6 @@ char    *filename;      /* Name of file for which to find size */
  * Sep 27 1999	Add STDOUT as output filename option in fitswimage()
  * Oct  6 1999	Set header length global variable hget.lhead0 in fitsrhead()
  * Oct 14 1999	Update header length as it is changed in fitsrhead()
+ * Oct 20 1999	Change | in if statements to ||
+ * Oct 25 1999	Change most malloc() calls to calloc()
  */

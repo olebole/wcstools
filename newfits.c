@@ -1,5 +1,5 @@
 /* File newfits.c
- * June 3, 1999
+ * November 1, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -15,17 +15,22 @@
 #include <unistd.h>
 #include <math.h>
 
-#include "fitsfile.h"
-#include "wcs.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
 
 static void usage();
 static void MakeFITS ();
-
+extern void setcenter();
+extern void setsys();
+extern void setrot();
+extern void setsecpix();
+extern void setsecpix2();
+extern void setrefpix();
+extern void setcdelt();
 extern struct WorldCoor *GetFITSWCS();
 
 static int verbose = 0;	/* verbose/debugging flag */
 static int bitpix = 0;	/* number of bits per pixel (FITS code, 0=no image) */
-static int fitsout = 0;	/* Output FITS file from IRAF input if 1 */
 static int version = 0;		/* If 1, print only program name and version */
 static int wcshead = 0;	/* If 1, add WCS information from command line */
 static int nx = 100;	/* width of image in pixels */
@@ -96,8 +101,7 @@ char **av;
 	    while (c = *++str)
 	    switch (c) {
 
-		/* Initial rotation angle in degrees */
-    		case 'a':
+    		case 'a':	/* Initial rotation angle in degrees */
     		    if (ac < 2)
     			usage();
     		    setrot (atof (*++av));
@@ -105,8 +109,7 @@ char **av;
 		    wcshead++;
     		    break;
 	
-		/* Initial coordinates on command line in B1950 */
-    		case 'b':
+    		case 'b':	/* Reference pixel coordinates in B1950 */
     		    if (ac < 3)
     			usage();
 		    setsys (WCS_B1950);
@@ -117,9 +120,12 @@ char **av;
 		    setcenter (rastr, decstr);
 		    wcshead++;
     		    break;
+
+    		case 'd':	/* Set CDELTn, CROTAn instead of CD matrix */
+		    setcdelt();
+    		    break;
 	
-		/* Center coordinates on command line in J2000 */
-    		case 'j':
+    		case 'j':	/* Reference pixel coordinates in J2000 */
     		    if (ac < 3)
     			usage();
 		    setsys (WCS_J2000);
@@ -131,16 +137,14 @@ char **av;
 		    wcshead++;
     		    break;
 	
-		/* Number of bits per pixel */
-    		case 'o':
+    		case 'o':	/* Number of bits per pixel */
     		    if (ac < 2)
     			usage ();
     		    bitpix = (int) atof (*++av);
     		    ac--;
     		    break;
 	
-		/* Initial plate scale in arcseconds per pixel */
-    		case 'p':
+    		case 'p':	/* Initial plate scale in arcseconds / pixel */
     		    if (ac < 2)
     			usage();
     		    setsecpix (atof (*++av));
@@ -152,8 +156,7 @@ char **av;
 		    wcshead++;
     		    break;
 	
-		/* Size of image in X and Y pixels */
-		case 's':
+		case 's':	/* Size of image in X and Y pixels */
 		    if (ac < 3)
 			usage();
 		    nx = atoi (*++av);
@@ -162,13 +165,11 @@ char **av;
 		    ac--;
     		    break;
 	
-		/* More verbosity */
-    		case 'v':
+    		case 'v':	/* More verbosity */
     		    verbose++;
     		    break;
 	
-		/* X and Y coordinates of reference pixel */
-		case 'x':
+		case 'x':	/* Reference pixel X and Y coordinates */
 		    if (ac < 3)
 			usage();
 		    x = atof (*++av);
@@ -221,6 +222,7 @@ usage ()
     fprintf(stderr,"       [-x x y] file.fits ...\n");
     fprintf(stderr,"  -a: initial rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
+    fprintf(stderr,"  -d: set CDELTn, CROTAn instead of CD matrix\n");
     fprintf(stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
     fprintf(stderr,"  -o: output pixel size in bits (FITS code, default=0)\n");
     fprintf(stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
@@ -237,7 +239,6 @@ char *name;
     char *image;	/* FITS image */
     char *header;	/* FITS header */
     int lhead;		/* Maximum number of bytes in FITS header */
-    int nbhead;		/* Actual number of bytes in FITS header */
     double cra;		/* Center right ascension in degrees (returned) */
     double cdec;	/* Center declination in degrees (returned) */
     double dra;		/* Right ascension half-width in degrees (returned) */
@@ -248,7 +249,6 @@ char *name;
     int sysout=0;	/* Coordinate system to return (0=image, returned) */
     double eqout=0.0;	/* Equinox to return (0=image, returned) */
     int i, nbimage;
-    char temp[8];
     struct WorldCoor *wcs;
     FILE *diskfile;
 
@@ -262,18 +262,18 @@ char *name;
 
     /* Make sure that no existing file is overwritten */
     if ((diskfile = fopen (name, "r")) != NULL) {
-	if (verbose)
-	    fprintf (stderr,"NEWFITS: FITS file %s exists, no new file written\n",
+	fprintf (stderr,"NEWFITS: FITS file %s exists, no new file written\n",
 		     name);
 	fclose (diskfile);
 	return;
 	}
 
     lhead = 14400;
-    header = malloc (lhead);
+    header = (char *) calloc (1, lhead);
     strcpy (header, "END ");
     for (i = 4; i < lhead; i++)
 	header[i] = ' ';
+    hlength (header, 14400);
     hputl (header, "SIMPLE", 1);
     hputi4 (header, "BITPIX", bitpix);
     hputi4 (header, "NAXIS", 2);
@@ -295,9 +295,11 @@ char *name;
 	image = NULL;
 
     /* Initialize header */
-    if (wcshead)
+    if (wcshead) {
 	wcs = GetFITSWCS (name,header,verbose,&cra,&cdec,&dra,&ddec,&secpix,
 			  &wp,&hp,&sysout,&eqout);
+	wcsfree (wcs);
+	}
 
     if (fitswimage (name, header, image) > 0 && verbose)
 	printf ("%s: written successfully.\n", name);
@@ -312,4 +314,7 @@ char *name;
  * May 13 1999	Change name to NEWFITS and add option to write blank image
  * Jun  3 1999	Allow center to be set as standard WCSTools coordinate string
  * Jun  3 1999	Move command line filenames into processing loop
+ * Oct 15 1999	Free wcs using wcsfree()
+ * Oct 22 1999	Drop unused variables after lint
+ * Nov  1 1999	Set header length after creating it; add option for CDELTn
  */

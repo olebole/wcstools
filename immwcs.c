@@ -1,5 +1,5 @@
 /* File immwcs.c
- * July 7, 1999
+ * October 22, 1999
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -12,9 +12,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-
-#include "fitsfile.h"
-#include "wcs.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
 
 static void usage();
 static void FitWCS ();
@@ -55,13 +54,14 @@ extern void setfitplate();
 extern void setproj();
 extern void setiterate();
 extern void setrecenter();
+extern void setsecpix2();
 
 main (ac, av)
 int ac;
 char **av;
 {
     char *str;
-    double bmin, maglim1, maglim2,arot;
+    double maglim1, maglim2;
     char rastr[16];
     char decstr[16];
     int readlist = 0;
@@ -570,4 +570,5 @@ char *
  *
  * Jun 10 1999  If -a argument is multiple of 90, rotate image
  * Jul  7 1999	Fix bug setting rotation
+ * Oct 22 1999	Drop unused variables after lint
  */

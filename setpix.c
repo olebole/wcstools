@@ -1,5 +1,5 @@
 /* File setpix.c
- * October 14, 1999
+ * October 28, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,9 +11,9 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
-#include "wcs.h"
-#include "wcscat.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
+#include "libwcs/wcscat.h"
 
 static void usage();
 static void SetPix();
@@ -162,17 +162,15 @@ char	**value;	/* value to insert into pixel */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
     char *irafheader;		/* IRAF image header */
-    int i, nbytes, nhb, nhblk, lname, lext, lroot;
+    int i, lext, lroot;
     int nx, ny, ix, iy, x, y, ipix;
-    char *head, *imext, *imext1;
+    char *imext, *imext1;
     double bzero;		/* Zero point for pixel scaling */
     double bscale;		/* Scale factor for pixel scaling */
     char newname[128];
     char pixname[128];
     char history[64];
-    FILE *fd;
     char *ext, *fname;
-    char *editcom;
     char newline[1];
     char echar;
     double dpix;
@@ -386,6 +384,8 @@ char	**value;	/* value to insert into pixel */
 	    else
 		sprintf (history, "SETPIX: pixels in rows %s, columns %s set to %s",
 		     rrange[i], crange[i], value[i]);
+	    free (xrange);
+	    free (yrange);
 	    }
 	if (hputc (header,"HISTORY",history)) {
 	    lhead = gethlength (header);
@@ -397,8 +397,6 @@ char	**value;	/* value to insert into pixel */
 	    }
 	if (verbose)
 	    printf ("%s\n", history);
-	free (xrange);
-	free (yrange);
 	i++;
 	}
 
@@ -497,4 +495,6 @@ char	**value;	/* value to insert into pixel */
  * Oct  5 1999	Bump maximum number of ranges and files from 100 to 500
  * Oct  7 1999	Add -i option to usage()
  * Oct 14 1999	Reallocate header and try again if history writing unsuccessful
+ * Oct 22 1999	Drop unused variables after lint
+ * Oct 28 1999	Fix bug which always tried to free both ranges
  */

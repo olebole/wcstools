@@ -1,5 +1,5 @@
 /* File imrot.c
- * June 8, 1999
+ * October 22, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-
-#include "fitsfile.h"
+#include "libwcs/fitsfile.h"
 
 static void usage();
 static void imRot ();
@@ -341,4 +340,5 @@ char *name;
  * Oct 14 1998	Use isiraf() to determine file type
  * Nov 30 1998	Add version and help commands for consistency
  * Jun  8 1999  Return image pointer from RotFITS, not flag
+ * Oct 22 1999	Drop unused variables after lint
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** September 16, 1999
+ *** October 21, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -18,6 +18,7 @@ char bindir[64]="/data/catalogs";
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <strings.h>
 #include <sys/types.h>
 #include "fitshead.h"
 #include "wcs.h"
@@ -28,12 +29,6 @@ void binclose();
 static void binswap8();
 static void binswap4();
 static void binswap2();
-
-static char bin = 9;
-static char *binhead;
-static char *bindata;
-static char *binbuff;
-static int nentry = 0;
 
 
 /* BINREAD -- Read binary catalog sources + names in specified region */
@@ -63,7 +58,6 @@ int	*tpeak;		/* Array of peak counts (returned) */
 char	**tobj;		/* Array of object names (returned) */
 int	nlog;
 {
-    double rcra, rcdec;	/* Center in catalog coordinate system */
     double rra1,rra2;	/* Limiting catalog right ascensions of region */
     double rdec1,rdec2;	/* Limiting catalog declinations of region */
     double ra1,ra2;	/* Limiting output right ascensions of region */
@@ -88,7 +82,7 @@ int	nlog;
     int nstar;
     double mag, magb;
     double num;
-    int peak, i;
+    int i;
     int istar;
     int isp;
     int verbose;
@@ -129,8 +123,6 @@ int	nlog;
     sysref = starcat->coorsys;
     eqref = starcat->equinox;
     epref = starcat->epoch;
-    rcra = cra;
-    rcdec = cdec;
     RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
 	    &rra1, &rra2, &rdec1, &rdec2, verbose);
     if (verbose) {
@@ -394,12 +386,10 @@ int	nlog;
     double ra, dec, rapm, decpm;
     double mag, magb;
     double num;
-    int peak;
     int istar;
     int isp;
     int lname;
     char *objname;
-    char binpath[128];	/* Full pathname for catalog file */
     struct StarCat *starcat;
     struct Star *star;
 
@@ -528,14 +518,12 @@ char *bincat;	/* Binary catalog file name */
 {
     FILE *fcat;
     struct StarCat *sc;
-    int nr, lfile, ientry;
+    int nr, lfile;
     char *binfile;
     char binpath[128];	/* Full pathname for catalog file */
     char *str;
     int lf;
     static int binsize();
-
-    nentry = 0;
 
     /* Find length of binary catalog */
     lfile = binsize (bincat);
@@ -752,16 +740,15 @@ int	end;		/* 0: start of range, 1: end of range */
 /* BINSTAR -- Get binary catalog entry for one star;
               return 0 if successful */
 
-static int
+int
 binstar (sc, st, istar)
 
 struct StarCat *sc;	/* Star catalog descriptor */
 struct Star *st;	/* Current star entry */
 int istar;	/* Star sequence number in binary catalog */
 {
-    int nbr, ino, nbent;
+    int ino, nbent;
     long offset;
-    double num;
     float pm[2];
 
     /* Drop out if catalog pointer is not set */
@@ -810,8 +797,8 @@ int istar;	/* Star sequence number in binary catalog */
 	    binswap4 (&st->xno);
 	}
     if (sc->byteswapped) {
-	binswap8 (&st->ra, 8);
-	binswap8 (&st->dec, 8);
+	binswap8 (&st->ra);
+	binswap8 (&st->dec);
 	binswap2 (st->mag, sc->nmag*2);
 	}
 
@@ -946,7 +933,6 @@ char	*filename;	/* Name of file for which to find size */
 {
     FILE *diskfile;
     long filesize;
-    long position;
 
     /* Open file */
     if ((diskfile = fopen (filename, "r")) == NULL)
@@ -1018,4 +1004,5 @@ char    *filename;      /* Name of file to check */
  * Aug 25 1999	Return real number of stars from binread()
  * Sep 16 1999	Fix bug which didn't always return closest stars
  * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
+ * Oct 21 1999	Fix declarations after lint
  */

@@ -1,5 +1,5 @@
 /* File i2f.c
- * September 28, 1998
+ * October 22, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-
-#include "fitsfile.h"
+#include "libwcs/fitsfile.h"
 
 static void usage();
 static void IRAFtoFITS ();
@@ -227,4 +226,5 @@ char *name;
  * Nov 30 1998	Add version and help commands for consistency
 
  * Sep 28 1999	Add standard output option
+ * Oct 22 1999	Drop unused variables after lint
  */

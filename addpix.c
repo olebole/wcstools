@@ -1,5 +1,5 @@
 /* File addpix.c
- * June 29, 1999
+ * October 21, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
-#include "wcs.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
 
 static void usage();
 static int newimage = 0;
@@ -105,18 +105,15 @@ char	**value;	/* value to insert into pixel */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
     char *irafheader;		/* IRAF image header */
-    int i, nbytes, nhb, nhblk, lname, lext, lroot;
-    char *head, *headend, *hlast, *imext, *imext1;
+    int i, lext, lroot;
+    char *imext, *imext1;
     double bzero;		/* Zero point for pixel scaling */
     double bscale;		/* Scale factor for pixel scaling */
-    char headline[160];
     char newname[128];
     char pixname[128];
     char tempname[128];
     char history[64];
-    FILE *fd;
     char *ext, *fname;
-    char *editcom;
     char echar;
     char newline[1];
     double dpix, dpix0;
@@ -290,4 +287,5 @@ char	**value;	/* value to insert into pixel */
  *
  * Apr 29 1999	Add BZERO and BSCALE
  * Jun 29 1999	Fix typo in BSCALE setting
+ * Oct 21 1999	Drop unused variables after lint
  */

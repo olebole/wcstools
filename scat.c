@@ -1,5 +1,5 @@
 /* File scat.c
- * September 21, 1999
+ * October 22, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,7 +11,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "wcs.h"
+#include "libwcs/wcs.h"
 #include "libwcs/lwcs.h"
 #include "libwcs/wcscat.h"
 
@@ -32,7 +32,6 @@ static double maglim1 = MAGLIM1; /* Catalog bright magnitude limit */
 static double maglim2 = MAGLIM2; /* Catalog faint magnitude limit */
 static int sysout0 = 0;		/* Output coordinate system */
 static double eqcoor = 2000.0;	/* Equinox of search center */
-static double eqout = 0.0;	/* Equinox for output coordinates */
 static int degout0 = 0;		/* 1 if degrees output instead of hms */
 static double ra0 = -99.0;	/* Initial center RA in degrees */
 static double dec0 = -99.0;	/* Initial center Dec in degrees */
@@ -77,10 +76,14 @@ char **av;
     int i, lcat;
     char *refcatname[5];	/* reference catalog names */
     char *refcatn;
+    int refcat;
     char *temp;
     int systemp = 0;		/* Input search coordinate system */
     char *ranges;
     int istar;
+    double epoch;
+    char title[80];
+    double eqout = 0.0;		/* Equinox for output coordinates */
 
     ranges = NULL;
     keyword = NULL;
@@ -494,17 +497,21 @@ char **av;
 			ra0 = ra0 + (srch->rapm * (epoch0 - srch->epoch));
 			dec0 = dec0 + (srch->decpm * (epoch0 - srch->epoch));
 			}
-		    ListCat (ncat, refcatname, ranges);
+		    ListCat (ncat, refcatname, ranges, eqout);
 		    }
 		tabcatclose (srchcat);
 		}
 	    }
 	else {
-	    srchcat = catopen (listfile);
+	    if (!(refcat = RefCat (listfile, title, &syscoor, &eqcoor, &epoch))) {
+		fprintf (stderr,"List catalog '%s' is missing\n", listfile);
+		return (0);
+		}
+	    srchcat = ctgopen (listfile, refcat);
 	    if (srchcat != NULL) {
 		srch = (struct Star *) calloc (1, sizeof (struct Star));
 		for (istar = 1; istar <= srchcat->nstars; istar ++) {
-		    if (catstar (istar, srchcat, srch)) {
+		    if (ctgstar (istar, srchcat, srch)) {
 			fprintf (stderr,"%s: Cannot read star %d\n",
 				 cpname, istar);
                 	break;
@@ -517,14 +524,14 @@ char **av;
 			ra0 = ra0 + (srch->rapm * (epoch0 - srch->epoch));
 			dec0 = dec0 + (srch->decpm * (epoch0 - srch->epoch));
 			}
-		    ListCat (ncat, refcatname, ranges);
+		    ListCat (ncat, refcatname, ranges, eqout);
 		    }
-		catclose (srchcat);
+		ctgclose (srchcat, refcat);
 		}
 	    }
 	}
     else
-	ListCat (ncat, refcatname, ranges);
+	ListCat (ncat, refcatname, ranges, eqout);
 
     for (i = 0; i < ncat; i++)
 	free (refcatname[i]);
@@ -602,11 +609,12 @@ char *progname;
 #define TABMAX 64
 
 static int
-ListCat (ncat, refcatname, ranges)
+ListCat (ncat, refcatname, ranges, eqout)
 
 int	ncat;		/* Number of catalogs to search */
 char	**refcatname;	/* Reference catalog name */
 char	*ranges;	/* String with range of catalog numbers to list */
+double	eqout;		/* Equinox for output coordinates */
 
 {
     double *gnum;	/* Catalog star numbers */
@@ -715,7 +723,7 @@ char	*ranges;	/* String with range of catalog numbers to list */
 
 	/* Set output coordinate system from catalog if set yet */
 	if (refcat == BINCAT || refcat == TABCAT || refcat == TXTCAT) {
-	    starcat = catopen (refcatname[icat], refcat);
+	    starcat = ctgopen (refcatname[icat], refcat);
 	    if (!sysout)
 		sysout = starcat->coorsys;
 	    if (!eqout)
@@ -723,7 +731,7 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	    if (!epout)
 		epout = starcat->epoch;
 	    nndec = starcat->nndec;
-	    catclose (starcat, refcat);
+	    ctgclose (starcat, refcat);
 	    }
 	else {
 	    if (!sysout)
@@ -797,7 +805,7 @@ char	*ranges;	/* String with range of catalog numbers to list */
 	    wfile = 0;
 
 	    /* Find the specified catalog stars */
-	    ng = catrnum (refcatname[icat], refcat,
+	    ng = ctgrnum (refcatname[icat], refcat,
 		      nfind, sysout, eqout, epout, match,
 		      gnum, gra, gdec, gm, gmb, gc, gobj, debug);
 
@@ -865,7 +873,7 @@ char	*ranges;	/* String with range of catalog numbers to list */
 		    else if ( refcat == UAC  || refcat == UA1  || refcat == UA2)
 			rad0 = -180.0;
 		    else
-			rad0 = -360.0;
+			rad0 = -1800.0;
 		    }
 		else
 		    rad0 = -10.0;
@@ -957,7 +965,7 @@ char	*ranges;	/* String with range of catalog numbers to list */
 		}
 
 	    /* Find the nearby reference stars, in ra/dec */
-	    ng = catread (refcatname[icat], refcat, distsort,
+	    ng = ctgread (refcatname[icat], refcat, distsort,
 		      cra,cdec,dra,ddec,drad,sysout,eqout,epout,
 		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,gobj,nlog);
 
@@ -1825,7 +1833,7 @@ char	*refcatname;
 int	sys1;
 int	sys2;
 double	eq1, eq2;
-double	ep1, ep2;
+double	ep1,ep2;
 double	cra, cdec;
 double	dra, ddec;
 double	drad;
@@ -2042,4 +2050,8 @@ int	ndec;	/* Number of decimal places in output */
  * Sep 16 1999	Fix galactic coordinate header
  * Sep 16 1999	Add distsort argument to catread() call
  * Sep 21 1999	Change description of search area from square to region
+ * Oct 15 1999	Fix calls to catopen() and catclose()
+ * Oct 22 1999	Drop unused variables after lint
+ * Oct 22 1999	Change catread() to ctgread() to avoid system conflict
+ * Oct 22 1999	Increase default r for closest search to 1800 arcsec
  */

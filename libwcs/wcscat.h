@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * October 1, 1999
+ * November 1, 1999
  * By Doug Mink, SAO
  */
 
@@ -37,7 +37,7 @@ int uacread();		/* Read sources from USNO A or SA Catalog */
 int ujcread();		/* Read sources from USNO J Catalog */
 int tabread();		/* Read sources from tab table catalog */
 int binread();		/* Read sources from SAO TDC binary format catalog */
-int catread();		/* Read sources from SAO TDC ASCII format catalog */
+int ctgread();		/* Read sources from SAO TDC ASCII format catalog */
 int actread();		/* Read sources from USNO ACT Catalog */
 
 /* Subroutines for extracting sources from catalogs by ID number */
@@ -46,13 +46,13 @@ int uacrnum();		/* Read sources from USNO A or SA Catalog */
 int ujcrnum();		/* Read sources from USNO J Catalog */
 int tabrnum();		/* Read sources from tab table catalog */
 int binrnum();		/* Read sources from SAO TDC binary format catalog */
-int catrnum();		/* Read sources from SAO TDC ASCII format catalog */
+int ctgrnum();		/* Read sources from SAO TDC ASCII format catalog */
 int actrnum();		/* Read sources from USNO ACT Catalog */
 void setgsclass();	/* Set GSC object class */
 void setuplate();	/* Set USNO catalog plate number to search */
 int getuplate();	/* Get USNO catalog plate number to search */
 void settabkey();	/* Set tab table keyword to read for object */
-int catstar();		/* Read one star entry from ASCII catalog, 0 if OK */
+int ctgstar();		/* Read one star entry from ASCII catalog, 0 if OK */
 int binstar();		/* Read one star entry from binary catalog, 0 if OK */
 int tabstar();		/* Read one star entry from tab table catalog, 0 if OK */
 
@@ -134,8 +134,8 @@ struct StarCat {
 int isbin();
 struct StarCat *binopen();
 void binclose();
-struct StarCat *catopen();
-void catclose();
+struct StarCat *ctgopen();
+void ctgclose();
 
 /* Data structure for tab table files */
 struct TabTable {
@@ -161,6 +161,10 @@ int tabrkey();		/* Keyword values from tab table catalogs */
 int tabcol();		/* Find column for name */
 int tabgetk();		/* Get tab table entries for named column */
 int tabgetc();		/* Get tab table entry for named column */
+int tabgeti4();		/* Return 4-byte integer from tab table line */
+double tabgetra();	/* Return double right ascension in degrees from tab table*/
+double tabgetdec();	/* Return double declination in degrees from tab table*/
+double tabgetr8();	/* Return double number from tab table line */
 void tabclose();	/* Free all arrays left open by tab table structure */
 int istab();
 
@@ -186,21 +190,6 @@ int rgeti4();		/* Return next number in range as integer */
 double rgetr8();	/* Return next number in range as double */
 void rstart();		/* Restart range */
 
-/* Subroutines for translating dates and times */
-double fd2ep();	/* FITS standard date string to fractional year (epoch) */
-double fd2jd();	/* FITS standard date string to Julian date */
-void jd2dt();	/* Julian date to yyyy.mmdd hh.mmssss */
-double dt2jd();	/* yyyy.ddmm and hh.mmsss to Julian date */
-void jd2dt();	/* Julian date to yyyy.mmdd hh.mmssss */
-double dt2ts();	/* yyyy.ddmm and hh.mmsss to seconds since 1950.0 */ 
-void ts2dt();	/* seconds since 1950.0 to yyyy.mmdd hh.mmssss */
-double dt2ep();	/* yyyy.ddmm and hh.mmsss to fractional year (epoch) */
-void ep2dt();	/* fractional year to yyyy.mmdd hh.mmssss */
-double ts2jd();	/* seconds since 1950.0 to yyyy.mmdd hh.mmssss */
-double jd2ts();	/* Julian date to seconds since 1950.0 */
-void ts2i();	/* seconds since 1950.0 to year, month, day, hours, min, sec */
-double ep2jd();	/* fractional year to Julian Date */
-
 /* Shapes for SAOimage region file output */
 #define WCS_CIRCLE 1	/* shape for SAOimage plotting */
 #define WCS_SQUARE 2	/* shape for SAOimage plotting */
@@ -210,7 +199,7 @@ double ep2jd();	/* fractional year to Julian Date */
 #define WCS_VAR 6	/* shape for HST GSC SAOimage plotting (+ and x)*/
 
 /* Structire and subroutines for access to tokens within a string */
-#define MAXTOKENS 20    /* Maximum number of tokens to parse */
+#define MAXTOKENS 100    /* Maximum number of tokens to parse */
 #define MAXWHITE 20     /* Maximum number of whitespace characters */
 struct Tokens {
     char *line;         /* Line which has been parsed */
@@ -254,4 +243,8 @@ int getoken();		/* Get specified token from tokenized string */
  * Sep 10 1999	Move special case setting from argument list to subroutines
  * Sep 13 1999	Add subroutines to access data structure for single stars
  * Oct  1 1999	Add structure and subroutines for tokenized strings
+ * Oct 22 1999	Change cat*() to ctg*() to avoid system conflict
+ * Oct 29 1999	Add tabget() subroutines
+ * Nov  1 1999	Increase maximum number of tokens on a line from 20 to 100
+ * Nov  2 1999	Move date utilities to fitsfile.h
  */

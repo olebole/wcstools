@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** September 16, 1999
+ *** October 21, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Subroutines to read from the USNO A and SA catalogs
@@ -13,6 +13,7 @@
 #include <sys/stat.h>
 #include "fitshead.h"
 #include "wcs.h"
+#include "wcscat.h"
 
 #define	USNOA10		0	/* USNO A-1.0 Catalog */
 #define	USNOSA10	1	/* USNO SA-1.0 Catalog */
@@ -160,7 +161,6 @@ int	nlog;		/* Logging interval */
     double *udist;	/* Array of distances to stars */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
 
     double rra1, rra2, rdec1, rdec2;
     double num;		/* UA numbers */
@@ -186,7 +186,7 @@ int	nlog;		/* Logging interval */
     /* Set catalog code and path to catalog */
     if (strncmp (refcatname,"us",2)==0 ||
         strncmp (refcatname,"US",2)==0) {
-	if (index (refcatname, '2') != NULL) {
+	if (strchr (refcatname, '2') != NULL) {
 	    if ((str = getenv("USA2_PATH")) != NULL)
 		strcpy (usa2path,str);
 	    ucat = USNOSA20;
@@ -201,7 +201,7 @@ int	nlog;		/* Logging interval */
 	}
     else if (strncmp (refcatname,"ua",2)==0 ||
         strncmp (refcatname,"UA",2)==0) {
-	if (index (refcatname, '2') != NULL) {
+	if (strchr (refcatname, '2') != NULL) {
 	    if ((str = getenv("UA2_PATH")) != NULL)
 		strcpy (ua2path,str);
 	    else if ((str = getenv("UA2_ROOT")) != NULL) {
@@ -491,7 +491,6 @@ int	nlog;		/* Logging interval */
     UACstar star;	/* UA catalog entry for one star */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
 
     int znum;
     int jnum;
@@ -505,7 +504,7 @@ int	nlog;		/* Logging interval */
     /* Set catalog code and path to catalog */
     if (strncmp (refcatname,"us",2)==0 ||
         strncmp (refcatname,"US",2)==0) {
-	if (index (refcatname, '2') != NULL) {
+	if (strchr (refcatname, '2') != NULL) {
 	    if ((str = getenv("USA2_PATH")) != NULL)
 		strcpy (usa2path,str);
 	    ucat = USNOSA20;
@@ -520,7 +519,7 @@ int	nlog;		/* Logging interval */
 	}
     else if (strncmp (refcatname,"ua",2)==0 ||
         strncmp (refcatname,"UA",2)==0) {
-	if (index (refcatname, '2') != NULL) {
+	if (strchr (refcatname, '2') != NULL) {
 	    if ((str = getenv("UA2_PATH")) != NULL)
 		strcpy (ua2path,str);
 	    else if ((str = getenv("UA2_ROOT")) != NULL) {
@@ -1018,4 +1017,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Sep 10 1999	Set plate selection with subroutine, not argument
  * Sep 16 1999	Fix bug which didn't always return closest stars
  * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
+ * Oct 20 1999	Include wcscat.h
+ * Oct 21 1999	Clean up code after lint
  */

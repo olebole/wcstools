@@ -1,5 +1,5 @@
 /* File testrot.c
- * September 2, 1998
+ * October 22, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,17 +11,14 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
-#include "wcs.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
 
 static void usage();
 static void PrintHead();
 
-static int nskip = 0;		/* Number of bytes to skip */
-static int nfiles = 0;		/* Nuber of files for headers */
 static int verbose = 0;		/* verbose/debugging flag */
 static int tabout = 0;		/* tab table output flag */
-static int ndec = 3;		/* maximum number of decimal places for output*/
 static int nchar = 16;		/* maximum number of characters for filename */
 static int hms = 0;		/* 1 for output in hh:mm:ss dd:mm:ss */
 static int nf = 0;
@@ -112,7 +109,6 @@ char **av;
 
     if (verbose)
 
-    nfiles = ac;
     nf = 0;
     while (ac-- > 0) {
 	char *fn = *av++;
@@ -145,7 +141,7 @@ char	*filename;	/* FITS or IRAF image file name */
 
 {
     struct WorldCoor *wcs, *GetWCSFITS();
-    void TabRot();
+    static void TabRot();
 
     wcs = GetWCSFITS (filename);
     if (nowcs (wcs))
@@ -158,7 +154,7 @@ char	*filename;	/* FITS or IRAF image file name */
 }
 
 
-void
+static void
 TabRot (filename, wcs)
 
 char	*filename;	/* FITS or IRAF image file name */
@@ -167,7 +163,7 @@ struct WorldCoor *wcs;
 
 {
     int i, off;
-    char rastr[32], decstr[32], fform[8];
+    char fform[8];
     double xc, yc, cra, cdec, xe, ye, xn, yn, pa_north, pa_east;
 
     if (wcs->ctype[0][0] == (char) 0)
@@ -189,7 +185,7 @@ struct WorldCoor *wcs;
 	printf ("	---------	-------\n");
 	}
 
-    sprintf (fform,"%%%d.%ds",nchar);
+    sprintf (fform,"%%%d.%ds",nchar,nchar);
     if (tabout)
 	printf (fform, filename);
     else
@@ -240,4 +236,6 @@ struct WorldCoor *wcs;
 }
 /* Sep  2 1998	New program
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Oct 22 1999	Drop unused variables after lint
  */

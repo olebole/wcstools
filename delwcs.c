@@ -1,5 +1,5 @@
 /* File delwcs.c
- * November 30, 1998
+ * October 22, 1999
  * By Doug Mink, after University of Iowa code
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -12,8 +12,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-
-#include "fitsfile.h"
+#include "libwcs/fitsfile.h"
 
 static void usage();
 static void DelWCS ();
@@ -96,7 +95,7 @@ char *filename;
     char *irafheader;	/* IRAF image header */
     char pixname[128];	/* IRAF pixel file name */
     char newname[128];
-    int lname, lext, lroot;
+    int lext, lroot;
     char *ext, *fname, *imext, *imext1;
     char echar;
 
@@ -246,4 +245,6 @@ char *filename;
  * Aug  6 1998	Change fitsio.h to fitsfile.h
  * Oct 28 1998	Add option to write a new file
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Oct 21 1999	Drop unused variables after lint
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** October 29, 1999
+ *** June 11, 1999
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -9,7 +9,6 @@
 #include <string.h>
 #include "fitshead.h"
 #include "imio.h"
-#include "wcscat.h"
 #include "lwcs.h"
 
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
@@ -114,9 +113,12 @@ int	verbose;	/* 1 to print each star's position */
     int nstars;
     double minll;
     int bitpix;
-    int w, h, ilp, irp;
+    int w, h;
     int x, y, x1, x2, y1, y2;
     double xai, yai, bai;
+    double lmean, lsigma;	/* left and right stats */
+    double rmean, rsigma;
+    double lll, rll;		/* left and right lower limits*/
     double minsig, sigma;
     double *svec, *svb, *sv, *sv1, *sv2, *svlim;
     double background;
@@ -124,9 +126,6 @@ int	verbose;	/* 1 to print each star's position */
     double bz, bs;		/* Pixel value scaling */
     int lwidth;
     int nextline;
-    struct TabTable *imtab;
-
-    imtab = NULL;
 
     hgeti4 (header,"NAXIS1", &w);
     hgeti4 (header,"NAXIS2", &h);
@@ -148,10 +147,7 @@ int	verbose;	/* 1 to print each star's position */
     if (imcatname[0] != 0) {
 	int nlog = 0;
 	if (verbose) nlog = 10;
-	if (istab (imcatname))
-	    nstars = tabxyread (imcatname, xa, ya, ba, pa, nlog);
-	else
-	    nstars = daoread (imcatname, xa, ya, ba, pa, nlog);
+	nstars = daoread (imcatname, xa, ya, ba, pa, nlog);
 	return (nstars);
 	}
 
@@ -198,28 +194,40 @@ int	verbose;	/* 1 to print each star's position */
 	    if (ipix++ % ispix == 0) {
 
 		/* Find stats to the left */
-		ilp = x - (nspix / 2);
-		if (ilp < 0)
-		    ilp = 0;
-		sv1 = svec + ilp;
-		irp = ilp + nspix;
-		if (irp < w)
-		    sv2 = svec + irp;
-		else
-		    sv2 = svlim;
-		minsig = 0.0;
-		if (sv2 > sv1+1) {
-		    mean1d (sv1, sv2, &minll, &minsig);
-		    sigma = sqrt (minll);
-		    if (minsig < sigma)
-			minsig = sigma;
-		    }
+		sv1 = svec + x - nspix;
+		if (sv1 < svec) sv1 = svec;
+		sv2 = svec + x;
+		lsigma = 0.0;
+		if (sv2 > sv1+1)
+		    mean1d (sv1, sv2, &lmean, &lsigma);
 		else {
-		    minll = noise;
-		    sigma = sqrt (minll);
-		    minsig = sigma;
+		    lmean = noise;
+		    lsigma = sigma;
 		    }
-		minll = minll + (starsig * minsig);
+		sigma = sqrt (lmean);
+		if (lsigma < sigma)
+		    lsigma = sigma;
+		lll = lmean + (starsig * lsigma);
+
+		/* Find stats to the right */
+		sv1 = svec + x;
+		sv2 = svec + x + nspix;
+		if (sv2 > svlim) sv2 = svlim;
+		rmean = 0.0;
+		if (sv2 > sv1+2)
+		    mean1d (sv1, sv2, &rmean, &rsigma);
+		else {
+		    rmean = noise;
+		    rsigma = nsigma;
+		    }
+		sigma = sqrt (rmean);
+		if (rsigma < sigma)
+		    rsigma = sigma;
+		rll = rmean + (starsig * rsigma);
+
+		/* pick lower as noise level */
+		minll = lll < rll ? lll : rll;
+		minsig = lsigma < rsigma ? lsigma : rsigma;
 		}
 
 	    /* Pixel is a candidate if above the noise */
@@ -357,7 +365,7 @@ double	llimit;
     if (pix1 > llimit || pix3 > llimit)
 	return (-1);
 
-    putpix (image, bitpix, w, h, bz, bs, x, y, llimit);
+    putpix (image, bitpix, w, h, x, y, llimit);
     return (0);
 }
 
@@ -553,16 +561,14 @@ double	*sigma;
     double sd;
     int x, y;
     int i;
-    double sum;
-    double dnpix;
-    int npix;
 
     pmin = -1.0e20;
     pmax = 1.0e20;
 
     for (i = 0; i < niterate; i++ ) {
-	sum = 0.0;
-	npix = 0;
+	double sum = 0.0;
+	double dnpix;
+	int npix = 0;
 
     /* Compute mean */
 	for (y = y1; y < y2; y++) {
@@ -612,55 +618,23 @@ double *mean;		/* Mean value of pixels (returned) */
 double *sigma;		/* Average deviation of pixels (returned) */
 {
     double *sv;
-    double p, pmin, pmax, pmean;
-    double sd;
-    int i;
-    int npix;
-    double dnpix;
-    double sum;
+    double sumx  = 0.0;
+    double sumxx = 0.0;
+    int npix = 0;
 
-    pmin = -1.0e20;
-    pmax = 1.0e20;
-
-    /* Iterate with sigma-clipping */
-    for (i = 0; i < niterate; i++ ) {
-	npix = 0;
-	sum = 0.0;
-
-	/* Compute mean */
-	for (sv = sv1; sv < sv2; sv++) {
-	    p = *sv;
-	    if (p > pmin && p < pmax) {
-		sum += p;
-		npix++;
-		}
-	    }
-	if (npix > 0) {
-	    dnpix = (double) npix;
-	    pmean = sum / dnpix;
-	    }
-	else
-	    pmean = 0.0;
-
-	/* Compute average deviation */
-	npix = 0;
-	sum = 0.0;
-	for (sv = sv1; sv < sv2; sv++) {
-	    p = *sv;
-	    if (p > pmin && p < pmax) {
-		sum += fabs (p - pmean);
-		npix++;
-		}
-	    }
-	if (npix > 0)
-	    sd = sum / dnpix;
-	else
-	    sd = 0.0;
-	pmin = pmean - (sd * starsig);
-	pmax = pmean + (sd * starsig);
+    /* Compute mean */
+    for (sv = sv1; sv < sv2; sv++) {
+	sumx += *sv;
+	npix++;
 	}
-    *mean = pmean;
-    *sigma = sd;
+    *mean = sumx / (double) npix;
+
+    /* Compute average deviation */
+    sumxx = 0.0;
+    for (sv = sv1; sv < sv2; sv++) {
+	sumxx += fabs (*sv - *mean);
+	}
+    *sigma = sumxx / (double) npix;
     return;
 }
 
@@ -727,6 +701,7 @@ char *parstring;
 {
     char *parname;
     char *parvalue;
+    int lname, lvalue;
 
     parname = parstring;
     if ((parvalue = strchr (parname,'=')) == NULL)
@@ -783,7 +758,4 @@ char *parstring;
  * Apr 26 1999	Fix Bright Walk() to slide along bleeding rows or columns
  * Apr 28 1999	Add scaling to getpix and getvec
  * Jun 11 1999	Add parameter setting subroutine
- * Oct 21 1999	Drop unused variables and fix sigma usage after lint
- * Oct 25 1999	Fix mean loop to avoid bad pointer creation
- * Oct 29 1999	Read image star positions from tab table or DAOPHOT table
  */

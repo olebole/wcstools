@@ -1,5 +1,5 @@
 /* File fixpix.c
- * September 27, 1999
+ * October 22, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -10,8 +10,8 @@
 #include <fcntl.h>
 #include <errno.h>
 #include <unistd.h>
-#include "fitsfile.h"
-#include "wcs.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
 
 #define MAXFIX 10
 #define MAXFILES 50
@@ -19,7 +19,6 @@
 static void FixPix();
 static void FixReg();
 static void usage();
-static void SetPix();
 static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
 static int nfix = 0;		/* Number of regions to fix
@@ -35,13 +34,16 @@ char **av;
     char *str;
     char *fn[MAXFILES];
     int readlist = 0;
-    int lfn, nfile, maxlfn;
+    int nfile;
     char *lastchar;
     char filename[128];
     int ifile;
     FILE *flist;
     char *listfile;
     char *regionlist;
+
+    regionlist = NULL;
+    listfile = NULL;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -88,14 +90,12 @@ char **av;
     while (ac-- > 0  && nfile < MAXFILES && nfix < MAXFIX) {
 	if (isiraf (*av) || isfits (*av)) {
 	    fn[nfile] = *av;
-	    lfn = strlen (fn[nfile]);
-	    if (lfn > maxlfn)
-		maxlfn = lfn;
 	    nfile++;
 	    av++;
 	    }
 	else if (*av[0] == '@') {
 	    nfix = -1;
+	    regionlist = *av + 1;
 	    av++;
 	    }
 	else if (ac > 2) {
@@ -169,22 +169,19 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
     char *irafheader;		/* IRAF image header */
-    int i, nbytes, nhb, nhblk, lname, lext, lroot;
-    double  bzero;		/* Zero point for pixel scaling */
-    double  bscale;		/* Scale factor for pixel scaling */
-    char *head, *headend, *hlast, *imext, *imext1;
-    char headline[160];
+    int i, lext, lroot;
+    double bzero;		/* Zero point for pixel scaling */
+    double bscale;		/* Scale factor for pixel scaling */
+    char *imext, *imext1;
     char newname[128];
     char pixname[128];
     char tempname[128];
     char line[128];
     char history[64];
     char echar;
-    FILE *fd, *freg;
+    FILE *freg;
     char *ext, *fname;
-    char *editcom;
     char newline[1];
-    double dpix;
     int bitpix,xdim,ydim;
 
     newline[0] = 10;
@@ -262,7 +259,8 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
 		usage ();
 		}
 	while (fgets (line, 128, freg) != NULL) {
-	    sscanf (line,"%d %d %d %d", xl[1], yl[1], xl[1], yr[1]);
+	    i = 0;
+	    sscanf (line,"%d %d %d %d", &xl[i], &yl[i], &xl[i], &yr[i]);
 	    FixReg (image,bitpix,xdim,ydim,bzero,bscale,xl[i],yl[i],xr[i],yr[i]);
 
 	    /* Note addition as history line in header */
@@ -430,4 +428,6 @@ int	ixr, iyr;	/* Upper right corner of region (1 based) */
  * Apr 29 1999	Add BZERO and BSCALE
  * Jun 29 1999	Fix typo in BSCALE setting
  * Sep 27 1999	Use new 1-based-coordinate image access subroutines
+ * Oct 15 1999	Fix input from list file
+ * Oct 22 1999	Drop unused variables after lint
  */

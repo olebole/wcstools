@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** September 16, 1999
+ *** October 21, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -20,6 +20,7 @@ struct StarCat *actopen();
 void actclose();
 static int actstar();
 static int actsize();
+static int actsra();
 
 /* ACTREAD -- Read USNO ACT Star Catalog stars from CDROM */
 
@@ -66,9 +67,8 @@ int	nlog;		/* 1 for diagnostics */
     int wrap;
     int rnum, ireg;
     int jstar, iw;
-    int nbr,nrmax,nstar,i, ntot;
+    int nrmax,nstar,i, ntot;
     int istar, istar1, istar2, isp;
-    int ift;
     double num, ra, dec, rapm, decpm, mag, magb;
     double rra1, rra2, rra2a, rdec1, rdec2;
     char *str;
@@ -319,8 +319,7 @@ int	nlog;		/* 1 for diagnostics */
 
     int rnum;
     int jstar;
-    int nbr, istar, nstar, i, snum, isp, jnum;
-    int ift;
+    int istar, nstar, snum, isp;
     double num, ra, dec, rapm, decpm, mag, magb;
     char *str;
 
@@ -433,8 +432,7 @@ int	verbose;	/* 1 for diagnostics */
 {
     int nsrch;		/* Number of regions found (returned) */
 
-    int i, ir, irx, ir1, ir2, wrap;
-    double rah;
+    int i, ir, irx, ir1, ir2;
 
     /* Zero out regions to be searched */
     for (i = 0; i < nrmax; i++)
@@ -446,7 +444,6 @@ int	verbose;	/* 1 for diagnostics */
     ra1 = ra1 / 15.0;
     ra2 = ra2 / 15.0;
     irx = 0;
-    wrap = 0;
 
     /* Find first region to search */
     for (ir = 1; ir < 49; ir++) {
@@ -503,8 +500,6 @@ int regnum;	/* ACT Catalog region number */
 char *path;	/* Pathname of ACT region file */
 
 {
-    int zone;		/* Name of Guide Star Catalog zone directory */
-    int i;
 
 /* Set the pathname using the appropriate ACT CDROM directory */
 
@@ -529,11 +524,9 @@ char *actcat;	/* ACT catalog region file name */
 {
     FILE *fcat;
     struct StarCat *sc;
-    int nr, lfile, ientry;
+    int lfile;
     char *actfile;
     char actpath[128];	/* Full pathname for catalog file */
-    char *str;
-    int lf;
     static int actsize();
 
     /* Find length of ACT catalog region file */
@@ -699,7 +692,6 @@ int istar;	/* Star sequence number in ACT catalog region file */
 {
     int nbr;
     long offset;
-    double num;
     char dsgn;
     char line[256];
     int irh,irm,idd,idm, im;
@@ -790,7 +782,6 @@ char	*filename;	/* Name of file for which to find size */
 {
     FILE *diskfile;
     long filesize;
-    long position;
 
     /* Open file */
     if ((diskfile = fopen (filename, "r")) == NULL)
@@ -820,4 +811,5 @@ char	*filename;	/* Name of file for which to find size */
  * Aug 25 1999	Return real number of stars from actread()
  * Sep 16 1999	Fix bug which didn't always return closest stars
  * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
+ * Oct 21 1999	Delete unused varaiables after lint
  */

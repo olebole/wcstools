@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** October 14, 1999
+ *** October 20, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -629,7 +629,7 @@ char *keyword;	/* character string containing the name of the keyword
 		   (the first 8 characters must be unique) */
 int *ndec;	/* Number of decimal places in keyword value */
 {
-    char *value,val[30];
+    char *value;
     int i, nchar;
 
     /* Get value and comment from header string */
@@ -644,6 +644,7 @@ int *ndec;	/* Number of decimal places in keyword value */
 		return (1);
 	    *ndec = *ndec + 1;
 	    }
+	return (1);
 	}
     else
 	return (0);
@@ -1256,4 +1257,6 @@ int set_saolib(hstring)
  * Jul 15 1999	Add hgetm() options of 1- or 2-digit keyword extensions
  * Oct  6 1999	Add gethlength() to return header length
  * Oct 14 1999	In ksearch(), search only to null not to end of buffer
+ * Oct 15 1999	Return 1 from hgetndec() if successful
+ * Oct 20 1999	Drop unused variable after lint (val in hgetndec)
  */

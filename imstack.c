@@ -1,5 +1,5 @@
 /* File imstack.c
- * June 29, 1999
+ * October 22, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -11,8 +11,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "fitsfile.h"
-#include "wcs.h"
+#include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
 
 static void usage();
 static int StackImage();
@@ -35,7 +35,7 @@ char **av;
     char *str;
     int readlist = 0;
     FILE *flist;
-    int ifile, nblocks, nbytes, i, nbw;
+    int ifile, nblocks, nbytes, i;
     char *blanks;
 
     /* Check for help or version command first */
@@ -170,7 +170,7 @@ char	*filename;	/* FITS or IRAF file filename */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     char *irafheader;		/* IRAF image header */
-    int nbimage, naxis, naxis1, naxis2, naxis3, naxis4, bytepix;
+    int nbimage, naxis, naxis1, naxis2, naxis3, bytepix;
     int bitpix, nblocks, nbytes;
     int iraffile;
     int i;
@@ -317,4 +317,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Aug  6 1998	Change fitsio.h to fitsfile.h
  * Oct 14 1998	Use isiraf() to determine file type
  * Nov 30 1998	Add version and help commands for consistency
+ *
+ * Oct 22 1999	Drop unused variables after lint
  */
