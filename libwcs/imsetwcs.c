@@ -1,8 +1,8 @@
 /*** File libwcs/imsetwcs.c
- *** September 4, 2002
+ *** August 22, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu (based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -319,7 +319,7 @@ getfield:
 
     /* Find the nearby reference stars, in ra/dec */
 getstars:
-    ng = ctgread (refcatname,refcat,0,cra,cdec,dra,ddec,0.0,refsys,refeq,
+    ng = ctgread (refcatname,refcat,0,cra,cdec,dra,ddec,0.0,0.0,refsys,refeq,
 		  refep,mag1,mag2,sortmag,ngmax,&starcat,
 		  gnum,gra,gdec,gpra,gpdec,gm,gc,NULL,verbose*100);
     if (ng > ngmax)
@@ -1207,4 +1207,6 @@ setmagfit ()
  * Jul 31 2002	Add iteration with increasing number of parameters to be fit
  * Aug  2 2002	Use WCSMatch() to set initial values for pre-matched stars
  * Sep  4 2002	Don't iterate if there is no catalog
+ *
+ * Aug 22 2003	Add inner radius =0.0 argument to ctgread call
  */

@@ -1,5 +1,5 @@
 /* File newfits.c
- * May 28, 2002
+ * September 25, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -194,6 +194,13 @@ char **av;
 		    ac--;
     		    break;
 	
+    		case 't':	/* FITS projection code for output image */
+    		    if (ac < 2)
+    			usage(c, "needs projection type, such as TAN");
+    		    setproj (*++av);
+    		    ac--;
+		    break;
+	
     		case 'v':	/* More verbosity */
     		    verbose++;
     		    break;
@@ -208,6 +215,10 @@ char **av;
     		    setrefpix (x, y);
 		    wcshead++;
     		    break;
+
+		case 'z':       /* Use AIPS classic WCS */
+		    setdefwcs (WCS_ALT);
+		    break;
 	
     		default:
     		    usage();
@@ -249,17 +260,18 @@ usage ()
     fprintf (stderr,"Make dataless FITS image header files\n");
     fprintf(stderr,"Usage: [-v][-a degrees][-p scale][-b ra dec][-j ra dec][-s nx ny][-i file]\n");
     fprintf(stderr,"       [-x x y] file.fits ...\n");
-    fprintf(stderr,"  -a: initial rotation angle in degrees (default 0)\n");
-    fprintf(stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
+    fprintf(stderr,"  -a num: initial rotation angle in degrees (default 0)\n");
+    fprintf(stderr,"  -b ra dec: initial center in B1950 (FK4) RA and Dec\n");
     fprintf(stderr,"  -d: set CDELTn, CROTAn instead of CD matrix\n");
-    fprintf(stderr,"  -g: initial center in Galactic longitude and latitude\n");
-    fprintf(stderr,"  -i: read image from a binary file\n");
-    fprintf(stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
-    fprintf(stderr,"  -o: output pixel size in bits (FITS code, default=0)\n");
-    fprintf(stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
-    fprintf(stderr,"  -s: size of image in x and y pixels (default 100x100)\n");
+    fprintf(stderr,"  -g lon lat: initial center in Galactic longitude and latitude\n");
+    fprintf(stderr,"  -i file : read image from a binary file\n");
+    fprintf(stderr,"  -j ra dec: initial center in J2000 (FK5) RA and Dec\n");
+    fprintf(stderr,"  -o num: output pixel size in bits (FITS code, default=0)\n");
+    fprintf(stderr,"  -p arcsec: initial plate scale in arcsec per pixel (default 0)\n");
+    fprintf(stderr,"  -s num num: size of image in x and y pixels (default 100x100)\n");
+    fprintf(stderr,"  -t proj: set FITS CTYPE projection (default TAN)\n");
     fprintf(stderr,"  -v: verbose\n");
-    fprintf(stderr,"  -x: X and Y coordinates of reference pixel (default is center)\n");
+    fprintf(stderr,"  -x num num: X and Y coordinates of reference pixel (default is center)\n");
     exit (1);
 }
 
@@ -461,4 +473,5 @@ char *name;
  * Apr  9 2002	Fix bug in final print statement
  *
  * May 28 2003	Add -g for image with galactic coordinate WCS
+ * Sep 25 2003	Add -t to set projection
  */

@@ -1,5 +1,5 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** March 5, 2003
+ *** August 21, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -49,6 +49,7 @@ struct Keyword {
 extern int fitsropen();
 extern char *fitsrhead();
 extern char *fitsrimage();
+extern char *fitsrfull();
 extern char *fitsrsect();
 extern int fitswhead();
 extern int fitswext();
@@ -276,4 +277,5 @@ void compnut();	/* Compute nutation in longitude and obliquity and mean obliquit
  * Oct 21 2002	Add fitsrsect() to read sections of FITS images
  *
  * Mar  5 2003	Add isimlistd() to check image lists with root directory
+ * Aug 20 2003	Add fitsrfull() to read n-dimensional simple FITS images
  */

@@ -1,5 +1,5 @@
 /* File gethead.c
- * July 17, 2003
+ * November 18, 2003
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -64,7 +64,9 @@ char **av;
 {
     char *str;
     char **kwd;		/* Keywords to read */
+    char **kwdnew;		/* Keywords to read */
     int nkwd = 0;
+    int nkwd1 = 0;
     char **fn;
     int *ft;
     int ifile;
@@ -89,7 +91,6 @@ char **av;
     klistfile = NULL;
     extension = NULL;
     extensions = NULL;
-    nkwd = 0;
     ncond = 0;
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
@@ -222,11 +223,15 @@ char **av;
 		}
 	    else {
 		klistfile = listfile;
-		nkwd = getfilelines (klistfile);
-		if (nkwd > 0) {
-		    if (nkwd > maxnkwd) {
-			kwd = (char **) realloc ((void *)kwd, nkwd);
-			maxnkwd = nkwd;
+		nkwd1 = getfilelines (klistfile);
+		if (nkwd1 > 0) {
+		    if (nkwd+nkwd1 > maxnkwd) {
+			maxnkwd = nkwd + nkwd1 + 32;
+			kwdnew = (char **) realloc ((void *)kwd, maxnkwd);
+		 	for (ikwd = 0; ikwd < nkwd; ikwd++)
+			    kwdnew[ikwd] = kwd[ikwd];
+			free (kwd);
+			kwd = kwdnew;
 			}
 		    if ((fdk = fopen (klistfile, "r")) == NULL) {
 			fprintf (stderr,"GETHEAD: File %s cannot be read\n",
@@ -234,9 +239,9 @@ char **av;
 			nkwd = 0;
 			}
 		    else {
-			for (ikwd = 0; ikwd < nkwd; ikwd++) {
-			    kwd[ikwd] = (char *) calloc (32, 1);
-			    first_token (fdk, 31, kwd[ikwd]);
+			for (ikwd = 0; ikwd < nkwd1; ikwd++) {
+			    kwd[nkwd] = (char *) calloc (32, 1);
+			    first_token (fdk, 31, kwd[nkwd++]);
 			    }
 			fclose (fdk);
 			}
@@ -323,7 +328,11 @@ char **av;
 	else {
 	    if (nkwd >= maxnkwd) {
 		maxnkwd = maxnkwd * 2;
-		kwd = (char **) realloc ((void *)kwd, maxnkwd);
+		kwdnew = (char **) realloc ((void *)kwd, maxnkwd);
+	 	for (ikwd = 0; ikwd < nkwd; ikwd++)
+		    kwdnew[ikwd] = kwd[ikwd];
+		free (kwd);
+		kwd = kwdnew;
 		}
 	    kwd[nkwd] = *av;
 	    nkwd++;
@@ -948,8 +957,10 @@ char *string;
 	    }
 	}
 
-    /* Remove trailing zeroes */
-    if (strchr (string, '.') != NULL) {
+    /* Remove trailing zeroes if they are not significant */
+    if (strchr (string, '.') != NULL &&
+	strsrch (string, "E-") == NULL &&
+	strsrch (string, "E+") == NULL) {
 	lstr = strlen (string);
 	s = string + lstr - 1;
 	while (*s == '0' && lstr > 1) {
@@ -1042,4 +1053,6 @@ char *string;
  * Feb  5 2003	Set nfext tp zero if no extensions
  * Mar 25 2003	If null keyword value and padding on, print ___
  * Jul 17 2003	Add root directory argumeht to isfilelist()
+ * Oct 29 2003	Allow keyword specification from both list file and command line
+ * Nov 18 2003	Fix strclean() to keep all of exponents (found by Anthony Miceli)
  */

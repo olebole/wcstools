@@ -1,5 +1,5 @@
 /* File keyhead.c
- * February 5, 2002
+ * October 29, 2003
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -37,8 +37,9 @@ int ac;
 char **av;
 {
     char *str;
-    char **kwd;
+    char **kwd, **kwdnew;
     int nkwd = 0;
+    int nkwd1 = 0;
     char **fn;
     int nfile = 0;
     int ifile;
@@ -52,8 +53,7 @@ char **av;
 
     ilistfile = NULL;
     klistfile = NULL;
-    nkwd = 0;
-    nfile = 0;
+
     fn = (char **)calloc (maxnfile, sizeof(char *));
     kwd = (char **)calloc (maxnkwd, sizeof(char *));
 
@@ -113,21 +113,24 @@ char **av;
 		}
 	    else {
 		klistfile = listfile;
-		nkwd = getfilelines (klistfile);
-		if (nkwd > 0) {
-		    if (nkwd > maxnkwd) {
-			kwd = (char **) realloc ((void *)kwd, nkwd);
-			maxnkwd = nkwd;
+		nkwd1 = getfilelines (klistfile);
+		if (nkwd1 > 0) {
+		    if (nkwd+nkwd1 >= maxnkwd) {
+			maxnkwd = nkwd + nkwd1 + 32;
+			kwdnew = (char **) calloc (maxnkwd, sizeof (void *));
+			for (ikwd = 0; ikwd < nkwd; ikwd++)
+			    kwdnew[ikwd] = kwd[ikwd];
+			free (kwd);
+			kwd = kwdnew;
 			}
 		    if ((fdk = fopen (klistfile, "r")) == NULL) {
 			fprintf (stderr,"KEYHEAD: File %s cannot be read\n",
 				 klistfile);
-			nkwd = 0;
 			}
 		    else {
-			for (ikwd = 0; ikwd < nkwd; ikwd++) {
-			    kwd[ikwd] = (char *) calloc (32, 1);
-			    first_token (fdk, 31, kwd[ikwd]);
+			for (ikwd = 0; ikwd < nkwd1; ikwd++) {
+			    kwd[nkwd] = (char *) calloc (32, 1);
+			    first_token (fdk, 31, kwd[nkwd++]);
 			    }
 			fclose (fdk);
 			}
@@ -149,10 +152,13 @@ char **av;
 	else {
 	    if (nkwd >= maxnkwd) {
 		maxnkwd = maxnkwd * 2;
-		kwd = (char **) realloc ((void *)kwd, maxnkwd);
+		kwdnew = (char **) calloc (maxnkwd, sizeof (void *));
+		for (ikwd = 0; ikwd < nkwd; ikwd++)
+		    kwdnew[ikwd] = kwd[ikwd];
+		free (kwd);
+		kwd = kwdnew;
 		}
-	    kwd[nkwd] = *av;
-	    nkwd++;
+	    kwd[nkwd++] = *av;
 	    }
 	}
 
@@ -269,7 +275,7 @@ char	*kwd[];		/* Names and values of those keywords */
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
 	    hgeti4 (header,"NAXIS",&naxis);
 	    if (naxis > 0) {
-		if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
+		if ((image = fitsrfull (filename, nbhead, header)) == NULL) {
 		    if (verbose)
 			fprintf (stderr,"Cannot read FITS image %s\n",filename);
 		    }
@@ -563,4 +569,7 @@ char	*kwd[];		/* Names and values of those keywords */
  * Jan 30 2002	If changing keyword name to SIMPLE, set to T
  * Feb  4 2002	Add time and angle conversions for 2dF keyword changes
  * Feb  5 2002	Add -l command to log files as they are processed
+ *
+ * Aug 21 2003	Read image with fitsrfull() to deal with n dimensions
+ * Oct 29 2003	Allow combination of keyword designation methods
  */

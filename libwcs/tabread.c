@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** June 2, 2003
+ *** November 22, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -85,7 +85,7 @@ char *keyword0;
 /* TABREAD -- Read tab table stars in specified region */
 
 int
-tabread (tabcatname,distsort,cra,cdec,dra,ddec,drad,
+tabread (tabcatname,distsort,cra,cdec,dra,ddec,drad,dradi,
 	 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,starcat,
 	 tnum,tra,tdec,tpra,tpdec,tmag,tpeak,tkey,nlog)
 
@@ -96,6 +96,7 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+double	dradi;		/* Inner edge of annulus in degrees (ignore if 0) */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
@@ -126,6 +127,7 @@ int	nlog;
     int sysref;		/* Catalog coordinate system */
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
+    double secmarg = 0.0; /* Arcsec/century margin for proper motion */
     double magt;
     double rdist, ddist;
     int pass;
@@ -208,14 +210,10 @@ int	nlog;
     rra2 = ra2;
     rdec1 = dec1;
     rdec2 = dec2;
-    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
-	    &rra1, &rra2, &rdec1, &rdec2, verbose);
-
-    /* If RA range includes zero, split it in two */
-    if (rra1 > rra2)
-        wrap = 1;
-    else
-	wrap = 0;
+    if (sc->mprop > 0)
+	secmarg = 60.0;
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,secmarg,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
 
     /* Loop through catalog */
     for (istar = 1; istar <= nstars; istar++) {
@@ -288,6 +286,8 @@ int	nlog;
 	    /* Check radial distance to search center */
 	    if (drad > 0) {
 		if (dist > drad)
+		    pass = 0;
+		if (dradi > 0.0 && dist < dradi)
 		    pass = 0;
 		}
 
@@ -636,6 +636,250 @@ int	nlog;
     if (nlog > 0)
 	fprintf (stderr,"TABRNUM: Catalog %s : %d / %d found\n",
 		 tabcatname,nstar,nstars);
+
+    return (nstar);
+}
+
+
+/* TABBIN -- Read tab table stars in specified region */
+
+int
+tabbin (tabcatname, wcs, header, image, mag1, mag2, sortmag, magscale, nlog)
+
+char	*tabcatname;	/* Name of reference star catalog file */
+struct WorldCoor *wcs;	/* World coordinate system for image */
+char	*header;	/* FITS header for output image */
+char	*image;		/* Output FITS image */
+double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
+double	magscale;	/* Scaling factor for magnitude to pixel flux
+			 * (number of catalog objects per bin if 0) */
+int	nlog;
+{
+    double cra;		/* Search center J2000 right ascension in degrees */
+    double cdec;	/* Search center J2000 declination in degrees */
+    double dra;		/* Search half width in right ascension in degrees */
+    double ddec;	/* Search half-width in declination in degrees */
+    int sysout;		/* Search coordinate system */
+    double eqout;	/* Search coordinate equinox */
+    double epout;	/* Proper motion epoch (0.0 for no proper motion) */
+    double ra1,ra2;	/* Limiting right ascensions of region in degrees */
+    double dec1,dec2;	/* Limiting declinations of region in degrees */
+    double rra1,rra2;	/* Catalog coordinate limiting right ascension (deg) */
+    double rdec1,rdec2;	/* Catalog coordinate limiting declination (deg) */
+    int sysref;		/* Catalog coordinate system */
+    double eqref;	/* Catalog equinox */
+    double epref;	/* Catalog epoch */
+    double secmarg = 0.0; /* Arcsec/century margin for proper motion */
+    double magt;
+    double rdist, ddist;
+    int pass;
+    char cstr[32];
+    struct Star *star;
+    struct StarCat *sc;	/* Star catalog data structure */
+
+    int wrap;
+    int jstar;
+    int magsort;
+    int nstar;
+    char *objname;
+    int lname;
+    int imag;
+    double ra,dec, rapm, decpm;
+    double mag, parallax, rv;
+    double num;
+    int peak, i;
+    int istar, nstars, lstar;
+    int verbose;
+    double xpix, ypix, flux;
+    int offscl;
+    int bitpix, w, h;   /* Image bits/pixel and pixel width and height */
+    double logt = log(10.0);
+
+    if (nlog > 0)
+	verbose = 1;
+    else
+	verbose = 0;
+
+    /* Set image parameters */
+    bitpix = 0;
+    (void)hgeti4 (header, "BITPIX", &bitpix);
+    w = 0;
+    (void)hgeti4 (header, "NAXIS1", &w);
+    h = 0;
+    (void)hgeti4 (header, "NAXIS2", &h);
+
+    /* Set catalog search limits from image WCS information */
+    sysout = wcs->syswcs;
+    eqout = wcs->equinox;
+    epout = wcs->epoch;
+    wcscstr (cstr, sysout, eqout, epout);
+    wcssize (wcs, &cra, &cdec, &dra, &ddec);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
+
+    /* mag1 is always the smallest magnitude limit */
+    if (mag2 < mag1) {
+	mag = mag2;
+	mag2 = mag1;
+	mag1 = mag;
+	}
+
+    /* Logging interval */
+    nstar = 0;
+
+    lstar = sizeof (struct Star);
+    star = (struct Star *) calloc (1, lstar);
+    sc = tabcatopen (tabcatname, NULL, 0);
+    if (sc == NULL || sc->nstars <= 0) {
+	if (taberr != NULL)
+	    fprintf (stderr,"%s\n", taberr);
+	fprintf (stderr,"TABBIN: Cannot read catalog %s\n", tabcatname);
+	free (star);
+	sc = NULL;
+	return (0);
+	}
+
+    nstars = sc->nstars;
+    jstar = 0;
+
+    if (sortmag > 0 && sortmag <= sc->nmag)
+	magsort = sortmag - 1;
+    else 
+	magsort = 0;
+
+    /* Set catalog coordinate system */
+    if (sc->equinox != 0.0)
+	eqref = sc->equinox;
+    else
+	eqref = eqout;
+    if (sc->epoch != 0.0)
+	epref = sc->epoch;
+    else
+	epref = epout;
+    if (sc->coorsys)
+	sysref = sc->coorsys;
+    else
+	sysref = sysout;
+    wcscstr (cstr, sysout, eqout, epout);
+
+    rra1 = ra1;
+    rra2 = ra2;
+    rdec1 = dec1;
+    rdec2 = dec2;
+    if (sc->mprop > 0)
+	secmarg = 60.0;
+    RefLim(cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,secmarg,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
+
+    /* If RA range includes zero, split it in two */
+    if (rra1 > rra2)
+        wrap = 1;
+    else
+	wrap = 0;
+
+    /* Loop through catalog */
+    for (istar = 1; istar <= nstars; istar++) {
+
+	/* Read position of next star */
+	if (tabstar (istar, sc, star, verbose)) {
+	    if (verbose)
+		fprintf (stderr,"TABBIN: Cannot read star %d\n", istar);
+	    break;
+	    }
+
+	/* Set magnitude to test */
+	if (sc->nmag > 0) {
+	    magt = star->xmag[magsort];
+	    imag = 0;
+	    while (magt == 99.90 && imag < sc->nmag)
+		magt = star->xmag[imag++];
+	    if (magt > 100.0)
+		magt = magt - 100.0;
+	    }
+	else
+	    magt = mag1;
+
+	/* Check magnitude limits */
+	pass = 1;
+	if (mag1 != mag2 && (magt < mag1 || magt > mag2))
+	    pass = 0;
+
+	/* Check rough position limits */
+	ra = star->ra;
+	dec = star->dec;
+	if  ((!wrap && (ra < rra1 || ra > rra2)) ||
+	    (wrap && (ra < rra1 && ra > rra2)) ||
+	    dec < rdec1 || dec > rdec2)
+	    pass = 0;
+
+	/* Convert coordinate system for this star and test it*/
+	if (pass) {
+	    sysref = star->coorsys;
+	    eqref = star->equinox;
+	    epref = star->epoch;
+
+	    /* Extract selected fields  */
+	    num = star->num;
+	    rapm = star->rapm;
+	    decpm = star->decpm;
+	    parallax = star->parallax;
+	    rv = star->radvel;
+
+	    /* Convert from catalog to search coordinate system */
+	    if (sc->entpx || sc->entrv)
+		wcsconv (sysref, sysout, eqref, eqout, epref, epout,
+		     &ra, &dec, &rapm, &decpm, &parallax, &rv);
+	    else if (sc->mprop == 1)
+		wcsconp (sysref, sysout, eqref, eqout, epref, epout,
+		     &ra, &dec, &rapm, &decpm);
+	    else
+		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+	    if (sc->sptype)
+		peak = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+	    else
+		peak = star->peak;
+
+	    /* Check distance along RA and Dec axes */
+	    ddist = wcsdist (cra,cdec,cra,dec);
+	    if (ddist > ddec)
+		pass = 0;
+	    rdist = wcsdist (cra,dec,ra,dec);
+	    if (rdist > dra)
+		pass = 0;
+	    }
+
+	/* Save star in FITS image */
+	if (pass) {
+	    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+	    if (!offscl) {
+		if (magscale > 0.0)
+		    flux = magscale * exp (logt * (-mag / 2.5));
+		else
+		    flux = 1.0;
+		addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+		nstar++;
+		jstar++;
+		}
+	    if (nlog == 1)
+		fprintf (stderr,"TABBIN: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
+			 num,ra,dec,cstr,magt,peak);
+
+	    /* End of accepted star processing */
+	    }
+
+	/* Log operation */
+	if (nlog > 0 && istar%nlog == 0)
+		fprintf (stderr,"TABBIN: %5d / %5d / %5d sources catalog %s\r",
+			jstar,istar,nstars,tabcatname);
+
+	/* End of star loop */
+	}
+
+    /* Summarize search */
+    if (nlog > 0) {
+	fprintf (stderr,"TABBIN: Catalog %s : %d / %d / %d found\n",tabcatname,
+		 jstar,istar,nstars);
+	}
 
     return (nstar);
 }
@@ -1153,6 +1397,10 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	}
     else if ((sc->entpeak = tabcol (startab, "field"))) {
 	strcpy (sc->keypeak, "field");
+	sc->plate = 1;
+	}
+    else if ((sc->entpeak = tabcol (startab, "c"))) {
+	strcpy (sc->keypeak, "class");
 	sc->plate = 1;
 	}
     else if ((entpmq = tabcol (startab, "pm")) &&
@@ -2372,4 +2620,9 @@ char    *filename;      /* Name of file to check */
  * Apr  3 2003	Drop unused variables after lint
  * May 28 2003	Read long and lat if radecsys is "galactic" or "ecliptic"
  * Jun  2 003	Divide by cos(dec) for arcsec and mas RA proper motions
+ * Aug 22 2003	Add radi argument for inner edge of search annulus
+ * Sep 25 2003	Add tabbin() to fill an image with sources
+ * Oct  6 2003	Update tabread() and tabbin() for improved RefLim()
+ * Nov 18 2003	Initialize image size and bits/pixel from header in tabbin()
+ * Nov 22 2003	Add GSC II object class (c) as possible content for tpeak
  */

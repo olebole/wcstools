@@ -1,5 +1,5 @@
 /* File imcat.c
- * June 2, 2003
+ * November 22, 2003
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -49,6 +49,7 @@ static int debug = 0;		/* True for extra information */
 static int degout0 = 0;		/* True for RA and Dec in fractional degrees */
 static char *keyword = NULL;	/* Column to add to tab table output */
 static int sysout = 0;		/* Output coordinate system */
+static int starcount = 0;	/* 1 to only print number of stars found */
 static double eqout = 0.0;	/* Equinox for output coordinates */
 static int version = 0;		/* If 1, print only program name and version */
 static int obname[5];		/* If 1, print object name, else number */
@@ -202,6 +203,10 @@ char **av;
 
 		case 'e':
 		    sysout = WCS_ECLIPTIC;
+		    break;
+
+		case 'f':
+		    starcount = 1;
 		    break;
 
 		case 'g':
@@ -402,7 +407,7 @@ char **av;
 
 			/* No sorting */
 			else if (cs == 'n')
-			    catsort = NOSORT;
+			    catsort = SORT_NONE;
 
 			/* X coordinate */
 			else if (cs == 'x')
@@ -634,12 +639,13 @@ char	*command;
     fprintf (stderr,"  -c name: Reference catalog (gsc, ua2, local file, etc.\n");
     fprintf (stderr,"  -d: Output RA,Dec positions in fractional degrees\n");
     fprintf (stderr,"  -e: Output in ecliptic longitude and latitude\n");
+    fprintf (stderr,"  -f: Print only number of stars found, nothing else\n");
     fprintf (stderr,"  -g: Output in galactic longitude and latitude\n");
     fprintf (stderr,"  -h: Print heading, else do not \n");
     fprintf (stderr,"  -i: Print name instead of number in region file \n");
     fprintf (stderr,"  -j [RA Dec]: Output (center) in J2000 (FK5) RA and Dec\n");
     fprintf (stderr,"  -k keyword: Add this keyword to output from tab table search\n");
-    fprintf (stderr,"  -mx m1 [m2]: Catalog magnitude #x limit(s) (only one set allowd, default none)\n");
+    fprintf (stderr,"  -mx m1[,m2]: Catalog magnitude #x limit(s) (only one set allowed, default none)\n");
     fprintf (stderr,"  -n num: Number of brightest stars to print \n");
     fprintf (stderr,"  -o name: Set HST Guide Star object class to print \n");
     fprintf (stderr,"  -p num: Initial plate scale in arcsec per pixel (default 0)\n");
@@ -905,11 +911,16 @@ int	*region_char;	/* Character for SAOimage region file output */
     /* Find the nearby reference stars, in ra/dec */
     drad = 0.0;
     ng = ctgread (refcatname[icat], refcat, 0,
-		  cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
+		  cra,cdec,dra,ddec,drad,0.0,sysout,eqout,epout,mag1,mag2,
 		  sortmag,ngmax,&starcat[icat],
 		  gnum,gra,gdec,gpra,gpdec,gm,gc,gobj,nlog);
     if (ngmax < 0)
 	return;
+
+    if (starcount) {
+	printf ("%s %d\n", filename, ng);
+	return;
+	}
 
     /* Set flag if any proper motions are non-zero
     mprop = 0;
@@ -1006,7 +1017,7 @@ int	*region_char;	/* Character for SAOimage region file output */
     if (printhead || verbose) {
 	if (mprop) {
 	    if (wcs->epoch != wcs->equinox)
-		printf (" at %7.2f",wcs->epoch);
+		printf (" at %9.4f",wcs->epoch);
 	    if (isiraf (filename))
 		printf (" in IRAF image %s\n",filename);
 	    else
@@ -1272,14 +1283,14 @@ int	*region_char;	/* Character for SAOimage region file output */
 	printf ("%s\n", headline);
 
     /* Equinox of output coordinates */
-    sprintf (headline, "equinox	%.2f", eqout);
+    sprintf (headline, "equinox	%.4f", eqout);
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
 
     /* Epoch of output coordinates from image header time of observation */
-    sprintf (headline, "epoch	%.2f", epout);
+    sprintf (headline, "epoch	%.4f", epout);
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
@@ -1326,7 +1337,7 @@ int	*region_char;	/* Character for SAOimage region file output */
     else if (refcat ==IRAS)
 	strcat (headline,"f10m  	f25m  	f60m  	f100m 	");
     else if (refcat == GSC2)
-	strcat (headline,"magf  	magj 	magv	magn	");
+	strcat (headline,"magf  	magj 	magv	magn	class	");
     else if (refcat == UCAC2)
 	strcat (headline,"magj 	magh 	magk 	magc 	");
     else if (refcat == UB1)
@@ -1384,7 +1395,9 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"--	-------	-------"); /* JHK Magnitudes */
     else if (refcat == IRAS)
 	strcat (headline,"-	------	------	------"); /* 4 fluxes */
-    else if (refcat == GSC2 || refcat == HIP)
+    else if (refcat == GSC2)
+	strcat (headline,"	-----	-----	-----	-----"); /* 4 magnitudes + class*/
+    else if (refcat == HIP)
 	strcat (headline,"	-----	-----	-----"); /* 4 magnitudes */
     else if (refcat == UB1)
 	strcat (headline,"	-----	-----	-----	-----");
@@ -1461,7 +1474,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 	    else if (refcat == GSC || refcat == GSCACT)
 		printf ("  Mag Class Band N    X       Y   \n");
 	    else if (refcat == GSC2)
-		printf ("MagF  MagJ  MagV  MagN    X       Y   \n");
+		printf ("MagF  MagJ  MagV  MagN   Class   X       Y   \n");
 	    else if (refcat == UCAC2)
 		printf ("MagJ  MagH  MagK  MagC    X       Y   \n");
 	    else if (refcat == UB1)
@@ -1530,7 +1543,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 		if (refcat == GSC || refcat == GSCACT)
 		    sprintf (headline, "%s	%s	%s	%5.2f	%d	%d	%d",
 		     numstr, rastr, decstr, gm[0][i], gc[i], band, ngsc);
-		else if (refcat == GSC2 || refcat == HIP)
+		else if (refcat == GSC2)
+		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%d",
+		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i], gc[i]);
+		else if (refcat == HIP)
 		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
 		else if (refcat == UB1)
@@ -1627,7 +1643,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 			strcat (headline, temp);
 			}
 		    }
-		else if (refcat == GSC2 || refcat == HIP)
+		else if (refcat == GSC2)
+		    sprintf (headline,"%s %s %s %5.2f %5.2f %5.2f %5.2f   %2d  ",
+			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],gc[i]);
+		else if (refcat == HIP)
 		    sprintf (headline,"%s %s %s %5.2f %5.2f %5.2f %5.2f",
 			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
 		else if (refcat == UB1)
@@ -1928,4 +1947,10 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * May 28 2003	Add TMIDR2 with TMPSC formats
  * May 30 2003	Add UCAC2 catalog
  * Jun  2 2003	Print both RA and Dec proper motion as mas/year
+ * Aug  7 2003	Change NOSORT to SORT_NONE
+ * Aug 19 2003	Fix help listing to note that magnitude limits are comma-separated
+ * Aug 20 2003	Print 4 decimal places for epoch and equinox
+ * Aug 22 2003	Add inner radius = 0.0 argument to ctgread call
+ * Oct  7 2003	Add -f to print only number of catalog stars in image
+ * Nov 22 2003	Add class to GSC II output
  */

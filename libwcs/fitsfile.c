@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** July 11, 2003
+ *** November 18, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -36,6 +36,8 @@
  *		Read section of a FITS image, having already ready the header
  * Subroutine:	fitsrimage (filename, nbhead, header)
  *		Read FITS image, having already ready the header
+ * Subroutine:	fitsrfull (filename, nbhead, header)
+ *		Read a FITS image of any dimension
  * Subroutine:	fitsrtopen (inpath, nk, kw, nrows, nchar, nbhead)
  *		Open a FITS table file for reading; return header information
  * Subroutine:	fitsrthead (header, nk, kw, nrows, nchar, nbhead)
@@ -110,6 +112,8 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     char cext;
     char *rbrac;	/* Pointer to right bracket if present in file name */
     char *mwcs;		/* Pointer to WCS name separated by % */
+    char *endnext;
+    char *pheadend;
 
     pheader = NULL;
     lprim = 0;
@@ -208,7 +212,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 			    (void)close (fd);
 			free (header);
 			if (pheader != NULL)
-			    free (pheader);
+			    return (pheader);
 			return (NULL);
 			}
 		    }
@@ -247,14 +251,10 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    if (naxis < 1) {
 		nbprim = nrec * FITSBLOCK;
 		headend = ksearch (header,"END");
+		endnext = headend;
 		lprim = headend + 80 - header;
 		pheader = (char *) calloc ((unsigned int) nbprim, 1);
 		strncpy (pheader, header, lprim);
-		pheader[lprim] = 0;
-		hchange (pheader, "SIMPLE", "ROOTHEAD");
-		hchange (pheader, "NEXTEND", "NUMEXT");
-		hdel (pheader, "BITPIX");
-		hdel (pheader, "NAXIS");
 		}
 
 	    /* If header has no data, start with the next record */
@@ -285,6 +285,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 
 		/* If this is not desired header data unit, skip over data */
 		hdu = hdu + 1;
+		nblock = 0;
 		if (naxis > 0) {
 		    ibpix = 0;
 		    hgeti4 (header,"BITPIX",&ibpix);
@@ -367,6 +368,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 
     if (pheader != NULL && extnum != 0) {
 	extname[0] = 0;
+	endnext = headend;
 	hgets (header, "XTENSION", 32, extname);
 	if (!strcmp (extname,"IMAGE")) {
 	    strncpy (header, "SIMPLE  ", 8);
@@ -379,6 +381,16 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	if (headend == NULL)
 	    headend = ksearch (header, "END");
 	lext = headend - header;
+
+	/* Update primary header for inclusion at end of extension header */
+	hchange (pheader, "SIMPLE", "ROOTHEAD");
+	hchange (pheader, "NEXTEND", "NUMEXT");
+	hdel (pheader, "BITPIX");
+	hdel (pheader, "NAXIS");
+	hdel (pheader, "EXTEND");
+	hputl (pheader, "ROOTEND",1);
+	pheadend = ksearch (pheader,"END");
+	lprim = pheadend + 80 - pheader;
 	if (lext + lprim > nbh) {
 	    nrec = (lext + lprim) / FITSBLOCK;
 	    if (FITSBLOCK*nrec < lext+lprim)
@@ -387,8 +399,8 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    header = (char *) realloc (header,(unsigned int) *lhead);
 	    (void) hlength (header, *lhead);
 	    }
+	pheader[lprim] = 0;
 	strncpy (headend, pheader, lprim);
-	hdel (header, "EXTEND");
 	free (pheader);
 	}
 
@@ -596,6 +608,107 @@ char	*header;	/* FITS header for image (previously read) */
 	}
     else
 	nbimage = naxis1 * naxis2 * bytepix;
+
+    /* Set number of bytes to integral number of 2880-byte blocks */
+    nblocks = nbimage / FITSBLOCK;
+    if (nblocks * FITSBLOCK < nbimage)
+	nblocks = nblocks + 1;
+    nbytes = nblocks * FITSBLOCK;
+
+    /* Allocate and read image */
+    image = (char *) malloc (nbytes);
+    nbleft = nbytes;
+    imleft = image;
+    nbr = 0;
+    while (nbleft > 0) {
+	nbread = read (fd, imleft, nbleft);
+	nbr = nbr + nbread;
+#ifndef VMS
+	if (fd == STDIN_FILENO && nbread < nbleft && nbread > 0) {
+	    nbleft = nbleft - nbread;
+	    imleft = imleft + nbread;
+	    }
+	else
+#endif
+	    nbleft = 0;
+	}
+#ifndef VMS
+    if (fd != STDIN_FILENO)
+	(void)close (fd);
+#endif
+    if (nbr < nbimage) {
+	snprintf (fitserrmsg,79, "FITSRIMAGE:  %d of %d bytes read from file %s\n",
+		 nbr, nbimage, filename);
+	return (NULL);
+	}
+
+    /* Byte-reverse image, if necessary */
+    if (imswapped ())
+	imswap (bitpix, image, nbytes);
+
+    return (image);
+}
+
+
+/* FITSRFULL -- Read a FITS image of any dimension */
+
+char *
+fitsrfull (filename, nbhead, header)
+
+char	*filename;	/* Name of FITS image file */
+int	nbhead;		/* Actual length of image header(s) in bytes */
+char	*header;	/* FITS header for image (previously read) */
+{
+    int fd;
+    int nbimage, naxisi, iaxis, bytepix, nbread;
+    int bitpix, naxis, nblocks, nbytes, nbleft, nbr;
+    char keyword[16];
+    char *image, *imleft;
+
+    /* Open the image file and read the header */
+    if (strncasecmp (filename,"stdin", 5)) {
+	fd = -1;
+
+	fd = fitsropen (filename);
+	if (fd < 0) {
+	    snprintf (fitserrmsg,79, "FITSRIMAGE:  cannot read file %s\n", filename);
+	    return (NULL);
+	    }
+
+	/* Skip over FITS header and whatever else needs to be skipped */
+	if (lseek (fd, nbhead, SEEK_SET) < 0) {
+	    (void)close (fd);
+	    snprintf (fitserrmsg,79, "FITSRIMAGE:  cannot skip header of file %s\n",
+		     filename);
+	    return (NULL);
+	    }
+	}
+#ifndef VMS
+    else
+	fd = STDIN_FILENO;
+#endif
+
+    /* Find number of bytes per pixel */
+    bitpix = 0;
+    hgeti4 (header,"BITPIX",&bitpix);
+    if (bitpix == 0) {
+	/* snprintf (fitserrmsg,79, "FITSRIMAGE:  BITPIX is 0; image not read\n"); */
+	(void)close (fd);
+	return (NULL);
+	}
+    bytepix = bitpix / 8;
+    if (bytepix < 0) bytepix = -bytepix;
+    nbimage = bytepix;
+
+    /* Compute size of image in bytes using relevant header parameters */
+    naxis = 1;
+    hgeti4 (header,"NAXIS",&naxis);
+    for (iaxis = 1; iaxis <= naxis; iaxis++) {
+	sprintf (keyword, "NAXIS%d", iaxis);
+	naxisi = 1;
+	hgeti4 (header,keyword,&naxisi);
+	nbimage = nbimage * naxisi;
+	}
 
     /* Set number of bytes to integral number of 2880-byte blocks */
     nblocks = nbimage / FITSBLOCK;
@@ -1144,10 +1257,11 @@ char	*filename;	/* Name of IFTS image file */
 char	*header;	/* FITS image header */
 char	*image;		/* FITS image pixels */
 {
-    int nbhead, nbimage, nblocks, bytepix;
-    int bitpix, naxis, naxis1, naxis2, nbytes, nbw, nbpad, nbwp;
+    int nbhead, nbimage, nblocks, bytepix, i, nbhw;
+    int bitpix, naxis, iaxis, naxisi, nbytes, nbw, nbpad, nbwp;
     char *endhead, *lasthead, *padding;
     double bzero, bscale;
+    char keyword[32];
 
     /* Change BITPIX=-16 files to BITPIX=16 with BZERO and BSCALE */
     bitpix = 0;
@@ -1165,54 +1279,56 @@ char	*image;		/* FITS image pixels */
     /* Write header to file */
     endhead = ksearch (header,"END") + 80;
     nbhead = endhead - header;
-    nblocks = nbhead / FITSBLOCK;
-    if (nblocks * FITSBLOCK < nbhead)
-	nblocks = nblocks + 1;
-    nbytes = nblocks * FITSBLOCK;
-
-    /* Pad header with spaces */
-    lasthead = header + nbytes;
-    while (endhead < lasthead)
-	*(endhead++) = ' ';
-    
-    nbw = write (fd, header, nbytes);
-    if (nbw < nbhead) {
+    nbhw = write (fd, header, nbhead);
+    if (nbhw < nbhead) {
 	snprintf (fitserrmsg,79, "FITSWHDU:  wrote %d / %d bytes of header to file %s\n",
-		 nbw, nbytes, filename);
+		 nbhw, nbhead, filename);
 	(void)close (fd);
 	return (0);
 	}
 
-    /* Return if file has no data */
-    if (bitpix == 0) {
+    /* Write extra spaces to make an integral number of 2880-byte blocks */
+    nblocks = nbhead / FITSBLOCK;
+    if (nblocks * FITSBLOCK < nbhead)
+	nblocks = nblocks + 1;
+    nbytes = nblocks * FITSBLOCK;
+    nbpad = nbytes - nbhead;
+    padding = (char *)calloc (1, nbpad);
+    for (i = 0; i < nbpad; i++)
+	padding[i] = ' ';
+    nbwp = write (fd, padding, nbpad);
+    if (nbwp < nbpad) {
+	snprintf (fitserrmsg,79, "FITSWHDU:  wrote %d / %d bytes of header padding to file %s\n",
+		 nbwp, nbpad, filename);
 	(void)close (fd);
-	return (nbytes);
+	return (0);
 	}
+    nbhw = nbhw + nbwp;
+    free (padding);
 
-    /* Compute size of image in bytes using relevant header parameters */
-    naxis = 1;
-    hgeti4 (header,"NAXIS",&naxis);
-    naxis1 = 1;
-    hgeti4 (header,"NAXIS1",&naxis1);
-    naxis2 = 1;
-    hgeti4 (header,"NAXIS2",&naxis2);
+    /* Return if file has no data */
     if (bitpix == 0) {
 	/* snprintf (fitserrmsg,79, "FITSWHDU:  BITPIX is 0; image not written\n"); */
 	(void)close (fd);
 	return (0);
 	}
+
+    /* Compute size of pixel in bytes */
     bytepix = bitpix / 8;
     if (bytepix < 0) bytepix = -bytepix;
+    nbimage = bytepix;
 
-    /* If either dimension is one and image is 3-D, read all three dimensions */
-    if (naxis == 3 && (naxis1 ==1 || naxis2 == 1)) {
-	int naxis3;
-	hgeti4 (header,"NAXIS3",&naxis3);
-	nbimage = naxis1 * naxis2 * naxis3 * bytepix;
+    /* Compute size of image in bytes using relevant header parameters */
+    naxis = 1;
+    hgeti4 (header,"NAXIS",&naxis);
+    for (iaxis = 1; iaxis <= naxis; iaxis++) {
+	sprintf (keyword, "NAXIS%d", iaxis);
+	naxisi = 1;
+	hgeti4 (header,keyword,&naxisi);
+	nbimage = nbimage * naxisi;
 	}
-    else
-	nbimage = naxis1 * naxis2 * bytepix;
 
+    /* Number of bytes to write is an integral number of FITS blocks */
     nblocks = nbimage / FITSBLOCK;
     if (nblocks * FITSBLOCK < nbimage)
 	nblocks = nblocks + 1;
@@ -1224,12 +1340,22 @@ char	*image;		/* FITS image pixels */
 
     /* Write image to file */
     nbw = write (fd, image, nbimage);
+    if (nbw < nbimage) {
+	snprintf (fitserrmsg,79, "FITSWHDU:  wrote %d / %d bytes of image to file %s\n",
+		 nbw, nbimage, filename);
+	return (0);
+	}
 
     /* Write extra zeroes to make an integral number of 2880-byte blocks */
     nbpad = nbytes - nbimage;
     padding = (char *)calloc (1, nbpad);
     nbwp = write (fd, padding, nbpad);
-    nbw = nbw + nbwp;
+    if (nbwp < nbpad) {
+	snprintf (fitserrmsg,79, "FITSWHDU:  wrote %d / %d bytes of image padding to file %s\n",
+		 nbwp, nbpad, filename);
+	(void)close (fd);
+	return (0);
+	}
     free (padding);
 
     (void)close (fd);
@@ -1238,11 +1364,7 @@ char	*image;		/* FITS image pixels */
     if (imswapped ())
 	imswap (bitpix, image, nbimage);
 
-    if (nbw < nbimage) {
-	snprintf (fitserrmsg,79, "FITSWHDU:  wrote %d / %d bytes of image to file %s\n",
-		 nbw, nbimage, filename);
-	return (0);
-	}
+    nbw = nbw + nbwp + nbhw;
     return (nbw);
 }
 
@@ -1623,4 +1745,8 @@ fitserr ()
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  * Apr  2 2003	Drop unused variable in fitsrsect()
  * Jul 11 2003	Use strcasecmp() to check for stdout and stdin
+ * Aug  1 2003	If no other header, return root header from fitsrhead()
+ * Aug 20 2003	Add fitsrfull() to read n-dimensional FITS images
+ * Aug 21 2003	Modify fitswimage() to always write n-dimensional FITS images
+ * Nov 18 2003	Fix minor bug in fitswhdu()
  */

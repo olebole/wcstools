@@ -1,5 +1,5 @@
 /*** File libwcs/tmcread.c
- *** July 2, 2003
+ *** November 18, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2003
@@ -66,8 +66,8 @@ static int tmcsra();
 /* TMCREAD -- Read 2MASS point source catalog stars from CDROM */
 
 int
-tmcread (catfile,cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,
-	 sortmag,nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
+tmcread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
+	 mag1,mag2,sortmag,nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
 
 char	*catfile;	/* Name of catalog file (tmc or tmidr2) */
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -75,6 +75,7 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+double	dradi;		/* Inner edge of annulus in degrees (ignore if 0) */
 int	distsort;	/* 1 to sort stars by distance from center */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
@@ -101,6 +102,7 @@ int	nlog;		/* 1 for diagnostics */
     char inpath[128];	/* Pathname for input region file */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
     struct StarCat *starcat;
     struct Star *star;
     int verbose;
@@ -147,7 +149,7 @@ int	nlog;		/* 1 for diagnostics */
 
     /* If pathname is a URL, search and return */
     if (!strncmp (tmcpath, "http:",5))
-	return (webread (str,catfile,distsort,cra,cdec,dra,ddec,drad,
+	return (webread (str,catfile,distsort,cra,cdec,dra,ddec,drad,dradi,
 			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			 gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 
@@ -197,12 +199,11 @@ int	nlog;		/* 1 for diagnostics */
     rra2 = ra2;
     rdec1 = dec1;
     rdec2 = dec2;
-    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
-	    &rra1, &rra2, &rdec1, &rdec2, verbose);
-    if (rra1 > rra2) {
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,0.0,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
+    if (wrap) {
 	rra2a = rra2;
 	rra2 = 360.0;
-	if (!wrap) wrap = 1;
 	}
 
     /* Write header if printing star entries as found */
@@ -214,11 +215,14 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("ra	%s\n", rastr);
 	dec2str (decstr, 31, cdec, 2);
 	printf ("dec	%s\n", decstr);
-	if (drad != 0.0)
-	    printf ("radsec	%.1f\n", drad*3600.0);
+	if (drad != 0.0) {
+	    printf ("radmin	%.1f\n", drad*60.0);
+	    if (dradi > 0)
+		printf ("radimin	%.1f\n", dradi*60.0);
+	    }
 	else {
-	    printf ("drasec	%.1f\n", dra*3600.0* cosdeg (cdec));
-	    printf ("ddecsec	%.1f\n", ddec*3600.0);
+	    printf ("dramin	%.1f\n", dra*60.0* cosdeg (cdec));
+	    printf ("ddecmin	%.1f\n", ddec*60.0);
 	    }
 	printf ("radecsys	%s\n", cstr);
 	printf ("equinox	%.3f\n", eqout);
@@ -298,6 +302,8 @@ int	nlog;		/* 1 for diagnostics */
 		    /* Check radial distance to search center */
 		    if (drad > 0) {
 			if (dist > drad)
+			    pass = 0;
+			if (dradi > 0.0 && dist < dradi)
 			    pass = 0;
 			}
 
@@ -558,6 +564,256 @@ int	nlog;		/* 1 for diagnostics */
 
     tmcclose (starcat);
     return (nstars);
+}
+
+
+/* TMCBIN -- Fill FITS WCS image with 2MASS point source catalog objects */
+
+int
+tmcbin (catfile, wcs, header, image, mag1, mag2, sortmag, magscale, nlog)
+
+char	*catfile;	/* Name of catalog file (tmc or tmidr2) */
+struct WorldCoor *wcs;	/* World coordinate system for image */
+char	*header;	/* FITS header for output image */
+char	*image;		/* Output FITS image */
+double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
+double	magscale;	/* Scaling factor for magnitude to pixel flux
+			 * (number of catalog objects per bin if 0) */
+int	nlog;		/* 1 for diagnostics */
+{
+    double cra;		/* Search center J2000 right ascension in degrees */
+    double cdec;	/* Search center J2000 declination in degrees */
+    double dra;		/* Search half width in right ascension in degrees */
+    double ddec;	/* Search half-width in declination in degrees */
+    int	sysout;		/* Search coordinate system */
+    double eqout;	/* Search coordinate equinox */
+    double epout;	/* Proper motion epoch (0.0 for no proper motion) */
+    double ra1,ra2;	/* Limiting right ascensions of region in degrees */
+    double dec1,dec2;	/* Limiting declinations of region in degrees */
+    int nreg;		/* Number of 2MASS point source regions in search */
+    int rlist[MAXREG];	/* List of regions */
+    char inpath[128];	/* Pathname for input region file */
+    int sysref=WCS_J2000;	/* Catalog coordinate system */
+    double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
+    struct StarCat *starcat;
+    struct Star *star;
+    int verbose;
+    int wrap;
+    int pass;
+    int ireg;
+    int imag;
+    int jstar, iw;
+    int zone;
+    int magsort;
+    int nrmax = MAXREG;
+    int nstar,i, ntot;
+    int istar, istar1, istar2;
+    double num, ra, dec, mag;
+    double rra1, rra2, rra2a, rdec1, rdec2;
+    double rdist, ddist;
+    char cstr[32];
+    char *str;
+    char tmcenv[16];
+    double xpix, ypix, flux;
+    int offscl;
+    int bitpix, w, h;   /* Image bits/pixel and pixel width and height */
+    double logt = log(10.0);
+
+    /* If catalog file contains idr2 or IDR2, set release to IDR2 */
+    if (strcsrch (catfile, "idr2")) {
+	tmcrel = IDR2;
+	tmcpath = tmc2path;
+	strcpy (tmcenv, "TMCIDR2_PATH");
+	}
+    else {
+	tmcrel = ALLSKY;
+	tmcpath = tmcapath;
+	strcpy (tmcenv, "TMC_PATH");
+	}
+
+    ntot = 0;
+    if (nlog > 0)
+	verbose = 1;
+    else if (nlog < 0)
+	linedump = 0;
+    else
+	verbose = 0;
+
+    /* Set image parameters */
+    bitpix = 0;
+    (void)hgeti4 (header, "BITPIX", &bitpix);
+    w = 0;
+    (void)hgeti4 (header, "NAXIS1", &w);
+    h = 0;
+    (void)hgeti4 (header, "NAXIS2", &h);
+
+    /* If pathname is set in environment, override local value */
+    if ((str = getenv(tmcenv)) != NULL )
+	tmcpath = str;
+
+    /* Set catalog search limits from image WCS information */
+    sysout = wcs->syswcs;
+    eqout = wcs->equinox;
+    epout = wcs->epoch;
+    wcscstr (cstr, sysout, eqout, epout);
+    wcssize (wcs, &cra, &cdec, &dra, &ddec);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
+
+    /* If RA range includes zero, split it in two */
+    wrap = 0;
+    if (ra1 > ra2)
+	wrap = 1;
+    else
+	wrap = 0;
+
+    /* make mag1 always the smallest magnitude */
+    if (mag2 < mag1) {
+	mag = mag2;
+	mag2 = mag1;
+	mag1 = mag;
+	}
+
+    /* Allocate catalog entry buffer */
+    star = (struct Star *) calloc (1, sizeof (struct Star));
+    star->num = 0.0;
+
+    nstar = 0;
+    jstar = 0;
+
+    if (sortmag > 0 && sortmag < 4)
+	magsort = sortmag - 1;
+    else 
+	magsort = 0;
+
+    rra1 = ra1;
+    rra2 = ra2;
+    rdec1 = dec1;
+    rdec2 = dec2;
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,0.0,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
+    if (wrap) {
+	rra2a = rra2;
+	rra2 = 360.0;
+	}
+
+    /* If searching through RA = 0:00, split search in two */
+    for (iw = 0; iw <= wrap; iw++) {
+
+	/* Find 2MASS Point Source Catalog regions in which to search */
+	nreg = tmcreg (rra1,rra2,rdec1,rdec2,nrmax,rlist,verbose);
+	if (nreg <= 0) {
+	    fprintf (stderr,"TMCBIN:  no 2MASS regions found\n");
+	    return (0);
+	    }
+
+	/* Loop through zone or region list */
+	for (ireg = 0; ireg < nreg; ireg++) {
+
+	    /* Open file for this region of 2MASS point source catalog */
+	    zone = rlist[ireg];
+	    starcat = tmcopen (zone);
+	    if (starcat == NULL) {
+		fprintf (stderr,"TMCBIN: File %s not found\n",inpath);
+		return (0);
+		}
+
+	    /* Find first and last stars in this region */
+	    if (tmcrel == ALLSKY) {
+		istar1 = tmcsra (starcat, star, zone, rra1);
+		istar2 = tmcsra (starcat, star, zone, rra2);
+		}
+	    else {
+		istar1 = tmcsdec (starcat, star, zone, rdec1);
+		istar2 = tmcsdec (starcat, star, zone, rdec2);
+		}
+	    if (verbose)
+		fprintf (stderr,"TMCBIN: Searching stars %d through %d\n",
+			istar1, istar2-1);
+
+	    /* Loop through catalog for this region */
+	    for (istar = istar1; istar < istar2; istar++) {
+		if (tmcstar (starcat, star, zone, istar)) {
+		    fprintf (stderr,"TMCBIN: Cannot read star %d\n", istar);
+		    break;
+		    }
+
+		/* ID number */
+		num = star->num;
+
+		/* Magnitude */
+		mag = star->xmag[0];
+
+		/* Check magnitude limits */
+		pass = 1;
+		if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+		    pass = 0;
+
+		if (pass) {
+
+		    /* Get position in output coordinate system */
+		    ra = star->ra;
+		    dec = star->dec;
+		    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+
+		    /* Check distance along RA and Dec axes */
+		    ddist = wcsdist (cra,cdec,cra,dec);
+		    if (ddist > ddec)
+			pass = 0;
+		    rdist = wcsdist (cra,dec,ra,dec);
+		    if (rdist > dra)
+			pass = 0;
+		    }
+
+		/* Save star in FITS image */
+		if (pass) {
+		    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+		    if (!offscl) {
+			if (magscale > 0.0)
+			    flux = magscale * exp (logt * (-mag / 2.5));
+			else
+			    flux = 1.0;
+			addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+			nstar++;
+			}
+
+		    if (nlog == 1)
+			fprintf (stderr,"TMCBIN: %11.6f: %9.5f %9.5f %5.2f %5.2f %5.2f\n",
+				 num,ra,dec,star->xmag[0],star->xmag[1],star->xmag[2]);
+
+		    /* End of accepted star processing */
+		    }
+
+		/* Log operation */
+		jstar++;
+		if (nlog > 0 && istar%nlog == 0)
+		    fprintf (stderr,"TMCBIN: %5d / %5d / %5d sources\r",
+			     nstar,jstar,starcat->nstars);
+
+		/* End of star loop */
+		}
+
+	    ntot = ntot + starcat->nstars;
+	    if (nlog > 0)
+		fprintf (stderr,"TMCBIN: %4d / %4d: %5d / %5d  / %5d sources from region %4d    \n",
+		 	 ireg+1,nreg,nstar,jstar,starcat->nstars,zone);
+
+	    /* Close region input file */
+	    tmcclose (starcat);
+	    }
+	rra1 = 0.0;
+	rra2 = rra2a;
+	}
+
+/* close output file and summarize transfer */
+    if (nlog > 0) {
+	if (nreg > 1)
+	    fprintf (stderr,"TMCBIN: %d regions: %d / %d found\n",nreg,nstar,ntot);
+	else
+	    fprintf (stderr,"TMCBIN: 1 region: %d / %d found\n",nstar,ntot);
+	}
+    return (nstar);
 }
 
 char rdir[50][4]={"0", "1", "2", "3", "4", "5a", "5b", "6a", "6b", "6c",
@@ -1066,4 +1322,8 @@ int	istar;		/* Star sequence in 2MASS zone file */
  * May 27 2003	Allow IDR2 and Allsky release to be set by catalog name
  * May 28 2003	Star ID numbers from All-Sky release have 6 decimal places
  * Jul  2 2003	Fix limiting magnitude for All-Sky Release
+ * Aug 22 2003	Add radi argument for inner edge of search annulus
+ * Sep 25 2003	Add tmcbin() to fill an image with sources
+ * Oct  6 2003	Update tmcread() and tmcbin() for improved RefLim()
+ * Nov 18 2003	Initialize image size and bits/pixel from header in tmcbin()
  */

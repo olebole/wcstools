@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** March 21, 2003
+ *** November 18, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -69,8 +69,9 @@ static void moveb();
 /* BINREAD -- Read binary catalog sources + names in specified region */
 
 int
-binread (bincat,distsort,cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,mag2,
-	 sortmag,nstarmax,starcat,tnum,tra,tdec,tpra,tpdec,tmag,tpeak,tobj,nlog)
+binread (bincat,distsort,cra,cdec,dra,ddec,drad,dradi,sysout,eqout,epout,
+	 mag1,mag2,sortmag,nstarmax,starcat,
+	 tnum,tra,tdec,tpra,tpdec,tmag,tpeak,tobj,nlog)
 
 char	*bincat;	/* Name of reference star catalog file */
 int	distsort;	/* 1 to sort stars by distance from center */
@@ -79,6 +80,7 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+double	dradi;		/* Inner edge of annulus in degrees (ignore if 0) */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
@@ -108,12 +110,13 @@ int	nlog;
     int sysref;		/* Catalog coordinate system */
     double eqref;	/* Catalog coordinate equinox */
     double epref;	/* Catalog position epoch */
+    double secmarg = 60.0; /* Arcsec/century margin for proper motion */
     double ra, dec, rapm, decpm;
     double rra1a, rra2a;
     double rdist, ddist;
     struct StarCat *sc;	/* Star catalog data structure */
     struct Star *star;
-    int rwrap, wrap, iwrap, istar1,istar2;
+    int wrap, iwrap, istar1,istar2;
     int pass;
     int imag;
     char *objname;
@@ -151,7 +154,7 @@ int	nlog;
 	*starcat = NULL;
 	strcpy (str, sc->caturl);
 	free (sc);
-	return (webread (str,bincat,distsort,cra,cdec,dra,ddec,drad,
+	return (webread (str,bincat,distsort,cra,cdec,dra,ddec,drad,dradi,
 		sysout,eqout,epout,mag1,mag2,nstarmax,
 		tnum,tra,tdec,tpra,tpdec,tmag,tpeak,nlog));
 	}
@@ -208,36 +211,8 @@ int	nlog;
     sysref = sc->coorsys;
     eqref = sc->equinox;
     epref = sc->epoch;
-    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
-	    &rra1, &rra2, &rdec1, &rdec2, verbose);
-
-    /* Search zones which include the poles cover 360 degrees in RA */
-    if (cdec - ddec < -90.0) {
-	if (dec1 > dec2)
-	    dec2 = dec1;
-	dec1 = -90.0;
-	if (rdec1 > rdec2)
-	    rdec2 = rdec1;
-	rdec1 = -90.0;
-	rra1 = 0.0;
-	rra2 = 359.99999;
-	ra1 = 0.0;
-	ra2 = 359.99999;
-	wrap = 0;
-	}
-    if (cdec + ddec > 90.0) {
-	if (dec2 < dec1)
-	    dec1 = dec2;
-	dec2 = 90.0;
-	if (rdec2 < rdec1)
-	    rdec1 = rdec2;
-	rdec2 = 90.0;
-	rra1 = 0.0;
-	rra2 = 359.99999;
-	ra1 = 0.0;
-	ra2 = 359.99999;
-	wrap = 0;
-	}
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,secmarg,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
 
     if (verbose) {
 	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
@@ -252,15 +227,11 @@ int	nlog;
 	}
 
     /* If catalog RA range includes zero, split search in two */
-    rwrap = 0;
-    if (rra1 > rra2) {
-	rwrap = 1;
+    if (wrap) {
 	rra1a = 0.0;
 	rra2a = rra2;
 	rra2 = 360.0;
 	}
-    else
-	rwrap = 0;
 
     if (sc->entrv > 0) {
 	nmag = sc->nmag - 1;
@@ -269,12 +240,6 @@ int	nlog;
     else
 	nmag = sc->nmag;
 
-    /* If output RA range includes zero, set flag */
-    if (ra1 > ra2)
-	wrap = 1;
-    else
-	wrap = 0;
-
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
     star->num = 0.0;
@@ -282,7 +247,7 @@ int	nlog;
     jstar = 0;
 
     /* Loop through wraps (do not cross 360 degrees in search */
-    for (iwrap = 0; iwrap <= rwrap; iwrap++) {
+    for (iwrap = 0; iwrap <= wrap; iwrap++) {
 
 	/* Set first and last stars to check */
 	if (sc->rasorted) {
@@ -333,6 +298,8 @@ int	nlog;
 		/* Check radial distance to search center */
 		if (drad > 0) {
 		    if (dist > drad)
+			pass = 0;
+		    if (dradi > 0.0 && dist < dradi)
 			pass = 0;
 		    }
 
@@ -674,6 +641,252 @@ int	nlog;
 
     binclose (starcat);
     free ((void *) star);
+    return (nstar);
+}
+
+
+/* BINBIN -- Fill FITS WCS image with stars from binary catalog */
+
+int
+binbin (bincat, wcs, header, image, mag1, mag2, sortmag, magscale, nlog)
+
+char	*bincat;	/* Name of reference star catalog file */
+struct WorldCoor *wcs;	/* World coordinate system for image */
+char	*header;	/* FITS header for output image */
+char	*image;		/* Output FITS image */
+double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
+double	magscale;	/* Scaling factor for magnitude to pixel flux
+			 * (number of catalog objects per bin if 0) */
+int	nlog;
+{
+    double cra;		/* Search center J2000 right ascension in degrees */
+    double cdec;	/* Search center J2000 declination in degrees */
+    double dra;		/* Search half width in right ascension in degrees */
+    double ddec;	/* Search half-width in declination in degrees */
+    int	sysout;		/* Search coordinate system */
+    double eqout;	/* Search coordinate equinox */
+    double epout;	/* Proper motion epoch (0.0 for no proper motion) */
+    double rra1,rra2;	/* Limiting catalog right ascensions of region */
+    double rdec1,rdec2;	/* Limiting catalog declinations of region */
+    double ra1,ra2;	/* Limiting output right ascensions of region */
+    double dec1,dec2;	/* Limiting output declinations of region */
+    int sysref;		/* Catalog coordinate system */
+    double eqref;	/* Catalog coordinate equinox */
+    double epref;	/* Catalog position epoch */
+    double secmarg = 60.0; /* Arcsec/century margin for proper motion */
+    double ra, dec, rapm, decpm;
+    double rra1a, rra2a;
+    double rdist, ddist;
+    struct StarCat *sc;	/* Star catalog data structure */
+    struct Star *star;
+    int wrap, iwrap, istar1,istar2;
+    int pass;
+    int imag;
+    char *objname;
+    int lname;
+    int nmag;		/* Real number of magnitudes per entry (- rv) */
+    int jstar;
+    int nstar;
+    double mag;
+    double num;
+    int i;
+    int magsort;
+    int istar;
+    int isp;
+    int verbose;
+    int mrv;
+    char cstr[16];
+    char str[128];
+    double xpix, ypix, flux;
+    int offscl;
+    int bitpix, w, h;   /* Image bits/pixel and pixel width and height */
+    double logt = log(10.0);
+
+    if (nlog > 0)
+	verbose = 1;
+    else
+	verbose = 0;
+
+    /* Set image parameters */
+    bitpix = 0;
+    (void)hgeti4 (header, "BITPIX", &bitpix);
+    w = 0;
+    (void)hgeti4 (header, "NAXIS1", &w);
+    h = 0;
+    (void)hgeti4 (header, "NAXIS2", &h);
+
+    /* Open catalog */
+    sc = binopen (bincat);
+    if (sc == NULL)
+	return (0);
+
+    if (sc->nstars <= 0) {
+	binclose (sc);
+	sc = NULL;
+	return (0);
+	}
+
+    /* Keep mag1 the smallest magnitude */
+    if (mag2 < mag1) {
+	mag = mag2;
+	mag2 = mag1;
+	mag1 = mag;
+	}
+
+    if (sortmag > 0 && sortmag <= sc->nmag)
+	magsort = sortmag - 1;
+    else 
+	magsort = 0;
+
+    /* Logging interval */
+    nstar = 0;
+
+    /* Set catalog search limits from image WCS information */
+    sysout = wcs->syswcs;
+    eqout = wcs->equinox;
+    epout = wcs->epoch;
+    wcscstr (cstr, sysout, eqout, epout);
+    wcssize (wcs, &cra, &cdec, &dra, &ddec);
+    SearchLim (cra, cdec, dra, ddec, sysout, &ra1, &ra2, &dec1, &dec2, verbose);
+
+    /* Make sure first declination is always the smallest one */
+    if (dec1 > dec2) {
+	dec = dec1;
+	dec1 = dec2;
+	dec2 = dec;
+	}
+  
+    sysref = sc->coorsys;
+    eqref = sc->equinox;
+    epref = sc->epoch;
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,secmarg,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
+
+    if (verbose) {
+	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
+	ra2str (rstr1, 16, rra1, 3);
+        dec2str (dstr1, 16, rdec1, 2);
+	ra2str (rstr2, 16, rra2, 3);
+        dec2str (dstr2, 16, rdec2, 2);
+
+	wcscstr (cstr, sysref,eqref,epref);
+	fprintf (stderr,"BINREAD: RA: %s - %s  Dec: %s - %s %s\n",
+		 rstr1, rstr2, dstr1, dstr2, cstr);
+	}
+
+    /* If catalog RA range includes zero, split search in two */
+    if (wrap) {
+	rra1a = 0.0;
+	rra2a = rra2;
+	rra2 = 360.0;
+	}
+
+    if (sc->entrv > 0) {
+	nmag = sc->nmag - 1;
+	mrv = nmag;
+	}
+    else
+	nmag = sc->nmag;
+
+    /* Allocate catalog entry buffer */
+    star = (struct Star *) calloc (1, sizeof (struct Star));
+    star->num = 0.0;
+
+    jstar = 0;
+
+    /* Loop through wraps (do not cross 360 degrees in search */
+    for (iwrap = 0; iwrap <= wrap; iwrap++) {
+
+	/* Set first and last stars to check */
+	if (sc->rasorted) {
+	    istar1 = binsra (sc, star, rra1);
+	    istar2 = binsra (sc, star, rra2);
+	    }
+	else {
+	    istar1 = sc->star1;
+	    istar2 = sc->star0 + sc->nstars;
+	    }
+	if (verbose)
+	    fprintf (stderr,"BINREAD: Searching stars %d through %d\n",istar1,istar2);
+
+	/* Loop through catalog */
+	for (istar = istar1; istar <= istar2; istar++) {
+	    if (binstar (sc, star, istar)) {
+		fprintf (stderr,"BINREAD: Cannot read star %d\n", istar);
+		break;
+		}
+
+	    /* ID number */
+	    num = star->num;
+
+	    /* Magnitude */
+	    if (sc->entmag[0] > 0)
+		mag = star->xmag[magsort];
+
+	    /* Check magnitude limits */
+	    pass = 1;
+	    if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+		pass = 0;
+
+	    /* Get position in output coordinate system, equinox, and epoch */
+	    if (pass) {
+		rapm = star->rapm;
+		decpm = star->decpm;
+		ra = star->ra;
+		dec = star->dec;
+		wcsconp (sysref, sysout, eqref, eqout, epref, epout,
+			 &ra, &dec, &rapm, &decpm);
+
+		/* Check distance along RA and Dec axes */
+		ddist = wcsdist (cra,cdec,cra,dec);
+		if (ddist > ddec)
+		    pass = 0;
+		rdist = wcsdist (cra,dec,ra,dec);
+		if (rdist > dra)
+		    pass = 0;
+		}
+
+	    /* Save star in FITS image */
+	    if (pass) {
+		wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+		if (!offscl) {
+		    if (magscale > 0.0)
+			flux = magscale * exp (logt * (-mag / 2.5));
+		    else
+			flux = 1.0;
+		    addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+		    nstar++;
+		    jstar++;
+		    }
+		if (nlog == 1)
+		    fprintf (stderr,"BINREAD: %11.6f: %9.5f %9.5f %5.2f\n",
+			   num,ra,dec,mag);
+
+	    /* End of accepted star processing */
+		}
+
+	/* Log operation */
+	    if (nlog > 0 && istar%nlog == 0)
+		fprintf (stderr,"BINREAD: %5d / %5d / %5d sources catalog %s\r",
+			jstar,istar,sc->nstars,bincat);
+
+	/* End of star loop */
+	    }
+
+	/* Set second set of RA limits if passing through 0h */
+	rra1 = rra1a;
+	rra2 = rra2a;
+	}
+
+    /* Summarize search */
+    if (nlog > 0) {
+	fprintf (stderr,"BINREAD: Catalog %s : %d / %d / %d found\n",
+		 bincat,jstar,istar,sc->nstars);
+	}
+
+    free ((void *)star);
+    free ((void *)tdist);
     return (nstar);
 }
 
@@ -1343,4 +1556,8 @@ char *from, *last, *to;
  * Mar 11 2003	Upgrade position testing
  * Mar 11 2003	If proper motion flag is -1, reset it to 1
  * Mar 26 2003	Open binpath with binary flag set
+ * Aug 22 2003	Add radi argument for inner edge of search annulus
+ * Sep 25 2003	Add binbin() to fill an image with sources
+ * Oct  6 2003	Update binread() and binbin() for improved RefLim()
+ * Nov 18 2003	Initialize image size and bits/pixel from header in binbin()
  */

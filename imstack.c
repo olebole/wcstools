@@ -1,5 +1,5 @@
 /* File imstack.c
- * April 9, 2002
+ * September 17, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -22,9 +22,11 @@ static int wfits = 1;		/* if 1, write FITS header before data */
 static char *newname = NULL;
 static int nfiles = 0;
 static int nbstack = 0;
+static int extend = 0;		/* If 1, output multi-extension FITS file */
 static FILE *fstack = NULL;
 static int version = 0;		/* If 1, print only program name and version */
 static char *outfile = NULL;	/* If not null, output filename */
+static char *extroot;
 
 main (ac, av)
 int ac;
@@ -81,6 +83,16 @@ char **av;
 	    if (newname != NULL)
 		free (newname);
 	    newname = *++av;
+	    ac--;
+	    break;
+
+	case 'x':	/* Set FITS extension EXTNAME root */
+	    if (ac < 2)
+                usage ();
+	    if (extroot != NULL)
+		free (extroot);
+	    extroot = *++av;
+	    extend = 1;
 	    ac--;
 	    break;
 
@@ -183,9 +195,10 @@ usage ()
     fprintf(stderr,"Usage: imstack [-vi][-o filename][-n num] file1.fits file2.fits ... filen.fits\n");
     fprintf(stderr,"  or : imstack [-vi][-n num] @filelist\n");
     fprintf(stderr,"  -i: Do not put FITS header in output file\n");
-    fprintf(stderr,"  -n: Use each file this many times\n");
-    fprintf(stderr,"  -o: Output filename\n");
+    fprintf(stderr,"  -n num: Use each file this many times\n");
+    fprintf(stderr,"  -o name: Output filename\n");
     fprintf(stderr,"  -v: Verbose\n");
+    fprintf(stderr,"  -x root: Make first file root, others extensions\n");
     exit (1);
 }
 
@@ -200,6 +213,7 @@ char	*filename;	/* FITS or IRAF file filename */
 {
     char *image;		/* FITS image */
     char *header;		/* FITS header */
+    char *hplace;
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     char *irafheader;		/* IRAF image header */
@@ -207,7 +221,11 @@ char	*filename;	/* FITS or IRAF file filename */
     int bitpix, nblocks, nbytes;
     int iraffile;
     int i, itime, nout;
+    char spaces[80];
     char pixname[256];
+    char extname[16];
+    char *blanks;
+    char *roothead, *rootend, *headend, *iline;
 
     /* Open IRAF header */
     if (isiraf (filename)) {
@@ -237,7 +255,15 @@ char	*filename;	/* FITS or IRAF file filename */
     else {
 	iraffile = 0;
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
-	    if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
+	    naxis = 0;
+	    hgeti4 (header, "NAXIS", &naxis);
+	    bitpix = 0;
+	    hgeti4 (header, "BITPIX", &bitpix);
+	    if (naxis < 1 || bitpix == 0) {
+		if (verbose)
+		    fprintf (stderr, "Dataless FITS file %s\n", filename);
+		}
+	    else if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
 		fprintf (stderr, "Cannot read FITS image %s\n", filename);
 		free (header);
 		return (1);
@@ -252,22 +278,29 @@ char	*filename;	/* FITS or IRAF file filename */
 
     /* Compute size of input image in bytes from header parameters */
     naxis = 0;
-    naxis1 = 1;
+    naxis1 = 0;
+    nbimage = 0;
     hgeti4 (header,"NAXIS1",&naxis1);
-    if (naxis1 > 1)
+    if (naxis1 > 1) {
 	naxis = naxis + 1;
-    naxis2 = 1;
+	nbimage = naxis1;
+	}
+    naxis2 = 0;
     hgeti4 (header,"NAXIS2",&naxis2);
-    if (naxis2 > 1)
+    if (naxis2 > 1) {
 	naxis = naxis + 1;
-    naxis3 = 1;
+	nbimage = nbimage * naxis2;
+	}
+    naxis3 = 0;
     hgeti4 (header,"NAXIS3",&naxis3);
-    if (naxis3 > 1)
+    if (naxis3 > 1) {
 	naxis = naxis + 1;
+	nbimage = nbimage * naxis3;
+	}
     hgeti4 (header,"BITPIX",&bitpix);
     bytepix = bitpix / 8;
     if (bytepix < 0) bytepix = -bytepix;
-    nbimage = naxis1 * naxis2 * naxis3 * bytepix;
+    nbimage = nbimage * bytepix;
     nbstack = nbstack + nbimage;
 
     /* Set NAXIS2 to # of images stacked; pad out FITS header to 2880 blocks */
@@ -280,7 +313,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    hputi4 (header,"NAXIS", 3);
 	    hputi4 (header,"NAXIS3", nfiles*ntimes);
 	    }
-	else {
+	else if (naxis == 3) {
 	    hputi4 (header,"NAXIS", 4);
 	    hputi4 (header,"NAXIS4", nfiles*ntimes);
 	    }
@@ -294,22 +327,14 @@ char	*filename;	/* FITS or IRAF file filename */
 	nbhead = nbytes;
 	}
 
-    /* If first file open to write and, optionally, write FITS header */
+    /* If first file, open to write and, optionally, write FITS header */
     if (ifile == 0) {
+	if (extend)
+	    hputl (header, "EXTEND", 1);
 	fstack = fopen (newname, "w");
 	if (fstack == NULL) {
 	    fprintf (stderr, "Cannot write image %s\n", newname);
 	    return (1);
-	    }
-	if (wfits) {
-	    if (fwrite (header, (size_t) 1, (size_t) nbhead, fstack)) {
-		if (verbose) {
-		    printf ("%d-byte FITS header from %s written to %s\n",
-			    nbhead, filename, newname);
-		    }
-		}
-	    else
-		printf ("FITS file %s cannot be written.\n", newname);
 	    }
 	}
     else if (fstack == NULL) {
@@ -319,29 +344,109 @@ char	*filename;	/* FITS or IRAF file filename */
 	    return (1);
 	    }
 	}
+    if (extend && ifile > 0) {
+	hchange (header, "SIMPLE", "XTENSION");
+	hputs (header, "XTENSION", "IMAGE");
+	roothead = ksearch (header, "ROOTHEAD");
+	rootend = ksearch (header, "ROOTEND");
+	if (roothead && rootend) {
+	    headend = ksearch (header, "END");
+	    for (i = 0; i < 80; i++)
+		spaces[i] = ' ';
+	    for (iline = rootend+80; iline <= headend; iline = iline + 80){
+		strncpy (iline, roothead, 80);
+		strncpy (spaces, iline, 80);
+		roothead = roothead + 80;
+		}
+	    }
+	}
     for (itime = 0; itime < ntimes; itime++) {
 	nout = (ifile * ntimes) + itime + 1;
-	if (fwrite (image, (size_t) 1, (size_t) nbimage, fstack)) {
-	    if (verbose) {
-		if (iraffile)
-		    printf ("IRAF %d bytes of file %s added to %s[%d]",
-			    nbimage, filename, newname, nout);
+
+	/* Write header before each data unit if writing extensions */
+	if (extend) {
+	    if (ifile > 0) {
+		snprintf (extname, 15, "%s%d", extroot, nout-1);
+		hplace = ksearch (header, "NAXIS4");
+		if (!hplace)
+		    hplace = ksearch (header, "NAXIS3");
+		if (!hplace)
+		    hplace = ksearch (header, "NAXIS2");
+		if (!hplace)
+		    hplace = ksearch (header, "NAXIS1");
+		if (hplace) {
+		    hplace = hplace + 80;
+		    hadd (hplace, "EXTNAME", extname);
+		    hputs (header, "EXTNAME", extname);
+		    }
 		else
-		    printf ("FITS %d bytes of file %s added to %s[%d]",
-			    nbimage, filename, newname, nout);
+		    hputs (header, "EXTNAME", extname);
 		}
-	    if (itime == 0 || itime == ntimes-1)
-		printf ("\n");
-	    else
-		printf ("\r");
+	    if (wfits) {
+		if (fwrite (header, (size_t) nbhead, (size_t) 1, fstack)) {
+		    if (verbose) {
+			printf ("%d-byte FITS header from %s written to %s[%d]\n",
+			    nbhead, filename, newname, nout);
+			}
+		    }
+		else
+		    printf ("FITS file %s cannot be written.\n", newname);
+		}
 	    }
-	else {
-	    if (iraffile)
-		printf ("IRAF file %s NOT added to %s[%d]\n",
-		        filename, newname, nout);
+
+	/* Otherwise write header once before first data unit */
+	else if (itime ==0 && ifile == 0) {
+	    if (fwrite (header, (size_t) nbhead, (size_t) 1, fstack)) {
+		if (verbose) {
+		    printf ("%d-byte FITS header from %s written to %s[%d]\n",
+			    nbhead, filename, newname, nout);
+		    }
+		}
 	    else
-		printf ("FITS file %s NOT added to %s[%d]\n",
+		printf ("FITS file %s cannot be written.\n", newname);
+	    }
+
+	/* Write data */
+        if (nbimage > 0 && image != NULL) {
+	    if (fwrite (image, (size_t) 1, (size_t) nbimage, fstack)) {
+		if (verbose) {
+		    if (iraffile)
+			printf ("IRAF %d bytes of file %s added to %s[%d]",
+			    nbimage, filename, newname, nout);
+		    else
+			printf ("FITS %d bytes of file %s added to %s[%d]",
+			    nbimage, filename, newname, nout);
+		    }
+
+		/* if extension, pad it out to 2880 blocks */
+		if (extend) {
+		    if (wfits && fstack != NULL) {
+			nblocks = nbimage / FITSBLOCK;
+			if (nblocks * FITSBLOCK < nbimage)
+			    nblocks = nblocks + 1;
+			nbytes = (nblocks * FITSBLOCK) - nbimage;
+			if (nbytes > 0) {
+			    blanks = (char *) malloc ((size_t) nbytes);
+			    for (i = 0;  i < nbytes; i++)
+				blanks[i] = 0;
+			    (void) fwrite (blanks, (size_t) 1, (size_t)nbytes, fstack);
+			    free (blanks);
+			    }
+			}
+		    }
+		if (itime == 0 || itime == ntimes-1)
+		    printf ("\n");
+		else
+		    printf ("\r");
+		}
+	    else {
+		if (iraffile)
+		    printf ("IRAF file %s NOT added to %s[%d]\n",
 		        filename, newname, nout);
+		else
+		    printf ("FITS file %s NOT added to %s[%d]\n",
+		        filename, newname, nout);
+		}
 	    }
 	}
 
@@ -372,4 +477,9 @@ char	*filename;	/* FITS or IRAF file filename */
  * Sep  8 2000	Default ntimes to 1 so program works
  *
  * Apr  9 2002	Do not free unallocated header
+ *
+ * Aug  1 2003	Add option to build multi-extension FITS files
+ * Aug  8 2003	Drop header from ROOTHEAD to ROOTEND when make multi-ext. FITS
+ * Aug 21 2003	Fix bug when stacking 2-D files
+ * Sep 17 2003	Change variable inline to iline for Redhat Linux
  */

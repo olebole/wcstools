@@ -1,3 +1,39 @@
+Version 3.5.0 (November 22, 2003)
+bincat: New program to create an image out of a catalog or a portion thereof
+cphead: Add -w option to copy all WCS keywords;
+        Rcopy same number of decimal places as are in input header
+scat: add option to search an annular region by specifying a range in -r
+scat: Add option to merge catalog objects within specified separation set by -r
+scat,imcat: Add object class to GSC2 output
+sub1: Fix bug which failed to find any stars in regions with certain centers
+gethead: Fix bug which dropped last zero of exponent in values
+getpix: Fix bug so 0 works as substitute for 1-NAXISn on command line
+imextract: Fix bugs to deal with 3D images
+skycoor.c: add -a option to compute the position angle between two coordinates
+*read.c: Add radi argument for inner radius of annulus if rad is set and
+         radi is greater than zero.  Add *bin() subroutines for image filling.
+         Move proper motion margin and wrap computation to RefLim()
+catutil.c: Add arguments for catalog epoch, proper motion margin, and wrap 
+         flag to RefLim().  Deal with search around pole in RefLim(), too.
+imh.c: Read images to image dimension (IM_LEN), not physical dimension
+       (IM_PHYSLEN)
+ubcread.c: Fix bug in ubcsra(), which failed to iterate enough to find
+           closest stars
+distort.c: Moved all distortion-related code to this file, added 3 subroutines
+ucacread.c: Fix byte swap test in ucacopen() so it works on Linux
+matchstar.c, lin.c: Do not include malloc.h; it is part of stdlib.h
+webread.c: Rewrite buffer reallocation code to require fewer and avoid hanging
+
+Version 3.4.2 (August 21, 2003)
+sethead, edhead, keyhead: Deal correctly with images with more than 2 dimensions
+imstack: Add -x name option to create multi-extension FITS file
+scat: Allow sorting of sources found by range of ID numbers
+remap: Add -f name to use WCS from existing FITS file and -n num to set the
+value of output pixels with no value from the input image.
+fitsfile.c: Clean up use of primary header; add ROOTEND to secondary headers
+ty2read.c: Increase maximum number of regions to search from 100 to 1000
+fitsrfull(): new subroutine in fitsfile.c to read n-dimensional FITS file.
+
 Version 3.4.1 (July 28, 2003)
 gethead: Allow root directory for text as well as image files in list file
 getdate: Fix bugs so FITS date conversions read both date and time
@@ -21,7 +57,7 @@ ucacread: Add support for UCAC2 format
 Version 3.3.4 (May 8, 2003)
 scat, imcat: Add output formatting for UCAC1
 sky2xy: Add command line specification of FITS WCS parameters for imageless use
-getfits: Fix bug which didn'g pass arguments to main subroutine
+getfits: Fix bug which did not pass arguments to main subroutine
 ucacread.c: New subroutines to read the USNO UCAC 1.0 astrometric catalog
 catutil.c: Modify subroutines for UCAC1
 wcsinit.c: Read PROJP0 (for ZPN projections)

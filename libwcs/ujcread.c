@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** May 27, 2003
+ *** November 18, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -61,10 +61,11 @@ static int ujcpath();
 static int ujcstar();
 static void ujcswap();
 
+
 /* UJCREAD -- Read USNO J Catalog stars from CDROM or plate catalog from file */
 
 int
-ujcread (refcatname,cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,
+ujcread (refcatname,cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
 	 mag1,mag2,nstarmax,unum,ura,udec,umag,uplate,verbose)
 
 char    *refcatname;    /* Name of catalog (UJC, xxxxx.usno) */
@@ -73,6 +74,7 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+double	dradi;		/* Inner edge of annulus in degrees (ignore if 0) */
 int	distsort;	/* 1 to sort stars by distance from center */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
@@ -129,7 +131,7 @@ int	verbose;	/* 1 for diagnostics */
 
 	/* If pathname is a URL, search and return */
 	if (!strncmp (str, "http:",5)) {
-	    return (webread (str,"ujc",distsort,cra,cdec,dra,ddec,drad,
+	    return (webread (str,"ujc",distsort,cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
 			     unum,ura,udec,NULL,NULL,umag,uplate,verbose));
 	    }
@@ -147,15 +149,16 @@ int	verbose;	/* 1 for diagnostics */
 	mag2 = mag1;
 	mag1 = mag;
 	}
+
     rra1 = ra1;
     rra2 = ra2;
     rdec1 = dec1;
     rdec2 = dec2;
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,0.0,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
 
     /* Find UJ Star Catalog regions in which to search */
     if (refcat == UJC) {
-	RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
-		&rra1, &rra2, &rdec1, &rdec2, verbose);
 	nz = ujczones (rra1, rra2, rdec1, rdec2, nzmax, zlist, verbose);
 	if (nz <= 0) {
 	    fprintf (stderr,"UJCREAD:  no UJ zones found\n");
@@ -164,13 +167,6 @@ int	verbose;	/* 1 for diagnostics */
 	}
     else
 	nz = 1;
-
-    /* If RA range includes zero, set a flag */
-    wrap = 0;
-    if (ra1 > ra2)
-	wrap = 1;
-    else
-	wrap = 0;
 
     udist = (double *) calloc (nstarmax, sizeof (double));
 
@@ -247,6 +243,8 @@ int	verbose;	/* 1 for diagnostics */
 			    /* Check radial distance to search center */
 			    if (drad > 0) {
 				if (dist > drad)
+				    pass = 0;
+				if (dradi > 0.0 && dist < dradi)
 				    pass = 0;
 				}
 
@@ -486,6 +484,238 @@ int	nlog;		/* Logging interval */
 	fprintf (stderr,"UJCRNUM:  %d / %d found\n",nfound,nnum);
 
     return (nfound);
+}
+
+
+/* UJCBIN -- Fill a FITS WCS image with USNO J Catalog stars */
+
+int
+ujcbin (refcatname, wcs, header, image, mag1,mag2, magscale, verbose)
+
+char    *refcatname;    /* Name of catalog (UJC, xxxxx.usno) */
+struct WorldCoor *wcs;	/* World coordinate system for image */
+char	*header;	/* FITS header for output image */
+char	*image;		/* Output FITS image */
+double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+double	magscale;	/* Scaling factor for magnitude to pixel flux
+			 * (number of catalog objects per bin if 0) */
+int	verbose;	/* 1 for diagnostics */
+{
+    double cra;		/* Search center J2000 right ascension in degrees */
+    double cdec;	/* Search center J2000 declination in degrees */
+    double dra;		/* Search half width in right ascension in degrees */
+    double ddec;	/* Search half-width in declination in degrees */
+    int sysout;		/* Search coordinate system */
+    double eqout;	/* Search coordinate equinox */
+    double epout;	/* Proper motion epoch (0.0 for no proper motion) */
+    double ra1,ra2;	/* Limiting right ascensions of region in degrees */
+    double dec1,dec2;	/* Limiting declinations of region in degrees */
+    int magsort=0;
+    int nz;		/* Number of input UJ zone files */
+    int zlist[NZONES];	/* List of input UJ zones */
+    UJCstar star;	/* UJ catalog entry for one star */
+    int sysref=WCS_J2000;	/* Catalog coordinate system */
+    double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
+    char cstr[32];
+    double num;		/* UJ number */
+    int xplate;		/* If nonzero, use objects only from this plate */
+
+    double rra1, rra2, rdec1, rdec2;
+    int wrap, iwrap;
+    int znum, itot,iz;
+    int nlog,itable,jstar, mprop, nmag;
+    int nstar, i;
+    int pass;
+    double ra,dec;
+    double mag;
+    double rdist, ddist;
+    int istar, istar1, istar2, plate;
+    int nzmax = NZONES;	/* Maximum number of declination zones */
+    char *str;
+    char title[128];
+    double xpix, ypix, flux;
+    int offscl;
+    int bitpix, w, h;   /* Image bits/pixel and pixel width and height */
+    double logt = log(10.0);
+
+    itot = 0;
+    xplate = getuplate ();
+
+    /* Set image parameters */
+    bitpix = 0;
+    (void)hgeti4 (header, "BITPIX", &bitpix);
+    w = 0;
+    (void)hgeti4 (header, "NAXIS1", &w);
+    h = 0;
+    (void)hgeti4 (header, "NAXIS2", &h);
+
+    /* Set catalog code and path to catalog */
+    catname = refcatname;
+    refcat = RefCat (refcatname,title,&sysref,&eqref,&epref,&mprop,&nmag);
+    if (refcat == UJC && (str = getenv("UJ_PATH")) != NULL )
+	strcpy (cdu,str);
+
+    /* Set catalog search limits from image WCS information */
+    sysout = wcs->syswcs;
+    eqout = wcs->equinox;
+    epout = wcs->epoch;
+    wcscstr (cstr, sysout, eqout, epout);
+    wcssize (wcs, &cra, &cdec, &dra, &ddec);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
+
+    /* mag1 is always the smallest magnitude */
+    if (mag2 < mag1) {
+	mag = mag2;
+	mag2 = mag1;
+	mag1 = mag;
+	}
+
+    rra1 = ra1;
+    rra2 = ra2;
+    rdec1 = dec1;
+    rdec2 = dec2;
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,0.0,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
+
+    /* Find UJ Star Catalog regions in which to search */
+    if (refcat == UJC) {
+	nz = ujczones (rra1, rra2, rdec1, rdec2, nzmax, zlist, verbose);
+	if (nz <= 0) {
+	    fprintf (stderr,"UJCBIN:  no UJ zones found\n");
+	    return (0);
+	    }
+	}
+    else
+	nz = 1;
+
+    /* Logging interval */
+    if (verbose)
+	nlog = 100;
+    else
+	nlog = 0;
+    nstar = 0;
+
+    /* Loop through region list */
+    for (iz = 0; iz < nz; iz++) {
+
+	/* Get path to zone catalog */
+	znum = zlist[iz];
+	if ((nstars = ujcopen (znum)) != 0) {
+
+	    jstar = 0;
+	    itable = 0;
+	    for (iwrap = 0; iwrap <= wrap; iwrap++) {
+
+		/* Find first star based on RA */
+		if (iwrap == 0 || wrap == 0)
+		    istar1 = ujcsra (rra1);
+		else
+		    istar1 = 1;
+
+		/* Find last star based on RA */
+		if (iwrap == 1 || wrap == 0)
+		    istar2 = ujcsra (rra2);
+		else
+		    istar2 = nstars;
+
+		if (istar1 == 0 || istar2 == 0)
+		    break;
+
+		/* Loop through zone catalog for this region */
+		for (istar = istar1; istar <= istar2; istar++) {
+		    itable ++;
+
+		    if (ujcstar (istar, &star)) {
+			fprintf (stderr,"UJCBIN: Cannot read star %d\n", istar);
+			break;
+			}
+
+		    /* Extract selected fields if not probable duplicate */
+		    else if (star.magetc > 0) {
+			mag = ujcmag (star.magetc);	/* Magnitude */
+
+			/* Check magnitude limits */
+			pass = 1;
+			if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+			    pass = 0;
+
+			/* Check plate number */
+			plate = ujcplate (star.magetc);	/* Plate number */
+			if (xplate != 0 || plate != xplate)
+			    pass = 0;
+
+			/* Check position limits */
+			if (pass) {
+			    ra = ujcra (star.rasec);	/* RA in degrees */
+			    dec = ujcdec (star.decsec);	/* Dec in degrees */
+
+			    /* Get position in output coordinate system */
+			    wcscon (sysref,sysout,eqref,eqout,&ra,&dec,epout);
+
+			    /* Check distance along RA and Dec axes */
+			    ddist = wcsdist (cra,cdec,cra,dec);
+			    if (ddist > ddec)
+				pass = 0;
+			    rdist = wcsdist (cra,dec,ra,dec);
+			    if (rdist > dra)
+				pass = 0;
+			    }
+
+			/* Save star in FITS image */
+			if (pass) {
+			    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+			    if (!offscl) {
+				if (magscale > 0.0)
+				    flux = magscale * exp (logt * (-mag / 2.5));
+				else
+				    flux = 1.0;
+				addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+				nstar++;
+				jstar++;
+				}
+			    if (nlog == 1)
+				fprintf (stderr,"UJCBIN: %04d.%04d: %9.5f %9.5f %s %5.2f\n",
+				    znum,istar,ra,dec,cstr,mag);
+
+			    /* End of accepted star processing */
+			    }
+
+			/* End of individual star processing */
+			}
+
+		    /* Log operation */
+		    if (nlog > 0 && itable%nlog == 0)
+			fprintf (stderr,"UJCBIN: zone %d (%4d / %4d) %6d / %6d sources\r",
+				znum, iz+1, nz, jstar, itable);
+
+		    /* End of star loop */
+		    }
+
+		/* End of wrap loop */
+		}
+
+	/* Close zone input file */
+	    (void) fclose (fcat);
+	    itot = itot + itable;
+	    if (nlog > 0)
+		fprintf (stderr,"UJCBIN: zone %d (%4d / %4d) %6d / %6d / %8d sources\n",
+			znum, iz+1, nz, jstar, itable, nstars);
+
+	/* End of zone processing */
+	    }
+
+    /* End of zone loop */
+	}
+
+/* Summarize search */
+    if (nlog > 0) {
+	if (nz > 1)
+	    fprintf (stderr,"UJCBIN: %d zone: %d / %d found\n",nz,nstar,itot);
+	else
+	    fprintf (stderr,"UJCBIN: 1 zone: %d / %d found\n",nstar,itable);
+	}
+    return (nstar);
 }
 
 
@@ -843,4 +1073,8 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  * Mar 11 2003	Improve position filtering
  * May 27 2003	Use getfilesize() to get file length
+ * Aug 22 2003	Add radi argument for inner edge of search annulus
+ * Sep 25 2003	Add ujcbin() to fill an image with sources
+ * Oct  6 2003	Update ujcread() and ujcbin() for improved RefLim()
+ * Nov 18 2003	Initialize image size and bits/pixel from header in ujcbin()
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/iget.c
- *** June 26, 2002
+ *** September 23, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2002
+ *** Copyright (C) 1998-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -30,7 +30,7 @@
  * Purpose:	Extract values for variables from IRAF keyword value string
  * Subroutine:	mgeti4 (hstring,mkey,keyword,ival) returns long integer
  * Subroutine:	mgetr8 (hstring,mkey,keyword,dval) returns double
- * Subroutine:	mgets  (hstring,mkey,keyword,lstr,str) returns character string
+ * Subroutine:	mgetstr (hstring,mkey,keyword,lstr,str) returns character string
  * Subroutine:	igeti4 (hstring,keyword,ival) returns long integer
  * Subroutine:	igetr4 (hstring,keyword,rval) returns real
  * Subroutine:	igetr8 (hstring,keyword,dval) returns double
@@ -127,7 +127,7 @@ double	*dval;	  /* Integer value returned */
 /* Extract string value for variable from IRAF keyword value string */
 
 int
-mgets (hstring, mkey, keyword, lstr, str)
+mgetstr (hstring, mkey, keyword, lstr, str)
 
 char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
@@ -523,4 +523,6 @@ char *keyword;	/* character string containing the name of the variable
  *
  * Jun 26 2002	Change maximum string length from 600 to 2000; use MAX_LVAL
  * Jun 26 2002	Stop search for end of quoted keyword if > MAX_LVAL chars
+ *
+ * Sep 23 2003	Change mgets() to mgetstr() to avoid name collision at UCO Lick
  */

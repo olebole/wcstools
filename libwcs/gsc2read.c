@@ -1,5 +1,5 @@
 /*** File libwcs/gsc2read.c
- *** April 24, 2003
+ *** August 22, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2003
@@ -46,7 +46,7 @@ char gsc2url[64]="http://www-gsss.stsci.edu/cgi-bin/gsc22query.exe";
 /* GSC2READ -- Read GSC II catalog stars over the web */
 
 int
-gsc2read (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,
+gsc2read (cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,mag1,mag2,
 	 sortmag,nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -54,6 +54,7 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+double	dradi;		/* Inner edge of annulus in degrees (ignore if 0) */
 int	distsort;	/* 1 to sort stars by distance from center */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
@@ -65,7 +66,7 @@ double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
 double	**gmag;		/* 2-D array of magnitudes (returned) */
-int	*gtype;		/* Array (returned) */
+int	*gtype;		/* Array of object classes (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
     double *gpra, *gpdec;
@@ -155,7 +156,7 @@ int	nlog;		/* 1 for diagnostics */
     starcat->nmag = 5;
 
     /* Extract desired sources from catalog  and return them */
-    nstar = tabread (gsc2url,distsort,cra,cdec,dra,ddec,drad,
+    nstar = tabread (gsc2url,distsort,cra,cdec,dra,ddec,drad,dradi,
 	     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,&starcat,
 	     gnum,gra,gdec,gpra,gpdec,gmag,gtype,NULL,nlog);
 
@@ -179,4 +180,6 @@ int	nlog;		/* 1 for diagnostics */
  * Mar 11 2003	Fix URL for search
  * Apr  3 2003	Drop unused variables after lint; drop gsc2rnum()
  * Apr 24 2003	Set nmag to 5 to include epoch, which is not printed
+ * Aug 22 2003	Add radi argument for inner edge of search annulus
+ * Nov 22 2003	Return object class (c column) as gtype
  */

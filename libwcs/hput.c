@@ -156,13 +156,14 @@ double	dval;		/* double number */
 {
     char value[30];
     char format[8];
-    int i;
+    int i, lval;
 
     /* Translate value from binary to ASCII */
     if (ndec < 0) {
 	sprintf (format, "%%.%dg", -ndec);
 	sprintf (value, format, dval);
-	for (i = 0; i < strlen (value); i++)
+	lval = (int) strlen (value);
+	for (i = 0; i < lval; i++)
 	    if (value[i] == 'e') value[i] = 'E';
 	}
     else {
@@ -253,7 +254,7 @@ char *cval;	/* character string containing the value for variable
     char squot = 39;
 
     /*  If COMMENT or HISTORY, use the same keyword on every line */
-    lkw = strlen (keyword);
+    lkw = (int) strlen (keyword);
     if (lkw == 7 && (strncmp (keyword,"COMMENT",7) == 0 ||
 	strncmp (keyword,"HISTORY",7) == 0))
 	comment = 1;
@@ -262,7 +263,7 @@ char *cval;	/* character string containing the value for variable
     else {
 	comment = 0;
 	strcpy (keyroot, keyword);
-	lroot = strlen (keyroot);
+	lroot = (int) strlen (keyroot);
 	if (lroot > 6) {
 	    keyroot[6] = (char) 0;
 	    lroot = 6;
@@ -272,7 +273,7 @@ char *cval;	/* character string containing the value for variable
     /* Write keyword value one line of up to 67 characters at a time */
     ii = '1';
     nkw = 0;
-    lcv = strlen (cval);
+    lcv = (int) strlen (cval);
     strcpy (newkey, keyroot);
     strcat (newkey, "_");
     newkey[lroot+2] = (char) 0;
@@ -329,13 +330,13 @@ char *cval;	/* character string containing the value for variable
     int lcval, i, lkeyword;
 
     /*  If COMMENT or HISTORY, just add it as is */
-    lkeyword = strlen (keyword);
+    lkeyword = (int) strlen (keyword);
     if (lkeyword == 7 && (strncmp (keyword,"COMMENT",7) == 0 ||
 	strncmp (keyword,"HISTORY",7) == 0))
 	return (hputc (hstring,keyword,cval));
 
     /*  find length of variable string */
-    lcval = strlen (cval);
+    lcval = (int) strlen (cval);
     if (lcval > 67)
 	lcval = 67;
 
@@ -378,8 +379,8 @@ char *value;	/* character string containing the value for variable
     int lkeyword, lcom, lval, lc, lv1, lhead;
 
     /* Find length of keyword, value, and header */
-    lkeyword = strlen (keyword);
-    lval = strlen (value);
+    lkeyword = (int) strlen (keyword);
+    lval = (int) strlen (value);
     lhead = gethlength (hstring);
 
     /*  If COMMENT or HISTORY, always add it just before the END */
@@ -475,7 +476,7 @@ char *value;	/* character string containing the value for variable
 	    vp = newcom + lcom - 1;
 	    while (vp-- > newcom && *vp == ' ')
 		*vp = 0;
-	    lcom = strlen (newcom);
+	    lcom = (int) strlen (newcom);
 	    }
 	else {
 	    newcom[0] = 0;
@@ -550,9 +551,9 @@ hputcom (hstring,keyword,comment)
     squot = 39;
 
     /*  Find length of variable name */
-    lkeyword = strlen (keyword);
+    lkeyword = (int) strlen (keyword);
     lhead = gethlength (hstring);
-    lcom = strlen (comment);
+    lcom = (int) strlen (comment);
 
     /*  If COMMENT or HISTORY, always add it just before the END */
     if (lkeyword == 7 && (strncmp (keyword,"COMMENT",7) == 0 ||
@@ -701,7 +702,7 @@ char *keyword;		/* Keyword of entry to be deleted */
 	}
 
     /* Cover former first line with new keyword */
-    lkey = strlen (keyword);
+    lkey = (int) strlen (keyword);
     strncpy (hplace, keyword, lkey);
     if (lkey < 8) {
 	for (i = lkey; i < 8; i++)
@@ -739,7 +740,7 @@ char *keyword2;		/* New keyword name */
 	return (0);
 
     else {
-	lv2 = strlen (keyword2);
+	lv2 = (int) strlen (keyword2);
 	v = v1;
 	v2 = keyword2;
 	for (i = 0; i < 8; i++) {
@@ -770,7 +771,7 @@ int	ndec;		/* Number of decimal places in seconds */
     char tstring[64];
     int hours;
     int minutes;
-    int isec;
+    int isec, ltstr;
     double dsgn;
 
     /* Keep RA between 0 and 360 */
@@ -884,7 +885,8 @@ int	ndec;		/* Number of decimal places in seconds */
 	}
 
     /* Move formatted string to returned string */
-    if (strlen (tstring) < lstr-1)
+    ltstr = (int) strlen (tstring);
+    if (ltstr < lstr-1)
 	strcpy (string, tstring);
     else {
 	strncpy (string, tstring, lstr-1);
@@ -910,7 +912,7 @@ int	ndec;		/* Number of decimal places in arcseconds */
     char sign;
     int degrees;
     int minutes;
-    int isec;
+    int isec, ltstr;
     char tstring[64];
 
     /* Keep angle between -180 and 360 degrees */
@@ -1026,7 +1028,8 @@ int	ndec;		/* Number of decimal places in arcseconds */
 	}
 
     /* Move formatted string to returned string */
-    if (strlen (tstring) < lstr-1)
+    ltstr = (int) strlen (tstring);
+    if (ltstr < lstr-1)
 	strcpy (string, tstring);
     else {
 	strncpy (string, tstring, lstr-1);
@@ -1048,7 +1051,7 @@ int	ndec;		/* Number of decimal places in degree string */
 
 {
     char degform[8];
-    int field;
+    int field, ltstr;
     char tstring[64];
     double deg1;
     double dsgn;
@@ -1078,7 +1081,8 @@ int	ndec;		/* Number of decimal places in degree string */
 	}
 
     /* Move formatted string to returned string */
-    if (strlen (tstring) < lstr-1)
+    ltstr = (int) strlen (tstring);
+    if (ltstr < lstr-1)
 	strcpy (string, tstring);
     else {
 	strncpy (string, tstring, lstr-1);

@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** May 21, 2003
+ *** November 18, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -62,7 +62,7 @@ static char newline = 10;
 /* CTGREAD -- Read ASCII stars in specified region */
 
 int
-ctgread (catfile, refcat, distsort, cra, cdec, dra, ddec, drad,
+ctgread (catfile, refcat, distsort, cra, cdec, dra, ddec, drad, dradi,
 	 sysout, eqout, epout, mag1, mag2, sortmag, nsmax, starcat,
 	 tnum, tra, tdec, tpra, tpdec, tmag, tc, tobj, nlog)
 
@@ -74,6 +74,7 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+double	dradi;		/* Inner edge of annulus in degrees (ignore if 0) */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
@@ -117,7 +118,7 @@ int	nlog;
     double mag;
     double num;
     double rdist, ddist;
-    int peak, i;
+    int i;
     int istar;
     int verbose;
     int isp;
@@ -128,17 +129,17 @@ int	nlog;
     /* Call the appropriate search program if not TDC ASCII catalog */
     if (refcat != TXTCAT) {
         if (refcat == GSC || refcat == GSCACT)
-            nstar = gscread (refcat,cra,cdec,dra,ddec,drad,distsort,
+            nstar = gscread (refcat,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == GSC2)
-            nstar = gsc2read (cra,cdec,dra,ddec,drad,distsort,
+            nstar = gsc2read (cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
                  refcat == UAC  || refcat == UA1  || refcat == UA2)
             nstar = uacread (catfile,distsort,
-                          cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
+                          cra,cdec,dra,ddec,drad,dradi,sysout,eqout,epout,mag1,
                           mag2,sortmag,nsmax,tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == UJC || refcat == USNO)
             nstar = ujcread (catfile,cra,cdec,dra,ddec,drad,distsort,
@@ -146,55 +147,55 @@ int	nlog;
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == UB1)
             nstar = ubcread (catfile,distsort,
-                          cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
+                          cra,cdec,dra,ddec,drad,dradi,sysout,eqout,epout,mag1,
                           mag2,sortmag,nsmax,tnum,tra,tdec,tpra,tpdec,tmag,
 			  tc,nlog);
         else if (refcat == UCAC1 || refcat == UCAC2)
-            nstar = ucacread (catfile,cra,cdec,dra,ddec,drad,distsort,
+            nstar = ucacread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == TMPSC || refcat == TMIDR2)
-            nstar = tmcread (catfile,cra,cdec,dra,ddec,drad,distsort,
+            nstar = tmcread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == ACT)
-            nstar = actread (cra,cdec,dra,ddec,drad,distsort,
+            nstar = actread (cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1, mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == TYCHO2)
-            nstar = ty2read (cra,cdec,dra,ddec,drad,distsort,
+            nstar = ty2read (cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == SAO)
-            nstar = binread ("SAOra", distsort,cra,cdec,dra,ddec,drad,
+            nstar = binread ("SAOra", distsort,cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == PPM)
-            nstar = binread ("PPMra",distsort,cra,cdec,dra,ddec,drad,
+            nstar = binread ("PPMra",distsort,cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == IRAS)
-            nstar = binread ("IRAS", distsort, cra,cdec,dra,ddec,drad,
+            nstar = binread ("IRAS", distsort, cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == TYCHO)
-            nstar = binread ("tychora", distsort,cra,cdec,dra,ddec,drad,
+            nstar = binread ("tychora", distsort,cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == HIP)
-            nstar = binread ("hipparcosra", distsort, cra,cdec,dra,ddec,drad,
+            nstar = binread("hipparcosra",distsort,cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == BSC)
-            nstar = binread ("BSC5ra", distsort, cra,cdec,dra,ddec,drad,
+            nstar = binread ("BSC5ra", distsort, cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == BINCAT)
-            nstar = binread (catfile, distsort, cra,cdec,dra,ddec,drad,
+            nstar = binread (catfile, distsort, cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,tobj,nlog);
         else if (refcat == TABCAT || refcat == WEBCAT)
-            nstar = tabread (catfile, distsort,cra,cdec,dra,ddec,drad,
+            nstar = tabread (catfile, distsort,cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,tobj,nlog);
 	return (nstar);
@@ -335,6 +336,8 @@ int	nlog;
 	    if (drad > 0) {
 		if (dist > drad)
 		    pass = 0;
+		if (dradi > 0.0 && dist < dradi)
+		    pass = 0;
 		}
 
 	    /* Check distance along RA and Dec axes */
@@ -350,8 +353,6 @@ int	nlog;
 
 	/* Check magnitude and position limits */
 	if (pass) {
-
-	    peak = 0;
 
 	    /* Spectral type */
 	    if (sc->sptype)
@@ -462,8 +463,8 @@ int	nlog;
 	    nstar++;
 	    jstar++;
 	    if (nlog == 1)
-		fprintf (stderr,"CTGREAD: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
-			 num,ra,dec,cstr,mag,peak);
+		fprintf (stderr,"CTGREAD: %11.6f: %9.5f %9.5f %s %5.2f    \n",
+			 num,ra,dec,cstr,mag);
 
 	    /* End of accepted star processing */
 	    }
@@ -519,7 +520,6 @@ int	nlog;
     int nstar;
     double ra,dec;
     double rapm, decpm;
-    int peak;
     int istar;
     int sysref;		/* Catalog coordinate system */
     double eqref;	/* Catalog equinox */
@@ -665,7 +665,6 @@ int	nlog;
 		else
 		    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 		}
-	    peak = 0;
 
 	    /* Save star position and magnitude in table */
 	    tnum[jnum] = star->num;
@@ -692,8 +691,8 @@ int	nlog;
 		}
 	    nstar++;
 	    if (nlog == 1)
-		fprintf (stderr,"CTGRNUM: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
-			 star->num,ra,dec,cstr,star->xmag[0],peak);
+		fprintf (stderr,"CTGRNUM: %11.6f: %9.5f %9.5f %s %5.2f    \n",
+			 star->num,ra,dec,cstr,star->xmag[0]);
 
 	    /* End of accepted star processing */
 	    }
@@ -714,6 +713,268 @@ int	nlog;
     free (star);
     return (nstar);
 }
+
+
+/* CTGBIN -- Fill a FITS WCS image with stars from catalog */
+
+int
+ctgbin (catfile,refcat,wcs,header,image,mag1,mag2,sortmag,magscale,nlog)
+
+char	*catfile;	/* Name of reference star catalog file */
+int	refcat;		/* Catalog code from wcctg.h */
+struct WorldCoor *wcs;	/* World coordinate system for image */
+char	*header;	/* FITS header for output image */
+char	*image;		/* Output FITS image */
+double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Number of magnitude by which to limit and sort */
+double	magscale;	/* Scaling factor for magnitude to pixel flux
+			 * (number of catalog objects per bin if 0) */
+int	nlog;
+{
+    double cra;		/* Search center J2000 right ascension in degrees */
+    double cdec;	/* Search center J2000 declination in degrees */
+    double dra;		/* Search half width in right ascension in degrees */
+    double ddec;	/* Search half-width in declination in degrees */
+    int sysout;		/* Search coordinate system */
+    double eqout;	/* Search coordinate equinox */
+    double epout;	/* Proper motion epoch (0.0 for no proper motion) */
+    double ra1,ra2;	/* Limiting right ascensions of region in degrees */
+    double dec1,dec2;	/* Limiting declinations of region in degrees */
+    int sysref;		/* Catalog coordinate system */
+    double eqref;	/* Catalog equinox */
+    double epref;	/* Catalog epoch */
+    char cstr[32];
+    struct Star *star;
+    struct StarCat *sc; /* Catalog data structure */
+    char *objname;
+    int nameobj;	/* Save object name if 1, else do not */
+    int lname;
+    int wrap;
+    int imag;
+    int jstar;
+    int nstar;
+    int magsort;
+    double ra,dec,rapm,decpm;
+    double mag;
+    double num;
+    double rdist, ddist;
+    int i;
+    int istar;
+    int verbose;
+    int isp;
+    int pass;
+    double xpix, ypix, flux;
+    int offscl;
+    int bitpix, w, h;   /* Image bits/pixel and pixel width and height */
+    double logt = log(10.0);
+
+    nstar = 0;
+
+    /* Call the appropriate search program if not TDC ASCII catalog */
+    if (refcat != TXTCAT) {
+        if (refcat == GSC || refcat == GSCACT)
+            nstar = gscbin (refcat,wcs,header,image,mag1,mag2,magscale,nlog);
+        else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
+                 refcat == UAC  || refcat == UA1  || refcat == UA2)
+            nstar = uacbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == UJC || refcat == USNO)
+            nstar = ujcbin (catfile,wcs,header,image,mag1,mag2,magscale,nlog);
+        else if (refcat == UB1)
+            nstar = ubcbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == UCAC1 || refcat == UCAC2)
+            nstar = ucacbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == TMPSC || refcat == TMIDR2)
+            nstar = tmcbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == ACT)
+            nstar = actbin (wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == TYCHO2)
+            nstar = ty2bin (wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == SAO)
+            nstar = binread ("SAOra",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == PPM)
+            nstar = binbin ("PPMra",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == IRAS)
+            nstar = binbin ("IRAS",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == TYCHO)
+            nstar = binbin ("tychora",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == HIP)
+            nstar = binbin("hipparcosra",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == BSC)
+            nstar = binbin ("BSC5ra",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == BINCAT)
+            nstar = binbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == TABCAT || refcat == WEBCAT)
+            nstar = tabbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+	return (nstar);
+	}
+
+    star = NULL;
+
+    if (nlog > 0)
+	verbose = 1;
+    else
+	verbose = 0;
+
+    /* Set image parameters */
+    bitpix = 0;
+    (void)hgeti4 (header, "BITPIX", &bitpix);
+    w = 0;
+    (void)hgeti4 (header, "NAXIS1", &w);
+    h = 0;
+    (void)hgeti4 (header, "NAXIS2", &h);
+
+    /* Set catalog search limits from image WCS information */
+    sysout = wcs->syswcs;
+    eqout = wcs->equinox;
+    epout = wcs->epoch;
+    wcscstr (cstr, sysout, eqout, epout);
+    wcssize (wcs, &cra, &cdec, &dra, &ddec);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
+
+    /* If RA range includes zero, split it in two */
+    wrap = 0;
+    if (ra1 > ra2)
+	wrap = 1;
+    else
+	wrap = 0;
+
+    /* Search zones which include the poles cover 360 degrees in RA */
+    if (cdec - ddec < -90.0) {
+	if (dec1 > dec2)
+	    dec2 = dec1;
+	dec1 = -90.0;
+	ra1 = 0.0;
+	ra2 = 359.99999;
+	wrap = 0;
+	}
+    if (cdec + ddec > 90.0) {
+	if (dec2 < dec1)
+	    dec1 = dec2;
+	dec2 = 90.0;
+	ra1 = 0.0;
+	ra2 = 359.99999;
+	wrap = 0;
+	}
+
+    /* mag1 is always the smallest magnitude */
+    if (mag2 < mag1) {
+	mag = mag2;
+	mag2 = mag1;
+	mag1 = mag;
+	}
+
+    /* Allocate catalog entry buffer */
+    star = (struct Star *) calloc (1, sizeof (struct Star));
+    star->num = 0.0;
+
+    /* Open catalog file */
+    if ((sc = ctgopen (catfile, refcat)) == NULL) {
+	fprintf (stderr,"CTGRNUM: Cannot read catalog %s\n", catfile);
+	return (0);
+	}
+    if (sc->nstars <= 0) {
+	free (sc);
+	if (star != NULL)
+	    free (star);
+	sc = NULL;
+	return (0);
+	}
+
+    if (sortmag > 0 && sortmag <= sc->nmag)
+	magsort = sortmag - 1;
+    else 
+	magsort = 1;
+
+    jstar = 0;
+
+    /* Loop through catalog */
+    for (istar = 1; istar <= sc->nstars; istar++) {
+	if (ctgstar (istar, sc, star)) {
+	    fprintf (stderr,"\nCTGBIN: Cannot read %s star %d\n",
+		     sc->isfil, istar);
+	    break;
+	    }
+
+	/* Magnitude */
+	mag = star->xmag[magsort];
+
+	/* Check magnitude limits */
+	pass = 1;
+	if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+	    pass = 0;
+
+	/* Set coordinate system for this star */
+	if (pass) {
+	    sysref = star->coorsys;
+	    eqref = star->equinox;
+	    epref = star->epoch;
+
+	    /* Extract selected fields  */
+	    num = star->num;
+	    ra = star->ra;
+	    dec = star->dec;
+	    rapm = star->rapm;
+	    decpm = star->decpm;
+
+	    /* If catalog is RA-sorted, stop reading if past highest RA */
+	    if (sc->rasorted && !wrap && ra > ra2)
+		break;
+
+	    /* Get position in output coordinate system, equinox, and epoch */
+	    if (sc->inform != 'X') {
+		if (sc->mprop == 1)
+		    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
+		         &ra, &dec, &rapm, &decpm);
+		else
+		    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+		}
+
+	    /* Check distance along RA and Dec axes */
+	    ddist = wcsdist (cra,cdec,cra,dec);
+	    if (ddist > ddec)
+		pass = 0;
+	    rdist = wcsdist (cra,dec,ra,dec);
+	    if (rdist > dra)
+		pass = 0;
+	    }
+
+	/* Save star in FITS image */
+	if (pass) {
+	    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+	    if (!offscl) {
+		if (magscale > 0.0)
+		    flux = magscale * exp (logt * (-mag / 2.5));
+		else
+		    flux = 1.0;
+		addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+		nstar++;
+		jstar++;
+		}
+	    if (nlog == 1)
+		fprintf (stderr,"CTGBIN: %11.6f: %9.5f %9.5f %s %5.2f    \n",
+			 num,ra,dec,cstr,mag);
+
+	    /* End of accepted star processing */
+	    }
+
+	/* Log operation */
+	if (nlog > 0 && istar%nlog == 0)
+	    fprintf (stderr,"CTGBIN: %5d / %5d / %5d sources catalog %s\r",
+		     jstar,istar,sc->nstars,catfile);
+
+	/* End of star loop */
+	}
+
+    /* Summarize search */
+    if (nlog > 0) {
+	fprintf (stderr,"CTGBIN: Catalog %s : %d / %d / %d found\n",
+		 catfile,jstar,istar,sc->nstars);
+	}
+
+    free (star);
+    return (nstar);
+}
+
 
 /* CTGOPEN -- Open ASCII catalog, returning number of entries */
 
@@ -1588,4 +1849,7 @@ char	*in;	/* Character string */
  * Apr  3 2003	Drop call to gsc2rnum(); it didn't do anything anyway
  * Apr 23 2003	Add ucacread() and ucacrnum()
  * May 21 2003	Pass catalog names for UCAC and 2MASS PSC
+ * Aug 22 2003	Add radi argument for inner edge of search annulus
+ * Sep 25 2003	Add ctgbin() to fill an image with sources
+ * Nov 18 2003	Initialize image size and bits/pixel from header in ctgbin()
  */

@@ -50,7 +50,7 @@ char **av;
     char cunit;
     int sys0;
     int sys1 = -1;
-    double ra, dec, r, ra1, dec1;
+    double ra, dec, r, ra1, dec1, dra, ddec, a;
     double offra = 0.0;
     double offdec = 0.0;
     int lstr = 32;
@@ -85,9 +85,48 @@ char **av;
 	while (c = *++str)
     	switch (c) {
 
-    	case 'v':	/* more verbosity */
-    	    verbose++;
-    	    break;
+	case 'a':	/* Position angle (N->E) between two RA Dec pairs */
+	    if (ac < 5)
+		usage("Missing coordinates for -a");
+	    ra = str2ra (*++av);
+	    ac--;
+	    dec = str2dec (*++av);
+	    ac--;
+	    ra1 = str2ra (*++av);
+	    ac--;
+	    dec1 = str2dec (*++av);
+	    ac--;
+	    ra2str (rastr0, lstr, ra, 3);
+	    dec2str (decstr0, lstr, dec, 2);
+	    if (verbose) {
+		printf ("ra1, dec1: %s %s\n", rastr0, decstr0);
+		}
+	    ra2str (rastr0, lstr, ra1, 3);
+	    dec2str (decstr0, lstr, dec1, 2);
+	    if (verbose) 
+		printf ("ra2, dec2: %s %s\n", rastr0, decstr0);
+	    dra = wcsdist (ra, dec, ra1, dec);
+	    ddec = wcsdist (ra, dec, ra, dec1);
+	    if (ra1 >= ra) {
+		if (dec1 < dec)
+		   ddec = -ddec;
+		}
+	    else {
+		if (dec1 >= dec)
+		   dra = -dra;
+		else {
+		    dra = -dra;
+		    ddec = -ddec;
+		    }
+		}
+	    a = raddeg (atan2 (dra, ddec));
+	    if (verbose) {
+		printf ("dRA = %.5f deg, dDec = %.5f deg\n",dra, ddec);
+		printf ("Position angle is %.5f degrees\n", a);
+		}
+	    else
+		printf ("%.3f\n", a);
+	    break;
 
 	case 'b':	/* Output in B1950/FK4 coordinates */
 	    sys1 = WCS_B1950;
@@ -182,9 +221,9 @@ char **av;
 	    ac--;
 	    ra2str (rastr0, lstr, ra, 3);
 	    dec2str (decstr0, lstr, dec, 2);
-	    if (verbose)
-	    if (verbose)
+	    if (verbose) {
 		printf ("ra1, dec1: %s %s\n", rastr0, decstr0);
+		}
 	    ra2str (rastr0, lstr, ra1, 3);
 	    dec2str (decstr0, lstr, dec1, 2);
 	    if (verbose) 
@@ -215,6 +254,10 @@ char **av;
 	case 's':	/* Output ra= dec= epoch= radecsys= for sethead */
 	    keyeqval++;
 	    break;
+
+    	case 'v':	/* more verbosity */
+    	    verbose++;
+    	    break;
 
 	case 'w':	/* Convert RA, Dec to X, Y, Z */
 	    if (ac < 3)
@@ -266,7 +309,7 @@ char **av;
     	}
     }
 
-    if (verbose)
+    while (verbose && ac > 0)
 
     while (ac-- > 0) {
 	listname = *av;
@@ -500,6 +543,7 @@ char *errstring;
     fprintf (stderr," ran: RA or longitude in fractional degrees or hh:mm:ss.s\n");
     fprintf (stderr,"decn: Dec or latitude in fractional degrees or dd:mm:ss.s\n");
     fprintf (stderr,"sysn: B1950 or FK4, J2000 or FK5, equinox epoch, galactic, ecliptic\n");
+    fprintf (stderr,"  -a ra dec ra dec: Position angle (N->E) between two RA, Dec pairs\n");
     fprintf (stderr,"  -b: B1950 (FK4) output\n");
     fprintf (stderr,"  -d: RA and Dec output in degrees\n");
     fprintf (stderr,"  -e: Ecliptic longitude and latitude output\n");
@@ -556,4 +600,5 @@ char *errstring;
  *
  * Jul 23 2003	Fix bug in verbose mode of -r found by Cees Bassa
  * Jul 24 2003	Fix bug so number of decimal places can be set for degrees out
+ * Sep 10 2003	Add -a position angle between two coordinates
  */

@@ -1,8 +1,8 @@
 /*** File fitshead.h  FITS header access subroutines
- *** August 30, 2002
+ *** October 20, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -27,7 +27,7 @@
                            Cambridge, MA 02138 USA
  */
 
-/* Declarations for subroutine sin hget.c, hput.c, and iget.c */
+/* Declarations for subroutines in hget.c, hput.c, and iget.c */
 
 #ifndef _fitshead_h_
 #define _fitshead_h_
@@ -143,12 +143,14 @@ extern "C" {
 	const char* string);	/* Character string which may be a number */
     int notnum(			/* Return 0 if number, else 1 */
 	const char* string);	/* Character string which may be a number */
+    int numdec(			/* Return number of decimal places in number */
+	const char* string);	/* Character string which may be a number */
 
     char *getltime();		/* Return current local time in ISO format */
     char *getutime();		/* Return current UT as an ISO-format string */
 
 /* Subroutines in iget.c */
-    int mgets(			/* Extract string from multiline FITS keyword */
+    int mgetstr(		/* Extract string from multiline FITS keyword */
 	const char* hstring,	/* FITS header string */
 	const char* mkey,	/* FITS keyword root _n added for extra lines */
 	const char* keyword,	/* IRAF keyword */
@@ -294,6 +296,7 @@ extern double str2dec();
 /* Check to see whether a string is a number or not */
 extern int isnum();
 extern int notnum();
+extern int decnum();
 
 /* Find given keyword entry in FITS header */
 extern char *ksearch();
@@ -314,7 +317,7 @@ extern int hlength();
 extern int gethlength();
 
 /* Subroutines in iget.c */
-extern int mgets();	/* Previously allocated string from multiline keyword */
+extern int mgetstr();	/* Previously allocated string from multiline keyword */
 extern int mgetr8();	/* double from multiline keyword */
 extern int mgeti4();	/* int from multiline keyword */
 extern int igeti4();	/* long integer from IRAF compound keyword value */
@@ -394,4 +397,7 @@ extern char *getutime(); /* Return current UT as an ISO-format string */
  * Apr  3 2002	Add hgeti4c(), hgetr8c(), and hgetsc()
  * Apr  8 2002	Include sys/types.h
  * Aug 30 2002	Add strcsrch() and strncsrch()
+ *
+ * Sep 23 2003	Change mgets() to mgetstr() to avoid name collision at UCO Lick
+ * Oct 20 2003	Add numdec() to return the number of decimal places in a string
  */

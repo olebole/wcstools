@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** May 20, 2003
+ *** November 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2003
@@ -148,7 +148,7 @@ char	*proj;	/* Projection */
     wcs->wcsl.flag = 0;
 
     /* Image dimensions */
-    wcs->naxes = 2;
+    wcs->naxis = 2;
     wcs->lin.naxis = 2;
     wcs->nxpix = nxpix;
     wcs->nypix = nypix;
@@ -248,7 +248,7 @@ double	epoch;	/* Epoch of coordinates, used for FK4/FK5 conversion
     wcs->wcsl.flag = 0;
 
     /* Image dimensions */
-    wcs->naxes = 2;
+    wcs->naxis = 2;
     wcs->lin.naxis = 2;
     wcs->nxpix = naxis1;
     wcs->nypix = naxis2;
@@ -332,7 +332,6 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
     int nctype = 32;
     char ctypes[32][4];
     char dtypes[10][4];
-    char *extension;
 
     /* Initialize projection types */
     strcpy (ctypes[0], "LIN");
@@ -560,15 +559,8 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	wcs->prjcode = WCS_LIN;
 	}
 
-    /* If CTYPE1 is 8 characters long or less, there is no extension */
-    if (strlen (ctype1) < 9 )
-	return 0;
-
-    extension = ctype1 + 8;
-    if (!strcmp (extension, "-SIP"))
-	wcs->distcode = DISTORT_SIRTF;
-    else
-	wcs->distcode = DISTORT_NONE;
+    /* Set distortion code from CTYPE1 extension */
+    setdistcode (wcs, ctype1);
 
     return (0);
 }
@@ -895,7 +887,7 @@ double *pc;		/* Rotation matrix, ignored if NULL */
     if (pc == NULL)
 	return;
 
-    naxes = wcs->naxes;
+    naxes = wcs->naxis;
     wcs->cdelt[0] = cdelt1;
     if (cdelt2 != 0.0)
 	wcs->cdelt[1] = cdelt2;
@@ -956,7 +948,7 @@ struct WorldCoor *wcs;	/* World coordinate system structure */
 {
     int i, mem, naxes;
 
-    naxes = wcs->naxes;
+    naxes = wcs->naxis;
     mem = naxes * naxes * sizeof(double);
     if (wcs->lin.piximg == NULL)
 	wcs->lin.piximg = (double*)malloc(mem);
@@ -1280,30 +1272,39 @@ double	*width;		/* Width in degrees (returned) */
 double	*height;	/* Height in degrees (returned) */
 
 {
-    double xpix, ypix, xpos1, xpos2, ypos1, ypos2;
+    double xpix, ypix, xpos1, xpos2, ypos1, ypos2, xcpix, ycpix;
     double xcent, ycent;
 
     /* Find right ascension and declination of coordinates */
     if (iswcs(wcs)) {
-	xpix = 0.5 * wcs->nxpix;
-	ypix = 0.5 * wcs->nypix;
-	(void) pix2wcs (wcs,xpix,ypix,&xcent, &ycent);
+	xcpix = (0.5 * wcs->nxpix) + 0.5;
+	ycpix = (0.5 * wcs->nypix) + 0.5;
+	(void) pix2wcs (wcs,xcpix,ycpix,&xcent, &ycent);
 	*cra = xcent;
 	*cdec = ycent;
 
 	/* Compute image width in degrees */
-	(void) pix2wcs (wcs,1.0,ypix,&xpos1,&ypos1);
-	(void) pix2wcs (wcs,wcs->nxpix,ypix,&xpos2,&ypos2);
+	xpix = 0.500001;
+	(void) pix2wcs (wcs,xpix,ycpix,&xpos1,&ypos1);
+	xpix = wcs->nxpix + 0.499999;
+	(void) pix2wcs (wcs,xpix,ycpix,&xpos2,&ypos2);
 	if (strncmp (wcs->ptype,"LINEAR",6) &&
-	    strncmp (wcs->ptype,"PIXEL",5))
+	    strncmp (wcs->ptype,"PIXEL",5)) {
 	    *width = wcsdist (xpos1,ypos1,xpos2,ypos2);
+	    if (xpos1 < xpos2 && wcs->xinc < 0)
+		*width = 360.0 - *width;
+	    else if (xpos1 > xpos2 && wcs->xinc > 0)
+		*width = 360.0 - *width;
+	    }
 	else
 	    *width = sqrt (((ypos2-ypos1) * (ypos2-ypos1)) +
 		     ((xpos2-xpos1) * (xpos2-xpos1)));
 
 	/* Compute image height in degrees */
-	(void) pix2wcs (wcs,xpix,1.0,&xpos1,&ypos1);
-	(void) pix2wcs (wcs,xpix,wcs->nypix,&xpos2,&ypos2);
+	ypix = 0.5;
+	(void) pix2wcs (wcs,xcpix,ypix,&xpos1,&ypos1);
+	ypix = wcs->nypix + 0.5;
+	(void) pix2wcs (wcs,xcpix,ypix,&xpos2,&ypos2);
 	if (strncmp (wcs->ptype,"LINEAR",6) &&
 	    strncmp (wcs->ptype,"PIXEL",5))
 	    *height = wcsdist (xpos1,ypos1,xpos2,ypos2);
@@ -2720,4 +2721,8 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Mar 31 2003	Add distcode to wcstype()
  * Apr  1 2003	Add calls to foc2pix() in wcs2pix() and pix2foc() in pix2wcs()
  * May 20 2003	Declare argument i in savewcscom()
+ * Sep 29 2003	Fix bug to compute width and height correctly in wcsfull()
+ * Sep 29 2003	Fix bug to deal with all-sky images orrectly in wcsfull()
+ * Oct  1 2003	Rename wcs->naxes to wcs->naxis to match WCSLIB 3.2
+ * Nov  3 2003	Set distortion code by calling setdistcode() in wcstype()
  */

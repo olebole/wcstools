@@ -1,5 +1,5 @@
 /*** File webread.c
- *** March 12, 2003
+ *** November 22, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -69,7 +69,7 @@ static char newline = 10;
 /* WEBREAD -- Read a catalog over the web and return results */
 
 int
-webread (caturl,refcatname,distsort,cra,cdec,dra,ddec,drad,sysout,
+webread (caturl,refcatname,distsort,cra,cdec,dra,ddec,drad,dradi,sysout,
                  eqout,epout,mag1,mag2,sortmag,nstarmax,
 		 unum,ura,udec,upra,updec,umag,utype,nlog)
 
@@ -81,6 +81,7 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+double	dradi;		/* Inner edge of annulus in degrees (ignore if 0) */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
@@ -125,8 +126,13 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 	/* Search radius or box size */
 	if (drad != 0.0) {
 	    dtemp = drad * 3600.0;
-	    sprintf (temp, "&radius=%.3f",dtemp);
+	    sprintf (temp, "&rad=%.3f",dtemp);
 	    strcat (srchurl, temp);
+	    if (dradi > 0.0) {
+		dtemp = dradi * 3600.0;
+		sprintf (temp, "&inrad=%.3f",dtemp);
+		strcat (srchurl, temp);
+		}
 	    }
 	else {
 	    dtemp = dra * 3600.0;
@@ -262,7 +268,7 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 	}
 
     /* Extract desired sources from catalog  and return them */
-    return (tabread (caturl,distsort,cra,cdec,dra,ddec,drad,
+    return (tabread (caturl,distsort,cra,cdec,dra,ddec,drad,dradi,
 	     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,&starcat,
 	     unum,ura,udec,upra,updec,umag,utype,NULL,nlog));
 }
@@ -513,6 +519,7 @@ int	*lbuff;	/* Length of buffer (returned) */
     int lchunk, lline;
     int nbcont;
     int lcbuff;
+    int lb;
     char *cbcont;
 
     *lbuff = 0;
@@ -567,6 +574,7 @@ int	*lbuff;	/* Length of buffer (returned) */
 
     /* Read table into buffer in memory a chunk at a time */
     tabbuff = NULL;
+    lb = 0;
     if (chunked) {
 	lchunk = 1;
 	lline = 1;
@@ -593,14 +601,19 @@ int	*lbuff;	/* Length of buffer (returned) */
 		lcbuff = *lbuff;
 		*lbuff = *lbuff + lchunk;
 		if (tabbuff == NULL) {
-		    tabbuff = (char *) malloc (*lbuff+8);
+		    lb = 2 * *lbuff;
+		    tabbuff = (char *) calloc (lb, 1);
 		    buff = tabbuff;
 		    }
-		else {
-		    newbuff = (char *) malloc (*lbuff+8);
+		else if (*lbuff > lb) {
+		    lb = lb * 2;
+		    newbuff = (char *) calloc (lb, 1);
 		    movebuff (tabbuff, newbuff, lcbuff, 0, 0);
 		    free (tabbuff);
 		    tabbuff = newbuff;
+		    buff = tabbuff + lcbuff;
+		    }
+		else {
 		    buff = tabbuff + lcbuff;
 		    }
         	fread (buff, 1, lchunk, sok);
@@ -795,4 +808,6 @@ FileINetParse(file, port, adrinet)
  * Jan 27 2003	Add maximum number of stars to be returned to webread()
  * Jan 28 2003	Add number of decimal places to webread() and webrnum()
  * Mar 12 2003	Fix bug in USNO-A2 server code
+ * Aug 22 2003	Add radi argument for inner edge of search annulus
+ * Nov 22 2003	Increase buffer size faster than reading in webbuff()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** June 2, 2003
+ *** November 18, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2000-2003
@@ -37,7 +37,7 @@
 #include "wcs.h"
 #include "wcscat.h"
 
-#define MAXREG 100
+#define MAXREG 10000
 
 /* pathname of Tycho 2 CDROM or catalog search engine URL */
 char ty2cd[64]="/data/astrocat/tycho2";
@@ -54,17 +54,19 @@ void ty2close();
 static int ty2star();
 static int ty2size();
 
+
 /* TY2READ -- Read Tycho 2 Star Catalog stars from CDROM */
 
 int
-ty2read (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,sortmag,
-	 nstarmax,gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
+ty2read (cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,mag1,mag2,
+	 sortmag,nstarmax,gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+double	dradi;		/* Inner edge of annulus in degrees (ignore if 0) */
 int	distsort;	/* 1 to sort stars by distance from center */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
@@ -96,6 +98,7 @@ int	nlog;		/* 1 for diagnostics */
     int sysref = WCS_J2000;	/* Catalog coordinate system */
     double eqref = 2000.0;	/* Catalog equinox */
     double epref = 2000.0;	/* Catalog epoch */
+    double secmarg = 60.0;	/* Arcsec/century margin for proper motion */
     struct StarCat *starcat;
     struct Star *star;
     int verbose;
@@ -109,7 +112,7 @@ int	nlog;		/* 1 for diagnostics */
 /*    int isp; */
     int pass;
     double num, ra, dec, rapm, decpm, mag, magb, magv;
-    double rra1, rra2, rra2a, rdec1, rdec2, dmarg;
+    double rra1, rra2, rra2a, rdec1, rdec2;
     double rdist, ddist;
     char cstr[32], rastr[32], decstr[32];
     char *str;
@@ -121,14 +124,11 @@ int	nlog;		/* 1 for diagnostics */
 	verbose = 0;
 
     /* If pathname is a URL, search and return */
-    if ((str = getenv("TY2_PATH")) != NULL ) {
-	if (!strncmp (str, "http:",5)) {
-	    return (webread (str,"tycho2",distsort,cra,cdec,dra,ddec,drad,
-			     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
-			     gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
-	    }
-	}
-    if (!strncmp (ty2cd, "http:",5)) {
+    if ((str = getenv("TY2_PATH")) == NULL )
+	str = ty2cd;
+    else
+	strncpy (ty2cd, str, 64);
+    if (!strncmp (str, "http:",5)) {
 	return (webread (ty2cd,"tycho2",distsort,cra,cdec,dra,ddec,drad,
 			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
@@ -174,31 +174,12 @@ int	nlog;		/* 1 for diagnostics */
     jstar = 0;
 
     /* Get RA and Dec limits in catalog (J2000) coordinates */
-    rra1 = ra1;
-    rra2 = ra2;
-    rdec1 = dec1;
-    rdec2 = dec2;
-    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
-	    &rra1, &rra2, &rdec1, &rdec2, verbose);
-
-    /* Add 60 arcsec/century margins to region to get most stars which move */
-    if (epout == 0.0)
-	dmarg = 0.0;
-    else
-	dmarg = (60.0 / 3600.0) * fabs (epout - epref);
-    rdec1 = rdec1 - dmarg;
-    rdec2 = rdec2 + dmarg;
-    rra1 = rra1 - (dmarg / cos (degrad(cdec)));
-    rra2 = rra2 + (dmarg / cos (degrad(cdec)));
-
-    /* Deal with search passing through 0:00 RA */
-    if (rra1 > rra2) {
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,
+	    secmarg, &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
+    if (wrap) {
 	rra2a = rra2;
 	rra2 = 360.0;
-	wrap = 1;
 	}
-    else
-	wrap = 0;
 
     /* Write header if printing star entries as found */
     if (nstarmax < 1) {
@@ -211,8 +192,11 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("dec	%s\n", decstr);
 	printf ("rpmunit	mas/year\n");
 	printf ("dpmunit	mas/year\n");
-	if (drad != 0.0)
+	if (drad != 0.0) {
 	    printf ("radmin	%.1f\n", drad*60.0);
+	    if (dradi > 0)
+		printf ("radimin	%.1f\n", dradi*60.0);
+	    }
 	else {
 	    printf ("dramin	%.1f\n", dra*60.0* cosdeg (cdec));
 	    printf ("ddecmin	%.1f\n", ddec*60.0);
@@ -297,6 +281,8 @@ int	nlog;		/* 1 for diagnostics */
 		    /* Check radial distance to search center */
 		    if (drad > 0) {
 			if (dist > drad)
+			    pass = 0;
+			if (dradi > 0.0 && dist < dradi)
 			    pass = 0;
 			}
 
@@ -412,7 +398,7 @@ int	nlog;		/* 1 for diagnostics */
 	    ntot = ntot + starcat->nstars;
 	    if (nlog > 0)
 		fprintf (stderr,"TY2READ: %4d / %4d: %5d / %5d  / %5d sources from region %4d    \n",
-		 	 ireg+1,nreg,nstar,jstar,starcat->nstars,rlist[ireg]);
+		 	 ireg+1,nreg,nstar,jstar,starcat->nstars,regnum[ireg]);
 
 	    /* Close region input file */
 	    ty2close (starcat);
@@ -583,15 +569,237 @@ int	nlog;		/* 1 for diagnostics */
 }
 
 
+/* TY2BIN -- Read Tycho 2 Star Catalog stars from CDROM */
+
+int
+ty2bin (wcs, header, image, mag1, mag2, sortmag, magscale, nlog)
+
+struct WorldCoor *wcs;	/* World coordinate system for image */
+char	*header;	/* FITS header for output image */
+char	*image;		/* Output FITS image */
+double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 or 2) */
+double	magscale;	/* Scaling factor for magnitude to pixel flux
+			 * (number of catalog objects per bin if 0) */
+int	nlog;		/* 1 for diagnostics */
+{
+    double cra;		/* Search center J2000 right ascension in degrees */
+    double cdec;	/* Search center J2000 declination in degrees */
+    double dra;		/* Search half width in right ascension in degrees */
+    double ddec;	/* Search half-width in declination in degrees */
+    int sysout;		/* Search coordinate system */
+    double eqout;	/* Search coordinate equinox */
+    double epout;	/* Proper motion epoch (0.0 for no proper motion) */
+    double ra1,ra2;	/* Limiting right ascensions of region in degrees */
+    double dec1,dec2;	/* Limiting declinations of region in degrees */
+    int nreg;		/* Number of Tycho 2 regions in search */
+    int regnum[MAXREG];	/* List of region numbers */
+    int rlist[MAXREG];	/* List of first stars in regions */
+    int nlist[MAXREG];	/* List of number of stars per region */
+    char inpath[128];	/* Pathname for input region file */
+    int sysref = WCS_J2000;	/* Catalog coordinate system */
+    double eqref = 2000.0;	/* Catalog equinox */
+    double epref = 2000.0;	/* Catalog epoch */
+    double secmarg = 60.0;	/* Arcsec/century margin for proper motion */
+    struct StarCat *starcat;
+    struct Star *star;
+    int verbose;
+    int wrap;
+    int ireg;
+    int magsort;
+    int jstar, iw;
+    int nrmax = MAXREG;
+    int nstar, ntot;
+    int istar, istar1, istar2;
+    int pass;
+    double num, ra, dec, rapm, decpm, mag, magb, magv;
+    double rra1, rra2, rra2a, rdec1, rdec2;
+    double rdist, ddist;
+    char cstr[32];
+    char *str;
+    double xpix, ypix, flux;
+    int ix, iy, offscl;
+    int bitpix, w, h;   /* Image bits/pixel and pixel width and height */
+    double logt = log(10.0);
+
+    /* Get image dimensions */
+    bitpix = 0;
+    (void)hgeti4 (header,"BITPIX",&bitpix);
+    w = 0;
+    (void)hgeti4 (header,"NAXIS1",&w);
+    h = 0;
+    (void)hgeti4 (header,"NAXIS2",&h);
+    if (bitpix * w * h < 1) {
+	fprintf (stderr, "TY2BIN: No pixels in image = %d bytes x %d x %d\n",
+		 bitpix, w, h);
+	return (0);
+	}
+
+    ntot = 0;
+    if (nlog > 0)
+	verbose = 1;
+    else
+	verbose = 0;
+
+    /* If pathname is a URL, search and return */
+    if ((str = getenv("TY2_PATH")) != NULL )
+	strncpy (ty2cd, str, 64);
+
+    /* Set catalog search limits from image WCS information */
+    sysout = wcs->syswcs;
+    eqout = wcs->equinox;
+    epout = wcs->epoch;
+    wcscstr (cstr, sysout, eqout, epout);
+    wcssize (wcs, &cra, &cdec, &dra, &ddec);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
+
+    /* Make mag1 always the smallest magnitude */
+    if (mag2 < mag1) {
+	mag = mag2;
+	mag2 = mag1;
+	mag1 = mag;
+	}
+
+   if (sortmag == 2)
+	magsort = 0;
+    else
+	magsort = 1;
+
+    /* Allocate catalog entry buffer */
+    star = (struct Star *) calloc (1, sizeof (struct Star));
+    star->num = 0.0;
+
+    nstar = 0;
+    jstar = 0;
+
+    /* Get RA and Dec limits in catalog (J2000) coordinates */
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,
+	    secmarg, &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
+    if (wrap) {
+	rra2a = rra2;
+	rra2 = 360.0;
+	}
+
+    /* If searching through RA = 0:00, split search in two */
+    for (iw = 0; iw <= wrap; iw++) {
+
+	/* Find Tycho 2 Star Catalog regions in which to search */
+	nreg = ty2reg (rra1,rra2,rdec1,rdec2,nrmax,regnum,rlist,nlist,verbose);
+	if (nreg <= 0) {
+	    fprintf (stderr,"TY2BIN:  no Tycho 2 region for %.2f-%.2f %.2f %.2f\n",
+		     rra1, rra2, rdec1, rdec2);
+	    rra1 = 0.0;
+	    rra2 = rra2a;
+	    continue;
+	    }
+
+	/* Loop through region list */
+	for (ireg = 0; ireg < nreg; ireg++) {
+
+	    /* Open catalog file for this region */
+	    istar1 = rlist[ireg];
+	    istar2 = istar1 + nlist[ireg];
+	    /* if (verbose)
+		fprintf (stderr,"TY2BIN: Searching stars %d through %d\n",
+			istar1, istar2-1); */
+
+	    /* Open file for this region of Tycho 2 catalog */
+	    starcat = ty2open (rlist[ireg], nlist[ireg]);
+	    if (starcat == NULL) {
+		fprintf (stderr,"TY2BIN: File %s not found\n",inpath);
+		return (0);
+		}
+
+	    /* Loop through catalog for this region */
+	    for (istar = istar1; istar < istar2; istar++) {
+		if (ty2star (starcat, star, istar)) {
+		    fprintf (stderr,"TY2BIN: Cannot read star %d\n", istar);
+		    break;
+		    }
+
+		/* ID number */
+		num = star->num;
+		ra = star->ra;
+		dec = star->dec;
+
+		/* Magnitude */
+		magv = star->xmag[0];
+		magb = star->xmag[1];
+		mag = star->xmag[magsort];
+
+		/* Check magnitude limits */
+		pass = 1;
+		if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+		    pass = 0;
+
+		/* If this star was searched in first pass, skip it */
+		if (iw > 0 && ra > rra2)
+		    pass = 0;
+
+		/* Save star in FITS image */
+		if (pass) {
+		    wcs2pix (wcs, ra, dec, &xpix, &ypix, &offscl);
+		    if (!offscl) {
+			if (magscale > 0.0)
+			    flux = magscale * exp (logt * (-mag / 2.5));
+			else
+			    flux = 1.0;
+			ix = (int) (xpix + 0.5);
+			iy = (int) (ypix + 0.5);
+			addpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy, flux);
+			nstar++;
+			jstar++;
+			}
+		    else
+			flux = 0.0;
+		    if (nlog == 1)
+			fprintf (stderr,"TY2 %11.5f: %9.5f %9.5f %5.2f %5.2f (%.2f,%.2f) -> (%d,%d) %7g\n",
+				 num,ra,dec,magb,magv,xpix,ypix,ix,iy,flux);
+
+		    /* End of accepted star processing */
+		    }
+
+		/* Log operation
+		jstar++;
+		if (nlog > 0 && istar%nlog == 0)
+		    fprintf (stderr,"TY2BIN: %5d / %5d / %5d sources\r",
+			     nstar,jstar,starcat->nstars);
+
+		   End of star loop */
+		}
+
+	    ntot = ntot + starcat->nstars;
+	    if (nlog > 0)
+		fprintf (stderr,"TY2BIN: %4d / %4d: %5d / %5d  / %5d sources from region %4d    \r",
+		 	 ireg+1,nreg,nstar,jstar,starcat->nstars,regnum[ireg]);
+
+	    /* Close region input file */
+	    ty2close (starcat);
+	    }
+	rra1 = 0.0;
+	rra2 = rra2a;
+	}
+
+/* close output file and summarize transfer */
+    if (nlog > 0) {
+	if (nreg > 1)
+	    fprintf (stderr,"\nTY2BIN: %d regions: %d / %d found\n",nreg,nstar,ntot);
+	else
+	    fprintf (stderr,"\nTY2BIN: 1 region: %d / %d found\n",nstar,ntot);
+	}
+    return (nstar);
+}
+
+
 /* Tycho 2 region index for ty2regn() and ty2reg() */
 
 /* First region in each declination zone */
-int treg1[25]={1,594,1178,1729,2259,2781,3246,3652,4014,4294,4492,4615,4663,
-               5260,5838,6412,6989,7523,8022,8464,8840,9134,9346,9490,9538};
+int treg1[24]={9490,9346,9134,8840,8464,8022,7523,6989,6412,5838,5260,4663,
+	       1,594,1178,1729,2259,2781,3246,3652,4014,4294,4492,4615};
  
 /* Last region in each declination zone */
-int treg2[24]={593,1177,1728,2258,2780,3245,3651,4013,4293,4491,4614,4662,
-               5259,5837,6411,6988,7522,8021,8463,8839,9133,9345,9489,9537};
+int treg2[24]={9537,9489,9345,9133,8839,8463,8021,7522,6988,6411,5837,5259,
+	       593,1177,1728,2258,2780,3245,3651,4013,4293,4491,4614,4662};
 
 /* TY2REGN -- read the range of stars in a region from the Tycho 2 Catalog
  * index table.
@@ -617,9 +825,9 @@ int	verbose;	/* 1 for diagnostics */
     *star1 = 0;
     *star2 = 0;
 
-/* Find declination zone in which this region exists */
+/* Find declination zone(s) in which this region exists */
     for (deczone = 0; deczone < 24; deczone++) {
-	if (region >= treg1[deczone] && region < treg1[deczone+1])
+	if (region >= treg1[deczone] && region <= treg2[deczone])
 	    break;
 	}
     if (deczone > 24)
@@ -721,25 +929,46 @@ int	verbose;	/* 1 for diagnostics */
     jr2 = 0;
     nwrap = 1;
 
-/* Search region northern hemisphere or only one region */
-    if (iz2 >= iz1) {
+/* Search in only one region */
+    if (iz1 == iz2) {
 	ir1 = treg1[iz1];
-	ir2 = treg2[iz2];
+	ir2 = treg2[iz1];
+	}
+/* Search region in northern hemisphere */
+    if (dec1 >= 0 && dec2 >= 0) {
+	if (dec1 < dec2) {
+	    ir1 = treg1[iz1];
+	    ir2 = treg2[iz2];
+	    }
+	else {
+	    ir1 = treg1[iz2];
+	    ir2 = treg2[iz1];
+	    }
 	}
 
 /* Search region in southern hemisphere with multiple regions */
     else if (dec1 < 0 && dec2 < 0) {
-	ir1 = treg1[iz2];
-	ir2 = treg2[iz1];
+	if (dec1 < dec2) {
+	    ir1 = treg1[iz2];
+	    ir2 = treg2[iz1];
+	    }
+	else {
+	    ir1 = treg1[iz1];
+	    ir2 = treg2[iz2];
+	    }
 	}
 
 /* Search region spans equator */
     else if (dec1 < 0 && dec2 >= 0) {
-	ir1 = treg1[12];
-	ir2 = treg2[iz1];
-	jr1 = treg1[0];
-	jr2 = treg2[iz2];
 	nwrap = 2;
+
+	/* southern part */
+	jr1 = treg1[11];
+	jr2 = treg2[iz1];
+
+	/* northern part */
+	ir1 = treg1[12];
+	ir2 = treg2[iz2];
 	}
 
     nsrch = ir2 - ir1 + 1;
@@ -791,8 +1020,10 @@ int	verbose;	/* 1 for diagnostics */
 
 		    /* Add this region to list, if there is space */
 		    if (ralow <= ra2 && rahi >= ra1) {
-			if (verbose)
+			/* if (verbose)
 			    fprintf (stderr,"TY2REG: Region %d added to search\n",irow);
+			    */
+
 			if (nrgn < nrmax) {
 			    regnum[nrgn] = irow;
 			    rstar[nrgn] = num1;
@@ -808,8 +1039,9 @@ int	verbose;	/* 1 for diagnostics */
 		    if (ralow <= ra2 || rahi >= ra1) {
 
 		    /* Add this region to list, if there is space */
-			if (verbose)
-			    fprintf (stderr,"GSCREG: Region %d added to search\n", irow);
+			/* if (verbose)
+			    fprintf (stderr,"TY2REG: Region %d added to search\n", irow);
+			    */
 
 			if (nrgn < nrmax) {
 			    regnum[nrgn] = irow;
@@ -846,13 +1078,16 @@ double dec;		/* declination in degrees */
 int zone;		/* gsc zone (returned) */
 double  zonesize;
 int ndeczones = 12;	/* number of declination zones per hemisphere */
+double zdec = dec + 90.0;
  
 /* width of declination zones */
     zonesize = 90.0 / ndeczones;
  
-    zone = ((int) (dec / zonesize));
-    if (dec < 0)
-	zone = ndeczones - zone;
+    zone = (int) (zdec / zonesize);
+    if (zone < 0)
+	zone = 0;
+    if (zone > 23)
+	zone = 23;
  
     return (zone);
 }
@@ -1104,4 +1339,11 @@ char	*filename;	/* Name of file for which to find size */
  * Apr  3 2003	Drop unused variables after lint
  * Apr 14 2003	Explicitly get revision date if nstarmax < 1
  * Jun  2 2003	Print proper motion as mas/year
+ * Aug  8 2003	Increase MAXREG from 100 to 1000
+ * Aug 22 2003	Add radi argument for inner edge of search annulus
+ * Sep 26 2003	Add ty2bin() to fill an image with sources
+ * Sep 29 2003	Rewrite zone computation to deal with +-90 correctly
+ * Oct  1 2003	Use wcs2pix() to decide whether to accept position in ty2bin()
+ * Oct  6 2003	Update ty2read() and ty2bin() for improved RefLim()
+ * Nov 18 2003	Fix bugs in ty2bin()
  */

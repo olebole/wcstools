@@ -163,11 +163,7 @@
 *   $Id: lin.c,v 2.8 2002/01/30 06:04:03 mcalabre Exp $
 *===========================================================================*/
 
-#if defined(__convexc__) || defined(__APPLE__)
 #include <stdlib.h>
-#else
-#include <malloc.h>
-#endif
 #include <math.h>
 #include "wcslib.h"
 
@@ -447,4 +443,6 @@ double inv[];
  * Nov 20 2001	Doug Mink - Always include stdlib.h
  *
  * Jan 15 2002	Bill Joye - Add ifdef so this compiles on MacOS/X
+ *
+ * Nov 18 2003	Doug Mink - Include stdlib.h instead of malloc.h
  */

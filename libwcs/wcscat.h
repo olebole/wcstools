@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** May 20, 2003
+ *** September 25, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -98,7 +98,6 @@ int actread();		/* Read sources from USNO ACT Catalog */
 int ty2read();		/* Read sources from Tycho 2 Catalog */
 int webread();		/* Read sources from catalog on the World Wide Web */
 
-
 /* Subroutines for extracting sources from catalogs by ID number */
 int gscrnum();		/* Read sources from HST Guide Star Catalog */
 int tmcrnum();		/* Read sources from 2MASS Point Source Catalog */
@@ -113,6 +112,19 @@ int actrnum();		/* Read sources from USNO ACT Catalog */
 int ty2rnum();		/* Read sources from Tycho 2 Catalog */
 int webrnum();		/* Read sources from catalog on the World Wide Web */
 
+/* Subroutines for putting sources from catalogs into FITS WCS images */
+int gscbin();		/* Read sources from HST Guide Star Catalog */
+int tmcbin();		/* Read sources from 2MASS Point Source Catalog */
+int uacbin();		/* Read sources from USNO A or SA Catalog */
+int ubcbin();		/* Read sources from USNO B Catalog */
+int ucacbin();		/* Read sources from USNO UCAC 1 Catalog */
+int ujcbin();		/* Read sources from USNO J Catalog */
+int tabbin();		/* Read sources from tab table catalog */
+int binbin();		/* Read sources from SAO TDC binary format catalog */
+int ctgbin();		/* Read sources from SAO TDC ASCII format catalog */
+int actbin();		/* Read sources from USNO ACT Catalog */
+int ty2bin();		/* Read sources from Tycho 2 Catalog */
+
 void setgsclass();	/* Set GSC object class */
 void setuplate();	/* Set USNO catalog plate number to search */
 int getuplate();	/* Get USNO catalog plate number to search */
@@ -124,13 +136,15 @@ struct TabTable *webopen();	/* Open tab table across the web */
 char *webbuff();	/* Read URL into buffer across the web */
 
 /* Subroutines for sorting tables of star positions and magnitudes */
-#define NOSORT		0	/* Do not sort catalog output */
+#define SORT_UNSET	-1	/* Catalog sort flag not set yet */
+#define SORT_NONE	0	/* Do not sort catalog output */
 #define SORT_MAG	1	/* Sort output by magnitude */
 #define SORT_DIST	2	/* Sort output by distance from center */
 #define SORT_RA		3	/* Sort output by right ascension */
 #define SORT_DEC	4	/* Sort output by declination */
 #define SORT_X		5	/* Sort output by image X coordinate */
 #define SORT_Y		6	/* Sort output by image Y coordinate */
+#define SORT_MERGE	7	/* Merge close catalog objects */
 void XSortStars();
 void YSortStars();
 void RASortStars();
@@ -459,4 +473,6 @@ char *getrevmsg();	/* Return version/date string */
  * Apr 14 2003	Add setrevmsg() and getrevmsg()
  * Apr 24 2003	Add UCAC1 and UCAC2, ucacread() and ucacrnum()
  * May 20 2003	Add TMIDR2 for 2MASS PSC Interim Data Release 2
+ * Sep 16 2003	Add SORT_MERGE for scat
+ * Sep 25 2003	Add *bin() subroutines for catalog binning
  */

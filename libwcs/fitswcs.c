@@ -1,5 +1,5 @@
 /*** File libwcs/fitswcs.c
- *** February 10, 2003
+ *** November 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -154,9 +154,13 @@ int verbose;
     strcpy (flds[12], "CD1_2");
     strcpy (flds[13], "CD2_1");
     strcpy (flds[14], "CD2_2");
+    strcpy (flds[11], "PC1_1");
+    strcpy (flds[12], "PC1_2");
+    strcpy (flds[13], "PC2_1");
+    strcpy (flds[14], "PC2_2");
 
     n = 0;
-    nfields = 15;
+    nfields = 19;
 
     for (i = 0; i < nfields; i++) {
 	if (hdel (header, flds[i])) {
@@ -419,6 +423,7 @@ struct WorldCoor *wcs;	/* WCS structure */
 {
     double ep;
     char wcstemp[16];
+    char *wcsdist;
 
     /* Rename old center coordinates */
     if (!ksearch (header,"WRA") && ksearch (header,"RA"))
@@ -451,11 +456,16 @@ struct WorldCoor *wcs;	/* WCS structure */
 	hputs (header, "RADECSYS", wcs->radecsys);
 
     /* Set standard FITS WCS keywords */
+    wcsdist = getdistcode (wcs);	/* FITS WCS distortion code */
     strcpy (wcstemp, "RA---");
     strcat (wcstemp, wcsproj);
+    if (wcsdist != NULL)
+	strcat (wcstemp, wcsdist);
     hputs  (header, "CTYPE1", wcstemp);
     strcpy (wcstemp, "DEC--");
     strcat (wcstemp, wcsproj);
+    if (wcsdist != NULL)
+	strcat (wcstemp, wcsdist);
     hputs  (header, "CTYPE2", wcstemp);
 
     /* Reference pixel in WCS and image coordinates */
@@ -580,4 +590,6 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Jun 19 2002	Add verbose argument to GetWCSFITS() and GetFITShead()
  *
  * Feb 10 2003	Print 12 decimal places instead of 9 for CD matrix and CDELT
+ * Oct 23 2003	Add PCi_j to DelWCSFITS()
+ * Nov  3 2003	In SetFITSWCS(), add distortion code if in WCS
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/distort.c
- *** April 2, 2003
+ *** November 18, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu, 
  *** Based on code written by Jing Li, IPAC
  *** Harvard-Smithsonian Center for Astrophysics
@@ -29,11 +29,108 @@
 
  * Module:	distort.c (World Coordinate Systems)
  * Purpose:	Convert focal plane coordinates to pixels and vice versa:
+ * Subroutine:  distortinit (wcs, hstring) set distortion coefficients from FITS header
  * Subroutine:	pix2foc (wcs, x, y, u, v) pixel coordinates -> focal plane coordinates
  * Subroutine:	foc2pix (wcs, u, v, x, y) focal plane coordinates -> pixel coordinates
+ * Subroutine:  setdistcode (wcs,ctype) sets distortion code from CTYPEi
+ * Subroutine:  getdistcode (wcs) returns distortion code string for CTYPEi
  */
 
+#include <unistd.h>
+#include <string.h>
 #include "wcs.h"
+
+void
+distortinit (wcs, hstring)
+struct WorldCoor *wcs;  /* World coordinate system structure */
+char	*hstring;	/* character string containing FITS header information
+			   in the format <keyword>= <value> [/ <comment>] */
+{
+    int i, j, m;
+    char keyword[12];
+
+    /* Read distortion coefficients, if present */
+    if (wcs->distcode == DISTORT_SIRTF) {
+	if (wcs->wcsproj == WCS_OLD) {
+	    wcs->wcsproj = WCS_NEW;
+	    wcs->distort.a_order = 0;
+	    wcs->distort.b_order = 0;
+	    wcs->distort.ap_order = 0;
+	    wcs->distort.bp_order = 0;
+	    }
+	else {
+	    if (!hgeti4 (hstring, "A_ORDER", &wcs->distort.a_order)) {
+		setwcserr ("DISTINIT: Missing A_ORDER keyword for SIRTF distortion");
+		}
+	    else {
+		m = wcs->distort.a_order;
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m; j++) {
+			wcs->distort.a[i][j] = 0.0;
+			}
+		    }
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m-i; j++) {
+			sprintf (keyword, "A_%d_%d", i, j);
+			hgetr8 (hstring, keyword, &wcs->distort.a[i][j]);
+			}
+		    }
+		}
+	    if (!hgeti4 (hstring, "B_ORDER", &wcs->distort.b_order)) {
+		setwcserr ("DISTINIT: Missing B_ORDER keyword for SIRTF distortion");
+		}
+	    else {
+		m = wcs->distort.b_order;
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m; j++) {
+			wcs->distort.b[i][j] = 0.0;
+			}
+		    }
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m-i; j++) {
+			sprintf (keyword, "B_%d_%d", i, j);
+			hgetr8 (hstring, keyword, &wcs->distort.b[i][j]);
+			}
+		    }
+		}
+	    if (!hgeti4 (hstring, "AP_ORDER", &wcs->distort.ap_order)) {
+		setwcserr ("DISTINIT: Missing AP_ORDER keyword for SIRTF distortion");
+		}
+	    else {
+		m = wcs->distort.ap_order;
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m; j++) {
+			wcs->distort.ap[i][j] = 0.0;
+			}
+		    }
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m-i; j++) {
+			sprintf (keyword, "AP_%d_%d", i, j);
+			hgetr8 (hstring, keyword, &wcs->distort.ap[i][j]);
+			}
+		    }
+		}
+	    if (!hgeti4 (hstring, "BP_ORDER", &wcs->distort.bp_order)) {
+		setwcserr ("DISTINIT: Missing BP_ORDER keyword for SIRTF distortion");
+		}
+	    else {
+		m = wcs->distort.bp_order;
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m; j++) {
+			wcs->distort.bp[i][j] = 0.0;
+			}
+		    }
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m-i; j++) {
+			sprintf (keyword, "BP_%d_%d", i, j);
+			hgetr8 (hstring, keyword, &wcs->distort.bp[i][j]);
+			}
+		    }
+		}
+	    }
+	}
+    return;
+}
 
 void
 foc2pix (wcs, x, y, u, v)
@@ -158,5 +255,55 @@ double *x, *y;		/* Focal plane coordinates (returned) */
 
     return;
 }
+
+
+/* SETDISTCODE -- Set WCS distortion code from CTYPEi in FITS header */
+
+void
+setdistcode (wcs, ctype)
+
+struct WorldCoor *wcs;  /* World coordinate system structure */
+char *ctype;		/* Value of CTYPEi from FITS header */
+
+{
+    char *extension;
+    int lctype;
+
+    lctype = strlen (ctype);
+    if (lctype < 9)
+	wcs->distcode = DISTORT_NONE;
+    else {
+	extension = ctype + 8;
+	if (!strncmp (extension, "-SIP", 4))
+	    wcs->distcode = DISTORT_SIRTF;
+	else
+	    wcs->distcode = DISTORT_NONE;
+	}
+    return;
+}
+
+
+/* GETDISTCODE -- Return NULL if no distortion or code from wcs.h */
+
+char *
+getdistcode (wcs)
+
+struct WorldCoor *wcs;  /* World coordinate system structure */
+
+{
+    char *dcode;	/* Distortion string for CTYPEi */
+
+    if (wcs->distcode == DISTORT_SIRTF) {
+	dcode = (char *) calloc (8, sizeof (char));
+	strcpy (dcode, "-SIP");
+	}
+    else
+	dcode = NULL;
+    return (dcode);
+}
+
 /* Apr  2 2003	New subroutines
+ * Nov  3 2003	Add getdistcode to return distortion code string
+ * Nov 10 2003	Include unistd.h to get definition of NULL
+ * Nov 18 2003	Include string.h to get strlen()
  */

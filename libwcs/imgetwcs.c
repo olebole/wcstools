@@ -1,5 +1,5 @@
 /*** File libwcs/imgetwcs.c
- *** July 21, 2003
+ *** October 6, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -161,8 +161,8 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	hputr8 (header, "CRPIX2", yref0);
 	}
     else if (hgetr8 (header, "CRPIX1", &xref) < 1) {
-	xref = (double) *wp / 2.0;
-	yref = (double) *hp / 2.0;
+	xref = 0.5 + (double) *wp / 2.0;
+	yref = 0.5 + (double) *hp / 2.0;
 	hputnr8 (header, "CRPIX1", 3, xref);
 	hputnr8 (header, "CRPIX2", 3, yref);
 	}
@@ -384,7 +384,7 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 
     if (usecdelt) {
 	hputnr8 (header, "CDELT1", 9, wcs->xinc);
-	if (wcs->naxes > 1) {
+	if (wcs->naxis > 1) {
 	    hputnr8 (header, "CDELT2", 9, wcs->yinc);
 	    hputnr8 (header, "CROTA2", 9, wcs->rot);
 	    }
@@ -395,7 +395,7 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	}
     else {
 	hputnr8 (header, "CD1_1", 9, wcs->cd[0]);
-	if (wcs->naxes > 1) {
+	if (wcs->naxis > 1) {
 	    hputnr8 (header, "CD1_2", 9, wcs->cd[1]);
 	    hputnr8 (header, "CD2_1", 9, wcs->cd[2]);
 	    hputnr8 (header, "CD2_2", 9, wcs->cd[3]);
@@ -550,7 +550,7 @@ char*	ptype;
 
     ptype0 = -1;
     for (i = 0; i < nctype; i++) {
-	if (!strcmp(ptype, ctypes[i]))
+	if (!strcasecmp (ptype, ctypes[i]))
 	    ptype0 = i;
 	}
     return;
@@ -644,4 +644,7 @@ char *dateobs;
  * Jun  6 2003	Set xref and yref to center if -999, not 0
  * Jul 21 2003	Fix bug setting secpix if it was not set on the command line
  *		(found by Takehiko Wada, ISAS)
+ * Sep 23 2003	In setproj(), use strcasecmp() instead of strcmp()
+ * Sep 26 2003	If reference pixel not set, set center correctly
+ * Oct  6 2003	Change wcs->naxes to wcs->naxis to match WCSLIB 3.2
  */

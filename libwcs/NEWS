@@ -1,5 +1,18 @@
 WCSTools subroutine release history
 
+November 17, 2003 - Release 3.5.0 (Doug Mink, SAO)
+Rename mgets() to mgetstr() in iget.c, wcsinit.c and fitshead.h
+Add numdec() to hget.c to return number of decimal places in numeric string
+Change wcs->naxes to wcs->naxis to prepare for WCSLIB 3.*
+In iraf2fits() and irafrimage(), use image, not physical, dimensions.
+Fix bugs in wcsfull() in wcs.c
+Move all distortion-related code to distort.c; include unistd.h
+Include stdlib.h instead of malloc.h in lin.c and drop malloc.h from matchstar.c
+
+August 22, 2003 - Release 3.4.2 (Doug Mink, SAO)
+Add fitsrfull() subroutine to read FITS files with more than 2 dimensions
+Modify fitswimage() to write FITS files with more than 2 dimensions
+
 July 11, 2003 - Release 3.4.1 (Doug Mink, SAO)
 Use strncmp to check for both stdin and stdout in fitsfile.c
 

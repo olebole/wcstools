@@ -1,5 +1,5 @@
 /* File xy2sky.c
- * April 7, 2003
+ * October 14, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -390,7 +390,7 @@ char **av;
 			    else
 				printf ("%7.3f %9.3f ",x, y);
 			    }
-			if (wcs->naxes > 2) {
+			if (wcs->naxis > 2) {
 			    if (tabtable)
 				printf ("%2d	", face);
 			    else
@@ -464,7 +464,7 @@ char **av;
 			else
 			    printf ("%7.3f %9.3f ",x, y);
 			}
-		    if (wcs->naxes > 2) {
+		    if (wcs->naxis > 2) {
 			if (tabtable)
 			    printf ("%2d	", face);
 			else
@@ -569,7 +569,7 @@ char *listfile;		/* Name of file with list of input coordinates */
 	    }
 	else {
 	    printf ("x       	y       	");
-	    if (wcs->naxes > 2)
+	    if (wcs->naxis > 2)
 		printf ("z    	");
 	    }
 	printf ("\n");
@@ -587,7 +587,7 @@ char *listfile;		/* Name of file with list of input coordinates */
 	    }
 	else {
 	    printf ("--------	--------");
-	    if (wcs->naxes > 2)
+	    if (wcs->naxis > 2)
 		printf ("	-----");
 	    }
 	printf ("\n");
@@ -667,4 +667,5 @@ char *listfile;		/* Name of file with list of input coordinates */
  * Jan  7 2003	Fix bug which dropped declination for tab output from file
  * Jan  7 2003	Fix bug which failed to ignore #-commented-out input file lines
  * Apr  7 2003	Add -o to output only RA, Dec, or system
+ & Oct 14 2003	Change naxes to naxes in wcs structure
  */

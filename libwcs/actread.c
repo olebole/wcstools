@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** June 2, 2003
+ *** November 18, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1999-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -39,6 +39,8 @@
 /* pathname of ACT CDROM or catalog search engine URL */
 char actcd[64]="/data/act";
 
+#define MAXREG 100
+
 static double *gdist;	/* Array of distances to stars */
 static int ndist = 0;
 
@@ -52,14 +54,15 @@ static int actsra();
 /* ACTREAD -- Read USNO ACT Star Catalog stars from CDROM */
 
 int
-actread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,sortmag,
-	 nstarmax,gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
+actread (cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,mag1,mag2,
+	 sortmag,nstarmax,gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+double	dradi;		/* Inner edge of annulus in degrees (ignore if 0) */
 int	distsort;	/* 1 to sort stars by distance from center */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
@@ -84,10 +87,11 @@ int	nlog;		/* 1 for diagnostics */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
     int nreg;		/* Number of ACT regions in search */
-    int rlist[100];	/* List of input region files */
+    int rlist[MAXREG];	/* List of input region files */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
+    double secmarg = 60.0;	/* Arcsec/century margin for proper motion */
     struct StarCat *starcat;
     struct Star *star;
     int verbose;
@@ -98,7 +102,6 @@ int	nlog;		/* 1 for diagnostics */
     int jstar, iw;
     int nrmax,nstar,i, ntot;
     int istar, istar1, istar2;
-/*    int isp; */
     double num, ra, dec, rapm, decpm, mag, magb, magv;
     double rra1, rra2, rra2a, rdec1, rdec2;
     double rdist, ddist;
@@ -117,13 +120,13 @@ int	nlog;		/* 1 for diagnostics */
 
 	/* If pathname is a URL, search and return */
 	if (!strncmp (str, "http:",5)) {
-	    return (webread (str,"act",distsort,cra,cdec,dra,ddec,drad,
+	    return (webread (str,"act",distsort,cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			     gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	    }
 	}
     if (!strncmp (actcd, "http:",5)) {
-	return (webread (actcd,"act",distsort,cra,cdec,dra,ddec,drad,
+	return (webread (actcd,"act",distsort,cra,cdec,dra,ddec,drad,dradi,
 			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	}
@@ -136,13 +139,6 @@ int	nlog;		/* 1 for diagnostics */
     wcscstr (cstr, sysout, eqout, epout);
 
     SearchLim (cra, cdec, dra, ddec, sysout, &ra1, &ra2, &dec1, &dec2, verbose);
-
-/* If RA range includes zero, split it in two */
-    wrap = 0;
-    if (ra1 > ra2)
-	wrap = 1;
-    else
-	wrap = 0;
 
 /* make mag1 always the smallest magnitude */
     if (mag2 < mag1) {
@@ -179,14 +175,13 @@ int	nlog;		/* 1 for diagnostics */
     rra2 = ra2;
     rdec1 = dec1;
     rdec2 = dec2;
-    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
-	    &rra1, &rra2, &rdec1, &rdec2, verbose);
-    if (rra1 > rra2) {
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,secmarg,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
+    if (wrap) {
 	rra2a = rra2;
 	rra2 = 360.0;
-	if (!wrap) wrap = 1;
 	}
-    nrmax = 100;
+    nrmax = MAXREG;
 
     /* Write header if printing star entries as found */
     if (nstarmax < 1) {
@@ -199,8 +194,11 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("dec	%s\n", decstr);
 	printf ("rpmunit	mas/year\n");
 	printf ("dpmunit	mas/year\n");
-	if (drad != 0.0)
+	if (drad != 0.0) {
 	    printf ("radmin	%.1f\n", drad*60.0);
+	    if (dradi > 0)
+		printf ("radimin	%.1f\n", dradi*60.0);
+	    }
 	else {
 	    printf ("dramin	%.1f\n", dra*60.0 * cosdeg (cdec));
 	    printf ("ddecmin	%.1f\n", ddec*60.0);
@@ -276,6 +274,8 @@ int	nlog;		/* 1 for diagnostics */
 		    if (drad > 0) {
 			if (dist > drad)
 			    pass = 0;
+			if (dradi > 0.0 && dist < dradi)
+			    pass = 0;
 			}
 
 		    /* Check distance along RA and Dec axes */
@@ -293,9 +293,6 @@ int	nlog;		/* 1 for diagnostics */
 
 		    /* ID number */
 		    num = (double) rlist[ireg] + (star->num / 100000.0);
-
-		    /* Spectral Type
-		    isp = (1000 * (int) star->isp[0]) + (int)star->isp[1]; */
 
 		    /* Write star position and magnitudes to stdout */
 		    if (nstarmax < 1) {
@@ -318,7 +315,6 @@ int	nlog;		/* 1 for diagnostics */
 			gpdec[nstar] = decpm;
 			gmag[0][nstar] = magb;
 			gmag[1][nstar] = magv;
-			/* gtype[nstar] = isp; */
 			gdist[nstar] = dist;
 			if (dist > maxdist) {
 			    maxdist = dist;
@@ -341,7 +337,6 @@ int	nlog;		/* 1 for diagnostics */
 			    gpdec[farstar] = decpm;
 			    gmag[0][farstar] = magb;
 			    gmag[1][farstar] = magv;
-			    /* gtype[farstar] = isp; */
 			    gdist[farstar] = dist;
 
 			    /* Find new farthest star */
@@ -364,7 +359,6 @@ int	nlog;		/* 1 for diagnostics */
 			gpdec[farstar] = decpm;
 			gmag[0][faintstar] = magb;
 			gmag[1][faintstar] = magv;
-			/* gtype[faintstar] = isp; */
 			gdist[faintstar] = dist;
 			faintmag = 0.0;
 
@@ -424,7 +418,7 @@ int	nlog;		/* 1 for diagnostics */
 
 int
 actrnum (nstars,sysout,eqout,epout,
-	 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog)
+	 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
 int	nstars;		/* Number of stars to find */
 int	sysout;		/* Search coordinate system */
@@ -435,8 +429,7 @@ double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
 double  *gpra;          /* Array of right ascension proper motions (returned) */
 double  *gpdec;         /* Array of declination proper motions (returned) */
-double	*gmag;		/* Array of V magnitudes (returned) */
-double	*gmagb;		/* Array of B magnitudes (returned) */
+double	**gmag;		/* Array of V, B magnitudes (returned) */
 int	*gtype;		/* Array of object types (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
@@ -449,7 +442,6 @@ int	nlog;		/* 1 for diagnostics */
     int rnum;
     int jstar;
     int istar, nstar, snum;
-/*    int isp; */
     double num, ra, dec, rapm, decpm, mag, magb;
     char *str;
 
@@ -459,12 +451,12 @@ int	nlog;		/* 1 for diagnostics */
 	/* If pathname is a URL, search and return */
 	if (!strncmp (str, "http:",5)) {
 	    return (webrnum (str,"act",nstars, sysout,eqout,epout,
-			     gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+			     gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	    }
 	}
     if (!strncmp (actcd, "http:",5)) {
 	return (webrnum (actcd,"act",nstars, sysout,eqout,epout,
-			 gnum,gra,gdec,gpra,gpdec,gmag,gmagb,gtype,nlog));
+			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	}
 
     /* Allocate catalog entry buffer */
@@ -495,8 +487,8 @@ int	nlog;		/* 1 for diagnostics */
 	    fprintf (stderr,"ACTRNUM: Cannot read star %d\n", istar);
 	    gra[nstar] = 0.0;
 	    gdec[nstar] = 0.0;
-	    gmag[nstar] = 0.0;
-	    gmagb[nstar] = 0.0;
+	    gmag[0][nstar] = 0.0;
+	    gmag[1][nstar] = 0.0;
 	    gtype[nstar] = 0;
 	    continue;
 	    }
@@ -518,21 +510,17 @@ int	nlog;		/* 1 for diagnostics */
 	mag = star->xmag[0];
 	magb = star->xmag[1];
 
-	/* Spectral Type
-	isp = (1000 * (int) star->isp[0]) + (int)star->isp[1]; */
-
 	/* Save star position and magnitude in table */
 	gra[nstar] = ra;
 	gdec[nstar] = dec;
 	gpra[nstar] = rapm;
 	gpdec[nstar] = decpm;
-	gmag[nstar] = mag;
-	gmagb[nstar] = magb;
-	/* gtype[nstar] = isp; */
+	gmag[0][nstar] = magb;
+	gmag[1][nstar] = mag;
 	nstar++;
 	if (nlog == 1)
-	    fprintf (stderr,"ACTRNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %s  \n",
-		     num, ra, dec, magb, mag, star->isp);
+	    fprintf (stderr,"ACTRNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f \n",
+		     num, ra, dec, magb, mag);
 
 	/* End of star loop */
 	}
@@ -543,6 +531,234 @@ int	nlog;		/* 1 for diagnostics */
 
     actclose (starcat);
     free ((void*) star);
+    return (nstar);
+}
+
+
+/* ACTBIN -- Fill FITS WCS image with USNO ACT Star Catalog stars */
+
+int
+actbin (wcs, header, image, mag1, mag2, sortmag, magscale, nlog)
+
+struct WorldCoor *wcs;	/* World coordinate system for image */
+char	*header;	/* FITS header for output image */
+char	*image;		/* Output FITS image */
+double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
+double	magscale;	/* Scaling factor for magnitude to pixel flux
+			 * (number of catalog objects per bin if 0) */
+int	nlog;		/* 1 for diagnostics */
+{
+    double cra;		/* Search center J2000 right ascension in degrees */
+    double cdec;	/* Search center J2000 declination in degrees */
+    double dra;		/* Search half width in right ascension in degrees */
+    double ddec;	/* Search half-width in declination in degrees */
+    int sysout;		/* Search coordinate system */
+    double eqout;	/* Search coordinate equinox */
+    double epout;	/* Proper motion epoch (0.0 for no proper motion) */
+    double ra1,ra2;	/* Limiting right ascensions of region in degrees */
+    double dec1,dec2;	/* Limiting declinations of region in degrees */
+    int nreg;		/* Number of ACT regions in search */
+    int rlist[MAXREG];	/* List of input region files */
+    int sysref=WCS_J2000;	/* Catalog coordinate system */
+    double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
+    double secmarg = 60.0;	/* Arcsec/century margin for proper motion */
+    struct StarCat *starcat;
+    struct Star *star;
+    int verbose;
+    int wrap;
+    int pass;
+    int magsort;
+    int rnum, ireg;
+    int jstar, iw;
+    int nrmax,nstar,i, ntot;
+    int istar, istar1, istar2;
+    double num, ra, dec, rapm, decpm, mag, magb, magv;
+    double rra1, rra2, rra2a, rdec1, rdec2;
+    double rdist, ddist;
+    char *str;
+    char cstr[32];
+    double xpix, ypix, flux;
+    int offscl;
+    int bitpix, w, h;   /* Image bits/pixel and pixel width and height */
+    double logt = log(10.0);
+
+    ntot = 0;
+    if (nlog == 1)
+	verbose = 1;
+    else
+	verbose = 0;
+
+    /* Set path to ACT Catalog */
+    str = getenv("ACT_PATH");
+
+    if (sortmag > 0 && sortmag < 3)
+	magsort = sortmag - 1;
+    else 
+	magsort = 1;
+
+    /* Set image parameters */
+    bitpix = 0;
+    (void)hgeti4 (header, "BITPIX", &bitpix);
+    w = 0;
+    (void)hgeti4 (header, "NAXIS1", &w);
+    h = 0;
+    (void)hgeti4 (header, "NAXIS2", &h);
+
+    /* Set catalog search limits from image WCS information */
+    sysout = wcs->syswcs;
+    eqout = wcs->equinox;
+    epout = wcs->epoch;
+    wcscstr (cstr, sysout, eqout, epout);
+    wcssize (wcs, &cra, &cdec, &dra, &ddec);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
+
+    /* If RA range includes zero, split it in two */
+    wrap = 0;
+    if (ra1 > ra2)
+	wrap = 1;
+    else
+	wrap = 0;
+
+    /* make mag1 always the smallest magnitude */
+    if (mag2 < mag1) {
+	mag = mag2;
+	mag2 = mag1;
+	mag1 = mag;
+	}
+
+    /* Allocate catalog entry buffer */
+    star = (struct Star *) calloc (1, sizeof (struct Star));
+    star->num = 0.0;
+
+    nstar = 0;
+    jstar = 0;
+
+    rra1 = ra1;
+    rra2 = ra2;
+    rdec1 = dec1;
+    rdec2 = dec2;
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,secmarg,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
+    if (wrap) {
+	rra2a = rra2;
+	rra2 = 360.0;
+	}
+    nrmax = MAXREG;
+
+    /* If searching through RA = 0:00, split search in two */
+    for (iw = 0; iw <= wrap; iw++) {
+
+	/* Find ACT Star Catalog regions in which to search */
+	nreg = actreg (rra1,rra2,rdec1,rdec2,nrmax,rlist,verbose);
+	if (nreg <= 0) {
+	    fprintf (stderr,"ACTBIN:  no ACT regions found\n");
+	    free ((void *)star);
+	    return (0);
+	    }
+
+	/* Loop through region list */
+	for (ireg = 0; ireg < nreg; ireg++) {
+
+	    /* Open catalog file for this region */
+	    starcat = actopen (rlist[ireg]);
+	    rnum = rlist[ireg];
+
+	    /* Set first and last stars to check */
+	    istar1 = actsra (starcat, star, rra1);
+	    istar2 = actsra (starcat, star, rra2);
+	    if (verbose)
+		fprintf (stderr,"ACTBIN: Searching stars %d.%d through %d.%d\n",
+			rnum,istar1,rnum,istar2);
+
+	    /* Loop through catalog for this region */
+	    for (istar = istar1; istar <= istar2; istar++) {
+		if (actstar (starcat, star, istar)) {
+		    fprintf (stderr,"ACTBIN: Cannot read star %d\n", istar);
+		    break;
+		    }
+
+		/* ID number */
+		num = star->num;
+
+		/* Magnitude */
+		magv = star->xmag[0];
+		magb = star->xmag[1];
+		mag = star->xmag[magsort];
+
+		/* Check magnitude limits */
+		pass = 1;
+		if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+		    pass = 0;
+
+		/* Get position in output coordinate system */
+		if (pass) {
+		    rapm = star->rapm;
+		    decpm = star->decpm;
+		    ra = star->ra;
+		    dec = star->dec;
+		    wcsconp (sysref, sysout, eqref, eqout, epref, epout,
+			     &ra, &dec, &rapm, &decpm);
+
+		    /* Check distance along RA and Dec axes */
+		    ddist = wcsdist (cra,cdec,cra,dec);
+		    if (ddist > ddec)
+			pass = 0;
+		    rdist = wcsdist (cra,dec,ra,dec);
+		    if (rdist > dra)
+			pass = 0;
+		    }
+
+		/* Save star in FITS image */
+		if (pass) {
+		    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+		    if (!offscl) {
+			if (magscale > 0.0)
+			    flux = magscale * exp (logt * (-mag / 2.5));
+			else
+			    flux = 1.0;
+			addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+			nstar++;
+			jstar++;
+			}
+
+		    if (nlog == 1)
+			fprintf (stderr,"ACTBIN: %11.6f: %9.5f %9.5f %5.2f %5.2f\n",
+				 num,ra,dec,magb,mag);
+
+		    /* End of accepted star processing */
+		    }
+
+		/* Log operation */
+		jstar++;
+		if (nlog > 0 && istar%nlog == 0)
+		    fprintf (stderr,"ACTBIN: %5d / %5d / %5d sources\r",
+			     nstar,jstar,starcat->nstars);
+
+		/* End of star loop */
+		}
+
+	    ntot = ntot + starcat->nstars;
+	    if (nlog > 0)
+		fprintf (stderr,"ACTBIN: %4d / %4d: %5d / %5d  / %5d sources from region %4d    \n",
+		 	 ireg+1,nreg,nstar,jstar,starcat->nstars,rlist[ireg]);
+
+	    /* Close region input file */
+	    actclose (starcat);
+	    }
+	rra1 = 0.0;
+	rra2 = rra2a;
+	}
+
+/* close output file and summarize transfer */
+    if (nlog > 0) {
+	if (nreg > 1)
+	    fprintf (stderr,"ACTBIN: %d regions: %d / %d found\n",nreg,nstar,ntot);
+	else
+	    fprintf (stderr,"ACTBIN: 1 region: %d / %d found\n",nstar,ntot);
+	}
+    free ((void *)star);
     return (nstar);
 }
 
@@ -885,10 +1101,6 @@ int istar;	/* Star sequence number in ACT catalog region file */
     st->isp[0] = (char) 0;
     st->isp[1] = (char) 0;
 
-    /* Set main sequence spectral type
-    bvmag = st->xmag[2];
-    bv2sp (&bvmag, 0.0, 0.0, st->isp); */
-
     return (0);
 }
 
@@ -954,4 +1166,9 @@ char	*filename;	/* Name of file for which to find size */
  * Apr  3 2003	Drop unused type variables in actstar() and actread()
  * Apr 14 2003	Explicitly get revision date if nstarmax < 1
  * Jun  2 2003	Print proper motion as mas/year
+ * Aug 22 2003	Add radi argument for inner edge of search annulus
+ * Aug 22 2003	Fix bug in actrnum: mags were not in one array
+ * Sep 25 2003	Add actbin() to fill an image with sources
+ * Oct  6 2003	Update actread() and actbin() for improved RefLim()
+ * Nov 18 2003	Initialize image size and bits/pixel from header in actbin()
  */

@@ -1,8 +1,8 @@
 /*** File imhfile.c
- *** April 8, 2002
+ *** November 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -261,10 +261,11 @@ char	*fitsheader;	/* FITS image header (filled) */
 {
     FILE *fd;
     char *bang;
-    int naxis, naxis1, naxis2, bitpix, bytepix, pixswap;
+    int naxis, naxis1, naxis2, naxis3, npaxis1, npaxis2,bitpix, bytepix, pixswap, i;
     char *image;
-    int nbr, nbimage;
+    int nbr, nbimage, nbaxis, nbl, nbx, nbdiff;
     char *pixheader;
+    char *linebuff;
     int imhver, lpixhead, len;
     char pixname[SZ_IM2PIXFILE+1];
     char newpixname[SZ_IM2HDRFILE+1];
@@ -328,6 +329,8 @@ char	*fitsheader;	/* FITS image header (filled) */
     hgeti4 (fitsheader,"NAXIS",&naxis);
     hgeti4 (fitsheader,"NAXIS1",&naxis1);
     hgeti4 (fitsheader,"NAXIS2",&naxis2);
+    hgeti4 (fitsheader,"NPAXIS1",&npaxis1);
+    hgeti4 (fitsheader,"NPAXIS2",&npaxis2);
     hgeti4 (fitsheader,"BITPIX",&bitpix);
     if (bitpix < 0)
 	bytepix = -bitpix / 8;
@@ -336,12 +339,13 @@ char	*fitsheader;	/* FITS image header (filled) */
 
     /* If either dimension is one and image is 3-D, read all three dimensions */
     if (naxis == 3 && ((naxis1 == 1) | (naxis2 == 1))) {
-	int naxis3;
 	hgeti4 (fitsheader,"NAXIS3",&naxis3);
 	nbimage = naxis1 * naxis2 * naxis3 * bytepix;
 	}
-    else
+    else {
 	nbimage = naxis1 * naxis2 * bytepix;
+	naxis3 = 1;
+	}
 
     image =  (char *) calloc (nbimage, 1);
     if (image == NULL) {
@@ -350,8 +354,25 @@ char	*fitsheader;	/* FITS image header (filled) */
 	return (NULL);
 	}
 
-    /* read in IRAF image */
-    nbr = fread (image, 1, nbimage, fd);
+    /* Read IRAF image all at once if physical and image dimensions are the same */
+    if (npaxis1 == naxis1)
+	nbr = fread (image, 1, nbimage, fd);
+
+    /* Read IRAF image one line at a time if physical and image dimensions differ */
+    else {
+	nbdiff = (npaxis1 - naxis1) * bytepix;
+	nbaxis = naxis1 * bytepix;
+	linebuff = image;
+	nbr = 0;
+	if (naxis2 == 1 && naxis3 > 1)
+	    naxis2 = naxis3;
+	for (i = 0; i < naxis2; i++) {
+	    nbl = fread (linebuff, 1, nbaxis, fd);
+	    nbr = nbr + nbl;
+	    nbx = fseek (fd, nbdiff, SEEK_CUR);
+	    linebuff = linebuff + nbaxis;
+	    }
+	}
     fclose (fd);
 
     /* Check size of image */
@@ -462,7 +483,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     char *dstring;
     int pixtype;
     int imhver, n, imu, pixoff, impixoff, immax, immin, imtime;
-    int imndim, imphyslen, impixtype, pixswap, hpixswap, mtime;
+    int imndim, imlen, imphyslen, impixtype, pixswap, hpixswap, mtime;
     float rmax, rmin;
 
     headswap = -1;
@@ -483,6 +504,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     if (imhver == 2) {
 	nlines = 24 + ((nbiraf - LEN_IM2HDR) / 81);
 	imndim = IM2_NDIM;
+	imlen = IM2_LEN;
 	imphyslen = IM2_PHYSLEN;
 	impixtype = IM2_PIXTYPE;
 	impixoff = IM2_PIXOFF;
@@ -493,6 +515,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     else {
 	nlines = 24 + ((nbiraf - LEN_IMHDR) / 162);
 	imndim = IM_NDIM;
+	imlen = IM_LEN;
 	imphyslen = IM_PHYSLEN;
 	impixtype = IM_PIXTYPE;
 	impixoff = IM_PIXOFF;
@@ -555,15 +578,15 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     hputcom (fitsheader,"NAXIS", "IRAF .imh naxis");
     fhead = fhead + 80;
 
-    n = irafgeti4 (irafheader, imphyslen);
+    n = irafgeti4 (irafheader, imlen);
     hputi4 (fitsheader, "NAXIS1", n);
-    hputcom (fitsheader,"NAXIS1", "IRAF .imh naxis[1]");
+    hputcom (fitsheader,"NAXIS1", "IRAF .imh image naxis[1]");
     fhead = fhead + 80;
 
     if (nax > 1) {
-	n = irafgeti4 (irafheader, imphyslen+4);
+	n = irafgeti4 (irafheader, imlen+4);
 	hputi4 (fitsheader, "NAXIS2", n);
-	hputcom (fitsheader,"NAXIS2", "IRAF .imh naxis[2]");
+	hputcom (fitsheader,"NAXIS2", "IRAF .imh image naxis[2]");
 	}
     else
 	hputi4 (fitsheader, "NAXIS2", 1);
@@ -571,15 +594,15 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     fhead = fhead + 80;
 
     if (nax > 2) {
-	n = irafgeti4 (irafheader, imphyslen+8);
+	n = irafgeti4 (irafheader, imlen+8);
 	hputi4 (fitsheader, "NAXIS3", n);
-	hputcom (fitsheader,"NAXIS3", "IRAF .imh naxis[3]");
+	hputcom (fitsheader,"NAXIS3", "IRAF .imh image naxis[3]");
 	fhead = fhead + 80;
 	}
     if (nax > 3) {
-	n = irafgeti4 (irafheader, imphyslen+12);
+	n = irafgeti4 (irafheader, imlen+12);
 	hputi4 (fitsheader, "NAXIS4", n);
-	hputcom (fitsheader,"NAXIS4", "IRAF .imh naxis[4]");
+	hputcom (fitsheader,"NAXIS4", "IRAF .imh image naxis[4]");
 	fhead = fhead + 80;
 	}
 
@@ -597,6 +620,30 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     hputcom (fitsheader,"OBJECT", "IRAF .imh title");
     free (objname);
     fhead = fhead + 80;
+
+    /* Save physical axis lengths so image file can be read */
+    n = irafgeti4 (irafheader, imphyslen);
+    hputi4 (fitsheader, "NPAXIS1", n);
+    hputcom (fitsheader,"NPAXIS1", "IRAF .imh physical naxis[1]");
+    fhead = fhead + 80;
+    if (nax > 1) {
+	n = irafgeti4 (irafheader, imphyslen+4);
+	hputi4 (fitsheader, "NPAXIS2", n);
+	hputcom (fitsheader,"NPAXIS2", "IRAF .imh physical naxis[2]");
+	fhead = fhead + 80;
+	}
+    if (nax > 2) {
+	n = irafgeti4 (irafheader, imphyslen+8);
+	hputi4 (fitsheader, "NPAXIS3", n);
+	hputcom (fitsheader,"NPAXIS3", "IRAF .imh physical naxis[3]");
+	fhead = fhead + 80;
+	}
+    if (nax > 3) {
+	n = irafgeti4 (irafheader, imphyslen+12);
+	hputi4 (fitsheader, "NPAXIS4", n);
+	hputcom (fitsheader,"NPAXIS4", "IRAF .imh physical naxis[4]");
+	fhead = fhead + 80;
+	}
 
     /* Save image minimum and maximum in header */
     rmax = irafgetr4 (irafheader, immax);
@@ -1858,4 +1905,6 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * Apr  8 2002	Fix bug in error message for unidentified nbits in fits2iraf()
  *
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
+ * Oct 31 2003	Read image only in irafrimage() if physical dimension > image dim.
+ * Nov  3 2003	Set NAXISi to image, not physical dimensions in iraf2fits()
  */

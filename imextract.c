@@ -1,5 +1,5 @@
 /* File imextract.c
- * July 11, 2003
+ * September 15, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -354,7 +354,7 @@ char	*kwd[];		/* Names and values of those keywords */
 	strcpy (outheader, header);
 
     /* Get correct part of image */
-	if (i == 0 || (naxis0 > 2 && (naxis2 ==1 || naxis3 == 1))) {
+	if (i == 0 || (naxis0 > 2 && (naxis2 > 1 && naxis3 > 1))) {
 	    if (i > 0) 
 		nbheadi = nbhead + ((nimage - 1) * nbimage);
 	    else
@@ -608,4 +608,5 @@ char	*kwd[];		/* Names and values of those keywords */
  *
  * Jul 11 2003	Deal with range of images/spectra to extract
  * Jul 11 2003	Create a new header for each output file
+ * Sep 15 2003	Fix bug which misread 2d part of 3d image
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/matchstar.c
- *** April 3, 2003
+ *** November 18, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -48,9 +48,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#if !defined(__convexc__) && !defined(__APPLE__)
-#include <malloc.h>
-#endif
 #include <string.h>
 #include "wcs.h"
 #include "lwcs.h"
@@ -1889,4 +1886,5 @@ int nitmax;
  * Jan 30 2003	Remove uninitialized variable in WCSMatch()
  * Mar 13 2003	Do not include malloc.h on Apples and Convexes
  * Apr  3 2003	Clean up code with lint
+ * Nov 18 2003	Drop include of malloc.h; it is in stdlib.h
  */ 

@@ -1,5 +1,5 @@
 /*** File tmcat.c
- *** May 16, 2003
+ *** July 1, 2003
  *** By Doug Mink, SAO
  */
 
@@ -32,13 +32,15 @@ char **av;
 {
     double ra, dec, spd, mj, mh, mk;
     int i, j;
-    char root[] = "/data/astrocat/tmc";
+    char root[] = "/data/astrocat/tmc1";
     char dir[256];
     char file[256], file0[256];
     char line[512];
     char token[64];
-    char f1[4], f2[4];
+    char f1[8], f2[8];
     char id[32];
+    int use_src;
+    int dup_src;
     int n = 0;
     int ni = 0;
     int nt = 0;
@@ -51,7 +53,7 @@ char **av;
     for (j = 0; j < 180; j = j + 1) {
 	sprintf (dir,"%s/%03d", root, j);
 	if (access (dir, F_OK&W_OK)) {
-	    if (mkdir (dir))
+	    if (mkdir (dir, 00777))
 		fprintf (stderr, "TMCAT: Cannot make directory %s\n", dir);
 	    }
 	}
@@ -112,27 +114,50 @@ char **av;
 	    nz = 0;
 	    }
 
-	/* Extract other information from input line */
+	/* Right ascension */
 	getoken (&tokens, 1, token, 16);
 	ra = atof (token);
+
+	/* ID */
 	getoken (&tokens, 6, id, 32);
+
+	/* J, H, K magnitudes */
 	getoken (&tokens, 7, token, 16);
 	mj = atof (token);
 	getoken (&tokens, 11, token, 16);
 	mh = atof (token);
 	getoken (&tokens, 15, token, 16);
 	mk = atof (token);
-	getoken (&tokens, 19, f1, 4);
-	getoken (&tokens, 20, f2, 4);
-	nz = nz + 1;
 
-	/* Append position and magnitudes from this line to current file */
-	fprintf (outfile,"%10.6f %10.6f %17s %6.3f %6.3f %6.3f %3s %3s\n",
+	/* Photometric quality flag */
+	getoken (&tokens, 19, token, 4);
+	strncpy (f1, token, 3);
+	f1[3] = (char) 0;
+
+	/* Read flag */
+	getoken (&tokens, 20, token, 4);
+	strncpy (f2, token, 3);
+	f2[3] = (char) 0;
+
+	/* Duplicate source flag */
+	getoken (&tokens, 49, token, 4);
+	dup_src = atoi (token);
+
+	/* Use source flag */
+	getoken (&tokens, 50, token, 4);
+	use_src = atoi (token);
+
+	if (use_src) {
+	    nz = nz + 1;
+
+	    /* Append position and magnitudes from this line to current file */
+	    fprintf (outfile,"%10.6f %10.6f %17s %6.3f %6.3f %6.3f %3s %3s\n",
 		 ra, dec, id, mj, mh, mk, f1, f2);
-	nt = nt + 1;
-	if (nt % 10000 == 0)
-	    fprintf (stderr, "%10d stars read to %10.6f %10.6f (%s)\n",
+	    nt = nt + 1;
+	    if (nt % 100000 == 0)
+		fprintf (stderr, "%10d stars read to %10.6f %10.6f (%s)\n",
 		     nt, ra, dec, file);
+	    }
 	}
 
     /* Close output file */
@@ -382,3 +407,8 @@ int	maxchars;	/* Maximum length of token */
 
     return (ltok);
 }
+/* May 16 2003	New program
+ * Jun 25 2003	Add filter to keep stars only if use_src is 1
+ * Jun 25 2003	Log every 100,000 sources instead of every 10,000
+ * Jul  1 2003	Fix bug writing flags
+ */

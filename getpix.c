@@ -1,5 +1,5 @@
 /* File getpix.c
- * March 26, 2003
+ * September 17, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -50,6 +50,7 @@ char **av;
     int i;
     int npix = 0;
     int maxnpix = 10;
+    int ix, iy;
     int *xpix, *ypix;
     int nmaxpix, *xp1, *yp1;
 
@@ -211,10 +212,19 @@ char **av;
 		xpix = xp1;
 		ypix = yp1;
 		}
-	    xpix[npix] = atoi (*av++);
+	    ix = atoi (*av);
+	    iy = atoi (*(av+1));
+	    if (ix == 0 || iy == 0) {
+		crange = *av++;
+		rrange = *av;
+		}
+	    else {
+	        xpix[npix] = ix;
+	        ypix[npix] = iy;
+	        npix++;
+		}
 	    ac--;
-	    ypix[npix] = atoi (*av);
-	    npix++;
+	    av++;
 	    }
 
 	/* Range of pixels to print (only one allowed) */
@@ -696,4 +706,5 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
  *
  * Feb 20 2003	Add option to enter multiple pixel (x,y) as well as ranges
  * Mar 26 2003	Fix pixel counter bug in individual pixel printing
+ * Sep 17 2003	Fix bug which broke use of 0 as substitute for 1-naxisn range
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/ucacread.c
- *** June 2, 2003
+ *** November 18, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2003
@@ -28,6 +28,7 @@
 
  * ucacread()	Read UCAC Star Catalog stars in a rectangle on the sky
  * ucacrnum()	Read UCAC Star Catalog stars by number 
+ * ucacbin()	Fill a FITS WECS image with UCAC Star Catalog stars
  * ucaczones()	Make list of zones covered by a range of declinations
  * ucacsra (sc,st,zone,rax0)   Find UCAC star closest to specified right ascension
  * ucacopen(zone, nstars)   Open UCAC catalog file, returning number of entries
@@ -80,10 +81,11 @@ static int ucacstar();
 static void ucacswap4();
 static void ucacswap2();
 
+
 /* UCACREAD -- Read UCAC Star Catalog stars */
 
 int
-ucacread (refcatname,cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,
+ucacread (refcatname,cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
 	  mag1,mag2,sortmag,nstarmax,gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
 char	*refcatname;	/* Name of catalog (UAC, USAC, UAC2, USAC2) */
@@ -92,6 +94,7 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+double	dradi;		/* Inner edge of annulus in degrees (ignore if 0) */
 int	distsort;	/* 1 to sort stars by distance from center */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
@@ -122,6 +125,7 @@ int	nlog;		/* 1 for diagnostics */
     int sysref = WCS_J2000;	/* Catalog coordinate system */
     double eqref = 2000.0;	/* Catalog equinox */
     double epref = 2000.0;	/* Catalog epoch */
+    double secmarg = 60.0;	/* Arcsec/century margin for proper motion */
     struct StarCat *starcat;	/* Star catalog data structure */
     struct Star *star;		/* Single star cata structure */
     int verbose;
@@ -137,7 +141,7 @@ int	nlog;		/* 1 for diagnostics */
     int pass;
     int zone;
     double num, ra, dec, rapm, decpm, mag, magb, magv;
-    double rra1, rra2, rdec1, rdec2, dmarg;
+    double rra1, rra2, rdec1, rdec2;
     double rdist, ddist;
     char cstr[32], rastr[32], decstr[32];
     char ucacenv[16];
@@ -169,7 +173,7 @@ int	nlog;		/* 1 for diagnostics */
     /* If pathname is a URL, search and return */
     if (!strncmp (ucacpath, "http:",5)) {
 	return (webread (ucacpath,refcatname,distsort,cra,cdec,dra,ddec,drad,
-			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
+			 dradi,sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	}
 
@@ -215,24 +219,8 @@ int	nlog;		/* 1 for diagnostics */
     rra2 = ra2;
     rdec1 = dec1;
     rdec2 = dec2;
-    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
-	    &rra1, &rra2, &rdec1, &rdec2, verbose);
-
-    /* Add 60 arcsec/century margins to region to get most stars which move */
-    if (epout == 0.0)
-	dmarg = 0.0;
-    else
-	dmarg = (60.0 / 3600.0) * fabs (epout - epref);
-    rdec1 = rdec1 - dmarg;
-    rdec2 = rdec2 + dmarg;
-    rra1 = rra1 - (dmarg / cos (degrad(cdec)));
-    rra2 = rra2 + (dmarg / cos (degrad(cdec)));
-
-    /* Deal with search passing through 0:00 RA */
-    if (rra1 > rra2)
-	wrap = 1;
-    else
-	wrap = 0;
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,secmarg,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
 
     /* Find UCAC Star Catalog zones in which to search */
     nz = ucaczones (rdec1,rdec2,nrmax,zlist,verbose);
@@ -253,8 +241,11 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("dec	%s\n", decstr);
 	printf ("rpmunit	mas/year\n");
 	printf ("dpmunit	mas/year\n");
-	if (drad != 0.0)
+	if (drad != 0.0) {
 	    printf ("radmin	%.1f\n", drad*60.0);
+	    if (dradi > 0)
+		printf ("radimin	%.1f\n", dradi*60.0);
+	    }
 	else {
 	    printf ("dramin	%.1f\n", dra*60.0* cosdeg (cdec));
 	    printf ("ddecmin	%.1f\n", ddec*60.0);
@@ -345,6 +336,8 @@ int	nlog;		/* 1 for diagnostics */
 			/* Check radial distance to search center */
 			if (drad > 0) {
 			    if (dist > drad)
+				pass = 0;
+			    if (dradi > 0.0 && dist < dradi)
 				pass = 0;
 			    }
 
@@ -652,6 +645,262 @@ int	nlog;		/* 1 for diagnostics */
 }
 
 
+/* UCACBIN -- Fill a FITS WCS image with UCAC Star Catalog stars */
+
+int
+ucacbin (refcatname, wcs, header, image, mag1, mag2, sortmag, magscale, nlog)
+
+char	*refcatname;	/* Name of catalog (UAC, USAC, UAC2, USAC2) */
+struct WorldCoor *wcs;	/* World coordinate system for image */
+char	*header;	/* FITS header for output image */
+char	*image;		/* Output FITS image */
+double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 or 2) */
+double	magscale;	/* Scaling factor for magnitude to pixel flux
+			 * (number of catalog objects per bin if 0) */
+int	nlog;		/* 1 for diagnostics */
+{
+    double cra;		/* Search center J2000 right ascension in degrees */
+    double cdec;	/* Search center J2000 declination in degrees */
+    double dra;		/* Search half width in right ascension in degrees */
+    double ddec;	/* Search half-width in declination in degrees */
+    int sysout;		/* Search coordinate system */
+    double eqout;	/* Search coordinate equinox */
+    double epout;	/* Proper motion epoch (0.0 for no proper motion) */
+    double ra1,ra2;	/* Limiting right ascensions of region in degrees */
+    double dec1,dec2;		/* Limiting declinations of region in degrees */
+    int nz;			/* Number of UCAC regions in search */
+    int zlist[MAXZONE];		/* List of region numbers */
+    int nlist[MAXZONE];		/* List of number of stars per region */
+    char inpath[128];		/* Pathname for input region file */
+    int sysref = WCS_J2000;	/* Catalog coordinate system */
+    double eqref = 2000.0;	/* Catalog equinox */
+    double epref = 2000.0;	/* Catalog epoch */
+    double secmarg = 60.0;	/* Arcsec/century margin for proper motion */
+    struct StarCat *starcat;	/* Star catalog data structure */
+    struct Star *star;		/* Single star cata structure */
+    int verbose;
+    int wrap;
+    int iz;
+    int magsort;
+    int jstar, iw;
+    int nrmax = MAXZONE;
+    int nstar,i, ntot, imag;
+    int istar, istar1, istar2;
+    int jtable,iwrap, nread;
+    int nstars = 0;		/* Number of stars in zone of catalog */
+    int pass;
+    int zone;
+    double num, ra, dec, rapm, decpm, mag, magb, magv;
+    double rra1, rra2, rdec1, rdec2;
+    double rdist, ddist;
+    char cstr[32];
+    char ucacenv[16];
+    char *str;
+    double xpix, ypix, flux;
+    int offscl;
+    int bitpix, w, h;   /* Image bits/pixel and pixel width and height */
+    double logt = log(10.0);
+
+    ntot = 0;
+    if (nlog > 0)
+	verbose = 1;
+    else
+	verbose = 0;
+
+    /* Set catalog code and path to catalog */
+    if (strncmp (refcatname,"ucac2",5)==0 ||
+        strncmp (refcatname,"UCAC2",5)==0) {
+	ucat = UCAC2;
+	ucacpath = ucac2path;
+	strcpy (ucacenv, "UCAC2_PATH");
+	}
+    else {
+	ucat = UCAC1;
+	ucacpath = ucac1path;
+	strcpy (ucacenv, "UCAC1_PATH");
+	}
+
+    /* If pathname is set in environment, override local value */
+    if ((str = getenv (ucacenv)) != NULL )
+	ucacpath = str;
+
+    /* Set image parameters */
+    bitpix = 0;
+    (void)hgeti4 (header, "BITPIX", &bitpix);
+    w = 0;
+    (void)hgeti4 (header, "NAXIS1", &w);
+    h = 0;
+    (void)hgeti4 (header, "NAXIS2", &h);
+
+    /* Set catalog search limits from image WCS information */
+    sysout = wcs->syswcs;
+    eqout = wcs->equinox;
+    epout = wcs->epoch;
+    wcscstr (cstr, sysout, eqout, epout);
+    wcssize (wcs, &cra, &cdec, &dra, &ddec);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
+
+    /* Make mag1 always the smallest magnitude */
+    if (mag2 < mag1) {
+	mag = mag2;
+	mag2 = mag1;
+	mag1 = mag;
+	}
+
+   if (sortmag < 1)
+	magsort = 0;
+    else if (sortmag > 4)
+	magsort = 3;
+    else
+	magsort = sortmag - 1;
+
+    /* Allocate catalog entry buffer */
+    star = (struct Star *) calloc (1, sizeof (struct Star));
+    star->num = 0.0;
+
+    nstar = 0;
+    jstar = 0;
+
+    /* Get RA and Dec limits in catalog (J2000) coordinates */
+    rra1 = ra1;
+    rra2 = ra2;
+    rdec1 = dec1;
+    rdec2 = dec2;
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,secmarg,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
+
+    /* Find UCAC Star Catalog zones in which to search */
+    nz = ucaczones (rdec1,rdec2,nrmax,zlist,verbose);
+    if (nz <= 0) {
+	fprintf (stderr,"UCACREAD:  no UCAC zone for %.2f-%.2f %.2f %.2f\n",
+		 rra1, rra2, rdec1, rdec2);
+	return (0);
+	}
+
+    /* Loop through zone list */
+    nstar = 0;
+    for (iz = 0; iz < nz; iz++) {
+
+	/* Get path to zone catalog */
+	zone = zlist[iz];
+	if ((starcat = ucacopen (zone)) != 0) {
+
+	    jstar = 0;
+	    jtable = 0;
+	    for (iwrap = 0; iwrap <= wrap; iwrap++) {
+
+		/* Find first star based on RA */
+		if (iwrap == 0 || wrap == 0)
+		    istar1 = ucacsra (starcat, star, zone, rra1);
+		else
+		    istar1 = 1;
+
+		/* Find last star based on RA */
+		if (iwrap == 1 || wrap == 0)
+		    istar2 = ucacsra (starcat, star, zone, rra2);
+		else
+		    istar2 = starcat->nstars;
+
+		if (istar1 == 0 || istar2 == 0)
+		    break;
+
+		nread = istar2 - istar1 + 1;
+
+		/* Loop through zone catalog for this region */
+		for (istar = istar1; istar <= istar2; istar++) {
+		    jtable ++;
+
+		    if (ucacstar (starcat, star, zone, istar)) {
+			fprintf(stderr,"UCACREAD: Cannot read star %d\n",istar);
+			break;
+			}
+
+		    /* ID number */
+		    num = star->num;
+
+		    /* Magnitude */
+		    mag = star->xmag[magsort];
+
+		    /* Check magnitude limits */
+		    pass = 1;
+		    if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+			pass = 0;
+
+		    /* Check position limits */
+		    if (pass) {
+
+			/* Get position in output coordinate system */
+			rapm = star->rapm;
+			decpm = star->decpm;
+			ra = star->ra;
+			dec = star->dec;
+			wcsconp (sysref, sysout, eqref, eqout, epref, epout,
+		 	     &ra, &dec, &rapm, &decpm);
+
+			/* Check distance along RA and Dec axes */
+			ddist = wcsdist (cra,cdec,cra,dec);
+			if (ddist > ddec)
+			    pass = 0;
+			rdist = wcsdist (cra,dec,ra,dec);
+		        if (rdist > dra)
+			    pass = 0;
+			}
+
+		    /* Save star in FITS image */
+		    if (pass) {
+			wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+			if (!offscl) {
+			    if (magscale > 0.0)
+				flux = magscale * exp (logt * (-mag / 2.5));
+			    else
+				flux = 1.0;
+			    addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+			    nstar++;
+			    }
+			if (nlog == 1)
+			    fprintf (stderr,"UCACREAD: %11.6f: %9.5f %9.5f %5.2f\n",
+				 num,ra,dec,mag);
+
+			/* End of accepted star processing */
+			}
+
+		    /* Log operation */
+		    jstar++;
+		    if (nlog > 0 && istar%nlog == 0)
+			fprintf (stderr,"UCACREAD: %5d / %5d / %5d sources\r",
+				 nstar,jstar,starcat->nstars);
+
+		    /* End of star loop */
+		    }
+
+		/* End of 0:00 RA wrap loop */
+		}
+
+	    /* End of successful zone file loop */
+	    ntot = ntot + starcat->nstars;
+	    if (nlog > 0)
+		fprintf (stderr,"UCACREAD: %4d / %4d: %5d / %5d  / %5d sources from zone %4d    \n",
+		 	 iz+1,nz,nstar,jstar,starcat->nstars,zlist[iz]);
+
+	    /* Close region input file */
+	    ucacclose (starcat);
+	    }
+
+	/* End of zone loop */
+	}
+
+    /* Summarize transfer */
+    if (nlog > 0) {
+	if (nz > 1)
+	    fprintf (stderr,"UCACREAD: %d zones: %d / %d found\n",nz,nstar,ntot);
+	else
+	    fprintf (stderr,"UCACREAD: 1 region: %d / %d found\n",nstar,ntot);
+	}
+    return (nstar);
+}
+
+
 /* UCACZONE -- Compute the zones over which to search
  * in the specified range of coordinates.
  * Build lists containing the first star and number of stars for each range.
@@ -860,13 +1109,17 @@ int	zone;	/* Number of catalog zone to read */
 		 zonepath);
 	    return (0);
 	    }
-	if (ust.rasec > 360 * 360000 || ust.rasec < 0) {
+
+	/* RA should be between 0 and 360 degrees in milliarcseconds */
+	if (ust.rasec > 360 * 3600000 || ust.rasec < 0) {
 	    cswap = 1;
 	    /* fprintf (stderr,
 		  "UCACOPEN: swapping bytes in UCAC2 zone catalog %s\n",
 		   zonepath); */
 	    }
-	else if (ust.decsec > 180 * 360000 || ust.decsec < 0) {
+
+	/* Dec should be between -90 and +90 degrees in milliarcseconds */
+	else if (ust.decsec > 90 * 3600000 || ust.decsec < -90 * 3600000) {
 	    cswap = 1;
 	    /* fprintf (stderr,
 		    "UCACOPEN: swapping bytes in UCAC2 zone catalog %s\n",
@@ -1024,4 +1277,9 @@ char *string;	/* Address of Integer*4 or Real*4 vector */
 /* Apr 24 2003	New subroutines, based on ty2read.c and uacread.c
  * May 30 2003	Add UCAC2, compute file size rather than reading it from file
  * Jun  2 2003	Print proper motions as mas/year
+ * Aug 22 2003	Add radi argument for inner edge of search annulus
+ * Sep 25 2003	Add ucacbin() to fill an image with sources
+ * Oct  6 2003	Update ubcread() and ubcbin() for improved RefLim()
+ * Nov 10 2003	Fix byte-swapping test in ucacopen() found by Ed Beshore
+ * Nov 18 2003	Initialize image size and bits/pixel from header in ucacbin()
  */

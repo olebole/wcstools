@@ -53,6 +53,7 @@
  * Subroutine:	hlength (header,lhead) sets length of FITS header for searching
  * Subroutine:  isnum (string) returns 1 if integer, 2 if fp number, else 0
  * Subroutine:  notnum (string) returns 0 if number, else 1
+ * Subroutine:  numdec (string) returns number of decimal places in numeric string
  */
 
 #include <string.h>		/* NULL, strlen, strstr, strcpy */
@@ -1550,6 +1551,28 @@ char *string;	/* Character string */
 }
 
 
+/* NUMDEC -- Return number of decimal places in numeric string (-1 if not number) */
+
+int
+numdec (string)
+
+char *string;   /* Numeric string */
+{
+    char *cdot;
+    int lstr;
+
+    if (notnum (string))
+        return (-1);
+    else {
+        lstr = strlen (string);
+        if ((cdot = strchr (string, '.')) == NULL)
+            return (0);
+        else
+            return (lstr - (cdot - string));
+        }
+}
+
+
 #ifdef USE_SAOLIB
 int set_saolib(hstring)
     void *hstring;
@@ -1643,4 +1666,5 @@ int set_saolib(hstring)
  * Jun 26 2002	Do not drop leading or trailing spaces in multi-line values
  * Aug  6 2002	Add strcsrch() and strncsrch() for case-insensitive searches
  * Aug 30 2002	Fix bug so strcsrch() really is case-insensitive
+ * Oct 20 2003	Add numdec() to return number of decimal places in a string
  */

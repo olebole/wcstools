@@ -1,8 +1,8 @@
 /*** File libwcs/sortstar.c
- *** April 8, 2002
+ *** September 23, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -39,6 +39,8 @@
  * int StarXSort()		Return star with lowest X coordinate
  * void YSortStars()		Sort stars based on Y coordinate in image
  * int StarYSort()		Return star with lowest Y coordinate
+ * int MergeStars()		Merge multiple entries within given radius
+ * int StarMerge()		Merge stars, called by MergeStars()
  */
 
 #include <stdlib.h>
@@ -694,6 +696,191 @@ void *ssp1, *ssp2;
 	return (0);
 }
 
+
+/* MergeStars -- Merge multiple entries within given radius */
+/*               return mean ra, dec, proper motion, and magnitude(s) */
+
+int
+MergeStars (sn, sra, sdec, spra, spdec, sx, sy, sm, sc, sobj, ns, nm, rad)
+
+double *sn;		/* Identifying number */
+double *sra;		/* Right Ascension */
+double *sdec;		/* Declination */
+double *spra;		/* Right Ascension proper motion */
+double *spdec;		/* Declination proper motion */
+double *sx;		/* Image X coordinate */
+double *sy;		/* Image Y coordinate */
+double **sm;		/* Magnitudes */
+int    *sc;		/* Other 4-byte information */
+char   **sobj;		/* Object name */
+int	ns;		/* Number of stars to sort */
+int	nm;		/* Number of magnitudes per star */
+double	rad;		/* Maximum separation in arcseconds to merge */
+{
+    StarInfo *stars;
+    int i, j, hasnum, hasobj, haspm, hasxy;
+    int StarMerge();
+    int nns;		/* Number of stars in merged catalog (returned) */
+
+    stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
+
+    if (sn == NULL)
+	hasnum = 0;
+    else
+	hasnum = 1;
+    if (spra != NULL && spdec != NULL)
+	haspm = 1;
+    if (sx != NULL && sy != NULL)
+	hasxy = 1;
+    else
+	hasxy = 0;
+    if (sobj == NULL)
+	hasobj = 0;
+    else
+	hasobj = 1;
+
+    for (i = 0; i < ns; i++) {
+	if (hasnum)
+	    stars[i].n = sn[i];
+	stars[i].ra = sra[i];
+	stars[i].dec = sdec[i];
+	if (haspm) {
+	    stars[i].pra = spra[i];
+	    stars[i].pdec = spdec[i];
+	    }
+	if (hasxy) {
+	    stars[i].x = sx[i];
+	    stars[i].y = sy[i];
+	    }
+	for (j = 0; j < nm; j++)
+	    stars[i].m[j] = sm[j][i];
+	stars[i].c = sc[i];
+	if (hasobj)
+	    stars[i].obj = sobj[i];
+	}
+
+    nns = StarMerge (ns, nm, &stars, rad);
+
+    for (i = 0; i < nns; i++) {
+	if (hasnum)
+	    sn[i] = stars[i].n;
+	sra[i] = stars[i].ra;
+	sdec[i] = stars[i].dec;
+	if (haspm) {
+	    spra[i] = stars[i].pra;
+	    spdec[i] = stars[i].pdec;
+	    }
+	if (hasxy) {
+	    sx[i] = stars[i].x;
+	    sy[i] = stars[i].y;
+	    }
+	for (j = 0; j < nm; j++)
+	    sm[j][i] = stars[i].m[j];
+	sc[i] = stars[i].c;
+	if (hasobj)
+	    sobj[i] = stars[i].obj;
+	}
+
+    free ((char *)stars);
+    return (nns);
+}
+
+
+/* StarMerge -- Merge stars, called by MergeStars() */
+
+int
+StarMerge (ns, nm, stars0, rad)
+
+int	ns;		/* Number of stars to merge */
+int	nm; 		/* Number of magnitudes per star */
+StarInfo **stars0;
+double	rad;		/* Maximum separation in arcseconds to merge */
+
+{
+    StarInfo *stars, *newstars;
+    double ra, dec, rsec, pra, pdec, mag[11];
+    double rai, deci, dn;
+    int is, js, nthis, im, no;
+
+    stars = *stars0;
+    newstars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
+
+    /* Loop through stars in input catalog */
+    no = 0;
+    for (is = 1; is < ns; is++) {
+
+	/* Ignore star if has already been used */
+	if (stars[is].n == -999.0)
+	    continue;
+
+	/* Initialize position to that of current star */
+	nthis = 1;
+	ra = stars[is].ra;
+	dec = stars[is].dec;
+
+	/* Find all stars within rad arcseconds of current input star */
+	for (js = 1; js < ns; js++) {
+	    if (is != js && stars[js].n != -999.0) {
+		rsec = wcsdist (stars[is].ra, stars[is].dec,
+				stars[js].ra, stars[js].dec);
+		if (rsec <= rad) {
+		    nthis = nthis + 1;
+		    ra = ra + stars[js].ra;
+		    dec = dec + stars[js].dec;
+		    }
+		}
+	    }
+
+	/* Compute mean position for this star */
+	rai = ra / (double) nthis;
+	deci = dec / (double) nthis;
+
+	/* Initialize output star parameters */
+	ra = 0.0;
+	dec = 0.0;
+	pra = 0.0;
+	pdec = 0.0;
+	for (im = 0; im < nm; im++)
+	    mag[im] = 0.0;
+	nthis = 0;
+
+	/* Find all stars within rad arcseconds of current mean position */
+	for (js = 1; js < ns; js++) {
+	    if (stars[js].y != -999.0) {
+		rsec = wcsdist (rai, deci, stars[js].ra, stars[js].dec);
+		if (rsec <= rad) {
+		    nthis = nthis + 1;
+		    ra = ra + stars[js].ra;
+		    dec = dec + stars[js].dec;
+		    pra = pra + stars[js].pra;
+		    pdec = pdec + stars[js].pdec;
+		    for (im = 0; im < nm; im++)
+			mag[im] = mag[im] + stars[js].m[im];
+		    stars[js].y = -999.0;
+		    }
+		}
+	    }
+	if (nthis > 0) {
+	    dn = (double) nthis;
+	    newstars[no].ra = ra / dn;
+	    newstars[no].dec = dec / dn;
+	    newstars[no].pra = pra / dn;
+	    newstars[no].pdec = pdec / dn;
+	    for (im = 0; im < nm; im++)
+		newstars[no].m[im] = mag[im] / dn;
+	    newstars[no].x = dn;
+	    no = no + 1;
+	    }
+	}
+
+    /* Free input star entries */
+    free (stars);
+
+    /* Reset input pointer to merged entries */
+    *stars0 = newstars;
+    return (no);
+}
+
 /* Jun 13 1996	New program
  * Oct 18 1996	Add sorting by X value
  * Nov 13 1996	Add second magnitude
@@ -724,4 +911,6 @@ void *ssp1, *ssp2;
  * Nov  6 2001	Allow missing ra and dec in XSort and YSort
  *
  * Apr  8 2002	Drop static subroutine declarations
+ *
+ * Sep 23 2003	Add MergeStars() to merge input catalog
  */

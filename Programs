@@ -2,6 +2,8 @@ WCSTools Program Files
 
 addpix.c
   Add a constant value(s) to specified pixel(s)
+bincat.c
+  Create a FITS image containing catalogued objects
 char2sp.c:
   Replaces a specified character in a string with spaces (default is _)
 conpix.c

@@ -1,5 +1,5 @@
 /* File edhead.c
- * April 9, 2002
+ * August 21, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -146,7 +146,7 @@ char	*filename;	/* FITS or IRAF file filename */
     else {
 	iraffile = 0;
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
-	    if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
+	    if ((image = fitsrfull (filename, nbhead, header)) == NULL) {
 		fprintf (stderr, "Cannot read FITS image %s\n", filename);
 		imageread = 0;
 		}
@@ -372,4 +372,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Nov 29 1999	Fix bug so environment editor is used correctly
  *
  * Apr  9 2002	Do not free unallocated header
+ *
+ * Aug 21 2003	Use fitsrfull() to handle any simple FITS image
  */

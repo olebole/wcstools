@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** April 14, 2003
+ *** November 17, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -73,8 +73,8 @@ int class;
 /* GSCREAD -- Read HST Guide Star Catalog stars from CDROM */
 
 int
-gscread (refcat,cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,
-	 nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
+gscread (refcat,cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
+	 mag1,mag2,nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
 
 int	refcat;		/* Catalog code (GSC or GSCACT) */
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -82,6 +82,7 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+double	dradi;		/* Inner separation in degrees for annulus (ignore if 0) */
 int	distsort;	/* 1 to sort stars by distance from center */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
@@ -111,6 +112,7 @@ int	nlog;		/* 1 for diagnostics */
     int class, class0;	/* Object class (0>star, 3>other) */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
     struct Keyword kw[8];	/* Keyword structure */
     struct Keyword *kwn;
 
@@ -121,6 +123,7 @@ int	nlog;		/* 1 for diagnostics */
     int nbline,npos,nbhead;
     int nbr,nrmax,nstar,i;
     int ift, band0, band;
+    int wrap;
     double ra,ra0,rasum,dec,dec0,decsum,perr,perr0,perr2,perrsum,msum;
     double mag,mag0,merr,merr0,merr2,merrsum;
     double rra1, rra2, rdec1, rdec2;
@@ -144,7 +147,7 @@ int	nlog;		/* 1 for diagnostics */
 	    str = getenv ("GSC_PATH");
 	if (str != NULL) url = str;
 	if (!strncmp (url, "http:",5))
-	    return (webread (url,"gsc",distsort,cra,cdec,dra,ddec,drad,
+	    return (webread (url,"gsc",distsort,cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
 			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
@@ -154,7 +157,7 @@ int	nlog;		/* 1 for diagnostics */
 	    str = getenv ("GSCACT_PATH");
 	if (str != NULL) url = str;
 	if (!strncmp (url, "http:",5))
-	    return (webread (url,"gscact",distsort,cra,cdec,dra,ddec,drad,
+	    return (webread (url,"gscact",distsort,cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
 			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
@@ -203,8 +206,8 @@ int	nlog;		/* 1 for diagnostics */
     rra2 = ra2;
     rdec1 = dec1;
     rdec2 = dec2;
-    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
-	    &rra1, &rra2, &rdec1, &rdec2, verbose);
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,0.0,
+	    &rra1, &rra2, &rdec1, &rdec2,  &wrap, verbose);
     nreg = gscreg (refcat,rra1,rra2,rdec1,rdec2,table,nrmax,rlist,verbose);
     if (nreg <= 0) {
 	fprintf (stderr,"GSCREAD:  no Guide Star regions found\n");
@@ -252,8 +255,11 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("ra	%s\n", rastr);
 	dec2str (decstr, 31, cdec, 2);
 	printf ("dec	%s\n", decstr);
-	if (drad != 0.0)
+	if (drad != 0.0) {
 	    printf ("radmin	%.1f\n", drad*60.0);
+	    if (dradi > 0)
+		printf ("radimin	%.1f\n", dradi*60.0);
+	    }
 	else {
 	    printf ("dramin	%.1f\n", dra*60.0* cosdeg (cdec));
 	    printf ("ddecmin	%.1f\n", ddec*60.0);
@@ -364,6 +370,8 @@ int	nlog;		/* 1 for diagnostics */
 		    /* Check position limits */
 		    if (drad > 0) {
 			if (dist > drad)
+			    pass = 0;
+			if (dradi > 0.0 && dist < dradi)
 			    pass = 0;
 			}
 		    else {
@@ -739,6 +747,324 @@ int	nlog;		/* 1 for diagnostics */
 	}
 
     return (nstars);
+}
+
+
+/* GSCBIN -- Fill FITS WCS image with HST Guide Star Catalog objects */
+
+int
+gscbin (refcat, wcs, header, image, mag1, mag2, magscale, nlog)
+
+int	refcat;		/* Catalog code (GSC or GSCACT) */
+struct WorldCoor *wcs;	/* World coordinate system for image */
+char	*header;	/* FITS header for output image */
+char	*image;		/* Output FITS image */
+double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+double	magscale;	/* Scaling factor for magnitude to pixel flux
+			 * (number of catalog objects per bin if 0) */
+int	nlog;		/* 1 for diagnostics */
+{
+    double cra;		/* Search center J2000 right ascension in degrees */
+    double cdec;	/* Search center J2000 declination in degrees */
+    double dra;		/* Search half width in right ascension in degrees */
+    double ddec;	/* Search half-width in declination in degrees */
+    int	sysout = wcs->syswcs;	/* Image coordinate system */
+    double eqout = wcs->equinox; /* Image coordinate equinox */
+    double epout = wcs->epoch;	/* Image epoch */
+    double ra1,ra2;	/* Limiting right ascensions of image in degrees */
+    double dec1,dec2;	/* Limiting declinations of image in degrees */
+    int nreg;		/* Number of input FITS tables files */
+    double xnum;		/* Guide Star number */
+    int rlist[100];	/* List of input FITS tables files */
+    char inpath[64];	/* Pathname for input FITS table file */
+    char entry[100];	/* Buffer for FITS table row */
+    int class, class0;	/* Object class (0>star, 3>other) */
+    int sysref=WCS_J2000;	/* Catalog coordinate system */
+    double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
+    struct Keyword kw[8];	/* Keyword structure */
+    struct Keyword *kwn;
+
+    int verbose;
+    int pass;
+    int wrap;
+    int rnum, num0, num, itot,ireg;
+    int ik,nk,itable,ntable,jstar;
+    int nbline,npos,nbhead;
+    int nbr,nrmax,nstar,i;
+    int ift, band0, band;
+    double ra,ra0,rasum,dec,dec0,decsum,perr,perr0,perr2,perrsum,msum;
+    double mag,mag0,merr,merr0,merr2,merrsum;
+    double rra1, rra2, rdec1, rdec2;
+    double rdist, ddist;
+    char *str;
+    char cstr[32];
+    int bitpix, w, h;	/* Image bits/pixel and pixel width and height */
+    double logt = log(10.0);
+    double xpix, ypix, flux;
+    int offscl;
+
+    itot = 0;
+    if (nlog == 1)
+	verbose = 1;
+    else
+	verbose = 0;
+    verbose = nlog;
+
+    /* Set image parameters */
+    bitpix = 0;
+    (void)hgeti4 (header, "BITPIX", &bitpix);
+    w = 0;
+    (void)hgeti4 (header, "NAXIS1", &w);
+    h = 0;
+    (void)hgeti4 (header, "NAXIS2", &h);
+
+    if (refcat == GSCACT) {
+	if ((str = getenv("GSCACT_NORTH")) == NULL)
+	    str = getenv ("GSCACT_PATH");
+	}
+
+    /* Allocate FITS table buffer which is saved between calls */
+    if (ltab < 1) {
+	ltab = 10000;
+	table = (char *)calloc (ltab, sizeof (char));
+	if (table == NULL) {
+	    fprintf (stderr, "GSCBIN: cannot allocate FITS table buffer\n");
+	    return (0);
+	    }
+	}
+
+    for (i = 0; i < 100; i++)
+	entry[i] = 0;
+
+    /* Set path to Guide Star Catalog */
+    if (refcat == GSCACT) {
+	if ((str = getenv("GSCACT_NORTH")) != NULL )
+	    strcpy (cdna,str);
+	if ((str = getenv("GSCACT_SOUTH")) != NULL )
+	    strcpy (cdsa,str);
+	}
+    else {
+	if ((str = getenv("GSC_NORTH")) != NULL )
+	    strcpy (cdn,str);
+	if ((str = getenv("GSC_SOUTH")) != NULL )
+	    strcpy (cds,str);
+	}
+
+    wcscstr (cstr, sysout, eqout, epout);
+
+    wcssize (wcs, &cra, &cdec, &dra, &ddec);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
+
+    /* Make mag1 always the smallest magnitude */
+    if (mag2 < mag1) {
+	mag = mag2;
+	mag2 = mag1;
+	mag1 = mag;
+	}
+
+    /* Find Guide Star Catalog regions in which to search */
+    nrmax = 100;
+    rra1 = ra1;
+    rra2 = ra2;
+    rdec1 = dec1;
+    rdec2 = dec2;
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epout,0.0,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
+    nreg = gscreg (refcat,rra1,rra2,rdec1,rdec2,table,nrmax,rlist,verbose);
+    if (nreg <= 0) {
+	fprintf (stderr,"GSCBIN:  no Guide Star regions found\n");
+	return (0);
+	}
+
+    /* Set keyword list */
+    nk = 8;
+    strcpy (kw[0].kname,"GSC_ID");
+    strcpy (kw[1].kname,"RA_DEG");
+    strcpy (kw[2].kname,"DEC_DEG");
+    strcpy (kw[3].kname,"POS_ERR");
+    strcpy (kw[4].kname,"MAG");
+    strcpy (kw[5].kname,"MAG_ERR");
+    strcpy (kw[6].kname,"MAG_BAND");
+    strcpy (kw[7].kname,"CLASS");
+    for (ik = 0; ik < nk; ik++) {
+	kw[ik].lname = (int) strlen (kw[ik].kname);
+	kw[ik].kn = 0;
+	kw[ik].kf = 0;
+	kw[ik].kl = 0;
+	}
+    nstar = 0;
+
+    /* Loop through region list */
+    for (ireg = 0; ireg < nreg; ireg++) {
+	gscpath (refcat, rlist[ireg], inpath);
+
+    /* Read size and keyword info from FITS table header */
+	kwn = kw;
+	ift = fitsrtopen (inpath,&nk,&kwn,&ntable,&nbline,&nbhead);
+
+	rnum = rlist[ireg];
+	num0 = 0;
+	rasum = 0.0;
+	decsum = 0.0;
+	msum = 0.0;
+	perrsum = 0.0;
+	merrsum = 0.0;
+	npos = 0;
+	num = 0;
+	fitsrtlset();
+	jstar = 0;
+	class = 0;
+
+	/* Loop through FITS table for this region */
+	for (itable = 0; itable <= ntable; itable++) {
+
+	    if (itable < ntable) {
+		nbr = fitsrtline (ift,nbhead,ltab,table,itable,nbline,entry);
+		if (nbr < nbline) {
+		    fprintf (stderr,"GSCBIN: %d / %d bytes read, line %d / %d, region %d\n",
+			      nbr,nbline,itable,ntable,rnum);
+		    break;
+		    }
+
+		/* Extract selected fields */
+
+		/* Star number within region */
+		num0 = ftgeti4 (entry, &kw[0]);
+
+		/* Right ascension in degrees */
+		ra0 = ftgetr8 (entry, &kw[1]);
+
+		/* Declination in degrees */
+		dec0 = ftgetr8 (entry, &kw[2]);
+
+		/* Position error */
+		perr0 = ftgetr8 (entry, &kw[3]);
+
+		/* Magnitude */
+		mag0 = ftgetr8 (entry, &kw[4]);
+
+		/* Magnitude error */
+		merr0 = ftgetr8 (entry, &kw[5]);
+
+		/* Bandpass code */
+		band0 = ftgeti4 (entry, &kw[6]);
+
+		/* Object class code */
+		class0 = ftgeti4 (entry, &kw[7]);
+		}
+	    else
+		num0 = 0;
+
+	/* Compute mean position and magnitude for object */
+	    if (itable > 0 && npos > 0 &&
+		((classd < -1 && band != band0) ||
+		(classd < -1 && class != class0) || 
+		num != num0)) {
+
+		pass = 1;
+		if (perrsum == 0.0 || merrsum == 0)
+		    pass = 0;
+		else {
+		    ra = rasum / perrsum;
+		    dec = decsum / perrsum;
+		    mag = msum / merrsum;
+		    }
+
+		if (pass > 0 && classd > -1 && class != classd)
+		    pass = 0;
+
+		/* Check magnitude and position limits */
+		if (pass > 0 && mag1 != mag2 && (mag < mag1 || mag > mag2))
+		    pass = 0;
+
+		if (pass) {
+		    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+		
+		    /* Check position limits */
+		    ddist = wcsdist (cra,cdec,cra,dec);
+		    if (ddist > ddec)
+			pass = 0;
+		    rdist = wcsdist (cra,dec,ra,dec);
+		    if (rdist > dra)
+			pass = 0;
+		    }
+
+		/* Save star in FITS image */
+		if (pass) {
+		    class = class + (band * 100) + (npos * 10000);
+		    xnum = (double)rnum + (0.0001 * (double) num);
+		    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+		    if (!offscl) {
+			if (magscale > 0.0)
+			    flux = magscale * exp (logt * (-mag / 2.5));
+			else
+			    flux = 1.0;
+			addpix (image, bitpix, w, h, 0.0, 1.0,
+				xpix, ypix, flux);
+			}
+		    nstar++;
+		    jstar++;
+		    if (nlog == 1)
+			fprintf (stderr,"GSCBIN: %04d.%04d: %9.5f %9.5f %s %5.2f %d %d\n",
+				rnum,num,ra,dec,cstr,mag,class,npos);
+		    }
+
+	/* Reset star position for averaging */
+		rasum = 0.0;
+		decsum = 0.0;
+		msum = 0.0;
+		perrsum = 0.0;
+		merrsum = 0.0;
+		npos = 0;
+		}
+
+	/* Add information from current line to current object */
+
+	    /* Check object class */
+     	    if ((classd > -1 && class0 == classd) ||
+		classd < -2 || (classd < 0 && class0 != 5)) {
+		perr = perr0;
+		perr2 = perr * perr;
+		if (perr2 <= 0.0) perr2 = 0.01;
+		rasum = rasum + (ra0 / perr2);
+		decsum = decsum + (dec0 / perr2);
+		perrsum = perrsum + (1.0 / perr2);
+		if (merr0 <= 0.0) merr0 = 0.01;
+		merr = merr0;
+		merr2 = merr * merr;
+		msum = msum + (mag0 / merr2);
+		merrsum = merrsum + (1.0 / merr2);
+		num = num0;
+		class = class0;
+		band = band0;
+		npos++;
+		}
+
+	    /* Log operation */
+	    if (nlog > 0 && itable%nlog == 0)
+		fprintf (stderr,"GSCBIN: %4d / %4d: %5d / %5d  / %5d sources, region %4d.%04d\r",
+			 ireg,nreg,jstar,itable,ntable,rlist[ireg],num0);
+
+	/* End of region */
+	    }
+
+	/* Close region input file */
+	(void) close (ift);
+	itot = itot + itable;
+	if (nlog > 0)
+	    fprintf (stderr,"GSCBIN: %4d / %4d: %5d / %5d  / %5d sources from region %4d    \n",
+		     ireg+1,nreg,jstar,itable,ntable,rlist[ireg]);
+	}
+
+    /* Close output file and summarize transfer */
+    if (nlog > 0) {
+	if (nreg > 1)
+	    fprintf (stderr,"GSCBIN: %d regions: %d / %d found\n",nreg,nstar,itot);
+	else
+	    fprintf (stderr,"GSCBIN: 1 region: %d / %d found\n",nstar,itable);
+	}
+    return (nstar);
 }
 
 
@@ -1168,4 +1494,8 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Mar 10 2003	Improve position limits
  * Apr  3 2003	Drop wrap in gscread(); add test for npos in gscread()
  * Apr 14 2003	Explicitly get revision date if nstarmax < 1
+ * Aug 22 2003	Add dradi for inner edge of annulus search
+ * Sep 25 2003	Add gscbin() to fill an image with sources
+ * Oct  6 2003	Update gscread() and gscbin() for improved RefLim()
+ * Nov 18 2003	Initialize image size and bits/pixel from header in gscbin()
  */

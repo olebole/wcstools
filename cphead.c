@@ -1,5 +1,5 @@
 /* File cphead.c
- * June 19, 2000
+ * October 29, 2003
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -25,7 +25,7 @@ extern char *GetFITShead();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;
-static int ndec = -9;
+static int ndec0 = -9;
 static int maxlfn = 0;
 static int listall = 0;
 static int listpath = 0;
@@ -45,8 +45,9 @@ int ac;
 char **av;
 {
     char *str;
-    char **kwd;
+    char **kwd, **kwdnew;
     int nkwd = 0;
+    int nkwd1 = 0;
     char **fn;
     int ifile;
     int lfn;
@@ -60,10 +61,10 @@ char **av;
     int ikwd, lkwd, i;
     char *kw, *kwe;
     char string[80];
+    char keyword[16];
 
     ilistfile = NULL;
     klistfile = NULL;
-    nkwd = 0;
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
     kwd = (char **)calloc (maxnkwd, sizeof(char *));
@@ -106,12 +107,80 @@ char **av;
 		case 'p': /* Number of decimal places in output */
 		    if (ac < 2)
 			usage();
-		    ndec = (int) (atof (*++av));
+		    ndec0 = (int) (atof (*++av));
 		    ac--;
 		    break;
 	
 		case 'v': /* More verbosity */
 		    verbose++;
+		    break;
+	
+		case 'w': /* Copy entire WCS */
+		    nkwd1 = 87;
+		    if (nkwd + nkwd1 > maxnkwd) {
+			maxnkwd = nkwd + nkwd1 + 32;
+			kwdnew = (char **) calloc (maxnkwd, sizeof (void *));
+			for (ikwd = 0; ikwd < nkwd; ikwd++)
+			    kwdnew[ikwd] = kwd[ikwd];
+			free (kwd);
+			kwd = kwdnew;
+			}
+		    for (ikwd = nkwd; i < nkwd+nkwd1; i++) {
+			kwd[ikwd] = (char *) calloc (32, 1);
+			}
+		    strcpy (kwd[nkwd], "RA");
+		    strcpy (kwd[++nkwd], "DEC");
+		    strcpy (kwd[++nkwd], "EPOCH");
+		    strcpy (kwd[++nkwd], "EQUINOX");
+		    strcpy (kwd[++nkwd], "RADECSYS");
+		    strcpy (kwd[++nkwd], "SECPIX");
+		    strcpy (kwd[++nkwd], "SECPIX1");
+		    strcpy (kwd[++nkwd], "SECPIX2");
+		    strcpy (kwd[++nkwd], "CTYPE1");
+		    strcpy (kwd[++nkwd], "CTYPE2");
+		    strcpy (kwd[++nkwd], "CRVAL1");
+		    strcpy (kwd[++nkwd], "CRVAL2");
+		    strcpy (kwd[++nkwd], "CDELT1");
+		    strcpy (kwd[++nkwd], "CDELT2");
+		    strcpy (kwd[++nkwd], "CRPIX1");
+		    strcpy (kwd[++nkwd], "CRPIX2");
+		    strcpy (kwd[++nkwd], "CROTA1");
+		    strcpy (kwd[++nkwd], "CROTA2");
+		    strcpy (kwd[++nkwd], "IMWCS");
+		    strcpy (kwd[++nkwd], "CD1_1");
+		    strcpy (kwd[++nkwd], "CD1_2");
+		    strcpy (kwd[++nkwd], "CD2_1");
+		    strcpy (kwd[++nkwd], "CD2_2");
+		    strcpy (kwd[++nkwd], "PC1_1");
+		    strcpy (kwd[++nkwd], "PC1_2");
+		    strcpy (kwd[++nkwd], "PC2_1");
+		    strcpy (kwd[++nkwd], "PC2_2");
+		    strcpy (kwd[++nkwd], "PC001001");
+		    strcpy (kwd[++nkwd], "PC001002");
+		    strcpy (kwd[++nkwd], "PC002001");
+		    strcpy (kwd[++nkwd], "PC002002");
+		    strcpy (kwd[++nkwd], "LATPOLE");
+		    strcpy (kwd[++nkwd], "LONPOLE");
+		    for (i = 1; i < 13; i++) {
+			sprintf (keyword,"CO1_%d", i);
+			strcpy (kwd[++nkwd], keyword);
+			}
+		    for (i = 1; i < 13; i++) {
+			sprintf (keyword,"CO2_%d", i);
+			strcpy (kwd[++nkwd], keyword);
+			}
+		    for (i = 0; i < 10; i++) {
+			sprintf (keyword,"PROJP%d", i);
+			strcpy (kwd[++nkwd], keyword);
+			}
+		    for (i = 0; i < 10; i++) {
+			sprintf (keyword,"PV1_%d", i);
+			strcpy (kwd[++nkwd], keyword);
+			}
+		    for (i = 0; i < 10; i++) {
+			sprintf (keyword,"PV2_%d", i);
+			strcpy (kwd[++nkwd], keyword);
+			}
 		    break;
 
 		default:
@@ -129,11 +198,15 @@ char **av;
 		}
 	    else {
 		klistfile = listfile;
-		nkwd = getfilelines (klistfile);
-		if (nkwd > 0) {
-		    if (nkwd > maxnkwd) {
-			kwd = (char **) realloc ((void *)kwd, nkwd);
-			maxnkwd = nkwd;
+		nkwd1 = getfilelines (klistfile);
+		if (nkwd1 > 0) {
+		    if (nkwd1 + nkwd > maxnkwd) {
+			maxnkwd = nkwd + nkwd1 + 32;
+			kwdnew = (char **) calloc (maxnkwd, sizeof (void *));
+			for (ikwd = 0; ikwd < nkwd; ikwd++)
+			    kwdnew[ikwd] = kwd[ikwd];
+			free (kwd);
+			kwd = kwdnew;
 			}
 		    if ((fdk = fopen (klistfile, "r")) == NULL) {
 			fprintf (stderr,"GETHEAD: File %s cannot be read\n",
@@ -141,9 +214,9 @@ char **av;
 			nkwd = 0;
 			}
 		    else {
-			for (ikwd = 0; ikwd < nkwd; ikwd++) {
-			    kwd[ikwd] = (char *) calloc (32, 1);
-			    first_token (fdk, 31, kwd[ikwd]);
+			for (ikwd = 0; ikwd < nkwd1; ikwd++) {
+			    kwd[nkwd] = (char *) calloc (32, 1);
+			    first_token (fdk, 31, kwd[nkwd++]);
 			    }
 			fclose (fdk);
 			}
@@ -179,8 +252,7 @@ char **av;
 		maxnkwd = maxnkwd * 2;
 		kwd = (char **) realloc ((void *)kwd, maxnkwd);
 		}
-	    kwd[nkwd] = *av;
-	    nkwd++;
+	    kwd[nkwd++] = *av;
 	    }
 	}
 
@@ -245,6 +317,7 @@ usage ()
     fprintf(stderr,"  -n: Write a new file (add e before the extension)\n");
     fprintf(stderr,"  -p: Number of decimal places in numeric output\n");
     fprintf(stderr,"  -v: Verbose\n");
+    fprintf(stderr,"  -w: Copy all WCS keywords\n");
     exit (1);
 }
 
@@ -266,6 +339,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
     double dval;
     int ival, nch;
     int iraffile;
+    int ndec;
     char fnform[8];
     char newname[128];
     char string[80];
@@ -321,7 +395,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	if ((headout = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
 	    hgeti4 (headout,"NAXIS",&naxis);
 	    if (naxis > 0) {
-		if ((image = fitsrimage (filename, nbhead, headout)) == NULL) {
+		if ((image = fitsrfull (filename, nbhead, headout)) == NULL) {
 		    if (verbose)
 			fprintf (stderr, "No FITS image in %s\n", filename);
 		    imageread = 0;
@@ -369,8 +443,12 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	    strclean (string);
 	    if (isnum (string)) {
 		if (strchr (string,'.')) {
+		    if (ndec0 > -9)
+			ndec = ndec0;
+		    else
+			ndec = numdec (string);
 		    hgetr8 (header, kwd[ikwd], &dval);
-		    hputr8 (headout, kwd[ikwd], dval);
+		    hputnr8 (headout, kwd[ikwd], ndec, dval);
 		    }
 		else {
 		    hgeti4 (header, kwd[ikwd], &ival);
@@ -593,5 +671,11 @@ char *string;
 /* Feb 24 2000	New program based on sethead and gethead
  * Mar 22 2000	Use lt2fd() instead of getltime()
  * Jun  8 2000	If no files or keywords specified, say so
+ *
  * Jun 19 2002	Add verbose argument to GetFITShead()
+ *
+ * Aug 21 2003	Use fitsrfull() to deal with n-dimensional FITS images
+ * Oct 20 2003	Keep same number of decimal places unless -p option used
+ * Oct 23 2003	Add -w option to copy all WCS keywords
+ * Oct 29 2003	Allow combination of keyword designation methods
  */

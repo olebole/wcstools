@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** May 30, 2003
+ *** October 6, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -1365,23 +1365,36 @@ int	verbose;	/* 1 to print limits, else 0 */
 
 /* REFLIM-- Set limits in reference catalog coordinates given search coords */
 void
-RefLim (cra, cdec, dra, ddec, sysc, sysr, eqc, eqr, epc,
-	ramin, ramax, decmin, decmax, verbose)
+RefLim (cra, cdec, dra, ddec, sysc, sysr, eqc, eqr, epc, epr, secmarg,
+	ramin, ramax, decmin, decmax, wrap, verbose)
 
 double	cra, cdec;	/* Center of search area  in degrees */
 double	dra, ddec;	/* Horizontal and vertical half-widths of area */
 int	sysc, sysr;	/* System of search, catalog coordinates */
 double	eqc, eqr;	/* Equinox of search, catalog coordinates in years */
-double	epc;		/* Epoch of search coordinates in years
-			   (catalog is assumed to be at epoch eqr) */
+double	epc, epr;	/* Epoch of search, catalog coordinates in years */
+double	secmarg;	/* Margin in arcsec/century to catch moving stars */
 double	*ramin,*ramax;	/* Right ascension search limits in degrees (returned)*/
 double	*decmin,*decmax; /* Declination search limits in degrees (returned) */
+int	*wrap;		/* 1 if search passes through 0:00:00 RA */
 int	verbose;	/* 1 to print limits, else 0 */
 
 {
     double ra, ra1, ra2, ra3, ra4, dec1, dec2, dec3, dec4;
-    double dec, adec;
+    double dec, acdec, adec, adec1, adec2, dmarg, dist;
     int nrot;
+
+    /* Deal with all or nearly all of the sky */
+    if (ddec > 80.0 && dra > 150.0) {
+	*ramin = 0.0;
+	*ramax = 360.0;
+	*decmin = -90.0;
+	*decmax = 90.0;
+	*wrap = 0;
+	if (verbose)
+	    fprintf (stderr,"RefLim: RA: 0.0 - 360.0  Dec: -90.0 - 90.0\n");
+	return;
+	}
 
     /* Set declination limits for search */
     dec1 = cdec - ddec;
@@ -1397,11 +1410,15 @@ int	verbose;	/* 1 to print limits, else 0 */
     dec4 = dec1;
 
     /* Adjust width in right ascension to that at max absolute declination */
-    adec = fabs (dec2);
-    if (fabs (dec1) > adec)
-	adec = fabs (dec1);
-    if (adec > fabs (cdec))
-	dra = dra * (cos (degrad(cdec)) / cos (degrad(adec)));
+    adec1 = fabs (dec1);
+    adec2 = fabs (dec2);
+    if (adec1 > adec2)
+	adec = adec1;
+    else
+	adec = adec2;
+    acdec = fabs (cdec);
+    if (adec < 90.0 && adec > acdec)
+	dra = dra * (cos (degrad(acdec)) / cos (degrad(adec)));
 
     /* Set right ascension limits for search */
     ra1 = cra - dra;
@@ -1424,10 +1441,19 @@ int	verbose;	/* 1 to print limits, else 0 */
 	nrot = (int) (ra2 / 360.0);
 	ra2 = ra2 - (360.0 * (double) nrot);
 	}
+
+    if (ra1 > ra2)
+	*wrap = 1;
+    else
+	*wrap = 0;
+
     ra3 = ra1;
     ra4 = ra2;
 
     /* Convert search corners to catalog coordinate system and equinox */
+    ra = cra;
+    dec = cdec;
+    wcscon (sysc, sysr, eqc, eqr, &ra, &dec, epc);
     wcscon (sysc, sysr, eqc, eqr, &ra1, &dec1, epc);
     wcscon (sysc, sysr, eqc, eqr, &ra2, &dec2, epc);
     wcscon (sysc, sysr, eqc, eqr, &ra3, &dec3, epc);
@@ -1449,8 +1475,16 @@ int	verbose;	/* 1 to print limits, else 0 */
     if (ra4 > *ramax)
 	*ramax = ra4;
 
-    /* If RA separation is > 180 and < 360 degrees, assume wrap around 0 */
-    if (*ramax - *ramin > 180.0 && *ramax - *ramin < 360.0) {
+    /* Add margins to RA limits to get most stars which move */
+    if (secmarg > 0.0 && epc != 0.0) {
+	dmarg = (secmarg / 3600.0) * fabs (epc - epr);
+	*ramin = *ramin - (dmarg * cos (degrad (cdec)));
+	*ramax = *ramax + (dmarg * cos (degrad (cdec)));
+	}
+   else
+	dmarg = 0.0;
+
+    if (*wrap) {
 	ra = *ramax;
 	*ramax = *ramin;
 	*ramin = ra;
@@ -1472,13 +1506,33 @@ int	verbose;	/* 1 to print limits, else 0 */
     if (dec4 > *decmax)
 	*decmax = dec4;
 
+    /* Add margins to Dec limits to get most stars which move */
+    if (dmarg > 0.0) {
+	*decmin = *decmin - dmarg;
+	*decmax = *decmax + dmarg;
+	}
+
+    /* Check for pole */
+    dist = wcsdist (ra, dec, *ramax, *decmax);
+    if (dec + dist > 90.0) {
+	*ramin = 0.0;
+	*ramax = 359.99999;
+	*decmax = 90.0;
+	}
+    else if (dec - dist < -90.0) {
+	*ramin = 0.0;
+	*ramax = 359.99999;
+	*decmin = -90.0;
+	}
+	
+
     /* Search zones which include the poles cover 360 degrees in RA */
-    if (*decmin < -90.0) {
+    else if (*decmin < -90.0) {
 	*decmin = -90.0;
 	*ramin = 0.0;
 	*ramax = 359.99999;
 	}
-    if (*decmax > 90.0) {
+    else if (*decmax > 90.0) {
 	*decmax = 90.0;
 	*ramin = 0.0;
 	*ramax = 359.99999;
@@ -1489,8 +1543,12 @@ int	verbose;	/* 1 to print limits, else 0 */
         dec2str (dstr1, 16, *decmin, 2);
 	ra2str (rstr2, 16, *ramax, 3);
         dec2str (dstr2, 16, *decmax, 2);
-	fprintf (stderr,"RefLim: RA: %s - %s  Dec: %s - %s\n",
+	fprintf (stderr,"RefLim: RA: %s - %s  Dec: %s - %s",
 		 rstr1,rstr2,dstr1,dstr2);
+	if (*wrap)
+	    fprintf (stderr," wrap\n");
+	else
+	    fprintf (stderr,"\n");
 	}
     return;
 }
@@ -2610,4 +2668,9 @@ vottail ()
  * May 21 2003	Add TMIDR2=2MASS IDR2, and new 2MASS=TMPSC
  * May 28 2003	Fix bug checking for TMIDR2=2MASS IDR2; 11 digits for TMPSC
  * May 30 2003	Add UCAC2 catalog
+ * Sep 19 2003	Fix bug which shrank search width in RefLim()
+ * Sep 26 2003	In RefLim() do not use cos(90)
+ * Sep 29 2003	Add proper motion margins and wrap arguments to RefLim()
+ * Oct  1 2003	Add code in RefLim() for all-sky images
+ * Oct  6 2003	Add code in RefLim() to cover near-polar searches
  */

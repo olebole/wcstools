@@ -1,5 +1,5 @@
 /*** File libwcs/ubcread.c
- *** June 2, 2003
+ *** October 6, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2003
@@ -89,8 +89,11 @@ static int ubcstar();
 static void ubcswap();
 static int nbent = 80;
 
+
+/* UBCREAD -- Return USNO-B1.0 sources in specified region */
+
 int
-ubcread (refcatname,distsort,cra,cdec,dra,ddec,drad,sysout,eqout,epout,
+ubcread (refcatname,distsort,cra,cdec,dra,ddec,drad,dradi,sysout,eqout,epout,
 	 mag1,mag2,sortmag,nstarmax,unum,ura,udec,upra,updec,umag,upmni,nlog)
 
 char	*refcatname;	/* Name of catalog (UB1 only, for now) */
@@ -100,6 +103,7 @@ double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
 double	ddec;		/* Search half-width in declination in degrees */
 double	drad;		/* Limiting separation in degrees (ignore if 0) */
+double	dradi;		/* Inner edge of search annulus in degrees (ignore if 0) */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
@@ -142,7 +146,7 @@ int	nlog;		/* Logging interval */
     int nstar, nread, pass;
     int ubra1, ubra2, ubdec1, ubdec2;
     double ra,dec, ra0, dec0;
-    double mag, magtest;
+    double mag, magtest, secmarg;
     int istar, istar1, istar2, pmni, nid;
     int nzmax = NZONES;	/* Maximum number of declination zones */
     int magsort;
@@ -172,7 +176,7 @@ int	nlog;		/* Logging interval */
     /* If root pathname is a URL, search and return */
     if (!strncmp (ubpath, "http:",5)) {
 	return (webread (ubpath,refcatname,distsort,cra,cdec,dra,ddec,drad,
-			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
+			 dradi,sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			 unum,ura,udec,upra,updec,umag,upmni,nlog));
 	}
 
@@ -193,19 +197,15 @@ int	nlog;		/* Logging interval */
     else
 	magsort = 3;
 
-    /* Find RA and Dec limits in catalog coordinate system */
-    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
-	    &rra1, &rra2, &rdec1, &rdec2, verbose);
-
     /* Add 60 arcsec/century margins to region to get most stars which move */
-    if (minpmqual < 11 && (epout != 0.0 || sysout != sysref)) {
-	dmarg = (60.0 / 3600.0) * fabs (epout - epref);
-	rdec1 = rdec1 - dmarg;
-	rdec2 = rdec2 + dmarg;
-	rcdec = 0.5 * (rdec1 + rdec2);
-	rra1 = rra1 - (dmarg / cos (degrad(rcdec)));
-	rra2 = rra2 + (dmarg / cos (degrad(rcdec)));
-	}
+    if (minpmqual < 11 && (epout != 0.0 || sysout != sysref))
+	secmarg = 60.0;
+    else
+	secmarg = 0.0;
+
+    /* Find RA and Dec limits in catalog coordinate system */
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,secmarg,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
 
     /* Find declination zones to search */
     nz = ubczones (rra1, rra2, rdec1, rdec2, nzmax, zlist, verbose);
@@ -213,13 +213,6 @@ int	nlog;		/* Logging interval */
 	fprintf (stderr, "UBCREAD:  no USNO B zones found\n");
 	return (0);
 	}
-
-    /* If RA range includes zero, set flag */
-    wrap = 0;
-    if (rra1 > rra2)
-	wrap = 1;
-    else
-	wrap = 0;
 
     /* Write header if printing star entries as found */
     if (nstarmax < 1) {
@@ -234,8 +227,11 @@ int	nlog;		/* Logging interval */
 	printf ("dec	%s\n", decstr);
 	printf ("rpmunit	mas/year\n");
 	printf ("dpmunit	mas/year\n");
-	if (drad != 0.0)
+	if (drad != 0.0) {
 	    printf ("radmin	%.1f\n", drad*60.0);
+	    if (dradi > 0)
+		printf ("radimin	%.1f\n", dradi*60.0);
+	    }
 	else {
 	    printf ("dramin	%.1f\n", dra*60.0* cosdeg (cdec));
 	    printf ("ddecmin	%.1f\n", ddec*60.0);
@@ -382,6 +378,8 @@ int	nlog;		/* Logging interval */
 			/* Test spatial limits */
 			    if (drad > 0.0) {
 				if (dist > drad)
+				    pass = 0;
+				if (dradi > 0.0 && dist < dradi)
 				    pass = 0;
 				}
 			    else {
@@ -550,6 +548,8 @@ int	nlog;		/* Logging interval */
 }
 
 
+/* UBCRNUM -- Return USNO-B1.0 sources with specified ID numbers */
+
 int
 ubcrnum (refcatname,nnum,sysout,eqout,epout,unum,ura,udec,upra,updec,umag,upmni,nlog)
 
@@ -684,6 +684,307 @@ int	nlog;		/* Logging interval */
 	fprintf (stderr,"UBCRNUM:  %d / %d found\n",nfound,nnum);
 
     return (nfound);
+}
+
+
+/* UBCBIN -- Fill FITS WCS image with USNO-B1.0 sources */
+
+int
+ubcbin (refcatname, wcs, header, image, mag1, mag2, sortmag, magscale, nlog)
+
+char	*refcatname;	/* Name of catalog (UB1 only, for now) */
+struct WorldCoor *wcs;	/* World coordinate system for image */
+char	*header;	/* FITS header for output image */
+char	*image;		/* Output FITS image */
+double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Magnitude by which to sort (1 or 2) */
+double	magscale;	/* Scaling factor for magnitude to pixel flux
+			 * (number of catalog objects per bin if 0) */
+int	nlog;		/* Logging interval */
+{
+    double cra;		/* Search center J2000 right ascension in degrees */
+    double cdec;	/* Search center J2000 declination in degrees */
+    double dra;		/* Search half width in right ascension in degrees */
+    double ddec;	/* Search half-width in declination in degrees */
+    int	sysout;		/* Search coordinate system */
+    double eqout;	/* Search coordinate equinox */
+    double epout;	/* Proper motion epoch (0.0 for no proper motion) */
+    double ra1,ra2;	/* Limiting right ascensions of region in degrees */
+    double dec1,dec2;	/* Limiting declinations of region in degrees */
+    int nz;		/* Number of input UB zone files */
+    int zlist[NZONES];	/* List of input UB zones */
+    UBCstar star;	/* UB catalog entry for one star */
+    double rdist, ddist;
+    int pmqual;
+    int sysref=WCS_J2000;	/* Catalog coordinate system */
+    double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
+
+    double rra1, rra2, rdec1, rdec2, rcdec;
+    double num;		/* UB numbers */
+    double rapm, decpm, rapm0, decpm0;
+    double xpix, ypix, flux;
+    int offscl;
+    double dmarg;
+    int wrap, iwrap;
+    int verbose;
+    int znum, itot,iz, i;
+    int itable, jtable,jstar;
+    int nstar, nread, pass;
+    int ubra1, ubra2, ubdec1, ubdec2;
+    double ra,dec, ra0, dec0;
+    double mag, secmarg;
+    int istar, istar1, istar2, pmni, nid;
+    int nzmax = NZONES;	/* Maximum number of declination zones */
+    int bitpix, w, h;	/* Image bits/pixel and pixel width and height */
+    int magsort;
+    char *str;
+    char cstr[32];
+    double logt = log(10.0);
+
+    itot = 0;
+    if (nlog > 0)
+	verbose = 1;
+    else
+	verbose = 0;
+
+    /* Set catalog code and path to catalog */
+    if (strncmp (refcatname,"ub",2)==0 ||
+        strncmp (refcatname,"UB",2)==0) {
+	if ((str = getenv("UB1_PATH")) != NULL)
+	    strcpy (ub1path,str);
+	ucat = UB1;
+	ubpath = ub1path;
+	}
+    else {
+	fprintf (stderr, "UBCBIN:  %s not a USNO catalog\n", refcatname);
+	return (0);
+	}
+
+    /* Set catalog search limits from image WCS information */
+    sysout = wcs->syswcs;
+    eqout = wcs->equinox;
+    epout = wcs->epoch;
+    wcscstr (cstr, sysout, eqout, epout);
+    wcssize (wcs, &cra, &cdec, &dra, &ddec);
+    SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
+
+    /* mag1 is always the smallest magnitude */
+    if (mag2 < mag1) {
+	mag = mag2;
+	mag2 = mag1;
+	mag1 = mag;
+	}
+
+    /* Bin using 4th magnitude = R2 if sort magnitude is not set */
+    if (sortmag > 0 && sortmag < 6)
+	magsort = sortmag - 1;
+    else
+	magsort = 3;
+
+    /* Set image parameters */
+    bitpix = 0;
+    (void)hgeti4 (header, "BITPIX", &bitpix);
+    w = 0;
+    (void)hgeti4 (header, "NAXIS1", &w);
+    h = 0;
+    (void)hgeti4 (header, "NAXIS2", &h);
+
+    /* Add 60 arcsec/century margins to region to get most stars which move */
+    if (minpmqual < 11 && (epout != 0.0 || sysout != sysref))
+	secmarg = 60.0;
+    else
+	secmarg = 0.0;
+
+    /* Find RA and Dec limits in catalog coordinate system */
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,secmarg,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
+
+    /* Find declination zones to search */
+    nz = ubczones (rra1, rra2, rdec1, rdec2, nzmax, zlist, verbose);
+    if (nz <= 0) {
+	fprintf (stderr, "UBCBIN:  no USNO B zones found\n");
+	return (0);
+	}
+
+    /* Convert RA and Dec limits to same units as catalog for quick filter */
+    ubra1 = (int) (rra1 * 360000.0 + 0.5);
+    ubra2 = (int) (rra2 * 360000.0 + 0.5);
+    ubdec1 = (int) ((rdec1 * 360000.0) + 32400000.5);
+    ubdec2 = (int) ((rdec2 * 360000.0) + 32400000.5);
+
+    /* Convert dra to angular units for rectangular box on sky */
+    dra = dra / cos (degrad (cdec));
+    
+    /* Loop through region list */
+    nstar = 0;
+    for (iz = 0; iz < nz; iz++) {
+
+    /* Get path to zone catalog */
+	znum = zlist[iz];
+	if ((nstars = ubcopen (znum)) != 0) {
+
+	    jstar = 0;
+	    jtable = 0;
+	    for (iwrap = 0; iwrap <= wrap; iwrap++) {
+
+	    /* Find first star based on RA */
+		if (iwrap == 0 || wrap == 0)
+		    istar1 = ubcsra (rra1);
+		else
+		    istar1 = 1;
+
+	    /* Find last star based on RA */
+		if (iwrap == 1 || wrap == 0)
+		    istar2 = ubcsra (rra2);
+		else
+		    istar2 = nstars;
+
+		if (istar1 == 0 || istar2 == 0)
+		    break;
+
+		nread = istar2 - istar1 + 1;
+		itable = 0;
+
+	    /* Loop through zone catalog for this region */
+		for (istar = istar1; istar <= istar2; istar++) {
+		    itable ++;
+		    jtable ++;
+
+		    if (ubcstar (istar, &star)) {
+			fprintf (stderr,"UBCBIN: Cannot read star %d\n", istar);
+			break;
+			}
+
+		/* Extract selected fields */
+
+		/* Check rough position limits */
+     		    if ((star.decsec >= ubdec1 && star.decsec <= ubdec2) &&
+			((wrap && (star.rasec>=ubra1 || star.rasec<=ubra2)) ||
+			(!wrap && (star.rasec>=ubra1 && star.rasec<=ubra2))
+			)){
+
+			/* Set magnitude by which to sort and test */
+			mag = ubcmag (star.mag[magsort]);
+			if (sortmag == 0) {
+			    if (mag > 30.0)
+				mag = ubcmag (star.mag[1]);
+			    if (mag > 30.0)
+				mag = ubcmag (star.mag[2]);
+			    if (mag > 30.0)
+				mag = ubcmag (star.mag[0]);
+			    }
+			pass = 1;
+			if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+			    pass = 0;
+
+			if (pass) {
+			    nid = ubcndet (star.pmerr);
+			    if (nid < minid) {
+				if (minid > 0 && nid > 0)
+				    pass = 0;
+				}
+			    if (minid < 0 && nid < -minid)
+				pass = 0;
+			    }
+
+			/* Test distance limits */
+			if (pass) {
+			    ra0 = ubcra (star.rasec);
+			    dec0 = ubcdec (star.decsec);
+			    ra = ra0;
+			    dec = dec0;
+			    pmqual = ubcpmq (star.pm);
+			    if (nid == 0)
+				pmqual = 10;
+			    pmni = (100 * pmqual) + nid;
+
+			    /* Convert to search equinox and epoch */
+			    if (pmqual < minpmqual) {
+				rapm = 0.0;
+				decpm = 0.0;
+				rapm0 = 0.0;
+				decpm0 = 0.0;
+				wcscon (sysref,sysout,eqref,eqout,
+					&ra,&dec,epout);
+				}
+			    else {
+				rapm0 = ubcpra (star.pm) / cos (degrad (dec));
+				decpm0 = ubcpdec (star.pm);
+				rapm = rapm0;
+				decpm = decpm0;
+				wcsconp (sysref,sysout,eqref,eqout,epref,epout,
+					 &ra, &dec, &rapm, &decpm);
+				}
+
+			/* Test spatial limits */
+			    rdist = wcsdist (cra,dec,ra,dec);
+			    if (rdist > dra)
+				pass = 0;
+			    ddist = wcsdist (ra,cdec,ra,dec);
+			    if (ddist > ddec)
+				pass = 0;
+			    }
+
+			/* Save star in FITS image */
+			if (pass) {
+			    wcs2pix (wcs, ra, dec, sysout,&xpix,&ypix,&offscl);
+			    if (!offscl) {
+				if (magscale > 0.0)
+				    flux = magscale * exp (logt * (-mag / 2.5));
+				else
+				    flux = 1.0;
+				addpix (image, bitpix, w, h, 0.0, 1.0,
+					xpix, ypix, flux);
+				nstar++;
+				jstar++;
+				}
+			    if (nlog == 1) {
+				fprintf (stderr,"UBCBIN: %04d.%07d: %9.5f %9.5f %s\n",
+					znum,istar,ra,dec,cstr);
+				for (i = 0; i < 5; i++)
+				    fprintf (stderr, " %5.2f", ubcmag(star.mag[i]));
+				fprintf (stderr,"\n");
+				}
+
+			    /* End of accepted star processing */
+			    }
+
+		    /* End of individual star processing */
+			}
+
+		/* Log operation */
+		    if (nlog > 0 && itable%nlog == 0)
+			fprintf (stderr,"UBCBIN: zone %d (%2d / %2d) %8d / %8d / %8d sources\r",
+				znum, iz+1, nz, jstar, itable, nread);
+
+		/* End of star loop */
+		    }
+
+		/* End of wrap loop */
+		}
+
+	/* Close zone input file */
+	    (void) fclose (fcat);
+	    itot = itot + itable;
+	    if (nlog > 0)
+		fprintf (stderr,"UBCBIN: zone %d (%2d / %2d) %8d / %8d / %8d sources      \n",
+			znum, iz+1, nz, jstar, jtable, nstars);
+
+	/* End of zone processing */
+	    }
+
+    /* End of zone loop */
+	}
+
+/* Summarize search */
+    if (nlog > 0) {
+	if (nz > 1)
+	    fprintf (stderr,"UBCBIN: %d zones: %d / %d found\n",nz,nstar,itot);
+	else
+	    fprintf (stderr,"UBCBIN: 1 zone: %d / %d found\n",nstar,itable);
+	}
+    return (nstar);
 }
 
 
@@ -889,7 +1190,7 @@ double	rax0;		/* Right ascension in degrees for which to search */
     ra1 = ubcra (star.rasec);
     istar = nstars;
     nrep = 0;
-    while (istar != istar1 && nrep < 20) {
+    while (istar != istar1 && nrep < 25) {
 	if (ubcstar (istar, &star))
 	    break;
 	else {
@@ -1078,4 +1379,7 @@ int nbytes = nbent; /* Number of bytes to reverse */
  * Apr 15 2003	Explicitly get revision date if nstarmax < 1
  * May 27 2003	Use getfilesize() to get file size
  * Jun  2 2003	Print proper motion as mas/year
+ * Aug 22 2003	Add radi argument for inner edge of search annulus
+ * Sep 25 2003	Add ubcbin() to fill an image with sources
+ * Oct  6 2003	Update ubcread() and ubcbin() for improved RefLim()
  */

@@ -1,5 +1,5 @@
 /* File delhead.c
- * December 16, 2002
+ * October 29, 2003
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -32,6 +32,8 @@ char **av;
     char *str;
     char **kwd;
     int nkwd = 0;
+    int nkwd1 = 0;
+    int ikwd;
     char **fn;
     int nfile = 0;
     int ifile;
@@ -41,12 +43,9 @@ char **av;
     char *ilistfile;
     char *klistfile;
     char **kwdnew;
-    int nkwd1 = 0;
-    int ikwd;
 
     ilistfile = NULL;
     klistfile = NULL;
-    nkwd = 0;
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
     kwd = (char **)calloc (maxnkwd, sizeof(char *));
@@ -93,7 +92,7 @@ char **av;
 		nkwd1 = getfilelines (klistfile);
 		if (nkwd1 > 0) {
 		    if (nkwd1 + nkwd > maxnkwd) {
-			maxnkwd = maxnkwd + nkwd1;
+			maxnkwd = maxnkwd + nkwd1 + 32;
 			kwdnew = (char **)calloc (maxnkwd, sizeof(char *));
 			for (ikwd = 0; ikwd < nkwd; ikwd++)
 			    kwdnew[ikwd] = kwd[ikwd];
@@ -105,9 +104,9 @@ char **av;
 				 klistfile);
 			}
 		    else {
-			for (ikwd = nkwd; ikwd < nkwd+nkwd1; ikwd++) {
-			    kwd[ikwd] = (char *) calloc (32, 1);
-			    first_token (fdk, 31, kwd[ikwd]);
+			for (ikwd = 0; ikwd < nkwd1; ikwd++) {
+			    kwd[nkwd] = (char *) calloc (32, 1);
+			    first_token (fdk, 31, kwd[nkwd++]);
 			    }
 			fclose (fdk);
 			}
@@ -129,7 +128,11 @@ char **av;
 	else {
 	    if (nkwd >= maxnkwd) {
 		maxnkwd = maxnkwd * 2;
-		kwd = (char **) realloc ((void *)kwd, maxnkwd);
+		kwdnew = (char **) realloc ((void *)kwd, maxnkwd);
+		for (ikwd = 0; ikwd < nkwd; ikwd++)
+		    kwdnew[ikwd] = kwd[ikwd];
+		free (kwd);
+		kwd = kwdnew;
 		}
 	    kwd[nkwd] = *av;
 	    nkwd++;
@@ -233,7 +236,7 @@ char	*kwd[];		/* Names of those keywords */
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
 	    hgeti4 (header,"NAXIS",&naxis);
 	    if (naxis > 0) {
-		if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
+		if ((image = fitsrfull (filename, nbhead, header)) == NULL) {
 		    if (verbose)
 			fprintf (stderr,"Cannot read FITS image %s\n",filename);
 		    }
@@ -388,4 +391,7 @@ char	*kwd[];		/* Names of those keywords */
  * Jun  8 2000	If no files or keywords specified, say so
  *
  * Dec 16 2002	Fix bug so arbitrary number of keywords can be deleted
+ *
+ * Aug 21 2003	Use fitsrfull() to deal with n dimensional FITS images
+ * Oct 29 2003	Keep count of keywords correctly when reading them from file
  */

@@ -17,6 +17,9 @@ all:	cphead delwcs delhead edhead fixpix gethead i2f imcat imhead immatch \
 addpix: addpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/addpix addpix.c $(LIBS)
 
+bincat: bincat.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
+	$(CC) $(CFLAGS) -o $(BIN)/bincat bincat.c $(CATLIBS)
+
 char2sp: char2sp.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/char2sp char2sp.c $(LIBWCS)
 
@@ -113,6 +116,9 @@ immwcs: immwcs.c $(LIBWCS) libwcs/fitsfile.h libwcs/lwcs.h
 keyhead: keyhead.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/keyhead keyhead.c $(LIBS)
 
+matchcat: matchcat.c $(LIBWCS) libwcs/wcscat.h libwcs/wcs.h
+	$(CC) $(CFLAGS) -o $(BIN)/matchcat matchcat.c $(CATLIBS)
+
 newfits: newfits.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/newfits newfits.c $(LIBS)
 
@@ -149,5 +155,5 @@ wcshead: wcshead.c $(LIBWCS) libwcs/fitsfile.h
 xy2sky: xy2sky.c $(LIBWCS) libwcs/wcs.h libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/xy2sky xy2sky.c $(CATLIBS)
 
-$(LIBWCS): libwcs/*.c libwcs/fitshead.h libwcs/wcs.h
+$(LIBWCS): libwcs/*.c libwcs/*.h
 	cd libwcs; make

@@ -1,8 +1,8 @@
 /*** File libwcs/agascread.c
- *** June 26, 2000
+ *** October 6, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1999-2002
+ *** Copyright (C) 1999-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -84,6 +84,7 @@ int	nlog;		/* 1 for diagnostics */
     int class, class0;	/* Object class (0>star, 3>other) */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
+    double epref=2000.0;	/* Catalog epoch */
     struct Keyword kw[8];	/* Keyword structure */
     struct Keyword *kwn;
 
@@ -142,10 +143,8 @@ int	nlog;		/* 1 for diagnostics */
     rra2 = ra2;
     rdec1 = dec1;
     rdec2 = dec2;
-    RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
-	    &rra1, &rra2, &rdec1, &rdec2, verbose);
-    if (rra1 > rra2)
-	wrap = 1;
+    RefLim (cra,cdec,dra,ddec,sysout,sysref,eqout,eqref,epout,epref,0.0,
+	    &rra1, &rra2, &rdec1, &rdec2, &wrap, verbose);
     nreg = agascreg (rra1,rra2,rdec1,rdec2,table,nrmax,rlist,verbose);
     if (nreg <= 0) {
 	fprintf (stderr,"AGASCREAD:  no Guide Star regions found\n");
@@ -936,4 +935,6 @@ char *path;	/* Pathname of AGASC region FITS file */
  * Oct 21 1999	Fix declarations after lint
  *
  * Jun 26 2000	Add coordinate system to SearchLim() arguments
+ *
+ * Oct  6 2003	Update agascread() for improved RefLim()
  */

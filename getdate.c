@@ -1,5 +1,5 @@
 /* File getdate.c
- * July 28, 2003
+ * November 21, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -186,7 +186,9 @@ char **av;
 	    typeset = 1;
 
 	/* Set RA, Dec, and equinox if WCS-generated argument */
-	else if (strsrch (*av,":") != NULL) {
+	else if (strsrch (*av,":") != NULL &&
+		 (outtype == DTHJD || outtype == DTMHJD) &&
+		 (intype != DTFITS || timestring != NULL)) {
 	    if (ac < 3)
 		usage();
 	    else {
@@ -1472,4 +1474,5 @@ char	*timestring;	/* Input time string */
  *
  * Mar  6 2003	Add conversions to and from HJD and MHJD
  * Jul 28 2003	Correctly convert FITS date AND time correctly
+ * Nov 21 2003	Fix bug so times are not assumed to be coordinates
  */

@@ -1,5 +1,5 @@
 /* File sethead.c
- * February 4, 2003
+ * October 29, 2003
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,6 +17,7 @@
 #define MAXFILES 1000
 static int maxnkwd = MAXKWD;
 static int maxnfile = MAXFILES;
+#define MAXNEW 1024
 
 static void usage();
 static void SetValues ();
@@ -39,9 +40,10 @@ int ac;
 char **av;
 {
     char *str;
-    char **kwd;
-    char **comment;
+    char **kwd, **kwdnew;
+    char **comment, **comnew;
     int nkwd = 0;
+    int nkwd1 = 0;
     char **fn;
     int nfile = 0;
     int readlist = 0;
@@ -146,24 +148,27 @@ char **av;
 		}
 	    else {
 		klistfile = listfile;
-		nkwd = getfilelines (klistfile);
-		if (nkwd > 0) {
-		    if (nkwd > maxnkwd) {
+		nkwd1 = getfilelines (klistfile);
+		if (nkwd1 > 0) {
+		    if (nkwd+nkwd1 >= maxnkwd) {
+			maxnkwd = nkwd + nkwd1 + 32;
+			kwdnew = (char **) calloc (maxnkwd, sizeof (void *));
+			for (ikwd = 0; ikwd < nkwd; ikwd++)
+			    kwdnew[ikwd] = kwd[ikwd];
 			free (kwd);
-			kwd = (char **) calloc (nkwd, sizeof (void *));
-			maxnkwd = nkwd;
+			kwd = kwdnew;
 			}
 		    keybuff = getfilebuff (klistfile);
 		    if (keybuff != NULL) {
 			kw1 = keybuff;
 
 			/* One keyword per line of buffer */
-			for (ikwd = 0; ikwd < nkwd; ikwd++) {
-			    kwd[ikwd] = kw1;
+			for (ikwd = 0; ikwd < nkwd1; ikwd++) {
+			    kwd[nkwd] = kw1;
 			    kwdi = kw1;
 
 			    /* Replace LF and/or CR with NULL */
-			    if (ikwd < nkwd - 1) {
+			    if (ikwd < nkwd1 - 1) {
 				kw2 = strchr (kwdi, lf);
 				if (kw2 != NULL) {
 				    kw1 = kw2 + 1;
@@ -179,7 +184,7 @@ char **av;
 				}
 
 			    /* Replace final LF and/or CR with NULL */
-			    else if (ikwd < nkwd) {
+			    else if (ikwd < nkwd1) {
 				kw2 = strchr (kwdi, cr);
 				if (kw2 != NULL)
 				    *kw2 = (char) 0;
@@ -206,15 +211,14 @@ char **av;
 				sl = strsrch (kwdc, " / ");
 				if (sl != NULL) {
 				    *sl = (char) 0;
-				    comment[ikwd] = sl + 3;
+				    comment[nkwd] = sl + 3;
 				    if (spchar)
-					stc2s (spchar, comment[ikwd]);
+					stc2s (spchar, comment[nkwd]);
 				    }
 				}
+			    nkwd++;
 			    }
 			}
-		    else
-			nkwd = 0;
 		    }
 		}
 	    }
@@ -244,10 +248,16 @@ char **av;
 	else {
 	    if (nkwd >= maxnkwd) {
 		maxnkwd = maxnkwd * 2;
-		kwd = (char **) realloc ((void *)kwd, maxnkwd);
-		comment = (char **) realloc ((void *)comment, maxnkwd);
-    		for (ikwd = maxnkwd/2; ikwd < maxnkwd; ikwd++)
-		    comment[ikwd] = NULL;
+		kwdnew = (char **) calloc (maxnkwd, sizeof (void *));
+		for (ikwd = 0; ikwd < nkwd; ikwd++)
+		    kwdnew[ikwd] = kwd[ikwd];
+		free (kwd);
+		kwd = kwdnew;
+		comnew = (char **) calloc (maxnkwd, sizeof (void *));
+		for (ikwd = 0; ikwd < nkwd; ikwd++)
+		    comnew[ikwd] = comment[ikwd];
+		free (comment);
+		comment = comnew;
 		}
 	    kwd[nkwd] = *av;
 	    nkwd++;
@@ -350,7 +360,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     int newimage;	/* 1 to awrite new image file, else 0 */
     int i, lext, lroot;
     char *image;
-    char newname[128];
+    char newname[MAXNEW];
     char *newval;
     char *ext, *fname, *imext, *imext1;
     char *kw, *kwv, *kwl, *kwv0, *knl;
@@ -399,7 +409,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    hgeti4 (header,"NAXIS",&naxis);
 	    hgeti4 (header,"BITPIX",&bitpix);
 	    if (naxis > 0 && bitpix != 0) {
-		if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
+		if ((image = fitsrfull (filename, nbhead, header)) == NULL) {
 		    if (verbose)
 			fprintf (stderr, "No FITS image in %s\n", filename);
 		    imageread = 0;
@@ -654,13 +664,18 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	if (ext != NULL) {
 	    lext = (fname + strlen (fname)) - ext;
 	    lroot = ext - fname;
+	    if (lroot > MAXNEW)
+		lroot = MAXNEW - 1;
 	    strncpy (newname, fname, lroot);
-	    *(newname + lroot) = 0;
+	    newname[lroot] = (char) 0;
 	    }
 	else {
 	    lext = 0;
 	    lroot = strlen (fname);
-	    strcpy (newname, fname);
+	    if (lroot > MAXNEW)
+		lroot = MAXNEW - 1;
+	    strncpy (newname, fname, lroot);
+	    newname[lroot] = (char) 0;
 	    }
 	imext = strchr (fname, ',');
 	imext1 = NULL;
@@ -850,4 +865,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Nov  7 2002	If writing to a multiextension FITS file, write a new file
  *
  * Feb  4 2003	Fix bug dealing with quotes in @ files
+ * Aug 21 2003	Read N-dimensional FITS image using fitsrfull()
+ * Oct 28 2003	Increase output file name length from 128 to 1024
+ * Oct 29 2003	Clean up command line and list file keyword input
  */
