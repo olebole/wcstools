@@ -1,6 +1,7 @@
-/* File libwcs/fitswcs.c
- * March 23, 2000
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+/*** File libwcs/fitswcs.c
+ *** January 31, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
  * Purpose:     Read and delete FITS image world coordinate system keywords
@@ -32,6 +33,7 @@ char *filename;	/* FITS or IRAF file filename */
     char *header;		/* FITS header */
     struct WorldCoor *wcs;	/* World coordinate system structure */
     char *GetFITShead();
+    char *cwcs;			/* Multiple wcs string (name or character) */
 
     /* Read the FITS or IRAF image file header */
     header = GetFITShead (filename);
@@ -39,7 +41,10 @@ char *filename;	/* FITS or IRAF file filename */
 	return (NULL);
 
     /* Set the world coordinate system from the image header */
-    wcs = wcsinit (header);
+    cwcs = strchr (filename, ':');
+    if (cwcs != NULL)
+	cwcs++;
+    wcs = wcsinitn (header, cwcs);
     if (wcs == NULL) {
 	setwcsfile (filename);
 	wcserr ();
@@ -129,11 +134,11 @@ int verbose;
 	if (hdel (header, flds[i])) {
 	    n++;
 	    if (verbose)
-		printf ("%s: deleted\n", flds[i]);
+		fprintf (stderr,"%s: deleted\n", flds[i]);
 	    }
 	}
     if (verbose && n == 0)
-	printf ("DelWCSFITS: No WCS in header\n");
+	fprintf (stderr,"DelWCSFITS: No WCS in header\n");
 
     /* Delete RA DEC EPOCH, replacing with saved values, if present */
     if (ksearch (header,"WRA")) {
@@ -159,20 +164,20 @@ int verbose;
 	    hdel (header, "EQUINOX");
 	    n++;
 	    if (verbose)
-		printf ("EQUINOX deleted\n");
+		fprintf (stderr,"EQUINOX deleted\n");
 	    }
 	hdel (header, "RADECSYS");
 	n++;
 	if (verbose)
-	    printf ("RADECSYS deleted\n");
+	    fprintf (stderr,"RADECSYS deleted\n");
 	hdel (header, "SECPIX1");
 	n++;
 	if (verbose)
-	    printf ("SECPIX1 deleted\n");
+	    fprintf (stderr,"SECPIX1 deleted\n");
 	hdel (header, "SECPIX2");
 	n++;
 	if (verbose)
-	    printf ("SECPIX2 deleted\n");
+	    fprintf (stderr,"SECPIX2 deleted\n");
 	if (verbose) {
 	    hgets (header,"RA", 16, rastr);
 	    hgets (header,"DEC", 16, decstr);
@@ -180,17 +185,17 @@ int verbose;
 	    hgetr8 (header,"EPOCH",&eq);
 	    if (eq == 0.0)
 		hgetr8 (header,"EQUINOX",&eq);
-	    printf ("DelWCS: Center reset to %s %s %.1f\n", rastr,decstr, eq);
+	    fprintf (stderr,"DelWCS: Center reset to %s %s %.1f\n", rastr,decstr, eq);
 	    }
 	}
     else if (ksearch (header, "EPOCH") && !ksearch (header, "PLTRAH")) {
 	if (hdel (header,"EQUINOX")) {
 	    if (verbose)
-		printf ("EQUINOX: deleted\n");
+		fprintf (stderr,"EQUINOX: deleted\n");
 	    n++;
 	    }
 	else if (verbose)
-	    printf ("DelWCS: EPOCH, but not EQUINOX found\n");
+	    fprintf (stderr,"DelWCS: EPOCH, but not EQUINOX found\n");
 	}
 
     /* Delete SAO polynomial, if present */
@@ -202,14 +207,14 @@ int verbose;
 	    sprintf (keyword,"CO1_%d", i);
 	    hdel (header, keyword);
 	    if (verbose)
-		printf ("%s deleted\n", keyword);
+		fprintf (stderr,"%s deleted\n", keyword);
 	    n++;
 	    }
 	for (i = 1; i < 13; i++) {
 	    sprintf (keyword,"CO2_%d", i);
 	    hdel (header, keyword);
 	    if (verbose)
-		printf ("%s deleted\n", keyword);
+		fprintf (stderr,"%s deleted\n", keyword);
 	    n++;
 	    }
 	}
@@ -223,14 +228,14 @@ int verbose;
 		sprintf (keyword,"PC%03d%03d", i, j);
 		hdel (header, keyword);
 		if (verbose)
-		    printf ("%s deleted\n", keyword);
+		    fprintf (stderr,"%s deleted\n", keyword);
 		n++;
 		}
 	    }
 	}
 
     if (n > 0 && verbose)
-	printf ("%d keywords deleted\n", n);
+	fprintf (stderr,"%d keywords deleted\n", n);
 
     return (n);
 }
@@ -253,52 +258,52 @@ int	verbose;	/* 1 to print WCS header keyword values */
     n = 0;
 
     if (hgets (header,"IMWCS",80,str)) {
-	if (verbose) printf ("IMWCS = %s\n", str);
+	if (verbose) fprintf (stderr,"IMWCS = %s\n", str);
 	n++;
 	}
     if (hgets (header,"CTYPE1",16,str)) {
-	if (verbose) printf ("CTYPE1 = %s\n", str);
+	if (verbose) fprintf (stderr,"CTYPE1 = %s\n", str);
 	n++;
 	}
     if (hgetr8 (header, "CRVAL1", &v)) {
-	if (verbose) printf ("CRVAL1 = %.8f\n", v);
+	if (verbose) fprintf (stderr,"CRVAL1 = %.8f\n", v);
 	n++;
 	}
     if (hgetr8 (header, "CRPIX1", &v)) {
-	if (verbose) printf ("CRPIX1 = %.8f\n", v);
+	if (verbose) fprintf (stderr,"CRPIX1 = %.8f\n", v);
 	n++;
 	}
 
     if (hgets (header,"CTYPE2",16,str)) {
-	if (verbose) printf ("CTYPE2 = %s\n", str);
+	if (verbose) fprintf (stderr,"CTYPE2 = %s\n", str);
 	n++;
 	}
     if (hgetr8 (header, "CRVAL2", &v)) {
-	if (verbose) printf ("CRVAL2 = %.8f\n", v);
+	if (verbose) fprintf (stderr,"CRVAL2 = %.8f\n", v);
 	n++;
 	}
     if (hgetr8 (header, "CRPIX2", &v)) {
-	if (verbose) printf ("CRPIX2 = %.8f\n", v);
+	if (verbose) fprintf (stderr,"CRPIX2 = %.8f\n", v);
 	n++;
 	}
 
     /* Polynomial plate fit */
     if (hgetr8 (header, "CO1_1", &v)) {
-	if (verbose) printf ("CO1_1 = %.8g\n", v);
+	if (verbose) fprintf (stderr,"CO1_1 = %.8g\n", v);
 	for (i = 1; i < 20; i++) {
 	    sprintf (keyword,"CO1_%d",i+1);
 	    if (hgetr8 (header, keyword, &v)) {
-		if (verbose) printf ("%s = %.8g\n", keyword, v);
+		if (verbose) fprintf (stderr,"%s = %.8g\n", keyword, v);
 		n++;
 		}
 	    }
 	}
     if (hgetr8 (header, "CO2_1", &v)) {
-	if (verbose) printf ("CO2_1 = %.8g\n", v);
+	if (verbose) fprintf (stderr,"CO2_1 = %.8g\n", v);
 	for (i = 1; i < 20; i++) {
 	    sprintf (keyword,"CO2_%d",i+1);
 	    if (hgetr8 (header, keyword, &v)) {
-		if (verbose) printf ("%s = %.8g\n", keyword, v);
+		if (verbose) fprintf (stderr,"%s = %.8g\n", keyword, v);
 		n++;
 		}
 	    }
@@ -306,18 +311,18 @@ int	verbose;	/* 1 to print WCS header keyword values */
 
     /* Plate scale and rotation from CD matrix */
     if (hgetr8 (header, "CD1_1", &v)) {
-	if (verbose) printf ("CD1_1 = %.8g\n", v);
+	if (verbose) fprintf (stderr,"CD1_1 = %.8g\n", v);
 	n++;
 	if (hgetr8 (header, "CD1_2", &v)) {
-	    if (verbose) printf ("CD1_2 = %.gf\n", v);
+	    if (verbose) fprintf (stderr,"CD1_2 = %.gf\n", v);
 	    n++;
 	    }
 	if (hgetr8 (header, "CD2_1", &v)) {
-	    if (verbose) printf ("CD2_1 = %.gf\n", v);
+	    if (verbose) fprintf (stderr,"CD2_1 = %.gf\n", v);
 	    n++;
 	    }
 	if (hgetr8 (header, "CD2_2", &v)) {
-	    if (verbose) printf ("CD2_2 = %.gf\n", v);
+	    if (verbose) fprintf (stderr,"CD2_2 = %.gf\n", v);
 	    n++;
 	    }
 	}
@@ -325,19 +330,19 @@ int	verbose;	/* 1 to print WCS header keyword values */
     /* Plate scale and rotation from CDELTn and CROTAn */
     else {
 	if (hgetr8 (header, "CDELT1", &v)) {
-	    if (verbose) printf ("CDELT1 = %.8f\n", v);
+	    if (verbose) fprintf (stderr,"CDELT1 = %.8f\n", v);
 	    n++;
 	    }
 	if (hgetr8 (header, "CROTA1", &v)) {
-	    if (verbose) printf ("CROTA1 = %.3f\n", v);
+	    if (verbose) fprintf (stderr,"CROTA1 = %.3f\n", v);
 	    n++;
 	    }
 	if (hgetr8 (header, "CDELT2", &v)) {
-	    if (verbose) printf ("CDELT2 = %.8f\n", v);
+	    if (verbose) fprintf (stderr,"CDELT2 = %.8f\n", v);
 	    n++;
 	    }
 	if (hgetr8 (header, "CROTA2", &v)) {
-	    if (verbose) printf ("CROTA2 = %.3f\n", v);
+	    if (verbose) fprintf (stderr,"CROTA2 = %.3f\n", v);
 	    n++;
 	    }
 	}
@@ -510,4 +515,7 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Oct 21 1999	Fix declarations after lint
  *
  * Mar 23 2000	Fix bug in IRAF header error message
+ *
+ * Jan 11 2001	Print all messages to stderr
+ * Jan 31 2001	Add code to extract WCS name or character from filename
  */

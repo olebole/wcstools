@@ -1,6 +1,6 @@
 /* File getpix.c
- * March 23, 2000
- * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
+ * January 30, 2001
+ * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
 
@@ -127,7 +127,7 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF pixel values\n");
     fprintf(stderr,"Usage: getpix [-vp][-n num][-g val][-l val][format] file.fit x_range y_range ...\n");
-    fprintf(stderr,"  format: C-style (%f, %d, ...) format for pixel values\n");
+    fprintf(stderr,"  format: C-style (%%f, %%d, ...) format for pixel values\n");
     fprintf(stderr,"  -g: keep pixels with values greater than this\n");
     fprintf(stderr,"  -l: keep pixels with values less than this\n");
     fprintf(stderr,"  -n: number of pixel values printed per page\n");
@@ -488,4 +488,6 @@ char *rrange;   /* Row range string */
  * Dec 13 1999	Fix bug so that -g and -l limits can be ANDed
  *
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
+ *
+ * Jan 30 2001	Fix format specification in help message
  */

@@ -1,7 +1,7 @@
 /*============================================================================
 *
 *   WCSLIB - an implementation of the FITS WCS proposal.
-*   Copyright (C) 1995-1999, Mark Calabretta
+*   Copyright (C) 1995-2000, Mark Calabretta
 *
 *   This library is free software; you can redistribute it and/or modify it
 *   under the terms of the GNU Library General Public License as published
@@ -1044,7 +1044,7 @@ struct prjprm *prj;
 double *phi, *theta;
 
 {
-   double r;
+   double r, s;
    const double tol = 1.0e-12;
 
    if (prj->flag != PRJSET) {
@@ -1058,10 +1058,15 @@ double *phi, *theta;
       *phi = atan2deg (x, -y);
    }
 
-   if (fabs(r-prj->w[0]) < tol) {
-      *theta = -90.0;
+   s = r*prj->w[1];
+   if (fabs(s) > 1.0) {
+      if (fabs(r-prj->w[0]) < tol) {
+         *theta = -90.0;
+      } else {
+         return 2;
+      }
    } else {
-      *theta = 90.0 - 2.0*asindeg (r*prj->w[1]);
+      *theta = 90.0 - 2.0*asindeg (s);
    }
 
    return 0;
@@ -3557,4 +3562,6 @@ double *phi, *theta;
  * Dec 20 1999	Doug Mink - tanfwd() returns error if s<=0.0, not only if s==0.0
  *
  * Jun  2 2000	Doug Mink - include stdlib.h to get abs()
+ *
+ * Feb 15 2001	Doug Mink - update zearev() for WCSLIB 2.6
  */

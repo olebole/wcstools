@@ -1,6 +1,7 @@
-/* File saoimage/wcslib/platepos.c
- * February 29, 2000
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+/*** File saoimage/wcslib/platepos.c
+ *** February 29, 2000
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
 
  * Module:	platepos.c (Plate solution WCS conversion
  * Purpose:	Compute WCS from plate fit

@@ -1,6 +1,7 @@
 /*** File libwcs/tnxfit.c
- *** October 15, 1999
- *** By Doug Mink
+ *** January 11, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
 /*  Nonlinear least squares fitting program using data array 
@@ -127,15 +128,15 @@ struct WorldCoor *wcs0;
 
 #define	PDUMP
 #ifdef	PDUMP
-    printf ("Before:\n");
+    fprintf (stderr,"Before:\n");
     for (i = 0; i < nfit1; i++) {
-	printf ("%3d: ", i);
+	fprintf (stderr,"%3d: ", i);
 	for (j = 0; j < ncoeff; j++)
-	    printf (" %9.7f",p[i][j]);
-	printf ("\n     ");
+	    fprintf (stderr," %9.7f",p[i][j]);
+	fprintf (stderr,"\n     ");
 	for (j = 0; j < ncoeff; j++)
-	    printf (" %9.7f",p[i][ncoeff+j]);
-	printf ("\n");
+	    fprintf (stderr," %9.7f",p[i][ncoeff+j]);
+	fprintf (stderr,"\n");
 	}
 #endif
 
@@ -143,15 +144,15 @@ struct WorldCoor *wcs0;
 
 #define	PDUMP
 #ifdef	PDUMP
-    printf ("\nAfter:\n");
+    fprintf (stderr,"\nAfter:\n");
     for (i = 0; i < nfit1; i++) {
-	printf ("%3d: ", i);
+	fprintf (stderr,"%3d: ", i);
 	for (j = 0; j < ncoeff; j++)
-	    printf (" %9.7f",p[i][j]);
-	printf ("\n     ");
+	    fprintf (stderr," %9.7f",p[i][j]);
+	fprintf (stderr,"\n     ");
 	for (j = 0; j < ncoeff; j++)
-	    printf (" %9.7f",p[i][ncoeff+j]);
-	printf ("\n");
+	    fprintf (stderr," %9.7f",p[i][ncoeff+j]);
+	fprintf (stderr,"\n");
 	}
 #endif
 
@@ -166,13 +167,13 @@ struct WorldCoor *wcs0;
 
 #define RESIDDUMP
 #ifdef RESIDDUMP
-    printf ("iter=%4d\n  ", iter);
+    fprintf (stderr,"iter=%4d\n  ", iter);
     for (j = 0; j < ncoeff; j++)
-	    printf (" %9.7f",vp[j]);
-    printf ("\n    ");
+	    fprintf (stderr," %9.7f",vp[j]);
+    fprintf (stderr,"\n    ");
     for (j = 0; j < ncoeff; j++)
-	    printf (" %9.7f",vp[j+6]);
-    printf ("\n");
+	    fprintf (stderr," %9.7f",vp[j+6]);
+    fprintf (stderr,"\n");
 
     sumx = 0.0;
     sumy = 0.0;
@@ -193,15 +194,15 @@ struct WorldCoor *wcs0;
 	dec2str (decstr, 16, gy_p[i], 2);
 	ra2str (rastr, 16, mx, 3);
 	dec2str (decstr, 16, my, 2);
-	printf ("%2d: c: %s %s ", i+1, rastr, decstr);
-	printf ("i: %s %s %6.3f %6.3f %6.3f\n",
+	fprintf (stderr,"%2d: c: %s %s ", i+1, rastr, decstr);
+	fprintf (stderr,"i: %s %s %6.3f %6.3f %6.3f\n",
 		rastr, decstr, 3600.0*ex, 3600.0*ey,
 		3600.0*sqrt(ex*ex + ey*ey));
 	}
     sumx = sumx / (double)nbin_p;
     sumy = sumy / (double)nbin_p;
     sumr = sumr / (double)nbin_p;
-    printf ("mean dra: %6.3f, ddec: %6.3f, dr = %6.3f\n", sumx, sumy, sumr);
+    fprintf (stderr,"mean dra: %6.3f, ddec: %6.3f, dr = %6.3f\n", sumx, sumy, sumr);
 #endif
 
     for (i = 0; i < nfit1; i++)
@@ -245,12 +246,12 @@ int	iter;	/* Number of iterations */
 
 #define TRACE_CHSQR
 #ifdef TRACE_CHSQR
-    printf ("%4d:", iter);
+    fprintf (stderr,"%4d:", iter);
     for (j = 0; j < ncoeff; j++)
-	printf (" %9.7f",v[j]);
+	fprintf (stderr," %9.7f",v[j]);
     for (j = 0; j < ncoeff; j++)
-	printf (" %9.7f",v[ncoeff+j]);
-    printf (" -> %f\n", chsq);
+	fprintf (stderr," %9.7f",v[ncoeff+j]);
+    fprintf (stderr," -> %f\n", chsq);
 #endif
     return (chsq);
 }
@@ -258,4 +259,6 @@ int	iter;	/* Number of iterations */
 /* Mar 26 1998	New subroutines
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  * Oct 15 1999	Include stdlib.h for malloc() declaration
+ *
+ * Jan 11 2001	Print all messages to stderr
  */

@@ -1,6 +1,7 @@
 /*** File libwcs/tabread.c
  *** December 29, 2000
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
 /* int tabread()	Read tab table stars in specified region

@@ -1,7 +1,8 @@
-/* File wcslib/tnxpos.c
- * December 10, 1999
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- * After IRAF mwcs/wftnx.x and mwcs/wfgsurfit.x
+/*** File wcslib/tnxpos.c
+ *** February 14, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
+ *** After IRAF mwcs/wftnx.x and mwcs/wfgsurfit.x
  */
 
 #include <stdio.h>
@@ -1039,8 +1040,8 @@ double	*basis;		/*o basis functions */
 
     for (i = 2; i < order; i++) {
 	ri = i;
-        basis[i] = ((2.0 * ri - 3.0) * xnorm * basis[i-1] -
-                       (ri - 2.0) * basis[i-2]) / (ri - 1.0);
+        basis[i] = ((2.0 * ri - 1.0) * xnorm * basis[i-1] -
+                       (ri - 1.0) * basis[i-2]) / ri;
         }
 
     return;
@@ -1182,4 +1183,6 @@ double	*coeff;
  * Oct 22 1999	Drop unused variables, fix case statements after lint
  * Dec 10 1999	Fix bug in gsder() which failed to allocate enough memory
  * Dec 10 1999	Compute wcs->rot using wcsrotset() in tnxinit()
+ *
+ * Feb 14 2001	Fixed off-by-one bug in legendre evaluation (Mike Jarvis)
  */

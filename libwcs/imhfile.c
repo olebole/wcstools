@@ -1,6 +1,7 @@
-/* File imhfile.c
- * September 6, 2000
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+/*** File imhfile.c
+ *** January 11, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
 
  * Module:      imhfile.c (IRAF .imh image file reading and writing)
  * Purpose:     Read and write IRAF image files (and translate headers)
@@ -696,7 +697,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 		break;
 	    else if (irafchar == 10) {
 		(void)strncpy (fhead, fitsline, 80);
-		/* printf ("%80s\n",fitsline); */
+		/* fprintf (stderr,"%80s\n",fitsline); */
 		if (strncmp (fitsline, "OBJECT ", 7) != 0) {
 		    fhead = fhead + 80;
 		    }
@@ -708,7 +709,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 		if (j > 80) {
 		    if (strncmp (fitsline, "OBJECT ", 7) != 0) {
 			(void)strncpy (fhead, fitsline, 80);
-			/* printf ("%80s\n",fitsline); */
+			/* fprintf (stderr,"%80s\n",fitsline); */
 			j = 9;
 			fhead = fhead + 80;
 			}
@@ -740,7 +741,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 		    (void)strncpy (fhead, fitsline, 80);
 		    fhead = fhead + 80;
 		    }
-		/* printf ("%80s\n",fitsline); */
+		/* fprintf (stderr,"%80s\n",fitsline); */
 		j = 0;
 		for (k = 0; k < 80; k++)
 		    fitsline[k] = ' ';
@@ -752,7 +753,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 			j = 9;
 			fhead = fhead + 80;
 			}
-		    /* printf ("%80s\n",fitsline); */
+		    /* fprintf (stderr,"%80s\n",fitsline); */
 		    for (k = 0; k < 80; k++)
 			fitsline[k] = ' ';
 		    }
@@ -1825,4 +1826,6 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * Jun  2 2000	Drop unused variables in fits2iraf() after lint
  * Jun 12 2000	If pixel filename has no / or $, use same path as header file
  * Sep  6 2000	Use header directory if pixel file not found at its pathname
+ *
+ * Jan 11 2001	Print all messages to stderr
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** March 27, 2000
+ *** January 18, 2001
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -124,6 +124,8 @@ int	verbose;	/* 1 to print each star's position */
     double bz, bs;		/* Pixel value scaling */
     int lwidth;
     int nextline;
+    int xborder1, xborder2, yborder1, yborder2;
+    char trimsec[32];
 
     hgeti4 (header,"NAXIS1", &w);
     hgeti4 (header,"NAXIS2", &h);
@@ -152,12 +154,36 @@ int	verbose;	/* 1 to print each star's position */
 	return (nstars);
 	}
 
+    /* Set trim section for star searching */
+    if (hgets (header, "TRIMSEC", 32, trimsec)) {
+	char *tx1, *tx2, *tx3, *tx4, *tx5;
+	tx1 = trimsec + 1;
+	tx2 = strchr (trimsec, ':');
+	*tx2 = (char) 0;
+	xborder1 = atoi (tx1+1);
+	tx3 = strchr (tx2, ',');
+	*tx3 = (char) 0;
+	xborder2 = w - atoi (tx2);
+	tx4 = strchr (tx2, ':');
+	*tx4 = (char) 0;
+	yborder1 = atoi (tx3);
+	tx5 = strchr (tx4, ']');
+	*tx5 = (char) 0;
+	yborder2 = atoi (tx4) - h;
+	}
+    else {
+	xborder1 = fsborder;
+	xborder2 = fsborder;
+	yborder1 = fsborder;
+	yborder2 = fsborder;
+	}
+
     /* Allocate a buffer to hold one image line */
-    svec =  (double *) malloc (w * sizeof (double));
+    svec = (double *) malloc (w * sizeof (double));
 
     /* Compute image noise from a central swath */
-    x1 = fsborder;
-    x2 = w - fsborder;
+    x1 = xborder1;
+    x2 = w - xborder2;
     if (x1 > x2) {
 	x1 = 1;
 	x2 = w;
@@ -172,24 +198,24 @@ int	verbose;	/* 1 to print each star's position */
 
     /* Fill in borders of the image line buffer with noise */
     svlim = svec + w;
-    svb = svec + fsborder;
+    svb = svec + xborder1;
     for (sv = svec; sv < svb; sv++)
 	*sv = noise;
-    for (sv = svlim - fsborder; sv < svlim; sv++)
+    for (sv = svlim - xborder2; sv < svlim; sv++)
 	*sv = noise;
 
     /* Scan for stars based on surrounding local noise figure */
     nstars = 0;
-    lwidth = w - (2 * fsborder);
-    for (y = fsborder; y < h-fsborder; y++) {
+    lwidth = w - xborder2 - xborder1 + 1;
+    for (y = yborder1; y < h-yborder1; y++) {
         int ipix = 0;
 
 	/* Get one line of the image minus the noise-filled borders */
-	nextline = (w * (y-1)) + fsborder - 1;
+	nextline = (w * (y-1)) + xborder1 - 1;
 	getvec (image, bitpix, bz, bs, nextline, lwidth, svb);
 
 	/* Search row for bright pixels */
-	for (x = fsborder; x < w-fsborder; x++) {
+	for (x = xborder1; x < w-xborder2; x++) {
 
 	    /* Redo stats once for every several pixels */
 	    if (ipix++ % ispix == 0) {
@@ -786,4 +812,6 @@ char *parstring;
  * Nov 23 1999	Lengthen imcatname from 32 to 256 for long pathnames
  *
  * Mar 27 2000	Drop unused variable imtab
+ *
+ * Jan 18 2001	Use trim section from image header, if not trimmed
  */

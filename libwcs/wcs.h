@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
- * November 2, 2000
+ * January 31, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 #ifndef _wcs_h_
@@ -100,6 +100,10 @@ struct WorldCoor {
 				/* where %s is replaced by WCS coordinates */
 				/* where %f is replaced by the image filename */
 				/* where %x is replaced by image coordinates */
+  double	ltm[4];		/* Image rotation matrix */
+  double	ltv[2];		/* Image offset */
+  int		idpix[2];	/* First pixel to use in image (x, y) */
+  int		ndpix[2];	/* Number of pixels to use in image (x, y) */
 };
 
 /* Projections (1-26 are WCSLIB) */
@@ -196,7 +200,23 @@ extern "C" {
 
     /* WCS subroutines in wcs.c */
     struct WorldCoor *wcsinit (const char* hstring);
-    struct WorldCoor *wcsninit (const char* hstring, int len);
+    struct WorldCoor *wcsninit (
+	const char* hstring,	/* FITS header */
+	int len);		/* Length of FITS header */
+    struct WorldCoor *wcsinitn (
+	const char* hstring,	/* FITS header */
+	const char* wcsname);	/* WCS name */
+    struct WorldCoor *wcsninitn (
+	const char* hstring,	/* FITS header */
+	const char* wcsname);	/* WCS name */
+	int len);		/* Length of FITS header */
+    struct WorldCoor *wcsinitc (
+	const char* hstring,	/* FITS header */
+	const char wcschar);	/* WCS character (A-Z) */
+    struct WorldCoor *wcsninitc (
+	const char* hstring,	/* FITS header */
+	const char wcschar);	/* WCS character (A-Z) */
+	int len);		/* Length of FITS header */
     void wcsfree (
 	struct WorldCoor *wcs);	/* World coordinate system structure */
 
@@ -239,6 +259,12 @@ extern "C" {
         int     *offscl);
 
     double wcsdist(		/* Compute angular distance between 2 sky positions */
+	double ra0,		/* World coordinates in degrees */
+	double dec0,
+	double ra1,		/* World coordinates in degrees */
+	double dec1);
+
+    double wcsdiff(		/* Compute angular distance between 2 sky positions */
 	double ra0,		/* World coordinates in degrees */
 	double dec0,
 	double ra1,		/* World coordinates in degrees */
@@ -411,6 +437,10 @@ extern "C" {
 /* WCS subroutines in wcs.c */
 struct WorldCoor *wcsinit(); /* set up a WCS structure from a FITS image header */
 struct WorldCoor *wcsninit(); /* set up a WCS structure from a FITS image header */
+struct WorldCoor *wcsinitn(); /* set up a WCS structure from a FITS image header */
+struct WorldCoor *wcsninitn(); /* set up a WCS structure from a FITS image header */
+struct WorldCoor *wcsinitc(); /* set up a WCS structure from a FITS image header */
+struct WorldCoor *wcsninitc(); /* set up a WCS structure from a FITS image header */
 struct WorldCoor *wcsxinit(); /* set up a WCS structure from arguments */
 struct WorldCoor *wcskinit(); /* set up a WCS structure from keyword values */
 void wcsfree();		/* Free a WCS structure and its contents */
@@ -426,6 +456,7 @@ void wcssize();		/* Return RA and Dec of image center, size in RA and Dec */
 void wcsfull();		/* Return RA and Dec of image center, size in degrees */
 void wcsrange();	/* Return min and max RA and Dec of image in degrees */
 double wcsdist();	/* Distance in degrees between two sky coordinates */
+double wcsdiff();	/* Distance in degrees between two sky coordinates */
 void wcscominit();	/* Initialize catalog search command set by -wcscom */
 void wcscom();		/* Execute catalog search command set by -wcscom */
 char *getradecsys();	/* Return current value of coordinate system */
@@ -546,4 +577,7 @@ void wcscstr();		/* Return system string from system code, equinox, epoch */
  * Jan 28 2000	Add flags for choice of WCS projection subroutines
  * Jun 26 2000	Add XY coordinate system
  * Nov  2 2000	Add wcsconv() to convert coordinates when parallax or rv known
+ *
+ * Jan 17 2001	Add idpix and ndpix for trim section, ltm for readout rotation
+ * Jan 31 2001	Add wcsinitn(), wcsninitn(), wcsinitc(), and wcsninitc()
  */

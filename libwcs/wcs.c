@@ -1,6 +1,7 @@
 /*** File libwcs/wcs.c
  *** July 3, 2000
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
  * Purpose:	Convert FITS WCS to pixels and vice versa:
@@ -24,6 +25,7 @@
 
  * Subroutine:	wcsshift (wcs,cra,cdec) resets the center of a WCS structure
  * Subroutine:	wcsdist (x1,y1,x2,y2) compute angular distance between ra/dec or lat/long
+ * Subroutine:	wcsdiff (x1,y1,x2,y2) compute angular distance between ra/dec or lat/long
  * Subroutine:	wcscominit (wcs,command) sets up a command format for execution by wcscom
  * Subroutine:	wcsoutinit (wcs,coor) sets up the coordinate system used by pix2wcs
  * Subroutine:	getwcsout (wcs) returns current output coordinate system used by pix2wcs
@@ -1378,6 +1380,30 @@ double	x2,y2;	/* (RA,Dec) or (Long,Lat) in degrees */
 	diff = 2.0 * atan2 (sqrt (w), sqrt (1.0 - w));
 	diff = raddeg (diff);
 	return (diff);
+}
+
+
+/* Compute distance in degrees between two sky coordinates  away from pole */
+
+double
+wcsdiff (x1,y1,x2,y2)
+
+double	x1,y1;	/* (RA,Dec) or (Long,Lat) in degrees */
+double	x2,y2;	/* (RA,Dec) or (Long,Lat) in degrees */
+
+{
+    double xdiff, ydiff, ycos, diff;
+
+    ycos = cos (degrad ((y2 + y1) / 2.0));
+    xdiff = x2 - x1;
+    if (xdiff > 180.0)
+	xdiff = xdiff - 360.0;
+    if (xdiff < -180.0)
+	xdiff = xdiff + 360.0;
+    xdiff = xdiff / ycos;
+    ydiff = (y2 - y1);
+    diff = sqrt ((xdiff * xdiff) + (ydiff * ydiff));
+    return (diff);
 }
 
 

@@ -1,12 +1,14 @@
-/* File webread.c
- * December 29, 2000
- * By Doug Mink, http code from John Roll
+/*** File webread.c
+ *** January 3, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
+ *** (http code from John Roll)
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include <strings.h>
+#include <string.h>
 #include <math.h>
 #include "wcs.h"
 #include "wcscat.h"
@@ -605,5 +607,7 @@ FileINetParse(file, port, adrinet)
  * Dec 11 2000	Do not print messages unless nlog > 0
  * Dec 12 2000	Fix problems with return if no stars
  * Dec 18 2000	Clean up code after lint
- * Jan  2 2001	Set MAXHOSTNAMELENGTH to 256
+ *
+ * Jan  2 2001	Set MAXHOSTNAMELENGTH to 256, bypassing system constant
+ * Jan  3 2001	Include string.h, not strings.h
  */

@@ -1,6 +1,7 @@
-/*** File libwcs/daocread.c
+/*** File libwcs/daoread.c
  *** March 20, 1997
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
 #include <unistd.h>

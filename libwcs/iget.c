@@ -1,6 +1,7 @@
 /*** File libwcs/iget.c
  *** July 29, 2000
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
 
  * Module:	iget.c (Get IRAF FITS Header parameter values)
  * Purpose:	Extract values for variables from IRAF keyword value string

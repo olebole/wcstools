@@ -1,6 +1,7 @@
 /*** File libwcs/fitsfile.c
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** July 28, 2000
+ *** January 30, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitsfile.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -28,6 +29,10 @@
  *		Extract column from FITS table line as a character string
  * Subroutine:	fitswimage (filename, header, image)
  *		Write FITS header and image
+ * Subroutine:	fitswext (filename, header, image)
+ *		Write FITS header and image as extension to existing FITS file
+ * Subroutine:	fitswhdu (fd, filename, header, image)
+ *		Write FITS header and image as extension to file descriptor
  * Subroutine:	fitscimage (filename, header, filename0)
  *		Write FITS header and copy FITS image
  * Subroutine:	fitswhead (filename, header)
@@ -35,7 +40,7 @@
  * Subroutine:	isfits (filename)
  *		Return 1 if file is a FITS file, else 0
 
- * Copyright:   1999 Smithsonian Astrophysical Observatory
+ * Copyright:   2001 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -81,9 +86,10 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 			   (0=primary -1=first with data -2=use EXTNAME) */
     char extname[32];	/* FITS extension name */
     char *ext;		/* Desired FITS extension name, if any */
-    char *ext1;		/* End of desired FITS extension name */
     char *pheader;	/* Primary header (naxis is 0) */
     char cext;
+    char *rbrac;	/* Pointer to right bracket if present in file name */
+    char *mwcs;		/* Pointer to WCS name separated by : */
 
     pheader = NULL;
     lprim = 0;
@@ -93,33 +99,30 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     if (strcmp (filename,"stdin") && strcmp (filename,"STDIN") ) {
 
 	/* Check for FITS extension and ignore for file opening */
+	rbrac = NULL;
 	ext = strchr (filename, ',');
 	if (ext == NULL)
 	    ext = strchr (filename, '%');
 	if (ext == NULL) {
 	    ext = strchr (filename, '[');
-	    if (ext != NULL) {
-		ext1 = strchr (ext+1, ']');
-		if (ext1 != NULL)
-		    *ext1 = (char) 0;
-		}
+	    if (rbrac != NULL)
+		*rbrac = (char) 0;
 	    }
 	if (ext != NULL) {
 	    cext = *ext;
 	    *ext = (char) 0;
-	    ext = ext + 1;
+	    ext++;
 	    }
+
+	/* Check for FITS WCS specification and ignore for file opening */
+	mwcs = strchr (filename, ':');
+	if (mwcs != NULL)
+	    *mwcs = (char) 0;
 
 	fd = -1;
 	fd = fitsropen (filename);
-	if (fd < 0) {
-	    fprintf (stderr, "FITSRHEAD:  cannot read file %s\n", filename);
-	    if (ext != NULL)
-		*(ext-1) = cext;
-	    return (NULL);
-	    }
+
 	if (ext != NULL) {
-	    *(ext-1) = cext;
 	    if (isnum (ext))
 		extnum = atoi (ext);
 	    else
@@ -127,7 +130,21 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    }
 	else
 	    extnum = -1;
-	
+
+	/* Repair the damage done to the file-name string during parsing */
+	if (ext != NULL)
+	    *(ext-1) = cext;
+	if (rbrac != NULL)
+	    *rbrac = ']';
+	if (mwcs != NULL)
+	    *mwcs = ':';
+
+	if (fd < 0) {
+	    if (mwcs != NULL)
+		*mwcs = ':';
+	    fprintf (stderr, "FITSRHEAD:  cannot read file %s\n", filename);
+	    return (NULL);
+	    }
 	}
 #ifndef VMS
     else {
@@ -160,7 +177,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		if (headend == NULL) {
 		    if (ntry < 9) {
 			if (verbose)
-			    printf ("FITSRHEAD: %d / %d bytes read %d\n",
+			    fprintf (stderr,"FITSRHEAD: %d / %d bytes read %d\n",
 				     nbr,nbytes,ntry);
 			}
 		    else {
@@ -173,6 +190,8 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 			free (header);
 			if (pheader != NULL)
 			    free (pheader);
+			if (mwcs != NULL)
+			    *mwcs = ':';
 			return (NULL);
 			}
 		    }
@@ -335,7 +354,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    strncpy (header, "SIMPLE  ", 8);
 	    hputl (header, "SIMPLE", 1);
 	    }
-	headend = ksearch (header,"END");
+	headend = blsearch (header,"END");
 	lext = headend - header;
 	if (lext + lprim > nbh) {
 	    nrec = (lext + lprim) / FITSBLOCK;
@@ -346,9 +365,12 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    (void) hlength (header, *lhead);
 	    }
 	strncpy (headend, pheader, lprim);
+	hdel (header, "EXTEND");
 	free (pheader);
 	}
 
+    if (mwcs != NULL)
+	*mwcs = ':';
     return (header);
 }
 
@@ -371,13 +393,14 @@ char	*header;	/* FITS header for image (previously read) */
     /* Open the image file and read the header */
     if (strcmp (filename,"stdin") && strcmp (filename,"STDIN") ) {
 	fd = -1;
+
 	fd = fitsropen (filename);
 	if (fd < 0) {
 	    fprintf (stderr, "FITSRIMAGE:  cannot read file %s\n", filename);
 	    return (NULL);
 	    }
 
-	/* Skip over FITS header */
+	/* Skip over FITS header and whatever else needs to be skipped */
 	if (lseek (fd, nbhead, SEEK_SET) < 0) {
 	    (void)close (fd);
 	    fprintf (stderr, "FITSRIMAGE:  cannot skip header of file %s\n",
@@ -469,11 +492,19 @@ char	*inpath;	/* Pathname for FITS tables file to read */
     int fd;		/* file descriptor for FITS tables file (returned) */
     char *ext;		/* extension name or number */
     char cext;
+    char *mwcs;		/* Pointer to WCS name separated by : */
 
 /* Check for FITS extension and ignore for file opening */
     ext = strchr (inpath, ',');
     if (ext == NULL)
 	ext = strchr (inpath, '%');
+    if (ext == NULL)
+	ext = strchr (inpath, '[');
+
+/* Check for FITS WCS specification and ignore for file opening */
+    mwcs = strchr (inpath, ':');
+    if (mwcs != NULL)
+	*mwcs = (char) 0;
 
 /* Open input file */
     for (ntry = 0; ntry < 3; ntry++) {
@@ -481,9 +512,13 @@ char	*inpath;	/* Pathname for FITS tables file to read */
 	    cext = *ext;
 	    *ext = 0;
 	    }
+	if (mwcs != NULL)
+	    *mwcs = (char) 0;
 	fd = open (inpath, O_RDONLY);
 	if (ext != NULL)
 	    *ext = cext;
+	if (mwcs != NULL)
+	    *mwcs = ':';
 	if (fd >= 0)
 	    break;
 	else if (ntry == 2) {
@@ -493,7 +528,7 @@ char	*inpath;	/* Pathname for FITS tables file to read */
 	}
 
     if (verbose)
-	printf ("FITSROPEN:  input file %s opened\n",inpath);
+	fprintf (stderr,"FITSROPEN:  input file %s opened\n",inpath);
 
     return (fd);
 }
@@ -602,7 +637,7 @@ int	*nchar;		/* Number of characters in one table row (returned) */
     nfields = 0;
     hgeti4 (header,"TFIELDS",&nfields);
     if (verbose)
-	printf ("FITSRTHEAD: %d fields per table entry\n", nfields);
+	fprintf (stderr, "FITSRTHEAD: %d fields per table entry\n", nfields);
     pw = (struct Keyword *) calloc (nfields, sizeof(struct Keyword));
     if (!pw) {
 	fprintf (stderr,"FITSRTHEAD: cannot allocate table structure\n");
@@ -645,7 +680,7 @@ int	*nchar;		/* Number of characters in one table row (returned) */
 /* Set up table for access to desired fields */
     verbose = tverb;
     if (verbose)
-	printf ("FITSRTHEAD: %d keywords read\n", *nk);
+	fprintf (stderr,"FITSRTHEAD: %d keywords read\n", *nk);
 
 /* If nk = 0, allocate and return structures for all table fields */
     if (*nk <= 0) {
@@ -717,7 +752,7 @@ char	*line;		/* One line of FITS table (returned) */
 	    nbr = read (fd, tbuff, nbuff);
 	    if (nbr < nbline) {
 		if (verbose)
-		    printf ("FITSRHEAD: %d / %d bytes read %d\n",
+		    fprintf (stderr,"FITSRHEAD: %d / %d bytes read %d\n",
 				nbr,nbuff,ntry);
 		if (ntry == 2)
 		    return (nbr);
@@ -838,10 +873,10 @@ int	maxchar;	/* Maximum number of characters in returned string */
 	return ( 0 );
 }
 
+extern int errno;
+
 
 /*FITSWIMAGE -- Write FITS header and image */
-
-extern int errno;
 
 int
 fitswimage (filename, header, image)
@@ -852,10 +887,6 @@ char	*image;		/* FITS image pixels */
 
 {
     int fd;
-    int nbhead, nbimage, nblocks, bytepix;
-    int bitpix, naxis, naxis1, naxis2, nbytes, nbw, nbpad, nbwp;
-    char *endhead, *lasthead, *padding;
-    double bzero, bscale;
 
     /* Open the output file */
     if (strcmp (filename,"stdout") && strcmp (filename,"STDOUT") ) {
@@ -879,6 +910,64 @@ char	*image;		/* FITS image pixels */
     else
 	fd = STDOUT_FILENO;
 #endif
+
+    return (fitswhdu (fd, filename, header, image));
+}
+
+
+/*FITSWEXT -- Write FITS header and image as extension to a file */
+
+int
+fitswext (filename, header, image)
+
+char	*filename;	/* Name of IFTS image file */
+char	*header;	/* FITS image header */
+char	*image;		/* FITS image pixels */
+
+{
+    int fd;
+
+    /* Open the output file */
+    if (strcmp (filename,"stdout") && strcmp (filename,"STDOUT") ) {
+
+	if (!access (filename, 0)) {
+	    fd = open (filename, O_WRONLY);
+	    if (fd < 3) {
+		fprintf (stderr, "FITSWEXT:  file %s not writeable\n",
+			 filename);
+		return (0);
+		}
+	    }
+	else {
+	    fd = open (filename, O_APPEND, 0666);
+	    if (fd < 3) {
+		fprintf (stderr, "FITSWEXT:  cannot append to file %s\n",
+			 filename);
+		return (0);
+		}
+	    }
+	}
+#ifndef VMS
+    else
+	fd = STDOUT_FILENO;
+#endif
+
+    return (fitswhdu (fd, filename, header, image));
+}
+
+
+int
+fitswhdu (fd, filename, header, image)
+
+int	fd;		/* File descriptor */
+char	*filename;	/* Name of IFTS image file */
+char	*header;	/* FITS image header */
+char	*image;		/* FITS image pixels */
+{
+    int nbhead, nbimage, nblocks, bytepix;
+    int bitpix, naxis, naxis1, naxis2, nbytes, nbw, nbpad, nbwp;
+    char *endhead, *lasthead, *padding;
+    double bzero, bscale;
 
     /* Change BITPIX=-16 files to BITPIX=16 with BZERO and BSCALE */
     bitpix = 0;
@@ -908,7 +997,7 @@ char	*image;		/* FITS image pixels */
     
     nbw = write (fd, header, nbytes);
     if (nbw < nbhead) {
-	fprintf (stderr, "FITSWIMAGE:  wrote %d / %d bytes of header to file %s\n",
+	fprintf (stderr, "FITSWHDU:  wrote %d / %d bytes of header to file %s\n",
 		 nbw, nbytes, filename);
 	close (fd);
 	return (0);
@@ -928,7 +1017,7 @@ char	*image;		/* FITS image pixels */
     naxis2 = 1;
     hgeti4 (header,"NAXIS2",&naxis2);
     if (bitpix == 0) {
-	/* fprintf (stderr, "FITSWIMAGE:  BITPIX is 0; image not written\n"); */
+	/* fprintf (stderr, "FITSWHDU:  BITPIX is 0; image not written\n"); */
 	close (fd);
 	return (0);
 	}
@@ -970,7 +1059,7 @@ char	*image;		/* FITS image pixels */
 	imswap (bitpix, image, nbimage);
 
     if (nbw < nbimage) {
-	fprintf (stderr, "FITSWIMAGE:  wrote %d / %d bytes of image to file %s\n",
+	fprintf (stderr, "FITSWHDU:  wrote %d / %d bytes of image to file %s\n",
 		 nbw, nbimage, filename);
 	return (0);
 	}
@@ -1040,8 +1129,22 @@ char	*filename0;	/* Name of input FITS image file */
 	return (0);
 	}
 
-    /* Open the input file and skip over the header */
+    /* Find size of output header */
+    nbhead = fitsheadsize (header);
+
+    /* If overwriting, be more careful if new header is longer than old */
+    if (!strcmp (filename, filename0) && nbhead > nbhead0) {
+	if ((image = fitsrimage (filename0, nbhead0, oldhead)) == NULL) {
+	    fprintf (stderr, "FITSCIMAGE:  cannot read image from file %s\n",
+		     filename0);
+	    free (oldhead);
+	    return (0);
+	    }
+	return (fitswimage (filename, header, image));
+	}
     free (oldhead);
+
+    /* Open the input file and skip over the header */
     if (strcmp (filename0,"stdin") && strcmp (filename0,"STDIN") ) {
 	fdin = -1;
 	fdin = fitsropen (filename0);
@@ -1079,21 +1182,14 @@ char	*filename0;	/* Name of input FITS image file */
 	    }
 	}
 
-    /* Find size of output header */
-    endhead = ksearch (header,"END") + 80;
-    nbhead = endhead - header;
-    nblocks = nbhead / FITSBLOCK;
-    if (nblocks * FITSBLOCK < nbhead)
-	nblocks = nblocks + 1;
-    nbytes = nblocks * FITSBLOCK;
-
     /* Pad header with spaces */
-    lasthead = header + nbytes;
+    endhead = ksearch (header,"END") + 80;
+    lasthead = header + nbhead;
     while (endhead < lasthead)
 	*(endhead++) = ' ';
 
     /* Write header to file */
-    nbw = write (fdout, header, nbytes);
+    nbw = write (fdout, header, nbhead);
     if (nbw < nbhead) {
 	fprintf (stderr, "FITSCIMAGE:  wrote %d / %d bytes of header to file %s\n",
 		 nbw, nbytes, filename);
@@ -1233,6 +1329,24 @@ char    *filename;      /* Name of file for which to find size */
 	}
 }
 
+/* FITSHEADSIZE -- Find size of FITS header */
+
+int
+fitsheadsize (header)
+
+char	*header;	/* FITS header */
+{
+    char *endhead;
+    int nbhead, nblocks;
+
+    endhead = ksearch (header,"END") + 80;
+    nbhead = endhead - header;
+    nblocks = nbhead / FITSBLOCK;
+    if (nblocks * FITSBLOCK < nbhead)
+        nblocks = nblocks + 1;
+    return (nblocks * FITSBLOCK);
+}
+
 /*
  * Feb  8 1996	New subroutines
  * Apr 10 1996	Add subroutine list at start of file
@@ -1294,4 +1408,12 @@ char    *filename;      /* Name of file for which to find size */
  * Jul 20 2000	Drop BITPIX and NAXIS from primary header if extension printerd
  * Jul 20 2000	Start primary part of header with ROOTHEAD keyword
  * Jul 28 2000	Add loop to deal with buffered stdin
+ *
+ * Jan 11 2001	Print all messages to stderr
+ * Jan 12 2001	Add extension back onto filename after fitsropen() (Guy Rixon)
+ * Jan 18 2001	Drop EXTEND keyword when extracting an extension
+ * Jan 18 2001	Add fitswext() to append HDU and fitswhdu() to do actual writing
+ * Jan 22 2001	Ignore WCS name or letter following a : in file name in fitsrhead()
+ * Jan 30 2001	Fix FITSCIMAGE so it doesn't overwrite data when overwriting a file
+ * Feb 20 2001	Ignore WCS name or letter following a : in file name in fitsropen()
  */

@@ -1,6 +1,7 @@
 /*** File libwcs/actread.c
- *** December 11, 2000
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+ *** January 11, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edh
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
 #include <unistd.h>
@@ -167,7 +168,7 @@ int	nlog;		/* 1 for diagnostics */
 	    istar1 = actsra (starcat, star, rra1);
 	    istar2 = actsra (starcat, star, rra2);
 	    if (verbose)
-		printf ("ACTREAD: Searching stars %d.%d through %d.%d\n",
+		fprintf (stderr,"ACTREAD: Searching stars %d.%d through %d.%d\n",
 			rnum,istar1,rnum,istar2);
 
 	    /* Loop through catalog for this region */
@@ -694,7 +695,7 @@ double	dra;		/* Right ascension in degrees */
 	    ra2str (raxstr, 16, rax, 3);
 	    ra2str (ramins, 16, ramin, 3);
 	    ra2str (ramaxs, 16, ramax, 3);
-	    printf ("%9d: %s -> %s  %9d: %s  %9d: %s\n",
+	    fprintf (stderr,"%9d: %s -> %s  %9d: %s  %9d: %s\n",
 		    istarx, rastr, raxstr, ismin,ramins,ismax,ramaxs);
 	    }
 	if (istarx == istar0)
@@ -838,4 +839,6 @@ char	*filename;	/* Name of file for which to find size */
  * Sep 25 2000	Set sc->sptype to 2 to indicate presence of spectral type
  * Nov 29 2000	Add option to read catalog using HTTP
  * Dec 11 2000	Allow catalog search engine URL in actcd[]
+ *
+ * Jan 11 2001	All printing is to stderr
  */

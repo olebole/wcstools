@@ -117,7 +117,30 @@
 *         coordinate reference pixel, CRPIXn.
 *      double *pc
 *         Pointer to the first element of the PC (pixel coordinate)
-*         transformation matrix.
+*         transformation matrix.  The expected order is
+*
+*            lin.pc = {PC1_1, PC1_2, PC2_1, PC2_2};
+*
+*         This may be conveniently constructed from a two-dimensional array
+*         via
+*
+*            double m[2][2] = {{PC1_1, PC1_2},
+*                              {PC2_1, PC2_2}};
+*         
+*         which is equivalent to,
+*
+*            double m[2][2];
+*            m[0][0] = PC1_1;
+*            m[0][1] = PC1_2;
+*            m[1][0] = PC2_1;
+*            m[1][1] = PC2_2;
+*
+*         for which the storage order is
+*
+*            PC1_1, PC1_2, PC2_1, PC2_2
+*
+*         so it would be legitimate to set lin.pc = *m.
+*
 *      double *cdelt
 *         Pointer to the first element of an array of double containing the
 *         coordinate increments, CDELTn.
@@ -421,4 +444,6 @@ double inv[];
    return 0;
 }
 /* Dec 20 1999	Doug Mink - Include wcslib.h, which includes lin.h
+ *
+ * Feb 15 2001	Doug Mink - Add comments for WCSLIB 2.6; no code changes
  */

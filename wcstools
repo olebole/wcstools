@@ -1,5 +1,5 @@
 #!/bin/sh
-echo "WCSTools 2.7.0 Programs"
+echo "WCSTools 2.8.6 Programs"
 
 echo "addpix:    Add a constant value(s) to specified pixel(s)"
 echo "conpix:    Operate on all of the pixels of an image"

@@ -1,6 +1,8 @@
-/* File libwcs/imgetwcs.c
- * September 14, 2000
- * By Doug Mink, remotely based on UIowa code
+/*** File libwcs/imgetwcs.c
+ *** January 11, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
+ *** (remotely based on UIowa code)
  */
 
 #include <stdio.h>
@@ -244,7 +246,7 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
             dec2str (dstr, 32, dec1, 2);
 	    }
 	wcscstr (cstr, wcs->syswcs, wcs->equinox, wcs->epoch);
-	printf ("Reference pixel (%.2f,%.2f) %s %s %s\n",
+	fprintf (stderr,"Reference pixel (%.2f,%.2f) %s %s %s\n",
 		 wcs->xrefpix, wcs->yrefpix, rstr, dstr, cstr);
 	}
 
@@ -336,7 +338,7 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
             dec2str (dstr, 32, dec1, 2);
 	    }
 	wcscstr (cstr,*sysout,*eqout,wcs->epoch);
-	printf ("Reference pixel (%.2f,%.2f) %s %s %s\n",
+	fprintf (stderr,"Reference pixel (%.2f,%.2f) %s %s %s\n",
 		wcs->xrefpix, wcs->yrefpix, rstr, dstr, cstr);
 	}
 
@@ -351,9 +353,9 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	    dec2str (dstr, 32, *cdec, 2);
 	    }
 	wcscstr (cstr, *sysout, *eqout, wcs->epoch);
-	printf ("Search at %s %s %s", rstr, dstr, cstr);
-	printf (" +- %s %s\n", rstr, dstr);
-	printf ("Image width=%d height=%d, %g arcsec/pixel\n",
+	fprintf (stderr,"Search at %s %s %s", rstr, dstr, cstr);
+	fprintf (stderr," +- %s %s\n", rstr, dstr);
+	fprintf (stderr,"Image width=%d height=%d, %g arcsec/pixel\n",
 				*wp, *hp, *secpix);
 	}
 
@@ -531,4 +533,6 @@ char*	ptype;
  * Mar 27 2000	Drop unused subroutine setradius()
  * May 24 2000	Print degrees in debugging messages if output format
  * Sep 14 2000	Set xinc and yinc correctly if center pixel in header
+ *
+ * Jan 11 2001	All printing to stderr
  */

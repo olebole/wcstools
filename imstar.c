@@ -1,5 +1,5 @@
 /* File imstar.c
- * March 23, 2000
+ * January 22, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -356,7 +356,6 @@ usage ()
 
 
 extern int FindStars ();
-struct WorldCoor *wcsinit();	
 extern int pix2wcst();
 
 static void
@@ -808,4 +807,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  * Mar 15 2000	Add NULL proper motion arguments to RASortStars()
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
+ *
+ * Jan 22 2001	Drop declaration of wcsinit()
  */

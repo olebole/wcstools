@@ -1,6 +1,7 @@
-/* File libwcs/catutil.c
- * December 15, 2000
- * By Doug Mink, dmink@cfa.harvard.edu
+/*** File libwcs/catutil.c
+ *** January 17, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
 /* int RefCat (refcatname,title,syscat,eqcat,epcat)
@@ -997,13 +998,14 @@ char	*string;	/* character string to tokenize */
 char	*cwhite;	/* additional whitespace characters
 			 * if = tab, disallow spaces and commas */
 {
-    char squote,dquote,jch, newline;
+    char squote, dquote, vbar, jch, newline;
     char *iq, *stri, *wtype, *str0, *inew;
     int i,j,naddw;
 
     newline = (char) 10;
     squote = (char) 39;
     dquote = (char) 34;
+    vbar = (char) 124;
     if (string == NULL)
 	return (0);
 
@@ -1025,23 +1027,24 @@ char	*cwhite;	/* additional whitespace characters
 
     /* if character is tab, allow only tabs and nulls as separators */
     if (naddw > 0 && !strncmp (cwhite, "tab", 3)) {
-	tokens->white[0] = (char) 9;
-	tokens->white[1] = (char) 0;
+	tokens->white[0] = (char) 9;	/* Tab */
+	tokens->white[1] = (char) 0;	/* NULL (end of string) */
 	tokens->nwhite = 2;
 	}
 
     /* otherwise, allow spaces, tabs, commas, nulls, and cwhite */
     else {
-	tokens->nwhite = 3 + naddw;;
-	tokens->white[0] = ' ';
-	tokens->white[1] = (char) 9;
-	tokens->white[2] = ',';
-	tokens->white[3] = (char) 0;
+	tokens->nwhite = 4 + naddw;;
+	tokens->white[0] = ' ';		/* Space */
+	tokens->white[1] = (char) 9;	/* Tab */
+	tokens->white[2] = ',';		/* Comma */
+	tokens->white[3] = (char) 124;	/* Vertical bar */
+	tokens->white[4] = (char) 0;	/* Null (end of string) */
 	if (tokens->nwhite > 20)
 	    tokens->nwhite = 20;
 	if (naddw > 0) {
 	    i = 0;
-	    for (j = 3; j < tokens->nwhite; j++) {
+	    for (j = 4; j < tokens->nwhite; j++) {
 		tokens->white[j] = cwhite[i];
 		i++;
 		}
@@ -1089,7 +1092,7 @@ char	*cwhite;	/* additional whitespace characters
 
 	/* If this is one of the additional whitespace characters,
 	 * pass as a separate token */
-	if (wtype > tokens->white + 2) {
+	if (wtype > tokens->white + 3) {
 
 	    /* Terminate token before whitespace */
 	    if (stri > str0) {
@@ -1471,4 +1474,6 @@ char	*isp;	/* Spectral type */
  * Nov 21 2000	Clean up logic in RefCat()
  * Nov 28 2000	Try PPMra and SAOra in RefCat() as well as PPM and SAO
  * Dec 13 2000	Add StrNdec() to get number of decimal places in star numbers
+ *
+ * Jan 17 2001	Add vertical bar (|) as column separator
  */

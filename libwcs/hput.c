@@ -1,6 +1,7 @@
 /*** File libwcs/hput.c
- *** July 20, 2000
- *** By Doug Mink
+ *** January 11, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hput.c (Put FITS Header parameter values)
  * Purpose:	Implant values for parameters into FITS header string
@@ -26,7 +27,7 @@
  * Subroutine:  getltime () returns current local time as ISO-style string
  * Subroutine:  getutime () returns current UT as ISO-style string
 
- * Copyright:   1999 Smithsonian Astrophysical Observatory
+ * Copyright:   2001 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -359,7 +360,6 @@ char *value;	/* character string containing the value for variable
     char newcom[50];
     char *v, *vp, *v1, *v2, *q1, *q2, *c1, *ve;
     int lkeyword, lcom, lval, lc, lv1, lhead;
-    char *blsearch();
 
     /* Find length of keyword, value, and header */
     lkeyword = strlen (keyword);
@@ -507,9 +507,9 @@ char *value;	/* character string containing the value for variable
 
 	if (verbose) {
 	    if (lcom > 0)
-		printf ("HPUT: %s  = %s  / %s\n",keyword, value, newcom);
+		fprintf (stderr,"HPUT: %s  = %s  / %s\n",keyword, value, newcom);
 	    else
-		printf ("HPUT: %s  = %s\n",keyword, value);
+		fprintf (stderr,"HPUT: %s  = %s\n",keyword, value);
 	    }
 
 	return (0);
@@ -568,7 +568,7 @@ hputcom (hstring,keyword,comment)
 	/* If parameter is not found, return without doing anything */
 	if (v1 == NULL) {
 	    if (verbose)
-		printf ("HPUTCOM: %s not found\n",keyword);
+		fprintf (stderr,"HPUTCOM: %s not found\n",keyword);
 	    return (-1);
 	    }
 
@@ -603,7 +603,7 @@ hputcom (hstring,keyword,comment)
 	}
 
     if (verbose) {
-	printf ("HPUTCOM: %s / %s\n",keyword,comment);
+	fprintf (stderr,"HPUTCOM: %s / %s\n",keyword,comment);
 	}
     return (0);
 }
@@ -1149,4 +1149,7 @@ int	ndec;		/* Number of decimal places in degree string */
  * Apr 19 2000	Fix bug in hadd() which overwrote line
  * Jun  2 2000	Dropped unused variable lv in hputm() after lint
  * Jul 20 2000	Drop unused variables blank and i in hputc()
+ *
+ * Jan 11 2001	Print all messages to stderr
+ * Jan 18 2001	Drop declaration of blsearch(); it is in fitshead.h
  */

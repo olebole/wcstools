@@ -1,6 +1,7 @@
 /*** File libwcs/gscread.c
  *** December 12, 2000
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
 #include <stdlib.h>

@@ -1,3 +1,17 @@
+Version 2.8.7 (February 15, 2001)
+imwcs: Implement -u initial matches, though matches do not set initial WCS
+ Direct all diagnostic output to stderr so it comes out in the correct order
+ if it is sent to a file.  Fix overwriting output image so it works even if
+ final header is longer than original header.  Fix -o option so it can either
+ overwrite the input file or specify file.
+imrot: Fix -o option so it can either overwrite the input file or specify file.
+binread and ctgread: if pole is included, search entire RA range of RA-sorted
+ catalog
+wcslib.h, lin.c, proj.c: minor updates from WCSLIB 2.5 to WCSLIB 2.6 (May 2000)
+wcsinit.c: New subroutines wcsinitn(header,name) and wcsinitc(header,char)
+ allow use of multiple WCS's, though no dependent ones yet.
+fortcat.c, fortwcs.c: Fortran interfaces to catalog and WCS subroutines
+
 Version 2.8.6 (January 2, 2001)
 scat, imcat, imwcs, immatch: Read catalogs across the web from CGI scat
 webread.c: New subroutines to read catalogs via http

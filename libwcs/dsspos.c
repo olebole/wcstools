@@ -1,6 +1,7 @@
-/* File saoimage/wcslib/dsspos.c
- * October 21, 1999
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+/*** File saoimage/wcslib/dsspos.c
+ *** October 21, 1999
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
 
  * Module:	dsspos.c (Plate solution WCS conversion)
  * Purpose:	Compute WCS from Digital Sky Survey plate fit

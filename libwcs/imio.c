@@ -1,6 +1,7 @@
 /*** File wcslib/imio.c
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** September 20, 2000
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
 
  * Module:      imio.c (image pixel manipulation)
  * Purpose:     Read and write pixels from arbitrary data type 2D arrays

@@ -1,6 +1,7 @@
 /*** File libwcs/ty2read.c
- *** December 11, 2000
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+ *** January 11, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
 #include <unistd.h>
@@ -160,7 +161,7 @@ int	nlog;		/* 1 for diagnostics */
 	    istar1 = rlist[ireg];
 	    istar2 = istar1 + nlist[ireg];
 	    if (verbose)
-		printf ("TY2READ: Searching stars %d through %d\n",
+		fprintf (stderr,"TY2READ: Searching stars %d through %d\n",
 			istar1, istar2-1);
 
 	    /* Open file for this region of Tycho 2 catalog */
@@ -958,4 +959,6 @@ char	*filename;	/* Name of file for which to find size */
  * Sep 25 2000	Set sc->sptype to 2 to indicate presence of spectral type
  * Nov 29 2000	Add option to read catalog using HTTP
  * Dec 11 2000	Accept catalog search engine URL in ty2cd[]
+ *
+ * Jan 11 2001	All printing goes to stderr
  */

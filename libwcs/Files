@@ -35,6 +35,10 @@ fitswcs.c
   or IRAF .imh image, reading only the header.
   GetFITShead() returns a FITS header from a FITS or IRAF .imh image.
   DelWCS() delete the WCS keywords in a FITS header.
+fortcat.c
+  Fortran wrapper subroutines for catalog reading subroutines ctgread() and ctgrnum()
+fortwcs.c
+  Fortran wrapper subroutines for all useful subroutines in wcs.c and wcsinit.c
 gscread.c
   Return HST Guide Stars from standard CDROM format FITS table files for
   a given RA, Dec, and magnitude range.
@@ -110,8 +114,6 @@ wcsinit.c
 wcscon.c
   Subroutines for converting between B1950, J2000, and galactic
   coordinates, mostly based on Starlink SLA_LIB subroutines.
-wcsfort.c
-  Fortran wrapper subroutines for all useful subroutines in wcs.c and wcsinit.c
 webread.c
   Open Starbase files across the Internet using HTTP queries
 worldpos.c

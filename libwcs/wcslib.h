@@ -311,9 +311,27 @@ extern const char *wcsmix_errmsg[];
    int sphfwd(), sphrev();
 #endif
 
-#ifndef PI
-#define PI 3.141592653589793238462643
+#ifdef PI
+#undef PI
 #endif
+
+#ifdef D2R
+#undef D2R
+#endif
+
+#ifdef R2D
+#undef R2D
+#endif
+
+#ifdef SQRT2
+#undef SQRT2
+#endif
+
+#ifdef SQRT2INV
+#undef SQRT2INV
+#endif
+
+#define PI 3.141592653589793238462643
 #define D2R PI/180.0
 #define R2D 180.0/PI
 #define SQRT2 1.4142135623730950488
@@ -353,4 +371,6 @@ extern const char *wcsmix_errmsg[];
 #endif /* wcslib_h_ */
 
 /* Feb  3 2000	Doug Mink - Make cplusplus ifdefs for braces all-inclusive
+ *
+ * Feb 15 2001	Doug Mink - Undefine math constants if already defined
  */

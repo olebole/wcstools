@@ -1,11 +1,12 @@
 /*** File libwcs/ctgread.c
- *** December 18, 2000
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+ *** February 16, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
-/* int ctgread()	Read ASCII catalog stars in specified region
- * int ctgrnum()	Read ASCII catalog stars with specified numbers
- * int ctgopen()	Open ASCII catalog, returning number of entries
+/* int ctgread()	Read catalog stars in specified region of the sky
+ * int ctgrnum()	Read catalog stars with specified numbers
+ * int ctgopen()	Open catalog, returning number of entries
  * int ctgstar()	Get ASCII catalog entry for one star
  * int ctgsize()	Return length of file in bytes
  * int isacat()		Return 1 if file is ASCII catalog, else 0
@@ -54,7 +55,7 @@ double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	nsmax;		/* Maximum number of stars to be returned */
 struct StarCat **starcat; /* Catalog data structure */
-double	*tnum;		/* Array of UJ numbers (returned) */
+double	*tnum;		/* Array of ID numbers (returned) */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
 double	*tpra;		/* Array of right ascension proper motions (returned) */
@@ -171,6 +172,24 @@ int	nlog;
 	wrap = 1;
     else
 	wrap = 0;
+
+    /* Search zones which include the poles cover 360 degrees in RA */
+    if (cdec - ddec < -90.0) {
+	if (dec1 > dec2)
+	    dec2 = dec1;
+	dec1 = -90.0;
+	ra1 = 0.0;
+	ra2 = 359.99999;
+	wrap = 0;
+	}
+    if (cdec + ddec > 90.0) {
+	if (dec2 < dec1)
+	    dec1 = dec2;
+	dec2 = 90.0;
+	ra1 = 0.0;
+	ra2 = 359.99999;
+	wrap = 0;
+	}
 
 /* mag1 is always the smallest magnitude */
     if (mag2 < mag1) {
@@ -1348,4 +1367,7 @@ char	*in;	/* Character string */
  * Nov 21 2000	Add WEBCAT as tab catalog results returned from the Web
  * Nov 28 2000	Add starcat structure to *rnum() calls
  * Dec 18 2000	Include math.h for sqrt()
+ *
+ * Feb 14 2001	Search all around RA if either pole is included
+ * Feb 16 2001	Update comments
  */

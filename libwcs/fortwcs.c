@@ -1,5 +1,5 @@
-/*** File saoimage/wcslib/wcsf77.c
- *** June 2, 2000
+/*** File saoimage/wcslib/fortwcs.c
+ *** February 16, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -532,4 +532,6 @@ int	*offscl;
  * Dec 10 1999	Add error handling for iwcs; document all subroutines
  *
  * Jun  2 2000	Fix WCS structure pointers
+ *
+ * Feb 16 2001	Change name of file from wcsfort.c to fortwcs.c
  */

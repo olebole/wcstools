@@ -1,7 +1,7 @@
 /*** File wcscon.c
+ *** January 11, 2001
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Some subroutines are based on Starlink subroutines by Patrick Wallace
- *** November 6, 2000
 
  * Module:	wcscon.c (World Coordinate System conversion)
  * Purpose:	Convert between various sky coordinate systems
@@ -38,7 +38,7 @@
 #ifndef VMS
 #include <stdlib.h>
 #endif
-#include <stdio.h>	/* for printf() and sprintf() */
+#include <stdio.h>	/* for fprintf() and sprintf() */
 #include <ctype.h>
 #include <string.h>
 #include "wcs.h"
@@ -1049,7 +1049,7 @@ double *rv;		/* Rradial velocity (km/s, +ve = moving away) */
     if (diag) {
 	dra = 240.0 * raddeg (r1950 - r2000);
 	ddec = 3600.0 * raddeg (d1950 - d2000);
-	printf("B1950-J2000: dra= %11.5f sec  ddec= %f11.5f arcsec\n",
+	fprintf(stderr,"B1950-J2000: dra= %11.5f sec  ddec= %f11.5f arcsec\n",
 		dra, ddec);
 	}
 
@@ -1343,7 +1343,7 @@ double *rv;		/* Rradial velocity (km/s, +ve = moving away) */
     if (diag) {
 	dra = 240.0 * raddeg (r2000 - r1950);
 	ddec = 3600.0 * raddeg (d2000 - d1950);
-	printf("J2000-B1950: dra= %11.5f sec  ddec= %f11.5f arcsec\n",
+	fprintf(stderr,"J2000-B1950: dra= %11.5f sec  ddec= %f11.5f arcsec\n",
 		dra, ddec);
 	}
     return;
@@ -1419,8 +1419,8 @@ double *dphi;	/* b1950.0 'FK4' dec in degrees
     /*  Print result if in diagnostic mode */
     if (idg) {
 	eqcoor = eqstrn (dra,ddec);
-	printf ("FK42GAL: B1950 RA,Dec= %s\n",eqcoor);
-	printf ("FK42GAL: long = %.5f lat = %.5f\n",dl,db);
+	fprintf (stderr,"FK42GAL: B1950 RA,Dec= %s\n",eqcoor);
+	fprintf (stderr,"FK42GAL: long = %.5f lat = %.5f\n",dl,db);
 	free (eqcoor);
 	}
 
@@ -1477,9 +1477,9 @@ double *dphi;	/* Galactic latitude (b2) in degrees
 
     /*  print result if in diagnostic mode */
     if (idg) {
-	printf ("GAL2FK4: long = %.5f lat = %.5f\n",dl,db);
+	fprintf (stderr,"GAL2FK4: long = %.5f lat = %.5f\n",dl,db);
 	eqcoor = eqstrn (dra,ddec);
-	printf ("GAL2FK4: B1950 RA,Dec= %s\n",eqcoor);
+	fprintf (stderr,"GAL2FK4: B1950 RA,Dec= %s\n",eqcoor);
 	free (eqcoor);
 	}
 
@@ -1550,8 +1550,8 @@ double *dphi;	/* J2000 declination in degrees
     /*  Print result if in diagnostic mode */
     if (idg) {
 	eqcoor = eqstrn (dra,ddec);
-	printf ("FK52GAL: J2000 RA,Dec= %s\n",eqcoor);
-	printf ("FK52GAL: long = %.5f lat = %.5f\n",dl,db);
+	fprintf (stderr,"FK52GAL: J2000 RA,Dec= %s\n",eqcoor);
+	fprintf (stderr,"FK52GAL: long = %.5f lat = %.5f\n",dl,db);
 	free (eqcoor);
 	}
 
@@ -1602,9 +1602,9 @@ double *dphi;	/* Galactic latitude (b2) in degrees
 
     /*  Print result if in diagnostic mode */
     if (idg) {
-	printf ("GAL2FK5: long = %.5f lat = %.5f\n",dl,db);
+	fprintf (stderr,"GAL2FK5: long = %.5f lat = %.5f\n",dl,db);
 	eqcoor = eqstrn (dra,ddec);
-	printf ("GAL2FK5: J2000 RA,Dec= %s\n",eqcoor);
+	fprintf (stderr,"GAL2FK5: J2000 RA,Dec= %s\n",eqcoor);
 	free (eqcoor);
 	}
 
@@ -2073,7 +2073,7 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
  * May 13 1998	Add wcsceq()
  * May 13 1998	Add equinox arguments to wcscon()
  * Jun 24 1998	Set J2000 from ICRS in wcscsys()
- * Jul  9 1998	Include stdio.h for printf() and sprintf() declarations
+ * Jul  9 1998	Include stdio.h for fprintf() and sprintf() declarations
  * Sep 17 1998	Add wcscstr() to get coordinate string
  * Sep 21 1998	Fix bug in wcscstr() which returned B2000 instead of J2000
  * Sep 21 1998	Add subroutine to convert proper motions, too.
@@ -2090,4 +2090,6 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
  * Oct 31 2000	Add proper motion after fk425 or fk524 from system epoch
  * Oct 31 2000	Fix proper motion units in fk524p() and fk425p()
  * Nov  6 2000	Update fk425 and fk524 algorithms to include parallax and rv
+ *
+ * Jan 11 2001	Print all messages to stderr
  */

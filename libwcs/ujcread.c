@@ -1,6 +1,7 @@
 /*** File libwcs/ujcread.c
- *** November 29, 2000
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+ *** January 11, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
 #include <unistd.h>
@@ -479,10 +480,10 @@ int	verbose;	/* 1 for diagnostics */
 	}
 
     nrgn = i;
-    if (verbose)
-	printf ("UJCREG:  %d zones: %d - %d\n",nrgn,zones[0],zones[i-1]);
-    if (verbose)
-	printf("UJCREG: RA: %.5f - %.5f, Dec: %.5f - %.5f\n",ra1,ra2,dec1,dec2);
+    if (verbose) {
+	fprintf (stderr,"UJCREG:  %d zones: %d - %d\n",nrgn,zones[0],zones[i-1]);
+	fprintf(stderr,"UJCREG: RA: %.5f - %.5f, Dec: %.5f - %.5f\n",ra1,ra2,dec1,dec2);
+	}
 
     return (nrgn);
 }
@@ -784,4 +785,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Jun 26 2000	Add coordinate system to SearchLim() arguments
  * Oct 25 2000	Add USNO plate catalogs; fix byte order test
  * Nov 29 2000	Add option to read UJ catalog using HTTP
+ *
+ * Jan 11 2001	All printing is to stderr
  */

@@ -25,6 +25,8 @@ extern int fitsropen();
 extern char *fitsrhead();
 extern char *fitsrimage();
 extern int fitswhead();
+extern int fitswext();
+extern int fitswhdu();
 extern int fitswimage();
 extern int fitscimage();
 extern int isfits();

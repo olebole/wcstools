@@ -1,6 +1,8 @@
-/* File libwcs/imsetwcs.c
- * December 18, 2000
- * By Doug Mink, based on UIowa code
+/*** File libwcs/imsetwcs.c
+ *** January 11, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
+ *** (based on UIowa code)
  */
 
 #include <stdio.h>
@@ -146,19 +148,11 @@ int	verbose;
     sp = NULL;
     starcat = NULL;
 
-    /* Set reference catalog coordinate system and epoch */
-    if (nofit) {
-	refsys = 0;
-	refeq = 0.0;
-	}
-    else {
-	refcat = RefCat (refcatname, title, &refsys, &refeq, &refep);
-	wcscstr (refcoor, refsys, refeq, refep);
-	}
-
     /* Use already-matched stars first, if they are present */
     if (strlen (matchcat) > 0) {
-	if ((nbin = ReadMatch (matchcat, sx, sy, gra, gdec)) < 1) {
+	refsys = WCS_J2000;
+	refeq = 2000.0;
+	if ((nbin = ReadMatch (matchcat, &sx, &sy, &gra, &gdec, verbose)) < 1) {
 	    ret = 0;
 	    goto out;
 	    }
@@ -170,16 +164,41 @@ int	verbose;
 	    ret = 0;
 	    goto out;
 	    }
-	nbin = FitMatch (nbin, sx, sy, gra, gdec, gx, gy, wcs, verbose);
+	nbin = FitMatch (nbin, sx, sy, gra, gdec, wcs, verbose);
 	hputs (header, "WCSRFCAT", matchcat);
 	hputs (header, "WCSIMCAT", matchcat);
 	hputi4 (header, "WCSMATCH", nbin);
 	hputi4 (header, "WCSNREF", nbin);
-	hputnr8 (header, "WCSTOL", 4, tolerance);
+	if (!(gnum = (double *) calloc (nbin, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gnum\n",
+		     nbin*sizeof(double));
+	for (is = 0; is < nbin; is++)
+	    gnum[is] = (double)(is + 1);
+	if (!(gx = (double *) calloc (nbin, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gx\n",
+		     nbin*sizeof(double));
+	if (!(gy = (double *) calloc (nbin, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gy\n",
+		     nbin*sizeof(double));
+	if (!(goff = (int *) calloc (nbin, sizeof(int))))
+	    fprintf (stderr, "Could not calloc %d bytes for gy\n",
+		     nbin*sizeof(double));
 
 	SetFITSWCS (header, wcs);
+	nrg = nbin;
+	ns = nbin;
 	if (refcatname == NULL)
 	    goto match;
+	}
+
+    /* Set reference catalog coordinate system and epoch */
+    if (nofit) {
+	refsys = 0;
+	refeq = 0.0;
+	}
+    else {
+	refcat = RefCat (refcatname, title, &refsys, &refeq, &refep);
+	wcscstr (refcoor, refsys, refeq, refep);
 	}
 
     /* get nominal position and scale */
@@ -284,24 +303,24 @@ getfield:
     /* Note how reference stars were selected */
     if (ng > ngmax) {
 	if (verbose)
-	    printf ("Using %d / %d reference stars brighter than %.1f\n",
+	    fprintf (stderr,"Using %d / %d reference stars brighter than %.1f\n",
 		     nrg, ng, gm[nrg-1]);
 	}
     else {
 	if (verbose) {
 	    if (refmag1 > 0.0 && refmag2 > 0.0)
-		printf ("Using all %d reference stars from %.1f to %.1f mag.\n",
+		fprintf (stderr,"Using all %d reference stars from %.1f to %.1f mag.\n",
 			ng, refmag1, refmag2);
 	    else if (refmag2 > 0.0)
-		printf ("Using all %d reference stars brighter than %.1f\n",
+		fprintf (stderr,"Using all %d reference stars brighter than %.1f\n",
 			ng,refmag2);
 	    else
-		printf ("using all %d reference stars\n", ng);
+		fprintf (stderr,"using all %d reference stars\n", ng);
 	    }
 	}
 
     if (verbose) {
-	printf ("%s:\n",refcatname);
+	fprintf (stderr,"%s:\n",refcatname);
 	for (ig = 0; ig < nrg; ig++) {
 	    if (ig == 0)
 		maxnum = gnum[ig];
@@ -313,10 +332,10 @@ getfield:
 	    ra2str (rstr, 32, gra[ig], 3);
 	    dec2str (dstr, 32, gdec[ig], 2);
 	    CatNum (refcat, nnfld, 0, gnum[ig], numstr);
-	    printf ("%s %s %s %5.2f %6.1f %6.1f\r",
+	    fprintf (stderr,"%s %s %s %5.2f %6.1f %6.1f\r",
 		    numstr,rstr,dstr,gm[ig],gx[ig],gy[ig]);
 	    }
-	printf ("\n");
+	fprintf (stderr,"\n");
 	}
 
     if (nrg < minstars) {
@@ -400,13 +419,13 @@ getfield:
 	    }
 	if (verbose) {
 	    if (nbg == ng)
-		printf ("Using all %d reference stars\n", ng);
+		fprintf (stderr,"Using all %d reference stars\n", ng);
 	    else
-		printf ("Using brightest %d / %d reference stars\n", nbg, ng);
+		fprintf (stderr,"Using brightest %d / %d reference stars\n", nbg, ng);
 	    if (nbs == ns)
-		printf ("Using all %d image stars\n", ns);
+		fprintf (stderr,"Using all %d image stars\n", ns);
 	    else
-		printf ("Using brightest %d / %d image stars\n", nbs,ns);
+		fprintf (stderr,"Using brightest %d / %d image stars\n", nbs,ns);
 	    }
 
 	if (verbose) {
@@ -419,10 +438,10 @@ getfield:
 		xmag = -2.5 * log10 (sb[is]);
 		if (!is) mdiff = gm[0] - xmag;
 		xmag = xmag + mdiff;
-		printf ("%4d %s %s %6.2f %6.1f %6.1f %d\r",
+		fprintf (stderr,"%4d %s %s %6.2f %6.1f %6.1f %d\r",
 			is+1, rastr, decstr, xmag, sx[is], sy[is], sp[is]);
 		}
-	    printf ("\n");
+	    fprintf (stderr,"\n");
 	    }
 
 	/* Match offsets between all pairs of image stars and reference stars
@@ -435,7 +454,7 @@ getfield:
 	    goto out;
 	    }
 	else if (verbose)
-	    printf ("%d / %d bin hits\n", nbin, nbg);
+	    fprintf (stderr,"%d / %d bin hits\n", nbin, nbg);
 
 	imcatname = getimcat ();
 	if (strlen (imcatname) == 0)
@@ -537,7 +556,10 @@ match:
 	    }
 	if (igs > -1) {
 	    gnum1[nmatch] = gnum[igs];
-	    gm1[nmatch] = gm[igs];
+	    if (gm != NULL)
+		gm1[nmatch] = gm[igs];
+	    else
+		gm1[nmatch] = 0.0;
 	    gra1[nmatch] = gra[igs];
 	    gdec1[nmatch] = gdec[igs];
 	    sx1[nmatch] = sx[is];
@@ -553,8 +575,12 @@ match:
 	hputi4 (header, "WCSNREF", nmax);
 	hputnr8 (header, "WCSTOL", 4, tolerance);
 	if (rprint)
-	    printf ("# nmatch= %d nstars= %d between %s and %s  niter= %d\n",
-		    nmatch, nmax, refcatname, imcatname, niter);
+	    if (refcatname == NULL)
+		printf ("# nmatch= %d nstars= %d in and %s  niter= %d\n",
+			nmatch, nmax, imcatname, niter);
+	    else
+		printf ("# nmatch= %d nstars= %d between %s and %s  niter= %d\n",
+			nmatch, nmax, refcatname, imcatname, niter);
 
 	PrintRes (header,wcs,nmatch,sx1,sy1,gra1,gdec1,gm1,gnum1,refcat,rprint);
 
@@ -562,15 +588,19 @@ match:
 	if (!iterate && !recenter && fitplate) {
 
 	    if (verbose)
-		printf ("Fitting matched stars with a polynomial\n");
+		fprintf (stderr,"Fitting matched stars with a polynomial\n");
 
 	    /* Fit residuals */
 	    if (FitPlate (wcs, sx1, sy1, gra1, gdec1, nmatch, fitplate,
 			  verbose))
-		printf ("FitPlate cannot fit matches\n");
+		fprintf (stderr,"FitPlate cannot fit matches\n");
 
 	    /* Print the new residuals */
 	    else {
+		if (refcatname == NULL)
+		printf ("# nmatch= %d nstars= %d in %s niter= %d\n",
+			nmatch, nmax, imcatname, niter);
+		else
 		printf ("# nmatch= %d nstars= %d between %s and %s niter= %d\n",
 			nmatch, nmax, refcatname, imcatname, niter);
 		PrintRes (header,wcs,nmatch,sx1,sy1,gra1,gdec1,gm1,gnum1,refcat,verbose);
@@ -987,4 +1017,8 @@ int recenter;
  * Dec  6 2000	Drop static refcatname and setrefcat()
  * Dec 18 2000	Always allocate proper motion arrays; clean up code after lint
  * Dec 18 2000	Call ReadMatch() to read file of X/Y/RA/Dec matches
+ *
+ * Jan  8 2001	Add verbose flag to ReadMatch() call
+ * Jan  9 2001	Fix bug in FitMatch() call
+ * Jan 11 2001	All output except residuals to stderr
  */

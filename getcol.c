@@ -1,5 +1,5 @@
 /* File getcol.c
- * December 11, 2000
+ * January 17, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -41,6 +41,7 @@ static char **op;		/* Operations to check */
 static char **cop;		/* Operation characters */
 static void strclean();
 static int napp=0;		/* Number of lines to append */
+static int ndec=-1;		/* Number of decimal places in f.p. output */
 
 main (ac, av)
 int ac;
@@ -156,6 +157,13 @@ char **av;
 		countcol++;
 		break;
 
+	    case 'd':	/* Number of decimal places in f.p. output */
+		if (ac < 2)
+		    usage ();
+		ndec = atoi (*++av);
+		ac--;
+		break;
+
 	    case 'h':	/* Print Starbase tab table header */
 		printhead++;
 		break;
@@ -234,6 +242,12 @@ char **av;
 		cop[nop] = strchr (*av, '+');
 	    if (cop[nop] == NULL)
 		cop[nop] = strchr (*av, '/');
+	    if (cop[nop] == NULL)
+		cop[nop] = strchr (*av, 's');
+	    if (cop[nop] == NULL)
+		cop[nop] = strchr (*av, 'm');
+	    if (cop[nop] == NULL)
+		cop[nop] = strchr (*av, 'p');
 	    nop++;
 	    }
 
@@ -255,9 +269,10 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Extract specified columns from an ASCII table file\n");
-    fprintf (stderr,"Usage: [-amv][-l num][-n num][-r lines][-s num] filename [column number range]\n");
+    fprintf (stderr,"Usage: [-amv][-d num][-l num][-n num][-r lines][-s num] filename [column number range]\n");
     fprintf(stderr,"  -a: Sum numeric colmuns\n");
     fprintf(stderr,"  -c: Add count of number of lines in each column at end\n");
+    fprintf(stderr,"  -d: Number of decimal places in f.p. output\n");
     fprintf(stderr,"  -h: Print Starbase tab table header\n");
     fprintf(stderr,"  -k: Print number of columns on first line\n");
     fprintf(stderr,"  -l: Number of lines to add to each line\n");
@@ -748,54 +763,73 @@ char	*lfile;		/* Name of file with lines to list */
 		    }
 		printf ("\n");
 		}
-	    /* Print columns being operated on */
-	    for (iop = 0; iop < nop; iop++) {
 
-		/* Extract test value from comparison string */
-		top = *cop[iop];
-		*cop[iop] = (char) 0;
-		cstr = cop[iop]+1;
-		dnum = atof (cstr);
-		*cop[iop] = top;
-
-		/* Extract token from input line */
-		itok = atoi (op[iop]);
-		if (getoken (tokens, itok, token)) {
-		    dtok = atof (token);
-		    if (top == '+')
-			printf ("%f", dtok + dnum);
-		    else if (top == '*')
-			printf ("%f", dtok * dnum);
-		    else if (top == '*')
-			printf ("%f", dtok / dnum);
-		    else
-			printf ("___");
-		    if (i < nop-1 || nfind > 0) {
-			if (tabout)
-			    printf ("	");
-			else
-			    printf (" ");
-			}
-		    }
-		}
+	    /* Print requested columns */
 	    for (i = 0; i < nfind; i++) {
 		if (getoken (tokens, inum[i], token)) {
-		    if (inum[i] > tokens.ntok || inum[i] < 1)
-			printf ("___");
-		    else
-			printf ("%s", token);
-		    if (i < nfind-1) {
+		    if (i > 0) {
 			if (tabout)
 			    printf ("	");
 			else
 			    printf (" ");
 			}
+		    if (inum[i] > tokens.ntok || inum[i] < 1)
+			printf ("___");
+		    else if (ndec > -1 && isnum (token) == 2) {
+			num2str (numstr, atof (token), 0, ndec);
+			printf ("%s", numstr);
+			}
+		    else
+			printf ("%s", token);
 		    nt++;
 		    nent[i]++;
 		    if (isnum (token)) {
 			sum[i] = sum[i] + atof (token);
 			nsum[i]++;
 			}
+		    }
+		}
+
+	    /* Print columns being operated on */
+	    for (iop = 0; iop < nop; iop++) {
+		if (i > 0 || nfind > 0) {
+		    if (tabout)
+			printf ("	");
+		    else
+			printf (" ");
+		    }
+
+		/* Extract test value from comparison string */
+		top = *cop[iop];
+		*cop[iop] = (char) 0;
+		cstr = cop[iop]+1;
+		if (isnum (cstr) > 1)
+		    dnum = atof (cstr);
+		else {
+		    itok = atoi (cstr);
+		    if (getoken (tokens, itok, token))
+			dnum = atof (token);
+		    else {
+			printf ("___");
+			continue;
+			}
+		    }
+		*cop[iop] = top;
+
+		/* Extract token from input line */
+		itok = atoi (op[iop]);
+		if (getoken (tokens, itok, token)) {
+		    dtok = atof (token);
+		    if (top == '+' || top == 'a')
+			printf ("%f", dtok + dnum);
+		    else if (top == '-' || top == 's')
+			printf ("%f", dtok - dnum);
+		    else if (top == '*' || top == 'm')
+			printf ("%f", dtok * dnum);
+		    else if (top == '/' || top == 'd')
+			printf ("%f", dtok / dnum);
+		    else
+			printf ("___");
 		    }
 		}
 	    if (nt > 0)
@@ -934,11 +968,14 @@ iscolop (string)
 
 char *string;
 {
-    if (strchr (string, '*') != NULL || strchr (string, '+') != NULL)
-	return (1);
-    else if (strchr (string, '/') != NULL || strchr (string, '-') != NULL) {
-	int notafile = access(string,0);
-	if (notafile)
+    /* Check for presence of operation */
+    if (strchr (string, '+') != NULL || strchr (string, '-') != NULL ||
+	strchr (string, '*') != NULL || strchr (string, '/') != NULL ||
+	strchr (string, 'a') != NULL || strchr (string, 's') != NULL ||
+	strchr (string, 'm') != NULL || strchr (string, 'd') != NULL) {
+
+	/* Check to see if string is a file */
+	if (access(string,0))
 	    return (1);
 	else
 	    return (0);
@@ -965,4 +1002,7 @@ char *string;
  * Oct 23 2000	Declare ListFile(); fix column arithmetic command line options
  * Nov 20 2000	Clean up code using lint
  * Dec 11 2000	Include fitshead.h for string search
+ *
+ * Jan 17 2001	Add -d option to set number of output decimal places
+ * Jan 17 2001	Add a, s, m, d for add, subtract, multiply, divide const or col
  */

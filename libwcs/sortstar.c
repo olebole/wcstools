@@ -1,6 +1,7 @@
-/* File libwcs/sortstar.c
- * March 14, 2000
- * By Doug Mink
+/*** File libwcs/sortstar.c
+ *** March 14, 2000
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
 /* void FluxSortStars()		Sort star list based on brightness

@@ -1,5 +1,5 @@
 /* File imrot.c
- * September 12, 2000
+ * February 13, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -19,7 +19,9 @@ extern char *RotFITS();
 
 static int verbose = 0;	/* verbose/debugging flag */
 static int mirror = 0;	/* reflect image across vertical axis */
+static int automirror = 0;	/* reflect image if IRAF header says to */
 static int rotate = 0;	/* rotation in degrees, degrees counter-clockwise */
+char outname[128];		/* Name for output image */
 static int bitpix = 0;	/* number of bits per pixel (FITS code) */
 static int fitsout = 0;	/* Output FITS file from IRAF input if 1 */
 static int nsplit = 0;	/* Output multiple FITS files from n-extension file */
@@ -38,6 +40,8 @@ char **av;
     char *listfile;
     char *fni;
     int lfn, i;
+
+    outname[0] = 0;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -59,12 +63,25 @@ char **av;
     	    fitsout++;
     	    break;
 
+    	case 'a':	/* Flip image around N-S axis if IRAF header says to */
+	    automirror = 1;
+    	    break;
+
     	case 'l':	/* image flipped around N-S axis */
 	    mirror = 1;
     	    break;
 
-	case 'o':	/* allow overwriting of existing image file */
-	    overwrite++;
+    	case 'o':	/* Specifiy output image filename */
+    	    if (ac < 2)
+    		usage ();
+	    if (*(av+1)[0] == '-' || *(str+1) != (char)0)
+		overwrite++;
+	    else {
+		strcpy (outname, *(av+1));
+		overwrite = 0;
+		av++;
+		ac--;
+		}
 	    break;
 
     	case 'r':	/* Rotation angle in degrees */
@@ -168,6 +185,7 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Rotate and/or Reflect FITS and IRAF image files\n");
     fprintf(stderr,"Usage: [-vm][-r rot][-s num] file.fits ...\n");
+    fprintf(stderr,"  -a: mirror if IRAF image WCS says to\n");
     fprintf(stderr,"  -f: write FITS image from IRAF input\n");
     fprintf(stderr,"  -l: reflect image across vertical axis\n");
     fprintf(stderr,"  -o: allow overwriting of input image, else write new one\n");
@@ -200,6 +218,7 @@ char *name;
     char temp[8];
     char history[64];
     char pixname[256];
+    double ctemp;
 
     /* If not overwriting input file, make up a name for the output file */
     if (!overwrite) {
@@ -272,8 +291,19 @@ char *name;
 	    }
 	}
 
+    /* Set mirror flag if IRAF WCS is mirrored and automirror is set */
+    if (hgetr8 (header, "LTM1_1", &ctemp)) {
+	if (ctemp < 0 && automirror)
+	    mirror = 1;
+	}
+
+
+    /* Use output filename if it is set on the command line */
+    if (outname[0] > 0)
+	strcpy (newname, outname);
+
     /* Create new file name */
-    if (!overwrite) {
+    else if (!overwrite) {
 	if (imext != NULL) {
 	    if (hgets (header, "EXTNAME",8,extname)) {
 		strcat (newname, ".");
@@ -416,4 +446,7 @@ char *name;
  * Jul 20 2000	Add -s option to split multi-extension FITS files
  * Sep 12 2000	Echo new file name to standard output, if not verbose
  * Sep 12 2000	Use .extname if multi-extension extraction, not _number
+ *
+ * Jan 18 2001	Add automirror -a option
+ * Feb 13 2001	Add -o name option to -o argument (from imwcs)
  */

@@ -1,6 +1,7 @@
 /*** File libwcs/fileutil.c
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** October 21, 1999
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fileutil.c (ASCII file utilities)
  * Purpose:     Find out things about ASCII files

@@ -1,5 +1,5 @@
 /* File imcat.c
- * December 18, 2000
+ * January 22, 2001
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -450,8 +450,6 @@ char	*progname;
     exit (1);
 }
 
-
-struct WorldCoor *wcsinit();	
 
 static void
 ListCat (progname, filename, ncat, refcatname, region_radius, region_char)
@@ -1475,4 +1473,6 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Dec  1 2000	Print plate, not type for USNO catalogs
  * Dec 15 2000	Deal with missing catalog names
  * Dec 18 2000	Always allocate proper motion arrays
+ *
+ * Jan 22 2001	Drop declaration of wcsinit()
  */

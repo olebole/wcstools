@@ -1,6 +1,7 @@
-/* File libwcs/dateutil.c
- * August 1, 2000
- * By Doug Mink
+/*** File libwcs/dateutil.c
+ *** August 1, 2000
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
 /* Date and time conversion routines using the following conventions:
@@ -1963,7 +1964,7 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 	*iday = (int) (days + 0.00000001) + 1;
 	for (m = 1; m <= 12; m++) {
 	    im = (m + ((m - 1) / 5)) % 2;
-	    /* printf ("%d %d %d %d\n", m, im, *iday, nc); */
+	    /* fprintf (stderr,"%d %d %d %d\n", m, im, *iday, nc); */
 	    if (*iday-1 < im+30) break;
 	    *iday = *iday - im - 30;
 	    }
@@ -2403,4 +2404,6 @@ double	dnum, dm;
  * Mar 24 2000	Add tsi2* and tsu2* to convert IRAF and Unix seconds
  * May  1 2000	In old FITS format, all years < 1000 get 1900 added to them
  * Aug  1 2000	Make ep2jd and jd2ep consistently starting at 1/1 0:00
+ *
+ * Jan 11 2001	Print all messages to stderr
  */

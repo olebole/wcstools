@@ -1,6 +1,7 @@
-/* File libwcs/imrotate.c
- * October 21, 1999
- * By Doug Mink
+/*** File libwcs/imrotate.c
+ *** January 18, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
 #include <stdio.h>
@@ -103,7 +104,7 @@ int	verbose;
 		filename, bitpix1, bitpix2);
 	hputc (header,"HISTORY",history);
 	if (verbose)
-	    printf ("%s\n",history);
+	    fprintf (stderr,"%s\n",history);
 	}
 
     /* Mirror image without rotation */
@@ -229,7 +230,7 @@ int	verbose;
 	}
     
     if (verbose)
-	printf ("%s\n",history);
+	fprintf (stderr,"%s\n",history);
 
     return (rotimage);
 }
@@ -277,14 +278,14 @@ int	verbose;	/* Print progress if 1 */
 	if (ksearch (header, flds[i]) != NULL) {
 	    n++;
 	    if (verbose)
-		printf ("%s: found\n", flds[i]);
+		fprintf (stderr,"%s: found\n", flds[i]);
 	    }
 	}
 
     /* Return if no WCS keywords to change */
     if (n == 0) {
 	if (verbose)
-	    printf ("RotWCSFITS: No WCS in header\n");
+	    fprintf (stderr,"RotWCSFITS: No WCS in header\n");
 	return;
 	}
 
@@ -318,6 +319,46 @@ int	verbose;	/* Print progress if 1 */
 	if (hgetr8 (header, "CROTA2", &ctemp2)) {
 	    hgetndec (header, "CROTA2", &ndec2);
 	    hputnr8 (header, "CROTA2", ndec2, -ctemp2);
+	    }
+	if (hgetr8 (header, "LTM1_1", &ctemp1)) {
+	    hgetndec (header, "LTM1_1", &ndec1);
+	    hputnr8 (header, "LTM1_1", ndec1, -ctemp1);
+	    }
+	if (hgetr8 (header, "CD1_1", &ctemp1))
+	    hputr8 (header, "CD1_1", -ctemp1);
+	if (hgetr8 (header, "CD1_2", &ctemp1))
+	    hputr8 (header, "CD1_2", -ctemp1);
+	if (hgetr8 (header, "CD2_1", &ctemp1))
+	    hputr8 (header, "CD2_1", -ctemp1);
+	}
+
+    /* Unbin CRPIX and CD matrix */
+    if (hgetr8 (header, "LTM1_1", &ctemp1)) {
+	if (ctemp1 != 1.0) {
+	    if (hgetr8 (header, "LTM2_2", &ctemp2)) {
+		if (ctemp1 == ctemp2) {
+		    double ltv1 = 0.0;
+		    double ltv2 = 0.0;
+		    if (hgetr8 (header, "LTV1", &ltv1))
+			hdel (header, "LTV1");
+		    if (hgetr8 (header, "LTV2", &ltv1))
+			hdel (header, "LTV2");
+		    if (hgetr8 (header, "CRPIX1", &ctemp3))
+			hputr8 (header, "CRPIX1", (ctemp3-ltv1)/ctemp1);
+		    if (hgetr8 (header, "CRPIX2", &ctemp3))
+			hputr8 (header, "CRPIX2", (ctemp3-ltv2)/ctemp1);
+		    if (hgetr8 (header, "CD1_1", &ctemp3))
+			hputr8 (header, "CD1_1", ctemp3/ctemp1);
+		    if (hgetr8 (header, "CD1_2", &ctemp3))
+			hputr8 (header, "CD1_2", ctemp3/ctemp1);
+		    if (hgetr8 (header, "CD2_1", &ctemp3))
+			hputr8 (header, "CD2_1", ctemp3/ctemp1);
+		    if (hgetr8 (header, "CD2_2", &ctemp3))
+			hputr8 (header, "CD2_2", ctemp3/ctemp1);
+		    hdel (header, "LTM1_1");
+		    hdel (header, "LTM2_2");
+		    }
+		}
 	    }
 	}
 
@@ -490,4 +531,8 @@ int	verbose;	/* Print progress if 1 */
  * Jun  9 1999	Make history buffer 128 instead of 72 to avoid overflows
  * Jun 10 1999	Drop image0; use image
  * Oct 21 1999	Fix hputnr8() calls after lint
+ *
+ * Jan 11 2001	Print all messages to stderr
+ * Jan 17 2001	Reset coordinate direction if image is mirrored
+ * Jan 18 2001	Reset WCS scale if image is binned
  */

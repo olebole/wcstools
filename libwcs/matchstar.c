@@ -1,6 +1,7 @@
-/* File libwcs/matchstar.c
- * December 18, 2000
- * By Doug Mink, Smithsonian Astrophyscial Observatory
+/*** File libwcs/matchstar.c
+ *** January 11, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
 /* StarMatch (ns, sx, sy, ng, gra, gdec, gx, gy, tol, wcs, nfit, debug)
@@ -143,7 +144,7 @@ int	debug;
 			dyi = ABS (gy[gi] - sy[si] - dy);
 			if (dxi <= tol && dyi <= tol) {
 			    /* if (debug)
-				printf ("%d %d %d %d %5.1f %5.1f %5.1f %5.1f\n",
+				fprintf (stderr,"%d %d %d %d %5.1f %5.1f %5.1f %5.1f\n",
 					g,s,gi,si,dx,dy,dxi,dyi); */
 			    is[nbin] = si;
 			    ig[nbin] = gi;
@@ -153,7 +154,7 @@ int	debug;
 		    }
 		}
 	    /* if (debug)
-		printf ("%d %d %d %d %d\n", g,s,gi,si,nbin); */
+		fprintf (stderr,"%d %d %d %d %d\n", g,s,gi,si,nbin); */
 	    if (nbin > 1 && nbin >= nmatch) {
 		int i;
 		nmatch = nbin;
@@ -185,7 +186,7 @@ int	debug;
 		if (npeaks < NPEAKS)
 		    npeaks++;
 		if (debug)
-		    printf ("%d: %d matches at image %d cat %d: dx= %d dy= %d\n",
+		    fprintf (stderr,"%d: %d matches at image %d cat %d: dx= %d dy= %d\n",
 			    npeaks, nmatch, s, g, dxpeaks[0], dypeaks[0]);
 		}
 	    if (nmatch > minmatch)
@@ -444,17 +445,21 @@ int	debug;
 }
 
 int
-ReadMatch (filename, sx, sy, gra, gdec)
+ReadMatch (filename, sx, sy, sra, sdec, debug)
 
 char	*filename;	/* Name of file containing matches */
-double	*sx;		/* Image star X coordinates in pixels */
-double	*sy;		/* Image star Y coordinates in pixels */
-double	*gra;		/* Reference star right ascensions in degrees */
-double	*gdec;		/* Reference star right ascensions in degrees */
+double	**sx;		/* Image star X coordinates in pixels */
+double	**sy;		/* Image star Y coordinates in pixels */
+double	**sra;		/* Probable image star right ascensions in degrees */
+double	**sdec;		/* Probable image star declinations in degrees */
+int	debug;		/* Printed debugging information if not zero */
 
 {
+    int nbytes, nread, ir, ntok, itok;
+    double *tx, *ty, *tra, *tdec, ra, dec, x, y;
+    int ndec;
     int nmatch = 0;	/* Number of matches read from file */
-    int nbytes, nread, ir, ntok;
+    char rastr[32], decstr[32];
 
     /* If tab file, read from ra, dec, x, y  columns */
     if (istab (filename)) {
@@ -485,14 +490,19 @@ double	*gdec;		/* Reference star right ascensions in degrees */
 		}
 	    }
 	nbytes = nread * sizeof (double);
-	if (!(gra = (double *) calloc (nread, sizeof(double))))
+	if (!(tra = (double *) calloc (nread, sizeof(double))))
 	    fprintf (stderr, "Could not calloc %d bytes for gra\n", nbytes);
-	if (!(gdec = (double *) calloc (nread, sizeof(double))))
+	if (!(tdec = (double *) calloc (nread, sizeof(double))))
 	    fprintf (stderr, "Could not calloc %d bytes for gdec\n", nbytes);
-	if (!(sx = (double *) calloc (nread, sizeof(double))))
+	if (!(tx = (double *) calloc (nread, sizeof(double))))
 	    fprintf (stderr, "Could not calloc %d bytes for sx\n", nbytes);
-	if (!(sy = (double *) calloc (nread, sizeof(double))))
+	if (!(ty = (double *) calloc (nread, sizeof(double))))
 	    fprintf (stderr, "Could not calloc %d bytes for sy\n", nbytes);
+	*sra = tra;
+	*sdec = tdec;
+	*sx = tx;
+	*sy = ty;
+
 	nmatch = 0;
 	nextline = line;
         for (ir = 0; ir < nread; ir++) {
@@ -508,43 +518,139 @@ double	*gdec;		/* Reference star right ascensions in degrees */
 	    if (*lastchar < 32)
 		*lastchar = (char) 0;
 
-	    /* Read RA, Dec, X, and Y from each line,
+	    /* Read X, Y, RA, and Dec from each line,
 		skipping line if all four are not present and numbers */
 	    ntok = setoken (&tokens, line, cwhite);
 	    if (ntok < 1)
 		break;
-	    if (getoken(&tokens, 1, token)) {
+	    if (ntok < 4)
+		continue;
+
+	    /* if (debug)
+		fprintf (stderr, "%d: %s\n", nmatch, line); */
+
+	    /* Image X coordinate */
+	    itok = 1;
+	    if (getoken(&tokens, itok, token)) {
+
+		/* Read RA, Dec, X, Y if first token has : in it */
+		if (strchr (token, ':') != NULL) {
+		    ra = str2ra (token);
+		    if (getoken(&tokens, 2, token))
+			dec = str2dec (token);
+		    if (getoken(&tokens, 3, token)) {
+			if (isnum (token))
+			    x = atof (token);
+			else
+			    continue;
+			}
+		    if (getoken(&tokens, 4, token)) {
+			if (isnum (token))
+			    y = atof (token);
+			else
+			    continue;
+			}
+		    tx[nmatch] = x;
+		    ty[nmatch] = y;
+		    tra[nmatch] = ra;
+		    tdec[nmatch] = dec;
+		    nmatch++;
+		    continue;
+		    }
 		if (isnum (token))
-		    gra[ir] = str2ra (token);
+		    x = atof (token);
 		else
 		    continue;
 		}
 	    else
 		continue;
-	    if (getoken(&tokens, 2, token)) {
+
+	    /* Image Y coordinate */
+	    itok++;
+	    if (getoken(&tokens, itok, token)) {
 		if (isnum (token))
-		    gdec[ir] = str2dec (token);
+		    y = atof (token);
 		else
 		    continue;
 		}
 	    else
 		continue;
-	    if (getoken(&tokens, 3, token)) {
-		if (isnum (token))
-		    sx[ir] = atof (token);
+
+	    /* Right ascension */
+	    itok++;
+	    if (getoken(&tokens, itok, token)) {
+		if (isnum (token) == 1) {
+		    ra = atof (token);
+		    itok++;
+		    if (getoken(&tokens, itok, token)) {
+			if (isnum (token) == 2)
+			    ra = ra + (atof (token) / 60.0);
+			else if (isnum (token) == 1) {
+			    ra = ra + (atof (token) / 60.0);
+			    itok++;
+			    if (getoken(&tokens, itok, token)) {
+				if (isnum (token))
+				    ra = ra + (atof (token) / 3600.0);
+				}
+			    }
+			}
+		    ra = ra * 15.0;
+		    }
 		else
-		    continue;
+		    ra = str2ra (token);
 		}
 	    else
 		continue;
-	    if (getoken(&tokens, 4, token)) {
-		if (isnum (token))
-		    sy[ir] = atof (token);
+
+	    /* Declination */
+	    itok++;
+	    if (getoken(&tokens, itok, token)) {
+		if (isnum (token) == 1) {
+		    dec = atof (token);
+		    itok++;
+		    if (strchr (token, '-') != NULL)
+			ndec = 1;
+		    else
+			ndec = 0;
+		    if (getoken(&tokens, itok, token)) {
+			if (isnum (token) == 2) {
+			    if (ndec)
+				dec = dec - (atof (token) / 60.0);
+			    else
+				dec = dec + (atof (token) / 60.0);
+			    }
+			else if (isnum (token) == 1) {
+			    if (ndec)
+				dec = dec - (atof (token) / 60.0);
+			    else
+				dec = dec + (atof (token) / 60.0);
+			    itok++;
+			    if (getoken(&tokens, itok, token)) {
+				if (isnum (token)) {
+				    if (ndec)
+					dec = dec - (atof (token) / 3600.0);
+				    else
+					dec = dec + (atof (token) / 3600.0);
+				    }
+				}
+			    }
+			}
+		    }
 		else
-		    continue;
+		    dec = str2dec (token);
 		}
 	    else
 		continue;
+	    tx[nmatch] = x;
+	    ty[nmatch] = y;
+	    tra[nmatch] = ra;
+	    tdec[nmatch] = dec;
+	    if (debug) {
+		ra2str (rastr, 32, tra[nmatch], 3);
+		dec2str (decstr, 32, tdec[nmatch], 2);
+		fprintf (stderr, "%d: %8.3f %8.3f %s %s\n", nmatch,
+			 tx[nmatch], ty[nmatch], rastr, decstr);
+		}
 	    nmatch++;
 	    }
 	}
@@ -558,17 +664,15 @@ double	*gdec;		/* Reference star right ascensions in degrees */
  */
 
 int
-FitMatch (nmatch, sbx, sby, gbra, gbdec, gx, gy, wcs, debug)
+FitMatch (nmatch, sbx, sby, gbra, gbdec, wcs, debug)
 
 int	nmatch;		/* Number of matched stars */
 double	*sbx;		/* Image star X coordinates in pixels */
 double	*sby;		/* Image star Y coordinates in pixels */
 double	*gbra;		/* Reference star right ascensions in degrees */
 double	*gbdec;		/* Reference star right ascensions in degrees */
-double	*gx;		/* Reference star X coordinates in pixels */
-double	*gy;		/* Reference star Y coordinates in pixels */
 struct WorldCoor *wcs;	/* World coordinate structure (fit returned) */
-int	debug;
+int	debug;		/* Printed debugging information if not zero */
 
 {
     int i;
@@ -577,10 +681,22 @@ int	debug;
     int bestbin;	/* Number of coincidences for refit */
     int pfit;		/* List of parameters to fit, 1 per digit */
     char vpar[16];	/* List of parameters to fit */
-    double dx, dy;	/* Nominal offset between current WCS and ref stars */
+    double xdiff, ydiff;
     char *vi;
     char vc;
     int offscl;
+    int nsc, j;
+    double equinox = wcs->equinox;
+    double tx = 0.0;
+    double ty = 0.0;
+    double tra = 0.0;
+    double tdec = 0.0;
+    double tdiff = 0.0;
+    double cra, cdec, cx, cy, scale;
+    double dmatch;
+    double skydiff, imdiff;
+
+    dmatch = (double) nmatch;
 
     if (debug) {
 	fprintf (stderr,"%d matched stars:\n", nmatch);
@@ -590,20 +706,38 @@ int	debug;
     if (nmatch < minbin)
 	return (nmatch);
 
-    /* Start with mean offset */
-    dx = 0.0;
-    dy = 0.0;
+    /* Compute plate scale and center of stars */
+    nsc = 0;
     for (i = 0; i < nmatch; i++) {
-	wcs2pix (wcs, gbra[i], gbdec[i], &gx[i], &gy[i], &offscl);
-	dx = dx + (sbx[i] - gx[i]);
-	dy = dy + (sby[i] - gy[i]);
+	tx = tx + sbx[i];
+	ty = ty + sby[i];
+	tra = tra + gbra[i];
+	tdec = tdec + gbdec[i];
+	for (j = i+1; j < nmatch; j++) {
+	    skydiff = wcsdist (gbra[i], gbdec[i], gbra[j], gbdec[j]);
+	    xdiff = sbx[j] - sbx[i];
+	    ydiff = sby[j] - sby[i];
+	    imdiff = sqrt ((xdiff * xdiff) + (ydiff * ydiff));
+	    scale = skydiff / imdiff;
+	    tdiff = tdiff + scale;
+	    nsc++;
+	    if (debug) {
+		fprintf (stderr,"%d %d: sky: %8g, image: %8g, %8g deg/pix", 
+			i, j, skydiff, imdiff, scale);
+		fprintf (stderr," = %8g arcsec/pix\n", scale * 3600.0);
+		}
+	    }
 	}
-    dx = dx / (double) nmatch;
-    dy = dy / (double) nmatch;
-
-    /* Reset image center based on star matching */
-    wcs->xref = wcs->xref + (dx * wcs->xinc);
-    wcs->yref = wcs->yref + (dy * wcs->yinc);
+    
+    /* Reset image center in WCS data structure based on star matching */
+    /* cra = tra / dmatch;
+    cdec = tdec / dmatch;
+    cx = tx / dmatch;
+    cy = ty / dmatch;
+    scale = tdiff / (double) nsc;
+    if (debug)
+	fprintf (stderr,"scale = %8g deg/pix = %8g arcsec/pix\n", scale, scale*3600.0);
+    wcsreset (wcs, cx, cy, cra, cdec, scale, 0.0, 0.0, NULL, equinox); */
 
     /* Provide non-parametric access to the star lists */
     sx_p = sbx;
@@ -916,7 +1050,7 @@ struct WorldCoor *wcs0;
 
 #define	PDUMP
 #ifdef	PDUMP
-    printf ("Before:\n");
+    fprintf (stderr,"Before:\n");
     for (i = 0; i < nfit1; i++) {
 	if (vfit[1] > -1)
 	    ra2str (rastr, 16, p[i][vfit[1]] + xref_p, 3);
@@ -931,7 +1065,7 @@ struct WorldCoor *wcs0;
 	    cd[1] = p[i][vfit[4]];
 	    cd[2] = p[i][vfit[5]];
 	    cd[3] = p[i][vfit[6]];
-	    printf ("%d: %s %s CD: %7.5f,%7.5f,%7.5f,%7.5f ",
+	    fprintf (stderr,"%d: %s %s CD: %7.5f,%7.5f,%7.5f,%7.5f ",
 		    i, rastr, decstr, cd[0],cd[1],cd[2],cd[3]);
 	    }
 	else {
@@ -953,7 +1087,7 @@ struct WorldCoor *wcs0;
 		rot = p[i][vfit[5]];
 	    else
 		rot = wcsf->rot;
-	    printf ("%d: %s %s del=%6.4f,%6.4f rot=%5.3f ",
+	    fprintf (stderr,"%d: %s %s del=%6.4f,%6.4f rot=%5.3f ",
 		    i, rastr, decstr, 3600.0*xinc1, 3600.0*yinc1, rot);
 	    }
 
@@ -965,7 +1099,7 @@ struct WorldCoor *wcs0;
 	    yrefpix1 = yrefpix + p[i][vfit[8]];
 	else
 	    yrefpix1 = wcsf->yrefpix;
-	printf ("(%8.2f,%8.2f) y=%g\n", xrefpix1, yrefpix1, y[i]);
+	fprintf (stderr,"(%8.2f,%8.2f) y=%g\n", xrefpix1, yrefpix1, y[i]);
 	}
 #endif
 
@@ -973,7 +1107,7 @@ struct WorldCoor *wcs0;
 
 #define	PDUMP
 #ifdef	PDUMP
-    printf ("\nAfter:\n");
+    fprintf (stderr,"\nAfter:\n");
     for (i = 0; i < nfit1; i++) {
 	if (vfit[1] > -1)
 	    ra2str (rastr, 16, p[i][vfit[1]] + xref_p, 3);
@@ -988,7 +1122,7 @@ struct WorldCoor *wcs0;
 	    cd[1] = p[i][vfit[4]];
 	    cd[2] = p[i][vfit[5]];
 	    cd[3] = p[i][vfit[6]];
-	    printf ("%d: %s %s CD: %7.5f,%7.5f,%7.5f,%7.5f ",
+	    fprintf (stderr,"%d: %s %s CD: %7.5f,%7.5f,%7.5f,%7.5f ",
 		    i, rastr, decstr, cd[0],cd[1],cd[2],cd[3]);
 	    }
 	else {
@@ -1010,7 +1144,7 @@ struct WorldCoor *wcs0;
 		rot = p[i][vfit[5]];
 	    else
 		rot = wcsf->rot;
-	    printf ("%d: %s %s del=%6.4f,%6.4f rot=%5.3f ",
+	    fprintf (stderr,"%d: %s %s del=%6.4f,%6.4f rot=%5.3f ",
 		    i,rastr,decstr, 3600.0*xinc1, 3600.0*yinc1, rot);
 	    }
 	if (vfit[7] > -1)
@@ -1021,7 +1155,7 @@ struct WorldCoor *wcs0;
 	    yrefpix1 = yrefpix + p[i][vfit[8]];
 	else
 	    yrefpix1 = wcsf->yrefpix;
-	printf ("(%8.2f,%8.2f) y=%g\n", xrefpix1, yrefpix1, y[i]);
+	fprintf (stderr,"(%8.2f,%8.2f) y=%g\n", xrefpix1, yrefpix1, y[i]);
 	}
 #endif
 
@@ -1069,13 +1203,13 @@ struct WorldCoor *wcs0;
     dec2str (decstr, 16, wcsf->yref, 2);
 
     if (vfit[6] > -1)
-	printf ("iter=%d\n cra= %s cdec= %s CD=%9.7f,%9.7f,%9.7f,%9.7f ", iter,
+	fprintf (stderr,"iter=%d\n cra= %s cdec= %s CD=%9.7f,%9.7f,%9.7f,%9.7f ", iter,
 		rastr, decstr, wcsf->cd[0], wcsf->cd[1], wcsf->cd[2],
 		wcsf->cd[3]);
     else
-	printf ("iter=%d\n cra= %s cdec= %s del=%7.4f,%7.4f rot=%7.4f ", iter,
+	fprintf (stderr,"iter=%d\n cra= %s cdec= %s del=%7.4f,%7.4f rot=%7.4f ", iter,
 		rastr, decstr, wcsf->xinc*3600.0, wcsf->yinc*3600.0, wcsf->rot);
-    printf ("(%8.2f,%8.2f)\n", wcsf->xrefpix, wcsf->yrefpix);
+    fprintf (stderr,"(%8.2f,%8.2f)\n", wcsf->xrefpix, wcsf->yrefpix);
     sumx = 0.0;
     sumy = 0.0;
     sumr = 0.0;
@@ -1093,17 +1227,17 @@ struct WorldCoor *wcs0;
 
 	ra2str (rastr, 16, gx_p[i], 3);
 	dec2str (decstr, 16, gy_p[i], 2);
-	printf ("%2d: c: %s %s ", i+1, rastr, decstr);
+	fprintf (stderr,"%2d: c: %s %s ", i+1, rastr, decstr);
 	ra2str (rastr, 16, mx, 3);
 	dec2str (decstr, 16, my, 2);
-	printf ("i: %s %s %6.3f %6.3f %6.3f\n",
+	fprintf (stderr, "i: %s %s %6.3f %6.3f %6.3f\n",
 		rastr, decstr, 3600.0*ex, 3600.0*ey,
 		3600.0*sqrt(ex*ex + ey*ey));
 	}
     sumx = sumx / (double)nbin_p;
     sumy = sumy / (double)nbin_p;
     sumr = sumr / (double)nbin_p;
-    printf ("mean dra: %6.3f, ddec: %6.3f, dr = %6.3f\n", sumx, sumy, sumr);
+    fprintf (stderr,"mean dra: %6.3f, ddec: %6.3f, dr = %6.3f\n", sumx, sumy, sumr);
 #endif
 }
 
@@ -1415,4 +1549,8 @@ iscdfit ()
  * Mar 10 2000	Add debug statement to list max matches as they are found
  * Mar 10 2000	Change loop order to image stars first
  * Dec 18 2000	Write half of ReadMatch() to deal with ASCII files
+ *
+ * Jan  2 2001	Modify ReadMatch() to read hh mm ss dd mm ss, too
+ * Jan  9 2001	Work on FitMatch()
+ * Jan 11 2001	All diagnostic printing goes to stderr
  */ 

@@ -1,6 +1,7 @@
 /*** File libwcs/binread.c
- *** December 18, 2000
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+ *** February 14, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
  */
 
 /* int binread()	Read binary catalog sources + names in specified region
@@ -165,12 +166,48 @@ int	nlog;
 	tdist = (double *) calloc (10, sizeof(double));
 
     SearchLim (cra, cdec, dra, ddec, sysout, &ra1, &ra2, &dec1, &dec2, verbose);
+
+    /* Make sure first declination is always the smallest one */
+    if (dec1 > dec2) {
+	dec = dec1;
+	dec1 = dec2;
+	dec2 = dec;
+	}
   
     sysref = sc->coorsys;
     eqref = sc->equinox;
     epref = sc->epoch;
     RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
 	    &rra1, &rra2, &rdec1, &rdec2, verbose);
+
+    /* Search zones which include the poles cover 360 degrees in RA */
+    if (cdec - ddec < -90.0) {
+	if (dec1 > dec2)
+	    dec2 = dec1;
+	dec1 = -90.0;
+	if (rdec1 > rdec2)
+	    rdec2 = rdec1;
+	rdec1 = -90.0;
+	rra1 = 0.0;
+	rra2 = 359.99999;
+	ra1 = 0.0;
+	ra2 = 359.99999;
+	wrap = 0;
+	}
+    if (cdec + ddec > 90.0) {
+	if (dec2 < dec1)
+	    dec1 = dec2;
+	dec2 = 90.0;
+	if (rdec2 < rdec1)
+	    rdec1 = rdec2;
+	rdec2 = 90.0;
+	rra1 = 0.0;
+	rra2 = 359.99999;
+	ra1 = 0.0;
+	ra2 = 359.99999;
+	wrap = 0;
+	}
+
     if (verbose) {
 	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
 	ra2str (rstr1, 16, rra1, 3);
@@ -193,25 +230,6 @@ int	nlog;
 	}
     else
 	rwrap = 0;
-
-    /* Make sure first declination is always the smallest one */
-    if (dec1 > dec2) {
-	dec = dec1;
-	dec1 = dec2;
-	dec2 = dec;
-	}
-
-    /* Search zones which include the poles cover 360 degrees in RA */
-    if (dec1 < -90.0) {
-	dec1 = -90.0;
-	ra1 = 0.0;
-	ra2 = 359.99999;
-	}
-    if (dec2 > 90.0) {
-	dec2 = 90.0;
-	ra1 = 0.0;
-	ra2 = 359.99999;
-	}
 
     /* If output RA range includes zero, set flag */
     if (ra1 > ra2)
@@ -238,7 +256,7 @@ int	nlog;
 	    istar2 = sc->star0 + sc->nstars;
 	    }
 	if (verbose)
-	    printf ("BINREAD: Searching stars %d through %d\n",istar1,istar2);
+	    fprintf (stderr,"BINREAD: Searching stars %d through %d\n",istar1,istar2);
 
 	/* Loop through catalog */
 	for (istar = istar1; istar <= istar2; istar++) {
@@ -838,7 +856,7 @@ double	dra;		/* Right ascension in degrees */
 	    ra2str (raxstr, 16, rax, 3);
 	    ra2str (ramins, 16, ramin, 3);
 	    ra2str (ramaxs, 16, ramax, 3);
-	    printf ("%9d: %s -> %s  %9d: %s  %9d: %s\n",
+	    fprintf (stderr,"%9d: %s -> %s  %9d: %s  %9d: %s\n",
 		    istarx, rastr, raxstr, ismin,ramins,ismax,ramaxs);
 	    }
 	if (istarx == istar0)
@@ -1157,4 +1175,7 @@ char *from, *last, *to;
  * Nov 29 2000	Add option to read catalogs using HTTP
  * Dec  1 2000	Add separate paths for SAO and PPM catalogs
  * Dec 18 2000	Drop unused variable str in binopen()
+ *
+ * Jan 11 2001	Print all messages to stderr
+ * Feb 14 2001	Correctly full-circle limits at poles
  */

@@ -1,6 +1,7 @@
 /*** File libwcs/hget.c
- *** October 23, 2000
- *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+ *** January 19, 2001
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
  * Purpose:	Extract values for variables from FITS header string
@@ -24,10 +25,10 @@
  * Subroutine:	strsrch (s1, s2) finds string s2 in null-terminated string s1
  * Subroutine:	strnsrch (s1, s2, ls1) finds string s2 in ls1-byte string s1
  * Subroutine:	hlength (header,lhead) sets length of FITS header for searching
- * Subroutine:  isnum (string) returns 1 if number, else 0
+ * Subroutine:  isnum (string) returns 1 if integer, 2 if fp number, else 0
  * Subroutine:  notnum (string) returns 0 if number, else 1
 
- * Copyright:   2000 Smithsonian Astrophysical Observatory
+ * Copyright:   2001 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -1085,6 +1086,10 @@ char	*in;	/* Character string of sexigesimal or decimal degrees */
 
     dec = 0.0;
 
+    /* Return 0.0 if string is null */
+    if (in == NULL)
+	return (dec);
+
     /* Translate value from ASCII colon-delimited string to binary */
     if (in[0]) {
 	value = in;
@@ -1227,6 +1232,10 @@ char *string;	/* Character string */
     char cstr, cstr1;
     int fpcode;
 
+    /* Return 0 if string is NULL */
+    if (string == NULL)
+	return (0);
+
     lstr = strlen (string);
     nd = 0;
     fpcode = 1;
@@ -1354,4 +1363,6 @@ int set_saolib(hstring)
  * Jun  9 2000	Read keyword values even if no equal sign is present
  * Sep 20 2000	Ignore linefeed at end of number in isnum()
  * Oct 23 2000	Fix handling of embedded + or - in isnum()
+ *
+ * Jan 19 2000	Return 0 from isnum(), str2ra(), and str2dec() if string is null
  */

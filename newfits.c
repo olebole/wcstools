@@ -1,5 +1,5 @@
 /* File newfits.c
- * August 1, 2000
+ * January 18, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -35,7 +35,9 @@ static int version = 0;	/* If 1, print only program name and version */
 static int wcshead = 0;	/* If 1, add WCS information from command line */
 static int nx = 100;	/* width of image in pixels */
 static int ny = 100;	/* height of image in pixels */
+static int extend = 0;	/* If 1, write primary header, add other files as ext */
 static char *pixfile;	/* Pixel file name */
+static char *newname;	/* FITS extension file name */
 
 main (ac, av)
 int ac;
@@ -51,6 +53,7 @@ char **av;
     double x, y;
 
     pixfile = NULL;
+    newname = NULL;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -127,6 +130,10 @@ char **av;
     		case 'd':	/* Set CDELTn, CROTAn instead of CD matrix */
 		    setcdelt();
     		    break;
+
+    		case 'e':	/* Make an extended FITS file */
+		    extend = 1;
+		    break;
 
     		case 'i':	/* Input pixel file */
     		    if (ac < 2)
@@ -264,10 +271,12 @@ char *name;
     int nbskip;		/* Number of bytes to skip in file before image */
     int nbfile;		/* Number of bytes in file */
     int nbread;		/* Number of bytes actually read from file */
+    int nbhead;
     struct WorldCoor *wcs;
     FILE *diskfile;
     char *cplus;
     char history[256];
+    char extname[16];
 
     if (verbose) {
 	if (bitpix != 0)
@@ -282,6 +291,55 @@ char *name;
 	fprintf (stderr,"NEWFITS: FITS file %s exists, no new file written\n",
 		     name);
 	fclose (diskfile);
+	return;
+	}
+
+    /* Write primary header for FITS extension file */
+    if (extend == 1) {
+	lhead = 2880;
+	header = (char *) calloc (1, lhead);
+	strcpy (header, "END ");
+	hlength (header, 2880);
+	hputl (header, "SIMPLE", 1);
+	hputi4 (header, "BITPIX", 16);
+	hputi4 (header, "NAXIS", 0);
+	hputl (header, "EXTEND", 1);
+	image = NULL;
+	if (fitswimage (name, header, image) == 0)
+	    printf ("%s: dataless FITS image header not written.\n", name);
+	else {
+	    if (verbose)
+		printf ("%s: dataless FITS image header written.\n", name);
+	    newname = name;
+	    }
+	extend++;
+	return;
+	}
+    else if (extend > 1) {
+	if (newname == NULL)
+	    return;
+	diskfile = fopen (newname, "a");
+	if ((header = fitsrhead (name, &lhead, &nbhead)) != NULL) {
+	    if ((image = fitsrimage (name, nbhead, header)) == NULL) {
+		fprintf (stderr, "Cannot read FITS image %s\n", name);
+		free (header);
+		return;
+		}
+	    }
+	else {
+	    fprintf (stderr, "Cannot read FITS file %s\n", name);
+	    return;
+	    }
+	sprintf (extname, "EXT%d", extend-1);
+	hputs (header, "EXTNAME", extname);
+	hputi4 (header, "EXTVER", extend-1);
+	if (fitswimage (name, header, image) == 0)
+	    printf ("%s: FITS image extension %s not written.\n",name,extname);
+	else {
+	    if (verbose)
+		printf ("%s: FITS image extension %s written.\n",name,extname);
+	    }
+	extend++;
 	return;
 	}
 
@@ -376,4 +434,6 @@ char *name;
  * Nov  1 1999	Set header length after creating it; add option for CDELTn
  *
  * Aug  1 2000	Add -i option to add image from binary file
+ *
+ * Jan 18 2001	Add -e option to build FITS extension file
  */
