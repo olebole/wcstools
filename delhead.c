@@ -1,5 +1,5 @@
 /* File delhead.c
- * October 29, 2003
+ * May 6, 2004
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -20,6 +20,7 @@ static int maxnfile = MAXFILES;
 
 static void usage();
 static void DelKeywords();
+extern char *fitserrmsg;
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int newimage = 0;
@@ -212,6 +213,7 @@ char	*kwd[];		/* Names of those keywords */
     char *kw, *kwl;
     char echar;
     int ikwd;
+    int ibhead;		/* Number of bytes to skip to header */
     int fdr, fdw, ipos, nbr, nbw;
 
     /* Open IRAF image if .imh extension is present */
@@ -233,19 +235,10 @@ char	*kwd[];		/* Names of those keywords */
     /* Open FITS file if .imh extension is not present */
     else {
 	iraffile = 0;
+	setfitsinherit (0);
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
-	    hgeti4 (header,"NAXIS",&naxis);
-	    if (naxis > 0) {
-		if ((image = fitsrfull (filename, nbhead, header)) == NULL) {
-		    if (verbose)
-			fprintf (stderr,"Cannot read FITS image %s\n",filename);
-		    }
-		}
-	    else {
-		if (verbose)
-		    fprintf (stderr, "Rewriting primary header, copying rest\n");
-		newimage = 1;
-		}
+	    if (verbose)
+		fprintf (stderr, "Rewriting only header\n");
 	    }
 	else {
 	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
@@ -278,15 +271,26 @@ char	*kwd[];		/* Names of those keywords */
 	    printf ("%s: %s deleted\n", filename, kwd[ikwd]);
 	}
 
+    /* Remove directory path and extension from file name */
+    fname = strrchr (filename, '/');
+    if (fname)
+	fname = fname + 1;
+    else
+	fname = filename;
+
+    /* Set image extension if there is one */
+    imext = strchr (fname, ',');
+    imext1 = NULL;
+    if (imext == NULL) {
+	imext = strchr (fname, '[');
+	if (imext != NULL) {
+	    imext1 = strchr (fname, ']');
+	    *imext1 = (char) 0;
+	    }
+	}
+
     /* Make up name for new FITS or IRAF output file */
     if (newimage) {
-
-    /* Remove directory path and extension from file name */
-	fname = strrchr (filename, '/');
-	if (fname)
-	    fname = fname + 1;
-	else
-	    fname = filename;
 	ext = strrchr (fname, '.');
 	if (ext != NULL) {
 	    lext = (fname + strlen (fname)) - ext;
@@ -342,7 +346,7 @@ char	*kwd[];		/* Names of those keywords */
 	    printf ("%s could not be written.\n", newname);
 	free (irafheader);
 	}
-    else if (naxis > 0) {
+    else if (imext == NULL) {
 	if (fitswimage (newname, header, image) > 0 && verbose)
 	    printf ("%s: rewritten successfully.\n", newname);
 	else if (verbose)
@@ -350,20 +354,9 @@ char	*kwd[];		/* Names of those keywords */
 	free (image);
 	}
     else {
-	if ((fdw = fitswhead (newname, header)) > 0) {
-	    fdr = fitsropen (filename);
-	    ipos = lseek (fdr, nbhead, SEEK_SET);
-	    image = (char *) calloc (2880, 1);
-	    while ((nbr = read (fdr, image, 2880)) > 0) {
-		nbw = write (fdw, image, nbr);
-		if (nbw < nbr)
-		    fprintf (stderr,"SETHEAD: %d / %d bytes written\n",nbw,nbr);
-		}
-	    close (fdr);
-	    close (fdw);
+	if (!fitswexhead (filename, header)) {
 	    if (verbose)
-		printf ("%s: rewritten successfully.\n", newname);
-	    free (image);
+		printf ("%s header rewritten successfully.\n", filename);
 	    }
 	}
     free (header);
@@ -394,4 +387,6 @@ char	*kwd[];		/* Names of those keywords */
  *
  * Aug 21 2003	Use fitsrfull() to deal with n dimensional FITS images
  * Oct 29 2003	Keep count of keywords correctly when reading them from file
+ *
+ * May  6 2004	Allow keywords to be deleted from extension headers
  */

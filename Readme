@@ -14,7 +14,7 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.5.3 of the WCSTools package developed by Doug Mink
+This is version 3.5.4 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 
@@ -159,4 +159,4 @@ wcshead	Print basic world coordinate system information on one line per image
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
 
--Doug Mink, SAO, 2003-12-12
+-Doug Mink, SAO, 2004-05-19

@@ -1,8 +1,8 @@
 /*** File libwcs/fitsfile.c
- *** December 3, 2003
+ *** May 19, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -28,44 +28,48 @@
 
  * Module:      fitsfile.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
- * Subroutine:	fitsropen (inpath)
+ * fitsropen (inpath)
  *		Open a FITS file for reading, returning a FILE pointer
- * Subroutine:	fitsrhead (filename, lhead, nbhead)
+ * fitsrhead (filename, lhead, nbhead)
  *		Read FITS header and return it
- * Subroutine:	fitsrsect (filename, nbhead, header, fd, x0, y0, nx, ny)
- *		Read section of a FITS image, having already ready the header
- * Subroutine:	fitsrimage (filename, nbhead, header)
+ * fitsrsect (filename, nbhead, header, fd, x0, y0, nx, ny)
+ *		Read section of a FITS image, having already read the header
+ * fitsrimage (filename, nbhead, header)
  *		Read FITS image, having already ready the header
- * Subroutine:	fitsrfull (filename, nbhead, header)
+ * fitsrfull (filename, nbhead, header)
  *		Read a FITS image of any dimension
- * Subroutine:	fitsrtopen (inpath, nk, kw, nrows, nchar, nbhead)
+ * fitsrtopen (inpath, nk, kw, nrows, nchar, nbhead)
  *		Open a FITS table file for reading; return header information
- * Subroutine:	fitsrthead (header, nk, kw, nrows, nchar, nbhead)
+ * fitsrthead (header, nk, kw, nrows, nchar, nbhead)
  *		Extract FITS table information from a FITS header
- * Subroutine:	fitsrtline (fd, nbhead, lbuff, tbuff, irow, nbline, line)
+ * fitsrtline (fd, nbhead, lbuff, tbuff, irow, nbline, line)
  *		Read next line of FITS table file
- * Subroutine:	ftgetr8 (entry, kw)
+ * ftgetr8 (entry, kw)
  *		Extract column from FITS table line as double
- * Subroutine:	ftgetr4 (entry, kw)
+ * ftgetr4 (entry, kw)
  *		Extract column from FITS table line as float
- * Subroutine:	ftgeti4 (entry, kw)
+ * ftgeti4 (entry, kw)
  *		Extract column from FITS table line as int
- * Subroutine:	ftgeti2 (entry, kw)
+ * ftgeti2 (entry, kw)
  *		Extract column from FITS table line as short
- * Subroutine:	ftgetc (entry, kw, string, maxchar)
+ * ftgetc (entry, kw, string, maxchar)
  *		Extract column from FITS table line as a character string
- * Subroutine:	fitswimage (filename, header, image)
+ * fitswimage (filename, header, image)
  *		Write FITS header and image
- * Subroutine:	fitswext (filename, header, image)
+ * fitswext (filename, header, image)
  *		Write FITS header and image as extension to existing FITS file
- * Subroutine:	fitswhdu (fd, filename, header, image)
+ * fitswhdu (fd, filename, header, image)
  *		Write FITS header and image as extension to file descriptor
- * Subroutine:	fitscimage (filename, header, filename0)
+ * fitscimage (filename, header, filename0)
  *		Write FITS header and copy FITS image
- * Subroutine:	fitswhead (filename, header)
+ * fitswhead (filename, header)
  *		Write FITS header and keep file open for further writing 
- * Subroutine:	isfits (filename)
+ * fitswexhead (filename, header)
+ *		Write FITS header only to FITS extension without writing data
+ * isfits (filename)
  *		Return 1 if file is a FITS file, else 0
+ * fitsheadsize (header)
+ *  		Return size of FITS header in bytes
  */
 
 #include <stdlib.h>
@@ -79,8 +83,19 @@
 #include <string.h>
 #include "fitsfile.h"
 
-static int verbose=0;		/* if 1 print diagnostics */
+static int verbose=0;		/* Print diagnostics */
 static char fitserrmsg[80];
+static fitsinherit = 1;		/* Append primary header to extension header */
+void
+setfitsinherit (inh)
+int inh;
+{fitsinherit = inh;}
+
+static int ibhead = 0;		/* Number of bytes read before header starts */
+
+int
+getfitsskip()
+{return (ibhead);}
 
 /* FITSRHEAD -- Read a FITS header */
 
@@ -114,6 +129,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     char *mwcs;		/* Pointer to WCS name separated by % */
     char *endnext;
     char *pheadend;
+    int inherit;	/* Value of INHERIT keyword in FITS extension header */
 
     pheader = NULL;
     lprim = 0;
@@ -185,9 +201,11 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     headnext = header;
     nrec = 1;
     hdu = 0;
+    ibhead = 0;
 
     /* Read FITS header from input file one FITS block at a time */
     irec = 0;
+    ibhead = 0;
     while (irec < 100) {
 	nbytes = FITSBLOCK;
 	for (ntry = 0; ntry < 10; ntry++) {
@@ -230,6 +248,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	*nbhead = *nbhead + nbr;
 	nrec = nrec + 1;
 	*(headnext+nbr) = 0;
+	ibhead = ibhead + 2880;
 
 	/* Check to see if this is the final record in this header */
 	headend = ksearch (fitsbuf,"END");
@@ -286,6 +305,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		/* If this is not desired header data unit, skip over data */
 		hdu = hdu + 1;
 		nblock = 0;
+		ibhead = 0;
 		if (naxis > 0) {
 		    ibpix = 0;
 		    hgeti4 (header,"BITPIX",&ibpix);
@@ -366,7 +386,14 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     else
 	*lhead = nbh;
 
-    if (pheader != NULL && extnum != 0) {
+    /* If INHERIT keyword is FALSE, never append primary header */
+    if (hgetl (header, "INHERIT", &inherit)) {
+	if (!inherit && fitsinherit)
+	    fitsinherit = 0;
+	}
+
+    /* Append primary data header to extension header */
+    if (pheader != NULL && extnum != 0 && fitsinherit) {
 	extname[0] = 0;
 	endnext = headend;
 	hgets (header, "XTENSION", 32, extname);
@@ -403,6 +430,8 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	strncpy (headend, pheader, lprim);
 	free (pheader);
 	}
+
+    ibhead = *nbhead - ibhead;
 
     return (header);
 }
@@ -1249,6 +1278,8 @@ char	*image;		/* FITS image pixels */
 }
 
 
+/* FITSWHDU -- Write FITS head and image as extension */
+
 int
 fitswhdu (fd, filename, header, image)
 
@@ -1307,7 +1338,7 @@ char	*image;		/* FITS image pixels */
     free (padding);
 
     /* Return if file has no data */
-    if (bitpix == 0) {
+    if (bitpix == 0 || image == NULL) {
 	/* snprintf (fitserrmsg,79, "FITSWHDU:  BITPIX is 0; image not written\n"); */
 	(void)close (fd);
 	return (0);
@@ -1595,6 +1626,93 @@ char	*header;	/* FITS image header */
 }
 
 
+/* FITSWEXHEAD -- Write FITS header in place */
+
+int
+fitswexhead (filename, header)
+
+char	*filename;	/* Name of FITS image file with ,extension */
+char	*header;	/* FITS image header */
+
+{
+    int fd, ipos;
+    int nbhead, nblocks, lhead;
+    int nbw, nbnew, nbold;
+    char *endhead, *lasthead, *oldheader, *head;
+    char *ext, cext;
+
+    /* Compare size of existing header to size of new header */
+    fitsinherit = 0;
+    oldheader = fitsrhead (filename, &lhead, &nbhead);
+    if (oldheader == NULL) {
+	fprintf (stderr, "FITSWEXHEAD:  file %s cannot be read\n", filename);
+	return (-1);
+	}
+    nbold = fitsheadsize (oldheader);
+    nbnew = fitsheadsize (header);
+
+    /* Return if the new header is bigger than the old header */
+    if (nbnew > nbold) {
+	fprintf (stderr, "FITSWEXHEAD:  old header %d bytes, new header %d bytes\n", nbold,nbnew);
+	free (oldheader);
+	oldheader = NULL;
+	return (-1);
+	}
+
+    /* Add blank lines if new header is smaller than the old header */
+    else if (nbnew < nbold) {
+	strcpy (oldheader, header);
+	head = ksearch (oldheader,"END");
+	lasthead = oldheader + nbold;
+	while (endhead < lasthead)
+	    *(endhead++) = ' ';
+	strncpy (lasthead-80, "END", 3);
+	}
+
+    /* Pad header with spaces */
+    else {
+	endhead = ksearch (header,"END") + 80;
+	lasthead = header + nbnew;
+	while (endhead < lasthead)
+	    *(endhead++) = ' ';
+	strncpy (oldheader, header, nbnew);
+	}
+
+    /* Check for FITS extension and ignore for file opening */
+    ext = strchr (filename, ',');
+    if (ext == NULL)
+	ext = strchr (filename, '[');
+    if (ext != NULL) {
+	cext = *ext;
+	*ext = (char) 0;
+	}
+
+    /* Open the output file */
+    fd = open (filename, O_WRONLY);
+    if (ext != NULL)
+	*ext = cext;
+    if (fd < 3) {
+	fprintf (stderr, "FITSWEXHEAD:  file %s not writeable\n", filename);
+	return (-1);
+	}
+
+    /* Skip to appropriate place in file */
+    ipos = lseek (fd, ibhead, SEEK_SET);
+
+    /* Write header to file */
+    nbw = write (fd, oldheader, nbold);
+    (void)close (fd);
+    free (oldheader);
+    oldheader = NULL;
+    if (nbw < nbhead) {
+	fprintf (stderr, "FITSWHEAD:  wrote %d / %d bytes of header to file %s\n",
+		 nbw, nbold, filename);
+	return (-1);
+	}
+    return (0);
+}
+
+
 /* ISFITS -- Return 1 if FITS file, else 0 */
 int
 isfits (filename)
@@ -1750,4 +1868,8 @@ fitserr ()
  * Aug 21 2003	Modify fitswimage() to always write n-dimensional FITS images
  * Nov 18 2003	Fix minor bug in fitswhdu()
  * Dec  3 2003	Remove unused variable lasthead in fitswhdu()
+ *
+ * May  3 2004	Do not always append primary header to extension header
+ * May  3 2004	Add ibhead as position of header read in file
+ * May 19 2004	Do not reset ext if NULL in fitswexhead()
  */

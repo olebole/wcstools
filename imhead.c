@@ -1,5 +1,5 @@
 /* File imhead.c
- * June 19, 2002
+ * May 6, 2004
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -54,6 +54,10 @@ char **av;
 
 	case 'f':	/* Write FITS header only */
 	    fitsout++;
+	    break;
+
+	case 'i':	/* Turn off inheritance from Primary header */
+	    setfitsinherit (0);
 	    break;
 
 	case 'v':	/* more verbosity */
@@ -117,6 +121,7 @@ usage ()
     fprintf (stderr,"Print FITS or IRAF image header\n");
     fprintf(stderr,"usage: imhead [-fvz] file.fit ...\n");
     fprintf(stderr,"  -f: Write exact FITS header\n");
+    fprintf(stderr,"  -i: Drop primary header even if inherited\n");
     fprintf(stderr,"  -v: verbose\n");
     fprintf(stderr,"  -z: Set BITPIX to 0 for dataless header\n");
     exit (1);
@@ -227,4 +232,6 @@ char	*header;	/* Image FITS header */
  * Nov 24 1999	Add options to output entire FITS header and set BITPIX to 0
  *
  * Jun 19 2002	Add verbose argument to GetFITShead()
+ *
+ * May  6 2004	Add -i argument to read extension header without primary
  */

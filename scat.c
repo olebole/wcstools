@@ -1,5 +1,5 @@
 /* File scat.c
- * April 23, 2004
+ * May 12, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -702,6 +702,11 @@ char **av;
 	    refcatname[ncat] = refcatn;
 	    ncat = ncat + 1;
 	    }
+	}
+
+    if (ncat < 1) {
+	sprintf (errmsg, "* No catalog name given");
+	PrintUsage (errmsg);
 	}
 
     /* Set output epoch appropriately if output system is specified */
@@ -4378,4 +4383,5 @@ PrintGSClass ()
  * Mar  4 2004	Fix bug in setting merge flag
  * Mar 16 2004	Use star count returned from catalog merging subroutine
  * Mar 17 2004	RA-sort in MergeStars(); add logging
+ * May 12 2004	Exit with error message if no catalog name is given
  */

@@ -1,5 +1,5 @@
 /* File imrot.c
- * January 28, 2004
+ * June 14, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -106,6 +106,10 @@ char **av;
 
 		case 'a': /* Flip image around N-S axis if IRAF header says */
 		    automirror = 1;
+		    break;
+
+		case 'i':	/* Turn off inheritance from Primary header */
+		    setfitsinherit (0);
 		    break;
 
 		case 'l':	/* image flipped around N-S axis */
@@ -238,6 +242,7 @@ usage ()
     fprintf(stderr,"  yshift: integer vertical pixel shift, applied first\n");
     fprintf(stderr,"  -a: mirror if IRAF image WCS says to\n");
     fprintf(stderr,"  -f: write FITS image from IRAF input\n");
+    fprintf(stderr,"  -i: Do not append primary header to extension header\n");
     fprintf(stderr,"  -l: reflect image across vertical axis\n");
     fprintf(stderr,"  -o: allow overwriting of input image, else write new one\n");
     fprintf(stderr,"  -r: image rotation angle in degrees (default 0)\n");
@@ -427,10 +432,8 @@ char *name;
 		     bitpix0, bitpix);
 	sprintf (history, "New copy of %s BITPIX %d -> %d",
 		 name, bitpix0, bitpix);
+	hputc (header,"HISTORY",history);
 	}
-    else
-	sprintf (history,"New copy of image %s", name);
-    hputc (header,"HISTORY",history);
 
     if ((newimage = RotFITS (name,header,image,xshift,yshift,rotate,mirror,
 			     bitpix,verbose)) == NULL) {
@@ -504,4 +507,6 @@ char *name;
  * Feb 13 2001	Add -o name option to -o argument (from imwcs)
  *
  * Jan 28 2004	Add option to shift file data within file (before rotating)
+ * May  6 2004	Add -i to avoid appending primary header to extension header
+ * Jun 14 2004	Write HISTORY only if BITPIX is changed
  */

@@ -1,17 +1,20 @@
+Version 3.5.4 (May 19, 2004)
+delhead, keyhead, sethead: Add ability to overwrite multi-extension headers.
+scat: Exit with error message and menu if no cataog is given
+
 Version 3.5.3 (April 30, 2004)
-Use strncsrch() in hget.c to get differently-cased keywords.
-Add % option to getcol to format output a column at a time.
-Add -s option to imextract to ease setting of character string keyword values.
-Deal with lower case e and d in exponents of values returned by gethead.
-Fix bug which removed trailing zeroes from exponents of values dealt with by
-getcol, gettab, and cphead.
-In getfits, delete NAXISn for n > 2 in output image
-Add ctgrdate() to ctgread.c to allow searches of catalogs by date
-Update scat to search catalogs by date alone.
-Fix getpix handling of 0 0 for entire image.
-Return error on failure of any memory allocation in remap
-Fix sky position entry in getdate for heliocentric times
-Fix ty2read.c to read either CDROM with CRLF lines or CDS with LF lines
+getcol: Add % option to format output a column at a time.
+getcol, gettab, cphead: Fix bug which removed trailing zeroes from exponents of values returned
+getdate: Fix sky position entry for heliocentric times
+getfits:  Delete NAXISn for n > 2 in output image
+gethead: Deal with lower case e and d in exponents of values returned.
+imextract: Add -s option to ease setting of character string keyword values.
+scat: Add option to search catalogs by date alone.
+getpix: Fix handling of 0 0 for entire image.
+remap: Return error on failure of any memory allocation
+ctgread.c: Add ctgrdate() to allow searches of catalogs by date
+hget.c: Use strncsrch() in hget.c to get differently-cased keywords.
+ty2read.c: Read either CDROM with CRLF lines or CDS with LF lines
 
 Version 3.5.2 (March 17, 2004)
 Fix catalog subroutine argument problems found by Richard Mathar of Max Planck

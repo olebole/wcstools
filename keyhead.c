@@ -1,5 +1,5 @@
 /* File keyhead.c
- * October 29, 2003
+ * May 6, 2004
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -18,6 +18,7 @@
 #define MAXFILES 1000
 static int maxnkwd = MAXKWD;
 static int maxnfile = MAXFILES;
+extern char fitserrmsg;
 
 static void usage();
 static void ChangeKeyNames ();
@@ -232,9 +233,10 @@ char	*kwd[];		/* Names and values of those keywords */
     char *header;	/* FITS image header */
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
+    int ibhead;		/* Number of bytes to skip to header */
     char *irafheader;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
-    int lext, lroot, lhist;
+    int lext, lroot, lhist, iext;
     char *image, *imext, *imext1;
     char newname[128];
     char oldvalue[64];
@@ -272,19 +274,10 @@ char	*kwd[];		/* Names and values of those keywords */
     /* Open FITS file if .imh extension is not present */
     else {
 	iraffile = 0;
+	setfitsinherit (0);
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
-	    hgeti4 (header,"NAXIS",&naxis);
-	    if (naxis > 0) {
-		if ((image = fitsrfull (filename, nbhead, header)) == NULL) {
-		    if (verbose)
-			fprintf (stderr,"Cannot read FITS image %s\n",filename);
-		    }
-		}
-	    else {
-		if (verbose)
-		    fprintf (stderr, "Rewriting primary header, copying rest\n");
-		newimage = 1;
-		}
+	    if (verbose)
+		fprintf (stderr, "Rewriting only header\n");
 	    }
 	else {
 	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
@@ -397,15 +390,26 @@ char	*kwd[];		/* Names and values of those keywords */
     if (!nchange)
 	return;
 
+    /* Remove directory path and extension from file name */
+    fname = strrchr (filename, '/');
+    if (fname)
+	fname = fname + 1;
+    else
+	fname = filename;
+
+    /* Set image extension if there is one */
+    imext = strchr (fname, ',');
+    imext1 = NULL;
+    if (imext == NULL) {
+	imext = strchr (fname, '[');
+	if (imext != NULL) {
+	    imext1 = strchr (fname, ']');
+	    *imext1 = (char) 0;
+	    }
+	}
+
     /* Make up name for new FITS or IRAF output file */
     if (newimage) {
-
-    /* Remove directory path and extension from file name */
-	fname = strrchr (filename, '/');
-	if (fname)
-	    fname = fname + 1;
-	else
-	    fname = filename;
 	ext = strrchr (fname, '.');
 	if (ext != NULL) {
 	    lext = (fname + strlen (fname)) - ext;
@@ -417,15 +421,6 @@ char	*kwd[];		/* Names and values of those keywords */
 	    lext = 0;
 	    lroot = strlen (fname);
 	    strcpy (newname, fname);
-	    }
-	imext = strchr (fname, ',');
-	imext1 = NULL;
-	if (imext == NULL) {
-	    imext = strchr (fname, '[');
-	    if (imext != NULL) {
-		imext1 = strchr (fname, ']');
-		*imext1 = (char) 0;
-		}
 	    }
 	if (imext != NULL && *(imext+1) != '0') {
 	    strcat (newname, "_");
@@ -453,7 +448,7 @@ char	*kwd[];		/* Names and values of those keywords */
 	strcpy (newname, filename);
 
     /* Add history to header */
-    if (keyset || histset) {
+    if (imext == NULL && (keyset || histset)) {
 	if (hgets (header, "KEYHEAD", 72, history))
 	    hputc (header, "HISTORY", history);
 	endchar = strchr (history, ',');
@@ -505,7 +500,7 @@ char	*kwd[];		/* Names and values of those keywords */
 	    printf ("%s could not be written.\n", newname);
 	free (irafheader);
 	}
-    else if (naxis > 0) {
+    else if (imext == NULL) {
 	if (fitswimage (newname, header, image) > 0 && verbose)
 	    printf ("%s: rewritten successfully.\n", newname);
 	else if (verbose)
@@ -513,20 +508,9 @@ char	*kwd[];		/* Names and values of those keywords */
 	free (image);
 	}
     else {
-	if ((fdw = fitswhead (newname, header)) > 0) {
-	    fdr = fitsropen (filename);
-	    ipos = lseek (fdr, nbhead, SEEK_SET);
-	    image = (char *) calloc (2880, 1);
-	    while ((nbr = read (fdr, image, 2880)) > 0) {
-		nbw = write (fdw, image, nbr);
-		if (nbw < nbr)
-		    fprintf (stderr,"SETHEAD: %d / %d bytes written\n",nbw,nbr);
-		}
-	    close (fdr);
-	    close (fdw);
+	if (!fitswexhead (filename, header)) {
 	    if (verbose)
 		printf ("%s: rewritten successfully.\n", newname);
-	    free (image);
 	    }
 	}
 
@@ -572,4 +556,6 @@ char	*kwd[];		/* Names and values of those keywords */
  *
  * Aug 21 2003	Read image with fitsrfull() to deal with n dimensions
  * Oct 29 2003	Allow combination of keyword designation methods
+ *
+ * May  6 2004	Add code to write into FITS extension headers in situ
  */

@@ -1,5 +1,5 @@
 /* File sethead.c
- * October 29, 2003
+ * May 6, 2004
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -289,24 +289,24 @@ char **av;
 	if (ilistfile != NULL) {
 	    first_token (flist, 254, filename);
 
-	    /* If multispec, always write a new image */
+	    /* If multispec, always write a new image
 	    newimage1 = newimage0;
 	    if (strchr (filename, ',') || strchr (filename, '[')) {
 		newimage1 = newimage0;
 		newimage0 = 1;
-		}
+		} */
 
 	    SetValues (filename, nkwd, kwd, comment);
 	    newimage0 = newimage1;
 	    }
 	else
 
-	    /* If multispec, always write a new image */
+	    /* If multispec, always write a new image
 	    newimage1 = newimage0;
 	    if (strchr (fn[ifile], ',') || strchr (fn[ifile], '[')) {
 		newimage1 = newimage0;
 		newimage0 = 1;
-		}
+		} */
 
 	    SetValues (fn[ifile], nkwd, kwd, comment);
 	    newimage0 = newimage1;
@@ -371,6 +371,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     int squote = 39;
     int dquote = 34;
     int naxis = 1;
+    int nbold, nbnew;
     int imageread = 0;
     char cval[24];
     char history[72];
@@ -405,6 +406,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     /* Open FITS file if .imh extension is not present */
     else {
 	iraffile = 0;
+	setfitsinherit (0);
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
 	    hgeti4 (header,"NAXIS",&naxis);
 	    hgeti4 (header,"BITPIX",&bitpix);
@@ -439,6 +441,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 
     if (nkwd < 1)
 	return;
+
+    nbold = fitsheadsize (header);
 
     /* Set keywords one at a time */
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
@@ -763,6 +767,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	}
 
     /* Write fixed header to output file */
+    nbnew = fitsheadsize (header);
     if (iraffile) {
 	if (irafwhead (newname, lhead, irafheader, header) > 0 && verbose)
 	    printf ("%s rewritten successfully.\n", newname);
@@ -777,6 +782,16 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    close (fdw);
 	    }
 	}
+
+    /* Rewrite only header if it fits into the space from which it was read */
+    else if (nbnew <= nbnew && !newimage) {
+	if (!fitswexhead (filename, header)) {
+	    if (verbose)
+		printf ("%s: rewritten successfully.\n", newname);
+	    }
+	}
+
+    /* Rewrite header and data to a new image file */
     else if (naxis > 0 && imageread) {
 	if (fitswimage (newname, header, image) > 0 && verbose)
 	    printf ("%s: rewritten successfully.\n", newname);
@@ -784,6 +799,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    printf ("%s could not be written.\n", newname);
 	free (image);
 	}
+
     else {
 	if ((fdw = fitswhead (newname, header)) > 0) {
 	    fdr = fitsropen (filename);
@@ -868,4 +884,6 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Aug 21 2003	Read N-dimensional FITS image using fitsrfull()
  * Oct 28 2003	Increase output file name length from 128 to 1024
  * Oct 29 2003	Clean up command line and list file keyword input
+ *
+ * May  3 2004	Add code to overwrite header if revised one fits
  */

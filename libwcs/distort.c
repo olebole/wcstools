@@ -1,9 +1,9 @@
 /*** File libwcs/distort.c
- *** January 9, 2003
+ *** January 9, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu, 
  *** Based on code written by Jing Li, IPAC
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2003
+ *** Copyright (C) 2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -399,5 +399,5 @@ struct WorldCoor *wcs;  /* World coordinate system structure */
  * Nov 10 2003	Include unistd.h to get definition of NULL
  * Nov 18 2003	Include string.h to get strlen()
  *
- * Jan  9 2003	Add DelDistort() to delete distortion keywords
+ * Jan  9 2004	Add DelDistort() to delete distortion keywords
  */
