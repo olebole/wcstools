@@ -6,7 +6,7 @@ image, using specific keywords in the image header which relate pixel
 position within the image to position on the sky.  Auxillary programs
 search star catalogs and manipulate images.
 
-This is version 2.6.10 of the WCSTools package developed by Doug Mink
+This is version 2.6.11 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 
@@ -63,6 +63,8 @@ edhead	Edit the header of a FITS file or the user parameters of an IRAF
 	variable.
 
 getcol	Extract specified fields from an space-separated ASCII table file
+
+getdate Convert dates and times between various formats
 
 gethead	Return values for keyword(s) specified after filename.
 
@@ -123,4 +125,4 @@ wcshead	Print basic world coordinate system information on one line per image
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
 
--Doug Mink, SAO, 8 November 1999
+-Doug Mink, SAO, 1999-12-20

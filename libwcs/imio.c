@@ -1,6 +1,6 @@
 /*** File wcslib/imio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** September 28, 1999
+ *** December 14, 1999
 
  * Module:      imio.c (image pixel manipulation)
  * Purpose:     Read and write pixels from arbitrary data type 2D arrays
@@ -193,22 +193,34 @@ double	dpix;
     switch (bitpix) {
 
 	case 8:
-	    image[(y*w) + x] = (char) dpix;
+	    if (dpix < 0)
+		image[(y*w) + x] = (char) (dpix - 0.5);
+	    else
+		image[(y*w) + x] = (char) (dpix + 0.5);
 	    break;
 
 	case 16:
 	    im2 = (short *)image;
-	    im2[(y*w) + x] = (short) dpix;
+	    if (dpix < 0)
+		im2[(y*w) + x] = (short) (dpix - 0.5);
+	    else
+		im2[(y*w) + x] = (short) (dpix + 0.5);
 	    break;
 
 	case 32:
 	    im4 = (int *)image;
-	    im4[(y*w) + x] = (int) dpix;
+	    if (dpix < 0)
+		im4[(y*w) + x] = (int) (dpix - 0.5);
+	    else
+		im4[(y*w) + x] = (int) (dpix + 0.5);
 	    break;
 
 	case -16:
 	    imu = (unsigned short *)image;
-	    imu[(y*w) + x] = (unsigned short) dpix;
+	    if (dpix < 0)
+		imu[(y*w) + x] = (unsigned short) 0;
+	    else
+		imu[(y*w) + x] = (unsigned short) (dpix + 0.5);
 	    break;
 
 	case -32:
@@ -286,22 +298,32 @@ double	dpix;		/* Value to add to pixel */
     switch (bitpix) {
 
 	case 8:
-	    image[ipix] = image[ipix] + (char) dpix;
+	    if (dpix < 0)
+		image[ipix] = image[ipix] + (char) (dpix - 0.5);
+	    else
+		image[ipix] = image[ipix] + (char) (dpix + 0.5);
 	    break;
 
 	case 16:
 	    im2 = (short *)image;
-	    im2[ipix] = im2[ipix] + (short) dpix;
+	    if (dpix < 0)
+		im2[ipix] = im2[ipix] + (short) (dpix - 0.5);
+	    else
+		im2[ipix] = im2[ipix] + (short) (dpix + 0.5);
 	    break;
 
 	case 32:
 	    im4 = (int *)image;
-	    im4[ipix] = im4[ipix] + (int) dpix;
+	    if (dpix < 0)
+		im4[ipix] = im4[ipix] + (int) (dpix - 0.5);
+	    else
+		im4[ipix] = im4[ipix] + (int) (dpix + 0.5);
 	    break;
 
 	case -16:
 	    imu = (unsigned short *)image;
-	    imu[ipix] = imu[ipix] + (unsigned short) dpix;
+	    if (dpix > 0)
+		imu[ipix] = imu[ipix] + (unsigned short) (dpix + 0.5);
 	    break;
 
 	case -32:
@@ -342,8 +364,8 @@ int	x2, y2;		/* Row and column for output pixel */
     short *ims1, *ims2;
     int *imi1, *imi2;
     unsigned short *imu1, *imu2;
-    float *imr1, *imr2;
-    double *imd1, *imd2;
+    float rpix, *imr1, *imr2;
+    double dpix, *imd1, *imd2;
 
     switch (bitpix1) {
 
@@ -475,69 +497,86 @@ int	x2, y2;		/* Row and column for output pixel */
 	    break;
 
 	case -32:
+	    imr1 = (float *)image1;
+	    rpix = imr1[(y1*w1) + x1];
 	    switch (bitpix2) {
 		case 8:
-		    imr1 = (float *)image1;
-		    image2[(y2*w2) + x2] = (char) imr1[(y1*w1) + x1];
+		    if (rpix < 0.0)
+			image2[(y2*w2) + x2] = (char) (rpix - 0.5);
+		    else
+			image2[(y2*w2) + x2] = (char) (rpix + 0.5);
 		    break;
 		case 16:
-		    imr1 = (float *)image1;
 		    ims2 = (short *)image2;
-		    ims2[(y2*w2) + x2] = (short) imr1[(y1*w1) + x1];
+		    if (rpix < 0.0)
+			ims2[(y2*w2) + x2] = (short) (rpix - 0.5);
+		    else
+			ims2[(y2*w2) + x2] = (short) (rpix + 0.5);
 		    break;
 		case 32:
-		    imr1 = (float *)image1;
 		    imi2 = (int *)image2;
-		    imi2[(y2*w2) + x2] = (int) imr1[(y1*w1) + x1];
+		    if (rpix < 0.0)
+			imi2[(y2*w2) + x2] = (int) (rpix - 0.5);
+		    else
+			imi2[(y2*w2) + x2] = (int) (rpix + 0.5);
 		    break;
 		case -16:
-		    imr1 = (float *)image1;
 		    imu2 = (unsigned short *)image2;
-		    imu2[(y2*w2) + x2] = (unsigned short) imr1[(y1*w1) + x1];
+		    if (rpix < 0.0)
+			imu2[(y2*w2) + x2] = (unsigned short) 0;
+		    else
+			imu2[(y2*w2) + x2] = (unsigned short) (rpix + 0.5);
 		    break;
 		case -32:
-		    imr1 = (float *)image1;
 		    imr2 = (float *)image2;
-		    imr2[(y2*w2) + x2] = imr1[(y1*w1) + x1];
+		    imr2[(y2*w2) + x2] = rpix;
 		    break;
 		case -64:
-		    imr1 = (float *)image1;
 		    imd2 = (double *)image2;
-		    imd2[(y2*w2) + x2] = (float) imr1[(y1*w1) + x1];
+		    imd2[(y2*w2) + x2] = (double) rpix;
 		    break;
 		}
 	    break;
 
 	case -64:
+	    imd1 = (double *)image1;
+	    dpix = imd1[(y1*w1) + x1];
 	    switch (bitpix2) {
 		case 8:
 		    imd1 = (double *)image1;
-		    image2[(y2*w2) + x2] = (char) imd1[(y1*w1) + x1];
+		    if (dpix < 0.0)
+			image2[(y2*w2) + x2] = (char) (dpix - 0.5);
+		    else
+			image2[(y2*w2) + x2] = (char) (dpix + 0.5);
 		    break;
 		case 16:
-		    imd1 = (double *)image1;
 		    ims2 = (short *)image2;
-		    ims2[(y2*w2) + x2] = (short) imd1[(y1*w1) + x1];
+		    if (dpix < 0.0)
+			ims2[(y2*w2) + x2] = (short) (dpix - 0.5);
+		    else
+			ims2[(y2*w2) + x2] = (short) (dpix + 0.5);
 		    break;
 		case 32:
-		    imd1 = (double *)image1;
 		    imi2 = (int *)image2;
-		    imi2[(y2*w2) + x2] = (int) imd1[(y1*w1) + x1];
+		    if (dpix < 0.0)
+			imi2[(y2*w2) + x2] = (int) (dpix - 0.5);
+		    else
+			imi2[(y2*w2) + x2] = (int) (dpix + 0.5);
 		    break;
 		case -16:
-		    imd1 = (double *)image1;
 		    imu2 = (unsigned short *)image2;
-		    imu2[(y2*w2) + x2] = (unsigned short) imd1[(y1*w1) + x1];
+		    if (dpix < 0.0)
+			imu2[(y2*w2) + x2] = (unsigned short) 0;
+		    else
+			imu2[(y2*w2) + x2] = (unsigned short) (dpix + 0.5);
 		    break;
 		case -32:
-		    imd1 = (double *)image1;
 		    imr2 = (float *)image2;
-		    imr2[(y2*w2) + x2] = (float) imd1[(y1*w1) + x1];
+		    imr2[(y2*w2) + x2] = (float) dpix;
 		    break;
 		case -64:
-		    imd1 = (double *)image1;
 		    imd2 = (double *)image2;
-		    imd2[(y2*w2) + x2] = imd1[(y1*w1) + x1];
+		    imd2[(y2*w2) + x2] = dpix;
 		    break;
 		}
 	    break;
@@ -656,20 +695,32 @@ double	*dpix;		/* Vector of pixels to copy */
 
 	case 16:
 	    im2 = (short *)image;
-	    for (ipix = pix1; ipix < pix2; ipix++)
-		*(im2+ipix) = (short) *dp++;
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		if (*dp < 0.0)
+		    *(im2+ipix) = (short) (*dp++ - 0.5);
+		else
+		    *(im2+ipix) = (short) (*dp++ + 0.5);
+		}
 	    break;
 
 	case 32:
 	    im4 = (int *)image;
-	    for (ipix = pix1; ipix < pix2; ipix++)
-		*(im4+ipix) = (int) *dp++;
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		if (*dp < 0.0)
+		    *(im4+ipix) = (int) (*dp++ - 0.5);
+		else
+		    *(im4+ipix) = (int) (*dp++ + 0.5);
+		}
 	    break;
 
 	case -16:
 	    imu = (unsigned short *)image;
-	    for (ipix = pix1; ipix < pix2; ipix++)
-		*(imu+ipix) = (unsigned short) *dp++;
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		if (*dp < 0.0)
+		    *(imu+ipix) = (unsigned short) 0;
+		else
+		    *(imu+ipix) = (unsigned short) (*dp++ + 0.5);
+		}
 	    break;
 
 	case -32:
@@ -858,4 +909,5 @@ imswapped ()
  * Sep 14 1999	Change dp incrementing so it works on Alpha compiler
  * Sep 27 1999	Add interface for 1-based (FITS) image access
  * Sep 27 1999	Add addpix() and addpix1()
+ * Dec 14 1999	In putpix(), addpix(), putvec(), round when output is integer
  */

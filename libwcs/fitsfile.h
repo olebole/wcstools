@@ -1,5 +1,5 @@
 /* fitsfile.h  FITS and IRAF file access subroutines
- * November 23, 1999
+ * December 15, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -74,23 +74,32 @@ extern int first_token();
 
 /* Subroutines for translating dates and times */
 double dt2ep();	/* yyyy.ddmm and hh.mmsss to fractional year (epoch) */
-double dt2fd();	/* yyyy.ddmm and hh.mmsss to FITS date string */
+char *dt2fd();	/* yyyy.ddmm and hh.mmsss to FITS date string */
+void dt2i();	/* yyyy.ddmm and hh.mmsss to year, month, day, hrs, min, sec */
 double dt2jd();	/* yyyy.ddmm and hh.mmsss to Julian date */
 double dt2ts();	/* yyyy.ddmm and hh.mmsss to seconds since 1950.0 */ 
-void ep2dt();	/* fractional year to yyyy.mmdd hh.mmssss */
-char *ep2fd();	/* fractional year to FITS date string yyyy-mm-ddThh:mm:ss.ss */
-double ep2jd();	/* fractional year to Julian Date */
-double ep2ts();	/* fractional year to seconds since 1950.0 */
+void ep2dt();	/* Fractional year to yyyy.mmdd hh.mmssss */
+char *ep2fd();	/* Fractional year to FITS date string yyyy-mm-ddThh:mm:ss.ss */
+void ep2i();	/* Fractional year to year, month, day, hours, min., sec. */
+double ep2jd();	/* Fractional year to Julian Date */
+double ep2ts();	/* Fractional year to seconds since 1950.0 */
+void fd2dt();	/* FITS standard date string to Julian date */
 double fd2ep();	/* FITS standard date string to fractional year (epoch) */
+char *fd2fd();	/* Any FITS standard date string to ISO FITS date string */
+void fd2i();	/* FITS standard date string to year, mon, day, hrs, min, sec */
 double fd2jd();	/* FITS standard date string to Julian date */
+double fd2ts();	/* FITS standard date to seconds since 1950.0 */
 void jd2dt();	/* Julian date to yyyy.mmdd hh.mmssss */
 double jd2ep();	/* Julian date to fractional year */
 char *jd2fd();	/* Julian date to FITS date string yyyy-mm-ddThh:mm:ss.ss */
+void jd2i();	/* Julian date to year, month, day, hours, min., sec. */
 double jd2ts();	/* Julian date to seconds since 1950.0 */
-void ts2dt();	/* seconds since 1950.0 to yyyy.mmdd hh.mmssss */
-char *ts2fd();	/* seconds since 1950.0 to FITS date, yyyy-mm-ddT00:00:00.000 */
-void ts2i();	/* seconds since 1950.0 to year, month, day, hours, min, sec */
-double ts2jd();	/* seconds since 1950.0 to Julian date */
+void ts2dt();	/* Seconds since 1950.0 to yyyy.mmdd hh.mmssss */
+double ts2ep();	/* Seconds since 1950.0 to fractional year */
+char *ts2fd();	/* Seconds since 1950.0 to FITS date, yyyy-mm-ddT00:00:00.000 */
+void ts2i();	/* Seconds since 1950.0 to year, month, day, hours, min, sec */
+double ts2jd();	/* Seconds since 1950.0 to Julian date */
+int isdate();	/* Return 1 if string is FITS old or ISO date */
 
 #endif /* fitsfile_h_ */
 
@@ -114,4 +123,6 @@ double ts2jd();	/* seconds since 1950.0 to Julian date */
  * Oct 21 1999	Add fitswhead()
  * Nov  2 1999	Add date utilities from wcscat.h
  * Nov 23 1999	Add fitscimage()
+ * Dec 15 1999	Fix misdeclaration of *2fd() subroutines, add fd2i(), dt2i()
+ * Dec 20 1999	Add isdate()
  */

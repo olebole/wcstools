@@ -1,5 +1,5 @@
 /* File conpix.c
- * December 14, 1999
+ * October 21, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -18,15 +18,10 @@
 #define PIX_SUB	2
 #define PIX_MUL	3
 #define PIX_DIV	4
-#define PIX_SET 5
-#define PIX_SQRT 6
-#define PIX_NOISE 7
 
 static void usage();
 static void OpPix();
-static double gnoise();
 
-static int nlog = 10;		/* Logging frequency */
 static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
 static int version = 0;		/* If 1, print only program name and version */
@@ -62,6 +57,14 @@ char **av;
 	while (c = *++str)
 	switch (c) {
 
+	case 'v':	/* more verbosity */
+	    verbose++;
+	    break;
+
+	case 'n':	/* ouput new file */
+	    newimage++;
+	    break;
+
 	case 'a':	/* add constant to all pixels */
 	    op[nop] = PIX_ADD;
             if (ac < 2)
@@ -70,8 +73,16 @@ char **av;
 	    ac--;
 	    break;
 
-	case 'c':	/* Set all pixels to a constant value */
-	    op[nop] = PIX_SET;
+	case 's':	/* subtract constant from all pixels */
+	    op[nop] = PIX_SUB;
+            if (ac < 2)
+                usage ();
+            opcon[nop++] = atof (*++av);
+	    ac--;
+	    break;
+
+	case 'm':	/* multiply all pixels by constant */
+	    op[nop] = PIX_MUL;
             if (ac < 2)
                 usage ();
             opcon[nop++] = atof (*++av);
@@ -86,53 +97,12 @@ char **av;
 	    ac--;
 	    break;
 
-	case 'l':	/* Logging frequency */
-            if (ac < 2)
-                usage ();
-            nlog = atoi (*++av);
-	    ac--;
-	    break;
-
-	case 'm':	/* multiply all pixels by constant */
-	    op[nop] = PIX_MUL;
-            if (ac < 2)
-                usage ();
-            opcon[nop++] = atof (*++av);
-	    ac--;
-	    break;
-
-	case 'n':	/* ouput new file */
-	    newimage++;
-	    break;
-
-	case 'g':	/* Gaussian noise for square root of pixel value */
-	    op[nop] = PIX_NOISE;
-	    nop++;
-	    break;
-
-	case 'r':	/* take square root of all pixels */
-	    op[nop] = PIX_SQRT;
-	    nop++;
-	    break;
-
-	case 's':	/* subtract constant from all pixels */
-	    op[nop] = PIX_SUB;
-            if (ac < 2)
-                usage ();
-            opcon[nop++] = atof (*++av);
-	    ac--;
-	    break;
-
 	case '@':       /* List of files to be read */
 	    readlist++;
 	    listfile = ++str;
 	    str = str + strlen (str) - 1;
 	    av++;
 	    ac--;
-
-	case 'v':	/* more verbosity */
-	    verbose++;
-	    break;
 
 	default:
 	    usage ();
@@ -182,15 +152,12 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Operate on all pixels of a FITS or IRAF image file\n");
-    fprintf(stderr,"Usage: conpix [-vnpr][-asmd constant][-l num] file.fits ...\n");
-    fprintf(stderr,"       conpix [-vnpr][-asmd constant][-l num] @filelist\n");
+    fprintf(stderr,"Usage: conpix [-vn]{-asmd constant] file.fits ...\n");
+    fprintf(stderr,"       conpix [-vn]{-asmd constant] @filelist\n");
     fprintf(stderr,"  -a: add constant to all pixels\n");
     fprintf(stderr,"  -d: divide all pixels by constant\n");
-    fprintf(stderr,"  -g: Gaussian noise from each pixel\n");
-    fprintf(stderr,"  -l: logging interval (default = 10)\n");
     fprintf(stderr,"  -m: multiply all pixels by constant\n");
     fprintf(stderr,"  -n: write new file, else overwrite\n");
-    fprintf(stderr,"  -r: square root of each pixel\n");
     fprintf(stderr,"  -s: subtract constant from all pixels\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
@@ -305,32 +272,20 @@ double	*opcon;		/* Constants for operations */
 		    for (dvec = imvec; dvec < endvec; dvec++)
 			*dvec = *dvec / dpix;
 		    break;
-		case PIX_SET:
-		    for (dvec = imvec; dvec < endvec; dvec++)
-			*dvec = dpix;
-		    break;
-		case PIX_SQRT:
-		    for (dvec = imvec; dvec < endvec; dvec++)
-			*dvec = sqrt (*dvec);
-		    break;
-		case PIX_NOISE:
-		    for (dvec = imvec; dvec < endvec; dvec++)
-			*dvec = gnoise (*dvec);
-		    break;
 		default:
 		    break;
 		}
 	    }
 	putvec (image, bitpix, bzero, bscale, pixoff, xdim, imvec);
 	pixoff = pixoff + xdim;
-	if (verbose && y % nlog == 0) {
+	if (verbose) {
 	    fprintf (stderr, "Row %4d operations complete", y);
 	    (void) putc (13,stderr);
 	    }
 	}
     fprintf (stderr,"\n");
 
-    /* Note operation as history line in header */
+    /* Note addition as history line in header */
     for (iop = 0; iop < nop; iop++) {
 	double dpix = opcon[iop];
 	if (bitpix > 0) {
@@ -351,18 +306,6 @@ double	*opcon;		/* Constants for operations */
 		    sprintf (history,
 			     "CONPIX: all pixels divided by %d", ipix);
 		    break;
-		case PIX_SET:
-		    sprintf (history,
-			     "CONPIX: all pixels set to %d", ipix);
-		    break;
-		case PIX_SQRT:
-		    sprintf (history,
-			     "CONPIX: all pixels replaced by their square root");
-		    break;
-		case PIX_NOISE:
-		    sprintf (history,
-			     "CONPIX: all pixels replaced by Gaussian noise");
-		    break;
 		}
 	    }
 	else if (dpix < 1.0 && dpix > -1.0) {
@@ -382,18 +325,6 @@ double	*opcon;		/* Constants for operations */
 		    sprintf (history,
 			     "CONPIX: all pixels divided by %f", dpix);
 		    break;
-		case PIX_SET:
-		    sprintf (history,
-			     "CONPIX: all pixels set to %f", dpix);
-		    break;
-		case PIX_SQRT:
-		    sprintf (history,
-			     "CONPIX: all pixels replaced by their square root");
-		    break;
-		case PIX_NOISE:
-		    sprintf (history,
-			     "CONPIX: all pixels replaced by Gaussian noise");
-		    break;
 		}
 	    }
 	else {
@@ -412,18 +343,6 @@ double	*opcon;		/* Constants for operations */
 		case PIX_DIV:
 		    sprintf (history,
 			     "CONPIX: all pixels divided by %.2f", dpix);
-		    break;
-		case PIX_SET:
-		    sprintf (history,
-			     "CONPIX: all pixels set to %.2f", dpix);
-		    break;
-		case PIX_SQRT:
-		    sprintf (history,
-			     "CONPIX: all pixels replaced by their square root");
-		    break;
-		case PIX_NOISE:
-		    sprintf (history,
-			     "CONPIX: all pixels replaced by Gaussian noise");
 		    break;
 		}
 	    }
@@ -507,42 +426,6 @@ double	*opcon;		/* Constants for operations */
     return;
 }
 
-static int iset = 0;
-static double gset;
-
-/* Random noise drawn from a Gaussian distribution centered on zero */
-
-static double
-gnoise (flux)
-
-double	flux;	/* Square root of this is 1/2.35 of Gaussian FWHM */
-
-{
-    double fac, rsq, v1, v2, sig;
-    int i = 0;
-
-    sig = sqrt (flux);
-
-    if (iset == 0) {
-	do {
-	    v1 = 2.0 * drand48() - 1.0;
-	    v2 = 2.0 * drand48() - 1.0;
-	    rsq = v1 * v1 + v2 * v2;
-	    } while (rsq >= 1.0 || rsq == 0.0);
-
-	fac = sqrt (-2.0 * log (rsq) / rsq);
-
-	gset = sig * v1 * fac;
-	iset = 1;
-	return (sig * v2 * fac);
-	}
-
-    else {
-	iset = 0;
-	return (gset);
-	}
-}
-
 /* Dec  2 1998	New program
  *
  * Feb 12 1999	Initialize dimensions to one so it works with 1-D images
@@ -550,5 +433,4 @@ double	flux;	/* Square root of this is 1/2.35 of Gaussian FWHM */
  * Jun 17 1999	Finish adding BZERO and BSCALE
  * Jun 29 1999	Fix typo in BSCALE setting
  * Oct 21 1999	Drop unused variables after lint
- * Dec 14 1999	Add constant, square root, and Gaussian noise
  */

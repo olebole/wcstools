@@ -14,6 +14,8 @@ edhead.c
   using a the text editor specified by the EDITOR environment variable.
 getcol.c
   Extract specified fields from an space-separated ASCII table file
+getdate.c
+  Convert dates and times between various formats.
 gethead.c
   Return values for keyword(s) specified after filename.
 getpix.c

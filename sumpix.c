@@ -1,5 +1,5 @@
 /* File sumpix.c
- * October 29, 1999
+ * December 14, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -21,8 +21,9 @@ static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;	/* If 1, print only program name and version */
 static int compsum = 0;	/* If 1, compute sum over range */
 static int compmean = 0;/* If 1, compute mean over range */
-static int comprms = 0;	/* If 1, compute r.m.s. over range */
+static int compvar = 0;	/* If 1, compute variance over range */
 static int compstd = 0;	/* If 1, compute standard deviation over range */
+static int ndec = -1;	/* Number of decimal places in outout */
 
 main (ac, av)
 int ac;
@@ -57,11 +58,20 @@ char **av;
 		case 'd':	/* Compute standard deviation */
 		    compstd++;
 		    break;
+
 		case 'm':	/* Compute mean */
 		    compmean++;
 		    break;
-		case 'r':	/* Compute r.m.s. */
-		    comprms++;
+
+		case 'n': /* Number of decimal places in output */
+		    if (ac < 2)
+			usage();
+		    ndec = (int) (atof (*++av));
+		    ac--;
+		    break;
+
+		case 'r':	/* Compute variance */
+		    compvar++;
 		    break;
 		case 's':	/* Compute sum */
 		    compsum++;
@@ -87,7 +97,7 @@ char **av;
 	else
 	    fn = *av;
 
-	if (!compmean && !comprms && !compstd)
+	if (!compmean && !compvar && !compstd)
 	    compsum++;
 	if (fn && crange && rrange)
             SumPix (fn, crange, rrange);
@@ -102,10 +112,11 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Sum row, column, or region of a FITS or IRAF image\n");
-    fprintf(stderr,"Usage: sumpix [-v] x_range  y_range file.fit ...\n");
+    fprintf(stderr,"Usage: sumpix [-dmrsv][-n num] x_range  y_range file.fit ...\n");
     fprintf(stderr,"  -d: compute and print standard deviation\n");
     fprintf(stderr,"  -m: compute and print mean\n");
-    fprintf(stderr,"  -r: compute and print variance (r.m.s.)\n");
+    fprintf(stderr,"  -n: number of decimal places in output\n");
+    fprintf(stderr,"  -r: compute and print variance (sum of squares)\n");
     fprintf(stderr,"  -s: compute and print sum (default)\n");
     fprintf(stderr,"  -v: verbose\n");
     fprintf(stderr,"  a range of 0 implies the full dimension\n");
@@ -133,8 +144,10 @@ char *rrange;	/* Row range string */
     int bitpix,xdim,ydim;
     int nx, ny, ix, iy, x, y;
     int np;
-    double dnp, mean, rms, std, sumsq;
+    double dnp, mean, variance, std, sumsq;
     char pixname[128];
+    char numform[8];
+    char numforme[8];
     struct Range *xrange;    /* X range structure */
     struct Range *yrange;    /* Y range structure */
 
@@ -190,6 +203,15 @@ char *rrange;	/* Row range string */
 	    fprintf (stderr,"FITS image file %s\n", name);
 	}
 
+    if (ndec > -1) {
+	sprintf (numform, "%%.%df ", ndec);
+	sprintf (numforme, "%%.%df", ndec);
+	}
+    else {
+	sprintf (numform, "%%.2f ");
+	sprintf (numforme, "%%.2f");
+	}
+
 /* Get information about the image */
     hgeti4 (header,"BITPIX",&bitpix);
     xdim = 1;
@@ -219,16 +241,16 @@ char *rrange;	/* Row range string */
 		}
 	    dnp = (double) np;
 	    if (compsum)
-		printf ("%f ", sum);
+		printf (numform, sum);
 	    mean = sum / dnp;
 	    if (compmean)
-		printf ("%f ", mean);
-	    rms = (sumsq / dnp) - (mean * mean);
-	    if (comprms)
-		printf ("%f ", rms);
+		printf (numform, mean);
+	    variance = sumsq;
+	    if (compvar)
+		printf (numform, variance);
 	    if (compstd) {
 		std = sqrt ((sumsq / dnp) - (mean * mean));
-		printf ("%f", std);
+		printf (numforme, std);
 		}
 	    printf ("\n");
 	    }
@@ -253,16 +275,16 @@ char *rrange;	/* Row range string */
 		}
 	    dnp = (double) np;
 	    if (compsum)
-		printf ("%f ", sum);
+		printf (numform, sum);
 	    mean = sum / dnp;
 	    if (compmean)
-		printf ("%f ", mean);
-	    rms = (sumsq / dnp) - (mean * mean);
-	    if (comprms)
-		printf ("%f ", rms);
+		printf (numform, mean);
+	    variance = sumsq;
+	    if (compvar)
+		printf (numform, variance);
 	    if (compstd) {
 		std = sqrt ((sumsq / dnp) - (mean * mean));
-		printf ("%f", std);
+		printf (numforme, std);
 		}
 	    printf ("\n");
 	    }
@@ -296,9 +318,9 @@ char *rrange;	/* Row range string */
 	mean = sum / dnp;
 	if (compmean)
 	    printf ("%f ", mean);
-	rms = (sumsq / dnp) - (mean * mean);
-	if (comprms)
-	    printf ("%f ", rms);
+	variance = sumsq;
+	if (compvar)
+	    printf ("%f ", variance);
 	if (compstd) {
 	    std = sqrt ((sumsq / dnp) - (mean * mean));
 	    printf ("%f", std);
@@ -315,5 +337,7 @@ char *rrange;	/* Row range string */
 /* Jul  2 1999	New program
  * Jul  6 1999	Fix bug with x computation in patch adding section
  * Oct 22 1999	Drop unused variables after lint
- * Oct 29 1999	Add option to computeand print mean, rms, std, and/or sum
+ * Oct 29 1999	Add option to compute and print mean, rms, std, and/or sum
+ * Dec 10 1999	Add option -n to set number of decimal places in output
+ * Dec 14 1999	Change rms to variance
  */

@@ -1,5 +1,5 @@
 /* File sethead.c
- * November 30, 1999
+ * December 20, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -28,6 +28,7 @@ static int histset = 0;
 static int krename = 0;
 static char prefix[2];
 static int version = 0;		/* If 1, print only program name and version */
+static int isodate = 0;		/* If 1, convert all FITS dates to ISO */
 
 
 main (ac, av)
@@ -73,6 +74,10 @@ char **av;
 	    char c;
 	    while (c = *++str)
 	    switch (c) {
+
+		case 'd':	/* Upgrade date to ISO */
+		    isodate++;
+		    break;
 
 		case 'h':	/* Set HISTORY */
 		    histset++;
@@ -201,9 +206,10 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Set FITS or IRAF header keyword values\n");
     fprintf(stderr,"Usage: [-nhkv][-f num][-m num][-r char] file1.fits [... filen.fits] kw1=val1 [ ... kwn=valuen]\n");
-    fprintf(stderr,"  or : [-nhkv][-f num][-m num][-r char] file1.fits [... filen.fits] @keywordfile]\n");
-    fprintf(stderr,"  or : [-nhkv][-f num][-m num][-r char] @listfile kw1=val1 [ ... kwn=valuen]\n");
-    fprintf(stderr,"  or : [-nhkv][-f num][-m num][-r char] @listfile @keywordfile\n");
+    fprintf(stderr,"  or : [-dhknv][-f num][-m num][-r char] file1.fits [... filen.fits] @keywordfile]\n");
+    fprintf(stderr,"  or : [-dhknv][-f num][-m num][-r char] @listfile kw1=val1 [ ... kwn=valuen]\n");
+    fprintf(stderr,"  or : [-dhknv][-f num][-m num][-r char] @listfile @keywordfile\n");
+    fprintf(stderr,"  -d: Change date to ISO format\n");
     fprintf(stderr,"  -h: Write HISTORY line\n");
     fprintf(stderr,"  -k: Write SETHEAD keyword\n");
     fprintf(stderr,"  -n: Write a new file (add e before the extension)\n");
@@ -230,6 +236,7 @@ char	*kwd[];		/* Names and values of those keywords */
     int i, lext, lroot;
     char *image;
     char newname[128];
+    char *newval;
     char *ext, *fname, *imext, *imext1;
     char *kw, *kwv, *kwl, *kwv0;
     char *v, *vq0, *vq1;
@@ -308,7 +315,26 @@ char	*kwd[];		/* Names and values of those keywords */
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
         strcpy (cval,"                    ");
 	kwv0 = strchr (kwd[ikwd],'=');
-	if (kwv0 != NULL) {
+	if (kwv0 == NULL) {
+	    lkwd = strlen (kwd[ikwd]);
+
+	    /* Get current length of header buffer */
+	    lhead = gethlength (header);
+
+	    /* Make keyword all upper case */
+	    kwl = kwd[ikwd] + lkwd;
+	    for (kw = kwd[ikwd]; kw < kwl; kw++) {
+		if (*kw > 96 && *kw < 123)
+		    *kw = *kw - 32;
+		}
+	    if (hgets (header, kwd[ikwd], 80, value)) {
+		if (isdate (value)) {
+		    newval = fd2fd (value);
+		    hputs (header, kwd[ikwd], newval);
+		    }
+		}
+	    }
+	else {
 	*kwv0 = 0;
 	lkwd = kwv0 - kwd[ikwd];
 	kwv = kwv0 + 1;
@@ -622,4 +648,5 @@ char	*kwd[];		/* Names and values of those keywords */
  * Oct 14 1999	Reallocate header if length is exceeded
  * Oct 22 1999	Drop unused variables after lint
  * Nov 17 1999	Fix bug which wrote a second entry for character values
+ * Dec 20 1999	Add -d option to change date to ISO format
  */

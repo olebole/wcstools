@@ -1,5 +1,20 @@
-Version 2.6.10 (December 6, 1999)
+Version 2.6.11 (December 20, 1999)
+conpix:  Added -c (set constant), -r (square root), and -g (Gaussian noise)
+getcol:  Add -t conversion to tab-separated table
+sethead: Add -d option to change date from old FITS format to new FITS ISO
+         format.  This works on dates of format dd/mm/yyyy as well as dd/mm/yy
+setpix:  Fix bugs
+getpix:  Fix bugs so that upper and lower pixel limits can be used together
+getdate: New program which uses dateutil.c to do many date and time conversions
+imio.c:  Round all float and double conversions to integer
+tnxpos.c: Fix several bugs; set wcs->rot using wcsrotset()
+wcsfort.c: Add error handling and better internal documentation
+dateutil.c: Fix bugs and add more conversions
+hget.c:  Fix bug extracting minutes and seconds from FITS ISO time string
+
+Version 2.6.10 (December 9, 1999)
 remap:   Added -i flag to set output BITPIX and avoid overflows
+getpix:  Added -g and -l options to print only pixels within value limits
 hget.c:  Fix bug in isnum() so numeric strings starting with d or e are
          not decreed to be numbers.
 dateutil.c: Fix bug in ts2jd() which caused JD to be much too big

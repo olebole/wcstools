@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** December 3, 1999
+ *** December 20, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -390,6 +390,7 @@ double *dval;
 	if (sstr > value) {
 	    *sstr = '\0';
 	    day = (int) atof (value);
+	    *sstr = '/';
 	    nval = sstr + 1;
 	    sstr = strchr (nval,'/');
 	    if (sstr == NULL)
@@ -397,6 +398,7 @@ double *dval;
 	    if (sstr > value) {
 		*sstr = '\0';
 		month = (int) atof (nval);
+		*sstr = '/';
 		nval = sstr + 1;
 		year = (int) atof (nval);
 		if (year >= 0 && year <= 49)
@@ -431,6 +433,7 @@ double *dval;
 	else if (dstr > value) {
 	    *dstr = '\0';
 	    year = (int) atof (value);
+	    *dstr = '-';
 	    nval = dstr + 1;
 	    dstr = strchr (nval,'-');
 	    month = 1;
@@ -439,11 +442,14 @@ double *dval;
 	    if (dstr > value) {
 		*dstr = '\0';
 		month = (int) atof (nval);
+		*dstr = '-';
 		nval = dstr + 1;
 		tstr = strchr (nval,'T');
 		if (tstr > value)
 		    *tstr = '\0';
 		day = (int) atof (nval);
+		if (tstr > value)
+		    *tstr = 'T';
 		}
 
 	    /* If year is < 32, it is really day of month in old format */
@@ -482,14 +488,19 @@ double *dval;
 		if (cstr > value) {
 		    *cstr = '\0';
 		    hours = (int) atof (nval);
+		    *cstr = ':';
 		    nval = cstr + 1;
 		    cstr = strchr (nval,':');
 		    if (cstr > value) {
+			*cstr = '\0';
 			minutes = (int) atof (nval);
+			*cstr = ':';
 			nval = cstr + 1;
-			cstr = strchr (nval,':');
-			if (cstr > value)
-			    seconds = atof (nval);
+			seconds = atof (nval);
+			}
+		    else {
+			minutes = (int) atof (nval);
+			seconds = 0.0;
 			}
 		    }
 		fday = ((3.6e3 * (double)hours) + (6.e1 * (double)minutes) +
@@ -1269,4 +1280,5 @@ int set_saolib(hstring)
  * Oct 15 1999	Return 1 from hgetndec() if successful
  * Oct 20 1999	Drop unused variable after lint (val in hgetndec)
  * Dec  3 1999	Fix isnum() to reject strings starting with a d or e
+ * Dec 20 1999	Update hgetdate() to getminutes and seconds right
  */

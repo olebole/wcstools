@@ -1,5 +1,5 @@
 /*** File saoimage/wcslib/wcsf77.c
- *** October 21, 1999
+ *** December 9, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcsfort.c (World Coordinate Systems)
@@ -32,7 +32,7 @@
  * Subroutine:	wcs2pix_ (wcs,xpos,ypos,xpix,ypix)
  *		    sky coordinates -> pixel coordinates
 
- * Copyright:   1998 Smithsonian Astrophysical Observatory
+ * Copyright:   1999 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -48,16 +48,22 @@
 #include <stdlib.h>
 #endif
 
-struct WorldCoor *pwcs[10];
+static struct WorldCoor *pwcs[];
+static int nwcs = 0;
 
 /* set up a WCS structure from a FITS or IRAF image header */
 
-void
-wcsinit_ (hstring, iwcs)
+/* Call WCSINIT (HSTRING, IWCS)
+ * where HSTRING is a Character string and IWCS is a returned integer
+ * identifying the data structure which is created */
 
-char *hstring;	/* Character string containing FITS header information
-		   in the format <keyword>= <value> {/ <comment>} */
-int *iwcs;	/* Pointer to wcs structure (returned) */
+void
+wcsinit_ (hstring, iwcs, nc)
+
+char	*hstring;	/* Character string containing FITS header information
+			   in the format <keyword>= <value> {/ <comment>} */
+int	*iwcs;		/* Pointer to wcs structure (returned) */
+int	nc;		/* Number of characters in hstring (supplied by Fortran */
 {
     int id;
     struct WorldCoor *twcs, *wcsinit();
@@ -69,8 +75,12 @@ int *iwcs;	/* Pointer to wcs structure (returned) */
 	*iwcs = -1;
 
     /* Otherwise, use first available index into vector of pointers */
+    else if (nwcs == 0) {
+	pwcs = (struct WorldCoor *) calloc (10, sizeof (void *));
+	nwcs = 10;
+	}
     else {
-	for (id = 0; id < 10; id++) {
+	for (id = 0; id < nwcs; id++) {
 	    if (pwcs[id] == NULL) {
 		*iwcs = id;
 		pwcs[id] = twcs;
@@ -100,7 +110,7 @@ int	*equinox;	/* Equinox of coordinates, 1950 and 2000 supported */
 double	*epoch;		/* Epoch of coordinates, used for FK4/FK5 conversion
 			 * no effect if 0 */
 char	*proj;		/* Projection */
-int	np;		/* Length of projection */
+int	np;		/* Length of projection (supplied by Fortran) */
 
 {
     int id;
@@ -131,7 +141,7 @@ wcskinit_ (iwcs,naxis1,naxis2,ctype1,ctype2,crpix1,crpix2,crval1,crval2,cd,
 	   cdelt1,cdelt2,crota,equinox,epoch, nc1,nc2)
 
 int	*iwcs;		/* Pointer to wcs structure (returned) */
-int	*naxis1;		/* Number of pixels along x-axis */
+int	*naxis1;	/* Number of pixels along x-axis */
 int	*naxis2;	/* Number of pixels along y-axis */
 char	*ctype1;	/* FITS WCS projection for axis 1 */
 char	*ctype2;	/* FITS WCS projection for axis 2 */
@@ -143,7 +153,7 @@ double	*crota;		/* Rotation angle in degrees, ignored if cd is set */
 int	*equinox;	/* Equinox of coordinates, 1950 and 2000 supported */
 double	*epoch;		/* Epoch of coordinates, used for FK4/FK5 conversion
 			 * no effect if 0 */
-int	nc1, nc2;	/* Lengths of CTYPEs */
+int	nc1, nc2;	/* Lengths of CTYPEs (supplied by Fortran) */
 
 {
     int id;
@@ -156,7 +166,7 @@ int	nc1, nc2;	/* Lengths of CTYPEs */
     if (twcs == NULL)
 	*iwcs = -1;
     else {
-	for (id = 0; id < 10; id++) {
+	for (id = 0; id < nwcs; id++) {
 	    if (pwcs[id] == NULL) {
 		*iwcs = id;
 		pwcs[id] = twcs;
@@ -175,7 +185,10 @@ int	*iwcs;		/* Index to WCS pointer array */
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    wcs = pwcs[*iwcs];
+    if (iwcs >= 0 && iwcs < nwcs)
+	wcs = pwcs[*iwcs];
+    else
+	wcs = pwcs[0];
     if (wcs != NULL) {
 	wcsfree (wcs);
 	pwcs[*iwcs] = NULL;
@@ -200,7 +213,10 @@ char	*radecsys;	/* Equinox (returned) */
     struct WorldCoor *wcs;	/* World coordinate system structure */
     double width, height;
 
-    wcs = pwcs[*iwcs];
+    if (iwcs >= 0 && iwcs < nwcs)
+	wcs = pwcs[*iwcs];
+    else
+	wcs = pwcs[0];
 
     /* If there is no WCS defined, return all zeroes */
     if (wcs == NULL) {
@@ -271,14 +287,17 @@ double	*diff;		/* Distance in degrees */
 void
 wcsoutinit_ (iwcs, coorsys, nc)
 
-int	*iwcs;
-char	*coorsys;
-int	nc;
+int	*iwcs;		/* Index to WCS structure */
+char	*coorsys;	/* Output coordinate system */
+int	nc;		/* Length of coorsys (set by Fortran) */
 
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    wcs = pwcs[*iwcs];
+    if (iwcs >= 0 && iwcs < nwcs)
+	wcs = pwcs[*iwcs];
+    else
+	wcs = pwcs[0];
 
     if (wcs != NULL)
 	wcsoutinit (wcs, coorsys);
@@ -294,12 +313,15 @@ getwcsout_ (iwcs, coorsys, nc)
 
 int	*iwcs;		/* Index to WCS structure */
 char	*coorsys;	/* Output coordinate system (returned) */
-int	nc;		/* Length of coorsys */
+int	nc;		/* Length of coorsys (set by Fortran) */
 
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    wcs = pwcs[*iwcs];
+    if (iwcs >= 0 && iwcs < nwcs)
+	wcs = pwcs[*iwcs];
+    else
+	wcs = pwcs[0];
 
     if (wcs != NULL)
 	strncpy (coorsys, getwcsout (wcs), nc);
@@ -313,14 +335,17 @@ int	nc;		/* Length of coorsys */
 void
 wcsininit_ (iwcs, coorsys, nc)
 
-int	*iwcs;
-char	*coorsys;
-int	nc;
+int	*iwcs;		/* Index to WCS structure */
+char	*coorsys;	/* Input coordinate system */
+int	nc;		/* Length of coorsys (Set by Fortran) */
 
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    wcs = pwcs[*iwcs];
+    if (iwcs >= 0 && iwcs < nwcs)
+	wcs = pwcs[*iwcs];
+    else
+	wcs = pwcs[0];
 
     if (wcs != NULL)
 	wcsininit (wcs, coorsys);
@@ -336,12 +361,15 @@ getwcsin_ (iwcs, coorsys, nc)
 
 int	*iwcs;		/* Index to WCS structure */
 char	*coorsys;	/* Input coordinate system (returned) */
-int	nc;		/* Length of coorsys */
+int	nc;		/* Length of coorsys (Set by Fortran) */
 
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    wcs = pwcs[*iwcs];
+    if (iwcs >= 0 && iwcs < nwcs)
+	wcs = pwcs[*iwcs];
+    else
+	wcs = pwcs[0];
 
     if (wcs != NULL)
 	strncpy (coorsys, getwcsin (wcs), nc);
@@ -357,12 +385,15 @@ getwcsim_ (iwcs, coorsys, nc)
 
 int	*iwcs;		/* Index to WCS structure */
 char	*coorsys;	/* Image coordinate system (returned) */
-int	nc;		/* Length of coorsys */
+int	nc;		/* Length of coorsys (Set by Fortran) */
 
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    wcs = pwcs[*iwcs];
+    if (iwcs >= 0 && iwcs < nwcs)
+	wcs = pwcs[*iwcs];
+    else
+	wcs = pwcs[0];
 
     if (wcs != NULL)
 	strncpy (coorsys, getradecsys (wcs), nc);
@@ -382,7 +413,10 @@ int	*mode;		/* mode = 0: h:m:s d:m:s
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    wcs = pwcs[*iwcs];
+    if (iwcs >= 0 && iwcs < nwcs)
+	wcs = pwcs[*iwcs];
+    else
+	wcs = pwcs[0];
 
     if (wcs != NULL)
 	wcs->degout = *mode;
@@ -403,7 +437,10 @@ int	*mode;		/* mode = 0: x y linear
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    wcs = pwcs[*iwcs];
+    if (iwcs >= 0 && iwcs < nwcs)
+	wcs = pwcs[*iwcs];
+    else
+	wcs = pwcs[0];
 
     if (wcs != NULL)
 	wcs->linmode = *mode;
@@ -420,12 +457,15 @@ pix2wcst_ (iwcs,xpix,ypix,wcstring,lstr)
 int	*iwcs;		/* World coordinate system structure */
 double	*xpix, *ypix;	/* x and y image coordinates in pixels */
 char	*wcstring;	/* World coordinate string (returned) */
-int	lstr;		/* Length of world coordinate string */
+int	lstr;		/* Length of world coordinate string (set by Fortran) */
 
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    wcs = pwcs[*iwcs];
+    if (iwcs >= 0 && iwcs < nwcs)
+	wcs = pwcs[*iwcs];
+    else
+	wcs = pwcs[0];
 
     if (wcs != NULL)
 	pix2wcst (wcs, *xpix, *ypix, wcstring, lstr);
@@ -445,7 +485,10 @@ double	*xpos, *ypos;	/* RA and Dec in radians (returned) */
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    wcs = pwcs[*iwcs];
+    if (iwcs >= 0 && iwcs < nwcs)
+	wcs = pwcs[*iwcs];
+    else
+	wcs = pwcs[0];
 
     if (wcs != NULL)
 	pix2wcs (wcs, *xpix, *ypix, xpos, ypos);
@@ -466,7 +509,10 @@ int	*offscl;
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    wcs = pwcs[*iwcs];
+    if (iwcs >= 0 && iwcs < nwcs)
+	wcs = pwcs[*iwcs];
+    else
+	wcs = pwcs[0];
 
     if (wcs != NULL)
 	wcs2pix (wcs, *xpos, *ypos, xpix, ypix, offscl);
@@ -479,6 +525,8 @@ int	*offscl;
  * Jun 15 1998	rename wcsf77.c to wcsfort.c and move to libwcs
  * Jun 15 1998	rename WCSSET WCSXINIT and update arguments
  * Jul  7 1998	Change setlinmode to setwcslin_; add setwcsdeg_
+ *
  * Oct 15 1999	Free wcs using wcsfree()
  * Oct 21 1999	Add pix2wcst_(); drop unused variables after lint
+ * Dec 10 1999	Add error handling for iwcs; document all subroutines
  */

@@ -1,5 +1,5 @@
 /* File wcslib/tnxpos.c
- * October 22, 1999
+ * December 10, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * After IRAF mwcs/wftnx.x and mwcs/wfgsurfit.x
  */
@@ -53,6 +53,7 @@ struct WorldCoor *wcs;		/* pointer to WCS structure */
 {
     struct IRAFsurface *wf_gsopen();
     char *str1, *str2, *lngstr, *latstr;
+    extern void wcsrotset();
 
     /* allocate space for the attribute strings */
     str1 = malloc (SZ_ATSTRING);
@@ -110,6 +111,9 @@ struct WorldCoor *wcs;		/* pointer to WCS structure */
 	}
     else
 	wcs->latcor = wf_gsopen (latstr);
+
+    /* Compute image rotation */
+    wcsrotset (wcs);
 
     /* free working space. */
     free (str1);
@@ -672,7 +676,7 @@ double	*coeff;		/* the coefficients of the fit */
     int ncoeff;		/* the number of coefficients */
     int i;
 
-    /* calculate the number of coefficients */
+    /* Exctract coefficients from data structure and calculate their number */
     ncoeff = sf->ncoeff;
     for (i = 0; i < ncoeff; i++)
 	coeff[i] = sf->coeff[i];
@@ -789,6 +793,7 @@ int	nxd, nyd;	/* order of the derivatives in x and y */
     sf2->ybasis = (double *) malloc (nbytes);
 
     /* Get coefficients */
+    nbytes = sf1->ncoeff * sizeof(double);
     if (nbytes > nbcoeff) {
 	if (nbcoeff > 0)
 	    coeff = (double *) realloc (coeff, nbytes);
@@ -1175,4 +1180,6 @@ double	*coeff;
  * Sep 10 1998	Fix missed assignment in tnxpix from Allen Harris, SAO
  *
  * Oct 22 1999	Drop unused variables, fix case statements after lint
+ * Dec 10 1999	Fix bug in gsder() which failed to allocate enough memory
+ * Dec 10 1999	Compute wcs->rot using wcsrotset() in tnxinit()
  */

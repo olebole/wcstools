@@ -1,5 +1,5 @@
 /* File getpix.c
- * October 22, 1999
+ * December 13, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -22,6 +22,10 @@ static int version = 0;		/* If 1, print only program name and version */
 static int nline = 10;		/* Number of pixels printer per line */
 static char *pform = NULL;	/* Format in which to print pixels */
 static int pixlabel = 0;	/* If 1, label pixels in output */
+static int gtcheck = 0;		/* If 1, list pixels greater than gtval */
+static int ltcheck = 0;		/* If 1, list pixels less than ltval */
+static double gtval = 0.0;
+static double ltval = 0.0;
 
 main (ac, av)
 int ac;
@@ -64,8 +68,20 @@ char **av;
 		    verbose++;
 		    break;
 
-		case 'l':	/* label pixels */
-		    pixlabel++;
+		case 'g':	/* Keep pixels greater than this */
+		    if (ac < 2)
+			usage();
+		    gtval = atof (*++av);
+		    gtcheck++;
+		    ac--;
+		    break;
+
+		case 'l':	/* Keep pixels less than this */
+		    if (ac < 2)
+			usage();
+		    ltval = atof (*++av);
+		    ltcheck++;
+		    ac--;
 		    break;
 
 		case 'n':	/* Number of pixels per line */
@@ -73,6 +89,10 @@ char **av;
 			usage();
 		    nline = atoi (*++av);
 		    ac--;
+		    break;
+
+		case 'p':	/* label pixels */
+		    pixlabel++;
 		    break;
 
 		default:
@@ -106,9 +126,12 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF pixel values\n");
-    fprintf(stderr,"Usage: getpix [-v][-n num][format] file.fit x_range y_range ...\n");
+    fprintf(stderr,"Usage: getpix [-vp][-n num][-g val][-l val][format] file.fit x_range y_range ...\n");
+    fprintf(stderr,"  format: C-style (%f, %d, ...) format for pixel values\n");
+    fprintf(stderr,"  -g: keep pixels with values greater than this\n");
+    fprintf(stderr,"  -l: keep pixels with values less than this\n");
     fprintf(stderr,"  -n: number of pixel values printed per page\n");
-    fprintf(stderr,"  -v: label pixels\n");
+    fprintf(stderr,"  -p: label pixels\n");
     fprintf(stderr,"  -v: verbose\n");
     fprintf(stderr,"   %%: C format for each pixel value\n");
     exit (1);
@@ -190,6 +213,12 @@ char *rrange;   /* Row range string */
 	    fprintf (stderr,"IRAF image file %s\n", name);
 	else
 	    fprintf (stderr,"FITS image file %s\n", name);
+	if (ltcheck & gtcheck)
+	    fprintf (stderr, "%f < pixel values < %f\n", gtval, ltval);
+	else if (ltcheck)
+	    fprintf (stderr, "pixel values < %f\n", ltval);
+	else if (gtcheck)
+	    fprintf (stderr, "pixel values > %f\n", gtval);
 	}
 
 /* Get value of specified pixel */
@@ -212,8 +241,32 @@ char *rrange;   /* Row range string */
 	    strcpy (pform, "%.2f");
 	}
 
+/* Print entire image */
+    if (!strcmp (rrange, "0") && !strcmp (crange, "0")) {
+	if (gtcheck || ltcheck) {
+	    nx = xdim;
+	    ny = ydim;
+	    for (y = 0; y < ny; y++) {
+		for (x = 0; x < nx; x++) {
+        	    dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
+		    if (gtcheck && ltcheck) {
+			if (dpix > gtval && dpix < ltval)
+			    printf ("[%d,%d] = %f\n", x+1, y+1, dpix);
+			}
+		    else if (gtcheck && dpix > gtval ||
+			ltcheck && dpix < ltval) {
+			printf ("[%d,%d] = %f\n", x+1, y+1, dpix);
+			}
+		    }
+		}
+	    }
+	else
+	    printf ("GETPIX will not print this %d x %d image; use ranges\n",
+		xdim, ydim);
+	}
+
 /* Print entire columns */
-    if (!strcmp (rrange, "0")) {
+    else if (!strcmp (rrange, "0")) {
 	xrange = RangeInit (crange, xdim);
 	nx = rgetn (xrange);
 	ny = ydim;
@@ -222,6 +275,13 @@ char *rrange;   /* Row range string */
 	    x = rgeti4 (xrange) - 1;
 	    for (y = 0; y < ny; y++) {
         	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
+		if (gtcheck || ltcheck) {
+		    if (gtcheck && dpix > gtval ||
+			ltcheck && dpix < ltval) {
+			printf ("[%d,%d] = %f\n", x+1, y+1, dpix);
+			}
+		    continue;
+		    }
 	        if (bitpix > 0) {
 		    if (dpix > 0)
 	 		ipix = (int) (dpix + 0.5);
@@ -249,9 +309,9 @@ char *rrange;   /* Row range string */
 			printf (" ");
 		    }
 		}
-	    if (y % nline != 0)
+	    if (y % nline != 0 && !gtcheck && !ltcheck)
 		printf ("\n");
-	    if (nx > 1)
+	    if (nx > 1 && !gtcheck && !ltcheck)
 		printf ("\n");
 	    }
 	free (xrange);
@@ -266,6 +326,13 @@ char *rrange;   /* Row range string */
 	    y = rgeti4 (yrange) - 1;
 	    for (x = 0; x < nx; x++) {
         	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
+		if (gtcheck || ltcheck) {
+		    if (gtcheck && dpix > gtval ||
+			ltcheck && dpix < ltval) {
+			printf ("[%d,%d] = %f\n", x+1, y+1, dpix);
+			}
+		    continue;
+		    }
 	        if (bitpix > 0) {
 		    if (dpix > 0)
 	 		ipix = (int) (dpix + 0.5);
@@ -293,9 +360,9 @@ char *rrange;   /* Row range string */
 			printf (" ");
 		    }
 		}
-	    if (x % nline != 0)
+	    if (x % nline != 0 && !gtcheck && !ltcheck)
 		printf ("\n");
-	    if (ny > 1)
+	    if (ny > 1 && !gtcheck && !ltcheck)
 		printf ("\n");
 	    }
 	free (yrange);
@@ -352,6 +419,13 @@ char *rrange;   /* Row range string */
 	    for (ix = 0; ix < nx; ix++) {
 		x = rgeti4 (xrange) - 1;
         	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,yi[iy]);
+		if (gtcheck || ltcheck) {
+		    if (gtcheck && dpix > gtval ||
+			ltcheck && dpix < ltval) {
+			printf ("[%d,%d] = %f\n", x+1, yi[iy]+1, dpix);
+			}
+		    continue;
+		    }
 	        if (bitpix > 0) {
 		    if ((c = strchr (pform,'f')) != NULL)
 			*c = 'd';
@@ -382,7 +456,7 @@ char *rrange;   /* Row range string */
 		    printf (" ");
 		    }
 		}
-	    if (!verbose)
+	    if (!verbose && !ltcheck && !gtcheck)
 		printf ("\n");
 	    }
 	free (xrange);
@@ -410,4 +484,6 @@ char *rrange;   /* Row range string */
  * Jul  2 1999	Use ranges instead of individual pixels
  * Oct 15 1999	Fix format statement
  * Oct 22 1999	Drop unused variables after lint
+ * Dec  9 1999	Add -g -l limits
+ * Dec 13 1999	Fix bug so that -g and -l limits can be ANDed
  */

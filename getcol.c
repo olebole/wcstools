@@ -1,5 +1,5 @@
 /* File getcol.c
- * December 1, 1999
+ * December 14, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -28,6 +28,7 @@ static int ncat = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int nread = 0;		/* Number of lines to read (0=all) */
 static int nskip = 0;		/* Number of lines to skip */
+static int tabout = 0;		/* If 1, separate output fields with tabs */
 
 main (ac, av)
 int ac;
@@ -123,7 +124,11 @@ char **av;
 		ac--;
 		break;
 
-	    case 'v':	/* more verbosity */
+	    case 't':	/* Tab-separated output */
+		tabout++;
+		break;
+
+	    case 'v':	/* More verbosity */
 		verbose++;
 		break;
 
@@ -255,10 +260,16 @@ char	*ranges;	/* String with range of column numbers to list */
 	    nt = 0;
 	    for (i = 0; i < nfind; i++) {
 		if (getoken (tokens, inum[i], token)) {
-		    if (i < nfind-1)
-			printf ("%s ", token);
+		    if (inum[i] > tokens.ntok || inum[i] < 1)
+			printf ("___");
 		    else
 			printf ("%s", token);
+		    if (i < nfind-1) {
+			if (tabout)
+			    printf ("	");
+			else
+			    printf (" ");
+			}
 		    nt++;
 		    nent[i]++;
 		    if (isnum (token)) {
@@ -334,4 +345,5 @@ char	*ranges;	/* String with range of column numbers to list */
 /* Nov  2 1999	New program
  * Nov  3 1999	Add option to read from stdin as input filename
  * Dec  1 1999	Add options to print counts, means, and sums of columns
+ * Dec 14 1999	Add option for tab-separated output
  */

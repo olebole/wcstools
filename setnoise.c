@@ -1,5 +1,5 @@
 /* File setpix.c
- * December 13, 1999
+ * October 28, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -251,35 +251,6 @@ char	**value;	/* value to insert into pixel */
 		strcpy (pform, "%.2f");
 	    }
 
-	/* Set entire image */
-	if (!strcmp (rrange[i], "0") && !strcmp (crange[i], "0")) {
-	    nx = xdim;
-	    ny = ydim;
-	    for (x = 0; x < nx; x++) {
-		for (y = 0; y < ny; y++) {
-		    putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
-	            if (bitpix > 0) {
-			if (dpix > 0)
-	 		    ipix = (int) (dpix + 0.5);
-			else if (dpix < 0)
-		 	    ipix = (int) (dpix - 0.5);
-			else
-			    ipix = 0;
-			}
-		    if (eachpix) {
-			printf ("%s[%d,%d] = ", filename,x+1,y+1);
-		        if (bitpix > 0)
-			    printf (pform, ipix);
-			else
-			    printf (pform, dpix);
-			printf ("\n");
-			}
-		    }
-		}
-	    sprintf (history,"SETPIX: pixels in image set to %s",value[i]);
-	    }
-
-
 	/* Set entire columns */
 	if (!strcmp (rrange[i], "0")) {
 	    xrange = RangeInit (crange[i], xdim);
@@ -363,14 +334,17 @@ char	**value;	/* value to insert into pixel */
 	    ny = rgetn (yrange);
 
 	    /* Loop through rows starting with the last one */
-	    for (iy = 0; iy < ny; iy++) {
-		y = rgeti4 (yrange);
+	    for (i = 0; i < ny; i++) {
+		if (verbose)
+		    iy++;
+		else
+		    iy--;
 		rstart (xrange);
 
 		/* Loop through columns */
 		for (ix = 0; ix < nx; ix++) {
-		    x = rgeti4 (xrange);
-		    putpix1 (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
+		    x = rgeti4 (xrange) - 1;
+		    putpix (image,bitpix,xdim,ydim,bzero,bscale,x,y,dpix);
         	
 		    if (eachpix) {
 	        	if (bitpix > 0) {
@@ -523,5 +497,4 @@ char	**value;	/* value to insert into pixel */
  * Oct 14 1999	Reallocate header and try again if history writing unsuccessful
  * Oct 22 1999	Drop unused variables after lint
  * Oct 28 1999	Fix bug which always tried to free both ranges
- * Dec 13 1999	Fix bug with region setting; add option to set entire image
  */

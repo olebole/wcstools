@@ -167,6 +167,8 @@ char    *filename;      /* Name of file for which to find size */
 	}
 }
 
+static char *token1;
+
 
 /* FIRST_TOKEN -- Return first token from the next line of an ASCII file */
 
@@ -182,14 +184,28 @@ char	*token;			/* First token on next line (returned) */
     /* If line can be read, add null at the end of the first token */
     if (fgets (token, ncmax, diskfile) != NULL) {
 	lastchar = token + strlen (token) - 1;
+
+	/* Remove trailing spaces or control characters */
 	while (*lastchar <= 32)
 	    *lastchar-- = 0;
-	if ((lspace = strchr (token, ' ')) != NULL)
+
+	if ((lspace = strchr (token, ' ')) != NULL) {
 	    *lspace = (char) 0;
+	    token1 = lspace + 1;
+	    }
+	else
+	    token1 = NULL;
 	return (1);
 	}
     else
 	return (0);
+}
+
+char *
+next_token ()
+
+{
+    return (token1);
 }
 
 
@@ -198,4 +214,5 @@ char	*token;			/* First token on next line (returned) */
  * Jul 15 1999	Add getfilebuff()
  * Oct 15 1999	Fix format eror in error message
  * Oct 21 1999	Fix declarations after lint
+ * Dec  9 1999	Add next_token(); set pointer to next token in first_token
  */
