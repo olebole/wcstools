@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** September 1, 1996
+ *** October 15, 1996
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -20,7 +20,7 @@ static double FindFlux ();
 static void mean2d();
 static void mean1d();
 
-/* Stars are this many sigmas above mean */
+/* Stars must be at least this many standard deviations above the mean */
 static double starsig = STARSIGMA;
 void setstarsig (sig)
 double sig;
@@ -75,11 +75,10 @@ int	verbose;	/* 1 to print each star's position */
     double rmean, rsigma;
     double lll, rll;		/* left and right lower limits*/
     double minsig;
-    double sumx, sumxx, dsumxx;
     double *svec, *sv, *svb, *sv1, *sv2, *svlim;
     double background;
-    double rmax, nsig;
-    int lwidth, npix;
+    double rmax;
+    int lwidth;
     int nspix = NSTATPIX;
     int ispix = ISTATPIX;
     int nextline;
@@ -203,7 +202,6 @@ int	verbose;	/* 1 to print each star's position */
 
 		/* Keep it if it is within the size range for stars */
 		rmax = maxrad;
-		nsig = starsig;
 		r = starRadius (image, bitpix, w, h, sx, sy, b, rmax, minsig,
 			       &background);
 		if (r > minrad && r <= maxrad) {
@@ -224,7 +222,6 @@ int	verbose;	/* 1 to print each star's position */
 		    sx = (int) (xai + 0.5);
 		    sy = (int) (yai + 0.5);
 		    rmax = 2.0 * (double) maxrad;
-		    nsig = starsig * 2.0;
 		    rf = starRadius (image, bitpix, w, h, sx, sy, b, rmax,
 				    minsig, &background);
 
@@ -309,7 +306,7 @@ double	minsig;
 double	*mean;
 
 {
-    double r, sum2p;
+    double r;
 
     /* Compute star's radius.
      * Scan in ever-greater circles until find one such that the peak is
@@ -319,7 +316,7 @@ double	*mean;
 	int inrr = r*r;
 	int outrr = (r+1)*(r+1);
 	int np = 0;
-	double sum = 0.0, sum2 = 0.0;
+	double sum = 0.0;
 	int x, y;
 
 	for (y = -r; y <= r; y++) { 
@@ -461,7 +458,7 @@ double	*sigma;
 
 {
     double p, pmin, pmax, pmean;
-    double sd, sd2;
+    double sd;
     int x, y;
     int i;
 
@@ -601,4 +598,5 @@ double	background;
  * Aug 26 1996	Drop unused variables NH and NW
  * Aug 30 1996	Modify sigma computation; allow border to be set
  * Sep  1 1996	Set constants in lwcs.h
+ * Oct 15 1996	Drop unused variables
  */

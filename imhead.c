@@ -1,5 +1,5 @@
 /* File imhead.c
- * August 27, 1996
+ * November 19, 1996
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -105,9 +105,9 @@ char *name;
     if (verbose) {
 	fprintf (stderr,"Print World Coordinate System from ");
 	if (iraffile)
-	    fprintf (stderr,"IRAF image file %s", name);
+	    fprintf (stderr,"IRAF image file %s\n", name);
 	else
-	    fprintf (stderr,"FITS image file %s", name);
+	    fprintf (stderr,"FITS image file %s\n", name);
 	}
 
     if (!PrintFITSHead (header) && verbose)
@@ -142,4 +142,5 @@ char	*header;	/* Image FITS header */
  * Jul 16 1996	Update header I/O
  * Aug 15 1996	Drop unnecessary reading of FITS image; clean up code
  * Aug 27 1996	Drop unused variables after lint
+ * Nov 19 1996	Add linefeeds after filename in verbose mode
  */

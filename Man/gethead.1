@@ -1,0 +1,16 @@
+.TH gethead(1) WCS "8 October 1996"
+.SH Name
+gethead \- Print FITS or IRAF header keyword values
+.SH Synopsis
+gethead [-v] <FITS or IRAF file> kw1 kw2 ... kwn
+.SH Description
+Print values of the specified keywords from the given image header.  By
+default they are all listed on one line, separated by spaces.  The
+.I \-v
+flag causes the keyword names and values to be printed, one keyword per line.
+.SH Options
+.TP
+.B \-v
+Print output as <keyword>=<value>, one per line
+.SH Author
+Doug Mink, SAO (dmink@cfa.harvard.edu)

@@ -1,5 +1,5 @@
 /* File imwcs.c
- * October 11, 1996
+ * November 19, 1996
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -59,7 +59,7 @@ char **av;
     /* Decode arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
 	char c;
-	while (c = *++str)
+	while ((c = *++str) != 0)
     	switch (c) {
     	case 'a':	/* Initial rotation angle in degrees */
     	    if (ac < 2)
@@ -215,7 +215,7 @@ usage ()
     fprintf(stderr,"       [-p scale] [-b ra dec] [-j ra dec] [-r deg] [-t tol] FITS or IRAF file(s)\n");
     fprintf(stderr,"  -a: initial rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
-    fprintf(stderr,"  -c: reference catalog (gsc, ujc, or tab table file\n");
+    fprintf(stderr,"  -c: reference catalog (gsc, uac, ujc, tab table file\n");
     fprintf(stderr,"  -e: WCS type (TAN default)\n");
     fprintf(stderr,"  -f: write FITS output no matter what input\n");
     fprintf(stderr,"  -g: Guide Star Catalog class (-1=all,0,3 (default -1)\n");
@@ -267,7 +267,7 @@ char *name;
 		}
 	    image = irafrimage (header);
 	    if (image == NULL) {
-		hgets (header,"PIXFILE", 64, &pixname);
+		hgets (header,"PIXFILE", 64, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -314,7 +314,7 @@ char *name;
     /* Rotate and/or reflect image */
     if (rot != 0 || mirror) {
 	if (RotFITS (name, header, &image, rot, mirror, bitpix, verbose)) {
-	    fprintf (stderr,"Image %s could not be rotated\n");
+	    fprintf (stderr,"Image %s could not be rotated\n", name);
 	    return;
 	    }
 	if (!overwrite)
@@ -499,4 +499,6 @@ char *
  * Sep  3 1996	Fix star finding
  * Sep 17 1996	Fix bug in GSC reading
  * Oct 11 1996	Fix DelWCS declaration and do not free strings in PrintWCS
+ * Oct 17 1996	Fix bugs which Sun C ignored
+ * Nov 19 1996	Revised search subroutines, USNO A catalog added
  */

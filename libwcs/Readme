@@ -24,10 +24,13 @@ imio.c
   Subroutines to get, put, and move pixels of various data types between images
   im memory and a program.
 imrotate.c
-  rotFITS() rotates an image by 90, 180, or 270 degrees, with an optional
+  RotFITS() rotates an image by 90, 180, or 270 degrees, with an optional
   left-right reflection before the rotation.
+imgetwcs.c
+  GetWCSFITS() reads world coordinate system header information and returns
+  the image center coordinates and size as well as the wcs data structure.
 imsetwcs.c
-  setWCSFITS() uses findStars to find the stars in an image, gscread to
+  SetWCSFITS() uses findStars to find the stars in an image, gscread to
   find the Guide Stars in the nominal image region, and findRegisration or
   findCoords to fit plate-tangent WCS to the image.
 irafio.c
@@ -47,6 +50,8 @@ platepos.c
   in their headers.  platepix() uses the WCS structure to compute image
   pixel X and Y given sky coordinates for DSS images.  Algorithms from
   StSCI CASB.
+slasubs.c
+  Starlink SLA_Lib subroutines used by coordinate conversion subroutines
 sortstars.c
   Subroutines to sort lists of stars by right ascension, magnitude, or flux
 tabread.c
@@ -60,7 +65,7 @@ wcs.c
   system information.
 wcscon.c
   Subroutines for converting between B1950, J2000, and galactic
-  coordinates, based on Starlink SLA_LIB subroutines.
+  coordinates, mostly based on Starlink SLA_LIB subroutines.
 worldpos.c
   worldpos() uses the WCS structure to compute sky coordinates given
   image pixel X and Y for images with header information for any of 8

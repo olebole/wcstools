@@ -1,5 +1,5 @@
 /* File imrot.c
- * August 27, 1996
+ * October 17, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -29,7 +29,6 @@ main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
 
     /* crack arguments */
@@ -51,14 +50,14 @@ char **av;
 
     	case 'r':	/* Rotation angle in degrees */
     	    if (ac < 2)
-    		usage (progname);
+    		usage ();
     	    rotate = (int) atof (*++av);
     	    ac--;
     	    break;
 
     	case 'x':	/* Number of bits per pixel */
     	    if (ac < 2)
-    		usage (progname);
+    		usage ();
     	    bitpix = (int) atof (*++av);
     	    ac--;
     	    break;
@@ -68,14 +67,14 @@ char **av;
     	    break;
 
     	default:
-    	    usage(progname);
+    	    usage();
     	    break;
     	}
     }
 
     /* now there are ac remaining file names starting at av[0] */
     if (ac == 0)
-	usage (progname);
+	usage ();
 
     else {
 	while (ac-- > 0) {
@@ -92,11 +91,10 @@ char **av;
 }
 
 static void
-usage (progname)
-char *progname;
+usage ()
 {
     fprintf (stderr,"Rotate and/or Reflect FITS and IRAF image files\n");
-    fprintf(stderr,"%s: usage: [-vm [-r rot] file.fts ...\n", progname);
+    fprintf(stderr,"Usage: [-vm [-r rot] file.fts ...\n");
     fprintf(stderr,"  -f: write FITS image from IRAF input\n");
     fprintf(stderr,"  -l: reflect image across vertical axis\n");
     fprintf(stderr,"  -o: allow overwriting of input image, else write new one\n");
@@ -177,7 +175,7 @@ char *name;
 		}
 	    image = irafrimage (header);
 	    if (image == NULL) {
-		hgets (header,"PIXFILE", 64, &pixname);
+		hgets (header,"PIXFILE", 64, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);

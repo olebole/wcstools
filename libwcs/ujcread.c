@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** August 6, 1996
+ *** November 15, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "fitshead.h"
+#include "wcs.h"
 
 static char cdu[64]="/data/ujcat/catalog"; /* pathname of UJ 1.0 CDROM */
 
@@ -38,11 +39,14 @@ static void ujcswap();
 /* UJCREAD -- Read USNO J Catalog stars from CDROM */
 
 int
-ujcread (ra1,ra2,dec1,dec2,mag1,mag2,xplate,nstarmax,unum,ura,udec,umag,
+ujcread (cra,cdec,dra,ddec,drad,mag1,mag2,xplate,nstarmax,unum,ura,udec,umag,
 	 uplate,verbose)
 
-double	ra1,ra2;	/* Limiting right ascensions of region in degrees */
-double	dec1,dec2;	/* Limiting declinations of region in degrees */
+double	cra;		/* Search center J2000 right ascension in degrees */
+double	cdec;		/* Search center J2000 declination in degrees */
+double	dra;		/* Search half width in right ascension in degrees */
+double	ddec;		/* Search half-width in declination in degrees */
+double	drad;		/* Limiting separation in degrees (ignore if 0) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	xplate;		/* If nonzero, use objects only from this plate */
 int	nstarmax;	/* Maximum number of stars to be returned */
@@ -53,6 +57,9 @@ double	*umag;		/* Array of magnitudes (returned) */
 int	*uplate;	/* Array of plate numbers (returned) */
 int	verbose;	/* 1 for diagnostics */
 {
+    double ra1,ra2;	/* Limiting right ascensions of region in degrees */
+    double dec1,dec2;	/* Limiting declinations of region in degrees */
+    double dist = 0.0;  /* Distance from search center in degrees */
     int nz;		/* Number of input UJ zone files */
     int zlist[NZONES];	/* List of input UJ zones */
     UJCstar star;	/* UJ catalog entry for one star */
@@ -65,8 +72,55 @@ int	verbose;	/* 1 for diagnostics */
     double mag;
     int istar, istar1, istar2, plate;
     int nzmax = NZONES;	/* Maximum number of declination zones */
+    char *str;
 
     itot = 0;
+
+    /* Set path to USNO A Catalog */
+    if ((str = getenv("UJ_PATH")) != NULL )
+	strcpy (cdu,str);
+
+    /* Set right ascension limits for search */
+    ra1 = cra - dra;
+    ra2 = cra + dra;
+
+    /* Keep right ascension between 0 and 360 degrees */
+    if (ra1 < 0.0)
+	ra1 = ra1 + 360.0;
+    if (ra2 > 360.0)
+	ra2 = ra2 - 360.0;
+
+    /* Set declination limits for search */
+    dec1 = cdec - ddec;
+    dec2 = cdec + ddec;
+
+    /* dec1 is always the smallest declination */
+    if (dec1 > dec2) {
+	dec = dec1;
+	dec1 = dec2;
+	dec2 = dec;
+	}
+
+    /* Search zones which include the poles cover 360 degrees in RA */
+    if (dec1 < -90.0) {
+	dec1 = -90.0;
+	ra1 = 0.0;
+	ra2 = 359.99999;
+	}
+    if (dec2 > 90.0) {
+	dec2 = 90.0;
+	ra1 = 0.0;
+	ra2 = 359.99999;
+	}
+    if (verbose) {
+	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
+	ra2str (rstr1, ra1, 3);
+        dec2str (dstr1, dec1, 2);
+	ra2str (rstr2, ra2, 3);
+        dec2str (dstr2, dec2, 2);
+	fprintf (stderr,"UJCREAD: RA: %s - %s  Dec: %s - %s\n",
+		 rstr1,rstr2,dstr1,dstr2);
+	}
 
 /* If RA range includes zero, split it in two */
     wrap = 0;
@@ -74,13 +128,6 @@ int	verbose;	/* 1 for diagnostics */
 	wrap = 1;
     else
 	wrap = 0;
-
-/* dec1 is always the smallest declination */
-    if (dec1 > dec2) {
-	dec = dec1;
-	dec1 = dec2;
-	dec2 = dec;
-	}
 
 /* mag1 is always the smallest magnitude */
     if (mag2 < mag1) {
@@ -92,7 +139,7 @@ int	verbose;	/* 1 for diagnostics */
 /* Find UJ Star Catalog regions in which to search */
     nz = ujczones (ra1, ra2, dec1, dec2, nzmax, zlist, verbose);
     if (nz <= 0) {
-	printf ("UJREAD:  no UJ zones found\n");
+	fprintf (stderr,"UJCREAD:  no UJ zones found\n");
 	return (0);
 	}
 
@@ -105,7 +152,7 @@ int	verbose;	/* 1 for diagnostics */
 
     /* Get path to zone catalog */
 	znum = zlist[iz];
-	if ((nstars = ujcopen (znum))) {
+	if ((nstars = ujcopen (znum)) != 0) {
 
 	    for (iwrap = 0; iwrap <= wrap; iwrap++) {
 
@@ -132,7 +179,7 @@ int	verbose;	/* 1 for diagnostics */
 		    itable ++;
 
 		    if (ujcstar (istar, &star)) {
-			printf ("UJREAD: Cannot read star %d\n", istar);
+			fprintf (stderr,"UJCREAD: Cannot read star %d\n", istar);
 			break;
 			}
 
@@ -142,13 +189,16 @@ int	verbose;	/* 1 for diagnostics */
 			dec = ujcdec (star.decsec); /* Declination in degrees */
 			mag = ujcmag (star.magetc);	/* Magnitude */
 			plate = ujcplate (star.magetc);	/* Plate number */
+			if (drad > 0)
+			    dist = wcsdist (cra,cdec,ra,dec);
 
 		    /* Check magnitude amd position limits */
 			if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
+     			    (dec >= dec1 && dec <= dec2) &&
 			    ((wrap && (ra <= ra1 || ra >= ra2)) ||
 			    (!wrap && (ra >= ra1 && ra <= ra2))) &&
-			    (xplate == 0 || plate == xplate) &&
-     			    (dec >= dec1 && dec <= dec2)) {
+			    (drad == 0.0 || dist < drad) &&
+			    (xplate == 0 || plate == xplate)) {
 
 			/* Save star position and magnitude in table */
 			    if (nstar <= nstarmax) {
@@ -162,7 +212,7 @@ int	verbose;	/* 1 for diagnostics */
 			    nstar = nstar + 1;
 			    jstar = jstar + 1;
 			    if (nlog == 1)
-				printf ("%04d.%04d: %9.5f %9.5f %5.2f\n",
+				fprintf (stderr,"UJCREAD: %04d.%04d: %9.5f %9.5f %5.2f\n",
 				    znum,istar,ra,dec,mag);
 
 			/* End of accepted star processing */
@@ -173,7 +223,7 @@ int	verbose;	/* 1 for diagnostics */
 
 		/* Log operation */
 		    if (nlog > 0 && itable%nlog == 0)
-			printf ("%4d / %4d: %6d / %6d sources zone %d\r",
+			fprintf (stderr,"UJCREAD: %4d / %4d: %6d / %6d sources zone %d\r",
 				iz,nz,jstar,itable,znum);
 
 		/* End of star loop */
@@ -186,7 +236,7 @@ int	verbose;	/* 1 for diagnostics */
 	    (void) fclose (fcat);
 	    itot = itot + itable;
 	    if (nlog > 0)
-		printf ("%4d / %4d: %6d / %6d sources zone %d\n",
+		fprintf (stderr,"UJCREAD: %4d / %4d: %6d / %6d sources zone %d\n",
 			iz+1, nz, jstar, itable, znum);
 
 	/* End of zone processing */
@@ -198,9 +248,14 @@ int	verbose;	/* 1 for diagnostics */
 /* Summarize search */
     if (nlog > 0) {
 	if (nz > 1)
-	    printf ("%d zone: %d / %d found\n",nz,nstar,itot);
+	    fprintf (stderr,"UJCREAD: %d zone: %d / %d found\n",nz,nstar,itot);
 	else
-	    printf ("1 zone: %d / %d found\n",nstar,itable);
+	    fprintf (stderr,"UJCREAD: 1 zone: %d / %d found\n",nstar,itable);
+	}
+    if (nstar > nstarmax) {
+	fprintf (stderr,"UJCREAD: %d stars found; only %d returned\n",
+		 nstar,nstarmax);
+	nstar = nstarmax;
 	}
     return (nstar);
 }
@@ -366,11 +421,11 @@ double	rax0;		/* Right ascension for which to search */
 	    istar1 = istar;
 	    istar = istar2;
 	    if (debug) {
-		fprintf (stderr," ra1=    %.5f ra=     %.5f rax=    %.5f\n",
+		fprintf (stderr,"UJCSRA: ra1=    %.5f ra=     %.5f rax=    %.5f\n",
 			 ra1,ra,rax);
-		fprintf (stderr," rdiff=  %.5f rdiff1= %.5f rdiff2= %.5f\n",
+		fprintf (stderr,"UJCSRA: rdiff=  %.5f rdiff1= %.5f rdiff2= %.5f\n",
 			 rdiff,rdiff1,rdiff2);
-		fprintf (stderr," istar1= %d istar= %d istar1= %d\n",
+		fprintf (stderr,"UJCSRA: istar1= %d istar= %d istar1= %d\n",
 			 istar1,istar,istar2);
 		}
 	    if (istar < 1)
@@ -403,7 +458,7 @@ int znum;	/* UJ Catalog zone */
 
 /* Find number of stars in zone catalog by its length */
     if (stat (zonepath, &statbuff)) {
-	fprintf (stderr,"UJ zone catalog %s has no entries\n",zonepath);
+	fprintf (stderr,"UJCOPEN: Zone catalog %s has no entries\n",zonepath);
 	return (0);
 	}
     else
@@ -411,7 +466,7 @@ int znum;	/* UJ Catalog zone */
 
 /* Open zone catalog */
     if (!(fcat = fopen (zonepath, "r"))) {
-	fprintf (stderr,"UJ zone catalog %s cannot be read\n",zonepath);
+	fprintf (stderr,"UJCOPEN: Zone catalog %s cannot be read\n",zonepath);
 	return (0);
 	}
 
@@ -481,7 +536,7 @@ UJCstar *star;	/* UJ catalog entry for one star */
 	return (-2);
 	}
     if (cswap)
-	ujcswap (star);
+	ujcswap ((char *)star);
     return (0);
 }
 
@@ -513,7 +568,13 @@ int nbytes = 12; /* Number of bytes to reverse */
 	}
     return;
 }
+
 /* May 20 1996	New subroutine
  * May 23 1996	Add optional plate number check
  * Aug  6 1996	Remove unused variables after lint
+ * Oct 15 1996	Add comparison when testing an assignment
+ * Oct 17 1996	Fix after lint: cast argument to UJCSWAP
+ * Nov 13 1996	Return no more than maximum star number
+ * Nov 13 1996	Write all error messages to stderr with subroutine names
+ * Nov 15 1996  Implement search radius; change input arguments
  */

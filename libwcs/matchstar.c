@@ -1,5 +1,5 @@
 /* File libwcs/matchstar.c
- * September 3, 1996
+ * November 19, 1996
  * By Doug Mink, Smithsonian Astrophyscial Observatory
  */
 
@@ -198,8 +198,8 @@ int	debug;
 
     vguess[0] = wcs->xref;
     vguess[1] = wcs->yref;
-    vguess[2] = wcs->rot;
-    vguess[3] = wcs->xinc;
+    vguess[2] = wcs->xinc;
+    vguess[3] = wcs->rot;
     vguess[4] = wcs->yinc;
 
     if (nfit0 > 0)
@@ -220,7 +220,7 @@ int	debug;
 	dec2str (decstr, vguess[1], 2);
 	fprintf (stderr,"   initial guess:\n");
 	fprintf (stderr," cra= %s cdec= %s rot=%7.4f del=%7.4f %7.4f\n", 
-		rastr, decstr,vguess[2],vguess[3]*3600.0, vguess[4]*3600.0);
+		rastr, decstr,vguess[3],vguess[2]*3600.0, vguess[4]*3600.0);
 	ra2str (rastr, wcs->xref, 3);
 	dec2str (decstr, wcs->yref, 2);
 	fprintf (stderr,"first solution:\n");
@@ -289,7 +289,6 @@ int	debug;
 }
 struct WorldCoor *wcsf;
 
-void call_amoeba ();
 static double chisqr ();
 
 /* From Numerical Recipes */
@@ -407,8 +406,11 @@ struct WorldCoor *wcs0;
     wcsf->yref = yref_p + vp[1];
     if (nfit > 2)
 	wcsf->xinc = vp[2];
-    if (nfit > 3)
+    if (nfit > 3) {
 	wcsf->rot = vp[3];
+	wcsf->srot = sin (degrad (vp[3]));
+	wcsf->crot = cos (degrad (vp[3]));
+	}
     if (nfit > 4)
 	wcsf->yinc = vp[4];
     else if (nfit > 2) {
@@ -470,8 +472,11 @@ int	iter;	/* Number of iterations */
     wcsf->yref = yref_p + v[1];
     if (nfit > 2)
 	wcsf->xinc = v[2];
-    if (nfit > 3)
+    if (nfit > 3) {
 	wcsf->rot = v[3];
+	wcsf->crot = cos (degrad(v[3]));
+	wcsf->srot = sin (degrad(v[3]));
+	}
     if (nfit > 4)
 	wcsf->yinc = v[4];
     else if (nfit > 2) {
@@ -528,7 +533,7 @@ int	*nfunk;
 
 {
 int i,j,ilo,ihi,inhi,ndim1=ndim+1;
-double ytry,ysave,sum,rtol,amotry(),*psum;
+double ytry,ysave,sum,rtol,*psum;
 
     psum = (double *) malloc ((unsigned)ndim * sizeof(double));
     *nfunk = 0;
@@ -625,4 +630,6 @@ int	*nfunk;
  * Sep  1 1996	Move constants to lwcs.h
  * Sep  3 1996	Use offscale pixels for chi^2 computation
  * Sep  3 1996	Overprint chi^2 in verbose mode
+ * Oct 15 1996	Fix am* subroutine declarations
+ * Nov 19 1996	Fix bug regarding rotation
  */ 

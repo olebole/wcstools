@@ -1,5 +1,5 @@
 /* File imstar.c
- * September 1, 1996
+ * October 17, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -183,7 +183,7 @@ char	*filename;	/* FITS or IRAF file filename */
     double ra, dec;
     double cra,cdec,dra,ddec;
     char rastr[16], decstr[16];
-    int i, offscl;
+    int i;
     char headline[160];
     char pixname[128];
     char outfile[64];
@@ -197,7 +197,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    header = iraf2fits (filename, irafheader, lhead, &nbhead);
 	    image = irafrimage (header);
 	    if (image == NULL) {
-		hgets (header,"PIXFILE", 64, &pixname);
+		hgets (header,"PIXFILE", 64, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -296,7 +296,7 @@ char	*filename;	/* FITS or IRAF file filename */
 		
     fd = fopen (outfile, "w");
     if (fd == NULL) {
-	fprintf (stderr, "IMSTAR:  cannot write file %s %d\n", outfile, fd);
+	fprintf (stderr, "IMSTAR:  cannot write file %s\n", outfile);
         return;
         }
 
@@ -370,4 +370,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Aug 27 1996	Remove unused variables after lint
  * Aug 30 1996	Allow border to be set
  * Sep  1 1996	Move parameter defaults to lwcs.h
+ * Oct 17 1996	Drop unused variables
  */

@@ -1,0 +1,41 @@
+.TH imuac(1) WCS "19 November 1996"
+.SH Name
+imuac \- Find USNO A Catalog stars in FITS or IRAF image files
+.SH Synopsis
+imuac [options] FITS or IRAF filename(s)
+.SH Description
+.I imuac
+is a utility for finding all of the U.S. Naval Observatory A Catalog
+objects in a FITS or IRAF image and listing their sky and image positions.
+World coordinate system (WCS) information must be present in the image
+header to describe, in a standard way, the relationship between sky
+coordinates and image pixels. This information is used by the program to
+find the region in the sky to search and to transform right ascension and
+declination sky coordinate pairs to image coordinate (X,Y) pairs.  Output
+is sent to a file called filename.uac and to standard output if the \-v
+flag is set. 
+.SH Options
+.B /-b [<RA> <Dec>]
+Output B1950 (FK4) coordinates (optional center)
+.B /-h
+print heading, else do not 
+.B /-j [<RA> <Dec>]
+output J2000 (FK5) coordinates (optional center)
+.B /-m <magnitude>
+magnitude limit
+.B /-n <num>
+number of brightest stars to print 
+.B /-p <scale>
+initial plate scale in arcsec per pixel (default 0)
+.B /-s
+sort by RA instead of flux 
+.B /-t
+tab table to standard output as well as file
+.B /-u <num>
+plate number for catalog sources (0=all)
+.B /-v
+Verbose listing of processing intermediate results
+.B /-w
+Write tab table output file imagename.uac
+.SH Author
+Doug Mink, SAO (dmink@cfa.harvard.edu)

@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
-   August 5, 1996
+   November 1, 1996
    By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 struct WorldCoor {
@@ -13,6 +13,8 @@ struct WorldCoor {
   double	crot,srot;	/* Cosine and sine of rotation angle */
   double	cd11,cd12,cd21,cd22;
 				/* rotation matrix */
+  double	dc11,dc12,dc21,dc22;
+				/* inverse rotation matrix */
   double	equinox;	/* Equinox of coordinates default to 1950.0 */
   double	epoch;		/* Epoch of coordinates default to equinox */
   double	nxpix;		/* Number of pixels in X-dimension of image */
@@ -35,6 +37,8 @@ struct WorldCoor {
   int		changesys;	/* 1 for FK4->FK5, 2 for FK5->FK4 */
   				/* 3 for FK4->galactic, 4 for FK5->galactic */
   int		printsys;	/* 1 to print coordinate system, else 0 */
+  int		ndec;		/* Number of decimal places in PIX2WCST */
+  int		degout;		/* 1 to always print degrees in PIX2WCST */
   int		tabsys;		/* 1 to put tab between RA & Dec, else 0 */
   int		rotmat;		/* 0 if CDELT, CROTA; 1 if CD */
   int		coorflip;	/* 0 if x=RA, y=Dec; 1 if x=Dec, y=RA */
@@ -76,7 +80,7 @@ void wcsshift ();	/* Reset the center of a WCS structure */
 void wcscent ();
 void wcssize ();	/* Return RA and Dec of image center, size in RA and Dec */
 void wcsfull ();	/* Return RA and Dec of image center, size in degrees */
-double wcsdist ();	/* Compute distance in degrees between two sky coordinates */
+double wcsdist ();	/* Distance in degrees between two sky coordinates */
 void wcscominit ();	/* Initialize catalog search command set by -wcscom */
 void wcscom ();		/* Execute catalog search command set by -wcscom */
 void wcsoutinit ();	/* Initialize WCS output coordinate system set by -wcsout */
@@ -101,4 +105,6 @@ void wcs2pix ();	/* Convert World Coordinates to pixel coordinates */
  * Jul  5 1996	Add subroutine declarations
  * Jul 19 1996	Add WCSFULL declaration
  * Aug  5 1996	Add WCSNINIT to initialize WCS for non-terminated header
+ * Oct 31 1996	Add DCnn inverse rotation matrix
+ * Nov  1 1996	Add NDEC number of decimal places in output
  */

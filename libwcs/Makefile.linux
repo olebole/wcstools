@@ -2,26 +2,29 @@ CLDFLAGS= -ffast-math
 CFLAGS= $(CLDFLAGS) -O2
 LDFLAGS= $(CLDFLAGS) 
 
-OBJS =	imsetwcs.o matchstar.o pressfit.o findstar.o wcscon.o \
-	fitswcs.o wcs.o gscread.o ujcread.o tabread.o imrotate.o \
-	fitsio.o irafio.o hget.o hput.o imio.o worldpos.o platepos.o sortstar.o
+OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o wcscon.o slasubs.o \
+	fitswcs.o wcs.o gscread.o ujcread.o uacread.o tabread.o imrotate.o \
+	fitsio.o imhio.o hget.o hput.o imio.o worldpos.o platepos.o sortstar.o
 
 libwcs.a:	$(OBJS)
 	ar rv $@ $?
 	ranlib $@
 
-findstar.o:	fitshead.h
+findstar.o:	fitshead.h lwcs.h
 fitsio.o:	fitshead.h
 fitswcs.o:	fitshead.h wcs.h
-gscread.o:	fitshead.h
+gscread.o:	fitshead.h wcs.h
 hget.o:		fitshead.h
 hput.o:		fitshead.h
 imrotate.o:	fitshead.h
-imsetwcs.o:	fitshead.h wcs.h
-irafio.o:	fitshead.h
-matchstar.o:	wcs.h
+imgetwcs.o:	fitshead.h wcs.h lwcs.h
+imsetwcs.o:	fitshead.h wcs.h lwcs.h
+imhio.o:	fitshead.h
+matchstar.o:	wcs.h lwcs.h
 platepos.o:	wcs.h
 tabread.o:	fitshead.h
+uacread.o:	wcs.h
+ujcread.o:	wcs.h
 wcs.o:		fitshead.h wcs.h
 wcscon.o:	wcs.h
 worldpos.o:	wcs.h

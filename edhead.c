@@ -1,5 +1,5 @@
 /* File edhead.c
- * August 29, 1996
+ * October 17, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -86,7 +86,6 @@ char	*filename;	/* FITS or IRAF file filename */
     char *head, *headend, *hlast;
     char headline[160];
     char newname[128];
-    char pixname[128];
     char tempname[128];
     FILE *fd;
     char *ext, *fname;
@@ -261,4 +260,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Aug 26 1996	Change HGETC call to HGETS
  * Aug 27 1996	Read up to 82 characters per line to get newline
  * Aug 29 1996	Allow new file to be written
+ * Oct 17 1996	Drop unused variables
  */

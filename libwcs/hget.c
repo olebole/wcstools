@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** September 10, 1996
+ *** November 21, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -15,8 +15,8 @@
  * Subroutine:	hgetdate (hstring,keyword,date) returns date as fractional year
  * Subroutine:	hgetc  (hstring,keyword) returns character string
  * Subroutine:	ksearch (hstring,keyword) returns pointer to header string entry
- * Subroutine:	str2ra (in, dec) converts string to right ascension in degrees
- * Subroutine:	str2dec (in, dec) converts string to declination in degrees
+ * Subroutine:	str2ra (in) converts string to right ascension in degrees
+ * Subroutine:	str2dec (in) converts string to declination in degrees
  * Subroutine:	strsrch (s1, s2) finds string s2 in null-terminated string s1
  * Subroutine:	strnsrch (s1, s2, ls1) finds string s2 in ls1-byte string s1
  * Subroutine:	hlength (header,lhead) sets length of FITS header for searching
@@ -300,14 +300,14 @@ double *dval;
 	    if (sstr == NULL)
 		sstr = strchr (value,'-');
 	    if (sstr > value) {
-		*sstr = NULL;
+		*sstr = '\0';
 		day = (int) atof (value);
 		nval = sstr + 1;
 		sstr = strchr (nval,'/');
 		if (sstr == NULL)
 		    sstr = strchr (nval,'-');
 		if (sstr > value) {
-		    *sstr = NULL;
+		    *sstr = '\0';
 		    month = (int) atof (nval);
 		    nval = sstr + 1;
 		    year = (int) atof (nval);
@@ -416,7 +416,7 @@ char *keyword0;
 /* Find length of variable name */
 	strcpy (keyword,keyword0);
 	brack1 = strsrch (keyword,lbracket);
-	if (brack1 != NULL) *brack1 = NULL;
+	if (brack1 != NULL) *brack1 = '\0';
 
 /* Search header string for variable name */
 	vpos = ksearch (hstring,keyword);
@@ -483,10 +483,10 @@ char *keyword0;
 	    }
 
 /* Drop trailing spaces */
-	*v2 = 0;
+	*v2 = '\0';
 	v2--;
 	while (*v2 == ' ' && v2 > v1) {
-	    *v2 = 0;
+	    *v2 = '\0';
 	    v2--;
 	    }
 
@@ -497,11 +497,11 @@ char *keyword0;
 	if (brack1 != NULL) {
 	    brack2 = strsrch (keyword,rbracket);
 	    if (brack2 != NULL) {
-		*brack2 = NULL;
+		*brack2 = '\0';
 		ipar = atoi (brack1);
 		if (ipar > 0) {
-		    cwhite[0] = 32;
-		    cwhite[1] = NULL;
+		    cwhite[0] = ' ';
+		    cwhite[1] = '\0';
 		    for (i = 1; i <= ipar; i++) {
 			cpar = strtok (v1,cwhite);
 			}
@@ -545,21 +545,24 @@ char *keyword;	/* character string containing the name of the variable
 /* Search header string for variable name */
     if (lhead0)
 	lhstr = lhead0;
-    else
-	for (lhstr = 0; lhstr < 57600 && hstring[lhstr] != 0; lhstr++);
+    else {
+	lhstr = 0;
+	while (lhstr < 57600 && hstring[lhstr] != 0)
+	    lhstr++;
+	}
     headlast = hstring + lhstr;
     headnext = hstring;
     pval = NULL;
     while (headnext < headlast) {
 	nleft = headlast - headnext;
 	loc = strnsrch (headnext, keyword, nleft);
-	icol = (loc - hstring) % 80;
 
 	/* Exit if keyword is not found */
 	if (loc == NULL) {
 	    break;
 	    }
 
+	icol = (loc - hstring) % 80;
 	lkey = strlen (keyword);
 	nextchar = (int) *(loc + lkey);
 
@@ -633,12 +636,12 @@ char	*in;	/* Character string */
 	    sign = -1.0;
 	    value = strsrch (value,"-") + 1;
 	    }
-	if ((c1 = strsrch (value,":"))) {
+	if ((c1 = strsrch (value,":")) != NULL) {
 	    *c1 = 0;
 	    deg = (double) atoi (value);
 	    *c1 = ':';
 	    value = c1 + 1;
-	    if ((c1 = strsrch (value,":"))) {
+	    if ((c1 = strsrch (value,":")) != NULL) {
 		*c1 = 0;
 		min = (double) atoi (value);
 		*c1 = ':';
@@ -647,16 +650,17 @@ char	*in;	/* Character string */
 		}
 	    else {
 		sec = 0.0;
-		if ((c1 = strsrch (value,".")))
+		if ((c1 = strsrch (value,".")) != NULL)
 		    min = atof (value);
 		if (strlen (value) > 0)
 		    min = (double) atoi (value);
 		}
 	    dec = sign * (deg + (min / 60.0) + (sec / 3600.0));
 	    }
-	else if ((c1 = strsrch (value,"."))) {
+	else if ((c1 = strsrch (value,".")) != NULL)
 	    dec = sign * atof (value);
-	    }
+	else 
+	    dec = sign * (double) atoi (value);
 	}
     return (dec);
 }
@@ -724,8 +728,8 @@ int	ls1;	/* Length of string being searched */
 
 		/* If 3 or more characters, check for rest of search string */
 		i = 1;
-		while (i++ < ls2 && s[i] == s2[i])
-		    ;
+		while (i < ls2 && s[i] == s2[i])
+		    i++;
 
 		/* If entire string matches, return */
 		if (i >= ls2)
@@ -763,4 +767,7 @@ int	ls1;	/* Length of string being searched */
  * Aug 13 1996	Fix sign bug in STR2DEC for degrees
  * Aug 26 1996	Drop unused variables ICOL0, NLINE, PREVCHAR from KSEARCH
  * Sep 10 1996	Fix header length setting code
+ * Oct 15 1996	Clean up loops and fix ICOL assignment
+ * Nov 13 1996	Handle integer degrees correctly in STR2DEC
+ * Nov 21 1996	Make changes for Linux thanks to Sidik Isani
  */

@@ -1,5 +1,5 @@
 /* File delwcs.c
- * August 27, 1996
+ * October 16, 1996
  * By Doug Mink, after University of Iowa code
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -95,7 +95,7 @@ char *name;
 		}
 	    image = irafrimage (header);
 	    if (image == NULL) {
-		hgets (header,"PIXFILE", 64, &pixname);
+		hgets (header,"PIXFILE", 64, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -128,9 +128,9 @@ char *name;
     if (verbose) {
 	fprintf (stderr,"Remove World Coordinate System from ");
 	if (iraffile)
-	    fprintf (stderr,"IRAF image file %s", name);
+	    fprintf (stderr,"IRAF image file %s\n", name);
 	else
-	    fprintf (stderr,"FITS image file %s", name);
+	    fprintf (stderr,"FITS image file %s\n", name);
 	}
 
     if (DelWCSFITS (header, verbose) < 1) {
@@ -167,4 +167,5 @@ char *name;
  * May 31 1996	Rename delPos to DelWCS
  * Aug 26 1996	Change HGETC call to HGETS
  * Aug 27 1996	Fix IRAFRHEAD arguments after lint
+ * Oct 16 1996	Add newlines to heading
  */

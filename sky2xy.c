@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * August 27, 1996
+ * November 5, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -26,11 +26,12 @@ char **av;
 {
     char *progname = av[0];
     char *str;
-    double x, y, ra, dec;
+    double x, y, ra, dec, ra0, dec0;
     FILE *fd;
     char *ln, *listname;
     char line[80];
     char *fn;
+    char csys[16];
     struct WorldCoor *wcs;
     char rastr[32], decstr[32];
     int offscale;
@@ -68,6 +69,10 @@ char **av;
     if (verbose)
 	printf ("%s:\n", fn);
     wcs = GetWCSFITS (fn);
+    if (nowcs (wcs)) {
+	fprintf (stderr, "No WCS in image file %s\n", fn);
+	exit (1);
+	}
     if (*coorsys)
 	wcsoutinit (wcs, coorsys);
 
@@ -83,32 +88,91 @@ char **av;
 		    ra = str2ra (rastr);
 		    dec = str2dec (decstr);
 		    wcs2pix (wcs, ra, dec, &x, &y, &offscale);
-		    if (offscale)
-			printf ("%s %s -> offscale\n",rastr, decstr);
+		    if (verbose)
+			printf ("%s %s -> %.5f %.5f -> %.3f %.3f",
+				 rastr, decstr, ra, dec, x, y);
 		    else
-			if (verbose)
-			    printf ("%s %s -> %.5f %.5f -> %.3f %.3f\n",
-				    rastr, decstr, ra, dec, x, y);
-			else
-			    printf ("%s %s -> %.3f %.3f\n",rastr, decstr, x, y);
+			printf ("%s %s -> %.3f %.3f",rastr, decstr, x, y);
+		    if (offscale)
+			printf (" (offscale)\n");
+		    else
+			printf ("\n");
 		    }
 		}
-	    else
+	    else {
 		fprintf (stderr, "Cannot read file %s\n", listname);
+		exit (1);
+		}
 	    av++;
 	    }
 	else if (ac > 1) {
 	    strcpy (rastr, *av);
 	    ac--;
-	    strcpy (decstr, *++av);
-	    ra = str2ra (rastr);
-	    dec = str2dec (decstr);
-	    wcs2pix (wcs, ra, dec, &x, &y, &offscale);
-	    if (offscale)
-		printf ("%s %s -> offscale\n",rastr, decstr);
-	    else
-		printf ("%s %s -> %.3f %.3f\n",rastr, decstr, x, y);
 	    av++;
+	    strcpy (decstr, *av);
+	    ra0 = str2ra (rastr);
+	    dec0 = str2dec (decstr);
+	    ra = ra0;
+	    dec = dec0;
+	    av++;
+
+	/* Convert coordinates system to that of image */
+	    if (ac > 1) {
+		strcpy (csys, *av);
+		if (csys[0] == 'B' || csys[0] == 'b') {
+		    if (wcs->equinox == 2000.0)
+			fk425e (&ra, &dec, wcs->epoch);
+		    ac--;
+		    av++;
+		    }
+		else if (csys[0] == 'J' || csys[0] == 'j') {
+		    if (wcs->equinox == 1950.0)
+			fk524e (&ra, &dec, wcs->epoch);
+		    ac--;
+		    av++;
+		    }
+		else if ((!strcmp (csys,"FK4") || !strcmp (csys,"fk4")) &&
+			wcs->equinox == 2000.0) {
+			fk425e (&ra, &dec, wcs->epoch);
+		    ac--;
+		    av++;
+		    }
+		else if ((!strcmp (csys,"FK5") || !strcmp (csys,"fk5")) &&
+			wcs->equinox == 1950.0) {
+			fk524e (&ra, &dec, wcs->epoch);
+		    ac--;
+		    av++;
+		    }
+		else {
+		    if (wcs->equinox == 1950.0)
+			strcpy (csys, "B1950");
+		    else
+			strcpy (csys, "J2000");
+		    }
+		}
+	    else {
+		if (wcs->equinox == 1950.0)
+		    strcpy (csys, "B1950");
+		else
+		    strcpy (csys, "J2000");
+		}
+
+	    if (ra != ra0 && verbose) {
+		printf ("%s %s %s -> ", rastr, decstr, csys);
+		ra2str (rastr, ra, 3);
+		dec2str (decstr, dec, 2);
+		if (wcs->equinox == 1950.0)
+		    strcpy (csys, "B1950");
+		else if (wcs->equinox == 2000.0)
+		    strcpy (csys, "J2000");
+		printf ("%s %s %s\n", rastr, decstr, csys);
+		}
+	    wcs2pix (wcs, ra, dec, &x, &y, &offscale);
+	    printf ("%s %s %s -> %.3f %.3f",rastr, decstr, csys, x, y);
+	    if (offscale)
+		printf (" (offscale)\n");
+	    else
+		printf ("\n");
 	    }
 	}
 
@@ -134,4 +198,8 @@ char *progname;
  * Apr 24 1996	Version 1.1: Add B1950, J2000, or galactic coordinate input options
  * Jun 10 1996	Change name of WCS subroutine
  * Aug 27 1996	Clean up code after lint
+ * Oct 29 1996	Allow alternate coordinate systems for input coordinates
+ * Oct 30 1996	Exit if image file is not found
+ * Nov  1 1996	Fix bug so systemless coordinates do not cause crash
+ * Nov  5 1996	Fix multiple sets of coordinates on command line
  */

@@ -1,0 +1,30 @@
+.TH imgsc(1) WCS "15 November 1996"
+.SH Name
+imgsc \- Find HST GSC stars in FITS or IRAF image files
+.SH Synopsis
+imgsc [options] FITS or IRAF file(s)
+.SH Options
+.B \-b [<RA> <Dec>]
+Output B1950 (FK4) coordinates (optional center)
+.B \-g <class>
+Object class (0=stars 3=galaxies -1=all)
+.B \-h
+Print heading, else do not 
+.B \-j [<RA> <Dec>]
+Output J2000 (FK5) coordinates (optional center)
+.B \-m <magnitude>
+Magnitude limit
+.B \-n <num>
+Number of brightest stars to print 
+.B \-p <scale>
+Plate scale in arcsec per pixel (default 0)
+.B \-s
+Sort by RA instead of flux 
+.B \-t
+Tab table to standard output as well as file
+.B \-v
+Verbose listing of processing intermediate results
+.B \-w
+Write tab table output file imagename.gsc
+.SH Author
+Doug Mink, SAO (dmink@cfa.harvard.edu)

@@ -1,5 +1,5 @@
 /*** File libwcs/hput.c
- *** August 6, 1996
+ *** November 1, 1996
  *** By Doug Mink
 
  * Module:	hput.c (Put FITS Header parameter values)
@@ -9,7 +9,7 @@
  * Subroutine:	hputr4 (hstring,keyword,rval) sets real*4 rval
  * Subroutine:	hputr8 (hstring,keyword,dval) sets real*8 dval
  * Subroutine:	hputd8 (hstring,keyword,ndec,dval) sets real*8 dval
- * Subroutine:	hputra (hstring,keyword,lval) sets right ascnesion as string
+ * Subroutine:	hputra (hstring,keyword,lval) sets right ascension as string
  * Subroutine:	hputdec (hstring,keyword,lval) sets declination as string
  * Subroutine:	hputl  (hstring,keyword,lval) sets logical lval
  * Subroutine:	hputs  (hstring,keyword,cval) sets character string adding ''
@@ -19,6 +19,7 @@
  * Subroutine:	hputcom (hstring,keyword,comment) sets comment for parameter keyword
  * Subroutine:	ra2str (out, ra, ndec) converts RA from degrees to string
  * Subroutine:	dec2str (out, dec, ndec) converts Dec from degrees to string
+ * Subroutine:	deg2str (out, deg, ndec) converts degrees to string
 
  * Copyright:   1995, 1996 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
@@ -568,8 +569,8 @@ void
 ra2str (string, ra, ndec)
 
 char	*string;	/* Character string (returned) */
-double	ra;	/* Right ascension in degrees */
-int	ndec;	/* Number of decimal places in seconds */
+double	ra;		/* Right ascension in degrees */
+int	ndec;		/* Number of decimal places in seconds */
 
 {
     double a,b;
@@ -591,7 +592,46 @@ int	ndec;	/* Number of decimal places in seconds */
     seconds = (b - (double)minutes) * 60.0;
     isec = (int)(seconds + 0.5);
 
-    if (ndec > 2) {
+    if (ndec > 5) {
+	if (seconds > 59.999999) {
+	    seconds = 0.0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    hours = hours + 1;
+	    }
+	if (hours > 23)
+	    hours = hours - 24;
+	(void) sprintf (string,"%2d:%02d:%09.6f",hours,minutes,seconds);
+	}
+    else if (ndec > 4) {
+	if (seconds > 59.99999) {
+	    seconds = 0.0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    hours = hours + 1;
+	    }
+	if (hours > 23)
+	    hours = hours - 24;
+	(void) sprintf (string,"%2d:%02d:%08.5f",hours,minutes,seconds);
+	}
+    else if (ndec > 3) {
+	if (seconds > 59.9999) {
+	    seconds = 0.0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    hours = hours + 1;
+	    }
+	if (hours > 23)
+	    hours = hours - 24;
+	(void) sprintf (string,"%2d:%02d:%07.4f",hours,minutes,seconds);
+	}
+    else if (ndec > 2) {
 	if (seconds > 59.999) {
 	    seconds = 0.0;
 	    minutes = minutes + 1;
@@ -653,8 +693,8 @@ void
 dec2str (string, dec, ndec)
 
 char	*string;	/* Character string (returned) */
-double	dec;	/* Declination in degrees */
-int	ndec;	/* Number of decimal places in arcseconds */
+double	dec;		/* Declination in degrees */
+int	ndec;		/* Number of decimal places in arcseconds */
 
 {
     double a,b;
@@ -685,7 +725,40 @@ int	ndec;	/* Number of decimal places in arcseconds */
     seconds = (b - (double)minutes) * 60.0;
     isec = (int)(seconds + 0.5);
 
-    if (ndec > 2) {
+    if (ndec > 5) {
+	if (seconds > 59.999999) {
+	    seconds = 0.0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    degrees = degrees + 1;
+	    }
+	(void) sprintf (string,"%c%02d:%02d:%09.6f",sign,degrees,minutes,seconds);
+	}
+    else if (ndec > 4) {
+	if (seconds > 59.99999) {
+	    seconds = 0.0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    degrees = degrees + 1;
+	    }
+	(void) sprintf (string,"%c%02d:%02d:%08.5f",sign,degrees,minutes,seconds);
+	}
+    else if (ndec > 3) {
+	if (seconds > 59.9999) {
+	    seconds = 0.0;
+	    minutes = minutes + 1;
+	    }
+	if (minutes > 59) {
+	    minutes = 0;
+	    degrees = degrees + 1;
+	    }
+	(void) sprintf (string,"%c%02d:%02d:%07.4f",sign,degrees,minutes,seconds);
+	}
+    else if (ndec > 2) {
 	if (seconds > 59.999) {
 	    seconds = 0.0;
 	    minutes = minutes + 1;
@@ -731,6 +804,43 @@ int	ndec;	/* Number of decimal places in arcseconds */
 	}
    return;
 }
+
+
+/* sprint the variable a in sexagesimal format into string[]. */
+
+void
+deg2str (string, deg, ndec)
+
+char	*string;	/* Character string (returned) */
+double	deg;		/* Angle in degrees */
+int	ndec;		/* Number of decimal places in degree string */
+
+{
+    char degform[8];
+    int field;
+    double deg1;
+
+    field = ndec + 4;
+    if (ndec > 0) {
+	sprintf (degform, "%%%d.%df", field, ndec);
+	sprintf (string, degform, deg);
+	}
+    else {
+	sprintf (degform, "%%4d", field);
+	sprintf (string, degform, (int)deg);
+	}
+    deg1 = atof (string);
+    if (deg1 >= 360.0)
+	deg1 = deg1 - 360.0;
+    else if (deg1 <= -180.0)
+	deg1 = deg1 + 360.0;
+    if (ndec > 0)
+	sprintf (string, degform, deg);
+    else
+	sprintf (string, degform, (int)deg);
+    return;
+}
+
 /* Dec 14 1995	Original subroutines
 
  * Feb  5 1996	Added HDEL to delete keyword entry from FITS header
@@ -739,4 +849,7 @@ int	ndec;	/* Number of decimal places in arcseconds */
  * Jul 19 1996	Add HPUTRA and HPUTDEC
  * Jul 22 1996	Add HCHANGE to change keywords
  * Aug  5 1996	Add HPUTNR8 to save specific number of decimal places
+ * Oct 15 1996	Fix spelling
+ * Nov  1 1996	Add DEG2STR to set specific number of decimal places
+ * Nov  1 1996	Allow DEC2STR to handle upt to 6 decimal places
  */

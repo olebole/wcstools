@@ -1,5 +1,5 @@
 /* File gethead.c
- * September 4, 1996
+ * October 8, 1996
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -116,13 +116,14 @@ char	*kwd[];	/* Names of keywords for which to print values */
 	    }
 	}
     if (verbose) {
-	fprintf (stderr,"Print World Coordinate System from ");
+	fprintf (stderr,"Print Header Parameter Values from ");
 	if (iraffile)
-	    fprintf (stderr,"IRAF image file %s", name);
+	    fprintf (stderr,"IRAF image file %s\n", name);
 	else
-	    fprintf (stderr,"FITS image file %s", name);
+	    fprintf (stderr,"FITS image file %s\n", name);
 	}
 
+    /* Get keyword values one at a time */
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
 	lkwd = strlen (kwd[ikwd]);
 	kwe = kwd[ikwd] + lkwd;
@@ -136,6 +137,11 @@ char	*kwd[];	/* Names of keywords for which to print values */
 	    else
 		printf ("%s",string);
 	    }
+	else if (verbose)
+	    printf ("%s not found", kwd[ikwd]);
+	else
+	    printf ("___");
+
 	if (verbose || ikwd == nkwd - 1)
 	    printf ("\n");
 	else
@@ -147,4 +153,5 @@ char	*kwd[];	/* Names of keywords for which to print values */
 }
 
 /* Sep  4 1996	New program
+ * Oct  8 1996	Add newline after file name in verbose mode
  */

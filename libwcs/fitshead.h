@@ -1,5 +1,5 @@
 /* fitshead.h  FITS and IRAF file access subroutines
- * August 6, 1996
+ * November 1, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -32,6 +32,7 @@ extern int hchange ();	/* Change a keyword name in a FITS header */
 /* Subroutines for conversion between strings and RA and Dec */
 extern void ra2str ();
 extern void dec2str ();
+extern void deg2str ();
 extern double str2ra ();
 extern double str2dec ();
 
@@ -103,4 +104,5 @@ extern int imswapped();
  * Aug  5 1996	Add STRNSRCH for FITS headers which are not null-terminated
  * Aug  6 1996	Add HPUTNR8 to save a specified number of decimal places
  * Aug  6 1996	Add MOVEPIX, HDEL and HCHANGE declarations
+ * Nov  1 1996	Add DEG2STR
  */

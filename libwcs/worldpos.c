@@ -22,28 +22,28 @@
     Inc., 675 Massachusetts Ave, Cambridge, MA 02139, USA.
    
     Correspondence concerning AIPS should be addressed as follows:
-           Internet email: aipsmail@nrao.edu
-           Postal address: AIPS Group
-                           National Radio Astronomy Observatory
-                           520 Edgemont Road
-                           Charlottesville, VA 22903-2475 USA
+	   Internet email: aipsmail@nrao.edu
+	   Postal address: AIPS Group
+	                   National Radio Astronomy Observatory
+	                   520 Edgemont Road
+	                   Charlottesville, VA 22903-2475 USA
 
-                 -=-=-=-=-=-=-
+	         -=-=-=-=-=-=-
 
     These two ANSI C functions, worldpos() and worldpix(), perform
     forward and reverse WCS computations for 8 types of projective
     geometries ("-SIN", "-TAN", "-ARC", "-NCP", "-GLS", "-MER", "-AIT"
     and "-STG"):
 
-        worldpos() converts from pixel location to RA,Dec 
-        worldpix() converts from RA,Dec         to pixel location   
+	worldpos() converts from pixel location to RA,Dec 
+	worldpix() converts from RA,Dec         to pixel location   
 
     where "(RA,Dec)" are more generically (long,lat). These functions
     are based on the WCS implementation of Classic AIPS, an
     implementation which has been in production use for more than ten
     years. See the two memos by Eric Greisen
 
-        ftp://fits.cv.nrao.edu/fits/documents/wcs/aips27.ps.Z
+	ftp://fits.cv.nrao.edu/fits/documents/wcs/aips27.ps.Z
 	ftp://fits.cv.nrao.edu/fits/documents/wcs/aips46.ps.Z
 
     for descriptions of the 8 projective geometries and the
@@ -59,9 +59,9 @@
     features is discussed in the draft WCS proposal by Greisen and
     Calabretta at:
     
-        ftp://fits.cv.nrao.edu/fits/documents/wcs/wcs.all.ps.Z
+	ftp://fits.cv.nrao.edu/fits/documents/wcs/wcs.all.ps.Z
     
-                -=-=-=-
+	        -=-=-=-
 
     The original version of this code was Emailed to D.Wells on
     Friday, 23 September by Bill Cotton <bcotton@gorilla.cv.nrao.edu>,
@@ -127,9 +127,6 @@ double	*ypos;		/* y (dec) coordinate (deg) */
   yrefpix = wcs->yrefpix;
   xinc = wcs->xinc;
   yinc = wcs->yinc;
-  rot = wcs->rot;
-  cosr = wcs->crot;
-  sinr = wcs->srot;
 
 /* Offset from ref pixel */
   dx = xpix - xrefpix;
@@ -143,14 +140,22 @@ double	*ypos;		/* y (dec) coordinate (deg) */
     }
   else {
 
+/* Check axis increments - bail out if either 0 */
+    if ((xinc==0.0) || (yinc==0.0)) {
+      *xpos=0.0;
+      *ypos=0.0;
+      return 2;
+      }
+
 /* Scale using CDELT */
-    if (xinc != 0.)
-      dx = dx * xinc;
-    if (yinc != 0.)
-      dy = dy * yinc;
+    dx = dx * xinc;
+    dy = dy * yinc;
 
 /* Take out rotation from CROTA */
-    if (rot!=0.0) {
+    rot = wcs->rot;
+    cosr = wcs->crot;
+    sinr = wcs->srot;
+    if (rot != 0.0) {
       temp = dx * cosr - dy * sinr;
       dy = dy * cosr + dx * sinr;
       dx = temp;
@@ -163,18 +168,18 @@ double	*ypos;		/* y (dec) coordinate (deg) */
 
 /* Convert to radians  */
   if (wcs->coorflip) {
-    dec0 = xref * cond2r;
-    ra0 = yref * cond2r;
+    dec0 = degrad (xref);
+    ra0 = degrad (yref);
     temp = dx;
     dx = dy;
     dy = temp;
     }
   else {
-    ra0 = xref * cond2r;
-    dec0 = yref * cond2r;
+    ra0 = degrad (xref);
+    dec0 = degrad (yref);
     }
-  l = dx * cond2r;
-  m = dy * cond2r;
+  l = degrad (dx);
+  m = degrad (dy);
   sins = l*l + m*m;
   decout = 0.0;
   raout = 0.0;
@@ -242,13 +247,13 @@ double	*ypos;		/* y (dec) coordinate (deg) */
     case 6:   /* -MER mercator*/
       dt = yinc * cosr + xinc * sinr;
       if (dt==0.0) dt = 1.0;
-      dy = (yref/2.0 + 45.0) * cond2r;
+      dy = degrad (yref/2.0 + 45.0);
       dx = dy + dt / 2.0 * cond2r;
       dy = log (tan (dy));
       dx = log (tan (dx));
-      geo2 = dt * cond2r / (dx - dy);
+      geo2 = degrad (dt) / (dx - dy);
       geo3 = geo2 * dy;
-      geo1 = cos (yref*cond2r);
+      geo1 = cos (degrad (yref));
       if (geo1<=0.0) geo1 = 1.0;
       rat = l / geo1 + ra0;
       if (fabs(rat - ra0) > twopi) return 1; /* added 10/13/94 DCW/EWG */
@@ -260,15 +265,15 @@ double	*ypos;		/* y (dec) coordinate (deg) */
     case 7:   /* -AIT Aitoff*/
       dt = yinc*cosr + xinc*sinr;
       if (dt==0.0) dt = 1.0;
-      dt = dt * cond2r;
-      dy = yref * cond2r;
+      dt = degrad (dt);
+      dy = degrad (yref);
       dx = sin(dy+dt)/sqrt((1.0+cos(dy+dt))/2.0) -
 	  sin(dy)/sqrt((1.0+cos(dy))/2.0);
       if (dx==0.0) dx = 1.0;
       geo2 = dt / dx;
       dt = xinc*cosr - yinc* sinr;
       if (dt==0.0) dt = 1.0;
-      dt = dt * cond2r;
+      dt = degrad (dt);
       dx = 2.0 * cos(dy) * sin(dt/2.0);
       if (dx==0.0) dx = 1.0;
       geo1 = dt * sqrt((1.0+cos(dy)*cos(dt/2.0))/2.0) / dx;
@@ -315,8 +320,8 @@ double	*ypos;		/* y (dec) coordinate (deg) */
   if (raout < 0.0) raout += twopi; /* added by DCW 10/12/94 */
 
 /*  correct units back to degrees  */
-  *xpos  = raout  / cond2r;
-  *ypos  = decout  / cond2r;
+  *xpos = raddeg (raout);
+  *ypos = raddeg (decout);
 
   return 0;
 }  /* End of worldpos */
@@ -342,7 +347,7 @@ struct WorldCoor *wcs;	/* WCS parameter structure */
 double	*xpix;		/* x pixel number  (RA or long without rotation) */
 double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 {
-  double dx, dy, r, ra0, dec0, ra, dec, coss, sins, dt, da, dd, sint;
+  double dx, dy, ra0, dec0, ra, dec, coss, sins, dt, da, dd, sint;
   double l, m, geo1, geo2, geo3, sinr, cosr, temp;
   double cond2r=1.745329252e-2, deps=1.0e-5, twopi=6.28318530717959;
 
@@ -369,144 +374,140 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 
   /* 0h wrap-around tests added by D.Wells 10/12/94: */
   dt = (xpos - xref);
-  if (dt > 180) xpos -= 360;
-  if (dt < -180) xpos += 360;
+  if (dt > 180.0) xpos -= 360.0;
+  if (dt < -180.0) xpos += 360.0;
   /* NOTE: changing input argument xpos is OK (call-by-value in C!) */
-
-/* Default values - linear */
-  dx = xpos - xref;
-  dy = ypos - yref;
-
-/* Correct for rotation */
-  r = rot * cond2r;
-  cosr = cos (r);
-  sinr = sin (r);
-  temp = dx*cosr + dy*sinr;
-  dy = dy*cosr - dx*sinr;
-  dx = temp;
-
-/* Check axis increments - bail out if either 0 */
-  if ((xinc==0.0) || (yinc==0.0)) {*xpix=0.0; *ypix=0.0; return 2;}
-
-/* Convert to pixels  */
-  *xpix = dx / xinc + xrefpix;
-  *ypix = dy / yinc + yrefpix;
 
 /* Projection type */
   itype = wcs->pcode;
-  if (itype == 0) return 0;  /* done if linear */
 
 /* Nonlinear position */
-  ra0 = xref * cond2r;
-  dec0 = yref * cond2r;
-  ra = xpos * cond2r;
-  dec = ypos * cond2r;
+  if (itype > 0 && itype < 9) {
+    if (wcs->coorflip) {
+      dec0 = degrad (xref);
+      ra0 = degrad (yref);
+      }
+    else {
+      ra0 = degrad (xref);
+      dec0 = degrad (yref);
+      }
+    ra = degrad (xpos);
+    dec = degrad (ypos);
 
 /* Compute direction cosine */
-  coss = cos (dec);
-  sins = sin (dec);
-  l = sin(ra-ra0) * coss;
-  sint = sins * sin(dec0) + coss * cos(dec0) * cos(ra-ra0);
+    coss = cos (dec);
+    sins = sin (dec);
+    l = sin(ra-ra0) * coss;
+    sint = sins * sin(dec0) + coss * cos(dec0) * cos(ra-ra0);
+    }
 
 /* Process by case  */
   switch (itype) {
     case 1:   /* -SIN sin*/ 
-         if (sint<0.0) return 1;
-         m = sins * cos(dec0) - coss * sin(dec0) * cos(ra-ra0);
+	 if (sint<0.0) return 1;
+	 m = sins * cos(dec0) - coss * sin(dec0) * cos(ra-ra0);
       break;
     case 2:   /* -TAN tan */
-         if (sint<=0.0) return 1;
+	 if (sint<=0.0) return 1;
  	 m = sins * sin(dec0) + coss * cos(dec0) * cos(ra-ra0);
 	 l = l / m;
 	 m = (sins * cos(dec0) - coss * sin(dec0) * cos(ra-ra0)) / m;
       break;
     case 3:   /* -ARC Arc*/
-         m = sins * sin(dec0) + coss * cos(dec0) * cos(ra-ra0);
-         if (m<-1.0) m = -1.0;
-         if (m>1.0) m = 1.0;
-         m = acos (m);
-         if (m!=0) 
-            m = m / sin(m);
-         else
-            m = 1.0;
-         l = l * m;
-         m = (sins * cos(dec0) - coss * sin(dec0) * cos(ra-ra0)) * m;
+	 m = sins * sin(dec0) + coss * cos(dec0) * cos(ra-ra0);
+	 if (m<-1.0) m = -1.0;
+	 if (m>1.0) m = 1.0;
+	 m = acos (m);
+	 if (m!=0) 
+	    m = m / sin(m);
+	 else
+	    m = 1.0;
+	 l = l * m;
+	 m = (sins * cos(dec0) - coss * sin(dec0) * cos(ra-ra0)) * m;
       break;
     case 4:   /* -NCP North celestial pole*/
-         if (dec0==0.0) 
+	 if (dec0==0.0) 
 	     return 1;  /* can't stand the equator */
-         else
+	 else
 	   m = (cos(dec0) - coss * cos(ra-ra0)) / sin(dec0);
       break;
     case 5:   /* -GLS global sinusoid */
-         dt = ra - ra0;
-         if (fabs(dec)>twopi/4.0) return 1;
-         if (fabs(dec0)>twopi/4.0) return 1;
-         m = dec - dec0;
-         l = dt * coss;
+	 dt = ra - ra0;
+	 if (fabs(dec)>twopi/4.0) return 1;
+	 if (fabs(dec0)>twopi/4.0) return 1;
+	 m = dec - dec0;
+	 l = dt * coss;
       break;
     case 6:   /* -MER mercator*/
-         dt = yinc * cosr + xinc * sinr;
-         if (dt==0.0) dt = 1.0;
-         dy = (yref/2.0 + 45.0) * cond2r;
-         dx = dy + dt / 2.0 * cond2r;
-         dy = log (tan (dy));
-         dx = log (tan (dx));
-         geo2 = dt * cond2r / (dx - dy);
-         geo3 = geo2 * dy;
-         geo1 = cos (yref*cond2r);
-         if (geo1<=0.0) geo1 = 1.0;
-         dt = ra - ra0;
-         l = geo1 * dt;
-         dt = dec / 2.0 + twopi / 8.0;
-         dt = tan (dt);
-         if (dt<deps) return 2;
-         m = geo2 * log (dt) - geo3;
-         break;
+	 dt = yinc * cosr + xinc * sinr;
+	 if (dt==0.0) dt = 1.0;
+	 dy = degrad (yref/2.0 + 45.0);
+	 dx = dy + dt / 2.0 * cond2r;
+	 dy = log (tan (dy));
+	 dx = log (tan (dx));
+	 geo2 = degrad (dt) / (dx - dy);
+	 geo3 = geo2 * dy;
+	 geo1 = cos (degrad (yref));
+	 if (geo1<=0.0) geo1 = 1.0;
+	 dt = ra - ra0;
+	 l = geo1 * dt;
+	 dt = dec / 2.0 + twopi / 8.0;
+	 dt = tan (dt);
+	 if (dt<deps) return 2;
+	 m = geo2 * log (dt) - geo3;
+	 break;
     case 7:   /* -AIT Aitoff*/
-         l = 0.0;
-         m = 0.0;
-         da = (ra - ra0) / 2.0;
-         if (fabs(da)>twopi/4.0) return 1;
-         dt = yinc*cosr + xinc*sinr;
-         if (dt==0.0) dt = 1.0;
-         dt = dt * cond2r;
-         dy = yref * cond2r;
-         dx = sin(dy+dt)/sqrt((1.0+cos(dy+dt))/2.0) -
-             sin(dy)/sqrt((1.0+cos(dy))/2.0);
-         if (dx==0.0) dx = 1.0;
-         geo2 = dt / dx;
-         dt = xinc*cosr - yinc* sinr;
-         if (dt==0.0) dt = 1.0;
-         dt = dt * cond2r;
-         dx = 2.0 * cos(dy) * sin(dt/2.0);
-         if (dx==0.0) dx = 1.0;
-         geo1 = dt * sqrt((1.0+cos(dy)*cos(dt/2.0))/2.0) / dx;
-         geo3 = geo2 * sin(dy) / sqrt((1.0+cos(dy))/2.0);
-         dt = sqrt ((1.0 + cos(dec) * cos(da))/2.0);
-         if (fabs(dt)<deps) return 3;
-         l = 2.0 * geo1 * cos(dec) * sin(da) / dt;
-         m = geo2 * sin(dec) / dt - geo3;
+	 l = 0.0;
+	 m = 0.0;
+	 da = (ra - ra0) / 2.0;
+	 if (fabs(da)>twopi/4.0) return 1;
+	 dt = yinc*cosr + xinc*sinr;
+	 if (dt==0.0) dt = 1.0;
+	 dt = degrad (dt);
+	 dy = degrad (yref);
+	 dx = sin(dy+dt)/sqrt((1.0+cos(dy+dt))/2.0) -
+	     sin(dy)/sqrt((1.0+cos(dy))/2.0);
+	 if (dx==0.0) dx = 1.0;
+	 geo2 = dt / dx;
+	 dt = xinc*cosr - yinc* sinr;
+	 if (dt==0.0) dt = 1.0;
+	 dt = degrad (dt);
+	 dx = 2.0 * cos(dy) * sin(dt/2.0);
+	 if (dx==0.0) dx = 1.0;
+	 geo1 = dt * sqrt((1.0+cos(dy)*cos(dt/2.0))/2.0) / dx;
+	 geo3 = geo2 * sin(dy) / sqrt((1.0+cos(dy))/2.0);
+	 dt = sqrt ((1.0 + cos(dec) * cos(da))/2.0);
+	 if (fabs(dt)<deps) return 3;
+	 l = 2.0 * geo1 * cos(dec) * sin(da) / dt;
+	 m = geo2 * sin(dec) / dt - geo3;
       break;
     case 8:   /* -STG Sterographic*/
-         da = ra - ra0;
-         if (fabs(dec)>twopi/4.0) return 1;
-         dd = 1.0 + sins * sin(dec0) + coss * cos(dec0) * cos(da);
-         if (fabs(dd)<deps) return 1;
-         dd = 2.0 / dd;
-         l = l * dd;
-         m = dd * (sins * cos(dec0) - coss * sin(dec0) * cos(da));
+	 da = ra - ra0;
+	 if (fabs(dec)>twopi/4.0) return 1;
+	 dd = 1.0 + sins * sin(dec0) + coss * cos(dec0) * cos(da);
+	 if (fabs(dd)<deps) return 1;
+	 dd = 2.0 / dd;
+	 l = l * dd;
+	 m = dd * (sins * cos(dec0) - coss * sin(dec0) * cos(da));
       break;
   }  /* end of itype switch */
 
 /* Back to degrees  */
-  dx = l / cond2r;
-  dy = m / cond2r;
+  if (itype > 0 && itype < 9) {
+    dx = raddeg (l);
+    dy = raddeg (m);
+    }
+
+/* For linear or pixel projection */
+  else {
+    dx = xpos - xref;
+    dy = ypos - yref;
+    }
 
 /* Scale and rotate using CD matrix */
   if (wcs->rotmat) {
-    temp = dx * wcs->cd11 - dy * wcs->cd12;
-    dy = -dx * wcs->cd21 + dy * wcs->cd22;
+    temp = dx * wcs->dc11 + dy * wcs->dc12;
+    dy = dx * wcs->dc21 + dy * wcs->dc22;
     dx = temp;
     }
   else {
@@ -523,7 +524,12 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
       dx = dx / xinc;
     if (yinc != 0.)
       dy = dy / yinc;
+    }
 
+  if (wcs->coorflip) {
+    temp = dx;
+    dx = dy;
+    dy = temp;
     }
 
 /* Convert to pixels  */
@@ -534,4 +540,7 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 }  /* end worldpix */
 
 /* Oct 26 1995	Fix bug which interchanged RA and Dec twice when coorflip
+ * Oct 31 1996	Fix CD matrix use in WORLDPIX
+ * Nov  4 1996	Eliminate extra code for linear projection in WORLDPIX
+ * Nov  5 1996	Add coordinate flip in WORLDPIX
  */

@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * September 4, 1996
+ * November 19, 1996
  * By Doug Mink, based on UIowa code
  */
 
@@ -14,6 +14,7 @@
 
 #define GSC		1	/* refcat value for HST Guide Star Catalog */
 #define UJC		2	/* refcat value for USNO UJ Star Catalog */
+#define UAC		3	/* refcat value for USNO A Star Catalog */
 
 extern int FindStars ();
 extern int TriMatch ();
@@ -21,14 +22,15 @@ extern int FocasMatch ();
 extern int StarMatch ();
 extern int findStars ();
 extern int gscread();
+extern int uacread();
 extern int ujcread();
 extern int tabread();
 extern void MagSortStars ();
 extern void FluxSortStars ();
+extern struct WorldCoor *GetFITSWCS ();
 
 extern void fk425(), fk425e(), fk524e();
 
-static struct WorldCoor *GetFITSWCS ();
 static void SetFITSWCS ();
 
 /* set the C* WCS fields in  a FITS header based on a reference catalog
@@ -42,16 +44,11 @@ static void SetFITSWCS ();
 /* These parameters can be set on the command line */
 static double tolerance = PIXDIFF;	/* +/- this many pixels is a hit */
 static double reflim = MAGLIM;		/* reference catalog magnitude limit */
-static double secpix0 = PSCALE;		/* Set image scale--override header */
 static int refcat = GSC;		/* reference catalog switch */
 static char refcatname[32]="GSC";	/* reference catalog name */
-static double rot0 = 0.0;		/* Initial image rotation */
-static int fk4 = 0;			/* Command line center is FK4 */
 static int classd = -1;			/* Guide Star Catalog object classes */
 static int uplate = 0;			/* UJ Catalog plate number to use */
 static double frac = 1.0;		/* Additional catalog/image stars */
-static double ra0 = -99.0;		/* Initial center RA in degrees */
-static double dec0 = -99.0;		/* Initial center Dec in degrees */
 static char wcstype[8]="TAN";		/* WCS projection name */
 static int nfit0 = 0;			/* Number of parameters to fit
 					   (0=1 per match */
@@ -77,6 +74,7 @@ int	verbose;
     double *gra=0;	/* Reference star right ascensions in degrees */
     double *gdec=0;	/* Reference star declinations in degrees */
     double *gm=0;	/* Reference star magnitudes */
+    double *gmb=0;	/* Reference star blue magnitudes */
     double *gx=0;	/* Reference star image X-coordinates in pixels */
     double *gy=0;	/* Reference star image Y-coordinates in pixels */
     int *gc=0;		/* Reference object types */
@@ -95,7 +93,7 @@ int	verbose;
     double dra, ddec;	/* Image half-widths in degrees */
     double secpix;	/* Pixel size in arcseconds */
     int imw, imh;	/* Image size, pixels */
-    double ra1,ra2,dec1,dec2,mag1,mag2;
+    double mag1,mag2;
     int minstars;
     int ngmax;
     int nbin, nbytes;
@@ -111,11 +109,6 @@ int	verbose;
 	goto out;
 	}
 
-    /* Set the RA and Dec limits in degrees for reference star search */
-    ra1 = cra - dra;
-    ra2 = cra + dra;
-    dec1 = cdec - ddec;
-    dec2 = cdec + ddec;
     if (reflim > 0.0) {
 	mag1 = -2.0;
 	mag2 = reflim;
@@ -132,17 +125,21 @@ int	verbose;
     gra = (double *) malloc (nbytes);
     gdec = (double *) malloc (nbytes);
     gm = (double *) malloc (nbytes);
+    gmb = (double *) malloc (nbytes);
     gc = (int *) malloc (nbytes);
 
     /* Find the nearby reference stars, in ra/dec */
     if (refcat == UJC)
-	ng = ujcread (ra1,ra2,dec1,dec2,mag1,mag2,uplate,ngmax,
+	ng = ujcread (cra,cdec,dra,ddec,0.0,mag1,mag2,uplate,ngmax,
 		      gnum,gra,gdec,gm,gc,verbose);
+    else if (refcat == UAC)
+	ng = uacread (cra,cdec,dra,ddec,0.0,mag1,mag2,uplate,ngmax,
+		      gnum,gra,gdec,gm,gmb,gc,verbose*100);
     else if (refcat == GSC)
-	ng = gscread (ra1,ra2,dec1,dec2,mag1,mag2,classd,ngmax,
+	ng = gscread (cra,cdec,dra,ddec,0.0,mag1,mag2,classd,ngmax,
 		      gnum,gra,gdec,gm,gc,verbose*100);
     else if (refcatname[0] > 0)
-	ng = tabread (refcatname,ra1,ra2,dec1,dec2,mag1,mag2,ngmax,
+	ng = tabread (refcatname,cra,cdec,dra,ddec,0.0,mag1,mag2,ngmax,
 		      gnum,gra,gdec,gm,gc,verbose);
     else {
 	fprintf (stderr,"No reference star catalog specified\n");
@@ -189,7 +186,7 @@ int	verbose;
 	}
 
     /* Sort reference stars by brightness (magnitude) */
-    MagSortStars (gnum, gra, gdec, gx, gy, gm, gc, ng);
+    MagSortStars (gnum, gra, gdec, gx, gy, gm, gmb, gc, ng);
 
     /* Use only the brightest MAXSTARS reference stars */
     nbg = MAXSTARS;
@@ -335,6 +332,7 @@ int	verbose;
     if (gra) free ((char *)gra);
     if (gdec) free ((char *)gdec);
     if (gm) free ((char *)gm);
+    if (gmb) free ((char *)gmb);
     if (gnum) free ((char *)gnum);
     if (gx) free ((char *)gx);
     if (gy) free ((char *)gy);
@@ -347,190 +345,6 @@ int	verbose;
     if (wcs) free (wcs);
 
     return (ret);
-}
-
-
-/* Set a nominal world coordinate system from image header info.
- * If the image center is not FK5 (J2000) equinox, convert it
- * Return a WCS structure if OK, else return NULL
- */
-
-static struct WorldCoor *
-GetFITSWCS (header, verbose, cra, cdec, dra, ddec, secpix, wp, hp, eqref)
-
-char	*header;	/* Image FITS header */
-int	verbose;	/* Extra printing if =1 */
-double	*cra;		/* Center right ascension in degrees (returned) */
-double	*cdec;		/* Center declination in degrees (returned) */
-double	*dra;		/* Right ascension half-width in degrees (returned) */
-double	*ddec;		/* Declination half-width in degrees (returned) */
-double	*secpix;	/* Arcseconds per pixel (returned) */
-int	*wp;		/* Image width in pixels (returned) */
-int	*hp;		/* Image height in pixels (returned) */
-int	eqref;		/* Equinox of reference catalog */
-{
-    int nax;
-    int equinox, eqcoor;
-    double epoch;
-    struct WorldCoor *wcs;
-
-    /* Set image dimensions */
-    nax = 0;
-    if (hgeti4 (header,"NAXIS",&nax) < 1)
-	return (NULL);
-    else {
-	if (hgeti4 (header,"NAXIS1",wp) < 1)
-	    return (NULL);
-	else {
-	    if (hgeti4 (header,"NAXIS2",hp) < 1)
-		return (NULL);
-	    }
-	}
-
-    /* Find center for pre-existing WCS, if there is one */
-    wcs = wcsinit (header);
-    if (iswcs (wcs)) {
-	wcssize (wcs, cra, cdec, dra, ddec);
-	if (wcs->xref == 0.0 && wcs->yref == 0.0) {
-	    wcs->xref = *cra;
-	    wcs->yref = *cdec;
-	    wcs->xrefpix = (double) wcs->nxpix * 0.5;
-	    wcs->yrefpix = (double) wcs->nypix * 0.5;
-	    wcs->xinc = *dra / wcs->xrefpix;
-	    wcs->yinc = *ddec / wcs->yrefpix;
-	    hchange (header,"PLTRAH","PLT0RAH");
-	    wcs->plate_fit = 0;
-	    }
-	if (strcmp (wcs->radecsys, "FK4") == 0) {
-	    fk425e (cra, cdec, wcs->epoch);
-	    wcsshift (wcs, *cra, *cdec, "FK5");
-	    }
-	}
-
-    /* Otherwise use nominal center from RA and DEC fields */
-    else {
-	*cra = 0.0;
-	*cdec = 0.0;
-	if (hgetra (header, "RA", cra) == 0) {
-	    fprintf (stderr, "No RA field\n");
-	    return (NULL);
-	    }
-	if (hgetdec (header, "DEC", cdec) == 0) {
-	    fprintf (stderr, "No DEC field\n");
-	    return (NULL);
-	    }
-
-	/* Equinox of coordinates */
-	if (hgeti4 (header, "EPOCH", &equinox) == 0) {
-	    if (hgeti4 (header, "EQUINOX", &equinox) == 0)
-		equinox = 1950;
-	    }
-
-	/* Epoch of image (observation date) */
-	if (hgetdate (header," OBS-DATE", &epoch) == 0) {
-	    if (hgetdate (header," DATE-OBS", &epoch) == 0)
-		epoch = (double) equinox;
-	    }
-
-	/* If coordinate equinox not reference catalog equinox, convert */
-	if (equinox != eqref) {
-	    if (eqref == 2000)
-		fk425e (cra, cdec, epoch);
-	    else
-		fk524e (cra, cdec, epoch);
-	    }
-	}
-
-    /* Set plate scale from command line, if it is there */
-    if (secpix0 > 0.0) {
-	*dra = (secpix0 * *wp * 0.5 / 3600.0) / cos (degrad(*cdec));
-	*ddec = secpix0 * *hp * 0.5 / 3600.0;
-	*secpix = secpix0;
-	hputnr8 (header,"SECPIX",5,*secpix);
-	wcs->yinc = secpix0 / 3600.0;
-	wcs->xinc = -wcs->yinc;
-	}
-
-    /* Otherwise set plate scale from FITS header */
-    else {
-
-	/* Plate scale from WCS if it is present */
-	if (iswcs (wcs))
-	    *secpix = 3600.0 * 2.0 * *ddec / (double) *hp;
-
-	/* Plate scale from SECPIX header parameter */
-	else {
-	    *secpix = 0.0;
-	    if (hgetr8 (header, "SECPIX", secpix) == 0) {
-		if (hgetr8 (header, "SECPIX1", secpix) == 0) {
-		    fprintf (stderr, "Cannot find SECPIX in header\n");
-		    return (NULL);
-		    }
-		}
-	    }
-	}
-
-    /* Set WCS structure if it has not already been set */
-    if (nowcs (wcs))
-	wcs = wcsset (*cra, *cdec, *secpix, *wp, *hp, rot0, eqref, epoch);
-
-    /* Reset to center position from the command line, if there is one */
-    if (ra0 > -99.0 && dec0 > -99.0) {
-	char rstr[32],dstr[32];
-
-    /* Reset center for reference star search */
-	*cra = ra0;
-	*cdec = dec0;
-
-	/* If coordinate equinox not reference catalog equinox, convert */
-	if (fk4)
-	    eqcoor = 1950;
-	else
-	    eqcoor = 2000;
-	if (eqcoor != eqref) {
-	    if (eqref == 2000)
-		fk425e (cra, cdec, epoch);
-	    else
-		fk524e (cra, cdec, epoch);
-	    }
-	if (fk4)
-	    wcsshift (wcs, *cra, *cdec, "FK4");
-	else
-	    wcsshift (wcs, *cra, *cdec, "FK5");
-
-	ra2str (rstr, ra0, 3);
-        dec2str (dstr, dec0, 2);
-	hputs (header,"RA",rstr);
-	hputs (header,"DEC",dstr);
-	hputi4 (header,"EQUINOX",eqcoor);
-
-	if (verbose) {
-	    if (eqcoor != eqref) {
-		if (fk4)
-		    printf ("Center reset to RA=%s DEC=%s (FK4)\n", rstr, dstr);
-		else
-		    printf ("Center reset to RA=%s DEC=%s (FK5)\n", rstr, dstr);
-		ra2str (rstr, *cra, 3);
-        	dec2str (dstr, *cdec, 2);
-		}
-	    if (eqref == 2000)
-		printf ("Center reset to RA=%s DEC=%s (FK5)\n", rstr, dstr);
-	    else
-		printf ("Center reset to RA=%s DEC=%s (FK4)\n", rstr, dstr);
-	    }
-	}
-
-    /* Image size from header */
-
-    if (verbose) {
-	char rstr[64], dstr[64];
-	ra2str (rstr, *cra, 3);
-	dec2str (dstr, *cdec, 2);
-	printf ("RA=%s DEC=%s W=%d H=%d ArcSecs/Pixel=%g\n", rstr, dstr, 
-				*wp, *hp, *secpix);
-	}
-
-    return (wcs);
 }
 
 
@@ -563,6 +377,10 @@ struct WorldCoor *wcs;	/* WCS structure */
     hputra (header,"RA",wcs->xref);
     hputdec (header,"DEC",wcs->yref);
     hputr8 (header, "EQUINOX", wcs->equinox);
+    if (hgetr8 (header, "WEPOCH", &ep))
+	hputr8 (header, "EPOCH", wcs->equinox);
+    else if (!hgetr8 (header, "EPOCH", &ep))
+	hputr8 (header, "EPOCH", wcs->equinox);
     hputs (header, "RADECSYS", wcs->radecsys);
 
     strcpy (wcstemp, "RA---");
@@ -579,7 +397,7 @@ struct WorldCoor *wcs;	/* WCS structure */
     hputnr8 (header, "CRVAL2", 9, wcs->yref);
     hputnr8 (header, "CRPIX2", 4, wcs->yrefpix);
     hputnr8 (header, "CDELT2", 9, wcs->yinc);
-    hputnr8 (header, "CROTA2", 3, 0.0);
+    hputnr8 (header, "CROTA2", 3, wcs->rot);
     return;
 }
 
@@ -589,10 +407,12 @@ double tol;
 
 void setrefcat (cat)
 char *cat;
-{  if (cat[0]=='G' || cat[0]=='g' || strcmp(cat,"gsc")==0 || strcmp(cat,"GSC")==0)
+{  if (strcmp(cat,"gsc")==0 || strcmp(cat,"GSC")==0)
 	refcat = GSC;
-   else if (cat[0]=='U' || cat[0]=='u' || strcmp(cat,"ujc")==0 || strcmp(cat,"UJC")==0)
+   else if (strcmp(cat,"ujc")==0 || strcmp(cat,"UJC")==0)
 	refcat = UJC;
+   else if (strcmp(cat,"uac")==0 || strcmp(cat,"UAC")==0)
+	refcat = UAC;
     else
 	refcat = 0;
     strcpy (refcatname, cat); return; }
@@ -606,17 +426,6 @@ void setreflim (lim)
 double lim;
 { reflim = lim; return; }
 
-void setrot (rot)
-double rot;
-{ rot0 = rot; return; }
-
-void setsecpix (secpix)
-double secpix;
-{ secpix0 = secpix; return; }
-
-void setfk4 ()
-{ fk4 = 1; return; }
-
 void setclass (class)
 int class;
 { classd = class; return; }
@@ -629,10 +438,6 @@ void setfrac (frac0)
 double frac0;
 { if (frac0 < 1.0) frac = 1.0 + frac0;
     else frac = frac0; return; }
-
-void setcenter (rastr, decstr)
-char *rastr, *decstr;
-{ ra0 = str2ra (rastr); dec0 = str2dec (decstr); return; }
 
 void setnfit (nfit)
 int nfit;
@@ -672,4 +477,8 @@ int nfit;
  * Sep  3 1996	Fix bug to set plate scale from command line
  * Sep  4 1996	Print reference catalog name on separate line from entries
  * Sep 17 1996	Clean up code
+ * Oct 15 1996	Break off GETFITSWCS into separate file
+ * Nov 18 1996	Add USNO A catalog searching
+ * Nov 18 1996	Write same number into CROAT2 as CROTA1
+ * Nov 19 1996	If EPOCH was equinox in original image or not set, set it
  */

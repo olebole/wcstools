@@ -1,0 +1,35 @@
+.TH imstar(1) WCS "17 October 1996"
+.SH Name
+imstar \- Find stars in FITS and IRAF image files
+.SH Synopsis
+imstar  [options] FITS or IRAF filename
+.SH Description
+.SH Options
+.B /-b
+Output B1950 (FK4) coordinates (default=image equinox)
+.B /-c <RA> <Dec>
+Use following RA and Dec as center 
+.B /-d
+Print each star as it is found for debugging 
+.B /-e <num>
+Number of pixels to ignore around image edge 
+.B /-h
+Print heading, else do not 
+.B /-i <num>
+Minimum peak value for star in image (<0=-sigma)
+.B /-j
+Output J2000 (FK5) coordinates (default=image equinox)
+.B /-m <magnitude>
+Magnitude offset
+.B /-n
+Number of brightest stars to print 
+.B /-r
+Maximum radius for star in pixels 
+.B /-s
+Sort by RA instead of flux 
+.B /-t
+Tab table to standard output as well as file
+.B /-v
+Verbose listing of processing intermediate results
+.SH Author
+Doug Mink, SAO (dmink@cfa.harvard.edu)

@@ -1,5 +1,5 @@
 /* File imsize.c
- * September 3, 1996
+ * October 31, 1996
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -15,26 +15,31 @@
 #include "libwcs/wcs.h"
 
 static void usage();
-static int PrintFITSWCS ();
 static void PrintWCS ();
 extern void fk524e();
 extern void fk425e();
+extern void setfk4();
+extern void setcenter();
+extern void setsecpix();
+extern struct WorldCoor *GetFITSWCS();
 
-static char coorsys0[4];
-static double cra0 = 0.0;
-static double cdec0 = 0.0;
+static char coorsys[4];
 static double size = 0.0;
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int dss = 0;		/* Flag to drop extra stuff for DSS */
 static int dssc = 0;		/* Flag to drop extra stuff for DSS */
+static int ieq = 0;
 
 main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str, *str1;
+    char rastr[16];
+    char decstr[16];
+
+    coorsys[0] = 0;
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
@@ -46,23 +51,26 @@ char **av;
 	    verbose++;
 	    break;
 
-	case 'b':	/* ouput FK4 (B1950) coordinates */
-	    strcpy (coorsys0, "FK4");
+	case 'b':	/* ouput B1950 (B1950) coordinates */
+	    strcpy (coorsys, "B1950");
+	    ieq = 1950;
 	    str1 = *(av+1);
 	    if (*(str+1) || !strchr (str1,':'))
-		strcpy (coorsys0, "FK4");
+		setfk4 ();
 	    else if (ac < 3)
-		usage (progname);
+		usage ();
 	    else {
-		cra0 = str2ra (*++av);
+		setfk4 ();
+		strcpy (rastr, *++av);
 		ac--;
-		cdec0 = str2dec (*++av);
+		strcpy (decstr, *++av);
 		ac--;
+		setcenter (rastr, decstr);
 		}
 	    break;
 
 	case 'c':	/* Change output for DSS */
-	    strcpy (coorsys0, "FK5");
+	    strcpy (coorsys, "J2000");
 	    dssc++;
 	    str1 = *(av+1);
 	    if (!*(str+1) && (strchr (str1,'-') || strchr (str1,'+')) ) {
@@ -72,7 +80,7 @@ char **av;
 	    break;
 
 	case 'd':	/* Change output for DSS */
-	    strcpy (coorsys0, "FK5");
+	    strcpy (coorsys, "J2000");
 	    dss++;
 	    str1 = *(av+1);
 	    if (!*(str+1) && (strchr (str1,'-') || strchr (str1,'+')) ) {
@@ -81,30 +89,39 @@ char **av;
 		}
 	    break;
 
-	case 'j':	/* ouput FK5 (J2000) coordinates */
+	case 'j':	/* ouput J2000 (J2000) coordinates */
 	    str1 = *(av+1);
+	    ieq = 2000;
 	    if (*(str+1) || !strchr (str1,':'))
-		strcpy (coorsys0, "FK5");
+		strcpy (coorsys, "J2000");
 	    else if (ac < 3)
-		usage (progname);
+		usage ();
 	    else {
-		strcpy (coorsys0, "FK5");
-		cra0 = str2ra (*++av);
+		strcpy (coorsys, "J2000");
+		strcpy (rastr, *++av);
 		ac--;
-		cdec0 = str2dec (*++av);
+		strcpy (decstr, *++av);
 		ac--;
+		setcenter (rastr, decstr);
 		}
 	    break;
 
+    	case 'p':	/* Initial plate scale in arcseconds per pixel */
+    	    if (ac < 2)
+    		usage();
+    	    setsecpix (atof (*++av));
+    	    ac--;
+    	    break;
+
 	default:
-	    usage(progname);
+	    usage();
 	    break;
 	}
     }
 
     /* now there are ac remaining file names starting at av[0] */
     if (ac == 0)
-	usage (progname);
+	usage ();
 
     while (ac-- > 0) {
 	char *fn = *av++;
@@ -117,14 +134,15 @@ char **av;
 }
 
 static void
-usage (progname)
-char *progname;
+usage ()
 {
     fprintf (stderr,"Print size of image in WCS and pixels\n");
-    fprintf(stderr,"%s: usage: [-v] file.fit ...\n", progname);
-    fprintf(stderr,"  -b: output B1950 (FK4) coordinates (optional center)\n");
+    fprintf(stderr,"Usage: [-vcd] [-p scale] [-b ra dec] [-j ra dec] FITS or IRAF file(s)\n");
+    fprintf(stderr,"  -b: output B1950 (B1950) coordinates (optional center)\n");
+    fprintf(stderr,"  -c: format output without pixel dimensions (optional size change)\n");
     fprintf(stderr,"  -d: format output as input to DSS getimage (optional size change)\n");
-    fprintf(stderr,"  -j: output J2000 (FK5) coordinates (optional center)\n");
+    fprintf(stderr,"  -j: output J2000 (J2000) coordinates (optional center)\n");
+    fprintf(stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
 }
@@ -142,6 +160,12 @@ char *name;
     int *irafheader;		/* IRAF image header */
     char fileroot[64];
     char *filename, *ext;
+    int nax;
+    int hp, wp, i;
+    double cra, cdec, dra, ddec, secpix;
+    struct WorldCoor *wcs;
+    char *colon;
+    char rstr[64], dstr[64];
 
     /* Open IRAF header if .imh extension is present */
     ext = strsrch (name, ".imh");
@@ -192,84 +216,69 @@ char *name;
     if (verbose) {
 	fprintf (stderr,"Print World Coordinate System from ");
 	if (iraffile)
-	    fprintf (stderr,"IRAF image file %s", name);
+	    fprintf (stderr,"IRAF image file %s\n", name);
 	else
-	    fprintf (stderr,"FITS image file %s", name);
+	    fprintf (stderr,"FITS image file %s\n", name);
 	}
-
-    if (!PrintFITSWCS (header, fileroot))
-	fprintf (stderr,"%s: no WCS fields found\n", name);
-
-    free (header);
-    return;
-}
-
-
-static int
-PrintFITSWCS (header, filename)
-
-char	*header;	/* Image FITS header */
-char	*filename;	/* Image file name */
-{
-    int nax;
-    int hp, wp, i;
-    double cra, cdec, dra, ddec, secpix;
-    struct WorldCoor *wcs;
-    char *colon;
-    char rstr[64], dstr[64], coorsys[4];
-
 
     /* Set image dimensions */
     nax = 0;
     if (hgeti4 (header,"NAXIS",&nax) < 1)
-	return (0);
+	return;
     else {
 	if (hgeti4 (header,"NAXIS1",&wp) < 1)
-	    return (0);
+	    return;
 	else {
 	    if (hgeti4 (header,"NAXIS2",&hp) < 1)
-		return (0);
+		return;
 	    }
 	}
 
-    /* Find center for pre-existing WCS, if there is one */
-    wcs = wcsinit (header);
-    if (iswcs (wcs))
-	wcssize (wcs, &cra, &cdec, &dra, &ddec);
-    else
-	return (0);
+    /* Read world coordinate system information from the image header */
+    wcs = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
+                &wp, &hp, ieq);
 
-    /* Reset center if asked for */
-    if (cra0 > 0.0)
-	cra = cra0;
-    if (cdec0 != 0.0)
-	cdec = cdec0;
-    if (cra0 > 0.0 || cdec0 != 0.0) {
-	if (coorsys0[1])
-	    wcsshift (wcs,cra,cdec,coorsys0);
-	else
-	    wcsshift (wcs,cra,cdec,wcs->radecsys);
-	}
-
-    if (coorsys0[2] == '5' && wcs->radecsys[2] == '4') {
-	(void) fk425e (&cra, &cdec, wcs->epoch);
-	strcpy (coorsys, coorsys0);
-	}
-    else if (coorsys0[2] == '4' && wcs->radecsys[2] == '5') {
-	(void) fk524e (&cra, &cdec, wcs->epoch);
-	strcpy (coorsys, coorsys0);
-	}
-    else
-	strcpy (coorsys, wcs->radecsys);
-
-    /* Plate scale from WCS if it is present */
-    secpix = 3600.0 * 2.0 * ddec / (double) hp;
-
-    /* Image size from header */
+    /* Image center */
     ra2str (rstr, cra, 3);
     dec2str (dstr, cdec, 2);
+
+    /* Image size in arcminutes */
     dra = 2.0 * dra * 60.0 * cos (degrad(cdec));
     ddec = 2.0 * ddec * 60.0;
+
+    if (coorsys[0] == 0) {
+	ieq = -1;
+	if (iswcs (wcs)) {
+	    if (wcs->equinox == 1950.0)
+		strcpy (coorsys, "B1950");
+	    else if (wcs->equinox == 2000.0)
+		strcpy (coorsys, "J2000");
+	    else
+		sprintf (coorsys,"%6.1f",wcs->equinox);
+	    }
+	else if (hgeti4 (header,"EQUINOX",&ieq)) {
+	    if (ieq == 0)
+		ieq = 1950;
+	    if (ieq == 1950)
+		strcpy (coorsys, "B1950");
+	    else if (ieq == 2000)
+		strcpy (coorsys, "J2000");
+	    else
+		sprintf (coorsys,"%4d",ieq);
+	    }
+	else if (hgeti4 (header,"EPOCH",&ieq)) {
+	    if (ieq == 0)
+		ieq = 1950;
+	    if (ieq == 1950)
+		strcpy (coorsys, "B1950");
+	    else if (ieq == 2000)
+		strcpy (coorsys, "J2000");
+	    else
+		sprintf (coorsys,"%4d",ieq);
+	    }
+	else
+	    strcpy (coorsys, "J2000");
+	}
 
     /* Print information */
     if (dss) {
@@ -281,14 +290,21 @@ char	*filename;	/* Image file name */
 	    if (colon)
 		*colon = ' ';
 	    }
-	printf ("%s %s %s ", filename, rstr, dstr);
-	printf (" %.3f %.3f\n", dra+size, ddec+size);
+	printf ("%s %s %s ", fileroot, rstr, dstr);
+	if (secpix > 0.0)
+	    printf (" %.3f %.3f\n", dra+size, ddec+size);
+	else
+	    printf (" 10.0 10.0\n");
 	}
     else {
-	printf ("%s %s %s %s", filename, rstr, dstr, coorsys);
-	printf (" %.3f\'x%.3f\'", dra, ddec);
+	printf ("%s %s %s %s", fileroot, rstr, dstr, coorsys);
+	if (secpix > 0.0)
+	    printf (" %.3f\'x%.3f\'", dra, ddec);
+	else if (dssc)
+	    printf (" 10.000\'x10.000\'");
 	if (!dssc) {
-	    printf (" %.3f \"/pix", secpix);
+	    if (secpix > 0.0)
+		printf (" %.3f \"/pix", secpix);
 	    printf ("  %dx%d pix\n", wp, hp);
 	    }
 	else
@@ -296,7 +312,8 @@ char	*filename;	/* Image file name */
 	}
 
     free (wcs);
-    return (1);
+    free (header);
+    return;
 }
 /* Jul  9 1996	New program
  * Jul 18 1996	Update header reading
@@ -307,4 +324,7 @@ char	*filename;	/* Image file name */
  * Aug 27 1996	Add output format for DSS getimage
  * Aug 28 1996	Allow size increase or decrease if DSS-format output
  * Sep  3 1996	Add option to print DSS format with colons
+ * Oct 16 1996  Rewrite to allow optional new center and use GetWCSFITS
+ * Oct 17 1996	Do not print angular size and scale if not set
+ * Oct 30 1996	Make equinox default to J2000 if not in image header
  */

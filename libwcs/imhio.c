@@ -1,5 +1,5 @@
 /* File imhio.c
- * September 4, 1996
+ * October 17, 1996
  * By Doug Mink, based on Mike VanHilst's readiraf.c
 
  * Module:      irafio.c (IRAF image file reading and writing)
@@ -285,7 +285,7 @@ int	byteorder;	/* 0=big-endian (Sun, Mac), 1=little-endian (PC,DEC) */
     /* Swap bytes, if requested */
     if (byteorder) {
 	nbytes = nchar * 2;
-	irafswap2 (irafstring, nbytes);
+	irafswap2 ((char *)irafstring, nbytes);
 	}
 
     /* Convert appropriate byte of input to output character */
@@ -537,7 +537,7 @@ char	*fitsheader;	/* FITS image header */
 }
 
 /* IRAFWIMAGE -- write IRAF .imh header file and .pix image file
-/* No matter what the input, this always writes in the local byte order */
+ * No matter what the input, this always writes in the local byte order */
 
 int
 irafwimage (hdrname, lhead, irafheader, fitsheader, image )
@@ -551,7 +551,7 @@ char	*image;		/* IRAF image */
 {
     int fd;
     char *bang;
-    int i, nbw, bytepix, bitpix, naxis1, naxis2, nbhead, nbimage, lphead;
+    int nbw, bytepix, bitpix, naxis1, naxis2, nbimage, lphead;
     void same_path();
     char *pixn, pixname[SZ_IMPIXFILE+1];
     short *irafpix;
@@ -600,7 +600,7 @@ char	*image;		/* IRAF image */
 
     /* Write header to pixel file */
     lphead = (irafheader[IM_PIXOFF] - 1) * sizeof(short);
-    str2iraf ("IMPIX",irafheader,5);
+    str2iraf ("IMPIX",(short *)irafheader,5);
     nbw = write (fd, irafheader, lphead);
 
     /* Write IRAF pixel file to disk */
@@ -624,9 +624,7 @@ int	nbhead;		/* Length of IRAF header */
     int i;
     short *irafp, *irafs, *irafu;
     char *fitsend, *fitsp, pixfile[80], title[80], temp[80];
-    int	nax,nax4,nbiraf, nlfits, lpixfile;
-    short *ihead;
-    ihead = (short *)irafheader;
+    int	nax,nax4,nbiraf, nlfits;
 
     /* Delete FITS header keywords not needed by IRAF */
     hgeti4 (fitsheader,"NAXIS",&nax);
@@ -665,7 +663,7 @@ int	nbhead;		/* Length of IRAF header */
 	    strcat (temp,pixfile);
 	    strcpy (pixfile, temp);
 	    }
-        str2iraf (pixfile, irafheader+IM_PIXFILE, SZ_IMPIXFILE);
+        str2iraf (pixfile, (short *)(irafheader+IM_PIXFILE), SZ_IMPIXFILE);
 	hdel (fitsheader,"PIXFILE");
 	}
 
@@ -676,13 +674,13 @@ int	nbhead;		/* Length of IRAF header */
 	    strcat (temp,pixfile);
 	    strcpy (pixfile, temp);
 	    }
-        str2iraf (pixfile, irafheader+IM_HDRFILE, SZ_IMHDRFILE);
+        str2iraf (pixfile, (short *)(irafheader+IM_HDRFILE), SZ_IMHDRFILE);
 	hdel (fitsheader, "IMHFILE");
 	}
 
     /* Replace image title, if it is in the FITS header */
     if (hgets (fitsheader, "OBJECT", 79, title)) {
-        str2iraf (title, irafheader+IM_TITLE, SZ_IMTITLE);
+        str2iraf (title, (short *)(irafheader+IM_TITLE), SZ_IMTITLE);
 	hdel (fitsheader, "OBJECT");
 	}
 
@@ -711,7 +709,7 @@ char	*string;	/* 1-byte/character string */
 short	*irafstring;	/* IRAF 2-byte/character string */
 int	nchar;		/* Maximum number of characters in IRAF string */
 {
-    int i, nbytes, nc;
+    int i, nc;
 
     /* Convert input character to appropriate byte of output */
     nc = strlen (string);
@@ -877,4 +875,6 @@ int nbytes;	/* Number of bytes to reverse */
  * Aug 28 1996	Clean up code in IRAF2FITS
  * Aug 30 1996	Use write instead of fwrite
  * Sep  4 1996	Fix write mode bug
+ * Oct 15 1996	Drop unused variables
+ * Oct 17 1996	Minor fix after lint; cast arguments to STR2IRAF
  */

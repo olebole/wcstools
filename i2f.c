@@ -1,5 +1,5 @@
 /* File i2f.c
- * August 27, 1996
+ * October 17, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -95,7 +95,7 @@ char *name;
 		}
 	    image = irafrimage (header);
 	    if (image == NULL) {
-		hgets (header,"PIXFILE", 64, &pixname);
+		hgets (header,"PIXFILE", 64, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -128,7 +128,7 @@ char *name;
 		}
 	    image = irafrimage (header);
 	    if (image == NULL) {
-		hgets (header,"PIXFILE",64, &pixname);
+		hgets (header,"PIXFILE",64, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -162,4 +162,5 @@ char *name;
  * Aug 16 1996	Clean up code
  * Aug 26 1996	Change HGETC call to HGETS
  * Aug 27 1996	Drop unused variables after lint
+ * Oct 17 1996	Clean up after lint
  */

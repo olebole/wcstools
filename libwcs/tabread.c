@@ -1,5 +1,5 @@
 /*** File libwcs/tabcread.c
- *** August 8, 1996
+ *** November 19, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -10,6 +10,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "fitshead.h"
+#include "wcs.h"
 
 static int nstars;	/* Number of stars in catalog */
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
@@ -20,8 +21,6 @@ static int tabgeti4();
 static double tabgetra();
 static double tabgetdec();
 static double tabgetr8();
-static int tabhgeti4();
-static double tabhgetr8();
 static int tabgetc();
 
 static char newline = 10;
@@ -35,11 +34,15 @@ static int entid, entra, entdec, entmag, entpeak;
 /* TABREAD -- Read tab table stars in specified region */
 
 int
-tabread (tabcat,ra1,ra2,dec1,dec2,mag1,mag2,nstarmax,tnum,tra,tdec,tmag,tpeak,nlog)
+tabread (tabcat,cra,cdec,dra,ddec,drad,mag1,mag2,nstarmax,
+	 tnum,tra,tdec,tmag,tpeak,nlog)
 
 char	*tabcat;	/* Name of reference star catalog file */
-double	ra1,ra2;	/* Limiting right ascensions of region in degrees */
-double	dec1,dec2;	/* Limiting declinations of region in degrees */
+double	cra;		/* Search center J2000 right ascension in degrees */
+double	cdec;		/* Search center J2000 declination in degrees */
+double	dra;		/* Search half width in right ascension in degrees */
+double	ddec;		/* Search half-width in declination in degrees */
+double	drad;		/* Limiting separation in degrees (ignore if 0) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	nstarmax;	/* Maximum number of stars to be returned */
 double	*tnum;		/* Array of UJ numbers (returned) */
@@ -49,6 +52,9 @@ double	*tmag;		/* Array of magnitudes (returned) */
 int	*tpeak;		/* Array of peak counts (returned) */
 int	nlog;
 {
+    double ra1,ra2;	/* Limiting right ascensions of region in degrees */
+    double dec1,dec2;	/* Limiting declinations of region in degrees */
+    double dist = 0.0;  /* Distance from search center in degrees */
     int wrap;
     int jstar;
     int nstar;
@@ -57,9 +63,56 @@ int	nlog;
     double num;
     int peak;
     int istar;
+    int verbose;
     char *line;
 
     line = 0;
+    if (nlog > 0)
+	verbose = 1;
+    else
+	verbose = 0;
+
+    /* Set right ascension limits for search */
+    ra1 = cra - dra;
+    ra2 = cra + dra;
+
+    /* Keep right ascension between 0 and 360 degrees */
+    if (ra1 < 0.0)
+	ra1 = ra1 + 360.0;
+    if (ra2 > 360.0)
+	ra2 = ra2 - 360.0;
+
+    /* Set declination limits for search */
+    dec1 = cdec - ddec;
+    dec2 = cdec + ddec;
+
+    /* dec1 is always the smallest declination */
+    if (dec1 > dec2) {
+	dec = dec1;
+	dec1 = dec2;
+	dec2 = dec;
+	}
+
+    /* Search zones which include the poles cover 360 degrees in RA */
+    if (dec1 < -90.0) {
+	dec1 = -90.0;
+	ra1 = 0.0;
+	ra2 = 359.99999;
+	}
+    if (dec2 > 90.0) {
+	dec2 = 90.0;
+	ra1 = 0.0;
+	ra2 = 359.99999;
+	}
+    if (verbose) {
+	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
+	ra2str (rstr1, ra1, 3);
+        dec2str (dstr1, dec1, 2);
+	ra2str (rstr2, ra2, 3);
+        dec2str (dstr2, dec2, 2);
+	fprintf (stderr,"TABREAD: RA: %s - %s  Dec: %s - %s\n",
+		 rstr1,rstr2,dstr1,dstr2);
+	}
 
 /* If RA range includes zero, split it in two */
     wrap = 0;
@@ -67,13 +120,6 @@ int	nlog;
 	wrap = 1;
     else
 	wrap = 0;
-
-/* dec1 is always the smallest declination */
-    if (dec1 > dec2) {
-	dec = dec1;
-	dec1 = dec2;
-	dec2 = dec;
-	}
 
 /* mag1 is always the smallest magnitude */
     if (mag2 < mag1) {
@@ -85,7 +131,7 @@ int	nlog;
 /* Logging interval */
     nstar = 0;
 
-    if ((nstars = tabopen (tabcat))) {
+    if ((nstars = tabopen (tabcat)) > 0) {
 	jstar = 0;
 	line = tabdata;
 
@@ -93,7 +139,7 @@ int	nlog;
 	for (istar = 1; istar <= nstars; istar++) {
 	    line = tabstar (istar, line);
 	    if (line == NULL) {
-		printf ("TABREAD: Cannot read star %d\n", istar);
+		fprintf (stderr,"TABREAD: Cannot read star %d\n", istar);
 		break;
 		}
 
@@ -103,11 +149,14 @@ int	nlog;
 	    dec = tabgetdec (line, entdec);	/* Declination in degrees */
 	    mag = tabgetr8 (line, entmag);	/* Magnitude */
 	    peak = tabgeti4 (line, entpeak);	/* Peak counts */
+	    if (drad > 0)
+		dist = wcsdist (cra,cdec,ra,dec);
 
 	/* Check magnitude amd position limits */
 	    if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
 		((wrap && (ra <= ra1 || ra >= ra2)) ||
 		(!wrap && (ra >= ra1 && ra <= ra2))) &&
+		(drad == 0.0 || dist < drad) &&
      		(dec >= dec1 && dec <= dec2)) {
 
 	    /* Save star position and magnitude in table */
@@ -121,7 +170,7 @@ int	nlog;
 		nstar++;
 		jstar++;
 		if (nlog == 1)
-		    printf ("%11.6f: %9.5f %9.5f %5.2f %d    \n",
+		    fprintf (stderr,"TABREAD: %11.6f: %9.5f %9.5f %5.2f %d    \n",
 			   num,ra,dec,mag,peak);
 
 	    /* End of accepted star processing */
@@ -129,7 +178,7 @@ int	nlog;
 
 	/* Log operation */
 	    if (nlog > 0 && istar%nlog == 0)
-		printf ("%5d / %5d / %5d sources catalog %s\r",
+		fprintf (stderr,"TABREAD: %5d / %5d / %5d sources catalog %s\r",
 			jstar,istar,nstars,tabcat);
 
 	/* End of star loop */
@@ -140,9 +189,15 @@ int	nlog;
 
 /* Summarize search */
     if (nlog > 0)
-	printf ("Catalog %s : %d / %d / %d found\n",tabcat,jstar,istar,nstars);
+	fprintf (stderr,"TABREAD: Catalog %s : %d / %d / %d found\n",tabcat,jstar,istar,nstars);
 
     free (tabbuff);
+
+    if (nstar > nstarmax) {
+	fprintf (stderr,"TABREAD: %d stars found; only %d returned\n",
+		 nstar,nstarmax);
+	nstar = nstarmax;
+	}
 
     return (nstar);
 }
@@ -164,7 +219,7 @@ char *tabfile;	/* Tab table catalog file name */
     
 /* Find length of tab table catalog */
     if (stat (tabfile, &statbuff)) {
-	fprintf (stderr,"Tab table catalog %s has no entries\n",tabfile);
+	fprintf (stderr,"TABOPEN: Tab table catalog %s has no entries\n",tabfile);
 	return (0);
 	}
     else
@@ -172,12 +227,12 @@ char *tabfile;	/* Tab table catalog file name */
 
 /* Open tab table catalog */
     if (!(fcat = fopen (tabfile, "r"))) {
-	fprintf (stderr,"Tab table catalog %s cannot be read\n",tabfile);
+	fprintf (stderr,"TABOPEN: Tab table catalog %s cannot be read\n",tabfile);
 	return (0);
 	}
 
 /* Allocate buffer to hold entire catalog and read it */
-    if ((tabbuff = malloc (lfile))) {
+    if ((tabbuff = malloc (lfile)) != NULL) {
 	nr = fread (tabbuff, 1, lfile, fcat);
 	if (nr < lfile) {
 	    fprintf (stderr,"TABOPEN: read only %d / %d bytes of file %s\n",
@@ -206,13 +261,23 @@ char *tabfile;	/* Tab table catalog file name */
 	    ientry++;
 	    if (!strncmp (headbuff,"ID",2))
 		entid = ientry;
+	    else if (!strncmp (headbuff,"id",2))
+		entid = ientry;
 	    else if (!strncmp (headbuff,"RA",2))
+		entra = ientry;
+	    else if (!strncmp (headbuff,"ra",2))
 		entra = ientry;
 	    else if (!strncmp (headbuff,"DEC",3))
 		entdec = ientry;
+	    else if (!strncmp (headbuff,"dec",3))
+		entdec = ientry;
 	    else if (!strncmp (headbuff,"MAG",3))
 		entmag = ientry;
+	    else if (!strncmp (headbuff,"mag",3))
+		entmag = ientry;
 	    else if (!strncmp (headbuff,"PEAK",4))
+		entpeak = ientry;
+	    else if (!strncmp (headbuff,"peak",4))
 		entpeak = ientry;
 	    nentry++;
 	    headbuff = strchr (headbuff, tab) + 1;
@@ -224,7 +289,7 @@ char *tabfile;	/* Tab table catalog file name */
 	tabnew = strchr (tabdata, newline) + 1;
 	tabnew = tabdata;
 	nstars = 0;
-	while (tabnew = strchr (tabnew, newline)) {
+	while ((tabnew = strchr (tabnew, newline)) != NULL) {
 	    tabnew = tabnew + 1;
 	    nstars = nstars + 1;
 	    }
@@ -379,7 +444,7 @@ int	maxchar;	/* Maximum number of characters in returned string */
 
 /* TABHGETR8 -- returns 8-byte floating point number from tab table header */
 
-static double
+double
 tabhgetr8 (keyword)
 
 char	*keyword;	/* sequence of entry on line */
@@ -411,7 +476,7 @@ char	*keyword;	/* sequence of entry on line */
 
 /* TABHGETI4 -- returns a 4-byte integer from tab table header */
 
-static int
+int
 tabhgeti4 (keyword)
 
 char	*keyword;	/* sequence of entry on line */
@@ -443,4 +508,10 @@ char	*keyword;	/* sequence of entry on line */
 /* Jul 18 1996	New subroutines
  * Aug  6 1996	Remove unused variables after lint
  * Aug  8 1996	Fix bugs in entry reading and logging
+ * Oct 15 1996  Add comparison when testing an assignment
+ * Nov  5 1996	Drop unnecessary static declarations
+ * Nov 13 1996	Return no more than maximum star number
+ * Nov 13 1996	Write all error messages to stderr with subroutine names
+ * Nov 15 1996  Implement search radius; change input arguments
+ * Nov 19 1996	Allow lower case column headings
  */

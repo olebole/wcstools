@@ -4,43 +4,71 @@ LDFLAGS= $(CLDFLAGS) -Llibwcs
 LIBWCS = libwcs/libwcs.a
 LIBS = $(LIBWCS) -lm
 
-all:	imwcs delwcs xy2sky sky2xy imstar imrot i2f imgsc imujc
+all:	delwcs edhead gethead i2f imcat imgsc imhead imrot imsize imstar \
+	imuac imujc imwcs scat sethead sgsc sky2xy skycoor sujc xy2sky
 
 delwcs: delwcs.c $(LIBWCS) libwcs/fitshead.h
-	$(CC) $(CFLAGS) -o $@ delwcs.c $(LIBS)
+	$(CC) $(CFLAGS) -o delwcs delwcs.c $(LIBS)
+
+edhead: edhead.c $(LIBWCS) libwcs/fitshead.h
+	$(CC) $(CFLAGS) -o edhead edhead.c $(LIBS)
+
+gethead: gethead.c $(LIBWCS) libwcs/fitshead.h
+	$(CC) $(CFLAGS) -o gethead gethead.c $(LIBS)
 
 i2f: i2f.c $(LIBWCS) libwcs/fitshead.h
-	$(CC) $(CFLAGS) -o $@ i2f.c $(LIBS)
+	$(CC) $(CFLAGS) -o i2f i2f.c $(LIBS)
+
+imcat: imcat.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
+	$(CC) $(CFLAGS) -o imcat imcat.c $(LIBS)
 
 imgsc: imgsc.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $@ imgsc.c $(LIBS)
+	$(CC) $(CFLAGS) -o imgsc imgsc.c $(LIBS)
 
 imhead: imhead.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $@ imhead.c $(LIBS)
+	$(CC) $(CFLAGS) -o imhead imhead.c $(LIBS)
 
 imrot: imrot.c $(LIBWCS) libwcs/fitshead.h
-	$(CC) $(CFLAGS) -o $@ imrot.c $(LIBS)
+	$(CC) $(CFLAGS) -o imrot imrot.c $(LIBS)
 
 imsize: imsize.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $@ imsize.c $(LIBS)
+	$(CC) $(CFLAGS) -o imsize imsize.c $(LIBS)
 
-imstar: imstar.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $@ imstar.c $(LIBS)
+imstar: imstar.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h libwcs/lwcs.h
+	$(CC) $(CFLAGS) -o imstar imstar.c $(LIBS)
 
-imtab: imtab.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $@ imtab.c $(LIBS)
+imuac: imuac.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
+	$(CC) $(CFLAGS) -o imuac imuac.c $(LIBS)
 
 imujc: imujc.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $@ imujc.c $(LIBS)
+	$(CC) $(CFLAGS) -o imujc imujc.c $(LIBS)
 
-imwcs: imwcs.c $(LIBWCS) libwcs/fitshead.h
-	$(CC) $(CFLAGS) -o $@ imwcs.c $(LIBS)
+imwcs: imwcs.c $(LIBWCS) libwcs/fitshead.h libwcs/lwcs.h
+	$(CC) $(CFLAGS) -o imwcs imwcs.c $(LIBS)
+
+scat: scat.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
+	$(CC) $(CFLAGS) -o scat scat.c $(LIBS)
+
+sethead: sethead.c $(LIBWCS) libwcs/fitshead.h
+	$(CC) $(CFLAGS) -o sethead sethead.c $(LIBS)
+
+sgsc: sgsc.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
+	$(CC) $(CFLAGS) -o sgsc sgsc.c $(LIBS)
 
 sky2xy: sky2xy.c $(LIBWCS) libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $@ sky2xy.c $(LIBS)
+	$(CC) $(CFLAGS) -o sky2xy sky2xy.c $(LIBS)
+
+skycoor: skycoor.c $(LIBWCS) libwcs/wcs.h
+	$(CC) $(CFLAGS) -o skycoor skycoor.c $(LIBS)
+
+suac: suac.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
+	$(CC) $(CFLAGS) -o suac suac.c $(LIBS)
+
+sujc: sujc.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
+	$(CC) $(CFLAGS) -o sujc sujc.c $(LIBS)
 
 xy2sky: xy2sky.c $(LIBWCS) libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $@ xy2sky.c $(LIBS)
+	$(CC) $(CFLAGS) -o xy2sky xy2sky.c $(LIBS)
 
 $(LIBWCS): libwcs/*.c libwcs/fitshead.h libwcs/wcs.h
 	cd libwcs; make

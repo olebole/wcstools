@@ -1,0 +1,37 @@
+.TH imcat(1) WCS "15 November 1996"
+.SH Name
+imcat \- List catalog stars in FITS and IRAF image files
+.SH Synopsis
+imcat [options] FITS or IRAF file(s)
+.SH Description
+.SH Options
+.B \-b [<RA> <Dec>]
+Output in B1950, optional new image center in B1950 (FK4) RA and Dec
+.B \-c <name>
+Reference catalog (gsc, ujc, or tab table file
+.B \-g <class>
+Guide Star Catalog class (-1=all,0,3 (default -1)
+.B \-h
+Print heading, else do not 
+.B \-j [<RA> <Dec>]
+Output in J2000, optional new image center in J2000 (FK5) RA and Dec
+.B \-m <magnitude>
+Limiting catalog magnitude (default 17)
+.B \-n <num>
+Number of brightest stars to print 
+.B \-p <scale>
+Initial plate scale in arcsec per pixel (default 0)
+.B \-s
+Sort by RA instead of flux 
+.B \-t
+Tab table to standard output as well as file
+.B \-u
+UA or UJ catalog single plate number to accept
+.B \-v
+Verbose listing of processing intermediate results
+.B \-w
+Write tab table output file imagename.cat
+.SH See Also
+imgsc(1), imuac(1), imujc(1)
+.SH Author
+Doug Mink, SAO (dmink@cfa.harvard.edu)

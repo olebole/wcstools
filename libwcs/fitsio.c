@@ -1,6 +1,6 @@
 /*** File libwcs/fitsio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** September 4, 1996
+ *** October 15, 1996
 
  * Module:      fitsio.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -16,16 +16,16 @@
  *		Extract FITS table information from a FITS header
  * Subroutine:	fitsrtline (fd, nbhead, lbuff, tbuff, irow, nbline, line)
  *		Read next line of FITS table file
- * Subroutine:	ftgetr8 (entry, kw, n)
- *		Extract n'th column from FITS table line as double
- * Subroutine:	ftgetr4 (entry, kw, n)
- *		Extract n'th column from FITS table line as float
- * Subroutine:	ftgeti4 (entry, kw, n)
- *		Extract n'th column from FITS table line as int
- * Subroutine:	ftgeti2 (entry, kw, n)
- *		Extract n'th column from FITS table line as short
- * Subroutine:	ftgetc (entry, kw, n, string, maxchar)
- *		Extract n'th column from FITS table line as a character string
+ * Subroutine:	ftgetr8 (entry, kw)
+ *		Extract column from FITS table line as double
+ * Subroutine:	ftgetr4 (entry, kw)
+ *		Extract column from FITS table line as float
+ * Subroutine:	ftgeti4 (entry, kw)
+ *		Extract column from FITS table line as int
+ * Subroutine:	ftgeti2 (entry, kw)
+ *		Extract column from FITS table line as short
+ * Subroutine:	ftgetc (entry, kw, string, maxchar)
+ *		Extract column from FITS table line as a character string
  * Subroutine:	fitswimage (filename, header, image)
  *		Write FITS header and image
 
@@ -283,7 +283,6 @@ int	*nbhead;	/* Number of characters before table starts */
     FILE *fd;
     int	lhead;		/* Maximum length in bytes of FITS header */
     char *header;	/* Header for FITS tables file to read */
-    int isxt;
 
 /* Read FITS header from input file */
     header = fitsrhead (inpath, &lhead, nbhead);
@@ -509,15 +508,14 @@ fitsrtlset ()
 /* FTGETI2 -- Extract n'th column from FITS table line as short */
 
 short
-ftgeti2 (entry, kw, n)
+ftgeti2 (entry, kw)
 
 char	*entry;		/* Row or entry from table */
 struct Keyword *kw;	/* Table column information from FITS header */
-int	n;		/* Number of table column to get */
 {
     char temp[30];
 
-    if (ftgetc (entry, kw, n, temp, 30))
+    if (ftgetc (entry, kw, temp, 30))
 	return ( (short) atof (temp) );
     else
 	return ((short) 0);
@@ -527,15 +525,14 @@ int	n;		/* Number of table column to get */
 /* FTGETI4 -- Extract n'th column from FITS table line as int */
 
 int
-ftgeti4 (entry, kw, n)
+ftgeti4 (entry, kw)
 
 char	*entry;		/* Row or entry from table */
 struct Keyword *kw;	/* Table column information from FITS header */
-int	n;		/* Number of table column to get */
 {
     char temp[30];
 
-    if (ftgetc (entry, kw, n, temp, 30))
+    if (ftgetc (entry, kw, temp, 30))
 	return ( (int) atof (temp) );
     else
 	return (0);
@@ -545,15 +542,14 @@ int	n;		/* Number of table column to get */
 /* FTGETR4 -- Extract n'th column from FITS table line as float */
 
 float
-ftgetr4 (entry, kw, n)
+ftgetr4 (entry, kw)
 
 char	*entry;		/* Row or entry from table */
 struct Keyword *kw;	/* Table column information from FITS header */
-int	n;		/* Number of table column to get */
 {
     char temp[30];
 
-    if (ftgetc (entry, kw, n, temp, 30))
+    if (ftgetc (entry, kw, temp, 30))
 	return ( (float) atof (temp) );
     else
 	return ((float) 0.0);
@@ -563,15 +559,14 @@ int	n;		/* Number of table column to get */
 /* FTGETR8 -- Extract n'th column from FITS table line as double */
 
 double
-ftgetr8 (entry, kw, n)
+ftgetr8 (entry, kw)
 
 char	*entry;		/* Row or entry from table */
 struct Keyword *kw;	/* Table column information from FITS header */
-int	n;		/* Number of table column to get */
 {
     char temp[30];
 
-    if (ftgetc (entry, kw, n, temp, 30))
+    if (ftgetc (entry, kw, temp, 30))
 	return ( atof (temp) );
     else
 	return ((double) 0.0);
@@ -581,20 +576,19 @@ int	n;		/* Number of table column to get */
 /* FTGETC -- Extract n'th column from FITS table line as character string */
 
 int
-ftgetc (entry, kw, n, string, maxchar)
+ftgetc (entry, kw, string, maxchar)
 
 char	*entry;		/* Row or entry from table */
 struct Keyword *kw;	/* Table column information from FITS header */
-int	n;		/* Number of table column to get */
 char	*string;	/* Returned string */
 int	maxchar;	/* Maximum number of characters in returned string */
 {
     int length = maxchar;
 
-    if (kw[n].kl < length)
-	length = kw[n].kl;
+    if (kw->kl < length)
+	length = kw->kl;
     if (length > 0) {
-	strncpy (string, entry+kw[n].kf, length);
+	strncpy (string, entry+kw->kf, length);
 	string[length] = 0;
 	return ( 1 );
 	}
@@ -703,4 +697,6 @@ char	*image;		/* FITS image pixels */
  * Aug 13 1996	If filename is stdin, read from standard input instead of file
  * Aug 30 1996	Use write for output, not fwrite
  * Sep  4 1996	Fix mode when file is created
+ * Oct 15 1996	Drop column argument from FGET* subroutines
+ * Oct 15 1996	Drop unused variable 
  */
