@@ -1,5 +1,5 @@
 /* File imsize.c
- * October 22, 1999
+ * January 28, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -159,7 +159,7 @@ char **av;
 	    break;
 
 	case 'z':       /* Use AIPS classic WCS */
-	    setdefwcs (1);
+	    setdefwcs (WCS_ALT);
 	    break;
 
 	case '@':	/* List of files to be read */
@@ -422,4 +422,6 @@ char *name;
  * Jun 17 1999	Fix coordinate conversion
  * Oct 15 1999	Free wcs using wcsfree()
  * Oct 22 1999	Drop unused variables after lint
+ *
+ * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  */

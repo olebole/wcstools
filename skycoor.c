@@ -1,5 +1,5 @@
 /* File skycoor.c
- * November 29, 1999
+ * February 1, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -209,7 +209,9 @@ char **av;
 		    else
 			sys0 = wcscsys (csys);
 		    if (sys1 < 0) {
-			if (sys0 == WCS_J2000)
+			if (degout)
+			    sys1 = sys0;
+			else if (sys0 == WCS_J2000)
 			    sys1 = WCS_B1950;
 			else
 			    sys1 = WCS_J2000;
@@ -217,6 +219,12 @@ char **av;
 		    skycons (rastr0,decstr0,sys0,rastr1,decstr1,sys1,lstr,ndec);
 		    wcscstr (csys0, sys0, 0.0, 0.0);
 		    wcscstr (csys1, sys1, 0.0, 0.0);
+		    if (degout) {
+			ra = str2ra (rastr1);
+			dec = str2dec (decstr1);
+			deg2str (rastr1, 32, ra, 5);
+			deg2str (decstr1, 32, dec, 5);
+			}
 		    if (verbose)
 			printf ("%s %s %s -> %s %s %s\n",
 			    rastr0, decstr0, csys0,
@@ -249,7 +257,9 @@ char **av;
 	    else
 		sys0 = WCS_J2000;
 	    if (sys1 < 0) {
-		if (sys0 == WCS_J2000)
+		if (degout)
+		    sys1 = sys0;
+		else if (sys0 == WCS_J2000)
 		    sys1 = WCS_B1950;
 		else
 		    sys1 = WCS_J2000;
@@ -365,4 +375,6 @@ usage ()
  * Jul  8 1999	Fix bug in computing difference in arcseconds
  * Oct 22 1999	Drop unused variables after lint; fix 2 == bugs
  * Nov 29 1999	Include fitsfile.h for date conversion
+ *
+ * Feb  1 2000	If degrees output, assume same system unless told otherwise
  */

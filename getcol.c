@@ -1,5 +1,5 @@
 /* File getcol.c
- * January 7, 2000
+ * January 26, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -29,6 +29,8 @@ static int version = 0;		/* If 1, print only program name and version */
 static int nread = 0;		/* Number of lines to read (0=all) */
 static int nskip = 0;		/* Number of lines to skip */
 static int tabout = 0;		/* If 1, separate output fields with tabs */
+static int counttok = 0;	/* If 1, print number of columns on line */
+static int printhead = 0;	/* If 1, print Starbase tab table header */
 static int intcompare();
 
 main (ac, av)
@@ -109,6 +111,14 @@ char **av;
 		countcol++;
 		break;
 
+	    case 'h':	/* Print Starbase tab table header */
+		printhead++;
+		break;
+
+	    case 'k':	/* Count columns on first line */
+		counttok++;
+		break;
+
 	    case 'm':	/* Compute mean of each numeric column */
 		meancol++;
 		break;
@@ -173,10 +183,14 @@ usage ()
     fprintf (stderr,"Extract specified columns from an ASCII table file\n");
     fprintf (stderr,"Usage: [-amv][-n num][-r lines][-s num] filename [column number range]\n");
     fprintf(stderr,"  -a: Sum numeric colmuns\n");
-    fprintf(stderr,"  -m: Compute mean of numeric colmuns\n");
+    fprintf(stderr,"  -c: Add count of number of lines in each column at end\n");
+    fprintf(stderr,"  -h: Print Starbase tab table header\n");
+    fprintf(stderr,"  -k: Print number of columns on first line\n");
+    fprintf(stderr,"  -m: Compute mean of numeric columns\n");
     fprintf(stderr,"  -n: Number of lines to read, if not all\n");
     fprintf(stderr,"  -r: Range or @file of lines to read, if not all\n");
     fprintf(stderr,"  -s: Number of lines to skip\n");
+    fprintf(stderr,"  -t: Starbase tab table output\n");
     fprintf(stderr,"  -v: Verbose\n");
     exit (1);
 }
@@ -190,7 +204,7 @@ char	*lranges;	/* String with range of lines to list */
 char	*lfile;		/* Name of file with lines to list */
 
 {
-    int i, il, nbytes;
+    int i, j, il, nbytes;
     char line[1024];
     char fline[1024];
     char *lastchar;
@@ -208,7 +222,7 @@ char	*lfile;		/* Name of file with lines to list */
     int *nsum;
     int *nent;
     int nlmax;
-    int nfind, ntok, nt;
+    int nfind, ntok, nt, ltok;
     int *inum;
     char *cwhite;
     char token[80];
@@ -382,7 +396,40 @@ char	*lfile;		/* Name of file with lines to list */
 		*lastchar = (char) 0;
 
 	    ntok = setoken (&tokens, line, cwhite);
+	    if (counttok) {
+		printf ("%d", ntok);
+		if (verbose)
+		    printf (" columns in %s", filename);
+		else
+		    printf ("\n");
+		return (0);
+		}
 	    nt = 0;
+	    if (il == 0 && printhead && tabout) {
+		for (i = 0; i < nfind; i++) {
+		    if (getoken (tokens, inum[i], token)) {
+			ltok = strlen (token);
+			printf ("%03d", inum[i]);
+			for (j = 3; j < ltok; j++)
+			    printf (" ");
+			}
+		    else
+			printf ("%03d", inum[i]);
+		    printf ("	");
+		    }
+		printf ("\n");
+		for (i = 0; i < nfind; i++) {
+		    if (getoken (tokens, inum[i], token)) {
+			ltok = strlen (token);
+			for (j = 0; j < ltok; j++)
+			    printf ("-");
+			}
+		    else
+			printf ("---");
+		    printf ("	");
+		    }
+		printf ("\n");
+		}
 	    for (i = 0; i < nfind; i++) {
 		if (getoken (tokens, inum[i], token)) {
 		    if (inum[i] > tokens.ntok || inum[i] < 1)
@@ -485,4 +532,6 @@ intcompare (int *i, int *j)
  * Dec 14 1999	Add option for tab-separated output
  *
  * Jan  7 2000	Add option to list range of lines or filed list of lines
+ * Jan 26 2000	Add documentation of entry count and tab output
+ * Jan 26 2000	Add option to print tab table header
  */

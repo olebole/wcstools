@@ -1,5 +1,5 @@
 /* File imcat.c
- * January 11, 2000
+ * January 28, 2000
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -398,7 +398,7 @@ char **av;
     	    break;
 
 	case 'z':       /* Use AIPS classic WCS */
-	    setdefwcs (1);
+	    setdefwcs (WCS_ALT);
 	    break;
 
 	case '@':       /* List of files to be read */
@@ -1479,4 +1479,5 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Oct 22 1999	Change catread() to ctgread() to avoid system conflict
  *
  * Jan 11 2000	Get nndec for Starbase catalogs
+ * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  */

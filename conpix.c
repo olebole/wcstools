@@ -1,5 +1,5 @@
 /* File conpix.c
- * December 14, 1999
+ * February 1, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -21,6 +21,7 @@
 #define PIX_SET 5
 #define PIX_SQRT 6
 #define PIX_NOISE 7
+#define PIX_ADDNOISE 8
 
 static void usage();
 static void OpPix();
@@ -30,6 +31,8 @@ static int nlog = 10;		/* Logging frequency */
 static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
 static int version = 0;		/* If 1, print only program name and version */
+static int setgnoise = 0;	/* If 1, pixels have been set to random noise */
+static int addgnoise = 0;	/* If 1, pixels have random noise added */
 
 
 main (ac, av)
@@ -66,7 +69,14 @@ char **av;
 	    op[nop] = PIX_ADD;
             if (ac < 2)
                 usage ();
-            opcon[nop++] = atof (*++av);
+	    if (*(av+1)[0] == 'g') {
+		addgnoise++;
+		op[nop] = PIX_ADDNOISE;
+		newimage++;
+		av++;
+		}
+	    else
+		opcon[nop++] = atof (*++av);
 	    ac--;
 	    break;
 
@@ -86,6 +96,13 @@ char **av;
 	    ac--;
 	    break;
 
+	case 'g':	/* Gaussian noise for square root of pixel value */
+	    op[nop] = PIX_NOISE;
+	    nop++;
+	    newimage++;
+	    setgnoise++;
+	    break;
+
 	case 'l':	/* Logging frequency */
             if (ac < 2)
                 usage ();
@@ -103,11 +120,6 @@ char **av;
 
 	case 'n':	/* ouput new file */
 	    newimage++;
-	    break;
-
-	case 'g':	/* Gaussian noise for square root of pixel value */
-	    op[nop] = PIX_NOISE;
-	    nop++;
 	    break;
 
 	case 'r':	/* take square root of all pixels */
@@ -184,7 +196,7 @@ usage ()
     fprintf (stderr,"Operate on all pixels of a FITS or IRAF image file\n");
     fprintf(stderr,"Usage: conpix [-vnpr][-asmd constant][-l num] file.fits ...\n");
     fprintf(stderr,"       conpix [-vnpr][-asmd constant][-l num] @filelist\n");
-    fprintf(stderr,"  -a: add constant to all pixels\n");
+    fprintf(stderr,"  -a: add constant to all pixels (g=noise)\n");
     fprintf(stderr,"  -d: divide all pixels by constant\n");
     fprintf(stderr,"  -g: Gaussian noise from each pixel\n");
     fprintf(stderr,"  -l: logging interval (default = 10)\n");
@@ -317,6 +329,10 @@ double	*opcon;		/* Constants for operations */
 		    for (dvec = imvec; dvec < endvec; dvec++)
 			*dvec = gnoise (*dvec);
 		    break;
+		case PIX_ADDNOISE:
+		    for (dvec = imvec; dvec < endvec; dvec++)
+			*dvec = *dvec + gnoise (*dvec);
+		    break;
 		default:
 		    break;
 		}
@@ -363,6 +379,10 @@ double	*opcon;		/* Constants for operations */
 		    sprintf (history,
 			     "CONPIX: all pixels replaced by Gaussian noise");
 		    break;
+		case PIX_ADDNOISE:
+		    sprintf (history,
+			     "CONPIX: Gaussian noise added to all pixels");
+		    break;
 		}
 	    }
 	else if (dpix < 1.0 && dpix > -1.0) {
@@ -394,6 +414,10 @@ double	*opcon;		/* Constants for operations */
 		    sprintf (history,
 			     "CONPIX: all pixels replaced by Gaussian noise");
 		    break;
+		case PIX_ADDNOISE:
+		    sprintf (history,
+			     "CONPIX: Gaussian noise added to all pixels");
+		    break;
 		}
 	    }
 	else {
@@ -424,6 +448,10 @@ double	*opcon;		/* Constants for operations */
 		case PIX_NOISE:
 		    sprintf (history,
 			     "CONPIX: all pixels replaced by Gaussian noise");
+		    break;
+		case PIX_ADDNOISE:
+		    sprintf (history,
+			     "CONPIX: Gaussian noise added to all pixels");
 		    break;
 		}
 	    }
@@ -470,7 +498,12 @@ double	*opcon;		/* Constants for operations */
 	    fname = fname + 1;
 	else
 	    fname = filename;
-	strcat (newname, "e");
+	if (setgnoise)
+	    strcat (newname, "g");
+	else if (addgnoise)
+	    strcat (newname, "ag");
+	else
+	    strcat (newname, "e");
 	if (lext > 0) {
 	    if (imext != NULL) {
 		echar = *imext;
@@ -551,4 +584,7 @@ double	flux;	/* Square root of this is 1/2.35 of Gaussian FWHM */
  * Jun 29 1999	Fix typo in BSCALE setting
  * Oct 21 1999	Drop unused variables after lint
  * Dec 14 1999	Add constant, square root, and Gaussian noise
+ *
+ * Feb  1 2000	Always write new file if Gaussian noise; add 'g' to filename
+ * Feb  1 2000	Add option to add Gaussian noise; add 'ag' to filename
  */

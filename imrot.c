@@ -1,5 +1,5 @@
 /* File imrot.c
- * October 22, 1999
+ * January 24, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -203,18 +203,30 @@ char *name;
 	    }
 	if (mirror)
 	    strcat (newname, "m");
-	else if (rotate != 0)
+	if (rotate != 0) {
 	    strcat (newname, "r");
-	if (rotate < 10 && rotate > -1)
-	    sprintf (temp,"%1d",rotate);
-	else if (rotate < 100 && rotate > -10)
-	    sprintf (temp,"%2d",rotate);
-	else if (rotate < 1000 && rotate > -100)
-	    sprintf (temp,"%3d",rotate);
-	else
-	    sprintf (temp,"%4d",rotate);
-	if (rotate != 0)
+	    if (rotate < 10 && rotate > -1)
+		sprintf (temp,"%1d",rotate);
+	    else if (rotate < 100 && rotate > -10)
+		sprintf (temp,"%2d",rotate);
+	    else if (rotate < 1000 && rotate > -100)
+		sprintf (temp,"%3d",rotate);
+	    else
+		sprintf (temp,"%4d",rotate);
 	    strcat (newname, temp);
+	    }
+	if (bitpix == -64)
+	    strcat (newname, "bn64");
+	else if (bitpix == -32)
+	    strcat (newname, "bn32");
+	else if (bitpix == -16)
+	    strcat (newname, "bn16");
+	else if (bitpix == 32)
+	    strcat (newname, "b32");
+	else if (bitpix == 16)
+	    strcat (newname, "b16");
+	else if (bitpix == 8)
+	    strcat (newname, "b8");
 	if (fitsout)
 	    strcat (newname, ".fit");
 	else if (lext > 0) {
@@ -341,4 +353,6 @@ char *name;
  * Nov 30 1998	Add version and help commands for consistency
  * Jun  8 1999  Return image pointer from RotFITS, not flag
  * Oct 22 1999	Drop unused variables after lint
+ *
+ * Jan 24 2000	Add to name if BITPIX is changed
  */

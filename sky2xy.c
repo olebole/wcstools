@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * October 22, 1999
+ * January 28, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -78,7 +78,7 @@ char **av;
     		break;
 
 	    case 'z':       /* Use AIPS classic WCS */
-		setdefwcs (1);
+		setdefwcs (WCS_ALT);
 		break;
 
     	    default:
@@ -258,4 +258,6 @@ usage ()
  * Oct 14 1999	Use command line coordinate flag if system not in coordinates
  * Oct 15 1999	Free wcs using wcsfree()
  * Oct 22 1999	Link included files to libwcs
+ *
+ * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  */

@@ -1,17 +1,21 @@
 /* File libwcs/dateutil.c
- * January 3, 2000
+ * January 28, 2000
  * By Doug Mink
  */
 
 /* Date and time conversion routines using the following conventions:
    dt = 2 floating point numbers: yyyy.mmdd, hh.mmssssss
-   jd = Julian Date
-   ts = seconds since 1950.0 (used for ephemeris computations
    ep = fractional year, often epoch of a position including proper motion
+  epb = Besselian epoch = 365.242198781-day years based on 1900.0
+  epj = Julian epoch = 365.25-day years based on 2000.0
    fd = FITS date string (dd/mm/yy before 2000, then yyyy-mm-dd[Thh:mm:ss.ss])
+   jd = Julian Date
+  mjd = modified Julian Date = Julian date - 2400000.5
+  ofd = FITS date string (dd/mm/yy before 2000, else no return)
  time = use fd2* with no date to convert time as hh:mm:ss.ss to sec, day, year
+   ts = seconds since 1950.0 (used for ephemeris computations
 
- * dt2ep (date, time)
+ * dt2ep, dt2epb, dt2epj (date, time)
  *	Convert date as yyyy.ddmm and time as hh.mmsss to fractional year
  * dt2fd (date, time)
  *	Convert date as yyyy.ddmm and time as hh.mmsss to FITS date string
@@ -19,19 +23,23 @@
  *	Convert yyyy.mmdd hh.mmssss to year month day hours minutes seconds
  * dt2jd (date,time)
  *	Convert date as yyyy.ddmm and time as hh.mmsss to Julian date
+ * dt2mjd (date,time)
+ *	Convert date as yyyy.ddmm and time as hh.mmsss to modified Julian date
  * dt2ts (date,time)
  *	Convert date as yyyy.ddmm and time as hh.mmsss to seconds since 1950.0
- * ep2dt (epoch,date, time)
+ * ep2dt, epb2dt, epj2dt (epoch,date, time)
  *	Convert fractional year to date as yyyy.ddmm and time as hh.mmsss
- * ep2fd (epoch)
+ * ep2fd, epb2fd, epj2fd (epoch)
  *	Convert epoch to FITS ISO date string
- * ep2i (epoch,iyr,imon,iday,ihr,imn,sec, ndsec)
+ * ep2i, epb2i, epj2i (epoch,iyr,imon,iday,ihr,imn,sec, ndsec)
  *	Convert fractional year to year month day hours minutes seconds
- * ep2jd (epoch)
+ * ep2jd, epb2jd, epj2jd (epoch)
  *	Convert fractional year as used in epoch to Julian date
- * ep2ts (epoch)
+ * ep2mjd, epb2mjd, epj2mjd (epoch)
+ *	Convert fractional year as used in epoch to modified Julian date
+ * ep2ts, epb2ts, epj2ts (epoch)
  *	Convert fractional year to seconds since 1950.0
- * fd2ep (string)
+ * fd2ep, fd2epb, fd2epj (string)
  *	Convert FITS date string to fractional year
  *	Convert time alone to fraction of Besselian year
  * fd2dt (string, date, time)
@@ -43,24 +51,46 @@
  * fd2jd (string)
  *	Convert FITS standard date string to Julian date
  *	Convert time alone to fraction of day
+ * fd2mjd (string)
+ *	Convert FITS standard date string to modified Julian date
  * fd2ts (string)
  *	Convert FITS standard date string to seconds since 1950.0
  *	Convert time alone to seconds of day
  * fd2fd (string)
  *	Convert FITS standard date string to ISO FITS date string
+ * fd2of (string)
+ *	Convert FITS standard date string to old-format FITS date and time
+ * fd2ofd (string)
+ *	Convert FITS standard date string to old-format FITS date string
+ * fd2oft (string)
+ *	Convert time part of FITS standard date string to FITS date string
  * jd2dt (dj,date,time)
  *	Convert Julian date to date as yyyy.mmdd and time as hh.mmssss
- * jd2ep (dj)
+ * jd2ep, jd2epb, jd2epj (dj)
  *	Convert Julian date to fractional year as used in epoch
  * jd2fd (dj)
  *	Convert Julian date to FITS ISO date string
  * jd2i (dj,iyr,imon,iday,ihr,imn,sec, ndsec)
  *	Convert Julian date to year month day hours min sec
+ * jd2mjd (dj)
+ *	Convert Julian date to modified Julian date
  * jd2ts (dj)
  *	Convert Julian day to seconds since 1950.0
+ * mjd2dt (dj,date,time)
+ *	Convert modified Julian date to date as yyyy.mmdd and time as hh.mmssss
+ * mjd2ep, mjd2epb, mjd2epj (dj)
+ *	Convert modified Julian date to fractional year as used in epoch
+ * mjd2fd (dj)
+ *	Convert modified Julian date to FITS ISO date string
+ * mjd2i (dj,iyr,imon,iday,ihr,imn,sec, ndsec)
+ *	Convert modified Julian date to year month day hours min sec
+ * mjd2jd (dj)
+ *	Convert modified Julian date to Julian date
+ * mjd2ts (dj)
+ *	Convert modified Julian day to seconds since 1950.0
  * ts2dt (tsec,date,time)
  *	Convert seconds since 1950.0 to date as yyyy.ddmm and time as hh.mmsss
- * ts2ep (tsec)
+ * ts2ep, ts2epb, ts2epj (tsec)
  *	Convert seconds since 1950.0 to fractional year
  * ts2fd (tsec)
  *	Convert seconds since 1950.0 to FITS standard date string
@@ -68,6 +98,8 @@
  *	Convert sec since 1950.0 to year month day hours minutes seconds
  * ts2jd (tsec)
  *	Convert seconds since 1950.0 to Julian date
+ * ts2mjd (tsec)
+ *	Convert seconds since 1950.0 to modified Julian date
  * isdate (string)
  *	Return 1 if string is a FITS date (old or ISO)
  *
@@ -129,6 +161,7 @@ double	time;	/* Time as hh.mmssxxxx
     return (string);
 }
 
+
 /* DT2JD-- convert from date as yyyy.mmdd and time as hh.mmsss to Julian Date
  *	   Return fractional days if date is zero */
 
@@ -149,13 +182,43 @@ double	time;	/* Time as hh.mmssxxxx
     double dj;		/* Julian date (returned) */
     double tsec;	/* seconds since 1950.0 */
 
-    tsec = dt2ts (date,time);
+    tsec = dt2ts (date, time);
     if (date == 0.0)
 	dj = tsec / 86400.0;
     else
 	dj = ts2jd (tsec);
 
     return (dj);
+}
+
+
+/* DT2MJD-- convert from date yyyy.mmdd time hh.mmsss to modified Julian Date
+ *	   Return fractional days if date is zero */
+
+double
+dt2mjd (date,time)
+
+double	date;	/* Date as yyyy.mmdd
+		    yyyy = calendar year (e.g. 1973)
+		    mm = calendar month (e.g. 04 = april)
+		    dd = calendar day (e.g. 15) */
+double	time;	/* Time as hh.mmssxxxx
+		    *if time<0, it is time as -(fraction of a day)
+		    hh = hour of day (0 .le. hh .le. 23)
+		    nn = minutes (0 .le. nn .le. 59)
+		    ss = seconds (0 .le. ss .le. 59)
+		  xxxx = tenths of milliseconds (0 .le. xxxx .le. 9999) */
+{
+    double dj;		/* Modified Julian date (returned) */
+    double tsec;	/* seconds since 1950.0 */
+
+    tsec = dt2ts (date, time);
+    if (date == 0.0)
+	dj = tsec / 86400.0;
+    else
+	dj = ts2jd (tsec);
+
+    return (dj - 2400000.5);
 }
 
 
@@ -208,6 +271,18 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 }
 
 
+/* MJD2JD-- convert Julian Date to Modified Julian Date */
+
+double
+jd2mjd (dj)
+
+double	dj;	/* Julian Date */
+
+{
+    return (dj - 2400000.5);
+}
+
+
 /* JD2EP-- convert Julian date to fractional year as used in epoch */
 
 double
@@ -217,9 +292,157 @@ double	dj;	/* Julian date */
 
 {
     double date, time;
-
     jd2dt (dj, &date, &time);
     return (dt2ep (date, time));
+}
+
+
+/* JD2EPB-- convert Julian date to Besselian epoch */
+
+double
+jd2epb (dj)
+
+double	dj;	/* Julian date */
+
+{
+    double date, time;
+    return (1900.0 + (dj - 2415020.31352) / 365.242198781);
+}
+
+
+/* JD2EPJ-- convert Julian date to Julian epoch */
+
+double
+jd2epj (dj)
+
+double	dj;	/* Julian date */
+
+{
+    double date, time;
+    return (2000.0 + (dj - 2451545.0) / 365.25);
+}
+
+
+/* MJD2DT-- convert Modified Julian Date to date as yyyy.mmdd and time as hh.mmssss */
+
+void
+mjd2dt (dj,date,time)
+
+double	dj;	/* Modified Julian Date */
+double	*date;	/* Date as yyyy.mmdd (returned)
+		    yyyy = calendar year (e.g. 1973)
+		    mm = calendar month (e.g. 04 = april)
+		    dd = calendar day (e.g. 15) */
+double	*time;	/* Time as hh.mmssxxxx (returned)
+		    *if time<0, it is time as -(fraction of a day)
+		    hh = hour of day (0 .le. hh .le. 23)
+		    nn = minutes (0 .le. nn .le. 59)
+		    ss = seconds (0 .le. ss .le. 59)
+		  xxxx = tenths of milliseconds (0 .le. xxxx .le. 9999) */
+{
+    double tsec;
+
+    tsec = jd2ts (dj + 2400000.5);
+    ts2dt (tsec, date, time);
+
+    return;
+}
+
+
+/* MJD2I-- convert Modified Julian Date to date as yyyy.mmdd and time as hh.mmssss */
+
+void
+mjd2i (dj, iyr, imon, iday, ihr, imn, sec, ndsec)
+
+double	dj;	/* Modified Julian Date */
+int	*iyr;	/* year (returned) */
+int	*imon;	/* month (returned) */
+int	*iday;	/* day (returned) */
+int	*ihr;	/* hours (returned) */
+int	*imn;	/* minutes (returned) */
+double	*sec;	/* seconds (returned) */
+int	ndsec;	/* Number of decimal places in seconds (0=int) */
+
+{
+    double tsec;
+
+    tsec = jd2ts (dj + 2400000.5);
+    ts2i (tsec, iyr, imon, iday, ihr, imn, sec, ndsec);
+    return;
+}
+
+
+/* MJD2JD-- convert Modified Julian Date to Julian Date */
+
+double
+mjd2jd (dj)
+
+double	dj;	/* Modified Julian Date */
+
+{
+    return (dj + 2400000.5);
+}
+
+
+/* MJD2EP-- convert Modified Julian Date to fractional year */
+
+double
+mjd2ep (dj)
+
+double	dj;	/* Modified Julian Date */
+
+{
+    double date, time;
+    jd2dt (dj + 2400000.5, &date, &time);
+    return (dt2ep (date, time));
+}
+
+
+/* MJD2EPB-- convert Modified Julian Date to Besselian epoch */
+
+double
+mjd2epb (dj)
+
+double	dj;	/* Modified Julian Date */
+
+{
+    double date, time;
+    return (1900.0 + (dj - 15019.81352) / 365.242198781);
+}
+
+
+/* MJD2EPJ-- convert Modified Julian Date to Julian epoch */
+
+double
+mjd2epj (dj)
+
+double	dj;	/* Modified Julian Date */
+
+{
+    double date, time;
+    return (2000.0 + (dj - 51544.5) / 365.25);
+}
+
+
+/* MJD2FD-- convert modified Julian date to FITS date, yyyy-mm-ddThh:mm:ss.ss */
+
+char *
+mjd2fd (dj)
+
+double	dj;	/* Modified Julian date */
+{
+    return (jd2fd (dj + 2400000.5));
+}
+
+
+/* MJD2TS-- convert modified Julian date to seconds since 1950.0 */
+
+double
+mjd2ts (dj)
+
+double	dj;	/* Modified Julian date */
+{
+    return ((dj - 33282.0) * 86400.0);
 }
 
 
@@ -231,10 +454,34 @@ ep2fd (epoch)
 double	epoch;	/* Date as fractional year */
 {
     double tsec; /* seconds since 1950.0 (returned) */
-
     tsec = ep2ts (epoch);
-
     return (ts2fd (tsec));
+}
+
+
+/* EPB2FD-- convert Besselian epoch to FITS date, yyyy-mm-ddThh:mm:ss.ss */
+
+char *
+epb2fd (epoch)
+
+double	epoch;	/* Besselian epoch (fractional 365.242198781-day years) */
+{
+    double dj;		/* Julian Date */
+    dj = epb2jd (epoch);
+    return (jd2fd (dj));
+}
+
+
+/* EPJ2FD-- convert Julian epoch to FITS date, yyyy-mm-ddThh:mm:ss.ss */
+
+char *
+epj2fd (epoch)
+
+double	epoch;	/* Julian epoch (fractional 365.25-day years) */
+{
+    double dj;		/* Julian Date */
+    dj = epj2jd (epoch);
+    return (jd2fd (dj));
 }
 
 
@@ -245,13 +492,87 @@ ep2ts (epoch)
 
 double	epoch;	/* Date as fractional year */
 {
-    double tsec; /* seconds since 1950.0 (returned) */
     double dj;
-
     dj = ep2jd (epoch);
+    return ((dj - 2433282.5) * 86400.0);
+}
 
-    tsec = (dj - 2433282.5) * 86400.0;
-    return (tsec);
+
+/* EPB2TS-- convert Besselian epoch to seconds since 1950.0 */
+
+double
+epb2ts (epoch)
+
+double	epoch;	/* Besselian epoch (fractional 365.242198781-day years) */
+{
+    double dj;
+    dj = epb2jd (epoch);
+    return ((dj - 2433282.5) * 86400.0);
+}
+
+
+/* EPJ2TS-- convert Julian epoch to seconds since 1950.0 */
+
+double
+epj2ts (epoch)
+
+double	epoch;	/* Julian epoch (fractional 365.25-day years) */
+{
+    double dj;
+    dj = epj2jd (epoch);
+    return ((dj - 2433282.5) * 86400.0);
+}
+
+
+/* EPB2EP -- convert Besselian epoch to fractional years */
+
+double
+epb2ep (epoch)
+
+double	epoch;	/* Besselian epoch (fractional 365.242198781-day years) */
+{
+    double dj;
+    dj = epb2jd (epoch);
+    return (jd2ep (dj));
+}
+
+
+/* EP2EPB-- convert fractional year to Besselian epoch */
+
+double
+ep2epb (epoch)
+
+double	epoch;	/* Fractional year */
+{
+    double dj;
+    dj = ep2jd (epoch);
+    return (jd2epb (dj));
+}
+
+
+/* EPJ2EP-- convert Julian epoch to fractional year */
+
+double
+epj2ep (epoch)
+
+double	epoch;	/* Julian epoch (fractional 365.25-day years) */
+{
+    double dj;
+    dj = epj2jd (epoch);
+    return (jd2ep (dj));
+}
+
+
+/* EP2EPJ-- convert fractional year to Julian epoch */
+
+double
+ep2epj (epoch)
+
+double	epoch;	/* Fractional year */
+{
+    double dj;
+    dj = ep2jd (epoch);
+    return (jd2epj (dj));
 }
 
 
@@ -277,6 +598,50 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 }
 
 
+/* EPB2I-- convert Besselian epoch to year month day hours min sec */
+
+void
+epb2i (epoch, iyr, imon, iday, ihr, imn, sec, ndsec)
+
+double	epoch;	/* Besselian epoch (fractional 365.242198781-day years) */
+int	*iyr;	/* year (returned) */
+int	*imon;	/* month (returned) */
+int	*iday;	/* day (returned) */
+int	*ihr;	/* hours (returned) */
+int	*imn;	/* minutes (returned) */
+double	*sec;	/* seconds (returned) */
+int	ndsec;	/* Number of decimal places in seconds (0=int) */
+{
+    double date, time;
+
+    epb2dt (epoch, &date, &time);
+    dt2i (date, time, iyr,imon,iday,ihr,imn,sec, ndsec);
+    return;
+}
+
+
+/* EPJ2I-- convert Julian epoch to year month day hours min sec */
+
+void
+epj2i (epoch, iyr, imon, iday, ihr, imn, sec, ndsec)
+
+double	epoch;	/* Julian epoch (fractional 365.25-day years) */
+int	*iyr;	/* year (returned) */
+int	*imon;	/* month (returned) */
+int	*iday;	/* day (returned) */
+int	*ihr;	/* hours (returned) */
+int	*imn;	/* minutes (returned) */
+double	*sec;	/* seconds (returned) */
+int	ndsec;	/* Number of decimal places in seconds (0=int) */
+{
+    double date, time;
+
+    epj2dt (epoch, &date, &time);
+    dt2i (date, time, iyr,imon,iday,ihr,imn,sec, ndsec);
+    return;
+}
+
+
 /* EP2JD-- convert fractional year as used in epoch to Julian date */
 
 double
@@ -294,6 +659,98 @@ double	epoch;	/* Date as fractional year */
 }
 
 
+/* EPB2JD-- convert Besselian epoch to Julian Date */
+
+double
+epb2jd (epoch)
+
+double	epoch;	/* Besselian epoch (fractional 365.242198781-day years) */
+
+{
+    return (2415020.31352 + ((epoch - 1900.0) * 365.242198781));
+}
+
+
+/* EPJ2JD-- convert Julian epoch to Julian Date */
+
+double
+epj2jd (epoch)
+
+double	epoch;	/* Julian epoch (fractional 365.25-day years) */
+
+{
+    return (2451545.0 + ((epoch - 2000.0) * 365.25));
+}
+
+
+/* EP2MJD-- convert fractional year as used in epoch to modified Julian date */
+
+double
+ep2mjd (epoch)
+
+double	epoch;	/* Date as fractional year */
+
+{
+    double dj;	/* Julian date (returned)*/
+    double date, time;
+
+    ep2dt (epoch, &date, &time);
+    dj = dt2jd (date, time);
+    return (dj - 2400000.5);
+}
+
+
+/* EPB2MJD-- convert Besselian epoch to modified Julian Date */
+
+double
+epb2mjd (epoch)
+
+double	epoch;	/* Besselian epoch (fractional 365.242198781-day years) */
+
+{
+    return (15019.81352 + ((epoch - 1900.0) * 365.242198781));
+}
+
+
+/* EPJ2MJD-- convert Julian epoch to modified Julian Date */
+
+double
+epj2mjd (epoch)
+
+double	epoch;	/* Julian epoch (fractional 365.25-day years) */
+
+{
+    return (51544.5 + ((epoch - 2000.0) * 365.25));
+}
+
+
+
+/* EPB2EPJ -- convert Besselian epoch to Julian epoch */
+
+double
+epb2epj (epoch)
+
+double	epoch;	/* Besselian epoch (fractional 365.242198781-day years) */
+{
+    double dj;		/* Julian date */
+    dj = epb2jd (epoch);
+    return (jd2epj (dj));
+}
+
+
+/* EPJ2EPB-- convert Julian epoch to Besselian epoch */
+
+double
+epj2epb (epoch)
+
+double	epoch;	/* Julian epoch (fractional 365.25-day years) */
+{
+    double dj;		/* Julian date */
+    dj = epj2jd (epoch);
+    return (jd2epb (dj));
+}
+
+
 /* JD2FD-- convert Julian date to FITS date, yyyy-mm-ddThh:mm:ss.ss */
 
 char *
@@ -301,10 +758,8 @@ jd2fd (dj)
 
 double	dj;	/* Julian date */
 {
-    double tsec; /* seconds since 1950.0 (returned) */
-
+    double tsec;		/* seconds since 1950.0 (returned) */
     tsec = (dj - 2433282.5) * 86400.0;
-
     return (ts2fd (tsec));
 }
 
@@ -316,10 +771,7 @@ jd2ts (dj)
 
 double	dj;	/* Julian date */
 {
-    double tsec; /* seconds since 1950.0 (returned) */
-
-    tsec = (dj - 2433282.5) * 86400.0;
-    return (tsec);
+    return ((dj - 2433282.5) * 86400.0);
 }
 
 
@@ -330,10 +782,18 @@ ts2jd (tsec)
 
 double	tsec;	/* seconds since 1950.0 */
 {
-    double dj;	/* Julian date (returned) */
+    return (2433282.5 + (tsec / 86400.0));
+}
 
-    dj = 2433282.5 + (tsec / 86400.0);
-    return (dj);
+
+/* TS2MJD-- convert seconds since 1950.0 to modified Julian date */
+
+double
+ts2mjd (tsec)
+
+double	tsec;	/* seconds since 1950.0 */
+{
+    return (33282.0 + (tsec / 86400.0));
 }
 
 
@@ -346,9 +806,36 @@ double	tsec;	/* Seconds since 1950.0 */
 
 {
     double date, time;
-
     ts2dt (tsec, &date, &time);
     return (dt2ep (date, time));
+}
+
+
+/* TS2EPB-- convert seconds since 1950.0 to Besselian epoch */
+
+double
+ts2epb (tsec)
+
+double	tsec;	/* Seconds since 1950.0 */
+
+{
+    double dj;		/* Julian Date */
+    dj = ts2jd (tsec);
+    return (jd2epb (dj));
+}
+
+
+/* TS2EPB-- convert seconds since 1950.0 to Julian epoch */
+
+double
+ts2epj (tsec)
+
+double	tsec;	/* Seconds since 1950.0 */
+
+{
+    double dj;		/* Julian Date */
+    dj = ts2jd (tsec);
+    return (jd2epj (dj));
 }
 
 
@@ -372,10 +859,8 @@ double	time;	/* Time as hh.mmssxxxx
     double dj, dj0, dj1, date0, time0, date1;
 
     dj = dt2jd (date, time);
-    if (date == 0.0) {
-	epoch = dj / 365.2522;
-	return (epoch);
-	}
+    if (date == 0.0)
+	epoch = dj / 365.2422;
     else {
 	time0 = 12.0;
 	date0 = dint (date) + 0.0101;
@@ -383,8 +868,62 @@ double	time;	/* Time as hh.mmssxxxx
 	dj0 = dt2jd (date0, time0);
 	dj1 = dt2jd (date1, time0);
 	epoch = dint (date) + ((dj - dj0) / (dj1 - dj0));
-	return (epoch);
 	}
+    return (epoch);
+}
+
+
+/* DT2EPB-- convert from date, time as yyyy.mmdd hh.mmsss to Besselian epoch */
+
+double
+dt2epb (date, time)
+
+double	date;	/* Date as yyyy.mmdd
+		    yyyy = calendar year (e.g. 1973)
+		    mm = calendar month (e.g. 04 = april)
+		    dd = calendar day (e.g. 15) */
+double	time;	/* Time as hh.mmssxxxx
+		    *if time<0, it is time as -(fraction of a day)
+		    hh = hour of day (0 .le. hh .le. 23)
+		    nn = minutes (0 .le. nn .le. 59)
+		    ss = seconds (0 .le. ss .le. 59)
+		  xxxx = tenths of milliseconds (0 .le. xxxx .le. 9999) */
+{
+    double dj;		/* Julian date */
+    double epoch;	/* Date as fractional year (returned) */
+    dj = dt2jd (date, time);
+    if (date == 0.0)
+	epoch = dj / 365.242198781;
+    else
+	epoch = jd2epb (dj);
+    return (epoch);
+}
+
+
+/* DT2EPJ-- convert from date, time as yyyy.mmdd hh.mmsss to Julian epoch */
+
+double
+dt2epj (date, time)
+
+double	date;	/* Date as yyyy.mmdd
+		    yyyy = calendar year (e.g. 1973)
+		    mm = calendar month (e.g. 04 = april)
+		    dd = calendar day (e.g. 15) */
+double	time;	/* Time as hh.mmssxxxx
+		    *if time<0, it is time as -(fraction of a day)
+		    hh = hour of day (0 .le. hh .le. 23)
+		    nn = minutes (0 .le. nn .le. 59)
+		    ss = seconds (0 .le. ss .le. 59)
+		  xxxx = tenths of milliseconds (0 .le. xxxx .le. 9999) */
+{
+    double dj;		/* Julian date */
+    double epoch;	/* Date as fractional year (returned) */
+    dj = dt2jd (date, time);
+    if (date == 0.0)
+	epoch = dj / 365.25;
+    else
+	epoch = jd2epj (dj);
+    return (epoch);
 }
 
 
@@ -407,7 +946,7 @@ double	*time;	/* Time as hh.mmssxxxx (returned)
 {
     double dj, dj0, dj1, date0, time0, date1, epochi, epochf;
 
-    time0 = 12.0;
+    time0 = 0.0;
     epochi = dint (epoch);
     epochf = epoch - epochi;
     date0 = epochi + 0.0101;
@@ -417,6 +956,52 @@ double	*time;	/* Time as hh.mmssxxxx (returned)
     dj = dj0 + epochf * (dj1 - dj0);
     jd2dt (dj, date, time);
     return;
+}
+
+
+/* EPB2DT-- convert from Besselian epoch to date, time as yyyy.mmdd hh.mmsss */
+
+void
+epb2dt (epoch, date, time)
+
+double	epoch;	/* Besselian epoch (fractional 365.242198781-day years) */
+double	*date;	/* Date as yyyy.mmdd (returned)
+		    yyyy = calendar year (e.g. 1973)
+		    mm = calendar month (e.g. 04 = april)
+		    dd = calendar day (e.g. 15) */
+double	*time;	/* Time as hh.mmssxxxx (returned)
+		    *if time<0, it is time as -(fraction of a day)
+		    hh = hour of day (0 .le. hh .le. 23)
+		    nn = minutes (0 .le. nn .le. 59)
+		    ss = seconds (0 .le. ss .le. 59)
+		  xxxx = tenths of milliseconds (0 .le. xxxx .le. 9999) */
+{
+    double dj;		/* Julian date */
+    dj = epb2jd (epoch);
+    jd2dt (dj, date, time);
+}
+
+
+/* EPJ2DT-- convert from Julian epoch to date, time as yyyy.mmdd hh.mmsss */
+
+void
+epj2dt (epoch, date, time)
+
+double	epoch;	/* Julian epoch (fractional 365.25-day years) */
+double	*date;	/* Date as yyyy.mmdd (returned)
+		    yyyy = calendar year (e.g. 1973)
+		    mm = calendar month (e.g. 04 = april)
+		    dd = calendar day (e.g. 15) */
+double	*time;	/* Time as hh.mmssxxxx (returned)
+		    *if time<0, it is time as -(fraction of a day)
+		    hh = hour of day (0 .le. hh .le. 23)
+		    nn = minutes (0 .le. nn .le. 59)
+		    ss = seconds (0 .le. ss .le. 59)
+		  xxxx = tenths of milliseconds (0 .le. xxxx .le. 9999) */
+{
+    double dj;		/* Julian date */
+    dj = epj2jd (epoch);
+    jd2dt (dj, date, time);
 }
 
 
@@ -431,13 +1016,27 @@ char *string;	/* FITS date string, which may be:
 			dd-mm-yy (nonstandard use before 2000)
 			yyyy-mm-dd (FITS standard after 1999)
 			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
-
-
 {
     double date, time;
 
     fd2dt (string, &date, &time);
     return (dt2jd (date, time));
+}
+
+
+/* FD2MJD-- convert FITS standard date to modified Julian date */
+
+double
+fd2mjd (string)
+
+char *string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+{
+    return (fd2jd (string) - 2400000.5);
 }
 
 
@@ -452,11 +1051,8 @@ char *string;	/* FITS date string, which may be:
 			dd-mm-yy (nonstandard use before 2000)
 			yyyy-mm-dd (FITS standard after 1999)
 			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
-
-
 {
     double date, time;
-
     fd2dt (string, &date, &time);
     return (dt2ts (date, time));
 }
@@ -473,13 +1069,98 @@ char *string;	/* FITS date string, which may be:
 			dd-mm-yy (nonstandard use before 2000)
 			yyyy-mm-dd (FITS standard after 1999)
 			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
-
-
 {
     double date, time;
-
     fd2dt (string, &date, &time);
     return (dt2fd (date, time));
+}
+
+
+/* FD2OF-- convert any FITS standard date to old FITS standard date time */
+
+char *
+fd2of (string)
+
+char *string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+{
+    int iyr,imon,iday,ihr,imn;
+    double sec;
+
+    fd2i (string,&iyr,&imon,&iday,&ihr,&imn,&sec, 3);
+
+    /* Convert to old FITS date format */
+    string = (char *) calloc (1, 32);
+    if (iyr < 1900)
+	sprintf (string, "*** date out of range ***");
+    else if (iyr < 2000)
+	sprintf (string, "%02d/%02d/%02d %02d:%02d:%06.3f",
+		 iday, imon, iyr-1900, ihr, imn, sec);
+    else if (iyr < 2900.0)
+	sprintf (string, "%02d/%02d/%3d %02d:%02d:%6.3f",
+		 iday, imon, iyr-1900, ihr, imn, sec);
+    else
+	sprintf (string, "*** date out of range ***");
+    return (string);
+}
+
+
+/* FD2FD-- convert any FITS standard date to old FITS standard date */
+
+char *
+fd2ofd (string)
+
+char *string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+{
+    int iyr,imon,iday,ihr,imn;
+    double sec;
+
+    fd2i (string,&iyr,&imon,&iday,&ihr,&imn,&sec, 3);
+
+    /* Convert to old FITS date format */
+    string = (char *) calloc (1, 32);
+    if (iyr < 1900)
+	sprintf (string, "*** date out of range ***");
+    else if (iyr < 2000)
+	sprintf (string, "%02d/%02d/%02d", iday, imon, iyr-1900);
+    else if (iyr < 2900.0)
+	sprintf (string, "%02d/%02d/%3d", iday, imon, iyr-1900);
+    else
+	sprintf (string, "*** date out of range ***");
+    return (string);
+}
+
+
+/* FD2OFT-- convert any FITS standard date to old FITS standard time */
+
+char *
+fd2oft (string)
+
+char *string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+{
+    int iyr,imon,iday,ihr,imn;
+    double sec;
+
+    fd2i (string,&iyr,&imon,&iday,&ihr,&imn,&sec, 3);
+
+    /* Convert to old FITS date format */
+    string = (char *) calloc (1, 32);
+    sprintf (string, "%02d:%02d:%06.3f", ihr, imn, sec);
+    return (string);
 }
 
 
@@ -533,10 +1214,56 @@ char *string;	/* FITS date string, which may be:
 			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
 
 {
-    double date, time;
+    double dj;		/* Julian date */
+    dj = fd2jd (string);
+    if (dj < 1.0)
+	return (dj / 365.2422);
+    else
+	return (jd2ep (dj));
+}
 
-    fd2dt (string, &date, &time);
-    return (dt2ep (date, time));
+
+/* FD2EPB -- convert from FITS standard date to Besselian epoch */
+
+double
+fd2epb (string)
+
+char *string;	/* FITS date string, which may be:
+			yyyy.ffff (fractional year)
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard FITS use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+
+{
+    double dj;		/* Julian date */
+    dj = fd2jd (string);
+    if (dj < 1.0)
+	return (dj / 365.242198781);
+    else
+	return (jd2epb (dj));
+}
+
+
+/* FD2EPJ -- convert from FITS standard date to Julian epoch */
+
+double
+fd2epj (string)
+
+char *string;	/* FITS date string, which may be:
+			yyyy.ffff (fractional year)
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard FITS use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+
+{
+    double dj;		/* Julian date */
+    dj = fd2jd (string);
+    if (dj < 1.0)
+	return (dj / 365.25);
+    else
+	return (jd2epj (dj));
 }
 
 
@@ -1106,7 +1833,7 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 }
 
 
-/* Calculate days in month 1-12 given year (Gregorian calendar only */
+/* Calculate days in month 1-12 given year (Gregorian calendar only) */
 
 static int
 caldays (year, month)
@@ -1202,5 +1929,9 @@ double	dnum, dm;
  * Dec 17 1999	Add all unimplemented conversions
  * Dec 20 1999	Add isdate(); leave date, time strings unchanged in fd2i()
  * Dec 20 1999	Make all fd2*() subroutines deal with time alone
+ *
  * Jan  3 2000	In old FITS format, year 100 is assumed to be 2000
+ * Jan 11 2000	Fix epoch to date conversion so .0 is 0:00, not 12:00
+ * Jan 21 2000	Add separate Besselian and Julian epoch computations
+ * Jan 28 2000	Add Modified Julian Date conversions
  */

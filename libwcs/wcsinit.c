@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** October 21, 1999
+ *** January 28, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcsinit.c (World Coordinate Systems)
@@ -8,7 +8,7 @@
  * Subroutine:	wcsninit (hstring,lh) sets a WCS structure from an image header
  * Subroutine:	wcseq (hstring, wcs) set radecsys and equinox from image header
 
- * Copyright:   1998 Smithsonian Astrophysical Observatory
+ * Copyright:   2000 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -110,7 +110,7 @@ char *hstring;	/* character string containing FITS header information
     hgetr8 (hstring, "NAXIS2", &wcs->nypix);
     hgets (hstring, "INSTRUME", 16, wcs->instrument);
     hgeti4 (hstring, "DETECTOR", &wcs->detector);
-    wcs->oldwcs = getdefwcs();
+    wcs->wcsproj = getdefwcs();
     for (i = 0; i < 16; i++) wcs->pc[i] = 0.0;
     for (i = 0; i < naxes; i++) wcs->pc[(i*naxes)+i] = 1.0;
 
@@ -197,7 +197,7 @@ char *hstring;	/* character string containing FITS header information
 	/* Use polynomial fit instead of projection, if present */
 	wcs->ncoeff1 = 0;
 	wcs->ncoeff2 = 0;
-	if (!wcs->oldwcs && (hcoeff = ksearch (hstring,"CO1_1")) != NULL) {
+	if (wcs->wcsproj != WCS_OLD && (hcoeff = ksearch (hstring,"CO1_1")) != NULL) {
 	    wcs->prjcode = WCS_PLT;
 	    (void)strcpy (wcs->ptype, "PLATE");
 	    for (i = 0; i < 20; i++) {
@@ -235,6 +235,16 @@ char *hstring;	/* character string containing FITS header information
 		      wcs->crpix[1]+cos(rot), wcs, &ra1, &dec1);
 	    wcs->cdelt[1] = wcsdist (ra0, dec0, ra1, dec1);
 	    wcs->yinc = wcs->cdelt[1];
+
+	    /* Set CD matrix from header */
+	    wcs->cd[0] = 0.;
+	    hgetr8 (hstring,"CD1_1",&wcs->cd[0]);
+	    wcs->cd[1] = 0.;
+	    hgetr8 (hstring,"CD1_2",&wcs->cd[1]);
+	    wcs->cd[2] = 0.;
+	    hgetr8 (hstring,"CD2_1",&wcs->cd[2]);
+	    wcs->cd[3] = wcs->cd[0];
+	    hgetr8 (hstring,"CD2_2",&wcs->cd[3]);
 	    }
 
 	/* Else use CD matrix, if present */
@@ -469,11 +479,12 @@ char *hstring;	/* character string containing FITS header information
 	dsspos (wcs->crpix[0]+cos(rot),
 		wcs->crpix[1]+sin(rot), wcs, &ra1, &dec1);
 	wcs->cdelt[0] = -wcsdist (ra0, dec0, ra1, dec1);
-	wcs->xinc = wcs->cdelt[0];
 	dsspos (wcs->crpix[0]+sin(rot),
 		wcs->crpix[1]+cos(rot), wcs, &ra1, &dec1);
 	wcs->cdelt[1] = wcsdist (ra0, dec0, ra1, dec1);
-	wcs->yinc = wcs->cdelt[1];
+
+	/* Set all other image scale parameters */
+	wcsdeltset (wcs, wcs->cdelt[0], wcs->cdelt[1], wcs->rot);
 	}
 
     /* Approximate world coordinate system if plate scale is known */
@@ -595,7 +606,7 @@ char *hstring;	/* character string containing FITS header information
 
 	/* Epoch of image (from observation date, if possible) */
 	if (hgetr8 (hstring, "MJD-OBS", &mjd))
-	    wcs->epoch = 1950.0 + (mjd / 365.22);
+	    wcs->epoch = 1900.0 + (mjd - 15019.81352) / 365.242198781;
 	else if (!hgetdate (hstring,"DATE-OBS",&wcs->epoch)) {
 	    if (!hgetdate (hstring,"DATE",&wcs->epoch)) {
 		if (!hgetr8 (hstring,"EPOCH",&wcs->epoch))
@@ -789,4 +800,9 @@ struct WorldCoor *wcs;
  * Jul  8 1999	In RADECSYS, use FK5 and FK4 instead of J2000 and B1950
  * Oct 15 1999	Free wcs using wcsfree()
  * Oct 21 1999	Remove unused variables; declare dsspos() after lint
+ *
+ * Jan 24 2000	Set CD matrix from header even if using polynomial
+ * Jan 27 2000	Fix MJD to epoch conversion for when MJD-OBS is the only date
+ * Jan 28 2000	Set CD matrix for DSS projection, too
+ * Jan 28 2000	Use wcsproj instead of oldwcs
  */

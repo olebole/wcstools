@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** November 17, 1999
+ *** January 28, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -15,8 +15,6 @@
  * Subroutine:	wcscdset (wcs, cd) sets rotation and scaling from a CD matrix
  * Subroutine:	wcspcset (wcs,cdelt1,cdelt2,pc) sets rotation and scaling
  * Subroutine:	wcseqset (wcs, equinox) resets an existing WCS structure to new equinox
- * Subroutine:	setdefwcs (oldwcs) set flag to use AIPS WCS subroutines
- * Subroutine:	getdefwcs (oldwcs) get value of flag to use AIPS WCS subroutines
  * Subroutine:	iswcs(wcs) returns 1 if WCS structure is filled, else 0
  * Subroutine:	nowcs(wcs) returns 0 if WCS structure is filled, else 1
  * Subroutine:	wcscent (wcs) prints the image center and size in WCS units
@@ -44,7 +42,7 @@
  * Subroutine:	setwcsfile (filename)  Set file name for error messages 
  * Subroutine:	setwcserr (errmsg)  Set error message 
  * Subroutine:	wcserr()  Print error message 
- * Subroutine:	setdefwcs (oldwcs)  Set flag to choose AIPS or WCSLIB WCS subroutines 
+ * Subroutine:	setdefwcs (wcsproj)  Set flag to choose AIPS or WCSLIB WCS subroutines 
  * Subroutine:	getdefwcs()  Get flag to switch between AIPS and WCSLIB subroutines 
  * Subroutine:	savewcscoor (wcscoor)
  * Subroutine:	getwcscoor()  Return preset output default coordinate system 
@@ -54,7 +52,7 @@
  * Subroutine:	wcsfree (wcs)  Free storage used by WCS structure
  * Subroutine:	freewcscom (wcs)  Free storage used by WCS commands 
 
- * Copyright:   1999 Smithsonian Astrophysical Observatory
+ * Copyright:   2000 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -76,7 +74,7 @@ static char wcserrmsg[80];
 static char wcsfile[256]={""};
 static void wcslibrot();
 void wcsrotset();
-static int oldwcs0 = 0;
+static int wcsproj0 = 0;
 static int izpix = 0;
 static double zpix = 0.0;
 
@@ -131,7 +129,7 @@ char	*proj;	/* Projection */
     wcs->nxpix = nxpix;
     wcs->nypix = nypix;
 
-    wcs->oldwcs = oldwcs0;
+    wcs->wcsproj = wcsproj0;
 
     wcs->crpix[0] = xrpix;
     wcs->crpix[1] = yrpix;
@@ -231,7 +229,7 @@ double	epoch;	/* Epoch of coordinates, used for FK4/FK5 conversion
     wcs->nxpix = naxis1;
     wcs->nypix = naxis2;
 
-    wcs->oldwcs = oldwcs0;
+    wcs->wcsproj = wcsproj0;
 
     wcs->crpix[0] = crpix1;
     wcs->crpix[1] = crpix2;
@@ -395,19 +393,37 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 		wcs->prjcode = i;
 	    }
 
-	/* Handle obsolete projection */
-	if (wcs->prjcode == WCS_NCP)
-	    wcs->oldwcs = 1;
+	/* Handle "obsolete" NCP projection */
+	if (wcs->prjcode == WCS_NCP) {
+	    if (wcs->wcsproj == WCS_BEST)
+		wcs->wcsproj = WCS_OLD;
+	    else if (wcs->wcsproj == WCS_ALT)
+		wcs->wcsproj = WCS_NEW;
+	    }
 
 	/* Work around bug in WCSLIB handling of CAR projection */
-	if (wcs->prjcode == WCS_CAR)
-	    wcs->oldwcs = 1;
+	else if (wcs->prjcode == WCS_CAR) {
+	    if (wcs->wcsproj == WCS_BEST)
+		wcs->wcsproj = WCS_OLD;
+	    else if (wcs->wcsproj == WCS_ALT)
+		wcs->wcsproj = WCS_NEW;
+	    }
 
 	/* Work around bug in WCSLIB handling of COE projection */
-	if (wcs->prjcode == WCS_COE)
-	    wcs->oldwcs = 1;
+	else if (wcs->prjcode == WCS_COE) {
+	    if (wcs->wcsproj == WCS_BEST)
+		wcs->wcsproj = WCS_OLD;
+	    else if (wcs->wcsproj == WCS_ALT)
+		wcs->wcsproj = WCS_NEW;
+	    }
 
-	if (wcs->oldwcs && (
+	else if (wcs->wcsproj == WCS_BEST)
+	    wcs->wcsproj = WCS_NEW;
+
+	else if (wcs->wcsproj == WCS_ALT)
+	    wcs->wcsproj = WCS_OLD;
+
+	if (wcs->wcsproj == WCS_OLD && (
 	    wcs->prjcode != WCS_STG && wcs->prjcode != WCS_AIT &&
 	    wcs->prjcode != WCS_MER && wcs->prjcode != WCS_GLS &&
 	    wcs->prjcode != WCS_ARC && wcs->prjcode != WCS_TAN &&
@@ -415,10 +431,10 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	    wcs->prjcode != WCS_PIX && wcs->prjcode != WCS_LIN &&
 	    wcs->prjcode != WCS_CAR && wcs->prjcode != WCS_COE &&
 	    wcs->prjcode != WCS_NCP))
-	    wcs->oldwcs = 0;
+	    wcs->wcsproj = WCS_NEW;
 
-	/* Handle NOAO corrected TNX as TAN if oldwcs is set */
-	if (wcs->oldwcs && wcs->prjcode == WCS_TNX) {
+	/* Handle NOAO corrected TNX as uncorrected TAN if oldwcs is set */
+	if (wcs->wcsproj == WCS_OLD && wcs->prjcode == WCS_TNX) {
 	    wcs->ctype[0][6] = 'A';
 	    wcs->ctype[0][7] = 'N';
 	    wcs->prjcode = WCS_TAN;
@@ -1970,7 +1986,7 @@ double	*xpos,*ypos;	/* RA and Dec in degrees (returned) */
 	}
 
     /* Use Classic AIPS projections */
-    else if (wcs->oldwcs == 1 || wcs->prjcode <= 0) {
+    else if (wcs->wcsproj == WCS_OLD || wcs->prjcode <= 0) {
 	if (worldpos (xpix, ypix, wcs, &xp, &yp))
 	    wcs->offscl = 1;
 	}
@@ -2084,7 +2100,7 @@ int	*offscl;	/* 0 if within bounds, else off scale */
 	}
 
     /* Use Classic AIPS projections */
-    else if (wcs->oldwcs == 1 || wcs->prjcode <= 0) {
+    else if (wcs->wcsproj == WCS_OLD || wcs->prjcode <= 0) {
 	if (worldpix (xp, yp, wcs, xpix, ypix))
 	    *offscl = 1;
 	}
@@ -2261,14 +2277,13 @@ wcserr ()
 
 /* Flag to use AIPS WCS subroutines instead of WCSLIB */
 void
-setdefwcs (oldwcs)
-int oldwcs;
-{ oldwcs0 = oldwcs; return; }
+setdefwcs (wp)
+int wp;
+{ wcsproj0 = wp; return; }
 
 int
 getdefwcs ()
-{ return (oldwcs0); }
-
+{ return (wcsproj0); }
 
 /* Save output default coordinate system */
 static char wcscoor0[16];
@@ -2555,4 +2570,6 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Oct 21 1999	Drop declarations of unused functions after lint
  * Oct 25 1999	Drop out of wcsfree() if wcs is null pointer
  * Nov 17 1999	Fix bug which caused software to miss NCP projection
+ *
+ * Jan 24 2000	Default to AIPS for NCP, CAR, and COE proj.; if -z use WCSLIB
  */

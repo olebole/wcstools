@@ -1,5 +1,5 @@
 /* File immatch.c
- * October 22, 1999
+ * January 28, 2000
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -337,7 +337,7 @@ char **av;
     	    break;
 
 	case 'z':       /* Use AIPS classic WCS */
-	    setdefwcs (1);
+	    setdefwcs (WCS_ALT);
 	    break;
 
 	case '@':	/* List of files to be read */
@@ -585,4 +585,6 @@ char *
  * Jul  7 1999	Fix bug setting rotation
  * Aug 25 1999	Add Bright Star Catalog, BSC
  * Oct 22 1999	Drop unused variables after lint
+ *
+ * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  */

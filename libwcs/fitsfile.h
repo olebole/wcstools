@@ -1,5 +1,5 @@
 /* fitsfile.h  FITS and IRAF file access subroutines
- * December 15, 1999
+ * January 26, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -74,31 +74,71 @@ extern int first_token();
 
 /* Subroutines for translating dates and times */
 double dt2ep();	/* yyyy.ddmm and hh.mmsss to fractional year (epoch) */
+double dt2epb(); /* yyyy.ddmm and hh.mmsss to Besselian epoch */
+double dt2epj(); /* yyyy.ddmm and hh.mmsss to Julian epoch */
 char *dt2fd();	/* yyyy.ddmm and hh.mmsss to FITS date string */
 void dt2i();	/* yyyy.ddmm and hh.mmsss to year, month, day, hrs, min, sec */
 double dt2jd();	/* yyyy.ddmm and hh.mmsss to Julian date */
+double dt2mjd(); /* yyyy.ddmm and hh.mmsss to modified Julian date */
 double dt2ts();	/* yyyy.ddmm and hh.mmsss to seconds since 1950.0 */ 
 void ep2dt();	/* Fractional year to yyyy.mmdd hh.mmssss */
+void epb2dt();	/* Besselian epoch to yyyy.mmdd hh.mmssss */
+void epj2dt();	/* Julian epoch to yyyy.mmdd hh.mmssss */
 char *ep2fd();	/* Fractional year to FITS date string yyyy-mm-ddThh:mm:ss.ss */
+char *epb2fd();	/* Besselian epoch to FITS date string yyyy-mm-ddThh:mm:ss.ss */
+char *epj2fd();	/* Julian epoch to FITS date string yyyy-mm-ddThh:mm:ss.ss */
 void ep2i();	/* Fractional year to year, month, day, hours, min., sec. */
+void epb2i();	/* Besselian epoch to year, month, day, hours, min., sec. */
+void epj2i();	/* Julian epoch to year, month, day, hours, min., sec. */
 double ep2jd();	/* Fractional year to Julian Date */
+double epb2jd(); /* Besselian epoch to Julian Date */
+double epj2jd(); /* Julian epoch to Julian Date */
+double ep2mjd(); /* Fractional year to modified Julian Date */
+double epb2mjd(); /* Besselian epoch to modified Julian Date */
+double epj2mjd(); /* Julian epoch to modified Julian Date */
+double ep2epb(); /* Fractional year to Besselian epoch */
+double ep2epj(); /* Fractional year to Julian epoch */
+double epb2epj(); /* Besselian epoch to Julian epoch */
+double epj2epb(); /* Julian epoch to Besselian epoch */
 double ep2ts();	/* Fractional year to seconds since 1950.0 */
+double epb2ts(); /* Besselian epoch to seconds since 1950.0 */
+double epj2ts(); /* Julian epoch to seconds since 1950.0 */
 void fd2dt();	/* FITS standard date string to Julian date */
 double fd2ep();	/* FITS standard date string to fractional year (epoch) */
+double fd2epb(); /* FITS standard date string to Besselian epoch */
+double fd2epj(); /* FITS standard date string to Julian epoch */
 char *fd2fd();	/* Any FITS standard date string to ISO FITS date string */
+char *fd2of();	/* Any FITS standard date string to old FITS date and time */
+char *fd2ofd();	/* Any FITS standard date string to old FITS date string */
+char *fd2oft(); /* Any FITS standard date string to old FITS time string */
 void fd2i();	/* FITS standard date string to year, mon, day, hrs, min, sec */
 double fd2jd();	/* FITS standard date string to Julian date */
+double fd2mjd(); /* FITS standard date string to modified Julian date */
 double fd2ts();	/* FITS standard date to seconds since 1950.0 */
 void jd2dt();	/* Julian date to yyyy.mmdd hh.mmssss */
 double jd2ep();	/* Julian date to fractional year */
+double jd2epb(); /* Julian date to Besselian epoch */
+double jd2epj(); /* Julian date to Julian epoch */
 char *jd2fd();	/* Julian date to FITS date string yyyy-mm-ddThh:mm:ss.ss */
 void jd2i();	/* Julian date to year, month, day, hours, min., sec. */
+double jd2mjd(); /* Julian date to modified Julian date */
 double jd2ts();	/* Julian date to seconds since 1950.0 */
+void mjd2dt();	/* Modified Julian date to yyyy.mmdd hh.mmssss */
+double mjd2ep(); /* Modified Julian date to fractional year */
+double mjd2epb(); /* Modified Julian date to Besselian epoch */
+double mjd2epj(); /* Modified Julian date to Julian epoch */
+char *mjd2fd();	/* Modified Julian date to FITS date yyyy-mm-ddThh:mm:ss.ss */
+void mjd2i();	/* Modified Julian date to year, month, day, hours, min, sec */
+double mjd2jd(); /* Modified Julian date to Julian date */
+double mjd2ts(); /* Modified Julian date to seconds since 1950.0 */
 void ts2dt();	/* Seconds since 1950.0 to yyyy.mmdd hh.mmssss */
 double ts2ep();	/* Seconds since 1950.0 to fractional year */
+double ts2epb(); /* Seconds since 1950.0 to Besselian epoch */
+double ts2epj(); /* Seconds since 1950.0 to Julian epoch */
 char *ts2fd();	/* Seconds since 1950.0 to FITS date, yyyy-mm-ddT00:00:00.000 */
 void ts2i();	/* Seconds since 1950.0 to year, month, day, hours, min, sec */
 double ts2jd();	/* Seconds since 1950.0 to Julian date */
+double ts2mjd(); /* Seconds since 1950.0 to modified Julian date */
 int isdate();	/* Return 1 if string is FITS old or ISO date */
 
 #endif /* fitsfile_h_ */
@@ -125,4 +165,8 @@ int isdate();	/* Return 1 if string is FITS old or ISO date */
  * Nov 23 1999	Add fitscimage()
  * Dec 15 1999	Fix misdeclaration of *2fd() subroutines, add fd2i(), dt2i()
  * Dec 20 1999	Add isdate()
+ *
+ * Jan 20 2000	Add conversions to and from Besselian and Julian epochs
+ * Jan 21 2000	Add conversions to old FITS date and time
+ * Jan 26 2000	Add conversion to modified Julian date (JD - 2400000.5
  */

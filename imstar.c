@@ -1,5 +1,5 @@
 /* File imstar.c
- * November 19, 1999
+ * January 28, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -804,4 +804,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Oct 22 1999	Add optional second plate scale arg
  * Oct 26 1999	Read reference pixel coordinate from command line without -c
  * Nov 19 1999	Make display and file output formats identical
+ *
+ * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  */

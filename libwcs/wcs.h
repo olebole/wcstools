@@ -1,6 +1,6 @@
 /* libwcs/wcs.h
-   October 21, 1999
-   By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
+ * January 28, 2000
+ * By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 #ifndef _wcs_h_
 #define _wcs_h_
@@ -64,8 +64,10 @@ struct WorldCoor {
   int		offscl;		/* 0 if OK, 1 if offscale */
   int		wcson;		/* 1 if WCS is set, else 0 */
   int		naxes;		/* Number of axes in image */
-  int		oldwcs;		/* 1 to use worldpos() and worldpix() instead
-				   of Mark Calabretta's WCSLIB subroutines */
+  int		wcsproj;	/* WCS_OLD: AIPS worldpos() and worldpix()
+				   WCS_NEW: Mark Calabretta's WCSLIB subroutines
+				   WCS_BEST: WCSLIB for all but CAR,COE,NCP
+				   WCS_ALT:  AIPS for all but CAR,COE,NCP */
   int		linmode;	/* 0=system only, 1=units, 2=system+units */
   int		detector;	/* Instrument detector number */
   char		instrument[32];	/* Instrument name */
@@ -143,6 +145,12 @@ struct WorldCoor {
 #define WCS_NPOLE	7	/* Longitude and north polar angle */
 #define WCS_SPA		8	/* Longitude and south polar angle */
 #define WCS_PLANET	9	/* Longitude and latitude on planet */
+
+/* Method to use */
+#define WCS_BEST	0	/* Use best WCS projections */
+#define WCS_ALT		1	/* Use not best WCS projections */
+#define WCS_OLD		2	/* Use AIPS WCS projections */
+#define WCS_NEW		3	/* Use WCSLIB 2.5 WCS projections */
 
 #ifndef PI
 #define PI	3.141592653589793238462643
@@ -516,4 +524,6 @@ void wcscstr();		/* Return system string from system code, equinox, epoch */
  * Jan 20 1999	Add declaration of wcsfree()
  * Jun 16 1999	Add declaration of wcsrange()
  * Oct 21 1999	Add declaration of setwcsfile()
+ *
+ * Jan 28 2000	Add flags for choice of WCS projection subroutines
  */

@@ -1,5 +1,5 @@
 /* File remap.c
- * December 3, 1999
+ * January 28, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -200,7 +200,7 @@ char **av;
     	    break;
 
 	case 'z':       /* Use AIPS classic WCS */
-	    setdefwcs(1);
+	    setdefwcs (WCS_ALT);
 	    break;
 
 	case '@':	/* List of files to be read */
@@ -552,4 +552,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Oct 22 1999	Add optional second plate scale argument
  * Nov 19 1999	Add galactic coordinate output option
  * Dec  3 1999	Add option to set output BITPIX
+ *
+ * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  */

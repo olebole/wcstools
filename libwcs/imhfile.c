@@ -1,5 +1,5 @@
 /* File imhfile.c
- * November 29, 1999
+ * February 3, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
@@ -144,6 +144,7 @@ int pix_version ();
 int irafncmp ();
 static int machswap();
 static int irafsize();
+extern long timezone;
 
 #define SECONDS_1970_TO_1980    315532800L
 static int getclocktime();
@@ -425,7 +426,6 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     double tsec;
     char *pixname, *bang, *chead;
     char *fitsheader;
-    char *dstringl;
     int nblock, nlines;
     char *fhead, *fhead1, *fp, endline[81];
     char irafchar;
@@ -665,10 +665,10 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 		/* printf ("%80s\n",fitsline); */
 		if (strncmp (fitsline, "OBJECT ", 7) != 0) {
 		    fhead = fhead + 80;
-		    j = 0;
 		    }
 		for (k = 0; k < 80; k++)
 		    fitsline[k] = ' ';
+		j = 0;
 		}
 	    else {
 		if (j > 80) {
@@ -851,8 +851,8 @@ char	*image;		/* IRAF image */
 
    /* Get rid of redundant header information */
     hgeti4 (fitsheader, "PIXOFF", &lphead);
-    hdel (fitsheader, "PIXOFF");
     hgeti4 (fitsheader, "PIXSWAP", &pixswap);
+    hdel (fitsheader, "PIXOFF");
     hdel (fitsheader, "PIXSWAP");
     hdel (fitsheader, "HEADSWAP");
     hdel (fitsheader, "IMHVER");
@@ -1748,4 +1748,7 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * Nov  2 1999	Add modification date and time to FITS header in iraf2fits()
  * Nov 24 1999	Delete HEADSWAP, IMHVER, DATE-MOD from header before writing
  * Nov 29 1999	Delete PIXSWAP, IRAF-MIN, IRAF-MAX from header before writing
+ *
+ * Jan 13 2000	Fix bug which dropped characters in iraf2fits()
+ * Feb  3 2000	Declare timezone long, not time_t; drop unused variable
  */

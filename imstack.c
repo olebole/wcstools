@@ -1,5 +1,5 @@
 /* File imstack.c
- * October 22, 1999
+ * February 7, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -19,7 +19,7 @@ static int StackImage();
 
 static int verbose = 0;		/* verbose flag */
 static int wfits = 1;		/* if 1, write FITS header before data */
-static char *newname = "imstack.out";
+static char *newname = "imstack.fits";
 static int nfiles = 0;
 static int nbstack = 0;
 static FILE *fstack = NULL;
@@ -34,6 +34,7 @@ char **av;
     char *listfile;
     char *str;
     int readlist = 0;
+    int ntimes = 0;
     FILE *flist;
     int ifile, nblocks, nbytes, i;
     char *blanks;
@@ -58,9 +59,16 @@ char **av;
 	    verbose++;
 	    break;
 
-	case 'n':	/* Write only image data to output file */
+	case 'i':	/* Write only image data to output file */
 	    wfits = 0;
-	    strcpy (newname,"imstack.fit");
+	    strcpy (newname,"imstack.out");
+	    break;
+
+	case 'n':	/* Use each input file this many times */
+	    if (ac < 2)
+                usage ();
+	    ntimes = (int) atof (*++av);
+	    ac--;
 	    break;
 
 	case '@':	/* List of files to be read */
@@ -102,27 +110,30 @@ char **av;
 	    filelist[nfiles] = *av++;
 	    nfiles++;
 	    if (verbose)
-		printf ("Reading %s\n",filelist[nfiles--]);
+		printf ("Reading %s\n",filelist[nfiles-1]);
 	    }
 	}
 
-    /* Stack images */
-    for (ifile = 0;  ifile < nfiles; ifile++) {
-	if (readlist) {
+    /* Stack images from list in file */
+    if (readlist) {
+	for (ifile = 0;  ifile < nfiles; ifile++) {
 	    if (fgets (filename, 128, flist) != NULL) {
 		filename[strlen (filename) - 1] = 0;
-		if (StackImage (ifile, filename))
+		if (StackImage (ifile, ntimes, filename))
 		    break;
 		}
 	    }
-	else {
-	    if (StackImage (ifile, filelist[ifile]))
+	fclose (flist);
+	}
+
+    /* Stack images from list on command line */
+    else {
+	for (ifile = 0;  ifile < nfiles; ifile++) {
+	    if (StackImage (ifile, ntimes, filelist[ifile]))
 		break;
 	    }
 	}
 
-    if (readlist)
-	fclose (flist);
 
     /* Pad out FITS file to 2880 blocks */
     if (wfits && fstack != NULL) {
@@ -150,18 +161,20 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Stack FITS or IRAF images into single FITS image\n");
-    fprintf(stderr,"usage: imstack [-vf] file1.fit file2.fit ... filen.fit\n");
-    fprintf(stderr,"       imstack [-vf] @filelist\n");
-    fprintf(stderr,"  -n: Do not print output FITS header\n");
+    fprintf(stderr,"usage: imstack [-vi][-n num] file1.fit file2.fit ... filen.fit\n");
+    fprintf(stderr,"       imstack [-vi][-n num] @filelist\n");
+    fprintf(stderr,"  -i: Do not put FITS header in output file\n");
+    fprintf(stderr,"  -n: Use each file this many times\n");
     fprintf(stderr,"  -v: Verbose\n");
     exit (1);
 }
 
 
 static int
-StackImage (ifile, filename)
+StackImage (ifile, ntimes, filename)
 
 int	ifile;		/* Sequence number of input file */
+int	ntimes;		/* Stack each image this many times */
 char	*filename;	/* FITS or IRAF file filename */
 
 {
@@ -173,7 +186,7 @@ char	*filename;	/* FITS or IRAF file filename */
     int nbimage, naxis, naxis1, naxis2, naxis3, bytepix;
     int bitpix, nblocks, nbytes;
     int iraffile;
-    int i;
+    int i, itime, nout;
     char pixname[128];
 
     /* Open IRAF header */
@@ -219,12 +232,19 @@ char	*filename;	/* FITS or IRAF file filename */
     if (ifile < 1 && verbose)
 
     /* Compute size of input image in bytes from header parameters */
-    hgeti4 (header,"NAXIS",&naxis);
+    naxis = 0;
+    naxis1 = 1;
     hgeti4 (header,"NAXIS1",&naxis1);
+    if (naxis1 > 1)
+	naxis = naxis + 1;
     naxis2 = 1;
     hgeti4 (header,"NAXIS2",&naxis2);
+    if (naxis2 > 1)
+	naxis = naxis + 1;
     naxis3 = 1;
     hgeti4 (header,"NAXIS3",&naxis3);
+    if (naxis3 > 1)
+	naxis = naxis + 1;
     hgeti4 (header,"BITPIX",&bitpix);
     bytepix = bitpix / 8;
     if (bytepix < 0) bytepix = -bytepix;
@@ -235,15 +255,15 @@ char	*filename;	/* FITS or IRAF file filename */
     if (ifile < 1 && wfits) {
 	if (naxis == 1) {
 	    hputi4 (header,"NAXIS", 2);
-	    hputi4 (header,"NAXIS2", nfiles);
+	    hputi4 (header,"NAXIS2", nfiles*ntimes);
 	    }
 	else if (naxis == 2) {
 	    hputi4 (header,"NAXIS", 3);
-	    hputi4 (header,"NAXIS3", nfiles);
+	    hputi4 (header,"NAXIS3", nfiles*ntimes);
 	    }
 	else {
 	    hputi4 (header,"NAXIS", 4);
-	    hputi4 (header,"NAXIS4", nfiles);
+	    hputi4 (header,"NAXIS4", nfiles*ntimes);
 	    }
 	nbhead = strlen (header);
 	nblocks = nbhead / FITSBLOCK;
@@ -280,23 +300,30 @@ char	*filename;	/* FITS or IRAF file filename */
 	    return (1);
 	    }
 	}
-    if (fwrite (image, (size_t) 1, (size_t) nbimage, fstack)) {
-	if (verbose) {
-	    if (iraffile)
-		printf ("IRAF file %s %d bytes added to %s[%d]\n",
-			filename, nbimage, newname, ifile+1);
+    for (itime = 0; itime < ntimes; itime++) {
+	nout = (ifile * ntimes) + itime + 1;
+	if (fwrite (image, (size_t) 1, (size_t) nbimage, fstack)) {
+	    if (verbose) {
+		if (iraffile)
+		    printf ("IRAF %d bytes of file %s added to %s[%d]",
+			    nbimage, filename, newname, nout);
+		else
+		    printf ("FITS %d bytes of file %s added to %s[%d]",
+			    nbimage, filename, newname, nout);
+		}
+	    if (itime == 0 || itime == ntimes-1)
+		printf ("\n");
 	    else
-		printf ("FITS file %s %d bytes added to %s[%d]\n",
-			filename, nbimage, newname, ifile+1);
+		printf ("\r");
 	    }
-	}
-    else {
-	if (iraffile)
-	    printf ("IRAF file %s NOT added to %s[%d]\n",
-		    filename, newname, ifile+1);
-	else
-	    printf ("FITS file %s NOT added to %s[%d]\n",
-		    filename, newname, ifile+1);
+	else {
+	    if (iraffile)
+		printf ("IRAF file %s NOT added to %s[%d]\n",
+		        filename, newname, nout);
+	    else
+		printf ("FITS file %s NOT added to %s[%d]\n",
+		        filename, newname, nout);
+	    }
 	}
 
     if (ifile < 1) {
@@ -319,4 +346,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Nov 30 1998	Add version and help commands for consistency
  *
  * Oct 22 1999	Drop unused variables after lint
+ *
+ * Feb  7 2000	Add option to repeat files in stack
  */

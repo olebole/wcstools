@@ -1,5 +1,5 @@
 #!/bin/sh
-echo "WCSTools 2.6.12 Programs"
+echo "WCSTools 2.7.0 Programs"
 
 echo "addpix:    Add a constant value(s) to specified pixel(s)"
 echo "conpix:    Operate on all of the pixels of an image"
@@ -24,9 +24,9 @@ echo "imwcs:     Match FITS or IRAF image stars to catalog stars and fit a WCS"
 echo "keyhead:   Change keyword names in headers of FITS or IRAF images"
 echo "newfits:   Create blank FITS files (dataless by default with BITPIX=0)"
 echo "remap      Rebin an image from its current WCS to a new one"
+echo "scat:      Search a source catalog given a region on the sky"
 echo "sethead:   Set header keyword values in FITS or IRAF images"
 echo "setpix:    Set specified pixel(s) to specified value(s)"
-echo "scat:      Search a source catalog given a region on the sky"
 echo "sky2xy:    Print image pixel coordinates for given sky coordinates"
 echo "skycoor:   Convert between J2000, B1950, galactic, and ecliptic coordinates"
 echo "sumpix     Total pixel values in row, column, or specified area"

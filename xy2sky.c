@@ -1,5 +1,5 @@
 /* File xy2sky.c
- * October 22, 1999
+ * January 28, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -130,7 +130,7 @@ char **av;
     	    break;
 
     	case 'z':	/* Use AIPS classic WCS */
-    	    setdefwcs(1);
+    	    setdefwcs (WCS_ALT);
     	    break;
 
     	default:
@@ -353,4 +353,6 @@ usage ()
  * Jun  2 1999	Make tab output completely-defined catalog
  * Oct 15 1999	Free wcs using wcsfree()
  * Oct 22 1999	Link includes to libwcs
+ *
+ * Jan 28 2000	Call setdefwcs() with WCS_ALT instead of 1
  */

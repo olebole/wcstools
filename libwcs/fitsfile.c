@@ -1,6 +1,6 @@
 /*** File libwcs/fitsfile.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** November 24, 1999
+ *** February 23, 2000
 
  * Module:      fitsfile.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -961,7 +961,8 @@ char	*image;		/* FITS image pixels */
 }
 
 
-/*FITSCIMAGE -- Write FITS header and copy FITS image */
+/*FITSCIMAGE -- Write FITS header and copy FITS image
+		Return number of bytes in output image, 0 if failure */
 
 int
 fitscimage (filename, header, filename0)
@@ -1030,7 +1031,7 @@ char	*filename0;	/* Name of input FITS image file */
 	fdin = fitsropen (filename0);
 	if (fdin < 0) {
 	    fprintf (stderr, "FITSCIMAGE:  cannot read file %s\n", filename0);
-	    return (NULL);
+	    return (0);
 	    }
 
 	/* Skip over FITS header */
@@ -1038,7 +1039,7 @@ char	*filename0;	/* Name of input FITS image file */
 	    (void)close (fdin);
 	    fprintf (stderr, "FITSCIMAGE:  cannot skip header of file %s\n",
 		     filename0);
-	    return (NULL);
+	    return (0);
 	    }
 	}
 #ifndef VMS
@@ -1271,4 +1272,6 @@ char    *filename;      /* Name of file for which to find size */
  * Oct 20 1999	Change | in if statements to ||
  * Oct 25 1999	Change most malloc() calls to calloc()
  * Nov 24 1999	Add fitscimage()
+ *
+ * Feb 23 2000	Fix problem with some error returns in fitscimage()
  */
