@@ -1,5 +1,5 @@
 /* File imhfile.c
- * June 2, 2000
+ * June 12, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
@@ -603,6 +603,12 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 	free (pixname);
 	pixname = newpixname;
 	}
+    if (strchr (pixname, '/') == NULL && strchr (pixname, '$') == NULL) {
+	newpixname = same_path (pixname, hdrname);
+	free (pixname);
+	pixname = newpixname;
+	}
+	
     if ((bang = strchr (pixname, '!')) != NULL )
 	nl = hputm (fitsheader,"PIXFIL",bang+1);
     else
@@ -955,6 +961,24 @@ char	*hdrname;	/* IRAF image header file pathname */
 	/* add name */
 	newpixname[len] = '\0';
 	(void)strncat (newpixname, &pixname[4], SZ_IM2PIXFILE);
+	}
+
+    /* Bare pixel file with no path is assumed to be same as HDR$filename */
+    else if (strchr (pixname, '/') == NULL && strchr (pixname, '$') == NULL) {
+	(void)strncpy (newpixname, hdrname, SZ_IM2PIXFILE);
+
+	/* find the end of the pathname */
+	len = strlen (newpixname);
+#ifndef VMS
+	while( (len > 0) && (newpixname[len-1] != '/') )
+#else
+	while( (len > 0) && (newpixname[len-1] != ']') && (newpixname[len-1] != ':') )
+#endif
+	    len--;
+
+	/* add name */
+	newpixname[len] = '\0';
+	(void)strncat (newpixname, pixname, SZ_IM2PIXFILE);
 	}
 
     /* Pixel file has same name as header file, but with .pix extension */
@@ -1792,4 +1816,5 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * Apr 28 2000	Dimension pixname in irafwimage()
  * May  1 2000	Fix code for updating pixel file name with HDR$ in fits2iraf()
  * Jun  2 2000	Drop unused variables in fits2iraf() after lint
+ * Jun 12 2000	If pixel filename has no / or $, use same path as header file
  */

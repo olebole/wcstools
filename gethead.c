@@ -1,5 +1,5 @@
 /* File gethead.c
- * June 8, 2000
+ * June 12, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -138,6 +138,7 @@ char **av;
 		    break;
 	
 		case 'p': /* List file pathnames, not just file names */
+		    listall++;
 		    listpath++;
 		    break;
 	
@@ -780,4 +781,5 @@ char *string;
  * Mar 20 2000	Drop leading # from numbers
  * Mar 21 2000	Add -b option to replace blanks with underscores
  * Jun  8 2000	If no keywords or files specified, say so
+ * Jun 12 2000	If -p is set, print all file names (-a)
  */

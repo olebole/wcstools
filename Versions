@@ -1,3 +1,9 @@
+Version 2.8.2 (June 13, 2000)
+scat, imcat, immatch, imwcs: Fix bug which reversed Tycho-2 B and V magnitudes
+gethead: If -p, always print filename, even for one file
+ty2read: Fix bug which reversed B and V magnitudes (spectral type was OK)
+imhfile.c: If pixel file has no directory, always use same as header file
+
 Version 2.8.1 (June 9, 2000)
 scat, imcat, immatch, imwcs: Fix reading of USNO-A2.0 on PCs and Alphas
 gethead, sethead, delhead, cphead, keyhead: Improve error reporting

@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** June 2, 2000
+ *** June 13, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -858,12 +858,14 @@ int istar;	/* Star sequence number in Tycho 2 catalog region file */
     st->rapm = (atof (line+41) / 3600000.0) / cosdeg (st->dec);
     st->decpm = atof (line+49) / 3600000.0;
 
-    /* Set B and V magnitudes */
-    st->xmag[0] = atof (line+110);
-    st->xmag[1] = atof (line+123);
+    /* Set B magnitude */
+    st->xmag[1] = atof (line+110);
+
+    /* Set V magnitude */
+    st->xmag[0] = atof (line+123);
 
     /* Set main sequence spectral type */
-    bv2sp (NULL, st->xmag[0], st->xmag[1], st->isp);
+    bv2sp (NULL, st->xmag[1], st->xmag[0], st->isp);
 
     return (0);
 }
@@ -897,5 +899,6 @@ char	*filename;	/* Name of file for which to find size */
 }
 
 
-/* June 2 2000	New program, based on actread.c and gscread.c
+/* Jun  2 2000	New program, based on actread.c and gscread.c
+ * Jun 13 2000	Correctly order magnitudes: 0=V, 1=B
  */
