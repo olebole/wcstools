@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** August 6, 1996
+ *** September 17, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -172,8 +172,7 @@ int	nlog;		/* 1 for diagnostics */
 		num0 = 0;
 
 	/* Compute mean position and magnitude for object */
-	    if (num != num0 && itable > 0) {
-		if (npos <= 0) continue;
+	    if (num != num0 && itable > 0 && npos > 0) {
 		ra = rasum / perrsum;
 		dec = decsum / perrsum;
 		mag = msum / merrsum;
@@ -233,8 +232,8 @@ int	nlog;		/* 1 for diagnostics */
 /* Log operation */
 
 	    if (nlog > 0 && itable%nlog == 0)
-		printf ("%4d / %4d: %6d / %6d sources from %s\r",
-			 ireg,nreg,jstar,itable,inpath);
+		printf ("%4d / %4d: %5d / %5d  / %5d sources, region %4d.%04d\n",
+			 ireg,nreg,jstar,itable,ntable,rlist[ireg],num0);
 
 /* End of region */
 	    }
@@ -243,8 +242,8 @@ int	nlog;		/* 1 for diagnostics */
 	(void) fclose (ift);
 	itot = itot + itable;
 	if (nlog > 0)
-	    printf ("%4d / %4d: %6d / %6d sources from %s\n",
-		     ireg+1,nreg,jstar,itable,inpath);
+	    printf ("%4d / %4d: %5d / %5d  / %5d sources from region %4d\n",
+		     ireg+1,nreg,jstar,itable,ntable,rlist[ireg]);
 	}
 
 /* close output file and summarize transfer */
@@ -610,4 +609,5 @@ char *path;	/* Pathname of GSC region FITS file */
  * Jun 10 1996	Remove unused variables after using lint
  * Jul  1 1996	Fix GSC pathname
  * Aug  6 1996	Minor changes after lint
+ * Sep 17 1996	Fix bug causing incomplete region access; improve logging
  */

@@ -1,5 +1,5 @@
 /* File imrot.c
- * July 16, 1996
+ * August 27, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -24,7 +24,6 @@ static int rotate = 0;	/* rotation in degrees, degrees counter-clockwise */
 static int bitpix = 0;	/* number of bits per pixel (FITS code) */
 static int fitsout = 0;	/* Output FITS file from IRAF input if 1 */
 static int overwrite = 0;	/* allow overwriting of input image file */
-static char *RevMsg = "IMROT 1.1, 8 August 1996, Doug Mink, SAO";
 
 main (ac, av)
 int ac;
@@ -32,8 +31,6 @@ char **av;
 {
     char *progname = av[0];
     char *str;
-    double rot, scale, gsclim, frac;
-    int tolerance;
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
@@ -64,6 +61,7 @@ char **av;
     		usage (progname);
     	    bitpix = (int) atof (*++av);
     	    ac--;
+    	    break;
 
     	case 'v':	/* more verbosity */
     	    verbose++;
@@ -97,7 +95,6 @@ static void
 usage (progname)
 char *progname;
 {
-    fprintf (stderr,"%s\n",RevMsg);
     fprintf (stderr,"Rotate and/or Reflect FITS and IRAF image files\n");
     fprintf(stderr,"%s: usage: [-vm [-r rot] file.fts ...\n", progname);
     fprintf(stderr,"  -f: write FITS image from IRAF input\n");
@@ -120,7 +117,6 @@ char *name;
     int iraffile;		/* 1 if IRAF image */
     int *irafheader;		/* IRAF image header */
     char newname[64];		/* Name for revised image */
-    char namext[8];		/* File name extension */
     char *ext;
     char *fname;
     int lext, lroot;
@@ -179,9 +175,9 @@ char *name;
 		free (irafheader);
 		return;
 		}
-	    image = irafrimage (name, header);
+	    image = irafrimage (header);
 	    if (image == NULL) {
-		hgetc (header,"PIXFILE",&pixname);
+		hgets (header,"PIXFILE", 64, &pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -212,7 +208,6 @@ char *name;
 	    }
 	}
     if (verbose) {
-	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr,"Rotate and/or reflect ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s", name);
@@ -240,7 +235,7 @@ char *name;
     if (bitpix != 0)
 	hputi4 (header, "BITPIX", bitpix);
     if (iraffile && !fitsout) {
-	if (irafwimage (newname, irafheader, header, image) > 0 && verbose)
+	if (irafwimage (newname, lhead, irafheader, header, image) > 0 && verbose)
 	    printf ("%s: written successfully.\n", newname);
 	}
     else {
@@ -262,4 +257,6 @@ char *name;
  * Jun 14 1996	Use single image buffer
  * Jul  3 1996	Allow optional overwriting of input image
  * Jul 16 1996	Update header reading and allocation
+ * Aug 26 1996	Change HGETC call to HGETS; pass LHEAD in IRAFWIMAGE
+ * Aug 27 1996	Remove unused variables after lint
  */

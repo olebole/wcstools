@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * August 7, 1996
+ * September 4, 1996
  * By Doug Mink, based on UIowa code
  */
 
@@ -10,13 +10,10 @@
 
 #include "fitshead.h"
 #include "wcs.h"
+#include "lwcs.h"
 
-
-#define MINSTARS	4	/* minimum stars from reference and image */
-#define MAXSTARS	25	/* max star pairs we need to try using */
-#define MAXREF		100	/* max reference stars to use in image region */
 #define GSC		1	/* refcat value for HST Guide Star Catalog */
-#define UJ		2	/* refcat value for USNO UJ Star Catalog */
+#define UJC		2	/* refcat value for USNO UJ Star Catalog */
 
 extern int FindStars ();
 extern int TriMatch ();
@@ -43,20 +40,21 @@ static void SetFITSWCS ();
  */
 
 /* These parameters can be set on the command line */
-static double tolerance = 20.0;	/* +/- this many pixels is a hit */
-static int refcat = 1;		/* reference catalog switch */
-static char refcatname[32]="GSC"; /* reference catalog name */
-static double reflim = 0.0;	/* reference catalog limiting magnitude */
-static double rot0 = 0.0;	/* Initial image rotation */
-static double secpix0 = 0.0;	/* Set image scale--override image header */
-static int fk4 = 0;	/* Command line center is FK4 (default FK5) */
-static int classd = -1;	/* Guide Star Catalog object classes */
-static int uplate = 0;	/* UJ Catalog plate number to use */
-static double frac = 1.0;	/* Additional catalog or image stars to use */
-static double ra0 = -99.0;	/* Initial center right ascension in degrees */
-static double dec0 = -99.0;	/* Initial center declination in degrees */
-static char wcstype[8]="TAN";	/* WCS projection name */
-static int nfit0 = 0;		/* Number of parameters to fit (0=set by matches */
+static double tolerance = PIXDIFF;	/* +/- this many pixels is a hit */
+static double reflim = MAGLIM;		/* reference catalog magnitude limit */
+static double secpix0 = PSCALE;		/* Set image scale--override header */
+static int refcat = GSC;		/* reference catalog switch */
+static char refcatname[32]="GSC";	/* reference catalog name */
+static double rot0 = 0.0;		/* Initial image rotation */
+static int fk4 = 0;			/* Command line center is FK4 */
+static int classd = -1;			/* Guide Star Catalog object classes */
+static int uplate = 0;			/* UJ Catalog plate number to use */
+static double frac = 1.0;		/* Additional catalog/image stars */
+static double ra0 = -99.0;		/* Initial center RA in degrees */
+static double dec0 = -99.0;		/* Initial center Dec in degrees */
+static char wcstype[8]="TAN";		/* WCS projection name */
+static int nfit0 = 0;			/* Number of parameters to fit
+					   (0=1 per match */
 
 
 /* set the C* WCS fields in the input image header based on the given limiting
@@ -137,15 +135,15 @@ int	verbose;
     gc = (int *) malloc (nbytes);
 
     /* Find the nearby reference stars, in ra/dec */
-    if (refcat == UJ)
-	ng =ujcread (ra1,ra2,dec1,dec2,mag1,mag2,uplate,ngmax,gnum,gra,gdec,
-		     gm,gc,verbose);
+    if (refcat == UJC)
+	ng = ujcread (ra1,ra2,dec1,dec2,mag1,mag2,uplate,ngmax,
+		      gnum,gra,gdec,gm,gc,verbose);
     else if (refcat == GSC)
-	ng = gscread (ra1,ra2,dec1,dec2,mag1,mag2,classd,ngmax,gnum,gra,gdec,
-		      gm,gc,verbose*100);
+	ng = gscread (ra1,ra2,dec1,dec2,mag1,mag2,classd,ngmax,
+		      gnum,gra,gdec,gm,gc,verbose*100);
     else if (refcatname[0] > 0)
-	ng = tabread (refcatname,ra1,ra2,dec1,dec2,mag1,mag2,ngmax,gnum,gra,gdec,gm,
-		      gc,verbose);
+	ng = tabread (refcatname,ra1,ra2,dec1,dec2,mag1,mag2,ngmax,
+		      gnum,gra,gdec,gm,gc,verbose);
     else {
 	fprintf (stderr,"No reference star catalog specified\n");
 	ret = 0;
@@ -211,11 +209,12 @@ int	verbose;
 	    }
 	}
 
+    printf ("%s:\n",refcatname);
     for (ig = 0; ig < ng; ig++) {
 	ra2str (rstr, gra[ig], 3);
 	dec2str (dstr, gdec[ig], 2);
-	printf ("%s %9.4f %s %s %5.2f %6.1f %6.1f\n",
-		refcatname,gnum[ig],rstr,dstr,gm[ig],gx[ig],gy[ig]);
+	printf (" %9.4f %s %s %5.2f %6.1f %6.1f\n",
+		gnum[ig],rstr,dstr,gm[ig],gx[ig],gy[ig]);
 	}
 
     /* Discover star-like things in the image, in pixels */
@@ -291,6 +290,7 @@ int	verbose;
 	int offscl, nmatch=0;
 	/* wcs = wcsinit (header); */
 	tol2 = tolerance * tolerance;
+	printf ("Matches in %s:\n", refcatname);
 	for (ig = 0; ig < ng; ig++) {
 	    wcs2pix (wcs, gra[ig], gdec[ig], &x, &y, &offscl);
 	    if (!offscl) {
@@ -309,8 +309,8 @@ int	verbose;
 			sepsum = sepsum + sep;
 			ra2str (rstr, gra[ig], 3);
 			dec2str (dstr, gdec[ig], 2);
-			printf ("%s %9.4f %s %s %5.2f",
-				refcatname, gnum[ig], rstr, dstr, gm[ig]);
+			printf ("%9.4f %s %s %5.2f",
+			    gnum[ig], rstr, dstr, gm[ig]);
 			printf ("%6.1f %6.1f %6d %5.2f %5.2f\n",
 			    sx[is], sy[is], sp[is], xysep, sep);
 			}
@@ -370,7 +370,7 @@ int	*hp;		/* Image height in pixels (returned) */
 int	eqref;		/* Equinox of reference catalog */
 {
     int nax;
-    int equinox;
+    int equinox, eqcoor;
     double epoch;
     struct WorldCoor *wcs;
 
@@ -432,7 +432,7 @@ int	eqref;		/* Equinox of reference catalog */
 		epoch = (double) equinox;
 	    }
 
-	/* If not J2000, convert */
+	/* If coordinate equinox not reference catalog equinox, convert */
 	if (equinox != eqref) {
 	    if (eqref == 2000)
 		fk425e (cra, cdec, epoch);
@@ -443,10 +443,12 @@ int	eqref;		/* Equinox of reference catalog */
 
     /* Set plate scale from command line, if it is there */
     if (secpix0 > 0.0) {
+	*dra = (secpix0 * *wp * 0.5 / 3600.0) / cos (degrad(*cdec));
+	*ddec = secpix0 * *hp * 0.5 / 3600.0;
 	*secpix = secpix0;
-	*dra = (*secpix * *wp * 0.5 / 3600.0) / cos (degrad(*cdec));
-	*ddec = *secpix * *hp * 0.5 / 3600.0;
 	hputnr8 (header,"SECPIX",5,*secpix);
+	wcs->yinc = secpix0 / 3600.0;
+	wcs->xinc = -wcs->yinc;
 	}
 
     /* Otherwise set plate scale from FITS header */
@@ -479,23 +481,42 @@ int	eqref;		/* Equinox of reference catalog */
     /* Reset center for reference star search */
 	*cra = ra0;
 	*cdec = dec0;
+
+	/* If coordinate equinox not reference catalog equinox, convert */
 	if (fk4)
-	    fk425e (cra, cdec, wcs->epoch);
-	wcsshift (wcs, *cra, *cdec, "FK5");
+	    eqcoor = 1950;
+	else
+	    eqcoor = 2000;
+	if (eqcoor != eqref) {
+	    if (eqref == 2000)
+		fk425e (cra, cdec, epoch);
+	    else
+		fk524e (cra, cdec, epoch);
+	    }
+	if (fk4)
+	    wcsshift (wcs, *cra, *cdec, "FK4");
+	else
+	    wcsshift (wcs, *cra, *cdec, "FK5");
 
 	ra2str (rstr, ra0, 3);
         dec2str (dstr, dec0, 2);
 	hputs (header,"RA",rstr);
 	hputs (header,"DEC",dstr);
-	hputi4 (header,"EQUINOX",eqref);
+	hputi4 (header,"EQUINOX",eqcoor);
 
 	if (verbose) {
-	    if (fk4) {
-        	printf ("Center reset to RA=%s DEC=%s (FK4)\n", rstr, dstr);
+	    if (eqcoor != eqref) {
+		if (fk4)
+		    printf ("Center reset to RA=%s DEC=%s (FK4)\n", rstr, dstr);
+		else
+		    printf ("Center reset to RA=%s DEC=%s (FK5)\n", rstr, dstr);
 		ra2str (rstr, *cra, 3);
         	dec2str (dstr, *cdec, 2);
 		}
-            printf ("Center reset to RA=%s DEC=%s (FK5)\n", rstr, dstr);
+	    if (eqref == 2000)
+		printf ("Center reset to RA=%s DEC=%s (FK5)\n", rstr, dstr);
+	    else
+		printf ("Center reset to RA=%s DEC=%s (FK4)\n", rstr, dstr);
 	    }
 	}
 
@@ -522,7 +543,7 @@ char	*header;	/* Image FITS header */
 struct WorldCoor *wcs;	/* WCS structure */
 
 {
-    double eq, ep, ra, dec;
+    double ep, ra, dec;
     char wcstemp[16];
 
     /* Rename old center coordinates */
@@ -542,6 +563,7 @@ struct WorldCoor *wcs;	/* WCS structure */
     hputra (header,"RA",wcs->xref);
     hputdec (header,"DEC",wcs->yref);
     hputr8 (header, "EQUINOX", wcs->equinox);
+    hputs (header, "RADECSYS", wcs->radecsys);
 
     strcpy (wcstemp, "RA---");
     strcat (wcstemp, wcstype);
@@ -568,9 +590,9 @@ double tol;
 void setrefcat (cat)
 char *cat;
 {  if (cat[0]=='G' || cat[0]=='g' || strcmp(cat,"gsc")==0 || strcmp(cat,"GSC")==0)
-	refcat = 1;
+	refcat = GSC;
    else if (cat[0]=='U' || cat[0]=='u' || strcmp(cat,"ujc")==0 || strcmp(cat,"UJC")==0)
-	refcat = 2;
+	refcat = UJC;
     else
 	refcat = 0;
     strcpy (refcatname, cat); return; }
@@ -643,4 +665,11 @@ int nfit;
  * Aug  5 1996	Set number of parameters to fit here
  * Aug  7 1996	Save specified number of decimal places in header parameters
  * Aug  7 1996	Rename old center parameters
+ * Aug 26 1996	Decrease default pixel tolerance from 20 to 10
+ * Aug 26 1996	Drop unused variable EQ in SETFITSWCS
+ * Aug 28 1996	Improve output format for matched stars
+ * Sep  1 1996	Set some defaults in lwcs.h
+ * Sep  3 1996	Fix bug to set plate scale from command line
+ * Sep  4 1996	Print reference catalog name on separate line from entries
+ * Sep 17 1996	Clean up code
  */

@@ -1,5 +1,5 @@
 /* File xy2sky.c
- * April 24, 1996
+ * August 28, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -18,7 +18,6 @@ extern struct WorldCoor *GetWCSFITS ();	/* Read WCS from FITS or IRAF header */
 extern int pix2wcst();
 
 static int verbose = 0;		/* verbose/debugging flag */
-static char *RevMsg = "XY2SKY 1.1, 8 August 1996, Doug Mink, SAO";
 static char coorsys[16];
 
 main (ac, av)
@@ -32,7 +31,7 @@ char **av;
     double x, y;
     FILE *fd;
     char *ln, *listname;
-    char line[80];
+    char line[200];
     char *fn;
     struct WorldCoor *wcs;
     char xstr[32], ystr[32];
@@ -72,14 +71,13 @@ char **av;
     if (*coorsys)
 	wcsoutinit (wcs, coorsys);
     while (ac-- > 1) {
-	char c;
 	listname = *av;
 	if (listname[0] == '@') {
 	    ln = listname;
 	    while (*ln++)
 		*(ln-1) = *ln;
 	    if (fd = fopen (listname, "r")) {
-		while (fgets (line, 80, fd)) {
+		while (fgets (line, 200, fd)) {
 		    sscanf (line,"%s %s", xstr, ystr);
 		    x = atof (xstr);
 		    y = atof (ystr);
@@ -110,9 +108,7 @@ static void
 usage (progname)
 char *progname;
 {
-    fprintf (stderr,"%s\n",RevMsg);
     fprintf (stderr,"Compute RA Dec from X Y using WCS in FITS and IRAF image files\n");
-    fprintf (stderr, "By D. Mink, SAO\n");
     fprintf(stderr,"%s: usage: [-vbjg] file.fts x1 y1 ... xn yn\n", progname);
     fprintf(stderr,"%s: usage: [-vbjg] file.fts @listfile\n", progname);
     fprintf(stderr,"  -b: B1950 (FK4) output\n");
@@ -125,4 +121,5 @@ char *progname;
  * Feb 23 1996	New program
  * Apr 24 1996	Version 1.1: Add B1950, J2000, or galactic coordinate output options
  * Jun 10 1996	Change name of subroutine which reads WCS
+ * Aug 28 1996	Remove unused variables after lint
  */

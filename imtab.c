@@ -1,5 +1,5 @@
 /* File imtab.c
- * July 19, 1996
+ * August 27, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -13,26 +13,24 @@
 #include <math.h>
 #include "libwcs/fitshead.h"
 #include "libwcs/wcs.h"
-
-#define MAXHEADLEN 14400
 #define MAXREF 100
 
 static void usage();
 static int verbose = 0;		/* verbose/debugging flag */
-static char *RevMsg = "IMTAB 1.0, 8 August 1996, Doug Mink, SAO";
 
-extern int gscread();
-static void ListTab ();
-extern void RASortStars ();
-extern void MagSortStars ();
+extern int tabread();
+static void ListTab();
+static int tabint();
+extern void RASortStars();
+extern void MagSortStars();
+extern void fk524e();
+extern void fk425e();
 
-static double magoff = 0.0;
 static double maglim = 0.0;
 static int rasort = 0;
 static int printhead = 0;
 static char *tabcat;
 static int tabout = 0;
-static int plate = 0;
 static char coorsys[4];
 static double cra0 = 0.0;
 static double cdec0 = 0.0;
@@ -45,8 +43,6 @@ char **av;
     char *str;
     char *str1;
     int nstar = 0;
-    double starsig, bmin;
-    int maxrad;
 
     *coorsys = 0;
 
@@ -138,9 +134,8 @@ static void
 usage (progname)
 char *progname;
 {
-    fprintf (stderr,"%s\n",RevMsg);
     fprintf (stderr,"Find tab-table catalog stars in FITS or IRAF image files\n");
-    fprintf(stderr,"IMTAB: usage: [-v] [-m mag_off] [-n num] [-p plate] file.fts ...\n",
+    fprintf(stderr,"IMTAB: usage: [-v] [-m mag_off] [-n num] file.fts ...\n",
 	    progname);
     fprintf(stderr,"  -b: output B1950 (FK4) coordinates (optional center)\n");
     fprintf(stderr,"  -c: Use following tab table catalog \n");
@@ -184,7 +179,7 @@ int	nstars;		/* Number of brightest stars to list */
     struct WorldCoor *wcs;	/* World coordinate system structure */
     char rastr[16], decstr[16];	/* coordnate strings */
     double cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, mag1, mag2;
-    int offscale, nlog, lfn;
+    int offscale, nlog;
     char headline[160];
     char starfile[128];
     char idnum[16];
@@ -218,7 +213,6 @@ int	nstars;		/* Number of brightest stars to list */
 	}
 
     if (verbose && printhead)
-	printf ("%s\n",RevMsg);
 
     /* Read world coordinate system information from the image header */
     wcs = wcsinit (header);
@@ -236,7 +230,7 @@ int	nstars;		/* Number of brightest stars to list */
 	    wcsshift (wcs,cra,cdec,wcs->radecsys);
 	}
     if (strcmp (wcs->radecsys,"FK4") == 0)
-	fk425 (&cra, &cdec);
+	fk425e (&cra, &cdec, wcs->epoch);
     ra1 = cra - dra;
     ra2 = cra + dra;
     dec1 = cdec - ddec;
@@ -357,9 +351,7 @@ int	nstars;		/* Number of brightest stars to list */
 	printf ("%s\n", headline);
     if (rasort)
 
-    fprintf (fd, "PROGRAM	%s\n", RevMsg);
     if (tabout)
-	printf ("PROGRAM	%s\n", RevMsg);
 
     sprintf (headline,"ID     	RA      	DEC      	MAG   	X    	Y	Peak");
     fprintf (fd, "%s\n", headline);
@@ -417,7 +409,7 @@ int	nstars;		/* Number of brightest stars to list */
 }
 
 
-int
+static int
 tabint (number)
 
 double number;
@@ -431,4 +423,6 @@ double number;
 }
 
 /* Jul 19 1996	New program
+ * Aug 16 1996	Clean up code
+ * Aug 27 1996	Drop unused variables after lint
  */

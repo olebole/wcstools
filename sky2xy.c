@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * July 18, 1996
+ * August 27, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -18,7 +18,6 @@ static void usage();
 extern struct WorldCoor *GetWCSFITS ();	/* Read WCS from FITS or IRAF header */
 
 static int verbose = 0;		/* verbose/debugging flag */
-static char *RevMsg = "SKY2XY 1.1, 8 August 1996, Doug Mink, SAO";
 static char coorsys[16];
 
 main (ac, av)
@@ -27,8 +26,6 @@ char **av;
 {
     char *progname = av[0];
     char *str;
-    char wcstring[32];
-    char lstr = 32;
     double x, y, ra, dec;
     FILE *fd;
     char *ln, *listname;
@@ -75,7 +72,6 @@ char **av;
 	wcsoutinit (wcs, coorsys);
 
     while (ac-- > 1) {
-	char c;
 	listname = *av;
 	if (listname[0] == '@') {
 	    ln = listname;
@@ -125,7 +121,6 @@ static void
 usage (progname)
 char *progname;
 {
-    fprintf (stderr,"%s\n",RevMsg);
     fprintf (stderr,"Compute X Y from RA Dec using WCS in FITS and IRAF image files\n");
     fprintf(stderr,"%s: usage: [-vbjg] file.fts ra1 dec1 ... ran decn\n", progname);
     fprintf(stderr,"%s: usage: [-vbjg] file.fts @listfile\n", progname);
@@ -138,4 +133,5 @@ char *progname;
 /* Feb 23 1996	New program
  * Apr 24 1996	Version 1.1: Add B1950, J2000, or galactic coordinate input options
  * Jun 10 1996	Change name of WCS subroutine
+ * Aug 27 1996	Clean up code after lint
  */

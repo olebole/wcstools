@@ -1,6 +1,6 @@
 /*** File libwcs/fitsio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** August 13, 1996
+ *** September 4, 1996
 
  * Module:      fitsio.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -63,7 +63,7 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
     FILE *fd;
     char *header;	/* FITS image header (filled) */
     int extend;
-    int nbytes,naxis;
+    int nbytes,naxis, i;
     int ntry,nbr,irec,nrec, nbh;
     char fitsbuf[2884];
     char *headend;	/* Pointer to last line of header */
@@ -83,8 +83,8 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
     nbytes = FITSBLOCK;
     *nbhead = 0;
     headend = NULL;
-    nbh = FITSBLOCK * 20;
-    header = (char *) malloc ((unsigned int) nbh);
+    nbh = FITSBLOCK * 20 + 4;
+    header = (char *) calloc ((unsigned int) nbh, 1);
     headnext = header;
     nrec = 1;
 
@@ -93,6 +93,7 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
     while (irec < 100) {
 	nbytes = FITSBLOCK;
 	for (ntry = 0; ntry < 10; ntry++) {
+	    for (i = 0; i < 2884; i++) fitsbuf[i] = 0;
 	    nbr = fread (fitsbuf, 1, nbytes, fd);
 
 /* Short records are allowed only if they contain the last header line */
@@ -124,12 +125,13 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 	strncpy (headnext, fitsbuf, nbr);
 	*nbhead = *nbhead + nbr;
 	nrec = nrec + 1;
+	*(headnext+nbr) = 0;
 
 /* Check to see if this is the final record in this header */
 	headend = ksearch (fitsbuf,"END");
 	if (headend == NULL) {
 	    if (nrec * FITSBLOCK > nbh) {
-		nbh = (nrec + 4) * FITSBLOCK;
+		nbh = (nrec + 4) * FITSBLOCK + 4;
 		header = (char *) realloc (header,(unsigned int) nbh);
 		}
 	    headnext = headnext + FITSBLOCK;
@@ -281,6 +283,7 @@ int	*nbhead;	/* Number of characters before table starts */
     FILE *fd;
     int	lhead;		/* Maximum length in bytes of FITS header */
     char *header;	/* Header for FITS tables file to read */
+    int isxt;
 
 /* Read FITS header from input file */
     header = fitsrhead (inpath, &lhead, nbhead);
@@ -290,16 +293,15 @@ int	*nbhead;	/* Number of characters before table starts */
 	}
 
 /* Make sure this file is really a FITS table file */
-    hgets (header,"XTENSION",16,temp);
-    if (strncmp (temp, "TABLE", 5) != 0) {
-	free (temp);
+    temp[0] = 0;
+    (void) hgets (header,"XTENSION",16,temp);
+    if (strncmp (temp, "TABLE", 5)) {
 	fprintf (stderr, "FITSRTOPEN:  %s is not a FITS table file\n",inpath);
 	return (NULL);
 	}
 
 /* If it is a FITS file, get table information from the header */
     else {
-	free (temp);
 	if (fitsrthead (header, nk, kw, nrows, nchar)) {
 	    fprintf (stderr, "FITSRTOPEN: Cannot read FITS table from %s\n",inpath);
 	    return (NULL);
@@ -328,7 +330,7 @@ int	*nchar;		/* Number of characters in one table row (returned) */
     struct Keyword *rw;	/* Structure for desired entries */
     int *lpnam;		/* length of name for each field */
     int nfields;
-    int ifield,ik,ln;
+    int ifield,ik,ln, i;
     char *h0, *h1, *tf1, *tf2;
     char tname[12];
     char temp[16];
@@ -372,11 +374,13 @@ int	*nchar;		/* Number of characters in one table row (returned) */
     for (ifield = 0; ifield < nfields; ifield++) {
 
     /* First column of field */
+	for (i = 0; i < 12; i++) tname[i] = 0;
 	sprintf (tname, "TBCOL%d", ifield+1);
 	h1 = ksearch (h0,tname);
 	hgeti4 (h0,tname, &pw[ifield].kf);
 
     /* Length of field */
+	for (i = 0; i < 12; i++) tname[i] = 0;
 	sprintf (tname, "TFORM%d", ifield+1);;
 	hgets (h0,tname,16,tform);
 	tf1 = tform + 1;
@@ -386,6 +390,7 @@ int	*nchar;		/* Number of characters in one table row (returned) */
 	pw[ifield].kl = atoi (tf1);
 
     /* Name of field */
+	for (i = 0; i < 12; i++) tname[i] = 0;
 	sprintf (tname, "TTYPE%d", ifield+1);;
 	hgets (h0,tname,16,temp);
 	strcpy (pw[ifield].kname,temp);
@@ -608,16 +613,25 @@ char	*header;	/* FITS image header */
 char	*image;		/* FITS image pixels */
 
 {
-    FILE *fd;
+    int fd;
     int nbhead, nbimage, nblocks, bytepix;
     int bitpix, naxis, naxis1, naxis2, nbytes, nbw;
     char *endhead, *lasthead;
 
     /* Open the output file */
-    fd = fopen (filename, "w");
-    if (!fd) {
-	fprintf (stderr, "FITSWIMAGE:  cannot write file %s\n", filename);
-	return (0);
+    if (!access (filename, 0)) {
+	fd = open (filename, O_WRONLY);
+	if (fd < 3) {
+	    fprintf (stderr, "FITSWIMAGE:  file %s not writeable\n", filename);
+	    return (0);
+	    }
+	}
+    else {
+	fd = open (filename, O_RDWR+O_CREAT, 0666);
+	if (fd < 3) {
+	    fprintf (stderr, "FITSWIMAGE:  cannot create file %s\n", filename);
+	    return (0);
+	    }
 	}
 
     /* Write header to file */
@@ -633,11 +647,11 @@ char	*image;		/* FITS image pixels */
     while (endhead < lasthead)
 	*(endhead++) = ' ';
     
-    nbw = fwrite (header, 1, nbytes, fd);
+    nbw = write (fd, header, nbytes);
     if (nbw < nbhead) {
 	fprintf (stderr, "FITSWIMAGE:  wrote %d / %d bytes of header to file %s\n",
 		 nbw, nbytes, filename);
-	fclose (fd);
+	close (fd);
 	return (0);
 	}
 
@@ -659,8 +673,8 @@ char	*image;		/* FITS image pixels */
 	imswap (bitpix, image, nbytes);
 
     /* Write image to file */
-    nbw = fwrite (image, 1, nbytes, fd);
-    fclose (fd);
+    nbw = write (fd, image, nbytes);
+    close (fd);
 
     /* Byte-reverse image after writing, if necessary */
     if (imswapped ())
@@ -687,4 +701,6 @@ char	*image;		/* FITS image pixels */
  * Aug  6 1996  Fixed small defects after lint
  * Aug  6 1996  Drop unused NBHEAD argument from FITSRTHEAD
  * Aug 13 1996	If filename is stdin, read from standard input instead of file
+ * Aug 30 1996	Use write for output, not fwrite
+ * Sep  4 1996	Fix mode when file is created
  */

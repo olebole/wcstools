@@ -3,8 +3,16 @@ WCS Programs
 delwcs.c
   Delete the WCS keywords from an image. If both EPOCH and EQUINOX are
   present, EQUINOX is also deleted. 
+edhead.c
+  Edit the header of a FITS file or the user parameters of an IRAF image file
+  using a the text editor specified by the EDITOR environment variable.
+gethead.c
+  Return values for keyword(s) specified after filename.
 i2f.c
   Read two-dimensional IRAF image file and write FITS image file
+imcat.c
+  List catalog sources which should be found in the area of the sky
+  covered by a specific image.
 imgsc.c
   List Guide Star Catalog sources which should be found in the area of
   the sky covered by a specific image using its WCS.
@@ -20,10 +28,13 @@ imujc.c
   the sky covered by a specific image using its WCS.
 imsize.c
   Print center and size of image using WCS keywords in header
+imtab.c
+  List sources from a tab-table catalog which should be found in the area of
+  the sky covered by a specific image using its WCS.
 imwcs.c
   Automaticaly find stars in a FITS or IRAF image, match them to HST Guide
-  or UJC Stars, compute the relation between sky coordinates and image coordinates,
-  and write in in the image header. [after U of Iowa SETWCS]
+  or UJC Stars, compute the relation between sky coordinates and image
+  coordinates, and write in in the image header. [after U of Iowa SETWCS]
 xy2sky.c
   Print sky coordinates for given image pixel coordinates on the command line
   or in a list file.

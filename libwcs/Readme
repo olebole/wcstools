@@ -38,18 +38,15 @@ matchstar.c
   StarMatch() takes a list of reference star positions and a list
   of object coordinates from an image and finds the image pixels
   which correspond to each of the reference stars.  It then uses these
-  matches to get an image center, plate scale, and rotation.  It uses
-  the sla_lib FITXY subroutine to fit the coordinate pairs.
+  matches to get an image center, plate scale, and rotation.  The actual
+  fit is based on the amoeba subroutine in Numerical Recipes, and all
+  necessary subroutines are included.
 platepos.c
   platepos() uses the WCS structure to compute sky coordinates given
   image pixel X and Y for images with Digitized Sky Survey plate solutions
   in their headers.  platepix() uses the WCS structure to compute image
   pixel X and Y given sky coordinates for DSS images.  Algorithms from
   StSCI CASB.
-pressfit.c
-  call_amoeba() fits matched sky and image coordinates to a plane tangent
-  world coordinate system.  It is based on the amoeba subroutine in Numerical
-  Recipes, and all necessary subroutines are included.
 sortstars.c
   Subroutines to sort lists of stars by right ascension, magnitude, or flux
 tabread.c
@@ -76,3 +73,6 @@ fitshead.h
   table data structure.
 wcs.h
   Declaration of WCS data structure and useful conversions.
+lwcs.h
+  Constants used by star-finding and WCS-setting subroutines
+

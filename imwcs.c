@@ -1,5 +1,5 @@
 /* File imwcs.c
- * July 22, 1996
+ * September 17, 1996
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -17,14 +17,11 @@
 
 static void usage();
 static void FitWCS ();
-static void CheckEquinox ();
 static int PrintWCS ();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int writeheader = 0;	/* write header fields; else read-only */
 static int overwrite = 0;	/* allow overwriting of input image file */
-static int delete = 0;		/* delete the WCD header fields */
-static char *RevMsg = "IMWCS 1.0, 8 August 1996, Doug Mink, SAO";
 static int rot = 0;
 static int mirror = 0;
 static int bitpix = 0;
@@ -32,6 +29,7 @@ static int fitsout = 0; /* Output FITS file from IRAF input if 1 */
 
 extern int RotFITS ();
 extern int SetWCSFITS ();
+extern void DelWCSFITS();
 extern void settolerance ();
 extern void setreflim ();
 extern void setrot ();
@@ -44,13 +42,15 @@ extern void setmaxr ();
 extern void setstarsig ();
 extern void setclass();
 extern void setplate();
+extern void setrefcat();
+extern void setbmin();
+extern void setfrac();
 extern void setwcstype();
 
 main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
     double bmin;
     char rastr[16];
@@ -63,7 +63,7 @@ char **av;
     	switch (c) {
     	case 'a':	/* Initial rotation angle in degrees */
     	    if (ac < 2)
-    		usage (progname);
+    		usage();
     	    setrot (atof (*++av));
     	    ac--;
     	    break;
@@ -71,7 +71,7 @@ char **av;
     	case 'b':	/* initial coordinates on command line in B1950 */
 	    setfk4 ();
     	    if (ac < 3)
-    		usage (progname);
+    		usage();
 	    strcpy (rastr, *++av);
 	    ac--;
 	    strcpy (decstr, *++av);
@@ -81,21 +81,21 @@ char **av;
 
 	case 'c':       /* Set reference catalog */
 	    if (ac < 2)
-		usage (progname);
+		usage();
 	    setrefcat (*++av);
 	    ac--;
 	    break;
 
 	case 'e':	/* Set WCS projection
 	    if (ac < 2)
-		usage (progname);
+		usage();
 	    setwcsproj (*++av);
 	    ac--;
-	    break;
+	    break; */
 	    
     	case 'j':	/* center coordinates on command line in J2000 */
     	    if (ac < 3)
-    		usage (progname);
+    		usage();
 	    strcpy (rastr, *++av);
 	    ac--;
 	    strcpy (decstr, *++av);
@@ -109,14 +109,14 @@ char **av;
 
 	case 'g':	/* Guide Star object class */
     	    if (ac < 2)
-    		usage (progname);
+    		usage();
     	    setclass ((int) atof (*++av));
     	    ac--;
     	    break;
 
 	case 'i':       /* Image star minimum peak value */
 	    if (ac < 2)
-		usage (progname);
+		usage();
 	    bmin = atof (*++av);
 	    if (bmin < 0)
 		setstarsig (-bmin);
@@ -130,13 +130,13 @@ char **av;
     	    break;
     	case 'm':	/* Limiting reference star magnitude */
     	    if (ac < 2)
-    		usage (progname);
+    		usage();
     	    setreflim (atof (*++av));
     	    ac--;
     	    break;
     	case 'n':	/* Number of parameters to fit */
     	    if (ac < 2)
-    		usage (progname);
+    		usage();
     	    setnfit ((int) atof (*++av));
     	    ac--;
     	    break;
@@ -145,31 +145,31 @@ char **av;
     	    break;
     	case 'p':	/* Initial plate scale in arcseconds per pixel */
     	    if (ac < 2)
-    		usage (progname);
+    		usage();
     	    setsecpix (atof (*++av));
     	    ac--;
     	    break;
     	case 'r':	/* Angle in degrees to rotate before fitting */
     	    if (ac < 2)
-    		usage (progname);
+    		usage();
     	    rot = (int) atof (*++av);
     	    ac--;
     	    break;
     	case 's':   /* this fraction more image stars than GSC or vice versa */
     	    if (ac < 2)
-    		usage (progname);
+    		usage();
     	    setfrac (atof (*++av));
     	    ac--;
     	    break;
     	case 't':	/* +/- this many pixels is a hit */
     	    if (ac < 2)
-    		usage (progname);
+    		usage();
     	    settolerance (atof (*++av));
     	    ac--;
     	    break;
 	case 'u':	/* UJ Catalog plate number */
     	    if (ac < 2)
-    		usage (progname);
+    		usage();
     	    setplate ((int) atof (*++av));
     	    ac--;
     	    break;
@@ -180,18 +180,18 @@ char **av;
     	    writeheader++;
     	    break;
     	default:
-    	    usage(progname);
+    	    usage();
     	    break;
     	}
     }
 
     /* now there are ac remaining file names starting at av[0] */
     if (ac == 0)
-	usage (progname);
+	usage();
 
     if (!writeheader && !verbose) {
-	fprintf (stderr, "%s: need at least one of -wv.\n", progname);
-	usage(progname);
+	fprintf (stderr, "IMWCS: Must have either w or v argument.\n");
+	usage();
 	}
 
     while (ac-- > 0) {
@@ -207,11 +207,9 @@ char **av;
 }
 
 static void
-usage (progname)
-char *progname;
+usage ()
 {
     fprintf (stderr,"\n");
-    fprintf (stderr,"%s\n",RevMsg);
     fprintf (stderr,"Set WCS in FITS and IRAF image files (after UIowa SETWCS)\n");
     fprintf(stderr,"Usage: [-vowdfl] [-m mag] [-n frac] [-s mode] [-g class] [-i peak] [-c catalog]\n");
     fprintf(stderr,"       [-p scale] [-b ra dec] [-j ra dec] [-r deg] [-t tol] FITS or IRAF file(s)\n");
@@ -248,7 +246,6 @@ char *name;
     char *image;		/* Image */
     char *header;		/* FITS header */
     int *irafheader;		/* IRAF image header */
-    char history[64];
     char newname[64];		/* Name for revised image */
     char pixname[64];		/* Pixel file name for revised image */
     char temp[16];
@@ -260,7 +257,7 @@ char *name;
     /* Open IRAF image if .imh extension is present */
     if (strsrch (name,".imh") != NULL) {
 	iraffile = 1;
-	irafheader = irafrhead (name, lhead, header);
+	irafheader = irafrhead (name, &lhead);
 	if (irafheader) {
 	    header = iraf2fits (name, irafheader, lhead, &nbhead);
 	    if (header == NULL) {
@@ -268,9 +265,9 @@ char *name;
 		free (irafheader);
 		return;
 		}
-	    image = irafrimage (name, header);
+	    image = irafrimage (header);
 	    if (image == NULL) {
-		hgetc (header,"PIXFILE",&pixname);
+		hgets (header,"PIXFILE", 64, &pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -303,7 +300,6 @@ char *name;
 	}
 
     if (verbose) {
-	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr,"Set World Coordinate System in ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", name);
@@ -382,7 +378,6 @@ char *name;
 		(void) PrintWCS (header);	/* print new WCS */
 
 	/* Log WCS program version in the image header */
-	    hputs (header,"IMWCS",RevMsg);
 
 	    if (fitsout) {
 		if (fitswimage (newname, header, image) > 0 && verbose)
@@ -390,8 +385,14 @@ char *name;
 		else if (verbose)
 		    printf ("%s could not be written.\n", newname);
 		}
+	    else if (newimage) {
+		if (irafwimage (newname,lhead,irafheader,header,image) > 0 && verbose)
+		    printf ("%s rewritten successfully.\n", newname);
+		else if (verbose)
+		    printf ("%s could not be written.\n", newname);
+		}
 	    else {
-		if (irafwhead (newname, irafheader, header) > 0 && verbose)
+		if (irafwhead (newname,lhead,irafheader,header) > 0 && verbose)
 		    printf ("%s rewritten successfully.\n", newname);
 		else if (verbose)
 		    printf ("%s could not be written.\n", newname);
@@ -479,9 +480,7 @@ char *header;
 
 
 char *
-getRevMsg ()
 {
-    return (RevMsg);
 }
 /* Feb 16 1996	New program
  * Apr 15 1996	Move delWCSFITS to libwcs
@@ -496,4 +495,10 @@ getRevMsg ()
  * Jul  3 1996	Always write to new file unless -o
  * Jul 22 1996	Add option to change WCS projection
  * Aug  6 1996	Force number of decimal places in PrintWCS
+ * Aug 26 1996	Change HGETC call to HGETS; fix irafrhead call
+ * Aug 28 1996	Declare undeclared variables after lint
+ * Aug 29 1996	Allow writing of new IRAF files
+ * Sep  1 1996	Move parameter defaults to lwcs.h
+ * Sep  3 1996	Fix star finding
+ * Sep 17 1996	Fix bug in GSC reading
  */

@@ -1,6 +1,7 @@
-/* File imgsc.c
- * September 17, 1996
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+/* File imcat.c
+ * October 1, 1996
+ * By Doug Mink, after Elwood Downey
+ * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
 
@@ -11,49 +12,55 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
+
 #include "libwcs/fitshead.h"
 #include "libwcs/wcs.h"
+#include "libwcs/lwcs.h"
 
-#define MAXREF 100
-
-static void usage();
-static int verbose = 0;		/* verbose/debugging flag */
+#define GSC	1	/* refcat value for HST Guide Star Catalog */
+#define UJC	2	/* refcat value for USNO UJ Star Catalog */
 
 extern int gscread();
-static void ListGSC ();
-extern void RASortStars ();
-extern void MagSortStars ();
+extern int ujcread();
+extern int tabread();
+static void usage();
+static void ListCat();
+extern void RASortStars();
+extern void MagSortStars();
 extern void fk524e();
 extern void fk425e();
 
-static double maglim = 0.0;
-static int rasort = 0;
-static int debug = 0;
-static int classd = -1;
-static char coorsys[4];
-static int printhead = 0;
-static int tabout = 0;
-static double cra0 = 0.0;
-static double cdec0 = 0.0;
+
+static int verbose = 0;			/* verbose/debugging flag */
+static int wfile = 0;			/* True to print output file */
+static int refcat = GSC;		/* reference catalog switch */
+static char refcatname[32]="GSC";	/* reference catalog name */
+static int fk4 = 0;			/* Command line center is FK4 */
+static int classd = -1;			/* Guide Star Catalog object classes */
+static int uplate = 0;			/* UJ Catalog plate number to use */
+static double maglim = MAGLIM;		/* reference catalog magnitude limit */
+static double cra0 = 0.0;		/* Initial center RA in degrees */
+static double cdec0 = 0.0;		/* Initial center Dec in degrees */
+static char coorsys[4];			/* Output coordinate system */
+static int nstars;			/* Number of brightest stars to list */
+static int printhead = 0;		/* 1 to print table heading */
+static int tabout = 0;			/* 1 for tab table to standard output */
+static int rasort = 0;			/* 1 to sort stars by brighness */
+static double secpix0 = 0;		/* Image plate scale in arcsec/pixel */
+static int debug = 0;			/* True for extra information */
 
 main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
-    int nstar = 0;
 
-    *coorsys = 0;
-
-    /* crack arguments */
+    /* Decode arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
 	char c;
 	while (c = *++str)
-	switch (c) {
-	case 'v':	/* more verbosity */
-	    verbose++;
-	    break;
+    	switch (c) {
+
     	case 'b':	/* initial coordinates on command line in B1950 */
 	    setfk4 ();
     	    if (ac < 3)
@@ -65,15 +72,23 @@ char **av;
 	    strcpy (coorsys, "FK4");
     	    break;
 
-	case 'd':
-	    debug++;
+	case 'c':       /* Set reference catalog */
+	    if (ac < 2)
+		usage();
+	    strcpy (refcatname, *++av);
+	    if (refcatname[0]=='G' || refcatname[0]=='g' ||
+		strcmp(refcatname,"gsc")==0 || strcmp (refcatname,"GSC")== 0)
+		refcat = GSC;
+	    else if (refcatname[0]=='U' || refcatname[0]=='u' ||
+		strcmp(refcatname,"ujc")==0 || strcmp(refcatname,"UJC")==0)
+		refcat = UJC;
+	    else
+		refcat = 0;
+	    ac--;
 	    break;
 
-	case 'g':	/* Object type */
-	    if (ac < 2)
-		usage (progname);
-	    classd = (int) (atof (*++av) + 0.1);
-	    ac--;
+	case 'd':
+	    debug++;
 	    break;
 
 	case 'h':	/* ouput descriptive header */
@@ -90,19 +105,33 @@ char **av;
 	    strcpy (coorsys, "FK5");
     	    break;
 
-	case 'm':	/* Magnitude limit */
-	    if (ac < 2)
-		usage (progname);
-	    maglim = atof (*++av);
-	    ac--;
-	    break;
+	case 'g':	/* Guide Star object class */
+    	    if (ac < 2)
+    		usage();
+    	    classd = (int) atof (*++av);
+    	    ac--;
+    	    break;
+
+    	case 'm':	/* Limiting reference star magnitude */
+    	    if (ac < 2)
+    		usage();
+    	    maglim =  atof (*++av);
+    	    ac--;
+    	    break;
 
 	case 'n':	/* Number of brightest stars to read */
 	    if (ac < 2)
-		usage (progname);
-	    nstar = atoi (*++av);
+		usage ();
+	    nstars = atoi (*++av);
 	    ac--;
 	    break;
+
+    	case 'p':	/* Initial plate scale in arcseconds per pixel */
+    	    if (ac < 2)
+    		usage();
+    	    secpix0 = atof (*++av);
+    	    ac--;
+    	    break;
 
 	case 's':	/* sort by RA */
 	    rasort = 1;
@@ -112,43 +141,61 @@ char **av;
 	    tabout = 1;
 	    break;
 
-	default:
-	    usage (progname);
-	    break;
-	}
+	case 'u':	/* UJ Catalog plate number */
+    	    if (ac < 2)
+    		usage();
+    	    uplate = (int) atof (*++av);
+    	    ac--;
+    	    break;
+    	case 'v':	/* more verbosity */
+    	    verbose++;
+    	    break;
+    	case 'w':	/* write output file */
+    	    wfile++;
+    	    break;
+    	default:
+    	    usage();
+    	    break;
+    	}
     }
 
     /* now there are ac remaining file names starting at av[0] */
     if (ac == 0)
-	usage (progname);
+	usage();
+    if (!verbose && !wfile)
+	verbose = 1;
 
     while (ac-- > 0) {
-	char *fn = *av++;
-
-	ListGSC (fn, nstar);
-	if (verbose)
-	    printf ("\n");
+    	char *fn = *av++;
+    	if (debug)
+    	    printf ("%s:\n", fn);
+    	ListCat (fn);
+    	if (debug)
+    	    printf ("\n");
 	}
 
     return (0);
 }
 
 static void
-usage (progname)
-char *progname;
+usage ()
 {
-    fprintf (stderr,"Find HST GSC stars in FITS or IRAF image files\n");
-    fprintf(stderr,"%s: usage: [-vhst] [-m mag_off] [-n num] [-b ra dec] [-j ra dec] file.fts ...\n",
-	    progname);
-    fprintf(stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
-    fprintf(stderr,"  -g: object type (0=stars 3=galaxies -1=all)\n");
-    fprintf(stderr,"  -h: print heading, else do not \n");
-    fprintf(stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
-    fprintf(stderr,"  -m: magnitude limit\n");
-    fprintf(stderr,"  -n: number of brightest stars to print \n");
-    fprintf(stderr,"  -s: sort by RA instead of flux \n");
-    fprintf(stderr,"  -t: tab table to standard output as well as file\n");
-    fprintf(stderr,"  -v: verbose\n");
+    fprintf (stderr,"\n");
+    fprintf (stderr,"List catalog stars in FITS and IRAF image files\n");
+    fprintf (stderr,"Usage: [-vhst] [-m mag] [-g class] [-c catalog]\n");
+    fprintf (stderr,"       [-p scale] [-b ra dec] [-j ra dec] FITS or IRAF file(s)\n");
+    fprintf (stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
+    fprintf (stderr,"  -c: reference catalog (gsc, ujc, or tab table file\n");
+    fprintf (stderr,"  -g: Guide Star Catalog class (-1=all,0,3 (default -1)\n");
+    fprintf (stderr,"  -h: print heading, else do not \n");
+    fprintf (stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
+    fprintf (stderr,"  -m: initial GSC or UJC limiting magnitude (default 17)\n");
+    fprintf (stderr,"  -n: number of brightest stars to print \n");
+    fprintf (stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
+    fprintf (stderr,"  -s: sort by RA instead of flux \n");
+    fprintf (stderr,"  -t: tab table to standard output as well as file\n");
+    fprintf (stderr,"  -u: UJ catalog single plate number to accept\n");
+    fprintf (stderr,"  -v: verbose\n");
     exit (1);
 }
 
@@ -157,10 +204,9 @@ struct WorldCoor *wcsinit();
 extern int pix2wcst();
 
 static void
-ListGSC (filename, nstars)
+ListCat (filename)
 
 char	*filename;	/* FITS or IRAF file filename */
-int	nstars;		/* Number of brightest stars to list */
 
 {
     char *header;	/* FITS header */
@@ -211,17 +257,23 @@ int	nstars;		/* Number of brightest stars to list */
 	}
     if (verbose && printhead)
 
+    /* Set plate scale from command line */
+    if (secpix0 > 0)
+	hputr8 (header, "SECPIX", secpix0);
+
     /* Read world coordinate system information from the image header */
     wcs = wcsinit (header);
     free (header);
 
     /* Set the RA and Dec limits in degrees for reference star search */
     wcssize (wcs, &cra, &cdec, &dra, &ddec);
-    if (cra0 > 0.0)
-	cra = cra0;
-    if (cdec0 != 0.0)
-	cdec = cdec0;
+
+    /* Reset the center if new center is on command line */
     if (cra0 > 0.0 || cdec0 != 0.0) {
+	if (cra0 > 0.0)
+	    cra = cra0;
+	if (cdec0 != 0.0)
+	    cdec = cdec0;
 	if (coorsys[1])
 	    wcsshift (wcs,cra,cdec,coorsys);
 	else
@@ -233,7 +285,7 @@ int	nstars;		/* Number of brightest stars to list */
     ra2 = cra + dra;
     dec1 = cdec - ddec;
     dec2 = cdec + ddec;
-    if (verbose && printhead) {
+    if (debug) {
 	char rastr1[16],rastr2[16],decstr1[16],decstr2[16];
 	ra2str (rastr1,ra1,3);
 	ra2str (rastr2,ra2,3);
@@ -266,13 +318,25 @@ int	nstars;		/* Number of brightest stars to list */
     gm = (double *) malloc (nbytes);
     gc = (int *) malloc (nbytes);
     if (debug)
-	nlog = 1;
+	nlog = 100;
     else
 	nlog = 0;
 
     /* Find the nearby reference stars, in ra/dec */
-    ng = gscread (ra1,ra2,dec1,dec2,mag1,mag2,classd,ngmax,gnum,gra,gdec,gm,gc,
-		  nlog);
+    if (refcat == GSC)
+	ng = gscread (ra1,ra2,dec1,dec2,mag1,mag2,classd,ngmax,
+		      gnum,gra,gdec,gm,gc,nlog);
+    else if (refcat == UJC)
+	ng = ujcread (ra1,ra2,dec1,dec2,mag1,mag2,uplate,ngmax,
+		      gnum,gra,gdec,gm,gc,debug);
+    else if (refcatname[0] > 0)
+	ng = tabread (refcatname,ra1,ra2,dec1,dec2,mag1,mag2,ngmax,
+		      gnum,gra,gdec,gm,gc,debug);
+    else {
+        fprintf (stderr,"No reference star catalog specified\n");
+	free ((char *)wcs);
+        return;
+        }
 
     /* Project the reference stars into pixels on a plane at ra0/dec0 */
     gx = (double *) malloc (ng * sizeof (double));
@@ -295,21 +359,32 @@ int	nstars;		/* Number of brightest stars to list */
     /* List the brightest MAXSTARS reference stars */
     if (nstars > 0 && ng > nstars) {
 	nbg = nstars;
-	if (verbose && printhead)
+	if (debug)
 	    printf ("using %d / %d HST Guide Stars brighter than %.1f\n",
 		     nbg,ng,gm[nbg-1]);
 	}
     else {
 	nbg = ng;
-	if (verbose && printhead) {
-	    if (maglim > 0.0)
-		printf ("%d HST Guide Stars brighter than %.1f",
-			ng, maglim);
-	    else
-		printf ("%d HST Guide Stars", ng);
+	if (debug) {
+	    if (maglim > 0.0) {
+		if (refcat == GSC)
+		    printf ("%d HST Guide Stars brighter than %.1f",ng,maglim);
+		else if (refcat == UJC)
+		    printf ("%d USNO J Catalog Stars brighter than %.1f",ng,maglim);
+		else
+		    printf ("%d %s stars brighter than %.1f",ng,refcatname,maglim);
+		}
+	    else {
+		if (refcat == GSC)
+		    printf ("%d HST Guide Stars", ng);
+		else if (refcat == UJC)
+		    printf ("%d USNO J Catalog Stars", ng);
+		else
+		    printf ("%d %s Catalog Stars", ng,refcatname);
+		}
 	    }
 	}
-    if (verbose && printhead) {
+    if (debug) {
 	if (iraffile)
 	    printf (" in IRAF image %s\n",filename);
 	else
@@ -322,23 +397,35 @@ int	nstars;		/* Number of brightest stars to list */
     sprintf (headline, "IMAGE	%s", filename);
 
     /* Open plate catalog file */
-    strcat (filename,".gsc");
-    fd = fopen (filename, "w");
-    if (fd == NULL) {
-	fprintf (stderr, "IMGSC:  cannot write file %s %d\n", filename, fd);
-        return;
+    if (refcat == GSC)
+	strcat (filename,".gsc");
+    else if (refcat == UJC)
+	strcat (filename,".ujc");
+    else
+	strcat (filename,".cat");
+    if (wfile) {
+	fd = fopen (filename, "w");
+	if (fd == NULL) {
+	    fprintf (stderr, "IMGSC:  cannot write file %s %d\n", filename, fd);
+            return;
+	    }
         }
 
     /* Write heading */
-    fprintf (fd,"%s\n", headline);
+    if (wfile)
+	fprintf (fd,"%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
+
     sprintf (headline, "CATALOG	HSTGSC1.1");
-    fprintf (fd, "%s\n", headline);
+    if (wfile)
+	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
+
     if (rasort) {
-	fprintf (fd, "RASORT	T\n");
+	if (wfile)
+	    fprintf (fd, "RASORT	T\n");
 	if (tabout)
 	    printf ("RASORT	T\n");
 	}
@@ -347,18 +434,28 @@ int	nstars;		/* Number of brightest stars to list */
 	sprintf (headline, "EQUINOX	1950.0");
     else
 	sprintf (headline, "EQUINOX	2000.0");
-    fprintf (fd, "%s\n", headline);
+    if (wfile)
+	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
 
+    if (wfile)
     if (tabout)
 
-    sprintf (headline,"GSC_NUMBER	RA      	DEC      	MAG   	X    	Y	Type");
-    fprintf (fd, "%s\n", headline);
+    if (refcat == GSC)
+	sprintf (headline,"GSC_NUMBER	RA      	DEC      	MAG   	X    	Y	Type");
+    else if (refcat == UJC)
+	sprintf (headline,"UJC_NUMBER	RA      	DEC      	MAG   	X    	Y	Plate");
+    else
+	sprintf (headline,"NUMBER	RA      	DEC      	MAG   	X    	Y	Peak");
+    if (wfile)
+	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
+
     sprintf (headline,"----------	------------	------------	------	-----	-----	----");
-    fprintf (fd, "%s\n", headline);
+    if (wfile)
+	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
 
@@ -366,18 +463,35 @@ int	nstars;		/* Number of brightest stars to list */
 	if (gx[i] > 0.0 && gy[i] > 0.0) {
 	    ra2str (rastr, gra[i], 3);
 	    dec2str (decstr, gdec[i], 2);
-	    sprintf (headline, "%9.4f	%s	%s	%.2f	%.1f	%.1f	%d",
+	    if (refcat == GSC)
+		sprintf (headline, "%9.4f	%s	%s	%.2f	%.1f	%.1f	%d",
 		 gnum[i], rastr, decstr, gm[i], gx[i], gy[i], gc[i]);
-	    fprintf (fd, "%s\n", headline);
+	    else if (refcat == UJC)
+		sprintf (headline, "%12.7f	%s	%s	%.2f	%.1f	%.1f	%d",
+		 gnum[i], rastr, decstr, gm[i], gx[i], gy[i], gc[i]);
+	    else
+		sprintf (headline, "%9.4f	%s	%s	%.2f	%.1f	%.1f	%d",
+		 gnum[i], rastr, decstr, gm[i], gx[i], gy[i], gc[i]);
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
 	    if (tabout)
 		printf ("%s\n", headline);
-	    else if (verbose)
-		printf ("%9.4f %s %s %6.2f %6.1f %6.1f  %d\n",
+	    else if (verbose) {
+		if (refcat == GSC)
+		    printf ("%9.4f %s %s %6.2f %6.1f %6.1f  %d\n",
 			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i]);
+		else if (refcat == UJC)
+		    printf ("%12.7f %s %s %6.2f %6.1f %6.1f  %d\n",
+			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i]);
+		else
+		    printf ("%9.4f %s %s %6.2f %6.1f %6.1f  %d\n",
+			gnum[i], rastr, decstr, gm[i],gx[i],gy[i],gc[i]);
+		}
 	    }
 	}
 
-    fclose (fd);
+    if (wfile)
+	fclose (fd);
     if (gm) free ((char *)gm);
     if (gra) free ((char *)gra);
     if (gdec) free ((char *)gdec);
@@ -393,5 +507,6 @@ int	nstars;		/* Number of brightest stars to list */
  * Jul 16 1996	Remove unused image pointer; do not free unallocated header
  * Aug 15 1996	Clean up file reading code
  * Sep  4 1996	Free header immediately after use
- * Sep 17 1996	Set up command line center like IMWCS
+ * Oct  1 1996	Set file extension according to the catalog which is used
+ * Oct  1 1996	Write output file only if flag is set
  */

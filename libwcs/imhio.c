@@ -1,5 +1,5 @@
-/* File irafio.c
- * August 28, 1996
+/* File imhio.c
+ * September 4, 1996
  * By Doug Mink, based on Mike VanHilst's readiraf.c
 
  * Module:      irafio.c (IRAF image file reading and writing)
@@ -107,7 +107,6 @@ int	*lihead;	/* Length of IRAF image header in bytes (returned) */
     /* Find size of image header file */
     if (stat (filename,&buff)) {
 	fprintf (stderr, "IRAFRHEAD:  cannot read file %s\n", filename);
-	perror ("IRAFRHEAD");
 	return (NULL);
 	}
     nbhead = (int) buff.st_size;
@@ -117,7 +116,6 @@ int	*lihead;	/* Length of IRAF image header in bytes (returned) */
     fd = fopen (filename, "r");
     if (!fd) {
 	fprintf (stderr, "IRAFRHEAD:  cannot read file %s\n", filename);
-	perror ("IRAFRHEAD");
 	return (NULL);
 	}
 
@@ -174,7 +172,6 @@ char	*fitsheader;	/* FITS image header (filled) */
 	fd = fopen (bang + 1, "r");
 	if (!fd) {
 	    (void)fprintf(stderr, "IRAFRIMAGE: Cannot open IRAF pixel file %s\n", pixname);
-	    perror ("IRAFRIMAGE");
 	    return (NULL);
 	    }
 	}
@@ -182,7 +179,6 @@ char	*fitsheader;	/* FITS image header (filled) */
 	fd = fopen (pixname, "r");
 	if (!fd) {
 	    (void)fprintf(stderr, "Cannot open IRAF pixel file %s\n", pixname);
-	    perror ("IRAFRIMAGE");
 	    return (NULL);
 	    }
 	}
@@ -348,10 +344,9 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     char *objname;	/* object name from FITS file */
     int i, j, nax, nbits, nbytes;
     short *irafobj;
-    char *pixname;
+    char *pixname, *bang;
     short *irafpix;
     char *fitsheader;
-
     int ncr, nblock, nlines;
     char *fhead, *fhead1, *fp, endline[81];
     short *irafline;
@@ -433,7 +428,7 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 
     /* Set object name in FITS header */
     irafobj = (short *) (irafheader + IM_TITLE);
-    objname = iraf2str (irafobj, 64, swapiraf);
+    objname = iraf2str (irafobj, SZ_IMTITLE, swapiraf);
     hputs (fitsheader,"OBJECT",objname);
     free (objname);
     fhead = fhead + 80;
@@ -447,7 +442,10 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
     pixname = iraf2str (irafpix, SZ_IMPIXFILE, swapiraf);
     if (strncmp(pixname, "HDR$", 4) == 0 )
 	same_path (pixname, hdrname);
-    hputs (fitsheader,"PIXFILE",pixname);
+    if ((bang = strchr (pixname, '!')) != NULL )
+	hputs (fitsheader,"PIXFILE",bang+1);
+    else
+	hputs (fitsheader,"PIXFILE",pixname);
     free (pixname);
     fhead = fhead + 80;
 
@@ -510,13 +508,23 @@ char	*fitsheader;	/* FITS image header */
     /* Convert FITS header to IRAF header */
     nbhead = fits2iraf (fitsheader, irafheader, lhead);
 
-    /* Write IRAF header to disk file */
-    fd = open (hdrname, O_WRONLY, 0644);
-    if (fd < 3) {
-	(void)fprintf(stderr, "IRAFWHEAD: Cannot open IRAF header file %s\n", hdrname);
-	perror ("IRAFWHEAD");
-	return (0);
+    /* Open the output file */
+    if (!access (hdrname, 0)) {
+	fd = open (hdrname, O_WRONLY);
+	if (fd < 3) {
+	    fprintf (stderr, "IRAFWIMAGE:  file %s not writeable\n", hdrname);
+	    return (0);
+	    }
 	}
+    else {
+	fd = open (hdrname, O_RDWR+O_CREAT, 0666);
+	if (fd < 3) {
+	    fprintf (stderr, "IRAFWIMAGE:  cannot create file %s\n", hdrname);
+	    return (0);
+	    }
+	}
+
+    /* Write IRAF header to disk file */
     nbw = write (fd, irafheader, nbhead);
     close (fd);
     if (nbw < nbhead) {
@@ -543,31 +551,22 @@ char	*image;		/* IRAF image */
 {
     int fd;
     char *bang;
-    int i, nbw, bytepix, bitpix, naxis1, naxis2, nbhead, nbimage, ioff;
+    int i, nbw, bytepix, bitpix, naxis1, naxis2, nbhead, nbimage, lphead;
     void same_path();
-    char *pixname;
+    char *pixn, pixname[SZ_IMPIXFILE+1];
     short *irafpix;
 
-    /* Convert FITS header to IRAF header */
-    nbhead = fits2iraf (fitsheader, irafheader, lhead);
-
-    /* Write IRAF header to disk file */
-    fd = open (hdrname, O_WRONLY, 0644);
-    if (fd < 3) {
-	(void)fprintf(stderr, "IRAFWIMAGE: Cannot open IRAF header file %s\n", hdrname);
-	perror ("IRAFWIMAGE");
-	return (0);
-	}
-    nbw = write (fd, irafheader, nbhead);
-    close (fd);
-
-    /* Convert pixel file name to character string */
-    irafpix = (short *) (irafheader + IM_PIXFILE);
-    pixname = (char *) malloc (SZ_IMPIXFILE);
-    for (i = 0; i < SZ_IMPIXFILE; i++)
-	pixname[i] = (char) irafpix[i];
-    if (strncmp(pixname, "HDR$", 4) == 0 )
-	same_path (pixname, hdrname);
+    if (!hgets (fitsheader, "PIXFILE", SZ_IMPIXFILE, pixname)) {
+	irafpix = (short *) (irafheader + IM_PIXFILE);
+	pixn = iraf2str (irafpix, SZ_IMPIXFILE, swapiraf);
+	if (strncmp(pixn, "HDR$", 4) == 0 )
+	    same_path (pixn, hdrname);
+	if ((bang = strchr (pixn, '!')) != NULL )
+	    strcpy (pixname, bang+1);
+	else
+	    strcpy (pixname, pixn);
+	free (pixn);
+        }
 
     /* Find number of bytes to write */
     hgeti4 (fitsheader,"NAXIS1",&naxis1);
@@ -579,30 +578,30 @@ char	*image;		/* IRAF image */
 	bytepix = bitpix / 8;
     nbimage = naxis1 * naxis2 * bytepix;
 
-    /* Open pixel file */
-    if ((bang = strchr (pixname, '!')) != NULL ) {
-	fd = open (bang + 1, O_WRONLY, 0644);
+    /* Write IRAF header file */
+    if (irafwhead (hdrname, lhead, irafheader, fitsheader))
+        return (0);
+
+    /* Open the output file */
+    if (!access (pixname, 0)) {
+	fd = open (pixname, O_WRONLY);
 	if (fd < 3) {
-	    (void)fprintf(stderr, "Cannot open IRAF pixel file %s\n", pixname);
-	    perror ("IRAFWIMAGE");
+	    fprintf (stderr, "IRAFWIMAGE:  file %s not writeable\n", pixname);
 	    return (0);
 	    }
 	}
     else {
-	fd = open (pixname, O_WRONLY, 0644);
+	fd = open (pixname, O_RDWR+O_CREAT, 0666);
 	if (fd < 3) {
-	    (void)fprintf(stderr, "Cannot open IRAF pixel file %s\n", pixname);
-	    perror ("IRAFWIMAGE");
+	    fprintf (stderr, "IRAFWIMAGE:  cannot create file %s\n", pixname);
 	    return (0);
 	    }
 	}
 
-    /* Skip over pixel file header */
-    ioff = lseek (fd, (irafheader[IM_PIXOFF]-1) * sizeof(short), 0);
-    if (ioff) {
-	close (fd);
-	return (0);
-	}
+    /* Write header to pixel file */
+    lphead = (irafheader[IM_PIXOFF] - 1) * sizeof(short);
+    str2iraf ("IMPIX",irafheader,5);
+    nbw = write (fd, irafheader, lphead);
 
     /* Write IRAF pixel file to disk */
     nbw = write (fd, image, nbimage);
@@ -626,6 +625,8 @@ int	nbhead;		/* Length of IRAF header */
     short *irafp, *irafs, *irafu;
     char *fitsend, *fitsp, pixfile[80], title[80], temp[80];
     int	nax,nax4,nbiraf, nlfits, lpixfile;
+    short *ihead;
+    ihead = (short *)irafheader;
 
     /* Delete FITS header keywords not needed by IRAF */
     hgeti4 (fitsheader,"NAXIS",&nax);
@@ -681,7 +682,7 @@ int	nbhead;		/* Length of IRAF header */
 
     /* Replace image title, if it is in the FITS header */
     if (hgets (fitsheader, "OBJECT", 79, title)) {
-        str2iraf (pixfile, irafheader+IM_TITLE, SZ_IMTITLE);
+        str2iraf (title, irafheader+IM_TITLE, SZ_IMTITLE);
 	hdel (fitsheader, "OBJECT");
 	}
 
@@ -874,5 +875,6 @@ int nbytes;	/* Number of bytes to reverse */
  * Aug 26 1996	Allow 1-d images; fix comments; fix arguments after lint
  * Aug 26 1996	Add IRAF header lingth argument to IRAFWIMAGE and IRAFWHEAD
  * Aug 28 1996	Clean up code in IRAF2FITS
- * Aug 28 1996	Use write instead of fwrite
+ * Aug 30 1996	Use write instead of fwrite
+ * Sep  4 1996	Fix write mode bug
  */

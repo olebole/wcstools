@@ -1,5 +1,5 @@
 /* File i2f.c
- * July 16, 1996
+ * August 27, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,13 +14,10 @@
 
 #include "libwcs/fitshead.h"
 
-#define MAXHEADLEN 14400
-
 static void usage();
 static void IRAFtoFITS ();
 
 static int verbose = 0;		/* verbose/debugging flag */
-static char *RevMsg = "I2F 1.1, 8 August 1996, Doug Mink, SAO";
 
 main (ac, av)
 int ac;
@@ -66,7 +63,6 @@ static void
 usage (progname)
 char *progname;
 {
-    fprintf (stderr,"%s\n",RevMsg);
     fprintf (stderr,"Write FITS files from IRAF image files\n");
     fprintf(stderr,"%s: usage: [-v] file.imh ...\n", progname);
     fprintf(stderr,"  -v: verbose\n");
@@ -81,7 +77,6 @@ char *name;
     char *header;	/* FITS header */
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
-    int iraffile;	/* 1 if IRAF image */
     int *irafheader;	/* IRAF image header */
     char irafname[64];	/* Name of IRAF file */
     char fitsname[64];	/* Name of FITS file */
@@ -90,7 +85,6 @@ char *name;
 
     /* Open IRAF image if .imh extension is present */
     if (strsrch (name,".imh") != NULL) {
-	iraffile = 1;
 	irafheader = irafrhead (name, &lhead);
 	if (irafheader) {
 	    header = iraf2fits (name, irafheader, lhead, &nbhead);
@@ -99,9 +93,9 @@ char *name;
 		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
 		return;
 		}
-	    image = irafrimage (name, header);
+	    image = irafrimage (header);
 	    if (image == NULL) {
-		hgetc (header,"PIXFILE",&pixname);
+		hgets (header,"PIXFILE", 64, &pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -116,7 +110,6 @@ char *name;
 	ext = strsrch (fitsname,".imh");
 	strcpy (ext,".fit");
 	if (verbose) {
-	    fprintf (stderr,"%s\n",RevMsg);
 	    fprintf (stderr,"Write FITS files from IRAF image file %s\n", name);
 	    }
 	}
@@ -125,7 +118,7 @@ char *name;
     else {
 	strcpy (irafname, name);
 	strcat (irafname,".imh");
-	irafheader = irafrhead (irafname, lhead, header);
+	irafheader = irafrhead (irafname, &lhead);
 	if (irafheader) {
 	    header = iraf2fits (irafname, irafheader, lhead, &nbhead);
 	    free (irafheader);
@@ -133,9 +126,9 @@ char *name;
 		fprintf (stderr, "Cannot translate IRAF header %s/n",irafname);
 		return;
 		}
-	    image = irafrimage (irafname, header);
+	    image = irafrimage (header);
 	    if (image == NULL) {
-		hgetc (header,"PIXFILE",&pixname);
+		hgets (header,"PIXFILE",64, &pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -149,7 +142,6 @@ char *name;
 	strcpy (fitsname, name);
 	strcat (fitsname,".fit");
 	if (verbose) {
-	    fprintf (stderr,"%s\n",RevMsg);
 	    fprintf (stderr,"Write FITS files from IRAF image file %s\n", irafname);
 	    }
 	}
@@ -167,4 +159,7 @@ char *name;
 }
 /* Jun  6 1996	New program
  * Jul 16 1996	Update header input
+ * Aug 16 1996	Clean up code
+ * Aug 26 1996	Change HGETC call to HGETS
+ * Aug 27 1996	Drop unused variables after lint
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** August 13, 1996
+ *** September 10, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -47,7 +47,7 @@ int	lhead;	/* Maximum length of FITS header */
 {
     char *hend;
     lhead0 = lhead;
-    if (lhead > 0) {
+    if (lhead < 1) {
 	hend = ksearch (header,"END");
 	lhead0 = hend + 80 - header;
 	}
@@ -538,7 +538,7 @@ char *keyword;	/* character string containing the name of the variable
 		or '$'.  it is truncated to 8 characters. */
 {
     char *loc, *headnext, *headlast, *pval, *lc, *line;
-    int icol, icol0, nline, prevchar, nextchar, lkey, nleft, lhstr;
+    int icol, nextchar, lkey, nleft, lhstr;
 
     pval = 0;
 
@@ -546,7 +546,7 @@ char *keyword;	/* character string containing the name of the variable
     if (lhead0)
 	lhstr = lhead0;
     else
-	lhstr = strlen (hstring);
+	for (lhstr = 0; lhstr < 57600 && hstring[lhstr] != 0; lhstr++);
     headlast = hstring + lhstr;
     headnext = hstring;
     pval = NULL;
@@ -761,4 +761,6 @@ int	ls1;	/* Length of string being searched */
  * Aug  6 1996	Make minor changes after lint
  * Aug  8 1996	Fix ksearch bug which finds wrong keywords
  * Aug 13 1996	Fix sign bug in STR2DEC for degrees
+ * Aug 26 1996	Drop unused variables ICOL0, NLINE, PREVCHAR from KSEARCH
+ * Sep 10 1996	Fix header length setting code
  */

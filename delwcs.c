@@ -1,5 +1,5 @@
 /* File delwcs.c
- * July 16, 1996
+ * August 27, 1996
  * By Doug Mink, after University of Iowa code
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -20,7 +20,6 @@ static void DelWCS ();
 extern int DelWCSFITS ();
 
 static int verbose = 0;		/* verbose/debugging flag */
-static char *RevMsg = "DELWCS 1.1, 8 August 1996, Doug Mink, SAO";
 
 main (ac, av)
 int ac;
@@ -28,8 +27,6 @@ char **av;
 {
     char *progname = av[0];
     char *str;
-    double rot, scale, gsclim, frac;
-    int tolerance;
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
@@ -63,7 +60,6 @@ static void
 usage (progname)
 char *progname;
 {
-    fprintf (stderr,"%s\n",RevMsg);
     fprintf (stderr,"Delete WCS in FITS and IRAF image files\n");
     fprintf (stderr, "By D. Mink, SAO, after E. Downey, UIowa\n");
     fprintf(stderr,"%s: usage: [-v] file.fts ...\n", progname);
@@ -89,7 +85,7 @@ char *name;
     /* Open IRAF image if .imh extension is present */
     if (strsrch (name,".imh") != NULL) {
 	iraffile = 1;
-	irafheader = irafrhead (name, lhead, header);
+	irafheader = irafrhead (name, &lhead);
 	if (irafheader) {
 	    header = iraf2fits (name, irafheader, lhead, &nbhead);
 	    if (header == NULL) {
@@ -97,9 +93,9 @@ char *name;
 		free (irafheader);
 		return;
 		}
-	    image = irafrimage (name, header);
+	    image = irafrimage (header);
 	    if (image == NULL) {
-		hgetc (header,"PIXFILE",&pixname);
+		hgets (header,"PIXFILE", 64, &pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -130,7 +126,6 @@ char *name;
 	    }
 	}
     if (verbose) {
-	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr,"Remove World Coordinate System from ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s", name);
@@ -144,7 +139,7 @@ char *name;
 	}
     else  {
 	if (iraffile) {
-	    if (irafwhead (name, irafheader, header) < 1)
+	    if (irafwhead (name, lhead, irafheader, header) < 1)
 		fprintf (stderr, "%s: Could not write FITS file\n", name);
 	    else {
 		if (verbose)
@@ -170,4 +165,6 @@ char *name;
  * Apr 15 1996	Move delWCSFITS subroutine to libwcs imdelwcs.c
  * Apr 15 1996	Drop name as argument to delWCSFITS
  * May 31 1996	Rename delPos to DelWCS
+ * Aug 26 1996	Change HGETC call to HGETS
+ * Aug 27 1996	Fix IRAFRHEAD arguments after lint
  */

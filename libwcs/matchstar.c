@@ -1,5 +1,5 @@
 /* File libwcs/matchstar.c
- * August 6, 1996
+ * September 3, 1996
  * By Doug Mink, Smithsonian Astrophyscial Observatory
  */
 
@@ -17,10 +17,8 @@
 #include <malloc.h>
 #include "fitshead.h"
 #include "wcs.h"
+#include "lwcs.h"
 
-#define	FTOL	0.000001	/* Fractional change of chisqr() to be done */
-#define NMAX	500	/* Maximum number of minimization iterations */
-#define	NPEAKS		20	/* binning peak history */
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 
 #undef RESID_REFINE
@@ -487,20 +485,21 @@ int	iter;	/* Number of iterations */
     chsq = 0.0;
     for (i = 0; i < nbin_p; i++) {
 	wcs2pix (wcsf, gx_p[i], gy_p[i], &xmp, &ymp, &offscale);
-	if (!offscale) {
-	    dx = (xmp - sx_p[i]);
-	    dy = (ymp - sy_p[i]);
+	/* if (!offscale) { */
+	    dx = xmp - sx_p[i];
+	    dy = ymp - sy_p[i];
 	    chsq += dx*dx + dy*dy;
-	    }
+	    /* } */
 	}
 
 #define TRACE_CHSQR
 #ifdef TRACE_CHSQR
     ra2str (rastr,wcsf->xref,3);
     dec2str (decstr,wcsf->yref,2);
-    printf ("%4d: %s %s %8.5f %9.7f %9.7f -> %f\n",
+    fprintf (stderr,"%4d: %s %s %8.5f %9.7f %9.7f -> %f",
 	    iter, rastr, decstr, wcsf->rot,
 	    wcsf->xinc*3600.0, wcsf->yinc*3600.0, chsq);
+    (void)putc (13,stderr);
 #endif
     return (chsq);
 }
@@ -622,3 +621,8 @@ int	*nfunk;
     free (ptry);
     return ytry;
 }
+/* Aug  6 1996	New subroutine
+ * Sep  1 1996	Move constants to lwcs.h
+ * Sep  3 1996	Use offscale pixels for chi^2 computation
+ * Sep  3 1996	Overprint chi^2 in verbose mode
+ */ 

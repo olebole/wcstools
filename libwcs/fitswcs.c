@@ -1,5 +1,5 @@
 /* File libwcs/fitswcs.c
- * August 8, 1996
+ * August 26, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
@@ -104,13 +104,13 @@ int verbose;
 	    hchange (header, "WEQUINOX", "EQUINOX");
 	    }
 	if (verbose) {
-	    hgets (header,"RA",rastr);
-	    hgets (header,"DEC",decstr);
+	    hgets (header,"RA", 16, rastr);
+	    hgets (header,"DEC", 16, decstr);
 	    eq = 0.0;
-	    hgetr8 (header,"EPOCH",eq);
+	    hgetr8 (header,"EPOCH",&eq);
 	    if (eq == 0.0)
-		hgetr8 (header,"EQUINOX",eq);
-	    printf ("%s: Center reset to %s %s %.1f\n", rastr,decstr, eq);
+		hgetr8 (header,"EQUINOX",&eq);
+	    printf ("DelWCS: Center reset to %s %s %.1f\n", rastr,decstr, eq);
 	    }
 	}
     else if (ksearch (header, "EPOCH") && !ksearch (header, "PLTRAH")) {
@@ -120,7 +120,7 @@ int verbose;
 	    n++;
 	    }
 	else if (verbose)
-	    printf ("%s: EPOCH, but not EQUINOX found\n");
+	    printf ("DelWCS: EPOCH, but not EQUINOX found\n");
 	}
 
     return (n);
@@ -133,4 +133,5 @@ int verbose;
  * Jul 16 1996	Update arguments for header-reading subroutines
  * Aug  6 1996  Fixed small defects after lint
  * Aug  8 1996  Restore old image center after deleting WCS
+ * Aug 26 1996	Fix subroutine arguments after lint
  */

@@ -1,5 +1,5 @@
 /* File imstar.c
- * August 13, 1996
+ * September 1, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,19 +14,19 @@
 #include "libwcs/fitshead.h"
 #include "libwcs/wcs.h"
 
-#define MAXHEADLEN 14400
-
 static void usage();
 static int verbose = 0;		/* verbose flag */
 static int debug = 0;		/* debugging flag */
-static char *RevMsg = "IMSTAR 1.1, 8 August 1996, Doug Mink, SAO";
 
 static void ListStars ();
 extern void RASortStars ();
 extern void FluxSortStars ();
+extern void setstarsig ();
+extern void setbmin ();
+extern void setmaxrad ();
+extern void setborder ();
 
 static double magoff = 0.0;
-static double maglim = 0.0;
 static int rasort = 0;
 static char coorsys[4];
 static int printhead = 0;
@@ -41,7 +41,7 @@ char **av;
 {
     char *progname = av[0];
     char *str;
-    double starsig, bmin;
+    double bmin;
     int maxrad;
 
     *coorsys = 0;
@@ -67,6 +67,12 @@ char **av;
 	    break;
 	case 'd':	/* Print each star as it is found */
 	    debug++;
+	    break;
+	case 'e':	/* Number of pixels to ignore around image edge */
+	    if (ac < 2)
+		usage (progname);
+	    setborder (atof (*++av));
+	    ac--;
 	    break;
 	case 'h':	/* ouput descriptive header */
 	    printhead++;
@@ -133,22 +139,22 @@ static void
 usage (progname)
 char *progname;
 {
-    fprintf (stderr,"%s\n",RevMsg);
     fprintf (stderr,"Find stars in FITS and IRAF image files\n");
     fprintf(stderr,"%s: usage: [-vbsjt] [-m mag_off] [-n num] [-c ra dec]file.fts ...\n",
 	    progname);
-    fprintf(stderr,"  -b: output B1950 (FK4) coordinates \n");
+    fprintf(stderr,"  -b: Output B1950 (FK4) coordinates \n");
     fprintf(stderr,"  -c: Use following RA and Dec as center \n");
     fprintf(stderr,"  -d: Print each star as it is found for debugging \n");
-    fprintf(stderr,"  -h: print heading, else do not \n");
-    fprintf(stderr,"  -i: minimum peak value for star in image (<0=-sigma)\n");
-    fprintf(stderr,"  -j: output J2000 (FK5) coordinates \n");
-    fprintf(stderr,"  -m: magnitude offset\n");
-    fprintf(stderr,"  -n: number of brightest stars to print \n");
-    fprintf(stderr,"  -r: maximum radius for star in pixels \n");
-    fprintf(stderr,"  -s: sort by RA instead of flux \n");
-    fprintf(stderr,"  -t: tab table to standard output as well as file\n");
-    fprintf(stderr,"  -v: verbose\n");
+    fprintf(stderr,"  -e: Number of pixels to ignore around image edge \n");
+    fprintf(stderr,"  -h: Print heading, else do not \n");
+    fprintf(stderr,"  -i: Minimum peak value for star in image (<0=-sigma)\n");
+    fprintf(stderr,"  -j: Output J2000 (FK5) coordinates \n");
+    fprintf(stderr,"  -m: Magnitude offset\n");
+    fprintf(stderr,"  -n: Number of brightest stars to print \n");
+    fprintf(stderr,"  -r: Maximum radius for star in pixels \n");
+    fprintf(stderr,"  -s: Sort by RA instead of flux \n");
+    fprintf(stderr,"  -t: Tab table to standard output as well as file\n");
+    fprintf(stderr,"  -v: Verbose\n");
     exit (1);
 }
 
@@ -158,17 +164,15 @@ struct WorldCoor *wcsinit();
 extern int pix2wcst();
 
 static void
-ListStars (filename, nstars)
+ListStars (filename)
 
 char	*filename;	/* FITS or IRAF file filename */
-int	nstars;		/* Number of brightest stars to list */
 
 {
     char *image;		/* FITS image */
     char *header;		/* FITS header */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
-    int iraffile;		/* 1 if IRAF image */
     int *irafheader;		/* IRAF image header */
     double *sx=0, *sy=0;	/* image stars, pixels */
     double *sb=0;		/* image star brightesses */
@@ -188,13 +192,12 @@ int	nstars;		/* Number of brightest stars to list */
 
     /* Open IRAF header if .imh extension is present */
     if (strsrch (filename,".imh") != NULL) {
-	iraffile = 1;
 	irafheader = irafrhead (filename, &lhead);
 	if (irafheader) {
 	    header = iraf2fits (filename, irafheader, lhead, &nbhead);
-	    image = irafrimage (filename, header);
+	    image = irafrimage (header);
 	    if (image == NULL) {
-		hgetc (header,"PIXFILE",&pixname);
+		hgets (header,"PIXFILE", 64, &pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
 		free (header);
@@ -210,7 +213,6 @@ int	nstars;		/* Number of brightest stars to list */
 
     /* Read FITS image header if .imh extension is not present */
     else {
-	iraffile = 0;
 	header = fitsrhead (filename, &lhead, &nbhead);
 	if (header) {
 	    image = fitsrimage (filename, nbhead, header);
@@ -226,7 +228,6 @@ int	nstars;		/* Number of brightest stars to list */
 	    }
 	}
     if (verbose && printhead)
-	fprintf (stderr,"%s\n",RevMsg);
 
 /* Find the stars in an image and use the world coordinate system
  * information in the header to produce a plate catalog with right
@@ -257,8 +258,8 @@ int	nstars;		/* Number of brightest stars to list */
 	}
 
     /* Save star positions */
-    if (nstars > 0)
-	ns = nstars;
+    if (nstar > 0)
+	ns = nstar;
 
     /* If no magnitude offset, set brightest star to 0 magnitude */
     if (ns > 0 && magoff == 0.0) {
@@ -317,9 +318,7 @@ int	nstars;		/* Number of brightest stars to list */
     if (tabout)
 	printf ("%s\n", headline);
 
-    fprintf (fd, "PROGRAM	%s\n", RevMsg);
     if (tabout)
-	printf ("PROGRAM	%s\n", RevMsg);
 
     sprintf (headline,"ID 	RA      	DEC     	MAG   	X    	Y    	COUNTS   	PEAK");
     fprintf (fd, "%s\n", headline);
@@ -331,7 +330,7 @@ int	nstars;		/* Number of brightest stars to list */
 	printf ("%s\n", headline);
 
     for (i = 0; i < ns; i++) {
-	pix2wcs (wcs, sx[i], sy[i], &ra, &dec, offscl);
+	pix2wcs (wcs, sx[i], sy[i], &ra, &dec);
 	ra2str (rastr, ra, 3);
 	dec2str (decstr, dec, 2);
 	sprintf (headline, "%d	%s	%s	%.2f	%.1f	%.1f	%.1f	%d",
@@ -367,4 +366,8 @@ int	nstars;		/* Number of brightest stars to list */
  * May 29 1996	Add optional new image center coordinates
  * Jun 10 1996	Drop 3 arguments flux sorting subroutine
  * Jul 16 1996	Update input code
+ * Aug 26 1996	Change HGETC call to HGETS
+ * Aug 27 1996	Remove unused variables after lint
+ * Aug 30 1996	Allow border to be set
+ * Sep  1 1996	Move parameter defaults to lwcs.h
  */

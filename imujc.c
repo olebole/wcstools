@@ -1,5 +1,5 @@
 /* File imujc.c
- * July 17, 1996
+ * September 30, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -18,14 +18,14 @@
 
 static void usage();
 static int verbose = 0;		/* verbose/debugging flag */
-static char *RevMsg = "IMUJC 1.0, 8 August 1996, Doug Mink, SAO";
 
-extern int gscread();
+extern int ujcread();
 static void ListUJC ();
 extern void RASortStars ();
 extern void MagSortStars ();
+extern void fk524e();
+extern void fk425e();
 
-static double magoff = 0.0;
 static double maglim = 0.0;
 static int rasort = 0;
 static int printhead = 0;
@@ -41,9 +41,8 @@ char **av;
 {
     char *progname = av[0];
     char *str;
+    char rastr[16], decstr[16];	/* coordinate strings */
     int nstar = 0;
-    double starsig, bmin;
-    int maxrad;
 
     *coorsys = 0;
 
@@ -52,50 +51,69 @@ char **av;
 	char c;
 	while (c = *++str)
 	switch (c) {
+
 	case 'v':	/* more verbosity */
 	    verbose++;
 	    break;
-	case 'b':	/* ouput FK4 (B1950) coordinates */
+
+    	case 'b':	/* initial coordinates on command line in B1950 */
+	    setfk4 ();
+    	    if (ac < 3)
+    		usage();
+	    strcpy (rastr, *++av);
+	    cra0 = str2ra (rastr);
+	    ac--;
+	    strcpy (decstr, *++av);
+	    cdec0 = str2dec (decstr);
+	    ac--;
 	    strcpy (coorsys, "FK4");
-	    break;
-	case 'c':	/* Set center RA and Dec */
-	    if (ac < 3)
-		usage (progname);
-	    cra0 = str2ra (*++av);
-	    ac--;
-	    cdec0 = str2dec (*++av);
-	    ac--;
-	    break;
+    	    break;
+
 	case 'h':	/* ouput descriptive header */
 	    printhead++;
 	    break;
-	case 'j':	/* ouput FK5 (J2000) coordinates */
+
+    	case 'j':	/* center coordinates on command line in J2000 */
+    	    if (ac < 3)
+    		usage();
+	    strcpy (rastr, *++av);
+	    cra0 = str2ra (rastr);
+	    ac--;
+	    strcpy (decstr, *++av);
+	    cdec0 = str2dec (decstr);
+	    ac--;
 	    strcpy (coorsys, "FK5");
-	    break;
+    	    break;
+
 	case 'm':	/* Magnitude limit */
 	    if (ac < 2)
 		usage (progname);
 	    maglim = atof (*++av);
 	    ac--;
 	    break;
+
 	case 'n':	/* Number of brightest stars to read */
 	    if (ac < 2)
 		usage (progname);
 	    nstar = atoi (*++av);
 	    ac--;
 	    break;
+
 	case 'p':	/* Plate number to use for objects */
 	    if (ac < 2)
 		usage (progname);
 	    plate = atoi (*++av);
 	    ac--;
 	    break;
+
 	case 's':	/* sort by RA */
 	    rasort = 1;
 	    break;
+
 	case 't':	/* tab table to stdout */
 	    tabout = 1;
 	    break;
+
 	default:
 	    usage (progname);
 	    break;
@@ -121,20 +139,19 @@ static void
 usage (progname)
 char *progname;
 {
-    fprintf (stderr,"%s\n",RevMsg);
     fprintf (stderr,"Find UJC stars in FITS or IRAF image files\n");
-    fprintf(stderr,"IMUJC: usage: [-v] [-m mag_off] [-n num] [-p plate] file.fts ...\n",
-	    progname);
-    fprintf(stderr,"  -b: output B1950 (FK4) coordinates \n");
-    fprintf(stderr,"  -c: Use following RA and Dec as center \n");
-    fprintf(stderr,"  -h: print heading, else do not \n");
-    fprintf(stderr,"  -j: output J2000 (FK5) coordinates \n");
-    fprintf(stderr,"  -m: magnitude limit\n");
-    fprintf(stderr,"  -n: number of brightest stars to print \n");
-    fprintf(stderr,"  -p: plate number for catalog sources (0=all)\n");
-    fprintf(stderr,"  -s: sort by RA instead of flux \n");
-    fprintf(stderr,"  -t: tab table to standard output as well as file\n");
-    fprintf(stderr,"  -v: verbose\n");
+    fprintf (stderr,"Usage: [-vhst] [-m mag_off] [-n num] [-p plate]\n");
+    fprintf (stderr,"       [-b ra dec] [-j ra dec] file.fts ...\n");
+    fprintf (stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
+    fprintf (stderr,"  -c: Use following RA and Dec as center \n");
+    fprintf (stderr,"  -h: print heading, else do not \n");
+    fprintf (stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
+    fprintf (stderr,"  -m: magnitude limit\n");
+    fprintf (stderr,"  -n: number of brightest stars to print \n");
+    fprintf (stderr,"  -p: plate number for catalog sources (0=all)\n");
+    fprintf (stderr,"  -s: sort by RA instead of flux \n");
+    fprintf (stderr,"  -t: tab table to standard output as well as file\n");
+    fprintf (stderr,"  -v: verbose\n");
     exit (1);
 }
 
@@ -166,19 +183,18 @@ int	nstars;		/* Number of brightest stars to list */
     int i, numax, nbytes;
     FILE *fd;
     struct WorldCoor *wcs;	/* World coordinate system structure */
-    char rastr[16], decstr[16];	/* coordnate strings */
+    char rastr[16], decstr[16];	/* coordinate strings */
     double cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, mag1, mag2;
-    int offscale, nlog, lfn;
+    int offscale, nlog;
     char headline[160];
 
     /* Open IRAF image if .imh extension is present */
-    if (strsrch (filename,".imh") != NULL) {
+    if (strsrch (filename,".imh")) {
 	iraffile = 1;
-	irafheader = irafrhead (filename, &lhead);
-	if (irafheader) {
+	if ((irafheader = irafrhead (filename, &lhead))) {
 	    header = iraf2fits (filename, irafheader, lhead, &nbhead);
 	    free (irafheader);
-	    if (header == NULL) {
+	    if (!header) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
 		return;
 		}
@@ -192,15 +208,13 @@ int	nstars;		/* Number of brightest stars to list */
     /* Open FITS file if .imh extension is not present */
     else {
 	iraffile = 0;
-	header = fitsrhead (filename, &lhead, &nbhead);
-	if (header == NULL) {
+	if (!(header = fitsrhead (filename, &lhead, &nbhead))) {
 	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
 	    return;
 	    }
 	}
 
     if (verbose && printhead)
-	printf ("%s\n",RevMsg);
 
     /* Read world coordinate system information from the image header */
     wcs = wcsinit (header);
@@ -218,7 +232,7 @@ int	nstars;		/* Number of brightest stars to list */
 	    wcsshift (wcs,cra,cdec,wcs->radecsys);
 	}
     if (strcmp (wcs->radecsys,"FK4") == 0)
-	fk425 (&cra, &cdec);
+	fk425e (&cra, &cdec, wcs->epoch);
     ra1 = cra - dra;
     ra2 = cra + dra;
     dec1 = cdec - ddec;
@@ -336,9 +350,7 @@ int	nstars;		/* Number of brightest stars to list */
 	printf ("%s\n", headline);
     if (rasort)
 
-    fprintf (fd, "PROGRAM	%s\n", RevMsg);
     if (tabout)
-	printf ("PROGRAM	%s\n", RevMsg);
 
     sprintf (headline,"UJC_NUMBER	RA      	DEC      	MAG   	X    	Y	Plate");
     fprintf (fd, "%s\n", headline);
@@ -382,4 +394,8 @@ int	nstars;		/* Number of brightest stars to list */
  * May 23 1996	Add optional selection by plate number
  * May 28 1996	Clean up coordinate conversions
  * Jul 17 1996	Update image header reading
+ * Aug 15 1996	Clean up image header reading code
+ * Aug 27 1996	Drop unused variables after lint
+ * Sep 17 1996	Set up command line center like IMWCS
+ * Sep 30 1996	Declare undeclared variables RASTR and DECSTR in main()
  */

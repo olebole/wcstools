@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** August 6, 1996
+ *** September 1, 1996
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -8,43 +8,51 @@
 #include <math.h>
 #include <string.h>
 #include "fitshead.h"
+#include "lwcs.h"
 
-#define	FSBORDER	16	/* findStars() ignore this much of the edges */
-#define	NSTATPIX	20	/* findStars() stats row buff len */
-#define	MAXWALK		20	/* Farthest distance to walk from seed */
-#define	BURNEDOUT	65535	/* Clamp pixels brighter than this */
-#define NITERATE	3	/* Number of iterations for sigma clipping */
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 
-static int hotPixel();
+static int HotPixel();
 static int starRadius();
 static void starCentroid();
-static int brightWalk ();
+static int BrightWalk ();
 static double FindFlux ();
-static void FITSnoise();
+static void mean2d();
+static void mean1d();
 
-static double starsig = 5.0;	/* Stars are this many sigmas above mean */
+/* Stars are this many sigmas above mean */
+static double starsig = STARSIGMA;
 void setstarsig (sig)
 double sig;
 { starsig = sig; return; }
 
-static int maxrad = 20;		/* Maximum radius we accept as a star */
+/* Ignore this much of the edge */
+static int fsborder = BORDER;
+void setborder (brd)
+double brd;
+{ fsborder = brd; return; }
+
+
+static int minsep = MINSEP;	/* Minimum separation for stars */
+static int minrad = MINRAD;	/* Minimum radius for a star */
+static int maxrad = MAXRAD;	/* Maximum radius for a star */
 void setmaxrad (max)
 int max;
 { maxrad = max; return; }
 
-static double bmin = 10;	/* Minimum peak for star */
+static double bmin = MINPEAK;	/* Minimum peak for a star */
 void setbmin (min)
 double min;
 { bmin = min; return; }
 
 /* Find the location and brightest pixel of stars in the given image.
  * Return malloced arrays of x and y and b.
- * N.B. caller must free *xa and *ya and *ba even if we return 0 (but not -1).
- * N.B. we ignore pixels outside FSBORDER.
- * N.B. we ignore isolated hot pixels.
+ * N.B. Caller must free *xa and *ya and *ba even if 0 stars are returned.
+ * N.B. Pixels outside fsborder are ignored.
+ * N.B. Isolated hot pixels are ignored.
  * return number of stars (might well be 0 :-), or -1 if trouble.
  */
+
 int
 FindStars (header, image, xa, ya, ba, pa, verbose)
 
@@ -61,18 +69,19 @@ int	verbose;	/* 1 to print each star's position */
     double minll;
     int bitpix;
     int w, h;
-    int x, y;
+    int x, y, x1, x2, y1, y2;
     double xai, yai, bai;
     double lmean, lsigma;	/* left and right stats */
     double rmean, rsigma;
     double lll, rll;		/* left and right lower limits*/
+    double minsig;
     double sumx, sumxx, dsumxx;
-    double *svec, *sv, *svb, *sv1, *sv2, *svx, *svlim;
+    double *svec, *sv, *svb, *sv1, *sv2, *svlim;
     double background;
     double rmax, nsig;
     int lwidth, npix;
     int nspix = NSTATPIX;
-    int border = FSBORDER;
+    int ispix = ISTATPIX;
     int nextline;
 
     hgeti4 (header,"NAXIS1", &w);
@@ -91,52 +100,50 @@ int	verbose;	/* 1 to print each star's position */
     svec =  (double *) malloc (w * sizeof (double));
 
     /* Compute image noise from a central swath */
-    FITSnoise (image, bitpix, w, h, w-2*FSBORDER, 10, &noise, &nsigma);
+    x1 = fsborder;
+    x2 = w - fsborder;
+    if (x1 > x2) {
+	x1 = 1;
+	x2 = w;
+	}
+    y1 = (h / 2) - 25;
+    if (y1 < 1)
+	y1 = 0;
+    y2 = (h / 2) + 25;
+    if (y2 > h)
+	y2 = h;
+    mean2d (image, bitpix, w, h, x1, x2, y1, y2, &noise, &nsigma);
 
     /* Fill in borders of the image line buffer with noise */
     svlim = svec + w;
-    svb = svec + border;
+    svb = svec + fsborder;
     for (sv = svec; sv < svb; sv++)
 	*sv = noise;
-    for (sv = svlim - border; sv < svlim; sv++)
+    for (sv = svlim - fsborder; sv < svlim; sv++)
 	*sv = noise;
 
     /* Scan for stars based on surrounding local noise figure */
     nstars = 0;
-    lwidth = w - (2 * border);
-    for (y = border; y < h-border; y++) {
+    lwidth = w - (2 * fsborder);
+    for (y = fsborder; y < h-fsborder; y++) {
         int ipix = 0;
 
 	/* Get one line of the image minus the noise-filled borders */
-	nextline = (w * (y-1)) + border - 1;
+	nextline = (w * (y-1)) + fsborder - 1;
 	getvec (image, bitpix, nextline, lwidth, svb);
 
 	/* Search row for bright pixels */
-	for (x = border; x < w-border; x++) {
+	for (x = fsborder; x < w-fsborder; x++) {
 
-	    /* Redo stats once for every four pixels */
-	    if (ipix++ % 4 == 0) {
+	    /* Redo stats once for every several pixels */
+	    if (ipix++ % ispix == 0) {
 
 		/* Find stats to the left */
-		sumx = sumxx = 0;
-		svx = svec + x;
 		sv1 = svec + x - nspix;
 		if (sv1 < svec) sv1 = svec;
-		npix = 0;
-		for (sv = sv1; sv < svx; sv++) {
-		    sumx += *sv;
-		    sumxx += *sv * *sv;
-		    npix++;
-		    }
-		if (npix > 0) {
-		    dsumxx = (sumx * sumx) / (double) npix;
-		    if (dsumxx > sumxx || npix < 2)
-			lsigma = nsigma;
-		    else
-			lsigma = sqrt ((sumxx - dsumxx) / (double) (npix - 1));
-		    if (lsigma < nsigma) lsigma = nsigma;
-		    lmean = sumx / (double) npix;
-		    }
+		sv2 = svec + x;
+		if (sv2 > sv1+1)
+		    mean1d (sv1, sv2, &lmean, &lsigma);
 		else {
 		    lmean = noise;
 		    lsigma = nsigma;
@@ -145,39 +152,26 @@ int	verbose;	/* 1 to print each star's position */
 		sv++;
 
 		/* Find stats to the right */
-		sumx = sumxx = 0;
+		sv1 = svec + x;
 		sv2 = svec + x + nspix;
 		if (sv2 > svlim) sv2 = svlim;
-		npix = 0;
-		for (sv = svx + 1; sv < sv2; sv++) {
-		    sumx += *sv;
-		    sumxx += *sv * *sv;
-		    npix++;
-		    }
-		if (npix > 0) {
-		    dsumxx = (sumx * sumx) / (double) npix;
-		    if (dsumxx > sumxx || npix < 2)
-			rsigma = nsigma;
-		    else
-			rsigma = sqrt ((sumxx - dsumxx) / (double) (npix - 1));
-		    if (rsigma < nsigma) rsigma = nsigma;
-		    rmean = sumx / (double) npix;
-		    }
+		if (sv2 > sv1+2)
+		    mean1d (sv1, sv2, &rmean, &rsigma);
 		else {
-		    lmean = noise;
-		    lsigma = nsigma;
+		    rmean = noise;
+		    rsigma = nsigma;
 		    }
 		rll = rmean + starsig * rsigma;
 
 		/* pick lower as noise level */
 		minll = lll < rll ? lll : rll;
+		minsig = lsigma < rsigma ? lsigma : rsigma;
 		}
 
 	    /* Pixel is a candidate if above the noise */
 	    if (svec[x] > minll) {
 		int sx, sy, r, rf;
 		double b;
-		int maxr = maxrad;
 		int maxw = MAXWALK;
 		int i, ix, iy;
 
@@ -186,11 +180,11 @@ int	verbose;	/* 1 to print each star's position */
 		    continue;
 
 		/* Ignore hot pixels */
-		if (hotPixel (image,bitpix,w,h, x, y, minll) == 0)
+		if (!HotPixel (image,bitpix,w,h, x, y, minll))
 		    continue;
 
 		/* Walkabout a little to find brightest in neighborhood.  */
-		if (brightWalk (image, bitpix, w, h, x, y, maxw, &sx, &sy, &b) < 0)
+		if (BrightWalk (image, bitpix, w, h, x, y, maxw, &sx, &sy, &b) < 0)
 		    continue;
 
 		/* Ignore really bright stars */
@@ -201,18 +195,18 @@ int	verbose;	/* 1 to print each star's position */
 		for (i = 0; i < nstars; i++) {
 		    ix = (int) ((*xa)[i] + 0.5);
 		    iy = (int) ((*ya)[i] + 0.5);
-		    if (abs (ix-sx) <= maxr && abs (iy-sy) <= maxr)
+		    if (abs (ix-sx) <= minsep && abs (iy-sy) <= minsep)
 			break;
 		    }
 		if (i < nstars)
 		    continue;
 
-		/* Keep it if it is small enough to be a star */
+		/* Keep it if it is within the size range for stars */
 		rmax = maxrad;
 		nsig = starsig;
-		r = starRadius (image, bitpix, w, h, sx, sy, b, rmax, starsig,
+		r = starRadius (image, bitpix, w, h, sx, sy, b, rmax, minsig,
 			       &background);
-		if (r <= maxr) {
+		if (r > minrad && r <= maxrad) {
 
 		/* Find center of star */
 		    nstars++;
@@ -231,8 +225,8 @@ int	verbose;	/* 1 to print each star's position */
 		    sy = (int) (yai + 0.5);
 		    rmax = 2.0 * (double) maxrad;
 		    nsig = starsig * 2.0;
-		    rf = starRadius (image, bitpix, w, h, sx, sy, b, rmax, nsig,
-				    &background);
+		    rf = starRadius (image, bitpix, w, h, sx, sy, b, rmax,
+				    minsig, &background);
 
 		/* Find flux from star */
 		    bai = FindFlux (image, bitpix, w, h, sx, sy, rf, background);
@@ -253,6 +247,7 @@ int	verbose;	/* 1 to print each star's position */
 	    }
 	}
 
+    free (svec);
     return (nstars);
 }
 
@@ -263,7 +258,7 @@ int	verbose;	/* 1 to print each star's position */
  */
 
 static int
-hotPixel (image, bitpix, w, h, x, y, llimit)
+HotPixel (image, bitpix, w, h, x, y, llimit)
 
 char	*image;
 int	bitpix;
@@ -301,7 +296,7 @@ double	llimit;
  */
 
 static int
-starRadius (imp, bitpix, w, h, x0, y0, b, rmax, nsig, mean)
+starRadius (imp, bitpix, w, h, x0, y0, b, rmax, minsig, mean)
 
 char	*imp;
 int	bitpix;
@@ -310,15 +305,15 @@ int	h;
 int	x0, y0;
 double	b;
 double	rmax;
-double	nsig;
+double	minsig;
 double	*mean;
 
 {
-    double r, sigma, sum2p;
+    double r, sum2p;
 
     /* Compute star's radius.
      * Scan in ever-greater circles until find one such that the peak is
-     * nsig above the mean at that radius.
+     * n sigma above the mean at that radius.
      */
     for (r = 2; r <= rmax; r++) {
 	int inrr = r*r;
@@ -328,27 +323,22 @@ double	*mean;
 	int x, y;
 
 	for (y = -r; y <= r; y++) { 
-	int yrr = y*y;
-	for (x = -r; x <= r; x++) {
-	    int xyrr = x*x + yrr;
-	    if (xyrr >= inrr && xyrr < outrr) {
-		double dp;
-		dp = getpix (imp,bitpix,w,h,x0+x,y0+y);
-		sum += dp;
-		sum2 += dp*dp;
-		np++;
+	    int yrr = y*y;
+	    for (x = -r; x <= r; x++) {
+		int xyrr = x*x + yrr;
+		if (xyrr >= inrr && xyrr < outrr) {
+		    double dp;
+		    dp = getpix (imp,bitpix,w,h,x0+x,y0+y);
+		    sum += dp;
+		    np++;
+		    }
 		}
 	    }
-	}
 
 	*mean = sum / np;
-	sum2p = sum * sum / np;
-	if (sum2p > sum2 || np < 2)
-	    sum2 = sum2p;
-	sigma = sqrt ((sum2 - sum2p) / (double)(np - 1));
-	if (b > *mean + nsig*sigma)
+	if (b > *mean + minsig)
 	    break;
-    }
+	}
 
     return (r);
 }
@@ -388,7 +378,7 @@ double	*xp, *yp;
 
 
 /* Given an image and a starting point, walk the gradient to the brightest
- * pixel and return its location. we never take more maxr away.
+ * pixel and return its location. we never take more maxrad away.
  * Return 0 if find brightest pixel within maxsteps else -1.
  */
 
@@ -396,7 +386,7 @@ static int dx[8]={1,0,-1,1,-1,1,0,-1};
 static int dy[8]={1,1,1,0,0,-1,-1,-1};
 
 static int
-brightWalk (image, bitpix, w, h, x0, y0, maxr, xp, yp, bp)
+BrightWalk (image, bitpix, w, h, x0, y0, maxr, xp, yp, bp)
 
 char	*image;
 int	bitpix;
@@ -458,19 +448,19 @@ double	*bp;
  */
 
 static void
-FITSnoise (image, bitpix, w, h, nx, ny, mean, sigma)
+mean2d (image, bitpix, w, h, x1, x2, y1, y2, mean, sigma)
 
 char	*image;
 int	bitpix;
 int	w;
 int	h;
-int	nx;
-int	ny;
+int	x1,x2;
+int	y1, y2;
 double	*mean;
 double	*sigma;
 
 {
-    double pmin, pmax, pmean;
+    double p, pmin, pmax, pmean;
     double sd, sd2;
     int x, y;
     int i;
@@ -480,29 +470,74 @@ double	*sigma;
 
     for (i = 0; i < NITERATE; i++ ) {
 	double sum = 0.0;
-	double sum2 = 0.0;
 	double dnpix;
 	int npix = 0;
-	for (y = 0; y < ny; y++) {
-	for (x = 0; x < nx; x++) {
-	    double p = getpix (image,bitpix,w,h, x, y);
-	    if (p > pmin && p < pmax) {
-		sum += p;
-		sum2 += p * p;
-		npix++;
+
+    /* Compute mean */
+	for (y = y1; y < y2; y++) {
+	    for (x = x1; x < x2; x++) {
+		p = getpix (image,bitpix,w,h, x, y);
+		if (p > pmin && p < pmax) {
+		    sum += p;
+		    npix++;
+		    }
 		}
 	    }
-	}
 	dnpix = (double) npix;
 	pmean = sum / dnpix;
-	sd2 = (sum2 - (pmean * pmean)) / (dnpix - 1.0);
-	sd = sd2 <= 0.0 ? 0.0 : sqrt(sd2);
+
+    /* Compute average deviation */
+	npix = 0;
+	sum = 0.0;
+	for (y = y1; y < y2; y++) {
+	    for (x = x1; x < x2; x++) {
+		p = getpix (image,bitpix,w,h, x, y);
+		if (p > pmin && p < pmax) {
+		    sum += abs (p - pmean);
+		    npix++;
+		    }
+		}
+	    }
+
+	if (npix > 0)
+	    sd = sum / dnpix;
+	else
+	    sd = 0.0;
 	pmin = pmean - sd * starsig;
 	pmax = pmean + sd * starsig;
 	}
 
     *mean = pmean;
     *sigma = sd;
+    return;
+}
+
+
+static void
+mean1d (sv1, sv2, mean, sigma)
+
+double *sv1, *sv2;	/* starting and ending pixels for statistics */
+double *mean;		/* Mean value of pixels (returned) */
+double *sigma;		/* Average deviation of pixels (returned) */
+{
+    double *sv;
+    double sumx  = 0.0;
+    double sumxx = 0.0;
+    int npix = 0;
+
+    /* Compute mean */
+    for (sv = sv1; sv < sv2; sv++) {
+	sumx += *sv;
+	npix++;
+	}
+    *mean = sumx / (double) npix;
+
+    /* Compute average deviation */
+    sumxx = 0.0;
+    for (sv = sv1; sv < sv2; sv++) {
+	sumxx += abs (*sv - *mean);
+	}
+    *sigma = sumxx / (double) npix;
     return;
 }
 
@@ -563,4 +598,7 @@ double	background;
  * Jun 12 1996	Remove unused variables after using lint
  * Jun 13 1996	Removed leftover free of image
  * Aug  6 1996	Fixed small defects after lint
+ * Aug 26 1996	Drop unused variables NH and NW
+ * Aug 30 1996	Modify sigma computation; allow border to be set
+ * Sep  1 1996	Set constants in lwcs.h
  */

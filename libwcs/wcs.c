@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** August 13, 1996
+ *** September 6, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -17,7 +17,7 @@
  * Subroutine:	wcsdist (x1,y1,x2,y2) compute angular distance between ra/dec or lat/long
  * Subroutine:	wcscominit (wcs,command) sets up a command format for execution by wcscom
  * Subroutine:	wcsoutinit (wcs,coor) sets up the output coordinate system
- * Subroutine:	wcscom (wcs,event) executes a command using the current world coordinates
+ * Subroutine:	wcscom (wcs,file,x,y) executes a command using the current world coordinates
  * Subroutine:	pix2wcs (wcs,xpix,ypix,xpos,ypos) pixel coordinates -> sky coordinates
  * Subroutine:	pix2wcst (wcs,xpix,ypix,wcstring,lstr) pixels -> sky coordinate string
  * Subroutine:	wcs2pix (wcs,xpos,ypos,xpix,ypix,offscl) sky coordinates -> pixel coordinates
@@ -41,6 +41,7 @@
 #endif
 
 static void wcseq();
+static char wcserrmsg[80];
 
 /* set up a WCS structure from a FITS image header lhstring bytes long */
 
@@ -51,7 +52,7 @@ char	*hstring;	/* character string containing FITS header information
 		   	in the format <keyword>= <value> {/ <comment>} */
 int	lhstring;	/* Length of FITS header in bytes */
 {
-    hlength (lhstring);
+    hlength (hstring, lhstring);
     return (wcsinit (hstring));
 }
 
@@ -179,56 +180,91 @@ char *hstring;	/* character string containing FITS header information
 
 	/* World coordinate system reference coordinate information */
 	else if (hgets (hstring,"CTYPE1", 16, wcstemp)) {
-	    wcs->c1type[0] = wcstemp[0];
-	    if (wcstemp[0] != 'R' && wcstemp[0] != 'D') {
-		(void)fprintf (stderr,"WCSINIT CTYPE1 not RA or DEC, no WCS\n");
+
+	/* Deal appropriately with linear coordinates */
+	    if (!strncmp (wcstemp,"LINEAR",6)) {
+		wcs->pcode = 0;
+		strcpy (wcs->c1type, wcstemp);
+		strcpy (wcs->ptype, wcstemp);
+		}
+
+	/* Set up right ascension, declination, latitude, or longitude */
+	    else if (wcstemp[0] == 'R' ||
+		     wcstemp[0] == 'D' ||
+		     wcstemp[1] == 'L') {
+		wcs->c1type[0] = wcstemp[0];
+		wcs->c1type[1] = wcstemp[1];
+		if (wcstemp[2] == '-')
+		    wcs->c1type[2] = 0;
+		else
+		    wcs->c1type[2] = wcstemp[2];
+		if (wcstemp[3] == '-')
+		    wcs->c1type[3] = 0;
+		else
+		    wcs->c1type[3] = wcstemp[3];
+		wcs->c1type[4] = 0;
+		wcs->ptype[0] = wcstemp[4];
+		wcs->ptype[1] = wcstemp[5];
+		wcs->ptype[2] = wcstemp[6];
+		wcs->ptype[3] = wcstemp[7];
+		wcs->ptype[4] = 0;
+
+	    /*  Find projection type  */
+		wcs->pcode = 0;  /* default type is linear */
+		for (i=0; i<8; i++)
+		    if (!strncmp(wcs->ptype, ctypes[i], 4))
+			wcs->pcode = i + 1;
+		}
+
+	/* If not linear or sky coordinates, drop out with error message */
+	    else {
+		(void)sprintf (wcserrmsg,"WCSINIT: CTYPE2 not sky coordinates or LINEAR -> no WCS\n");
 		free (wcs);
 		return (NULL);
 		}
-	    wcs->c1type[1] = wcstemp[1];
-	    if (wcstemp[2] == '-')
-		wcs->c1type[2] = 0;
-	    else
-		wcs->c1type[2] = wcstemp[2];
-	    if (wcstemp[3] == '-')
-		wcs->c1type[3] = 0;
-	    else
-		wcs->c1type[3] = wcstemp[3];
-	    wcs->c1type[4] = 0;
-	    wcs->ptype[0] = wcstemp[4];
-	    wcs->ptype[1] = wcstemp[5];
-	    wcs->ptype[2] = wcstemp[6];
-	    wcs->ptype[3] = wcstemp[7];
-	    wcs->ptype[4] = 0;
-
-	/*  Find projection type  */
-	    wcs->pcode = 0;  /* default type is linear */
-	    for (i=0; i<8; i++)
-		if (!strncmp(wcs->ptype, ctypes[i], 4))
-		    wcs->pcode = i + 1;
 
 	/* Second coordinate type */
 	    if (!hgets (hstring,"CTYPE2", 16, wcstemp)) {
-		(void)fprintf (stderr,"WCSINIT CTYPE2 is missing, no WCS\n");
+		(void)sprintf (wcserrmsg,"WCSINIT: No CTYPE2 -> no WCS\n");
 		free (wcs);
 		return (NULL);
 		}
-	    wcs->c2type[0] = wcstemp[0];
-	    wcs->c2type[1] = wcstemp[1];
-	    if (wcstemp[2] == '-')
-		wcs->c2type[2] = 0;
-	    else
-		wcs->c2type[2] = wcstemp[2];
-	    if (wcstemp[3] == '-')
-		wcs->c2type[3] = 0;
-	    else
-		wcs->c2type[3] = wcstemp[3];
-	    wcs->c2type[4] = 0;
 
-	    if (!strncmp (wcs->c1type, "DEC", 3))
-		wcs->coorflip = 1;
-	    else
-		wcs->coorflip = 0;
+	/* Deal appropriately with linear coordinates */
+	    if (!strncmp (wcstemp,"LINEAR",6)) {
+		wcs->pcode = 0;
+		strcpy (wcs->c2type, wcstemp);
+		}
+
+	/* Set up right ascension, declination, latitude, or longitude */
+	    else if (wcstemp[0] == 'R' ||
+		     wcstemp[0] == 'D' ||
+		     wcstemp[1] == 'L') {
+		wcs->c2type[0] = wcstemp[0];
+		wcs->c2type[1] = wcstemp[1];
+		if (wcstemp[2] == '-')
+		    wcs->c2type[2] = 0;
+		else
+		    wcs->c2type[2] = wcstemp[2];
+		if (wcstemp[3] == '-')
+		    wcs->c2type[3] = 0;
+		else
+		    wcs->c2type[3] = wcstemp[3];
+		wcs->c2type[4] = 0;
+
+		if (!strncmp (wcs->c1type, "DEC", 3) ||
+		    !strncmp (wcs->c1type, "GLAT", 4))
+		    wcs->coorflip = 1;
+		else
+		    wcs->coorflip = 0;
+		}
+
+	/* If not linear or sky coordinates, drop out with error message */
+	    else {
+		(void)sprintf (wcserrmsg,"WCSINIT: CTYPE2 not sky coordinates or LINEAR -> no WCS\n");
+		free (wcs);
+		return (NULL);
+		}
 
 	/* Reference pixel coordinates and WCS value */
 	    hgetr8 (hstring,"CRPIX1",&wcs->xrefpix);
@@ -241,7 +277,7 @@ char *hstring;	/* character string containing FITS header information
 		wcs->rot = 0.;
 		hgetr8 (hstring,"CROTA1",&wcs->rot);
 		if (wcs->rot == 0.)
-		hgetr8 (hstring,"CROTA2",&wcs->rot);
+		    hgetr8 (hstring,"CROTA2",&wcs->rot);
 		wcs->cd11 = 0.;
 		wcs->cd21 = 0.;
 		wcs->cd12 = 0.;
@@ -267,13 +303,14 @@ char *hstring;	/* character string containing FITS header information
 		wcs->rotmat = 1;
 		}
 	    else {
-		(void)fprintf (stderr,"WCSINIT no CD or CDELT, so no WCS\n");
+		(void)sprintf (wcserrmsg,"WCSINIT: no CD or CDELT -> no WCS\n");
 		free (wcs);
 		return (NULL);
 		}
 
 	/* Coordinate reference frame, equinox, and epoch */
-	    wcseq (hstring,wcs);
+	    if (strncmp (wcs->ptype,"LINEAR",6))
+		wcseq (hstring,wcs);
 
 	    wcs->wcson = 1;
 	    }
@@ -298,13 +335,13 @@ char *hstring;	/* character string containing FITS header information
 
 	    wcs->xref = 0.0;
 	    if (!hgetra (hstring,"RA",&wcs->xref)) {
-		(void)fprintf (stderr,"WCSINIT: No RA with SECPIX, no WCS\n");
+		(void)sprintf (wcserrmsg,"WCSINIT: No RA with SECPIX, no WCS\n");
 		free (wcs);
 		return (NULL);
 		}
 	    wcs->yref = 0.0;
 	    if (!hgetdec (hstring,"DEC",&wcs->yref)) {
-		(void)fprintf (stderr,"WCSINIT No DEC with SECPIX, no WCS\n");
+		(void)sprintf (wcserrmsg,"WCSINIT No DEC with SECPIX, no WCS\n");
 		free (wcs);
 		return (NULL);
 		}
@@ -373,11 +410,23 @@ struct WorldCoor *wcs;
     /* Set coordinate system from keyword, if it is present */
     if (hgets (hstring,"RADECSYS", 16, wcstemp)) {
 	strcpy (wcs->radecsys,wcstemp);
-	if (strncmp (wcs->radecsys,"FK4",3))
+	if (!strncmp (wcs->radecsys,"FK4",3))
 	    wcs->equinox = 1950.0;
-	else if (strncmp (wcs->radecsys,"FK5",3))
+	else if (!strncmp (wcs->radecsys,"FK5",3))
+	    wcs->equinox = 2000.0;
+	else if (!strncmp (wcs->radecsys,"GAL",3) && ieq == 0)
 	    wcs->equinox = 2000.0;
 	}
+
+    /* Set galactic coordinates if GLON or GLAT are in C1TYPE */
+    else if (wcs->c1type[0] == 'G')
+	strcpy (wcs->radecsys,"GALACTIC");
+    else if (wcs->c1type[0] == 'E')
+	strcpy (wcs->radecsys,"ECLIPTIC");
+    else if (wcs->c1type[0] == 'S')
+	strcpy (wcs->radecsys,"SGALACTC");
+    else if (wcs->c1type[0] == 'H')
+	strcpy (wcs->radecsys,"HELIOECL");
 
     /* Otherwise set coordinate system from equinox */
     /* Systemless coordinates cannot be translated using b, j, or g commands */
@@ -544,7 +593,7 @@ struct WorldCoor *wcs;		/* World coordinate system structure */
 	int lstr = 32;
 
 	if (wcs == NULL)
-	    (void)fprintf (stderr,"No WCS info available\n");
+	    (void)fprintf (stderr,"No WCS information available\n");
 	else {
 	    if (wcs->plate_fit)
 		(void)fprintf (stderr,"WCS plate center  %s\n", wcs->center);
@@ -596,9 +645,7 @@ double	*ddec;		/* Half-width in declination (deg) (returned) */
 	double width, height;
 
 	/* Find right ascension and declination of coordinates */
-	if (wcs == NULL)
-	    (void)fprintf (stderr,"No WCS info available\n");
-	else {
+	if (iswcs(wcs)) {
 	    xpix = 0.5 * wcs->nxpix;
 	    ypix = 0.5 * wcs->nypix;
 	    (void) pix2wcs (wcs,xpix,ypix,&xcent, &ycent);
@@ -608,14 +655,24 @@ double	*ddec;		/* Half-width in declination (deg) (returned) */
 	/* Compute image half-width in degrees of right ascension */
 	    (void) pix2wcs (wcs,1.0,ypix,&xpos1,&ypos1);
 	    (void) pix2wcs (wcs,wcs->nxpix,ypix,&xpos2,&ypos2);
-	    width = wcsdist (xpos1,ypos1,xpos2,ypos2);
-	    *dra = (width * 0.5) / cos (degrad (*cdec));
+	    if (strncmp (wcs->ptype,"LINEAR",6)) {
+		width = wcsdist (xpos1,ypos1,xpos2,ypos2);
+		*dra = (width * 0.5) / cos (degrad (*cdec));
+		}
+	    else
+		*dra = sqrt (((ypos2-ypos1) * (ypos2-ypos1)) +
+				((xpos2-xpos1) * (xpos2-xpos1)));
 
 	/* Compute image half-height in degrees of declination*/
 	    (void) pix2wcs (wcs,xpix,1.0,&xpos1,&ypos1);
 	    (void) pix2wcs (wcs,xpix,wcs->nypix,&xpos2,&ypos2);
-	    height = wcsdist (xpos1,ypos1,xpos2,ypos2);
-	    *ddec = height * 0.5;
+	    if (strncmp (wcs->ptype,"LINEAR",6)) {
+		height = wcsdist (xpos1,ypos1,xpos2,ypos2);
+		*ddec = height * 0.5;
+		}
+	    else
+		*ddec = sqrt (((ypos2-ypos1) * (ypos2-ypos1)) +
+				((xpos2-xpos1) * (xpos2-xpos1)));
 	    }
 	return;
 }
@@ -637,9 +694,7 @@ double	*height;	/* Height in degrees (returned) */
 	double	xcent, ycent;
 
 	/* Find right ascension and declination of coordinates */
-	if (wcs == NULL)
-	    (void)fprintf (stderr,"No WCS info available\n");
-	else {
+	if (iswcs(wcs)) {
 	    xpix = 0.5 * wcs->nxpix;
 	    ypix = 0.5 * wcs->nypix;
 	    (void) pix2wcs (wcs,xpix,ypix,&xcent, &ycent);
@@ -649,12 +704,20 @@ double	*height;	/* Height in degrees (returned) */
 	/* Compute image width in degrees */
 	    (void) pix2wcs (wcs,1.0,ypix,&xpos1,&ypos1);
 	    (void) pix2wcs (wcs,wcs->nxpix,ypix,&xpos2,&ypos2);
-	    *width = wcsdist (xpos1,ypos1,xpos2,ypos2);
+	    if (strncmp (wcs->ptype,"LINEAR",6))
+		*width = wcsdist (xpos1,ypos1,xpos2,ypos2);
+	    else
+		*width = sqrt (((ypos2-ypos1) * (ypos2-ypos1)) +
+				((xpos2-xpos1) * (xpos2-xpos1)));
 
 	/* Compute image height in degrees */
 	    (void) pix2wcs (wcs,xpix,1.0,&xpos1,&ypos1);
 	    (void) pix2wcs (wcs,xpix,wcs->nypix,&xpos2,&ypos2);
-	    *height = wcsdist (xpos1,ypos1,xpos2,ypos2);
+	    if (strncmp (wcs->ptype,"LINEAR",6))
+		*height = wcsdist (xpos1,ypos1,xpos2,ypos2);
+	    else
+		*height = sqrt (((ypos2-ypos1) * (ypos2-ypos1)) +
+				((xpos2-xpos1) * (xpos2-xpos1)));
 	    }
 	return;
 }
@@ -713,10 +776,9 @@ struct WorldCoor *wcs;		/* World coordinate system structure */
 char *command;		/* command with %s where coordinates will go */
 
 {
-	int lcom,icom;
+    int lcom,icom;
 
-	if (!iswcs(wcs))
-	    return;
+    if (iswcs(wcs)) {
 	lcom = strlen (command);
 	for (icom = 0; icom < lcom; icom++) {
 	    if (command[icom] == '_')
@@ -725,37 +787,51 @@ char *command;		/* command with %s where coordinates will go */
 		wcs->search_format[icom] = command[icom];
 	    }
 	wcs->search_format[lcom] = 0;
+	}
+    return;
 }
 
 
-/* Execute catalog search command set by -wcscom */
+/* Execute Unix command with world coordinates (from x,y) and/or filename */
 
 void
-wcscom ( wcs, xfile, yfile )
+wcscom ( wcs, filename, xfile, yfile )
 
 struct WorldCoor *wcs;		/* World coordinate system structure */
-double xfile,yfile;		/* Image pixel coordinates for WCS command */
+char	*filename;		/* Image file name */
+double	xfile,yfile;		/* Image pixel coordinates for WCS command */
 {
-	char wcstring[32];
-	int lstr = 32;
-	char command[120];
-	int ier;
+    char wcstring[32];
+    int lstr = 32;
+    char command[120];
+    char *fileform, *posform;
+    int ier;
 
-	if (!iswcs(wcs)) {
-	    (void)fprintf(stderr,"WCSCOM: no WCS\n");
-	    return;
+    if (!iswcs(wcs))
+	(void)fprintf(stderr,"WCSCOM: no WCS\n");
+
+    else if (wcs->search_format[0] > 0) {
+
+	/* Get WCS coordinates for this image coordinate */
+	(void) pix2wcst (wcs,xfile,yfile,wcstring,lstr);
+
+	/* Create and execute search command */
+	if ((fileform = strsrch (wcs->search_format,"%f"))) {
+	    posform = strsrch (wcs->search_format,"%s");
+	    *(fileform+1) = 's';
+	    if (fileform < posform)
+		(void)sprintf(command, wcs->search_format, filename, wcstring);
+	    else
+		(void)sprintf(command, wcs->search_format, wcstring, filename);
+	    *(fileform+1) = 'f';
 	    }
-	if (wcs->search_format[0] > 0) {
-
-	    /* Get WCS coordinates for this image coordinate */
-	    (void) pix2wcst (wcs,xfile,yfile,wcstring,lstr);
-
-	    /* Create and execute search command */
+	else
 	    (void)sprintf(command, wcs->search_format, wcstring);
-	    ier = system (command);
-	    if (ier)
-		(void)fprintf(stderr,"WCSCOM: %s failed %d\n",command,ier);
-	    }
+	ier = system (command);
+	if (ier)
+	    (void)fprintf(stderr,"WCSCOM: %s failed %d\n",command,ier);
+	}
+    return;
 }
 
 /* Initialize WCS output coordinate system set by -wcsout */
@@ -767,40 +843,40 @@ struct WorldCoor *wcs;		/* World coordinate system structure */
 char *coorsys;
 
 {
-	if (!iswcs(wcs))
-	    return;
-
-	if (wcs->radecsys[0] == 0)
-	    wcs->sysout[0] = 0;
-	else if (strcmp (coorsys,"fk4") == 0 || strcmp (coorsys,"FK4") == 0 ||
-	    strncmp (coorsys,"b1",2) == 0 || strncmp (coorsys,"B1",2) == 0)
-	    strcpy (wcs->sysout,"FK4");
-	else if (strcmp (coorsys,"fk5") == 0 || strcmp (coorsys,"FK5") == 0 ||
-	         strncmp (coorsys,"j2",2) == 0 || strncmp (coorsys,"J2",2) == 0)
-	    strcpy (wcs->sysout,"FK5");
-	else if (strncmp (coorsys,"g",1) == 0 || strncmp (coorsys,"G",1) == 0)
-	    strcpy (wcs->sysout,"GALACTIC");
-	else {
-	    strcpy (wcs->sysout,wcs->radecsys);
-	    wcs->changesys = 0;
-	    }
-	if (wcs->wcson) {
-	    if (strncmp (wcs->radecsys,"FK4",3) == 0 &&
-		strncmp(wcs->sysout,"FK5",3) == 0)
-		wcs->changesys = 1;
-	    else if (strncmp (wcs->radecsys,"FK5",3) == 0 &&
-		     strncmp(wcs->sysout,"FK4",3) == 0)
-		wcs->changesys = 2;
-	    else if (strncmp (wcs->radecsys,"FK4",3) == 0 &&
-		     strncmp(wcs->sysout,"GAL",3) == 0)
-		wcs->changesys = 3;
-	    else if (strncmp (wcs->radecsys,"FK5",3) == 0 &&
-		     strncmp(wcs->sysout,"GAL",3) == 0)
-		wcs->changesys = 4;
-	    else
-		wcs->changesys = 0;
-	    }
+    if (!iswcs(wcs))
 	return;
+
+    if (wcs->radecsys[0] == 0)
+	wcs->sysout[0] = 0;
+    else if (strcmp (coorsys,"fk4") == 0 || strcmp (coorsys,"FK4") == 0 ||
+	strncmp (coorsys,"b1",2) == 0 || strncmp (coorsys,"B1",2) == 0)
+	strcpy (wcs->sysout,"FK4");
+    else if (strcmp (coorsys,"fk5") == 0 || strcmp (coorsys,"FK5") == 0 ||
+	     strncmp (coorsys,"j2",2) == 0 || strncmp (coorsys,"J2",2) == 0)
+	strcpy (wcs->sysout,"FK5");
+    else if (strncmp (coorsys,"g",1) == 0 || strncmp (coorsys,"G",1) == 0)
+	strcpy (wcs->sysout,"GALACTIC");
+    else {
+	strcpy (wcs->sysout,wcs->radecsys);
+	wcs->changesys = 0;
+	}
+    if (wcs->wcson) {
+	if (strncmp (wcs->radecsys,"FK4",3) == 0 &&
+	    strncmp(wcs->sysout,"FK5",3) == 0)
+	    wcs->changesys = 1;
+	else if (strncmp (wcs->radecsys,"FK5",3) == 0 &&
+	    strncmp(wcs->sysout,"FK4",3) == 0)
+	    wcs->changesys = 2;
+	else if (strncmp (wcs->radecsys,"FK4",3) == 0 &&
+	    strncmp(wcs->sysout,"GAL",3) == 0)
+	    wcs->changesys = 3;
+	else if (strncmp (wcs->radecsys,"FK5",3) == 0 &&
+	    strncmp(wcs->sysout,"GAL",3) == 0)
+	    wcs->changesys = 4;
+	else
+	    wcs->changesys = 0;
+	}
+    return;
 }
 
 
@@ -846,6 +922,20 @@ int	lstr;		/* Length of world coordinate string (returned) */
 	    if (lstr > 28 && wcs->printsys)
 		strcat (wcstring," galactic");
 	    }
+
+	/* Output ecliptic coordinates in degrees */
+	else if (!strncmp (wcs->sysout,"ECL",3)) {
+	    if (xpos > 180.0)
+		xpos = xpos - 360.0;
+	    if (lstr > 19)
+		(void)sprintf (wcstring,"%9.5f %9.5f", xpos,ypos);
+	    else
+		strncpy (wcstring,"*******************",lstr);
+	    if (lstr > 28 && wcs->printsys)
+		strcat (wcstring," ecliptic");
+	    }
+
+	/* Output equatorial coordinates in hours and degrees */
 	else if (!strncmp (wcs->sysout,"FK",2)) {
 	    ra2str (rastr, xpos, 3);
 	    dec2str (decstr, ypos, 2);
@@ -866,11 +956,13 @@ int	lstr;		/* Length of world coordinate string (returned) */
 	    else
 		strncpy (wcstring,"**************************",lstr);
 	    }
+
+	/* Output linear coordinates */
 	else {
-	    if (xpos > 180.0)
+	    if (strncmp (wcs->ptype, "LINEAR",6) && xpos > 180.0)
 		xpos = xpos - 360.0;
-	    if (lstr > 19)
-		(void)sprintf (wcstring,"%9.5f %9.5f", xpos,ypos);
+	    if (lstr > 23)
+		(void)sprintf (wcstring,"%11.5f %11.5f", xpos,ypos);
 	    else
 		strncpy (wcstring,"*******************",lstr);
 	    }
@@ -954,10 +1046,8 @@ int	*offscl;
 
 	if (!iswcs(wcs))
 	    return;
+
 	*offscl = 0;
-	wcs->offscl = 0;
-	*xpix = -1.0;
-	*ypix = -1.0;
 
 	/* Convert coordinates to same system as image */
 	if (wcs->changesys == 1)
@@ -978,27 +1068,33 @@ int	*offscl;
 	/* Convert sky coordinates to image coordinates */
 	if (wcs->plate_fit) {
 	    if (platepix (xpos, ypos, wcs, &xp, &yp)) {
-		wcs->offscl = 1;
+		*offscl = 1;
 		}
 	    }
 	else if (worldpix (xpos,ypos,wcs,&xp,&yp)) {
-	    wcs->offscl = 1;
-	    }
-
-	if (wcs->offscl)
 	    *offscl = 1;
-	else {
-	    wcs->xpos = xpos;
-	    wcs->ypos = ypos;
-	    wcs->offscl = 0;
-	    wcs->xpix = xp;
-	    wcs->ypix = yp;
-	    *xpix = xp;
-	    *ypix = yp;
-	    wcs->offscl = 0;
-	    *offscl = 0;
 	    }
+	if (xp < 0 || yp < 0)
+	    *offscl = 1;
+	else if (xp > wcs->nxpix + 1 || yp > wcs->nypix + 1)
+	    *offscl = 1;
+
+	*xpix = xp;
+	*ypix = yp;
+	wcs->xpix = xp;
+	wcs->ypix = yp;
+	wcs->offscl = *offscl;
+	wcs->xpos = xpos;
+	wcs->ypos = ypos;
 	return;
+}
+
+void
+wcserr ()
+
+{
+    fprintf (stderr, "%s\n",wcserrmsg);
+    return;
 }
 /* Oct 28 1994	new program
  * Dec 21 1994	Implement CD rotation matrix
@@ -1042,4 +1138,11 @@ int	*offscl;
  * Jul  5 1996	Declare all subroutines in wcs.h
  * Jul 19 1996	Add subroutine WCSFULL to return real image size
  * Aug 12 1996	Allow systemless coordinates which cannot be converted
+ * Aug 15 1996	Allow LINEAR WCS to pass numbers through transparently
+ * Aug 15 1996	Add WCSERR to print error message under calling program control
+ * Aug 16 1996	Add latitude and longitude as image coordinate types
+ * Aug 26 1996	Fix arguments to HLENGTH in WCSNINIT
+ * Aug 28 1996	Explicitly set OFFSCL in WCS2PIX if coordinates outside image
+ * Sep  3 1996	Return computed pixel values even if they are offscale
+ * Sep  6 1996	Allow filename to be passed by WCSCOM
  */
