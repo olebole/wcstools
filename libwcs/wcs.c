@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** July 10, 1998
+ *** July 16, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -1795,6 +1795,7 @@ double  *xpos;           /* x (RA) coordinate (deg) */
 double  *ypos;           /* y (dec) coordinate (deg) */
 {
     int offscl;
+    int i;
     int wcsrev();
     double wcscrd[4], imgcrd[4], pixcrd[4];
     double phi, theta;
@@ -1806,6 +1807,8 @@ double  *ypos;           /* y (dec) coordinate (deg) */
     pixcrd[1] = ypix;
     pixcrd[2] = zpix;
     pixcrd[3] = 1.0;
+    for (i = 0; i < 4; i++)
+	imgcrd[i] = 0.0;
     offscl = wcsrev (wcs->ctype, &wcs->wcsl, pixcrd, &wcs->lin, imgcrd,
 		    &wcs->prj, &phi, &theta, wcs->crval, &wcs->cel, wcscrd);
     if (offscl == 0) {
@@ -1829,6 +1832,7 @@ double  *ypix;          /* y pixel number  (dec or lat without rotation) */
 
 {
     int offscl;
+    int i;
     int wcsfwd();
     double wcscrd[4], imgcrd[4], pixcrd[4];
     double phi, theta;
@@ -1841,6 +1845,8 @@ double  *ypix;          /* y pixel number  (dec or lat without rotation) */
 	}
     wcscrd[wcs->wcsl.lng] = xpos;
     wcscrd[wcs->wcsl.lat] = ypos;
+    for (i = 0; i < 4; i++)
+	pixcrd[i] = 0.0;
     offscl = wcsfwd (wcs->ctype, &wcs->wcsl, wcscrd, wcs->crval, &wcs->cel,
 		     &phi, &theta, &wcs->prj, imgcrd, &wcs->lin, pixcrd);
     if (offscl == 0) {
@@ -2055,4 +2061,5 @@ getdefwcs ()
  * Jul  6 1998	Add wcszin() and wcszout() to use third dimension of images
  * Jul  7 1998	Change setlinmode() to setwcslin(); setdegout() to setwcsdeg()
  * Jul 10 1998	Initialize matrices correctly for naxis > 2 in wcs<>set()
+ * Jul 16 1998	Initialize coordinates to be returned in wcspos()
  */

@@ -523,29 +523,32 @@ double pixcrd[];
       if (wcs->cubeface != -1) {
          /* Separation between faces. */
          if (prj->r0 == 0.0) {
-            offset = 45.0;
+            offset = 90.0;
          } else {
-            offset = prj->r0*PI/4.0;
+            offset = prj->r0*PI/2.0;
          }
  
-         /* Stack faces in a cube. */
-         if (imgcrd[wcs->lat] < offset) {
+         /* Figure out which cube face we are on. */
+         if (imgcrd[wcs->lat] < -offset*0.5) {
             imgcrd[wcs->lat] += offset;
-            imgcrd[wcs->cubeface] = 5.0;
-         } else if (imgcrd[wcs->lng] < offset*3) {
-            imgcrd[wcs->lng] += offset*3;
-            imgcrd[wcs->cubeface] = 4.0;
-         } else if (imgcrd[wcs->lng] < offset*2) {
-            imgcrd[wcs->lng] += offset*2;
-            imgcrd[wcs->cubeface] = 3.0;
-         } else if (imgcrd[wcs->lng] < offset) {
-            imgcrd[wcs->lng] += offset;
-            imgcrd[wcs->cubeface] = 2.0;
-         } else if (imgcrd[wcs->lat] > offset) {
+            imgcrd[wcs->cubeface] = 6.0;
+         } else if (imgcrd[wcs->lat] > offset*0.5) {
             imgcrd[wcs->lat] -= offset;
-            imgcrd[wcs->cubeface] = 0.0;
-         } else {
             imgcrd[wcs->cubeface] = 1.0;
+         } else if (imgcrd[wcs->lng] <= offset*3.5 &&
+		    imgcrd[wcs->lng] > offset*2.5){
+            imgcrd[wcs->lng] -= offset * 3.0;
+            imgcrd[wcs->cubeface] = 5.0;
+         } else if (imgcrd[wcs->lng] <= offset*2.5 &&
+		    imgcrd[wcs->lng] > offset*1.5){
+            imgcrd[wcs->lng] -= offset * 2.0;
+            imgcrd[wcs->cubeface] = 4.0;
+         } else if (imgcrd[wcs->lng] <= offset*1.5 &&
+		    imgcrd[wcs->lng] > offset*0.5) {
+            imgcrd[wcs->lng] -= offset;
+            imgcrd[wcs->cubeface] = 3.0;
+         } else {
+            imgcrd[wcs->cubeface] = 2.0;
          }
       }
    }
@@ -599,19 +602,19 @@ double world[];
    if (wcs->flag != 999) {
       /* Do we have a CUBEFACE axis? */
       if (wcs->cubeface != -1) {
-         face = (int)(imgcrd[wcs->cubeface] + 0.5);
-         if (fabs(imgcrd[wcs->cubeface]-face) > 1e-10) {
+         face = (int)(imgcrd[wcs->cubeface] - 0.5);
+         if (fabs(imgcrd[wcs->cubeface]-(face+1)) > 1e-10) {
             return 3;
          }
 
          /* Separation between faces. */
          if (prj->r0 == 0.0) {
-            offset = 45.0;
+            offset = 90.0;
          } else {
-            offset = prj->r0*PI/4.0;
+            offset = prj->r0*PI/2.0;
          }
 
-         /* Lay out faces in a plane. */
+         /* Figure out WCS location from cube face. */
          switch (face) {
          case 0:
             imgcrd[wcs->lat] += offset;
@@ -619,13 +622,13 @@ double world[];
          case 1:
             break;
          case 2:
-            imgcrd[wcs->lng] -= offset;
+            imgcrd[wcs->lng] += offset;
             break;
          case 3:
-            imgcrd[wcs->lng] -= offset*2;
+            imgcrd[wcs->lng] += offset*2;
             break;
          case 4:
-            imgcrd[wcs->lng] -= offset*3;
+            imgcrd[wcs->lng] += offset*3;
             break;
          case 5:
             imgcrd[wcs->lat] -= offset;
@@ -1082,5 +1085,7 @@ double pixcrd[];
 
 }
 
-/* Jan 23 1998	Doug Mink - change signbit() to signb() and always define it
+/* Jan 23 1998	Doug Mink - Change signbit() to signb() and always define it
+ * Jul 16 1998	Doug Mink - Cubeface offset 45->90 and lng sign positive
+ * Jul 16 1998	Doug Mink - Set cube face to z coordinate - 1
  */

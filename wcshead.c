@@ -1,5 +1,5 @@
 /* File wcshead.c
- * June 24, 1998
+ * July 10, 1998
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -62,6 +62,10 @@ char **av;
 	    verbose++;
 	    break;
 
+    	case 'z':	/* Use AIPS classic WCS */
+    	    setdefwcs(1);
+    	    break;
+
 	case '@':	/* List of files to be read */
 	    readlist++;
 	    listfile = ++str;
@@ -118,6 +122,7 @@ char *progname;
     fprintf (stderr,"  -h: print CRVALs as hh:mm:ss dd:mm:ss\n");
     fprintf (stderr,"  -t: print tab table output\n");
     fprintf (stderr,"  -v: verbose\n");
+    fprintf (stderr,"  -z: Use AIPS classic WCS subroutines\n");
     exit (1);
 }
 
@@ -240,4 +245,5 @@ struct WorldCoor *wcs;
 /* Feb 18 1998	New program
  * May 27 1998	Include fitsio.h instead of fitshead.h
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
+ * Jul 10 1998	Add option to use AIPS classic WCS subroutines
  */

@@ -1,3 +1,9 @@
+Version 2.3.2 (July 16, 1998)
+wcslib.c, wcs.c: Correct implementation of CSC, and probably all, quad cube
+projections.
+sky2xy.c: Add third dimension in output for quad cube projections
+xy2sky.c: Add -f <num> for third dimension of input for quad cube projections.
+
 Version 2.3 (July 10, 1998)
 Restructure WCS initialization subroutines, putting keyword-dependent
 stuff into wcsinit.c

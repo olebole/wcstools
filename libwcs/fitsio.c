@@ -1,6 +1,6 @@
 /*** File libwcs/fitsio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** June 11, 1998
+ *** July 13, 1998
 
  * Module:      fitsio.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -57,8 +57,8 @@ fitsrhead (filename, lhead, nbhead)
 
 char	*filename;	/* Name of FITS image file */
 int	*lhead;		/* Allocated length of FITS header in bytes (returned) */
-int	*nbhead;	/* Actual length of image header in bytes (returned) */
-			/* This includes the first, simple header block */
+int	*nbhead;	/* Number of bytes before start of data (returned) */
+			/* This includes all skipped image extensions */
 
 {
     int fd;
@@ -913,4 +913,5 @@ char	*image;		/* FITS image pixels */
  * Jun  1 1998	Add VMS fixes from Harry Payne at STScI
  * Jun  3 1998	Fix bug reading EXTNAME
  * Jun 11 1998	Initialize all header parameters before reading them
+ * Jul 13 1998	Clarify argument definitions
  */

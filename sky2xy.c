@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * June 25, 1998
+ * July 16, 1998
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -176,6 +176,8 @@ char **av;
 		}
 	    wcsc2pix (wcs, ra0, dec0, csys, &x, &y, &offscale);
 	    printf ("%s %s %s -> %.3f %.3f",rastr, decstr, csys, x, y);
+	    if (wcs->wcsl.cubeface)
+		printf (" %d", wcszout (wcs));
 	    if (offscale)
 		printf (" (offscale)\n");
 	    else
@@ -230,4 +232,5 @@ char *progname;
  * May 27 1998	Include fitsio.h instead of fitshead.h
  * Jun 24 1998	Add string lengths to ra2str() and dec2str() calls
  * Jun 25 1998	Set WCS subroutine choice with SETDEFWCS()
+ * Jul 16 1998	Print face if cube face is returned
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** July 7, 1998
+ *** July 13, 1998
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcsinit.c (World Coordinate Systems)
@@ -114,17 +114,19 @@ char *hstring;	/* character string containing FITS header information
 	    return (NULL);
 	    }
 
+	/* Read third and fourth coordinate types, if present */
+	strcpy (wcs->ctype[0], ctype1);
+	strcpy (wcs->ctype[1], ctype2);
+	strcpy (wcs->ctype[2], "");
+	hgets (hstring, "CTYPE3", 9, wcs->ctype[2]);
+	strcpy (wcs->ctype[3], "");
+	hgets (hstring, "CTYPE4", 9, wcs->ctype[3]);
+
 	/* Set projection type in WCS data structure */
 	if (wcstype (wcs, ctype1, ctype2)) {
 	    free (wcs);
 	    return (NULL);
 	    }
-
-	/* Read third and fourth coordinate types, if present */
-	strcpy (wcs->ctype[2], "");
-	hgets (hstring, "CTYPE3", 9, wcs->ctype[2]);
-	strcpy (wcs->ctype[3], "");
-	hgets (hstring, "CTYPE4", 9, wcs->ctype[3]);
 
 	/* Get units, if present, for linear coordinates */
 	if (wcs->prjcode == WCS_LIN) {
@@ -187,14 +189,19 @@ char *hstring;	/* character string containing FITS header information
 		if (hgetr8 (hcoeff, keyword, &wcs->y_coeff[i]))
 		    wcs->ncoeff2 = i + 1;
 		}
+
+	    /* Compute first order scale and rotation */
 	    platepos (wcs->crpix[0], wcs->crpix[1], wcs, &ra0, &dec0);
-	    platepos (wcs->crpix[0]+100.0, wcs->crpix[1], wcs, &ra1, &dec1);
-	    radiff = -(ra1 - ra0) / cos (degrad(0.5*dec0+dec1));
+	    platepos (wcs->crpix[0]+1.0, wcs->crpix[1], wcs, &ra1, &dec1);
+	    radiff = (ra0 - ra1) / cos (degrad(0.5*dec0+dec1));
 	    wcs->rot = atan2 ((dec1 - dec0), radiff);
-	    wcs->cdelt[0] = 0.01 * wcsdist (ra0, dec0, ra1, dec1);
+	    platepos (wcs->crpix[0]+sin(wcs->rot),
+		      wcs->crpix[1]+cos(wcs->rot), wcs, &ra1, &dec1);
+	    wcs->cdelt[0] = -wcsdist (ra0, dec0, ra1, dec1);
 	    wcs->xinc = wcs->cdelt[0];
-	    platepos (wcs->crpix[0], wcs->crpix[1]+100.0, wcs, &ra1, &dec1);
-	    wcs->cdelt[1] = 0.01 * wcsdist (ra0, dec0, ra1, dec1);
+	    platepos (wcs->crpix[0]+cos(wcs->rot),
+		      wcs->crpix[1]-sin(wcs->rot), wcs, &ra1, &dec1);
+	    wcs->cdelt[1] = wcsdist (ra0, dec0, ra1, dec1);
 	    wcs->yinc = wcs->cdelt[1];
 	    }
 
@@ -214,57 +221,53 @@ char *hstring;	/* character string containing FITS header information
 	else if (hgetr8 (hstring,"CDELT1",&cdelt1) != 0) {
 	    cdelt2 = cdelt1;
 	    hgetr8 (hstring,"CDELT2",&cdelt2);
-	    if (naxes > 2) {
-		wcs->cdelt[2] = 1.0;
-		hgetr8 (hstring,"CDELT3",&wcs->cdelt[2]);
-		}
-	    if (naxes > 3) {
-		wcs->cdelt[3] = 1.0;
-		hgetr8 (hstring,"CDELT4",&wcs->cdelt[3]);
-		}
+	    wcs->cdelt[2] = 1.0;
+	    wcs->cdelt[3] = 1.0;
 
 	    /* Use rotation matrix, if present */
+	    for (i = 0; i < 16; i++)
+		wcs->pc[i] = 0.0;
 	    if (hgetr8 (hstring,"PC001001",&pc[0]) != 0) {
-		pc[1] = 0.0;
 		hgetr8 (hstring,"PC001002",&pc[1]);
-		pc[2] = 0.0;
-		hgetr8 (hstring,"PC002001",&pc[2]);
-		pc[3] = wcs->pc[1];
-		hgetr8 (hstring,"PC002002",&pc[3]);
-		pc[naxes] = pc[2];
-		pc[naxes+1] = pc[3];
-		if (naxes > 2) {
-		    pc[2] = 0.0;
+		if (naxes < 3) {
+		    hgetr8 (hstring,"PC002001",&pc[2]);
+		    pc[3] = wcs->pc[0];
+		    hgetr8 (hstring,"PC002002",&pc[3]);
+		    }
+		if (naxes == 3) {
 		    hgetr8 (hstring,"PC001003",&pc[2]);
-		    pc[naxes+2] = 0.0;
-		    hgetr8 (hstring,"PC002003",&pc[naxes+2]);
-		    pc[2*naxes] = 0.0;
-		    hgetr8 (hstring,"PC003001",&pc[2*naxes]);
-		    pc[(2*naxes)+1] = 0.0;
-		    hgetr8 (hstring,"PC003002",&pc[(2*naxes)+1]);
-		    pc[(2*naxes)+2] = 1.0;
-		    hgetr8 (hstring,"PC003003",&pc[(2*naxes)+2]);
+		    hgetr8 (hstring,"PC002001",&pc[3]);
+		    pc[4] = wcs->pc[0];
+		    hgetr8 (hstring,"PC002002",&pc[4]);
+		    hgetr8 (hstring,"PC002003",&pc[5]);
+		    hgetr8 (hstring,"PC003001",&pc[6]);
+		    hgetr8 (hstring,"PC003002",&pc[7]);
+		    pc[8] = 1.0;
+		    hgetr8 (hstring,"PC003003",&pc[8]);
 		    }
 		if (naxes > 3) {
-		    pc[3] = 0.0;
+		    hgetr8 (hstring,"PC001003",&pc[2]);
 		    hgetr8 (hstring,"PC001004",&pc[3]);
-		    pc[naxes+2] = 0.0;
-		    hgetr8 (hstring,"PC002004",&pc[naxes+3]);
-		    pc[(2*naxes)+3] = 0.0;
-		    hgetr8 (hstring,"PC003004",&pc[(2*naxes)+3]);
-		    pc[3*naxes] = 0.0;
-		    hgetr8 (hstring,"PC004001",&pc[3*naxes]);
-		    pc[(3*naxes)+1] = 0.0;
-		    hgetr8 (hstring,"PC004002",&pc[(3*naxes)+1]);
-		    pc[(3*naxes)+2] = 0.0;
-		    hgetr8 (hstring,"PC004003",&pc[(3*naxes)+2]);
-		    pc[(3*naxes)+3] = 1.0;
-		    hgetr8 (hstring,"PC004004",&pc[(3*naxes)+3]);
+		    hgetr8 (hstring,"PC002001",&pc[4]);
+		    pc[5] = wcs->pc[0];
+		    hgetr8 (hstring,"PC002002",&pc[5]);
+		    hgetr8 (hstring,"PC002003",&pc[6]);
+		    hgetr8 (hstring,"PC002004",&pc[7]);
+		    hgetr8 (hstring,"PC003001",&pc[8]);
+		    hgetr8 (hstring,"PC003002",&pc[9]);
+		    pc[10] = 1.0;
+		    hgetr8 (hstring,"PC003003",&pc[10]);
+		    hgetr8 (hstring,"PC003004",&pc[11]);
+		    hgetr8 (hstring,"PC004001",&pc[12]);
+		    hgetr8 (hstring,"PC004002",&pc[13]);
+		    hgetr8 (hstring,"PC004003",&pc[14]);
+		    pc[15] = 1.0;
+		    hgetr8 (hstring,"PC004004",&pc[15]);
 		    }
 		wcspcset (wcs, cdelt1, cdelt2, pc);
 		}
 
-	    /* otherwise, use CROTAn */
+	    /* Otherwise, use CROTAn */
 	    else {
 		rotate = 0.0;
 		hgetr8 (hstring,"CROTA2",&rotate);
@@ -367,6 +370,8 @@ char *hstring;	/* character string containing FITS header information
 	(void)strcpy (wcs->ptype, "DSS");
 	wcs->degout = 0;
 	wcs->ndec = 3;
+
+	/* Compute a nominal reference pixel at the image center */
 	wcs->crpix[0] = 0.5 * wcs->nxpix;
 	wcs->crpix[1] = 0.5 * wcs->nypix;
 	wcs->xrefpix = wcs->crpix[0];
@@ -376,13 +381,18 @@ char *hstring;	/* character string containing FITS header information
 	wcs->crval[1] = dec0;
 	wcs->xref = wcs->crval[0];
 	wcs->yref = wcs->crval[1];
-	dsspos (wcs->crpix[0]+100.0, wcs->crpix[1], wcs, &ra1, &dec1);
-	radiff = -(ra1 - ra0) / cos (degrad(0.5*dec0+dec1));
+
+	/* Compute first order scale and rotation */
+	dsspos (wcs->crpix[0]+1.0, wcs->crpix[1], wcs, &ra1, &dec1);
+	radiff = (ra0 - ra1) / cos (degrad(0.5*dec0+dec1));
 	wcs->rot = atan2 ((dec1 - dec0), radiff);
-	wcs->cdelt[0] = 0.01 * wcsdist (ra0, dec0, ra1, dec1);
+	dsspos (wcs->crpix[0]+sin(wcs->rot),
+		wcs->crpix[1]+cos(wcs->rot), wcs, &ra1, &dec1);
+	wcs->cdelt[0] = -wcsdist (ra0, dec0, ra1, dec1);
 	wcs->xinc = wcs->cdelt[0];
-	dsspos (wcs->crpix[0], wcs->crpix[1]+100.0, wcs, &ra1, &dec1);
-	wcs->cdelt[1] = 0.01 * wcsdist (ra0, dec0, ra1, dec1);
+	dsspos (wcs->crpix[0]+cos(wcs->rot),
+		wcs->crpix[1]-sin(wcs->rot), wcs, &ra1, &dec1);
+	wcs->cdelt[1] = wcsdist (ra0, dec0, ra1, dec1);
 	wcs->yinc = wcs->cdelt[1];
 	}
 
@@ -674,7 +684,8 @@ struct WorldCoor *wcs;
  * Jun 18 1998	Fix bug in CD initialization; split PC initialization off
  * Jun 18 1998	Split PC initialization off into subroutine wcspcset()
  * Jun 24 1998	Set equinox from RADECSYS only if EQUINOX and EPOCH not present
- * Jul  6 1998	Read third and fourth axis CTYPEs
- * Jul  7 1998	Initialize eqin and eqout to equinox,
- * Jul  7 1998	Initialize cdelt[2] and cdelt[3] to 1.0
+ * Jul  6 1998  Read third and fourth axis CTYPEs
+ * Jul  7 1998  Initialize eqin and eqout to equinox,
+ * Jul  9 1998	Initialize rotation matrices correctly
+ * Jul 13 1998	Initialize rotation, scale for polynomial and DSS projections
  */
