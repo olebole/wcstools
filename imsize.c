@@ -1,5 +1,5 @@
 /* File imsize.c
- * December 10, 1996
+ * February 21, 1997
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -22,6 +22,7 @@ extern void setfk4();
 extern void setcenter();
 extern void setsecpix();
 extern struct WorldCoor *GetFITSWCS();
+extern char *GetFITShead();
 
 static char coorsys[4];
 static double size = 0.0;
@@ -31,6 +32,7 @@ static int dss = 0;		/* Flag to drop extra stuff for DSS */
 static int dssc = 0;		/* Flag to drop extra stuff for DSS */
 static int ieq = 0;
 static double equinox = 0.0;
+static int printepoch = 0;
 
 main (ac, av)
 int ac;
@@ -91,6 +93,10 @@ char **av;
 		}
 	    break;
 
+	case 'e':	/* ouput epoch of plate */
+	    printepoch++;
+	    break;
+
 	case 'j':	/* ouput J2000 (J2000) coordinates */
 	    str1 = *(av+1);
 	    ieq = 2000;
@@ -141,12 +147,13 @@ usage ()
 {
     fprintf (stderr,"Print size of image in WCS and pixels\n");
     fprintf(stderr,"Usage: [-vcd] [-p scale] [-b ra dec] [-j ra dec] FITS or IRAF file(s)\n");
-    fprintf(stderr,"  -b: output B1950 (B1950) coordinates (optional center)\n");
-    fprintf(stderr,"  -c: format output without pixel dimensions (optional size change)\n");
-    fprintf(stderr,"  -d: format output as input to DSS getimage (optional size change)\n");
-    fprintf(stderr,"  -j: output J2000 (J2000) coordinates (optional center)\n");
-    fprintf(stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
-    fprintf(stderr,"  -v: verbose\n");
+    fprintf(stderr,"  -b: Output B1950 (B1950) coordinates (optional center)\n");
+    fprintf(stderr,"  -c: Format output without pixel dimensions (optional size change)\n");
+    fprintf(stderr,"  -d: Format output as input to DSS getimage (optional size change)\n");
+    fprintf(stderr,"  -e: Add epoch of image to output line\n");
+    fprintf(stderr,"  -j: Output J2000 (J2000) coordinates (optional center)\n");
+    fprintf(stderr,"  -p: Initial plate scale in arcsec per pixel (default 0)\n");
+    fprintf(stderr,"  -v: Verbose\n");
     exit (1);
 }
 
@@ -170,59 +177,33 @@ char *name;
     char *colon;
     char rstr[64], dstr[64];
 
-    /* Open IRAF header if .imh extension is present */
-    ext = strsrch (name, ".imh");
-    if (ext) {
-	iraffile = 1;
-	if ((irafheader = irafrhead (name, &lhead))) {
-	    header = iraf2fits (name, irafheader, lhead, &nbhead);
-	    free (irafheader);
-	    if (!header) {
-		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
-		return;
-		}
-	    if (strrchr (name,'/'))
-		filename = strrchr (name,'/') + 1;
-	    else
-		filename = name;
-	    nc = ext - filename;
-	    strncpy (fileroot, filename, nc);
-	    fileroot[nc] = 0;
-	    }
-	else {
-	    fprintf (stderr, "Cannot read IRAF header file %s\n", name);
-	    return;
-	    }
-	}
+    /* Find root file name */
+    if (strrchr (name,'/'))
+	filename = strrchr (name,'/') + 1;
+    else
+	filename = name;
+    ext = strsrch (filename, ".imh");
+    if (ext == NULL)
+	ext = strsrch (filename,".fit");
+    if (ext == NULL)
+	ext = strsrch (filename,".fts");
+    if (ext != NULL)
+	nc = ext - filename;
+    else
+	nc = strlen (filename);
+    strncpy (fileroot, filename, nc);
+    fileroot[nc] = 0;
 
-    /* Open FITS file if .imh extension is not present */
-    else {
-	iraffile = 0;
-	if ((header = fitsrhead (name, &lhead, &nbhead))) {
-	    if (strrchr (name,'/'))
-		filename = strrchr (name,'/') + 1;
-	    else
-		filename = name;
-	    ext = strsrch (name,".fit");
-	    if (!ext)
-		ext = strsrch (name,".fts");
-	    if (ext)
-		nc = ext - filename;
-	    strncpy (fileroot, filename, nc);
-	    fileroot[nc] = 0;
-	    }
-	else {
-	    fprintf (stderr, "Cannot read FITS file %s\n", name);
-	    return;
-	    }
-	}
     if (verbose) {
 	fprintf (stderr,"Print World Coordinate System from ");
-	if (iraffile)
+	if (strsrch (name,".imh") != NULL)
 	    fprintf (stderr,"IRAF image file %s\n", name);
 	else
 	    fprintf (stderr,"FITS image file %s\n", name);
 	}
+
+    if ((header = GetFITShead (name)) == NULL)
+	return;
 
     /* Set image dimensions */
     nax = 0;
@@ -308,10 +289,11 @@ char *name;
 	if (!dssc) {
 	    if (secpix > 0.0)
 		printf (" %.3f \"/pix", secpix);
-	    printf ("  %dx%d pix\n", wp, hp);
+	    printf ("  %dx%d pix", wp, hp);
 	    }
-	else
-	    printf ("\n");
+	if (printepoch)
+	    printf (" (%.5f)",wcs->epoch);
+	printf ("\n");
 	}
 
     free (wcs);
@@ -331,4 +313,7 @@ char *name;
  * Oct 17 1996	Do not print angular size and scale if not set
  * Oct 30 1996	Make equinox default to J2000 if not in image header
  * Dec 10 1996	Change equinox in getfitswcs call to double
+ *
+ * Feb 21 1997  Add optional epoch of image to output
+ * Feb 21 1997  Read header using GetFITShead()
  */

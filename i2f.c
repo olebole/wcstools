@@ -1,5 +1,5 @@
 /* File i2f.c
- * October 17, 1996
+ * February 21, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -85,16 +85,14 @@ char *name;
 
     /* Open IRAF image if .imh extension is present */
     if (strsrch (name,".imh") != NULL) {
-	irafheader = irafrhead (name, &lhead);
-	if (irafheader) {
+	if ((irafheader = irafrhead (name, &lhead)) != NULL) {
 	    header = iraf2fits (name, irafheader, lhead, &nbhead);
 	    free (irafheader);
 	    if (header == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
 		return;
 		}
-	    image = irafrimage (header);
-	    if (image == NULL) {
+	    if ((image = irafrimage (header)) == NULL) {
 		hgets (header,"PIXFILE", 64, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
@@ -118,16 +116,14 @@ char *name;
     else {
 	strcpy (irafname, name);
 	strcat (irafname,".imh");
-	irafheader = irafrhead (irafname, &lhead);
-	if (irafheader) {
+	if ((irafheader = irafrhead (irafname, &lhead)) != NULL) {
 	    header = iraf2fits (irafname, irafheader, lhead, &nbhead);
 	    free (irafheader);
 	    if (header == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",irafname);
 		return;
 		}
-	    image = irafrimage (header);
-	    if (image == NULL) {
+	    if ((image = irafrimage (header)) == NULL) {
 		hgets (header,"PIXFILE",64, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
@@ -163,4 +159,6 @@ char *name;
  * Aug 26 1996	Change HGETC call to HGETS
  * Aug 27 1996	Drop unused variables after lint
  * Oct 17 1996	Clean up after lint
+ *
+ * Feb 21 1997  Check pointers against NULL explicitly for Linux
  */

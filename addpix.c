@@ -1,5 +1,5 @@
 /* File addpix.c
- * December 6, 1996
+ * February 21, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -113,15 +113,13 @@ char	**value;	/* value to insert into pixel */
     /* Open IRAF image and header if .imh extension is present */
     if (strsrch (filename,".imh") != NULL) {
 	iraffile = 1;
-	if ((irafheader = irafrhead (filename, &lhead))) {
-	    header = iraf2fits (filename, irafheader, lhead, &nbhead);
-            if (header == NULL) {
+	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
+            if ((header = iraf2fits (filename, irafheader, lhead, &nbhead)) == NULL) {
 		free (irafheader);
                 fprintf (stderr, "Cannot translate IRAF header %s/n", filename);
                 return;
                 }
-	    image = irafrimage (header);
-	    if (image == NULL) {
+	    if ((image = irafrimage (header)) == NULL) {
 		hgets (header,"PIXFILE", 64, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
@@ -139,8 +137,8 @@ char	**value;	/* value to insert into pixel */
     /* Read FITS image and header if .imh extension is not present */
     else {
 	iraffile = 0;
-	if ((header = fitsrhead (filename, &lhead, &nbhead))) {
-	    if (!(image = fitsrimage (filename, nbhead, header))) {
+	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
+	    if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
 		fprintf (stderr, "Cannot read FITS image %s\n", filename);
 		free (header);
 		return;
@@ -233,4 +231,6 @@ char	**value;	/* value to insert into pixel */
 }
 
 /* Dec  6 1996	New program
+ *
+ * Feb 21 1997  Check pointers against NULL explicitly for Linux
  */

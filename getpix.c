@@ -1,5 +1,5 @@
 /* File getpix.c
- * December 6, 1996
+ * February 21, 1997
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -88,17 +88,16 @@ int n, *x, *y;
     char pixname[128];
 
     /* Open IRAF image if .imh extension is present */
-    if (strsrch (name,".imh")) {
+    if (strsrch (name,".imh") != NULL) {
 	iraffile = 1;
-	if ((irafheader = irafrhead (name, &lhead))) {
+	if ((irafheader = irafrhead (name, &lhead)) != NULL) {
 	    header = iraf2fits (name, irafheader, lhead, &nbhead);
 	    free (irafheader);
 	    if (header == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
 		return;
 		}
-	    image = irafrimage (header);
-            if (image == NULL) {
+	    if ((image = irafrimage (header)) == NULL) {
 		hgets (header,"PIXFILE", 64, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
@@ -115,8 +114,8 @@ int n, *x, *y;
     /* Open FITS file if .imh extension is not present */
     else {
 	iraffile = 0;
-	if ((header = fitsrhead (name, &lhead, &nbhead))) {
-	    if (!(image = fitsrimage (name, nbhead, header))) {
+	if ((header = fitsrhead (name, &lhead, &nbhead)) != NULL) {
+	    if ((image = fitsrimage (name, nbhead, header)) == NULL) {
 		fprintf (stderr, "Cannot read FITS image %s\n", name);
 		free (header);
 		return;
@@ -160,4 +159,6 @@ int n, *x, *y;
     return;
 }
 /* Dec  6 1996	New program
+ *
+ * Feb 21 1997  Check pointers against NULL explicitly for Linux
  */

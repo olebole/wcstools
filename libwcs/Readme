@@ -11,8 +11,9 @@ fitsio.c
   FITS header and image reading and writing subroutines, including FITS
   table support.
 fitswcs.c
-  GetWCS() returns a WCS structure used by wcs.c subroutines from a FITS
+  GetWCSFITS() returns a WCS structure used by wcs.c subroutines from a FITS
   or IRAF .imh image, reading only the header.
+  GetFITShead() returns a FITS header from a FITS or IRAF .imh image.
   DelWCS() delete the WCS keywords in a FITS header.
 gscread.c
   Return HST Guide Stars from standard CDROM format FITS table files for

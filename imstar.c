@@ -1,5 +1,5 @@
 /* File imstar.c
- * December 11, 1996
+ * February 21, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -230,11 +230,13 @@ char	*filename;	/* FITS or IRAF file filename */
 
     /* Open IRAF header if .imh extension is present */
     if (strsrch (filename,".imh") != NULL) {
-	irafheader = irafrhead (filename, &lhead);
-	if (irafheader) {
-	    header = iraf2fits (filename, irafheader, lhead, &nbhead);
-	    image = irafrimage (header);
-	    if (image == NULL) {
+	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
+	    if ((header = iraf2fits (filename,irafheader,lhead,&nbhead)) == NULL) {
+		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
+		free (irafheader);
+		return;
+		}
+	    if ((image = irafrimage (header)) == NULL) {
 		hgets (header,"PIXFILE", 64, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
@@ -251,10 +253,8 @@ char	*filename;	/* FITS or IRAF file filename */
 
     /* Read FITS image header if .imh extension is not present */
     else {
-	header = fitsrhead (filename, &lhead, &nbhead);
-	if (header) {
-	    image = fitsrimage (filename, nbhead, header);
-	    if (image == NULL) {
+	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
+	    if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
 		fprintf (stderr, "Cannot read FITS image %s\n", filename);
 		free (header);
 		return;
@@ -402,4 +402,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Dec 10 1996	Improve hot pixel rejection
  * Dec 11 1996	Allow reading from DAOFIND file instead of searching image
  * Dec 11 1996	Add WCS default rotation and use getfitswcs
+ *
+ * Feb 21 1997  Check pointers against NULL explicitly for Linux
  */

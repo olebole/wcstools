@@ -1,5 +1,5 @@
 /* File skycoor.c
- * November 1, 1996
+ * February 21, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,6 +17,7 @@ static void usage();
 static void skycons();
 
 static int verbose = 0;		/* verbose/debugging flag */
+static double epoch = 0.0;
 
 main (ac, av)
 int ac;
@@ -46,25 +47,38 @@ char **av;
 	char c;
 	while (c = *++str)
     	switch (c) {
+
     	case 'v':	/* more verbosity */
     	    verbose++;
     	    break;
+
 	case 'b':
 	    strcpy (sys1,"B1950");
     	    break;
+
 	case 'd':
 	    degout++;
 	    if (!ndecset)
 		ndec = 5;
     	    break;
+
+	case 'e':
+	    if (ac < 2)
+		usage();
+	    epoch = atof (*++av);
+	    ac--;
+    	    break;
+
 	case 'g':
 	    strcpy (sys1,"galactic");
 	    if (!ndecset)
 		ndec = 5;
     	    break;
+
 	case 'j':
 	    strcpy (sys1,"J2000");
     	    break;
+
 	case 'n':
 	    if (ac < 2)
 		usage();
@@ -72,6 +86,7 @@ char **av;
 	    ndecset++;
 	    ac--;
     	    break;
+
     	default:
     	    usage(progname);
     	    break;
@@ -165,8 +180,12 @@ int ndec;	/* Number of decimal places in output RA seconds */
     if (sys1[0] == 'B' || sys1[0] == 'b' ||
 	!strcmp (sys1,"FK4") || !strcmp (sys1, "fk4")) {
 	if (sys0[0] == 'J' || sys0[0] == 'j' ||
-	    !strcmp (sys0,"FK5") || !strcmp (sys0, "fk5"))
-	    fk524 (&ra, &dec);
+	    !strcmp (sys0,"FK5") || !strcmp (sys0, "fk5")) {
+	    if (epoch > 0)
+		fk524e (&ra, &dec, epoch);
+	    else
+		fk524 (&ra, &dec);
+	    }
 	else if (sys0[0] == 'G' || sys0[0] == 'g')
 	    gal2fk4 (&ra, &dec);
 	ra2str (rastr1,ra, ndec);
@@ -177,8 +196,12 @@ int ndec;	/* Number of decimal places in output RA seconds */
     else if (sys1[0] == 'J' || sys1[0] == 'j' ||
 	!strcmp (sys1,"FK5") || !strcmp (sys1, "fk5")) {
 	if (sys0[0] == 'B' || sys0[0] == 'b' ||
-	    !strcmp (sys0,"FK4") || !strcmp (sys0, "fk4"))
-	    fk425 (&ra, &dec);
+	    !strcmp (sys0,"FK4") || !strcmp (sys0, "fk4")) {
+	    if (epoch > 0)
+		fk425e (&ra, &dec, epoch);
+	    else
+		fk425 (&ra, &dec);
+	    }
 	else if (sys0[0] == 'G' || sys0[0] == 'g')
 	    gal2fk5 (&ra, &dec);
 	ra2str (rastr1,ra, ndec);
@@ -204,10 +227,11 @@ static void
 usage ()
 {
     fprintf (stderr,"Convert coordinates\n");
-    fprintf (stderr,"Usage [-bdgjv] [-n ndec] ra1 dec1 sys1 ... ran decn sysn\n");
-    fprintf (stderr,"Usage: [-vbjg] [-n ndec] @listfile\n");
+    fprintf (stderr,"Usage [-bdgjv] [-e epoch] [-n ndec] ra1 dec1 sys1 ... ran decn sysn\n");
+    fprintf (stderr,"Usage: [-vbjg] [-e epoch] [-n ndec] @listfile\n");
     fprintf (stderr,"  -b: B1950 (FK4) output\n");
     fprintf (stderr,"  -d: RA and Dec output in degrees\n");
+    fprintf (stderr,"  -e: Epoch of coordinates in years\n");
     fprintf (stderr,"  -g: galactic longitude and latitude output\n");
     fprintf (stderr,"  -j: J2000 (FK5) output\n");
     fprintf (stderr,"  -n: number of decimal places in output RA seconds\n");
@@ -216,4 +240,6 @@ usage ()
 }
 /* Oct 30 1996	New program
  * Nov  1 1996	Use DEG2STR to get rounded degrees to output appropriately
+ *
+ * Feb 21 1997	Add option to input epoch of coordinates
  */

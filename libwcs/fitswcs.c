@@ -1,11 +1,13 @@
 /* File libwcs/fitswcs.c
- * August 26, 1996
+ * February 21, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
  * Purpose:     Read and delete FITS image world coordinate system keywords
  * Subroutine:  GetWCSFITS (filename)
- *		Open a FITS image file and returns its WCS structure
+ *		Open a FITS or IRAF image file and returns its WCS structure
+ * Subroutine:  GetFITShead (filename)
+ *		Open a FITS or IRAF image file and returns a FITS header
  * Subroutine:  DelWCSFITS (filename, verbose)
  *		Delete all standard WCS keywords from a FITS header
  */
@@ -15,6 +17,7 @@
 #include <string.h>
 #include "fitshead.h"
 #include "wcs.h"
+
 
 struct WorldCoor *
 GetWCSFITS (filename)
@@ -27,12 +30,37 @@ char *filename;	/* FITS or IRAF file filename */
     int *irafheader;		/* IRAF image header */
     struct WorldCoor *wcs;	/* World coordinate system structure */
     int nbiraf, nbfits;
+    char *GetFITShead();
+
+    /* Read the FITS or IRAF image file header */
+    header = GetFITShead (filename);
+
+    /* Set the world coordinate system from the image header */
+    wcs = wcsinit (header);
+    free (header);
+
+    return (wcs);
+}
+
+char *
+GetFITShead (filename)
+
+char *filename;	/* FITS or IRAF file filename */
+
+{
+    char *header;		/* FITS header */
+    int lhead;			/* Maximum number of bytes in FITS header */
+    int *irafheader;		/* IRAF image header */
+    int nbiraf, nbfits;
 
     /* Open IRAF image if .imh extension is present */
     if (strsrch (filename,".imh") != NULL) {
-	irafheader = irafrhead (filename, &nbiraf);
-	if (irafheader) {
-	    header = iraf2fits (filename, irafheader, nbiraf, &lhead);
+	if ((irafheader = irafrhead (filename, &nbiraf)) != NULL) {
+	    if ((header = iraf2fits (filename, irafheader, nbiraf, &lhead)) == NULL) {
+		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
+		free (irafheader);
+		return;
+		}
 	    free (irafheader);
 	    }
 	else {
@@ -43,18 +71,13 @@ char *filename;	/* FITS or IRAF file filename */
 
     /* Open FITS file if .imh extension is not present */
     else {
-	header = fitsrhead (filename, &lhead, &nbfits);
-	if (!header) {
+	if ((header = fitsrhead (filename, &lhead, &nbfits)) == NULL) {
 	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
 	    return (NULL);
 	    }
 	}
 
-    /* Set the world coordinate system from the image header */
-    wcs = wcsinit (header);
-    free (header);
-
-    return (wcs);
+    return (header);
 }
 
 
@@ -134,4 +157,7 @@ int verbose;
  * Aug  6 1996  Fixed small defects after lint
  * Aug  8 1996  Restore old image center after deleting WCS
  * Aug 26 1996	Fix subroutine arguments after lint
+ *
+ * Feb 21 1997  Check pointers against NULL explicitly for Linux
+ * Feb 21 1997  Add GetFITShead subroutine and use it
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** January 22, 1997
+ *** February 5, 1997
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -17,6 +17,7 @@
  * Subroutine:	wcsdist (x1,y1,x2,y2) compute angular distance between ra/dec or lat/long
  * Subroutine:	wcscominit (wcs,command) sets up a command format for execution by wcscom
  * Subroutine:	wcsoutinit (wcs,coor) sets up the output coordinate system
+ * Subroutine:	wcsout(wcs) returns current output coordinate system
  * Subroutine:	wcscom (wcs,file,x,y) executes a command using the current world coordinates
  * Subroutine:	pix2wcs (wcs,xpix,ypix,xpos,ypos) pixel coordinates -> sky coordinates
  * Subroutine:	pix2wcst (wcs,xpix,ypix,wcstring,lstr) pixels -> sky coordinate string
@@ -1012,6 +1013,17 @@ char *coorsys;
     return;
 }
 
+/* Return current value of WCS output coordinate system set by -wcsout */
+
+char *
+wcsout(wcs)
+struct	WorldCoor *wcs; /* World coordinate system structure */
+{
+    return(wcs->sysout);
+}
+
+
+
 
 /* Convert pixel coordinates to World Coordinate string */
 
@@ -1315,4 +1327,5 @@ wcserr ()
  * Dec 13 1996	Fix search format setting from environment
  *
  * Jan 22 1997	Add ifdef for Eric Mandel (SAOtng)
+ * Feb  5 1997	Add wcsout for Eric Mandel
  */

@@ -1,5 +1,5 @@
 /* File imwcs.c
- * December 11, 1996
+ * February 21, 1997
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -266,16 +266,14 @@ char *name;
     /* Open IRAF image if .imh extension is present */
     if (strsrch (name,".imh") != NULL) {
 	iraffile = 1;
-	irafheader = irafrhead (name, &lhead);
-	if (irafheader) {
+	if ((irafheader = irafrhead (name, &lhead)) != NULL) {
 	    header = iraf2fits (name, irafheader, lhead, &nbhead);
 	    if (header == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
 		free (irafheader);
 		return;
 		}
-	    image = irafrimage (header);
-	    if (image == NULL) {
+	    if ((image = irafrimage (header)) == NULL) {
 		hgets (header,"PIXFILE", 64, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
@@ -293,10 +291,8 @@ char *name;
     else {
 	iraffile = 0;
 	fitsout = 1;
-	header = fitsrhead (name, &lhead, &nbhead);
-	if (header) {
-	    image = fitsrimage (name, nbhead, header);
-	    if (image == NULL) {
+	if ((header = fitsrhead (name, &lhead, &nbhead)) != NULL) {
+	    if ((image = fitsrimage (name, nbhead, header)) == NULL) {
 		fprintf (stderr, "Cannot read FITS image %s\n", name);
 		free (header);
 		return;
@@ -512,4 +508,6 @@ char *
  * Nov 19 1996	Revised search subroutines, USNO A catalog added
  * Dec 10 1996	Revised WCS initialization
  * Dec 10 1996	Add option to get image stars from DAOFIND output list
+ *
+ * Feb 21 1997  Check pointers against NULL explicitly for Linux
  */

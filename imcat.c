@@ -1,5 +1,5 @@
 /* File imcat.c
- * January 10, 1997
+ * February 21, 1997
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -30,6 +30,7 @@ extern void RASortStars();
 extern void MagSortStars();
 extern void fk524e();
 extern struct WorldCoor *GetFITSWCS();
+extern char *GetFITShead();
 extern void setfk4();
 extern void setcenter();
 extern void setsecpix();
@@ -233,11 +234,7 @@ ListCat (filename)
 char	*filename;	/* FITS or IRAF file filename */
 
 {
-    char *header;	/* FITS header */
-    int lhead;		/* Maximum number of bytes in FITS header */
-    int nbhead;		/* Actual number of bytes in FITS header */
-    int iraffile;	/* 1 if IRAF image */
-    int *irafheader;	/* IRAF image header */
+    char *header;	/* FITS image header */
     double *gnum=0;	/* Catalog numbers */
     double *gra=0;	/* Catalog right ascensions, rads */
     double *gdec=0;	/* Catalog declinations rads */
@@ -274,35 +271,11 @@ char	*filename;	/* FITS or IRAF file filename */
 	return;
 	}
 
-    /* Open IRAF header if .imh extension is present */
-    if (strsrch (filename,".imh")) {
-	iraffile = 1;
-	if ((irafheader = irafrhead (filename, &lhead))) {
-	    header = iraf2fits (filename, irafheader, lhead, &nbhead);
-	    free (irafheader);
-	    if (!header) {
-		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
-		return;
-		}
-	    }
-	else {
-	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
-	    return;
-	    }
-	}
-
-    /* Read FITS image header if .imh extension is not present */
-    else {
-	iraffile = 0;
-	if (!(header = fitsrhead (filename, &lhead, &nbhead))) {
-	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
-	    return;
-	    }
-	}
-
     /* Read world coordinate system information from the image header */
+    if ((header = GetFITShead (filename)) == NULL)
+	return;
     wcs = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-		&imw, &imh, 2000.0);
+		      &imw, &imh, 2000.0);
     free (header);
     if (nowcs (wcs))
 	return;
@@ -439,7 +412,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	}
     if (printhead || verbose) {
-	if (iraffile)
+	if (strsrch (filename,".imh") != NULL)
 	    printf (" in IRAF image %s\n",filename);
 	else
 	    printf (" in FITS image %s\n", filename);
@@ -622,5 +595,7 @@ char	*filename;	/* FITS or IRAF file filename */
  * Dec 12 1996	Add option for bright as well as faint magnitude limits
  * Dec 12 1996	Fix header for UAC magnitudes
  * Dec 13 1996	Write plate into header if selected
+ *
  * Jan 10 1997	Fix bug in RASort Stars which did not sort magnitudes
+ * Feb 21 1997  Get image header from GetFITSWCS()
  */

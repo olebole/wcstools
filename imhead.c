@@ -1,5 +1,5 @@
 /* File imhead.c
- * December 17, 1996
+ * February 21, 1997
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,8 +14,9 @@
 #include "libwcs/fitshead.h"
 
 static void usage();
-static int PrintFITSHead ();
-static void PrintHead ();
+static int PrintFITSHead();
+static void PrintHead();
+extern char *GetFITShead();
 
 static int nskip = 0;		/* Number of bytes to skip */
 static int verbose = 0;		/* verbose/debugging flag */
@@ -82,39 +83,13 @@ char *name;
 
 {
     char *header;	/* FITS image header */
-    int lhead;		/* Maximum number of bytes in FITS header */
-    int nbhead;		/* Actual number of bytes in FITS header */
-    int *irafheader;	/* IRAF image header */
-    int iraffile;
 
-    /* Open IRAF image if .imh extension is present */
-    if (strsrch (name,".imh")) {
-	iraffile = 1;
-	if ((irafheader = irafrhead (name, &lhead))) {
-	    header = iraf2fits (name, irafheader, lhead, &nbhead);
-	    free (irafheader);
-	    if (!header) {
-		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
-		return;
-		}
-	    }
-	else {
-	    fprintf (stderr, "Cannot read IRAF file %s\n", name);
-	    return;
-	    }
-	}
+    if ((header = GetFITShead (name)) == NULL)
+	return;
 
-    /* Open FITS file if .imh extension is not present */
-    else {
-	iraffile = 0;
-	if (!(header = fitsrhead (name, &lhead, &nbhead))) {
-	    fprintf (stderr, "Cannot read FITS file %s\n", name);
-	    return;
-	    }
-	}
     if (verbose) {
 	fprintf (stderr,"Print header from ");
-	if (iraffile)
+	if (strsrch (name,".imh") != NULL)
 	    fprintf (stderr,"IRAF image file %s\n", name);
 	else
 	    fprintf (stderr,"FITS image file %s\n", name);
@@ -155,4 +130,6 @@ char	*header;	/* Image FITS header */
  * Nov 19 1996	Add linefeeds after filename in verbose mode
  * Dec  4 1996	Print "header" instead of "WCS" in verbose mode
  * Dec 17 1996	Add byte skipping before header
+ *
+ * Feb 21 1997  Get header from subroutine
  */

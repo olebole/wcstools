@@ -1,5 +1,5 @@
 /* File sethead.c
- * December 12, 1996
+ * February 21, 1997
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -102,12 +102,12 @@ char	*kwd[];		/* Names and values of those keywords */
     char cval[24];
 
     /* Open IRAF image if .imh extension is present */
-    if (strsrch (filename,".imh")) {
+    if (strsrch (filename,".imh") != NULL) {
 	iraffile = 1;
-	if ((irafheader = irafrhead (filename, &lhead))) {
-	    header = iraf2fits (filename, irafheader, lhead, &nbhead);
-	    if (!header) {
+	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
+	    if ((header = iraf2fits (filename, irafheader, lhead, &nbhead)) == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
+		free (irafheader);
 		return;
 		}
 	    }
@@ -120,10 +120,8 @@ char	*kwd[];		/* Names and values of those keywords */
     /* Open FITS file if .imh extension is not present */
     else {
 	iraffile = 0;
-	header = fitsrhead (filename, &lhead, &nbhead);
-	if (header) {
-	    image = fitsrimage (filename, nbhead, header);
-	    if (image == NULL) {
+	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
+	    if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
 		fprintf (stderr, "Cannot read FITS image %s\n", filename);
 		free (header);
 		return;
@@ -247,4 +245,6 @@ char	*kwd[];		/* Names and values of those keywords */
 
 /* Oct 11 1996	New program
  * Dec 12 1996	Move ISNUM subroutine to hget.c
+ *
+ * Feb 21 1997  Check pointers against NULL explicitly for Linux
  */

@@ -1,5 +1,5 @@
 /* File gethead.c
- * October 8, 1996
+ * February 21, 1997
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -91,12 +91,12 @@ char	*kwd[];	/* Names of keywords for which to print values */
     int ikwd, lkwd;
 
     /* Open IRAF image if .imh extension is present */
-    if (strsrch (name,".imh")) {
+    if (strsrch (name,".imh") != NULL) {
 	iraffile = 1;
-	if ((irafheader = irafrhead (name, &lhead))) {
+	if ((irafheader = irafrhead (name, &lhead)) != NULL) {
 	    header = iraf2fits (name, irafheader, lhead, &nbhead);
 	    free (irafheader);
-	    if (!header) {
+	    if (header == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
 		return;
 		}
@@ -110,7 +110,7 @@ char	*kwd[];	/* Names of keywords for which to print values */
     /* Open FITS file if .imh extension is not present */
     else {
 	iraffile = 0;
-	if (!(header = fitsrhead (name, &lhead, &nbhead))) {
+	if ((header = fitsrhead (name, &lhead, &nbhead)) == NULL) {
 	    fprintf (stderr, "Cannot read FITS file %s\n", name);
 	    return;
 	    }
@@ -154,4 +154,6 @@ char	*kwd[];	/* Names of keywords for which to print values */
 
 /* Sep  4 1996	New program
  * Oct  8 1996	Add newline after file name in verbose mode
+ *
+ * Feb 21 1997  Check pointers against NULL explicitly for Linux
  */

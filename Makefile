@@ -5,8 +5,8 @@ LIBS = $(LIBWCS) -lm
 .PRECIOUS: ${LIBWCS}
 
 all:	delwcs edhead gethead i2f imcat imgsc imhead imrot imsize imstar \
-	imuac imujc imwcs scat sethead addpix getpix setpix sgsc sky2xy \
-	skycoor suac subpix sujc xy2sky
+	imuac imwcs scat sethead addpix getpix setpix sgsc sky2xy \
+	skycoor suac subpix xy2sky
 
 addpix: addpix.c $(LIBWCS) libwcs/fitshead.h
 	$(CC) $(CFLAGS) -o addpix addpix.c $(LIBS)
@@ -47,9 +47,6 @@ imstar: imstar.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h libwcs/lwcs.h
 imuac: imuac.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o imuac imuac.c $(LIBS)
 
-imujc: imujc.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
-	$(CC) $(CFLAGS) -o imujc imujc.c $(LIBS)
-
 imwcs: imwcs.c $(LIBWCS) libwcs/fitshead.h libwcs/lwcs.h
 	$(CC) $(CFLAGS) -o imwcs imwcs.c $(LIBS)
 
@@ -76,9 +73,6 @@ suac: suac.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
 
 subpix: subpix.c $(LIBWCS) libwcs/fitshead.h
 	$(CC) $(CFLAGS) -o subpix subpix.c $(LIBS)
-
-sujc: sujc.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
-	$(CC) $(CFLAGS) -o sujc sujc.c $(LIBS)
 
 xy2sky: xy2sky.c $(LIBWCS) libwcs/wcs.h
 	$(CC) $(CFLAGS) -o xy2sky xy2sky.c $(LIBS)

@@ -68,7 +68,7 @@ char **av;
     for (av++; --ac > 0; av++) {
 
 	/* Set RA, Dec, and equinox if WCS-generated argument */
-	if (strsrch (*av,":")) {
+	if (strsrch (*av,":") != NULL) {
 	    if (ac < 3)
 		usage();
 	    else {

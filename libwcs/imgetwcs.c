@@ -1,5 +1,5 @@
 /* File libwcs/imgetwcs.c
- * December 10, 1996
+ * February 24, 1997
  * By Doug Mink, based on UIowa code
  */
 
@@ -85,12 +85,17 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 
     /* Find center for pre-existing WCS, if there is one */
     wcs = wcsinit (header);
-    eqref = (int) eq2;
     if (iswcs (wcs)) {
-	if (eqref == 1950)
-	    wcsoutinit ("FK4");
+	equinox = (int) wcs->equinox;
+	eq1 = wcs->equinox;
+	if (eq2 == 0.0)
+	    eqref = equinox;
 	else
-	    wcsoutinit ("FK5");
+	    eqref = (int) eq2;
+	if (eqref == 1950)
+	    wcsoutinit (wcs, "FK4");
+	else
+	    wcsoutinit (wcs, "FK5");
 	wcssize (wcs, cra, cdec, dra, ddec);
 	if (wcs->xref == 0.0 && wcs->yref == 0.0) {
 	    wcs->xref = *cra;
@@ -104,7 +109,7 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 	    }
 	}
 
-    /* Otherwise use nominal center from RA and DEC fields */
+    /* If incomplete WCS in header, use nominal center from RA and DEC fields */
     else {
 	*cra = 0.0;
 	*cdec = 0.0;
@@ -137,6 +142,11 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 	if (equinox == 0) {
 	    equinox = 1950;
 	    eq1 = 1950.0;
+	    }
+	if (eq2 == 0.0)
+	    eqref = equinox;
+	else
+	    eqref = (int) eq2;
 
 	/* Epoch of image (observation date) */
 	if (epoch == 0.0) {
@@ -145,13 +155,13 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 		    epoch = (double) equinox;
 		}
 	    }
-	if (epoch == 0)
+	if (epoch == 0.0)
 	    epoch = 1950.0;
 
-	/* If coordinate equinox not reference catalog equinox, convert */
+    /* If the image equinox is not the desired equinox, convert center */
 	if (equinox != eqref) {
 	    eq2 = (double) eqref;
-	    if (eqref == 2000)
+	    if (eqref == 2000) {
 		if (equinox == 1950)
 		    fk425e (cra, cdec, epoch);
 		else
@@ -163,7 +173,7 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 		else
 		    fk4prec (eq1, eq2, cra, cdec);
 		}
-	    else
+	    else if (eq2 != 0.0)
 		fk5prec (eq1, eq2, cra, cdec);
 	    }
 	}
@@ -227,10 +237,12 @@ double	eq2;		/* Equinox to return (0=keep equinox) */
 	    else
 		fk524e (cra, cdec, epoch);
 	    }
-	if (fk4)
-	    wcsshift (wcs, *cra, *cdec, "FK4");
-	else
-	    wcsshift (wcs, *cra, *cdec, "FK5");
+	if (iswcs (wcs)) {
+	    if (fk4)
+		wcsshift (wcs, *cra, *cdec, "FK4");
+	    else
+		wcsshift (wcs, *cra, *cdec, "FK5");
+	    }
 
 	ra2str (rstr, ra0, 3);
         dec2str (dstr, dec0, 2);
@@ -406,4 +418,7 @@ double rad;
  * Nov 14 1996	Add GetLimits() to deal with search limits around the poles
  * Nov 15 1996	Drop GetLimits(); code moved to individual catalog routines
  * Dec 10 1996	Fix precession and make equinox double
+
+ * Feb 19 1997	If eq2 is 0, use equinox of image
+ * Feb 24 1997	Always convert center to output equinox (bug fix)
  */

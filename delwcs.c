@@ -1,5 +1,5 @@
 /* File delwcs.c
- * October 16, 1996
+ * February 21, 1997
  * By Doug Mink, after University of Iowa code
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -85,16 +85,13 @@ char *name;
     /* Open IRAF image if .imh extension is present */
     if (strsrch (name,".imh") != NULL) {
 	iraffile = 1;
-	irafheader = irafrhead (name, &lhead);
-	if (irafheader) {
-	    header = iraf2fits (name, irafheader, lhead, &nbhead);
-	    if (header == NULL) {
+	if ((irafheader = irafrhead (name, &lhead)) != NULL) {
+	    if ((header = iraf2fits (name, irafheader, lhead, &nbhead))==NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
 		free (irafheader);
 		return;
 		}
-	    image = irafrimage (header);
-	    if (image == NULL) {
+	    if ((image = irafrimage (header)) == NULL) {
 		hgets (header,"PIXFILE", 64, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
 		free (irafheader);
@@ -111,10 +108,8 @@ char *name;
     /* Open FITS file if .imh extension is not present */
     else {
 	iraffile = 0;
-	header = fitsrhead (name, &lhead, &nbhead);
-	if (header) {
-	    image = fitsrimage (name, nbhead, header);
-	    if (image == NULL) {
+	if ((header = fitsrhead (name, &lhead, &nbhead)) != NULL) {
+	    if ((image = fitsrimage (name, nbhead, header)) == NULL) {
 		fprintf (stderr, "Cannot read FITS image %s\n", name);
 		free (header);
 		return;
@@ -168,4 +163,6 @@ char *name;
  * Aug 26 1996	Change HGETC call to HGETS
  * Aug 27 1996	Fix IRAFRHEAD arguments after lint
  * Oct 16 1996	Add newlines to heading
+ *
+ * Feb 21 1997  Check pointers against NULL explicitly for Linux
  */

@@ -1,5 +1,5 @@
 /* File imuac.c
- * January 10, 1997
+ * February 21, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -28,6 +28,7 @@ extern void setfk4();
 extern void setcenter();
 extern void setsecpix();
 extern struct WorldCoor *GetFITSWCS();
+extern char *GetFITShead();
 extern void fk524e();
 
 static int verbose = 0;		/* Verbose/debugging flag */
@@ -192,10 +193,6 @@ char	*filename;	/* FITS or IRAF file filename */
 
 {
     char *header;	/* FITS header */
-    int lhead;		/* Maximum number of bytes in FITS header */
-    int nbhead;		/* Actual number of bytes in FITS header */
-    int iraffile;	/* 1 if IRAF image */
-    int *irafheader;	/* IRAF image header */
     double *unum=0;	/* UAC star numbers */
     double *ura=0;	/* UAC star right ascensions, rads */
     double *udec=0;	/* UAC star declinations rads */
@@ -215,35 +212,11 @@ char	*filename;	/* FITS or IRAF file filename */
     int offscale, nlog;
     char headline[160];
 
-    /* Open IRAF image if .imh extension is present */
-    if (strsrch (filename,".imh")) {
-	iraffile = 1;
-	if ((irafheader = irafrhead (filename, &lhead))) {
-	    header = iraf2fits (filename, irafheader, lhead, &nbhead);
-	    free (irafheader);
-	    if (!header) {
-		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
-		return;
-		}
-	    }
-	else {
-	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
-	    return;
-	    }
-	}
-
-    /* Open FITS file if .imh extension is not present */
-    else {
-	iraffile = 0;
-	if (!(header = fitsrhead (filename, &lhead, &nbhead))) {
-	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
-	    return;
-	    }
-	}
-
     if (verbose || printhead)
 
     /* Read world coordinate system information from the image header */
+    if ((header = GetFITShead (filename)) == NULL)
+	return;
     wcs = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
                 &imw, &imh, 2000.0);
     free (header);
@@ -370,7 +343,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	}
     if (verbose || printhead) {
-	if (iraffile)
+	if (strsrch (filename,".imh") != NULL)
 	    printf (" in IRAF image %s\n",filename);
 	else
 	    printf (" in FITS image %s\n", filename);
@@ -485,5 +458,7 @@ char	*filename;	/* FITS or IRAF file filename */
  * Dec 12 1996	Add option to set upper and lower magnitudes
  * Dec 12 1996	Fix header for magnitudes
  * Dec 13 1996	Fix bug writing sorted header
+ *
  * Jan 10 1997	Fix bug in RASortStars
+ * Feb 21 1997  Move all header reading to subroutine
  */

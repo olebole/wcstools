@@ -1,5 +1,5 @@
 /* File edhead.c
- * December 11, 1996
+ * February 21, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -98,9 +98,8 @@ char	*filename;	/* FITS or IRAF file filename */
     /* Open IRAF image and header if .imh extension is present */
     if (strsrch (filename,".imh") != NULL) {
 	iraffile = 1;
-	if ((irafheader = irafrhead (filename, &lhead))) {
-	    header = iraf2fits (filename, irafheader, lhead, &nbhead);
-            if (!header) {
+	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
+	    if ((header = iraf2fits (filename, irafheader, lhead, &nbhead)) == NULL) {;
 		free (irafheader);
                 fprintf (stderr, "Cannot translate IRAF header %s/n", filename);
                 return;
@@ -117,8 +116,8 @@ char	*filename;	/* FITS or IRAF file filename */
     /* Read FITS image and header if .imh extension is not present */
     else {
 	iraffile = 0;
-	if ((header = fitsrhead (filename, &lhead, &nbhead))) {
-	    if (!(image = fitsrimage (filename, nbhead, header))) {
+	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
+	    if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
 		fprintf (stderr, "Cannot read FITS image %s\n", filename);
 		free (header);
 		return;
@@ -177,7 +176,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	}
 
     /* Read the new header from the temporary file */
-    if ((fd = fopen (tempname, "r"))) {
+    if ((fd = fopen (tempname, "r")) != NULL) {
 	header = (char *) calloc (14400, 1);
 	head = header;
 	hlast = header + 14400 - 1;
@@ -264,4 +263,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Aug 29 1996	Allow new file to be written
  * Oct 17 1996	Drop unused variables
  * Dec 11 1996	Allocate editcom if environment variable is not set
+ *
+ * Feb 21 1997  Check pointers against NULL explicitly for Linux
  */
