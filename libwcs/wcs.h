@@ -1,5 +1,5 @@
 /* libwcs/wcs.h
- * January 31, 2001
+ * February 20, 2001
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics */
 
 #ifndef _wcs_h_
@@ -104,6 +104,7 @@ struct WorldCoor {
   double	ltv[2];		/* Image offset */
   int		idpix[2];	/* First pixel to use in image (x, y) */
   int		ndpix[2];	/* Number of pixels to use in image (x, y) */
+  struct WorldCoor *wcs;	/* WCS upon which this WCS depends */
 };
 
 /* Projections (1-26 are WCSLIB) */
@@ -580,4 +581,5 @@ void wcscstr();		/* Return system string from system code, equinox, epoch */
  *
  * Jan 17 2001	Add idpix and ndpix for trim section, ltm for readout rotation
  * Jan 31 2001	Add wcsinitn(), wcsninitn(), wcsinitc(), and wcsninitc()
+ * Feb 20 2001	Add wcs->wcs to main data structure
  */

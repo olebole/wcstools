@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** July 3, 2000
+ *** February 20, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -54,7 +54,7 @@
  * Subroutine:	wcsfree (wcs)  Free storage used by WCS structure
  * Subroutine:	freewcscom (wcs)  Free storage used by WCS commands 
 
- * Copyright:   2000 Smithsonian Astrophysical Observatory
+ * Copyright:   2001 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -1987,7 +1987,7 @@ struct WorldCoor *wcs;		/* World coordinate system structure */
 double	xpix,ypix;	/* x and y image coordinates in pixels */
 double	*xpos,*ypos;	/* RA and Dec in degrees (returned) */
 {
-    double	xp,yp;
+    double	xpi, ypi, xp, yp;
     double	eqin, eqout;
     int wcspos();
     extern int dsspos();
@@ -2003,34 +2003,43 @@ double	*xpos,*ypos;	/* RA and Dec in degrees (returned) */
     wcs->zpix = zpix;
     wcs->offscl = 0;
 
+    /* If this WCS is converted from another WCS rather than pixels, convert now */
+    if (wcs->wcs != NULL) {
+	pix2wcs (wcs->wcs, xpix, ypix, &xpi, &ypi);
+	}
+    else {
+	xpi = xpix;
+	ypi = ypix;
+	}
+
     /* Convert image coordinates to sky coordinates */
 
-/* Use Digitized Sky Survey plate fit */
+    /* Use Digitized Sky Survey plate fit */
     if (wcs->prjcode == WCS_DSS) {
-	if (dsspos (xpix, ypix, wcs, &xp, &yp))
+	if (dsspos (xpi, ypi, wcs, &xp, &yp))
 	    wcs->offscl = 1;
 	}
 
     /* Use SAO plate fit */
     else if (wcs->prjcode == WCS_PLT) {
-	if (platepos (xpix, ypix, wcs, &xp, &yp))
+	if (platepos (xpi, ypi, wcs, &xp, &yp))
 	    wcs->offscl = 1;
 	}
 
     /* Use NOAO IRAF corrected plane tangent projection */
     else if (wcs->prjcode == WCS_TNX) {
-	if (tnxpos (xpix, ypix, wcs, &xp, &yp))
+	if (tnxpos (xpi, ypi, wcs, &xp, &yp))
 	    wcs->offscl = 1;
 	}
 
     /* Use Classic AIPS projections */
     else if (wcs->wcsproj == WCS_OLD || wcs->prjcode <= 0) {
-	if (worldpos (xpix, ypix, wcs, &xp, &yp))
+	if (worldpos (xpi, ypi, wcs, &xp, &yp))
 	    wcs->offscl = 1;
 	}
 
     /* Use Mark Calabretta's WCSLIB projections */
-    else if (wcspos (xpix, ypix, wcs, &xp, &yp))
+    else if (wcspos (xpi, ypi, wcs, &xp, &yp))
 	wcs->offscl = 1;
 	    	
 
@@ -2090,7 +2099,7 @@ char	*coorsys;	/* Input world coordinate system:
 double	*xpix,*ypix;	/* Image coordinates in pixels */
 int	*offscl;	/* 0 if within bounds, else off scale */
 {
-    double xp,yp;
+    double xp, yp, xpi, ypi;
     double eqin, eqout;
     int sysin;
     int wcspix();
@@ -2128,39 +2137,48 @@ int	*offscl;	/* 0 if within bounds, else off scale */
 
     /* Use Digitized Sky Survey plate fit */
     if (wcs->prjcode == WCS_DSS) {
-	if (dsspix (xp, yp, wcs, xpix, ypix))
+	if (dsspix (xp, yp, wcs, &xpi, &ypi))
 	    *offscl = 1;
 	}
 
     /* Use SAO polynomial plate fit */
     else if (wcs->prjcode == WCS_PLT) {
-	if (platepix (xp, yp, wcs, xpix, ypix))
+	if (platepix (xp, yp, wcs, &xpi, &ypi))
 	    *offscl = 1;
 	}
 
     /* Use NOAO IRAF corrected plane tangent projection */
     else if (wcs->prjcode == WCS_TNX) {
-	if (tnxpix (xp, yp, wcs, xpix, ypix))
+	if (tnxpix (xp, yp, wcs, &xpi, &ypi))
 	    *offscl = 1;
 	}
 
     /* Use Classic AIPS projections */
     else if (wcs->wcsproj == WCS_OLD || wcs->prjcode <= 0) {
-	if (worldpix (xp, yp, wcs, xpix, ypix))
+	if (worldpix (xp, yp, wcs, &xpi, &ypi))
 	    *offscl = 1;
 	}
 
     /* Use Mark Calabretta's WCSLIB projections */
-    else if (wcspix (xp, yp, wcs, xpix, ypix)) {
+    else if (wcspix (xp, yp, wcs, &xpi, &ypi)) {
 	*offscl = 1;
 	}
 
-    /* Set off-scale flag to 2 if off image but within bounds of projection */
-    if (!*offscl) {
-	if (*xpix < 0.5 || *ypix < 0.5)
-	    *offscl = 2;
-	else if (*xpix > wcs->nxpix + 0.5 || *ypix > wcs->nypix + 0.5)
-	    *offscl = 2;
+    /* If this WCS is converted from another WCS rather than pixels, convert now */
+    if (wcs->wcs != NULL) {
+	wcsc2pix (wcs->wcs, xpi, ypi, NULL, xpix, ypix, offscl);
+	}
+    else {
+	*xpix = xpi;
+	*ypix = ypi;
+
+	/* Set off-scale flag to 2 if off image but within bounds of projection */
+	if (!*offscl) {
+	    if (xpi < 0.5 || ypi < 0.5)
+		*offscl = 2;
+	    else if (xpi > wcs->nxpix + 0.5 || ypi > wcs->nypix + 0.5)
+		*offscl = 2;
+	    }
 	}
 
     wcs->offscl = *offscl;
@@ -2625,4 +2643,6 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * May 10 2000	In wcstype(), default to WCS_LIN, not error (after Bill Joye)
  * Jun 22 2000	In wcsrotset(), leave rotation angle alone in 1-d image
  * Jul  3 2000	Initialize wcscrd[] to zero in wcspix()
+ *
+ * Feb 20 2001	Add recursion to wcs2pix() and pix2wcs() for dependent WCS's
  */

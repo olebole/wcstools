@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** January 30, 2001
+ *** February 23, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -98,6 +98,11 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     /* Open the image file and read the header */
     if (strcmp (filename,"stdin") && strcmp (filename,"STDIN") ) {
 
+	/* Check for FITS WCS specification and ignore for file opening */
+	mwcs = strchr (filename, ':');
+	if (mwcs != NULL)
+	    *mwcs = (char) 0;
+
 	/* Check for FITS extension and ignore for file opening */
 	rbrac = NULL;
 	ext = strchr (filename, ',');
@@ -105,19 +110,17 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    ext = strchr (filename, '%');
 	if (ext == NULL) {
 	    ext = strchr (filename, '[');
-	    if (rbrac != NULL)
-		*rbrac = (char) 0;
+	    if (ext != NULL) {
+		rbrac = strchr (filename, ']');
+		if (rbrac != NULL)
+		    *rbrac = (char) 0;
+		}
 	    }
 	if (ext != NULL) {
 	    cext = *ext;
 	    *ext = (char) 0;
 	    ext++;
 	    }
-
-	/* Check for FITS WCS specification and ignore for file opening */
-	mwcs = strchr (filename, ':');
-	if (mwcs != NULL)
-	    *mwcs = (char) 0;
 
 	fd = -1;
 	fd = fitsropen (filename);
@@ -492,19 +495,27 @@ char	*inpath;	/* Pathname for FITS tables file to read */
     int fd;		/* file descriptor for FITS tables file (returned) */
     char *ext;		/* extension name or number */
     char cext;
+    char *rbrac;
     char *mwcs;		/* Pointer to WCS name separated by : */
-
-/* Check for FITS extension and ignore for file opening */
-    ext = strchr (inpath, ',');
-    if (ext == NULL)
-	ext = strchr (inpath, '%');
-    if (ext == NULL)
-	ext = strchr (inpath, '[');
 
 /* Check for FITS WCS specification and ignore for file opening */
     mwcs = strchr (inpath, ':');
     if (mwcs != NULL)
 	*mwcs = (char) 0;
+
+/* Check for FITS extension and ignore for file opening */
+    ext = strchr (inpath, ',');
+    rbrac = NULL;
+    if (ext == NULL)
+	ext = strchr (inpath, '%');
+    if (ext == NULL) {
+	ext = strchr (inpath, '[');
+	if (ext != NULL) {
+	    rbrac = strchr (inpath, ']');
+	    if (rbrac != NULL)
+		*rbrac = (char) 0;
+	    }
+	}
 
 /* Open input file */
     for (ntry = 0; ntry < 3; ntry++) {
@@ -517,6 +528,8 @@ char	*inpath;	/* Pathname for FITS tables file to read */
 	fd = open (inpath, O_RDONLY);
 	if (ext != NULL)
 	    *ext = cext;
+	if (rbrac != NULL)
+	    *rbrac = ']';
 	if (mwcs != NULL)
 	    *mwcs = ':';
 	if (fd >= 0)
@@ -1416,4 +1429,5 @@ char	*header;	/* FITS header */
  * Jan 22 2001	Ignore WCS name or letter following a : in file name in fitsrhead()
  * Jan 30 2001	Fix FITSCIMAGE so it doesn't overwrite data when overwriting a file
  * Feb 20 2001	Ignore WCS name or letter following a : in file name in fitsropen()
+ * Feb 23 2001	Initialize rbrac in fitsropen()
  */

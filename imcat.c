@@ -1,5 +1,5 @@
 /* File imcat.c
- * January 22, 2001
+ * February 23, 2001
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -488,7 +488,7 @@ int	*region_char;	/* Character for SAOimage region file output */
     char rastr[16], decstr[16];	/* coordinate strings */
     char numstr[32];	/* Catalog number */
     double cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, mag1, mag2,secpix;
-    double mag, gdist, drad, gdmax;
+    double mag, drad;
     int offscale, nlog;
     char headline[160];
     char temp[80];
@@ -1053,14 +1053,15 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"ra      	dec           	");
     if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
 	refcat == USAC || refcat == USA1 || refcat == USA2)
-	strcat (headline,"magb  	magr  	plate	");
+	strcat (headline,"magb  	magr  	");
     else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT)
 	strcat (headline,"magb  	magv  	");
     else
 	strcat (headline,"mag   	");
     if (sptype)
 	strcat (headline,"type 	");
-    else if (refcat == UJC)
+    else if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
+	refcat == USAC || refcat == USA1 || refcat == USA2 || refcat == UJC)
 	strcat (headline,"plate	");
     else if (refcat == GSC)
 	strcat (headline,"class 	");
@@ -1068,7 +1069,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"peak	");
     if (mprop)
 	strcat (headline, "ux    	uy    ");
-    strcat (headline,"x    	y    	dist");
+    strcat (headline,"x    	y    ");
     if (refcat == TABCAT && keyword != NULL) {
 	strcat (headline,"	");
 	strcat (headline, keyword);
@@ -1078,20 +1079,20 @@ int	*region_char;	/* Character for SAOimage region file output */
     if (tabout)
 	printf ("%s\n", headline);
 
-    strcpy (headline,"----------------------");
+    strcpy (headline,"----------------------");		/* ID number */
     headline[nnfld] = (char) 0;
-    strcat (headline, "	-----------	------------	-----");
+    strcat (headline, "	-----------	------------	-----");/* RA Dec Mag */
     if (refcat == UAC  || refcat == UA1  || refcat == UA2 || refcat == HIP ||
 	refcat == USAC || refcat == USA1 || refcat == USA2 || refcat == TYCHO ||
 	refcat == TYCHO2 || refcat == ACT)
-	strcat (headline,"	-----");
+	strcat (headline,"	-----");		/* Second magnitude */
     if (gcset)
-	strcat (headline, "	-----");
+	strcat (headline, "	-----");		/* plate or peak */
     if (mprop)
-	strcat (headline, "------	------");
-    strcat (headline, "	------	------	-----");
+	strcat (headline, "------	------");	/* Proper motion */
+    strcat (headline, "	------	------");		/* X and Y */
     if (refcat == TABCAT && keyword != NULL)
-	strcat (headline,"	------");
+	strcat (headline,"	------");		/* Additional keyword */
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
@@ -1168,40 +1169,30 @@ int	*region_char;	/* Character for SAOimage region file output */
 		}
 	    if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
 		refcat == USAC || refcat == USA1 || refcat == USA2)
-		printf ("MagB  MagR  Type    X      Y    Arcsec\n");
+		printf ("MagB  MagR Type    X      Y   \n");
 	    else if (refcat == UJC)
-		printf ("  Mag  Plate    X      Y   Arcsec\n");
+		printf ("  Mag  Plate    X      Y   \n");
 	    else if (refcat == GSC)
-		printf (" Mag  Class   X      Y    Arcsec\n");
+		printf (" Mag  Class   X      Y    \n");
 	    else if (refcat == SAO || refcat == PPM ||
 		     refcat == IRAS || refcat == BSC)
-		printf ("  Mag  Type   X       Y     Arcsec\n");
+		printf ("  Mag  Type   X       Y     \n");
 	    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT)
-		printf (" MagR   MagV Type   X       Y     Arcsec\n");
+		printf (" MagR   MagV Type   X       Y     \n");
 	    else if (refcat == TABCAT && keyword != NULL) {
 		if (gcset)
-		    printf ("Mag  Peak    X      Y    Arcsec  %s\n", keyword);
+		    printf ("Mag  Peak    X      Y     %s\n", keyword);
 		else
-		    printf ("Mag    X      Y    Arcsec  %s\n", keyword);
+		    printf ("Mag    X      Y     %s\n", keyword);
 		}
 	    else if (refcat == BINCAT)
-		printf (" Mag   Type   X      Y   Arcsec   Object\n");
+		printf (" Mag   Type   X      Y     Object\n");
 	    else if (refcat == TXTCAT)
-		printf (" Mag     X      Y   Arcsec   Object\n");
+		printf (" Mag     X      Y     Object\n");
 	    else if (gcset)
-		printf (" Mag  Peak     X       Y    Arcsec\n");
+		printf (" Mag  Peak     X       Y   \n");
 	    else
-		printf (" Mag     X       Y    Arcsec\n");
-	    }
-	}
-
-    /* Find maximum separation for formatting */
-    gdmax = 0.0;
-    for (i = 0; i < nbg; i++) {
-	if (gx[i] > 0.0 && gy[i] > 0.0) {
-	    gdist = 3600.0 * wcsdist (cra, cdec, gra[i], gdec[i]);
-	    if (gdist > gdmax)
-		gdmax = gdist;
+		printf (" Mag     X       Y   \n");
 	    }
 	}
 
@@ -1213,7 +1204,6 @@ int	*region_char;	/* Character for SAOimage region file output */
 		isp[1] = gc[i] % 1000;
 		}
 	    CatNum (refcat, nnfld, nndec, gnum[i], numstr);
-	    gdist = 3600.0 * wcsdist (cra, cdec, gra[i], gdec[i]);
 	    if (degout) {
 		deg2str (rastr, 32, gra[i], 5);
 		deg2str (decstr, 32, gdec[i], 5);
@@ -1258,8 +1248,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (temp, "	%.2f	%.2f", pra,pra);
 		    strcat (headline, temp);
 		    }
-		sprintf (temp, "	%.1f	%.1f	%.2f",
-			 gx[i],gy[i],gdist);
+		sprintf (temp, "	%.2f	%.2f",
+			 gx[i],gy[i]);
 		strcat (headline, temp);
 		if (wfile)
 		    fprintf (fd, "%s\n", headline);
@@ -1311,19 +1301,6 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (temp, "  %6.1f  %6.1f", gx[i], gy[i]);
 		else
 		    sprintf (temp, "  %.1f  %.1f", gx[i], gy[i]);
-		strcat (headline, temp);
-
-		/* Add distance from search center to output line */
-		if (gdmax < 100.0)
-		    sprintf (temp, "  %5.2f", gdist);
-		else if (gdmax < 1000.0)
-		    sprintf (temp, "  %6.2f", gdist);
-		else if (gdmax < 10000.0)
-		    sprintf (temp, "  %7.2f", gdist);
-		else if (gdmax < 100000.0)
-		    sprintf (temp, "  %8.2f", gdist);
-		else
-		    sprintf (temp, "  %.2f", gdist);
 		strcat (headline, temp);
 
 		/* Add object name to output line */
@@ -1475,4 +1452,5 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Dec 18 2000	Always allocate proper motion arrays
  *
  * Jan 22 2001	Drop declaration of wcsinit()
+ * Feb 23 2001	Drop distance from search center output everywhere
  */

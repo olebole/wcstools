@@ -1,5 +1,5 @@
 /* File gethead.c
- * June 12, 2000
+ * February 21, 2001
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -439,6 +439,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
     char fnform[8];
     char string[80];
     char temp[1028];
+    char keyword[16];
     char *filename;
     char outline[1000];
     char mstring[800];
@@ -449,7 +450,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
     char tcond;
     char cvalue[64], *cval;
     char numstr[32], numstr1[32];
-    int pass;
+    int pass, iwcs;
 
     if (rootdir) {
 	nch = strlen (rootdir) + strlen (name) + 1;
@@ -588,23 +589,59 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		    *kw = *kw - 32;
 		}
 	    }
+	strcpy (keyword, kwd[ikwd]);
+
+	/* Read keyword value from ASCII file */
 	if (filetype == FILE_ASCII &&
-	    agets (header, kwd[ikwd], 80, string)) {
+	    agets (header, keyword, 80, string)) {
 	    str = string;
 	    strclean (str);
 	    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 		num2str (str, atof(str), 0, ndec);
 	    if (verbose)
-		printf ("%s = %s", kwd[ikwd], str);
+		printf ("%s = %s\n", keyword, str);
 	    else if (keyeqval) {
-		sprintf (temp, " %s=%s", kwd[ikwd], str);
+		sprintf (temp, " %s=%s", keyword, str);
 		strcat (outline, temp);
 		}
 	    else
 		strcat (outline, str);
 	    nfound++;
 	    }
-	else if (hgets (header, kwd[ikwd], 80, string)) {
+
+	/* Read all keywords from multiple WCS's if wildcarded with @ */
+	else if (keyword[lkwd-1] == '@') {
+	    keyword[lkwd-1] = (char) 0;
+	    for (iwcs = -1; iwcs < 26; iwcs++) {
+		if (iwcs < 0)
+		    keyword[lkwd-1] = (char)0;
+		else
+		    keyword[lkwd-1] = (char)(iwcs+65);
+		if (hgets (header, keyword, 80, string)) {
+		    if (string[0] == '#' && isnum (string+1)) {
+			lstr = strlen (string);
+			for (i = 0; i < lstr; i++)
+			    string[i] = string[i+1];
+			}
+		    str = string;
+		    strclean (str);
+		    if (ndec > -9 && isnum (str) && strchr (str, '.'))
+			num2str (string, atof(str), 0, ndec);
+		    if (verbose)
+			printf ("%s = %s\n", keyword, str);
+		    else if (keyeqval) {
+			sprintf (temp, " %s=%s", keyword, str);
+			strcat (outline, temp);
+			}
+		    else
+			strcat (outline, str);
+		    nfound++;
+		    }
+		}
+	    }
+
+	/* Read one FITS keyword value */
+	else if (hgets (header, keyword, 80, string)) {
 	    if (string[0] == '#' && isnum (string+1)) {
 		lstr = strlen (string);
 		for (i = 0; i < lstr; i++)
@@ -615,36 +652,37 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 		num2str (string, atof(str), 0, ndec);
 	    if (verbose)
-		printf ("%s = %s", kwd[ikwd], str);
+		printf ("%s = %s", keyword, str);
 	    else if (keyeqval) {
-		sprintf (temp, " %s=%s", kwd[ikwd], str);
+		sprintf (temp, " %s=%s", keyword, str);
 		strcat (outline, temp);
 		}
 	    else
 		strcat (outline, str);
 	    nfound++;
 	    }
-	else if (hgetm (header, kwd[ikwd], 600, mstring)) {
+
+	/* Read IRAF-style multiple-line keyword value */
+	else if (hgetm (header, keyword, 600, mstring)) {
 	    if (verbose)
-		printf ("%s = %s", kwd[ikwd], mstring);
+		printf ("%s = %s\n", keyword, mstring);
 	    else if (keyeqval) {
-		sprintf (temp, " %s=%s", kwd[ikwd], mstring);
+		sprintf (temp, " %s=%s", keyword, mstring);
 		strcat (outline, temp);
 		}
 	    else
 		strcat (outline, mstring);
 	    nfound++;
 	    }
+
 	else if (verbose)
-	    printf ("%s not found", kwd[ikwd]);
+	    printf ("%s not found\n", keyword);
 	else if (printfill)
 	    strcat (outline, "___");
 	else
 	    notfound = 1;
 
-	if (verbose)
-	    printf ("\n");
-	else if (ikwd < nkwd-1) {
+	if (!verbose && ikwd < nkwd-1) {
 	    if (tabout)
 		strcat (outline, "	");
 	    else
@@ -782,4 +820,6 @@ char *string;
  * Mar 21 2000	Add -b option to replace blanks with underscores
  * Jun  8 2000	If no keywords or files specified, say so
  * Jun 12 2000	If -p is set, print all file names (-a)
+ *
+ * Feb 21 2001	Add @ wildcard option for multiple WCS keywords
  */

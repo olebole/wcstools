@@ -1,3 +1,9 @@
+Version 2.9.0 (February 23, 2001)
+wcsinit.c, wcs.c, wcs.h: Implement sequentially dependent WCS's
+fitsfile.c: Debug multiple WCS implementation with multi-extension FITS files
+Specify WCS as file.fits:wcs or files.fits,extnum:wcs , where wcs is either
+the WCSNAME, if present in the header or WCS character.
+
 Version 2.8.7 (February 15, 2001)
 imwcs: Implement -u initial matches, though matches do not set initial WCS
  Direct all diagnostic output to stderr so it comes out in the correct order
@@ -10,7 +16,6 @@ binread and ctgread: if pole is included, search entire RA range of RA-sorted
 wcslib.h, lin.c, proj.c: minor updates from WCSLIB 2.5 to WCSLIB 2.6 (May 2000)
 wcsinit.c: New subroutines wcsinitn(header,name) and wcsinitc(header,char)
  allow use of multiple WCS's, though no dependent ones yet.
-fortcat.c, fortwcs.c: Fortran interfaces to catalog and WCS subroutines
 
 Version 2.8.6 (January 2, 2001)
 scat, imcat, imwcs, immatch: Read catalogs across the web from CGI scat

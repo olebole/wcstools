@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinitm.c
- *** February 23, 2001
+ *** February 20, 2001
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
 
@@ -237,9 +237,6 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     cdelt1 = 0.0;
     cdelt2 = 0.0;
     cd[0] = 0.0;
-    cd[1] = 0.0;
-    cd[2] = 0.0;
-    cd[3] = 0.0;
     pc[0] = 0.0;
     wcs->rotmat = 0;
     wcs->rot = 0.0;
@@ -1039,5 +1036,4 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Jan 31 2001	Fix to allow 1D WCS
  * Jan 31 2001	Treat single character WCS name as WCS character
  * Feb 20 2001	Implement WCSDEPx nested WCS's
- * Feb 23 2001	Initialize all 4 terms of CD matrix
  */
