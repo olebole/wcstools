@@ -1,5 +1,5 @@
 /* File imstar.c
- * May 25, 1999
+ * June 10, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -15,18 +15,21 @@
 #include "wcs.h"
 #include "wcscat.h"
 
-static void usage();
 static int verbose = 0;		/* verbose flag */
 static int debug = 0;		/* debugging flag */
 static int version = 0;		/* If 1, print only program name and version */
+static int rot = 0;		/* Angle to rotate image (multiple of 90 deg) */
+static int mirror = 0;		/* If 1, flip image right-left before rotating*/
 
-static void ListStars ();
-extern void RASortStars ();
-extern void FluxSortStars ();
-extern void setstarsig ();
-extern void setbmin ();
-extern void setmaxrad ();
-extern void setborder ();
+static void usage();
+static void ListStars();
+extern char *RotFITS();
+extern void RASortStars();
+extern void FluxSortStars();
+extern void setstarsig();
+extern void setbmin();
+extern void setmaxrad();
+extern void setborder();
 extern void setimcat();
 extern struct WorldCoor *GetFITSWCS();
 
@@ -42,7 +45,8 @@ static double eqout = 0.0;
 static int sysout = -1;
 static int daofile = 0;
 static int ascfile = 0;
-static int setuns = 0;	/* Change to unsigned integer flag */
+static int setuns = 0;		/* Change to unsigned integer flag */
+static int imsearch = 1;	/* If 1, search for stars in image */
 static int region_char;
 static int region_radius;
 
@@ -51,7 +55,7 @@ int ac;
 char **av;
 {
     char *str;
-    double bmin;
+    double bmin, arot;
     char rastr[32], decstr[32];
     int readlist = 0;
     char *lastchar;
@@ -84,7 +88,12 @@ char **av;
 	case 'a':       /* Initial rotation angle in degrees */
 	    if (ac < 2)
 		usage();
-	    setrot (atof (*++av));
+	    rot = atof (*++av);
+	    arot = fabs (rot);
+	    if (arot != 90.0 && arot != 180.0 && arot != 270.0) {
+		setrot (atof (*++av));
+		rot = 0.0;
+		}
 	    ac--;
 	    break;
 
@@ -107,6 +116,7 @@ char **av;
 	    if (ac < 2)
 		usage();
 	    setimcat (*++av);
+	    imsearch = 0;
 	    ac--;
 	    break;
 
@@ -145,6 +155,10 @@ char **av;
 	case 'k':	/* Print each star as it is found */
 	    debug++;
 	    break;
+
+    	case 'l':	/* Left-right reflection before rotating */
+	    mirror = 1;
+    	    break;
 
 	case 'm':	/* Magnitude offset */
 	    if (ac < 2)
@@ -300,9 +314,11 @@ usage ()
     fprintf(stderr,"  -i: Minimum peak value for star in image (<0=-sigma)\n");
     fprintf(stderr,"  -j: Output J2000 (FK5) coordinates \n");
     fprintf(stderr,"  -k: Print each star as it is found for debugging \n");
-    fprintf(stderr,"  -m: Magnitude offset\n");
+    fprintf(stderr,"  -l: reflect left<->right before rotating and searching\n");
+    fprintf(stderr,"  -m: Magnitude offset (set brightest to abs(offset) if < 0)\n");
     fprintf(stderr,"  -n: Number of brightest stars to print \n");
     fprintf(stderr,"  -p: Plate scale in arcsec per pixel (default 0)\n");
+    fprintf(stderr,"  -q: Output region file shape for SAOimage (default o)\n");
     fprintf(stderr,"  -r: Maximum radius for star in pixels \n");
     fprintf(stderr,"  -s: Sort by RA instead of flux \n");
     fprintf(stderr,"  -t: Tab table format star list\n");
@@ -327,6 +343,7 @@ char	*filename;	/* FITS or IRAF file filename */
 
 {
     char *image;		/* FITS image */
+    char *newimage;		/* Rotated FITS image */
     char *header;		/* FITS header */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
@@ -345,8 +362,11 @@ char	*filename;	/* FITS or IRAF file filename */
     char headline[160];
     char pixname[128];
     char outfile[64];
+    char *ext;
+    char temp[32];
     FILE *fd;
     struct WorldCoor *wcs;	/* World coordinate system structure */
+    int iraffile = 0;
 
     /* Open IRAF header */
     if (isiraf (filename)) {
@@ -356,13 +376,16 @@ char	*filename;	/* FITS or IRAF file filename */
 		free (irafheader);
 		return;
 		}
-	    if ((image = irafrimage (header)) == NULL) {
-		hgets (header,"PIXFILE", 64, pixname);
-		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
-		free (irafheader);
-		free (header);
-		return;
+	    if (imsearch) {
+		if ((image = irafrimage (header)) == NULL) {
+		    hgets (header,"PIXFILE", 64, pixname);
+		    fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
+		    free (irafheader);
+		    free (header);
+		    return;
+		    }
 		}
+	    iraffile = 1;
 	    }
 	else {
 	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
@@ -374,10 +397,12 @@ char	*filename;	/* FITS or IRAF file filename */
     /* Read FITS image header */
     else {
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
-	    if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
-		fprintf (stderr, "Cannot read FITS image %s\n", filename);
-		free (header);
-		return;
+	    if (imsearch) {
+		if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
+		    fprintf (stderr, "Cannot read FITS image %s\n", filename);
+		    free (header);
+		    return;
+		    }
 		}
 	    }
 	else {
@@ -392,6 +417,25 @@ char	*filename;	/* FITS or IRAF file filename */
 	hgeti4 (header, "BITPIX", &bitpix);
 	if (bitpix == 16)
 	    hputi4 (header, "BITPIX", -16);
+	}
+
+    /* Rotate and/or reflect image */
+    if (imsearch && (rot != 0 || mirror)) {
+	if ((newimage=RotFITS(filename,header,image,rot,mirror,bitpix,verbose))
+	    == NULL) {
+	    fprintf (stderr,"Image %s could not be rotated\n", filename);
+	    if (iraffile)
+		free (irafheader);
+	    if (image != NULL)
+		free (image);
+	    free (header);
+	    return;
+	    }
+	else {
+	    if (image != NULL)
+		free (image);
+	    image = newimage;
+	    }
 	}
 
 /* Find the stars in an image and use the world coordinate system
@@ -414,10 +458,11 @@ char	*filename;	/* FITS or IRAF file filename */
 	ns = nstar;
 
     /* If no magnitude offset, set brightest star to 0 magnitude */
-    if (ns > 0 && magoff == 0.0) {
-	FluxSortStars (sx, sy, sb, sp, ns);
-	magoff = 2.5 * log10 (sb[0]);
-	}
+    /* If magnitude offset is given < 0, set brightest star to abs(magoff) */
+    FluxSortStars (sx, sy, sb, sp, ns);
+    if (ns > 0 && magoff <= 0.0) {
+        magoff = 2.5 * log10 (sb[0]) - magoff;
+        }
 
     /* Compute right ascension and declination for all stars to be listed */
     smag = (double *) malloc (ns * sizeof (double));
@@ -444,17 +489,43 @@ char	*filename;	/* FITS or IRAF file filename */
 	    strcpy (outfile, strrchr (filename, '/')+1);
 	else
 	    strcpy (outfile,filename);
+	if ((ext = strsrch (outfile, ".fit")) != NULL ||
+	    (ext = strsrch (outfile, ".imh")) != NULL)
+	    *ext = (char) 0;
 	}
     else {
 	strcpy (outfile,filename);
 	(void) hgets (header,"OBJECT",64,outfile);
 	}
+
+    /* Add rotation and reflection to output file name */
+    if (mirror)
+	strcat (outfile, "m");
+    else if (rot != 0)
+	strcat (outfile, "r");
+    if (rot < 10 && rot > -1) {
+	sprintf (temp,"%1d",rot);
+	strcat (outfile, temp);
+	}
+    else if (rot < 100 && rot > -10) {
+	sprintf (temp,"%2d",rot);
+	strcat (outfile, temp);
+	}
+    else if (rot < 1000 && rot > -100) {
+	sprintf (temp,"%3d",rot);
+	strcat (outfile, temp);
+	}
+    else {
+	sprintf (temp,"%4d",rot);
+	strcat (outfile, temp);
+	}
+
     if (region_char)
 	strcat (outfile, ".reg");
     else if (daofile || nowcs (wcs))
 	strcat (outfile,".dao");
     else
-	strcat (outfile,".stars");
+	strcat (outfile,".imstar");
     if (verbose)
 	printf ("%s\n", outfile);
 		
@@ -641,4 +712,7 @@ char	*filename;	/* FITS or IRAF file filename */
  *
  * Apr  7 1999	Add filename argument to GetFITSWCS
  * May 25 1999	Add epoch to output tab table header
+ * Jun  9 1999	Set brightest magnitude for any magnitude offset (J-B Marquette)
+ * Jun 10 1999	Add option to rotation and reflect image before searching
+ * Jun 10 1999	Drop .fits or .imh file extension from output file name
  */

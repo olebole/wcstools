@@ -1,4 +1,5 @@
 CFLAGS= -g
+#CFLAGS= -O
 CC=cc
 LIBWCS = libwcs/libwcs.a
 LIBS = $(LIBWCS) -lm

@@ -1,5 +1,5 @@
 /* File libwcs/imrotate.c
- * May 27, 1998
+ * June 10, 1999
  * By Doug Mink
  */
 
@@ -15,15 +15,15 @@ static void RotWCSFITS();
 /* Rotate an image by 90, 180, or 270 degrees, with an optional
  * reflection across the vertical axis.
  * verbose generates extra info on stdout.
- * return 0 if successful or -1.
+ * return NULL if successful or rotated image.
  */
 
-int
-RotFITS (pathname, header, image0, rotate, mirror, bitpix2, verbose)
+char *
+RotFITS (pathname, header, image, rotate, mirror, bitpix2, verbose)
 
 char	*pathname;	/* Name of file which is being changed */
 char	*header;	/* FITS header */
-char	**image0;	/* Image pixels */
+char	*image;		/* Image pixels */
 int	rotate;		/* Angle to by which to rotate image (90, 180, 270) */
 int	mirror;		/* 1 to reflect image around vertical axis */
 int	bitpix2;	/* Number of bits per pixel in output image */
@@ -33,11 +33,8 @@ int	verbose;
     int bitpix1, ny, nx, nax;
     int x1, y1, x2, y2, nbytes;
     char *rotimage;
-    char history[72];
+    char history[128];
     char *filename;
-    char *image;		/* Image pixels */
-
-    image = *image0;
 
     if (rotate == 1)
 	rotate = 90;
@@ -57,13 +54,13 @@ int	verbose;
     /* Get image size */
     nax = 0;
     if (hgeti4 (header,"NAXIS",&nax) < 1)
-	return (-1);
+	return (NULL);
     else {
 	if (hgeti4 (header,"NAXIS1",&nx) < 1)
-	    return (-1);
+	    return (NULL);
 	else {
 	    if (hgeti4 (header,"NAXIS2",&ny) < 1)
-		return (-1);
+		return (NULL);
 	    }
 	}
     bitpix1 = 16;
@@ -75,7 +72,7 @@ int	verbose;
     if (rotate != 0 || mirror)
 	RotWCSFITS (header, rotate, mirror, verbose);
 
-    /* Allocate buffer for rotated image */
+    /* Compute size of image in bytes */
     switch (bitpix2) {
 	case 16:
 	    nbytes = nx * ny * 2;
@@ -93,12 +90,13 @@ int	verbose;
 	    nbytes = nx * ny * 8;
 	    break;
 	default:
-	    return (-1);
+	    return (NULL);
 	}
 
+    /* Allocate buffer for rotated image */
     rotimage = (char *) malloc (nbytes);
     if (rotimage == NULL)
-	return (-1);
+	return (NULL);
 
     if (bitpix1 != bitpix2) {
 	sprintf (history,"Copy of image %s bits per pixel %d -> %d",
@@ -120,7 +118,6 @@ int	verbose;
 		}
 	    sprintf (history,"Copy of image %s reflected",filename);
 	    hputc (header,"HISTORY",history);
-            hputc (header,"HISTORY",history);
 	    }
 	else {
 	    for (y1 = 0; y1 < ny; y1++) {
@@ -143,7 +140,8 @@ int	verbose;
 		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,ny,x2,y2);
 		    }
 		}
-	    sprintf (history,"Copy of image %s reflected and rotated 90 degrees",filename);
+	    sprintf (history,"Copy of image %s reflected, rotated 90 degrees",
+		     filename);
             hputc (header,"HISTORY",history);
 	    }
 	else {
@@ -171,7 +169,8 @@ int	verbose;
 		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,nx,x2,y2);
 		    }
 		}
-	    sprintf (history,"Copy of image %s reflected and rotated 180 degrees",filename);
+	    sprintf (history,"Copy of image %s reflected, rotated 180 degrees",
+		     filename);
             hputc (header,"HISTORY",history);
 	    }
 	else {
@@ -197,7 +196,8 @@ int	verbose;
 		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,ny,x2,y2);
 		    }
 		}
-	    sprintf (history,"Copy of image %s reflected and rotated 270 degrees",filename);
+	    sprintf (history,"Copy of image %s reflected, rotated 270 degrees",
+		     filename);
             hputc (header,"HISTORY",history);
 	    }
 	else {
@@ -231,9 +231,7 @@ int	verbose;
     if (verbose)
 	printf ("%s\n",history);
 
-    free (*image0);
-    *image0 = rotimage;
-    return (0);
+    return (rotimage);
 }
 
 
@@ -487,4 +485,8 @@ int	verbose;	/* Print progress if 1 */
  * Feb 23 1998	Do not delete WCS if image not rotated or mirrored
  * May 26 1998	Rotate WCS instead of deleting it
  * May 27 1998	Include imio.h
+
+ * Jun  8 1999	Return new image pointer instead of flag; do not free old image
+ * Jun  9 1999	Make history buffer 128 instead of 72 to avoid overflows
+ * Jun 10 1999	Drop image0; use image
  */

@@ -1,4 +1,5 @@
 CFLAGS= -g
+#CFLAGS= -O
 $CC= cc
 
 OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \

@@ -1,3 +1,16 @@
+Version 2.6.2
+imrotate.c: Fix bug which caused overflow in history header line
+imrotate.c: Rewrite to return pointer to rotated image
+gethead.c: Fix bug which sometimes caused garbage at start of output lines
+imstar.c: Add option to set brightest star in image to arbitary magnitude
+
+Version 2.6.1
+scat.c: Fix bug if -r last command; allow sexigesimal degree search radius
+scat.c: Allow rectangular search box (-r radius or -r width height)
+newfits.c: Create FITS files as they appear in command line unaffected by
+           subsequent command line arguments.  Allow center to be set as
+           standard WCSTools coordinate string (ra dec system)
+
 Version 2.6 (June 4, 1999)
 conpix.c: Operate on all pixels of an image (new)
 gettab.c: Extract values from a tab table file (new)

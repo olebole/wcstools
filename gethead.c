@@ -1,5 +1,5 @@
 /* File gethead.c
- * April 2, 1999
+ * June 9, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -346,6 +346,8 @@ char	*kwd[];	/* Names of keywords for which to print values */
 	    sprintf (fnform, "%%-%ds ", maxlfn);
 	sprintf (outline, fnform, filename);
 	}
+    else
+	outline[0] = (char) 0;
     nfound = 0;
 
     notfound = 0;
@@ -476,4 +478,5 @@ char *string;
  * Feb 17 1999	Add -d option to set root input directory
  * Apr  1 1999	Add warning if too many files or keywords on command line
  * Apr  2 1999	Add -f and -m to change maximum number of files or keywords
+ * Jun  9 1999	Initialize outline so Linux doesn't print garbage
  */

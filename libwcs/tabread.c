@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** May 28, 1999
+ *** June 3, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -990,7 +990,7 @@ char	*result;
     char *str0, *str1, *line, *head, str[24], keylow[24], keyup[24];
     int ncstr, lkey, i;
 
-    head = tabtable->tabhead;
+    head = tabtable->tabbuff;
     str0 = 0;
 
     /* Make all-upper-case and all-lower-case versions of keyword */
@@ -1007,7 +1007,7 @@ char	*result;
 	}
 
     /* Find keyword or all-upper-case or all-lower-case version in header */
-    while (head < tabtable->tabdata) {
+    while (head < tabtable->tabhead) {
 	line = strsrch (head, keyword);
 	if (line == NULL)
 	    line = strsrch (head, keylow);
@@ -1235,4 +1235,5 @@ char    *filename;      /* Name of file to check */
  * Mar  2 1999	Fix bugs calling tabhgetx()
  * Mar  2 1999	Rewrite tabhgetx() to use tabhgetc() for all header reading
  * May 28 1999	Add tabcatopen() and tabstar() and use them
+ * Jun  3 1999	Fix bug so header parameters are read correctly
  */

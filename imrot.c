@@ -1,5 +1,5 @@
 /* File imrot.c
- * November 30, 1998
+ * June 8, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -16,7 +16,7 @@
 
 static void usage();
 static void imRot ();
-extern int RotFITS();
+extern char *RotFITS();
 
 static int verbose = 0;	/* verbose/debugging flag */
 static int mirror = 0;	/* reflect image across vertical axis */
@@ -160,6 +160,7 @@ char *name;
     char *irafheader;		/* IRAF image header */
     char newname[64];		/* Name for revised image */
     char *ext;
+    char *newimage;
     char *imext, *imext1;
     char *fname;
     int lext, lroot;
@@ -292,19 +293,23 @@ char *name;
 	sprintf (history,"New copy of image %s", name);
     hputc (header,"HISTORY",history);
 
-    if (RotFITS (name, header, &image, rotate, mirror, bitpix, verbose)) {
+    if ((newimage = RotFITS (name,header,image,rotate,mirror,bitpix,verbose))
+	== NULL) {
 	fprintf (stderr,"Cannot rotate image %s; file is unchanged.\n",name);
-	return;
-	}
-    if (bitpix != 0)
-	hputi4 (header, "BITPIX", bitpix);
-    if (iraffile && !fitsout) {
-	if (irafwimage (newname, lhead, irafheader, header, image) > 0 && verbose)
-	    printf ("%s: written successfully.\n", newname);
 	}
     else {
-	if (fitswimage (newname, header, image) > 0 && verbose)
-	    printf ("%s: written successfully.\n", newname);
+	if (bitpix != 0)
+	    hputi4 (header, "BITPIX", bitpix);
+	if (iraffile && !fitsout) {
+	    if (irafwimage (newname,lhead,irafheader,header,newimage) > 0 &&
+		verbose)
+		printf ("%s: written successfully.\n", newname);
+	    }
+	else {
+	    if (fitswimage (newname, header, newimage) > 0 && verbose)
+		printf ("%s: written successfully.\n", newname);
+	    }
+	free (newimage);
 	}
 
     free (header);
@@ -335,4 +340,5 @@ char *name;
  * Aug  6 1998	Change fitsio.h to fitsfile.h
  * Oct 14 1998	Use isiraf() to determine file type
  * Nov 30 1998	Add version and help commands for consistency
+ * Jun  8 1999  Return image pointer from RotFITS, not flag
  */

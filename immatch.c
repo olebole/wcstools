@@ -1,5 +1,5 @@
 /* File immatch.c
- * April 13, 1999
+ * June 8, 1999
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -28,7 +28,7 @@ static int imsearch = 1;	/* set to 0 if image catalog provided */
 static char *refcatname;	/* Name of reference catalog to match */
 static int version = 0;		/* If 1, print only program name and version */
 
-extern int RotFITS();
+extern char *RotFITS();
 extern int SetWCSFITS();
 extern int DelWCSFITS();
 extern int PrintWCS();
@@ -457,7 +457,7 @@ char	*name;			/* Name of FITS or IRAF image file */
     char *ext;
     char *fname;
     int lext, lname;
-    int newimage;
+    char *newimage;
 
     image = NULL;
 
@@ -518,10 +518,18 @@ char	*name;			/* Name of FITS or IRAF image file */
 
     /* Rotate and/or reflect image */
     if (imsearch  && (rot != 0 || mirror)) {
-	if (RotFITS (name, header, &image, rot, mirror, bitpix, verbose)) {
+	if ((newimage =RotFITS (name,header,&image,rot,mirror,bitpix,verbose))
+	    == NULL) {
 	    fprintf (stderr,"Image %s could not be rotated\n", name);
+	    free (header);
+	    if (iraffile)
+		free (irafheader);
+	    if (image != NULL)
+		free (image);
 	    return;
 	    }
+	free (image);
+	image = newimage;
 	}
 
     (void) SetWCSFITS (name, header, image, refcatname, verbose);
@@ -562,4 +570,5 @@ char *
  *
  * Jan 26 1999	Add option to format output for IRAF coord fitting task
  * Apr 13 1999	Fix progname to drop / when full pathname
+ * Jun  8 1999	Return image pointer from RotFITS, not flag
  */
