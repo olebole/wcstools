@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** March 11, 2003
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -536,9 +536,8 @@ int	nlog;
         if (refcat == GSC || refcat == GSCACT)
 	    nstar = gscrnum (refcat,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
-        else if (refcat == GSC2)
-	    nstar = gsc2rnum (nnum,sysout,eqout,epout,
-			      tnum,tra,tdec,tmag,tc,nlog);
+	else if (refcat == GSC2)
+	    nstar = 0;
 	else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 	         refcat == UAC  || refcat == UA1  || refcat == UA2)
 	    nstar = uacrnum (catfile,nnum,sysout,eqout,epout,
@@ -1579,4 +1578,5 @@ char	*in;	/* Character string */
  *
  * Jan 16 2003	Add USNO-B1.0 Catalog
  * Mar 11 2003	Improve position filtering
+ * Apr  3 2003	Drop call to gsc2rnum(); it didn't do anything anyway
  */

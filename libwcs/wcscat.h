@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** March 24, 2003
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -85,6 +85,7 @@ int gscread();		/* Read sources from HST Guide Star Catalog */
 int gsc2read();		/* Read sources from GSC II Catalog */
 int tmcread();		/* Read sources from 2MASS Point Source Catalog */
 int uacread();		/* Read sources from USNO A or SA Catalog */
+int ubcread();		/* Read sources from USNO B Catalog */
 int ujcread();		/* Read sources from USNO J Catalog */
 int tabread();		/* Read sources from tab table catalog */
 int binread();		/* Read sources from SAO TDC binary format catalog */
@@ -96,9 +97,9 @@ int webread();		/* Read sources from catalog on the World Wide Web */
 
 /* Subroutines for extracting sources from catalogs by ID number */
 int gscrnum();		/* Read sources from HST Guide Star Catalog */
-int gsc2rnum();		/* Read sources from GSC II Catalog */
 int tmcrnum();		/* Read sources from 2MASS Point Source Catalog */
 int uacrnum();		/* Read sources from USNO A or SA Catalog */
+int ubcrnum();		/* Read sources from USNO B Catalog */
 int ujcrnum();		/* Read sources from USNO J Catalog */
 int tabrnum();		/* Read sources from tab table catalog */
 int binrnum();		/* Read sources from SAO TDC binary format catalog */
@@ -130,6 +131,7 @@ void YSortStars();
 void RASortStars();
 void DecSortStars();
 void MagSortStars();
+void FluxSortStars();
 
 /* Data structure for SAO TDC ASCII and binary star catalog entries */
 struct Star {
@@ -443,4 +445,6 @@ void vottail();		/* Terminate VOTable SCAT output */
  *
  * Jan 16 2003	Add USNO-B1.0 catalog
  * Mar 24 2003	Add CatCde() to get only catalog code
+ * Apr  3 2003	Add ubcread(), ubcrnum(), and FluxSortStars()
+ * Apr  3 2003	Drop gsc2rnum()
  */

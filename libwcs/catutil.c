@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** March 24, 2003
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -2310,12 +2310,14 @@ double	drad;		/* Radius to search in degrees */
     printf ("    </DESCRIPTION>\n");
     printf ("<FIELD ucd=\"ID_MAIN\" datatype=\"char\" name=\"Catalog Name\">\n");
     if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
-	refcat == UAC  || refcat == UA1  || refcat == UA2)
+	refcat == UAC  || refcat == UA1  || refcat == UA2 || refcat == UB1)
 	printf ("  <DESCRIPTION>USNO Object Identifier</DESCRIPTION>\n");
     else if (refcat == TYCHO2)
 	printf ("  <DESCRIPTION>Tycho-2 Object Identifier</DESCRIPTION>\n");
     else if (refcat == GSC2)
 	printf ("  <DESCRIPTION>GSC II Object Identifier</DESCRIPTION>\n");
+    else if (refcat == TMPSC)
+	printf ("  <DESCRIPTION>2MASS Point Source Identifier</DESCRIPTION>\n");
     else if (refcat == GSC || refcat == GSCACT)
 	printf ("  <DESCRIPTION>GSC Object Identifier</DESCRIPTION>\n");
     else if (refcat == SAO)
@@ -2354,8 +2356,22 @@ double	drad;		/* Radius to search in degrees */
 	printf ("  <DESCRIPTION> Tycho-2 VT magnitude </DESCRIPTION>\n");
 	}
     else if (refcat == GSC || refcat == GSCACT) {
+	printf ("<FIELD name=\"Vmag\" ucd=\"PHOT_GSC_V\" datatype=\"float\" unit=\"mag\">\n");
+	printf ("  <DESCRIPTION> GSC V magnitude </DESCRIPTION>\n");
+	printf ("</FIELD>\n");
 	}
     else if (refcat == GSC2) {
+	}
+    else if (refcat == TMPSC) {
+	printf ("<FIELD name=\"Jmag\" ucd=\"PHOT_MAG_J\" datatype=\"float\" unit=\"mag\">\n");
+	printf ("  <DESCRIPTION> Johnson J magnitude </DESCRIPTION>\n");
+	printf ("</FIELD>\n");
+	printf ("<FIELD name=\"Hmag\" ucd=\"PHOT_MAG_H\" datatype=\"float\" unit=\"mag\">\n");
+	printf ("  <DESCRIPTION> Johnson H magnitude </DESCRIPTION>\n");
+	printf ("</FIELD>\n");
+	printf ("<FIELD name=\"Kmag\" ucd=\"PHOT_MAG_K\" datatype=\"float\" unit=\"mag\">\n");
+	printf ("  <DESCRIPTION> Johnson K magnitude </DESCRIPTION>\n");
+	printf ("</FIELD>\n");
 	}
     else if (refcat == SAO) {
 	printf ("<FIELD name=\"Vmag\" ucd=\"PHOT_MAG_V\" datatype=\"float\" unit=\"mag\">\n");

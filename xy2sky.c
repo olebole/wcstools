@@ -1,5 +1,5 @@
 /* File xy2sky.c
- * January 7, 2003
+ * April 7, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -15,7 +15,7 @@
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcscat.h"
 
-static void usage();
+static void PrintUsage();
 extern struct WorldCoor *GetWCSFITS();	/* Read WCS from FITS or IRAF header */
 static void PrintHead();
 
@@ -28,6 +28,7 @@ static int linmode = -1;
 static int face = 1;
 static int ncm = 0;
 static int printhead = 0;
+static char printonly = 'n';
 static int version = 0;		/* If 1, print only program name and version */
 
 
@@ -57,6 +58,7 @@ char **av;
     char *cofile;
     char *cobuff;
     char *ctab;
+    char *space, *cstr, *dstr;
     int nterms;
     double mag0, magx;
     double coeff[5];
@@ -69,10 +71,10 @@ char **av;
     /* Check for help or version command first */
     str = *(av+1);
     if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
-	usage();
+	PrintUsage (str);
     if (!strcmp (str, "version") || !strcmp (str, "-version")) {
 	version = 1;
-	usage();
+	PrintUsage (str);
 	}
 
     /* crack arguments */
@@ -95,7 +97,7 @@ char **av;
 
 	case 'c':	/* Magnitude conversion coefficients */
 	    if (ac < 2)
-		usage();
+		PrintUsage (str);
 	    cofile = *++av;
 	    ac--;
     	    break;
@@ -111,7 +113,7 @@ char **av;
 
 	case 'f':	/* Face to use for projections with 3rd dimension */
 	    if (ac < 2)
-		usage();
+		PrintUsage (str);
 	    face = atoi (*++av);
 	    (void) wcszin (face);
 	    ac--;
@@ -136,7 +138,7 @@ char **av;
 
 	case 'l':	/* Mode for output of linear coordinates */
 	    if (ac < 2)
-		usage();
+		PrintUsage (str);
 	    linmode = atoi (*++av);
 	    ac--;
 	    break;
@@ -148,15 +150,24 @@ char **av;
 
 	case 'n':	/* Number of decimal places in output sec or deg */
 	    if (ac < 2)
-		usage();
+		PrintUsage (str);
 	    ndec = atoi (*++av);
 	    ndecset++;
 	    ac--;
 	    break;
 
+	case 'o':   /* Output only the following part of the coordinates */
+	    if (ac < 2)
+		PrintUsage (str);
+	    av++;
+	    printonly = **av;
+	    ac--;
+	    break;
+
+
 	case 'q':	/* Equinox for output */
 	    if (ac < 2)
-		usage();
+		PrintUsage (str);
 	    strcpy (coorsys, *++av);
 	    ac--;
 	    break;
@@ -175,14 +186,14 @@ char **av;
     	    break;
 
     	default:
-    	    usage();
+    	    PrintUsage (str);
     	    break;
     	}
     }
 
     /* There are ac remaining file names starting at av[0] */
     if (ac == 0)
-	usage ();
+	PrintUsage ();
 
     fn = *av++;
     if (isfits (fn) || isiraf (fn)) {
@@ -415,32 +426,50 @@ char **av;
 			sprintf(temp," %6.2f", magx);
 		    strcat (wcstring, temp);
 		    }
-		printf ("%s ", wcstring);
-		if (verbose && !tabtable)
-		    printf (" <- ");
-		if (wcs->nxpix > 9999 || wcs->nypix > 9999) {
-		    if (tabtable)
-			printf ("%9.3f	%9.3f	",x, y);
-		    else
-			printf ("%9.3f %9.3f ",x, y);
+		if (printonly == 'r') {
+		    space = strchr (wcstring, ' ');
+		    *space = (char) 0;
+		    printf ("%s ", wcstring);
 		    }
-		else if (wcs->nxpix > 999 || wcs->nypix > 999) {
-		    if (tabtable)
-			printf ("%8.3f	%8.3f	",x, y);
-		    else
-			printf ("%8.3f %8.3f ",x, y);
+		else if (printonly == 'd') {
+		    dstr = strchr (wcstring, ' ') + 1;
+		    space = strchr (dstr, ' ');
+		    *space = (char) 0;
+		    printf ("%s ", dstr);
+		    }
+		else if (printonly == 's') {
+		    dstr = strchr (wcstring, ' ') + 1;
+		    cstr = strchr (dstr, ' ') + 1;
+		    printf ("%s ", cstr);
 		    }
 		else {
-		    if (tabtable)
-			printf ("%7.3f	%7.3f	",x, y);
-		    else
-			printf ("%7.3f %9.3f ",x, y);
-		    }
-		if (wcs->naxes > 2) {
-		    if (tabtable)
-			printf ("%2d	", face);
-		    else
-			printf ("%2d  ", face);
+		    printf ("%s ", wcstring);
+		    if (verbose && !tabtable)
+			printf (" <- ");
+		    if (wcs->nxpix > 9999 || wcs->nypix > 9999) {
+			if (tabtable)
+			    printf ("%9.3f	%9.3f	",x, y);
+			else
+			    printf ("%9.3f %9.3f ",x, y);
+			}
+		    else if (wcs->nxpix > 999 || wcs->nypix > 999) {
+			if (tabtable)
+			    printf ("%8.3f	%8.3f	",x, y);
+			else
+			    printf ("%8.3f %8.3f ",x, y);
+			}
+		    else {
+			if (tabtable)
+			    printf ("%7.3f	%7.3f	",x, y);
+			else
+			    printf ("%7.3f %9.3f ",x, y);
+			}
+		    if (wcs->naxes > 2) {
+			if (tabtable)
+			    printf ("%2d	", face);
+			else
+			    printf ("%2d  ", face);
+			}
 		    }
 		printf ("\n");
 		}
@@ -453,10 +482,19 @@ char **av;
 }
 
 static void
-usage ()
+PrintUsage (command)
+char	*command;
+
 {
     if (version)
 	exit (-1);
+    if (command != NULL) {
+	if (command[0] == '*')
+	    fprintf (stderr, "%s\n", command);
+	else
+	    fprintf (stderr, "* Missing argument for command: %c\n", command[0]);
+	exit (1);
+	}
     fprintf (stderr,"Compute RA Dec from X Y using WCS in FITS and IRAF image files\n");
     fprintf (stderr,"Usage: [-abdjgv] [-n ndec] file.fits x1 y1 ... xn yn\n");
     fprintf (stderr,"  or : [-abdjgv] [-n ndec] file.fits @listfile\n");
@@ -472,6 +510,7 @@ usage ()
     fprintf (stderr,"  -l: mode for output of LINEAR WCS coordinates\n");
     fprintf (stderr,"  -m: column for magnitude (defaults to 3 if -c used)\n");
     fprintf (stderr,"  -n: number of decimal places in output RA seconds\n");
+    fprintf (stderr,"  -o r|d|s: print only ra, dec, or coordinate system\n");
     fprintf (stderr,"  -q: output equinox if not 2000 or 1950\n");
     fprintf (stderr,"  -t: tab table output\n");
     fprintf (stderr,"  -v: verbose\n");
@@ -627,4 +666,5 @@ char *listfile;		/* Name of file with list of input coordinates */
  *
  * Jan  7 2003	Fix bug which dropped declination for tab output from file
  * Jan  7 2003	Fix bug which failed to ignore #-commented-out input file lines
+ * Apr  7 2003	Add -o to output only RA, Dec, or system
  */

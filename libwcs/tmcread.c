@@ -1,5 +1,5 @@
 /*** File libwcs/tmcread.c
- *** March 11, 2003
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2003
@@ -48,8 +48,6 @@ static int ndist = 0;
 static int linedump = 0;
 
 static int tmcreg();
-static int tmcregn();
-static int tmczone();
 static int tmcsize();
 struct StarCat *tmcopen();
 void tmcclose();
@@ -94,7 +92,6 @@ int	nlog;		/* 1 for diagnostics */
     char inpath[128];	/* Pathname for input region file */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
     struct StarCat *starcat;
     struct Star *star;
     int verbose;
@@ -108,7 +105,7 @@ int	nlog;		/* 1 for diagnostics */
     int nrmax = MAXREG;
     int nstar,i, ntot;
     int istar, istar1, istar2;
-    double num, ra, dec, rapm, decpm, mag;
+    double num, ra, dec, mag;
     double rra1, rra2, rra2a, rdec1, rdec2;
     double rdist, ddist;
     char cstr[32], rastr[32], decstr[32], numstr[32];
@@ -441,18 +438,13 @@ int	nlog;		/* 1 for diagnostics */
     struct Star *star;
     char *str;
 
-    int verbose;
     int rnum;
     int jstar;
-    int istar, istar1, istar2, nstar;
-    double num, ra, dec, rapm, decpm, mag, dstar;
+    int istar, nstar;
+    double num, ra, dec, rapm, decpm, dstar;
 
-    if (nlog > 0)
-	verbose = 1;
-    else if (nlog < 0)
+    if (nlog < 0)
 	linedump = 1;
-    else
-	verbose = 0;
 
     /* If pathname is a URL, search and return */
     if ((str = getenv("TMC_PATH")) != NULL ) {
@@ -559,14 +551,11 @@ int	verbose;	/* 1 for diagnostics */
 {
     int nrgn;		/* Number of regions found (returned) */
     char *tabpath;	/* Pathname for regions table */
-    char *line;
     char *str;
-    int nwrap;		/* 1 if 0h included in RA span*/
     int ir;
     int iz1,iz2,ir1,ir2,jr1,jr2,i;
     int nsrch;
-    double rah1,rah2,ralow, rahi;
-    double declow, dechi, decmin, decmax;
+    double rah1,rah2;
 
     nrgn = 0;
 
@@ -600,7 +589,6 @@ int	verbose;	/* 1 for diagnostics */
 	ir2 = iz2;
 	jr1 = 0;
 	jr2 = 0;
-	nwrap = 1;
 	nsrch = iz2 - iz1 + 1;
 	}
     else {
@@ -608,7 +596,6 @@ int	verbose;	/* 1 for diagnostics */
 	ir2 = 48;
 	jr1 = 0;
 	jr2 = iz2;
-	nwrap = 2;
 	nsrch = 48 - iz1 + 1 + iz2 + 1;
 	}
 
@@ -666,7 +653,6 @@ int	zone;	/* RA zone (hours) to read */
     FILE *fcat;
     struct StarCat *sc;
     int lfile, lpath;
-    int lread, lskip, nr;
     char *str;
     char *tmcfile;
     char *tmcpath;	/* Full pathname for catalog file */
@@ -827,7 +813,6 @@ int	zone;		/* Zone catalog number (1-49) */
 int	istar;		/* Star sequence in 2MASS zone file */
 {
     char line[500];
-    double regnum, starnum, multnum;
     int nbskip, nbr, iflag;
 
     /* Drop out if catalog pointer is not set */
@@ -936,4 +921,6 @@ char	*filename;	/* Name of file for which to find size */
  *
  * Feb 13 2002	Fix catalog name in web access
  * Oct  3 2002	Use global variable for scat version
+ *
+ * APr  3 2003	Drop unused variables after lint
  */

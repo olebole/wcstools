@@ -1,8 +1,8 @@
 /*** File libwcs/fortcat.c
- *** September 19, 2001
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2002
+ *** Copyright (C) 2001-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -75,7 +75,7 @@ double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int     nsmax;		/* Maximum number of stars to be returned */
 int     nlog;		/* Logging frequency */
-int	nstars;		/* Number of catalog stars found */
+int	*nstars;		/* Number of catalog stars found (returned) */
 double	*xnum;		/* Array of ID numbers (returned) */
 double	*xra;		/* Array of right ascensions (returned) */
 double	*xdec;		/* Array of declinations (returned) */
@@ -86,9 +86,6 @@ double	*xmagb;		/* Array of second magnitudes (returned) */
 
 {
 int     refcat;         /* Catalog code from wcscat.h */
-int	syscat;		/* Coordinate system code from catalog */
-double	eqcat, epcat;	/* Equinox and epoch of catalog */
-char	title[64];	/* Title of catalog */
 char    **tobj;         /* Array of object names (ignored) */
 int     *tc;            /* Array of fluxes (ignored) */
 int	nread;		/* Number of stars read from catalog */
@@ -97,7 +94,7 @@ int     sysout;         /* Search coordinate system */
     tc = NULL;
     tobj = NULL;
 
-    refcat = RefCat (catfile, title, syscat, eqcat, epcat);
+    refcat = CatCode (catfile);
     sysout = wcscsys (csysout);
 
     nread = ctgread (catfile, refcat, distsort, cra, cdec, dra, ddec, drad,
@@ -106,9 +103,9 @@ int     sysout;         /* Search coordinate system */
 
     /* Return number of stars read or maximum, which ever is lower */
     if (nread < nsmax)
-	nstars = nread;
+	*nstars = nread;
     else
-	nstars = nsmax;
+	*nstars = nsmax;
 
     return;
 }
@@ -117,7 +114,7 @@ int     sysout;         /* Search coordinate system */
 /* CATRNUM -- Read ASCII stars with specified numbers using ctgrnum() */
 
 void
-catrnum_ (catfile, nnum, csysout, eqout, epout, match, nlog,
+catrnum_ (catfile, nnum, csysout, eqout, epout, match, nlog, nstars,
           xnum, xra, xdec, xpra, xpdec, xmag, xmagb)
 
 char    *catfile;       /* Name of reference star catalog file */
@@ -127,6 +124,7 @@ double  eqout;          /* Search coordinate equinox */
 double  epout;          /* Proper motion epoch (0.0 for no proper motion) */
 int     match;          /* 1 to match star number exactly, else sequence num.*/
 int     nlog;		/* Logging frequency */
+int	*nstars;	/* Number of catalog stars found (returned) */
 double  *xnum;          /* Array of star numbers to look for */
 double  *xra;           /* Array of right ascensions (returned) */
 double  *xdec;          /* Array of declinations (returned) */
@@ -137,9 +135,6 @@ double  *xmagb;         /* Array of second magnitudes (returned) */
 
 {
 int     refcat;         /* Catalog code from wcscat.h */
-int	syscat;		/* Coordinate system code from catalog */
-double	eqcat, epcat;	/* Equinox and epoch of catalog */
-char	title[64];	/* Title of catalog */
 int     *tc;            /* Array of fluxes (ignore) */
 char    **tobj;         /* Array of object names (ignored) */
 int     sysout;         /* Search coordinate system */
@@ -150,14 +145,17 @@ int	nread;		/* Number of stars read from catalog */
 
     sysout = wcscsys (csysout);
 
-    refcat = RefCat (catfile, title, syscat, eqcat, epcat);
+    refcat = CatCode (catfile);
 
     nread = ctgrnum (catfile,refcat, nnum,sysout,eqout,epout,match,starcat,
 		     xnum,xra,xdec,xpra,xpdec,xmag,xmagb,tc,tobj,nlog);
+    *nstars = nread;
 
     return;
 }
 /*
  * Feb 16 2001	New subroutines
  * Sep 19 2001	Drop fitshead.h; it is in wcs.h
+ *
+ * Apr  3 2003	Use CatCode() instead of RefCat(); add nstars to catrnum_()
  */

@@ -1,3 +1,10 @@
+Version 3.3.2 (April 7, 2003)
+xy2sky,sky2xy: Add -o option to print only RA or Dec or x or y
+wcsinit: Add distortion initialization to wcsinit()
+wcs.c: Add distortion initialization to wcstype() and calls to pix2wcs() and wcs2pix()
+distort.c: New subroutines pix2foc() and foc2pix() to correct spatial distortion
+between the image and the focal plane
+
 Version 3.3.1 (March 27, 2003)
 getdate: Add Heliocentric Julian Date and Modified Heliocentric Julian Date, RA,Dec args
 scat: Fix bug which failed to read PPM catalog proper motions

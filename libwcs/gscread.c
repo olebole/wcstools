@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** March 10, 2003
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -115,7 +115,6 @@ int	nlog;		/* 1 for diagnostics */
     struct Keyword *kwn;
 
     int verbose;
-    int wrap;
     int pass;
     int rnum, num0, num, itot,ireg;
     int ik,nk,itable,ntable,jstar;
@@ -191,13 +190,6 @@ int	nlog;		/* 1 for diagnostics */
 
     SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
 
-    /* If RA range includes zero, split it in two */
-    wrap = 0;
-    if (ra1 > ra2)
-	wrap = 1;
-    else
-	wrap = 0;
-
     /* Make mag1 always the smallest magnitude */
     if (mag2 < mag1) {
 	mag = mag2;
@@ -213,8 +205,6 @@ int	nlog;		/* 1 for diagnostics */
     rdec2 = dec2;
     RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
 	    &rra1, &rra2, &rdec1, &rdec2, verbose);
-    if (rra1 > rra2)
-	wrap = 1;
     nreg = gscreg (refcat,rra1,rra2,rdec1,rdec2,table,nrmax,rlist,verbose);
     if (nreg <= 0) {
 	fprintf (stderr,"GSCREAD:  no Guide Star regions found\n");
@@ -338,7 +328,7 @@ int	nlog;		/* 1 for diagnostics */
 		num0 = 0;
 
 	/* Compute mean position and magnitude for object */
-	    if (itable > 0 &&
+	    if (itable > 0 && npos > 0 &&
 		((classd < -1 && band != band0) ||
 		(classd < -1 && class != class0) || 
 		num != num0)) {
@@ -1173,4 +1163,5 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Oct  2 2002	Fix pass-through tab table header
  *
  * Mar 10 2003	Improve position limits
+ * Apr  3 2003	Drop wrap in gscread(); add test for npos in gscread()
  */

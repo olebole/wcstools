@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** February 4, 2003
+ *** April 2, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -411,7 +411,7 @@ int	nlog;		/* Note progress mod this rows */
 {
     int fd;		/* File descriptor */
     int nbimage, naxis1, naxis2, bytepix, nbread;
-    int bitpix, naxis, nblocks, nbytes, nbleft, nbr;
+    int bitpix, naxis, nblocks, nbytes, nbr;
     int x1, y1, nbline, impos, nblin, nyleft;
     char *image, *imline, *imlast;
     int ilog = 0;
@@ -1619,5 +1619,6 @@ fitserr ()
  * Jan 28 2002	In fitsrhead(), allow stdin to include extension and/or WCS selection
  * Jun 18 2002	Save error messages as fitserrmsg and use fitserr() to print them
  * Oct 21 2002	Add fitsrsect() to read a section of an image
- * Feb 4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
+ * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
+ * Apr  2 2003	Drop unused variable in fitsrsect()
  */

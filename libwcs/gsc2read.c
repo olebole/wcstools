@@ -68,45 +68,21 @@ double	**gmag;		/* 2-D array of magnitudes (returned) */
 int	*gtype;		/* Array (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
-    double dist = 0.0;  /* Distance from search center in degrees */
-    double faintmag=0.0; /* Faintest magnitude */
-    double maxdist=0.0; /* Largest distance */
-    int	faintstar=0;	/* Faintest star */
-    int	farstar=0;	/* Most distant star */
-    double *gdist;	/* Array of distances to stars */
-    int sysref=WCS_J2000;	/* Catalog coordinate system */
-    double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
     double *gpra, *gpdec;
     char srchurl[LINE];
     char temp[64];
     struct TabTable *tabtable;
     double dtemp;
     struct StarCat *starcat;
-    struct Star *star;
-    int verbose;
-    int wrap;
-    int ireg;
-    int magsort;
-    int jstar, iw;
-    int nstar,i, ntot;
-    int istar, istar1, istar2, isp;
-    double num, ra, dec, rapm, decpm, mag, magb;
-    double rra1, rra2, rra2a, rdec1, rdec2;
-    char cstr[32], rastr[32], decstr[32];
-    char *str;
-    char *eod;
+    int nstar;
+    double ra, dec, mag;
+    char rastr[32], decstr[32];
 
     if (nstarmax < 1)
 	nlog = -1;
 
     gpra = NULL;
     gpdec = NULL;
-    ntot = 0;
-    if (nlog > 0)
-	verbose = 1;
-    else
-	verbose = 0;
 
 /* make mag1 always the smallest magnitude */
     if (mag2 < mag1) {
@@ -189,45 +165,6 @@ int	nlog;		/* 1 for diagnostics */
     return (nstar);
 }
 
-/* GSC2RNUM -- Read GSC II stars across the web */
-
-int
-gsc2rnum (nstars,sysout,eqout,epout,gnum,gra,gdec,gmag,gtype,nlog)
-
-int	nstars;		/* Number of stars to find */
-int	sysout;		/* Search coordinate system */
-double	eqout;		/* Search coordinate equinox */
-double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
-double	*gnum;		/* Array of Guide Star numbers (returned) */
-double	*gra;		/* Array of right ascensions (returned) */
-double	*gdec;		/* Array of declinations (returned) */
-double	**gmag;		/* Array of magnitudes (returned) */
-int	*gtype;		/* Array of codes (returned) */
-int	nlog;		/* 1 for diagnostics */
-{
-    char inpath[128];	/* Pathname for input region file */
-    int sysref=WCS_J2000;	/* Catalog coordinate system */
-    double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
-
-    int verbose;
-    int nstar;
-
-    if (nlog == 1)
-	verbose = 1;
-    else
-	verbose = 0;
-
-    nstars = 0;
-    nstar = 0;
-
-/* Summarize search */
-    if (nlog > 0)
-	fprintf (stderr,"GSC2RNUM: %d / %d found\n",nstar, nstars);
-
-    return (nstar);
-}
-
 /* Jun 22 2001	New program
  * Jun 28 2001	Set proper motion to milliarcseconds/year
  * Jun 29 2001	Always set maximum magnitude to 99.9 to get Tycho-2 stars, too
@@ -240,4 +177,5 @@ int	nlog;		/* 1 for diagnostics */
  *
  * Feb  6 2003	Reset nmag to 4 because there is an epoch column
  * Mar 11 2003	Fix URL for search
+ * Apr  3 2003	Drop unused variables after lint; drop gsc2rnum()
  */

@@ -233,6 +233,7 @@
 *===========================================================================*/
 
 #include <stdlib.h>
+#include <string.h>
 #include <math.h>
 #include "wcslib.h"
 
@@ -4327,4 +4328,5 @@ double *phi, *theta;
  *
  * Feb  3 2003	Doug Mink - Use locally defined copysgn() and copysgni(),
  *		            not copysign()
+ * Apr  1 2003	Doug Mink - include string.h for strcpy() and strcmp()
  */

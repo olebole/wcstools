@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** March 27, 2003
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -228,7 +228,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     double dec_deg,ra_hours, secpix, ra0, ra1, dec0, dec1, cvel;
     double cdelt1, cdelt2, cd[4], pc[16];
     char keyword[16];
-    int ieq, i, naxes, cd11p, cd12p, cd21p, cd22p;
+    int ieq, i, j, m, naxes, cd11p, cd12p, cd21p, cd22p;
     int ilat;	/* coordinate for latitude or declination */
     /*
     int ix1, ix2, iy1, iy2, idx1, idx2, idy1, idy2;
@@ -472,6 +472,87 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	    strncmp (wcs->ptype,"PIXEL",5))
 	    wcseqm (hstring, wcs, mchar);
 	wcsioset (wcs);
+
+	/* Read distortion coefficients, if present */
+	if (wcs->distcode == DISTORT_SIRTF) {
+	    if (wcs->wcsproj == WCS_OLD) {
+		wcs->wcsproj = WCS_NEW;
+		wcs->distort.a_order = 0;
+		wcs->distort.b_order = 0;
+		wcs->distort.ap_order = 0;
+		wcs->distort.bp_order = 0;
+		}
+	    else {
+	    if (!hgeti4 (hstring, "A_ORDER", &wcs->distort.a_order)) {
+		setwcserr ("WCSINIT: Missing A_ORDER keyword for SIRTF distortion");
+		}
+	    else {
+		m = wcs->distort.a_order;
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m; j++) {
+			wcs->distort.a[i][j] = 0.0;
+			}
+		    }
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m-i; j++) {
+			sprintf (keyword, "A_%d_%d", i, j);
+			hgetr8 (hstring, keyword, &wcs->distort.a[i][j]);
+			}
+		    }
+		}
+	    if (!hgeti4 (hstring, "B_ORDER", &wcs->distort.b_order)) {
+		setwcserr ("WCSINIT: Missing B_ORDER keyword for SIRTF distortion");
+		}
+	    else {
+		m = wcs->distort.b_order;
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m; j++) {
+			wcs->distort.b[i][j] = 0.0;
+			}
+		    }
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m-i; j++) {
+			sprintf (keyword, "B_%d_%d", i, j);
+			hgetr8 (hstring, keyword, &wcs->distort.b[i][j]);
+			}
+		    }
+		}
+	    if (!hgeti4 (hstring, "AP_ORDER", &wcs->distort.ap_order)) {
+		setwcserr ("WCSINIT: Missing AP_ORDER keyword for SIRTF distortion");
+		}
+	    else {
+		m = wcs->distort.ap_order;
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m; j++) {
+			wcs->distort.ap[i][j] = 0.0;
+			}
+		    }
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m-i; j++) {
+			sprintf (keyword, "AP_%d_%d", i, j);
+			hgetr8 (hstring, keyword, &wcs->distort.ap[i][j]);
+			}
+		    }
+		}
+	    if (!hgeti4 (hstring, "BP_ORDER", &wcs->distort.bp_order)) {
+		setwcserr ("WCSINIT: Missing BP_ORDER keyword for SIRTF distortion");
+		}
+	    else {
+		m = wcs->distort.bp_order;
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m; j++) {
+			wcs->distort.bp[i][j] = 0.0;
+			}
+		    }
+		for (i = 0; i <= m; i++) {
+		    for (j = 0; j <= m-i; j++) {
+			sprintf (keyword, "BP_%d_%d", i, j);
+			hgetr8 (hstring, keyword, &wcs->distort.bp[i][j]);
+			}
+		    }
+		}
+	    }
+	    }
 
 	/* Use polynomial fit instead of projection, if present */
 	wcs->ncoeff1 = 0;
@@ -1240,4 +1321,5 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Jan  2 2002	Do not reinitialize projection vector for PV input
  * Jan  3 2002	For ZPN, read PVi_0 to PVi_9, not PVi_1 to PVi_10
  * Mar 27 2003	Clean up default center computation
+ * Apr  3 2003	Add input for SIRTF distortion coefficients
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** March 11, 2003
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -127,7 +127,6 @@ int	nlog;
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
     double magt;
-    double ddra, dddec;
     double rdist, ddist;
     int pass;
     char cstr[32];
@@ -2312,4 +2311,5 @@ char    *filename;      /* Name of file to check */
  * Jan 28 2003	Improve spatial position test
  * Feb  4 2003	Compare character to 0, not NULL
  * Mar 11 2003	Fix limit setting
+ * Apr  3 2003	Drop unused variables after lint
  */

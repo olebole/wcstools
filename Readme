@@ -14,20 +14,22 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.3.1 of the WCSTools package developed by Doug Mink
+This is version 3.3.2 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 
 Bill Cotton of NRAO (projection),
 Mark Calabretta of CSIRO (projection),
 Pat Wallace of Cambridge University (coordinate conversion),
-Elwood Downey of the University of Iowa (WCS fitting procedure), and
-John Roll of SAO for (network access).
+Elwood Downey of the University of Iowa (WCS fitting procedure),
+John Roll of SAO for (network access), and
+Jing Li of IPAC (distortion).
 
 Bill Joye and Eric Mandel of SAO, Allan Brighton of ESO, and Jean-Baptiste
-Marquette of the Institut d'Astrophysique de Paris helped debug the
-subroutine library.  Norman Grogin, Scott Kenyon, Susan Tokarz, and Dan
-Koranyi of SAO and Andreas Jaunsen helped debug the astrometry programs.
+Marquette of the Institut d'Astrophysique de Paris, and David Shupe of IPAC
+helped debug the subroutine library.  Norman Grogin, Scott Kenyon, Susan
+Tokarz, Dan Koranyi, Guillermo Torres, and others of SAO and Andreas Jaunsen
+helped debug the astrometry programs.
 Steve Willner of SAO helped debug the FITS utilities.
 
 Details of updates are in the Versions file.
@@ -157,4 +159,4 @@ wcshead	Print basic world coordinate system information on one line per image
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
 
--Doug Mink, SAO, 2003-03-27
+-Doug Mink, SAO, 2003-04-03

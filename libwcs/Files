@@ -15,6 +15,8 @@ daoread.c
   flux for use by IMSTAR or IMWCS.
 dateutil.c
   Subroutines for conversions between various date and time formats
+distort.c
+  Subroutines for conversions between image pixel and focal plane coordinates
 dsspos.c
   dsspos() uses the WCS structure to compute sky coordinates given
   image pixel X and Y for images with Digitized Sky Survey plate solutions

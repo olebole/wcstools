@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.c
- *** May 13, 2002
+ *** April 1, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2002
+ *** Copyright (C) 1994-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -331,7 +331,10 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
     int i, iproj;
     int nctype = 32;
     char ctypes[32][4];
+    char dtypes[10][4];
+    char *extension;
 
+    /* Initialize projection types */
     strcpy (ctypes[0], "LIN");
     strcpy (ctypes[1], "AZP");
     strcpy (ctypes[2], "SZP");
@@ -364,6 +367,9 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
     strcpy (ctypes[29], "DSS");
     strcpy (ctypes[30], "PLT");
     strcpy (ctypes[31], "TNX");
+
+    /* Initialize distortion types */
+    strcpy (dtypes[1], "SIP");
 
     if (!strncmp (ctype1, "LONG",4))
 	strncpy (ctype1, "XLON",4);
@@ -553,6 +559,16 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
     else {
 	wcs->prjcode = WCS_LIN;
 	}
+
+    /* If CTYPE1 is 8 characters long or less, there is no extension */
+    if (strlen (ctype1) < 9 )
+	return 0;
+
+    extension = ctype1 + 8;
+    if (!strcmp (extension, "-SIP"))
+	wcs->distcode = DISTORT_SIRTF;
+    else
+	wcs->distcode = DISTORT_NONE;
 
     return (0);
 }
@@ -1875,10 +1891,12 @@ int	lstr;		/* Length of world coordinate string (returned) */
 		    dec2str (rastr, 32, xpos, wcs->ndec);
 		    dec2str (decstr, 32, ypos, wcs->ndec);
 		    }
-		if (wcs->tabsys)
+		if (wcs->tabsys) {
 		    (void)sprintf (wcstring,"%s	%s", rastr, decstr);
-		else
+		    }
+		else {
 		    (void)sprintf (wcstring,"%s %s", rastr, decstr);
+		    }
 	        lstr = lstr - minlength;
 		}
 	    else {
@@ -2041,8 +2059,7 @@ double	*xpos,*ypos;	/* RA and Dec in degrees (returned) */
 	pix2wcs (wcs->wcs, xpix, ypix, &xpi, &ypi);
 	}
     else {
-	xpi = xpix;
-	ypi = ypix;
+	pix2foc (wcs, xpix, ypix, &xpi, &ypi);
 	}
 
     /* Convert image coordinates to sky coordinates */
@@ -2203,14 +2220,13 @@ int	*offscl;	/* 0 if within bounds, else off scale */
 	wcsc2pix (wcs->wcs, xpi, ypi, NULL, xpix, ypix, offscl);
 	}
     else {
-	*xpix = xpi;
-	*ypix = ypi;
+	foc2pix (wcs, xpi, ypi, xpix, ypix);
 
 	/* Set off-scale flag to 2 if off image but within bounds of projection */
 	if (!*offscl) {
-	    if (xpi < 0.5 || ypi < 0.5)
+	    if (*xpix < 0.5 || *ypix < 0.5)
 		*offscl = 2;
-	    else if (xpi > wcs->nxpix + 0.5 || ypi > wcs->nypix + 0.5)
+	    else if (*xpix > wcs->nxpix + 0.5 || *ypix > wcs->nypix + 0.5)
 		*offscl = 2;
 	    }
 	}
@@ -2699,4 +2715,7 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Apr  9 2002	Implement inversion of multiple WCSs in wcsc2pix()
  * Apr 25 2002	Use Tycho-2 catalog instead of ACT in setwcscom()
  * May 13 2002	Free WCSNAME in wcsfree()
+ *
+ * Mar 31 2003	Add distcode to wcstype()
+ * Apr  1 2003	Add calls to foc2pix() in wcs2pix() and pix2foc() in pix2wcs()
  */

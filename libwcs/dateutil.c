@@ -1,5 +1,5 @@
 /*** File libwcs/dateutil.c
- *** March 7, 2003
+ *** April 1, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1999-2003
@@ -563,12 +563,8 @@ double	dj;	/* Julian date */
 double	*date;	/* Date as yyyy.mmdd (returned) */
 double	*time;	/* Time as hh.mmssxxxx (returned) */
 {
-    double tsec;
     int iyr,imon,iday,ihr,imn;
     double sec;
-
-    /* tsec = jd2ts (dj);
-    ts2dt (tsec, date, time); */
 
     /* Convert Julian Date to date and time */
     jd2i (dj, &iyr, &imon, &iday, &ihr, &imn, &sec, 4);
@@ -1360,6 +1356,7 @@ double	doy;	/* Day of year with fraction */
 }
 
 
+
 /* DOY2EPB-- convert year and day of year to Besellian epoch */
 
 double
@@ -1393,7 +1390,7 @@ double	doy;	/* Day of year with fraction */
 char *
 doy2fd (year, doy)
 
-double	year;	/* Year */
+int	year;	/* Year */
 double	doy;	/* Day of year with fraction */
 {
     double dj;	/* Julian date  */
@@ -2759,7 +2756,7 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 
 {
     double t,days, ts, dts;
-    int isec,ihms,nc,nc4,nly,ny,m,im;
+    int nc,nc4,nly,ny,m,im;
 
     /* Round seconds to 0 - 4 decimal places */
     ts = tsec + 61530883200.0;
@@ -3039,13 +3036,11 @@ ts2gst (tsec)
 
 double tsec;	/* time since 1950.0 in UT seconds */
 {
-    double dt;	/* Ephemeris Time - UT in seconds */
-
     double dpsi;	/* Nutation in longitude (radians) */
     double deps;	/* Nutation in obliquity (radians) */
 
     double gst;	/* Greenwich Sidereal Time in seconds since 0:00 */
-    double tsd,ts,esec,t,obl,eqnx, dj;
+    double tsd,ts,esec,obl,eqnx, dj;
     int its;
 
     /* Elapsed time as of 0:00 UT */
@@ -3573,18 +3568,18 @@ double *eps0;	/* Mean obliquity (returned) */
     dp = dp + (4.0 * sin(a));
     de = de - (2.0 * cos(a));
 
-    /* 22
-    a = el2 - d2 + om
+    /* 22 */
+    a = el2 - d2 + om;
     dp = dp + (4.0 * sin(a));
     de = de - (2.0 * cos(a));
 
-    /* 21
-    a = -elp + f2 - d2 + om
+    /* 21 */
+    a = -elp + f2 - d2 + om;
     dp = dp - (5.0 * sin(a));
     de = de + (3.0 * cos(a));
 
-    /* 20
-    a = -el2 + d2 + om
+    /* 20 */
+    a = -el2 + d2 + om;
     dp = dp - (6.0 * sin(a));
     de = de + (3.0 * cos(a));
 

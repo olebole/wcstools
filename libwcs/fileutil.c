@@ -395,5 +395,5 @@ char	*string;
  * Aug  1 2002	Return 1 if file is stdin in isfile()
  *
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
- * Mar  5 2003	Add isimlistd() to check image lists with rood directory
+ * Mar  5 2003	Add isimlistd() to check image lists with root directory
  */

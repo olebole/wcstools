@@ -1,5 +1,5 @@
 /* File imcat.c
- * March 25, 2003
+ * April 2, 2003
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -61,6 +61,7 @@ static int minid = 0;		/* Minimum number of plate IDs for USNO-B1.0 */
 static int minpmqual = 0;	/* Minimum USNO-B1.0 proper motion quality */
 extern int getminpmqual();
 extern int getminid();
+static void ImageLim();
 
 main (ac, av)
 int ac;
@@ -781,8 +782,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	return;
 	}
 
-    /* Set up limits for search */
-    SearchLim (cra, cdec, dra, ddec, sysout, &ra1, &ra2, &dec1, &dec2, 0);
+    /* Set up limits for search, taking into account image rotation */
+    ImageLim (wcs,&cra, &cdec, &dra, &ddec, &ra1, &ra2, &dec1, &dec2);
     epout = wcs->epoch;
     if (verbose || printhead) {
 	char rastr1[16],rastr2[16],decstr1[16],decstr2[16], cstr[16];
@@ -1721,6 +1722,65 @@ int	*region_char;	/* Character for SAOimage region file output */
     return;
 }
 
+/* Set up limits for search */
+static void
+ImageLim (wcs, cra, cdec, dra, ddec, ramin, ramax, decmin, decmax)
+
+struct WorldCoor *wcs;		/* WCS parameter structure */
+double	*cra, *cdec;		/* Center of search area  in degrees (returned) */
+double	*dra, *ddec;		/* Horizontal and vertical half-widths in degrees (returned) */
+double	*ramin, *ramax;		/* Right ascension limits in degrees (returned) */
+double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
+
+{
+    double xmin = 0.5;
+    double xmax = wcs->nxpix + 0.5;
+    double xcen = 0.5 + (wcs->nxpix * 0.5);
+    double ymin = 0.5;
+    double ymax = wcs->nypix + 0.5;
+    double ycen = 0.5 + (wcs->nypix * 0.5);
+    double ra[8], dec[8];
+    int i;
+
+    /* Find sky coordinates of corners and middles of sides */
+    pix2wcs (wcs, xmin, ymin, &ra[0], &dec[0]);
+    pix2wcs (wcs, xmin, ycen, &ra[1], &dec[1]);
+    pix2wcs (wcs, xmin, ymax, &ra[2], &dec[2]);
+    pix2wcs (wcs, xcen, ymin, &ra[3], &dec[3]);
+    pix2wcs (wcs, xcen, ymax, &ra[4], &dec[4]);
+    pix2wcs (wcs, xmax, ymin, &ra[5], &dec[5]);
+    pix2wcs (wcs, xmax, ycen, &ra[6], &dec[6]);
+    pix2wcs (wcs, xmax, ymax, &ra[7], &dec[7]);
+
+    /* Find minimum and maximum right ascensions and declinations */
+    *ramin = ra[0];
+    *ramax = ra[0];
+    *decmin = dec[0];
+    *decmax = dec[0];
+    for (i = 0; i < 8; i++) {
+	if (ra[i] < *ramin)
+	   *ramin = ra[i];
+	if (ra[i] > *ramax)
+	   *ramax = ra[i];
+	if (dec[i] < *decmin)
+	   *decmin = dec[i];
+	if (dec[i] > *decmax)
+	   *decmax = dec[i];
+	}
+
+    /* Set center and extent */
+    *cra = 0.5 * (*ramin + *ramax);
+    *cdec = 0.5 * (*decmin + *decmax);
+    if (*ramax - *ramin > 180.0)
+	*dra = 360.0 + *ramin  - *ramax;
+    else
+	*dra = 0.5 * (*ramax - *ramin);
+    *ddec = 0.5 * (*decmax - *decmin);
+
+    return;
+}
+
+
 /* May 21 1996	New program
  * Jul 11 1996	Update file reading
  * Jul 16 1996	Remove unused image pointer; do not free unallocated header
@@ -1858,4 +1918,5 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Jan 29 2003	Add header lines if USNO-B1.0 ID or PM quality limits
  * Mar  4 2003	If star is offscale, set x and y to 0.0
  * Mar 25 2003	Deal correctly with rotated images
+ * Apr  2 2003	Try rotated images again
  */

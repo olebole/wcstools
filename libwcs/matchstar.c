@@ -1,5 +1,5 @@
 /*** File libwcs/matchstar.c
- *** March 13, 2003
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -884,12 +884,7 @@ int	debug;		/* Printed debugging information if not zero */
 
 {
     int i;
-    char rastr[16], decstr[16];
-    double xref0, yref0, xinc0, yinc0, rot0, xrefpix0, yrefpix0, cd0[4];
     double xdiff, ydiff;
-    char *vi;
-    char vc;
-    int offscl;
     int nsc, j;
     double tx = 0.0;
     double ty = 0.0;
@@ -984,19 +979,18 @@ int	debug;		/* Printed debugging information if not zero */
     double xdiff, ydiff;
     char *vi;
     char vc;
-    int offscl;
     int nsc, j;
-    double equinox = wcs->equinox;
+/*    double equinox = wcs->equinox; */
     double tx = 0.0;
     double ty = 0.0;
     double tra = 0.0;
     double tdec = 0.0;
     double tdiff = 0.0;
-    double cra, cdec, cx, cy, scale;
-    double dmatch;
+    double scale;
+/*    double dmatch; */
     double skydiff, imdiff;
 
-    dmatch = (double) nmatch;
+/*    dmatch = (double) nmatch; */
 
     if (debug) {
 	fprintf (stderr,"%d matched stars:\n", nmatch);
@@ -1894,4 +1888,5 @@ int nitmax;
  *
  * Jan 30 2003	Remove uninitialized variable in WCSMatch()
  * Mar 13 2003	Do not include malloc.h on Apples and Convexes
+ * Apr  3 2003	Clean up code with lint
  */ 

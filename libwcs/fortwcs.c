@@ -1,8 +1,8 @@
 /*** File saoimage/wcslib/fortwcs.c
- *** February 16, 2001
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or

@@ -1,5 +1,5 @@
 /*** File libwcs/imgetwcs.c
- *** March 27, 2003
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -86,7 +86,7 @@ int	*sysout;	/* Coordinate system to return (0=image, returned) */
 double	*eqout;		/* Equinox to return (0=image, returned) */
 {
     int nax;
-    double eq1, xref, yref, degpix, ra, dec, ra1, dec1, x, y, dx, dy;
+    double eq1, xref, yref, degpix, ra1, dec1, x, y, dx, dy;
     double xmin, xmax, ymin, ymax, ra2, dec2, ra3, dec3, ra4, dec4;
     struct WorldCoor *wcs;
     char rstr[64], dstr[64], temp[16], cstr[16];
@@ -636,4 +636,5 @@ char *dateobs;
  * Mar 25 2003	Fix GetFITSWCS() to return correct search area for rotated image
  * Mar 25 2003	Write out CTYPEn with quotes
  * Mar 27 2003	Fix half-pixel bug in computation of image center
+ * Apr  3 2003	Drop unused variables after lint
  */

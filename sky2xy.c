@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * June 19, 2002
+ * April 7, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,14 +14,18 @@
 #include "libwcs/wcs.h"
 #include "libwcs/fitsfile.h"
 
-static void usage();
-extern struct WorldCoor *GetWCSFITS ();	/* Read WCS from FITS or IRAF header */
+static void PrintUsage();
+extern struct WorldCoor *GetFITSWCS ();	/* Read WCS from FITS or IRAF header */
+extern char *GetFITShead();
 
 static int verbose = 0;		/* verbose/debugging flag */
+
 static char coorsys[16];
 static double eqin = 0.0;
 static double eqout = 0.0;
 static int version = 0;		/* If 1, print only program name and version */
+static int ndec = 3;		/* Number of decimal places in output coords */
+static char printonly = 'b';
 
 
 main (ac, av)
@@ -38,15 +42,23 @@ char **av;
     int sysin;
     struct WorldCoor *wcs;
     char rastr[32], decstr[32];
+    char xstr[16], ystr[16];
+    char *str1;
+    int ic;
     int offscale, n;
+    int nx, ny, lhead, i, bitpix, nf;
+    char *header;
+    double cra, cdec, dra, ddec, secpix, eqout, drot;
+    int wp, hp, sysout;
+    wcs = NULL;
 
     /* Check for help or version command first */
     str = *(av+1);
     if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
-	usage();
+	PrintUsage(str);
     if (!strcmp (str, "version") || !strcmp (str, "-version")) {
 	version = 1;
-	usage();
+	PrintUsage(str);
 	}
 
     *coorsys = 0;
@@ -61,8 +73,32 @@ char **av;
     		verbose++;
     		break;
 
-	    case 'b':
-		strcpy (coorsys,"B1950");
+	    case 'a':       /* Initial rotation angle in degrees */
+		if (ac < 2)
+		    PrintUsage (str);
+		drot = atof (*++av);
+                setrot (drot);
+                ac--;
+                break;
+
+	    case 'b':	/* image reference coordinates on command line in B1950 */
+		str1 = *(av+1);
+		ic = (int)str1[0];
+		if (*(str+1) || ic < 48 || ic > 58) {
+		    strcpy (coorsys,"B1950");
+		    }
+		else if (ac < 3)
+		    PrintUsage (str);
+		else {
+		    setsys(WCS_B1950);
+		    sysout = WCS_B1950;
+		    eqout = 1950.0;
+		    strcpy (rastr, *++av);
+		    ac--;
+		    strcpy (decstr, *++av);
+		    ac--;
+		    setcenter (rastr, decstr);
+		    }
     		break;
 
 	    case 'e':
@@ -73,33 +109,135 @@ char **av;
 		strcpy (coorsys,"galactic");
     		break;
 
-	    case 'j':
-		strcpy (coorsys,"J2000");
+	    case 'j':	/* image reference coordinates on command line in J2000 */
+		str1 = *(av+1);
+		ic = (int)str1[0];
+		if (*(str+1) || ic < 48 || ic > 58) {
+		    strcpy (coorsys,"J2000");
+		    }
+		else if (ac < 3)
+		    PrintUsage (str);
+		else {
+		    setsys(WCS_J2000);
+		    sysout = WCS_J2000;
+		    eqout = 2000.0;
+		    strcpy (rastr, *++av);
+		    ac--;
+		    strcpy (decstr, *++av);
+		    ac--;
+		    setcenter (rastr, decstr);
+		    }
     		break;
+
+	    case 'n':	/* Number of decimal places in output coordsinates */
+		if (ac < 2)
+		    PrintUsage (str);
+		ndec = (int) atof (*++av);
+		ac--;
+		break;
+
+	    case 'o':	/* Output only the following part of the coordinates */
+		if (ac < 2)
+		    PrintUsage (str);
+		av++;
+		printonly = **av;
+		ac--;
+		break;
+
+	    case 'p':	/* Initial plate scale in arcseconds per pixel */
+		if (ac < 2)
+		    PrintUsage (str);
+		setsecpix (atof (*++av));
+		ac--;
+		break;
+	
+	    case 's':	/* Size of image in X and Y pixels */
+		if (ac < 3)
+		    PrintUsage(str);
+		nx = atoi (*++av);
+		ac--;
+		ny = atoi (*++av);
+		ac--;
+    		break;
+
+	    case 'x':	/* X and Y coordinates of reference pixel */
+		if (ac < 3)
+		    PrintUsage (str);
+		x = atof (*++av);
+		ac--;
+		y = atof (*++av);
+		ac--;
+		setrefpix (x, y);
+		break;
+
+	    case 'y':	/* Epoch of image in FITS date format */
+		if (ac < 2)
+		    PrintUsage (str);
+		setdateobs (*++av);
+		ac--;
+		break;
 
 	    case 'z':       /* Use AIPS classic WCS */
 		setdefwcs (WCS_ALT);
 		break;
 
     	    default:
-    		usage();
+    		PrintUsage(str);
     		break;
     	    }
 	}
 
     /* There are ac remaining file names starting at av[0] */
     if (ac == 0)
-	usage ();
+	PrintUsage (str);
 
-    fn = *av++;
-    if (verbose)
-	printf ("%s:\n", fn);
-    wcs = GetWCSFITS (fn, verbose);
+    /* Read filename, if any */
+    fn = *av;
+    if (!isnum (*av)) {
+	fn = *av;
+	av++;
+	if (verbose)
+	    printf ("%s:\n", fn);
+	header = GetFITShead (fn, verbose);
+	}
+    else {
+	fn = NULL;
+	lhead = 14400;
+	header = (char *) calloc (1, lhead);
+	strcpy (header, "END ");
+	for (i = 4; i < lhead; i++)
+            header[i] = ' ';
+	hlength (header, 14400);
+	hputl (header, "SIMPLE", 1);
+	hputi4 (header, "BITPIX", bitpix);
+	hputi4 (header, "NAXIS", 2);
+	}
+
+    /* Initialize world coordinate system structure */
+    /* if (fn != NULL)
+	wcs = GetWCSFITS (fn, verbose); */
+    wcs = GetFITSWCS (fn, header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
+		      &wp, &hp, &sysout, &eqout);
     if (nowcs (wcs)) {
-	fprintf (stderr, "No WCS in image file %s\n", fn);
+	if (fn == NULL)
+	    fprintf (stderr, "Incomplete WCS on command line\n");
+	else
+	    fprintf (stderr, "No WCS in image file %s\n", fn);
 	wcsfree (wcs);
 	exit (1);
 	}
+
+    /* Set size of image coordinate field */
+    if (wcs->nxpix < 10 && wcs->nypix < 10)
+	nf = 2 + ndec;
+    else if (wcs->nxpix < 100 && wcs->nypix < 100)
+	nf = 3 + ndec;
+    else if (wcs->nxpix < 1000 && wcs->nypix < 1000)
+	nf = 4 + ndec;
+    else if (wcs->nxpix < 10000 && wcs->nypix < 10000)
+	nf = 5 + ndec;
+    else
+	nf = 6 + ndec;
 
     while (ac-- > 1) {
 	listname = *av;
@@ -187,13 +325,20 @@ char **av;
 	    wcscon (sysin, wcs->syswcs, eqin, eqout, &ra, &dec, wcs->epoch);
 	    if (sysin != wcs->syswcs && verbose) {
 		printf ("%s %s %s -> ", rastr, decstr, csys);
-		ra2str (rastr, 32, ra, 3);
-		dec2str (decstr, 32, dec, 2);
+		ra2str (rastr, 32, ra, ndec);
+		dec2str (decstr, 32, dec, ndec-1);
 		printf ("%s %s %s\n", rastr, decstr, wcs->radecsys);
 		}
 	    wcsc2pix (wcs, ra0, dec0, csys, &x, &y, &offscale);
-	    printf ("%s %s %s -> %.3f %.3f",rastr, decstr, csys, x, y);
-	    if (wcs->wcsl.cubeface)
+	    num2str (xstr, x, nf, ndec);
+	    num2str (ystr, y, nf, ndec);
+	    if (printonly == 'x')
+		printf ("%s", xstr);
+	    else if (printonly == 'y')
+		printf ("%s", ystr);
+	    else
+		printf ("%s %s %s -> %s %s",rastr, decstr, csys, xstr, ystr);
+	    if (wcs->wcsl.cubeface > -1)
 		printf (" %d", wcszout (wcs));
 	    if (offscale == 2)
 		printf (" (off image)\n");
@@ -209,14 +354,31 @@ char **av;
 }
 
 static void
-usage ()
+PrintUsage (command)
+char	*command;
 {
     if (version)
 	exit (-1);
+    if (command != NULL) {
+	if (command[0] == '*')
+	    fprintf (stderr, "%s\n", command);
+	else
+	    fprintf (stderr, "* Missing argument for command: %c\n", command[0]);
+	exit (1);
+	}
     fprintf (stderr,"Compute X Y from RA Dec using WCS in FITS and IRAF image files\n");
     fprintf (stderr,"Usage: [-vbjg] file.fts ra1 dec1 sys1 ... ran decn sysn\n");
     fprintf (stderr,"  or : [-vbjg] file.fts @listfile\n");
+    fprintf (stderr,"  -a rot: rotation angle (counterclockwise degrees)\n");
+    fprintf (stderr,"  -b ra dec: reference sky position (B1950)\n");
+    fprintf (stderr,"  -j ra dec: reference sky position (J2000)\n");
+    fprintf (stderr,"  -n num: number of decimal places in output\n");
+    fprintf (stderr,"  -o x|y: print only x or y coordinate\n");
+    fprintf (stderr,"  -p scale: plate scale in arcsec/pixel\n");
+    fprintf (stderr,"  -s nx ny: size of image in pixels\n");
+    fprintf (stderr,"  -x x y: reference image position in pixels\n");
     fprintf (stderr,"  -v: verbose\n");
+    fprintf (stderr,"  -y date: Epoch as fractional year or FITS date\n");
     fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     fprintf (stderr,"These flags are best used for files of coordinates in the same system:\n");
     fprintf (stderr,"  -b: B1950 (FK4) input\n");
@@ -264,4 +426,7 @@ usage ()
  *
  * Apr  8 2002	Free wcs structure if no WCS is found in file header
  * Jun 19 2002	Add verbose argument to GetWCSFITS()
+ *
+ * Apr  4 2003	Add command line WCS setting and number of decimal places
+ * Apr  7 2003	Add -o option to print only x or y coordinate
  */

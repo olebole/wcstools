@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** March 11, 2003
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1999-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -97,7 +97,8 @@ int	nlog;		/* 1 for diagnostics */
     int rnum, ireg;
     int jstar, iw;
     int nrmax,nstar,i, ntot;
-    int istar, istar1, istar2, isp;
+    int istar, istar1, istar2;
+/*    int isp; */
     double num, ra, dec, rapm, decpm, mag, magb, magv;
     double rra1, rra2, rra2a, rdec1, rdec2;
     double rdist, ddist;
@@ -159,7 +160,7 @@ int	nlog;		/* 1 for diagnostics */
     if (nstarmax > ndist) {
 	if (ndist > 0)
 	    free ((void *) gdist);
-	gdist = (double *) malloc (nstarmax * sizeof (double));
+	gdist = (double *) malloc (nbytes);
 	if (gdist == NULL) {
 	    fprintf (stderr,"ACTREAD:  cannot allocate separation array\n");
 	    return (0);
@@ -199,7 +200,7 @@ int	nlog;		/* 1 for diagnostics */
 	if (drad != 0.0)
 	    printf ("radmin	%.1f\n", drad*60.0);
 	else {
-	    printf ("dramin	%.1f\n", dra*60.0* cosdeg (cdec));
+	    printf ("dramin	%.1f\n", dra*60.0 * cosdeg (cdec));
 	    printf ("ddecmin	%.1f\n", ddec*60.0);
 	    }
 	printf ("radecsys	%s\n", cstr);
@@ -290,8 +291,8 @@ int	nlog;		/* 1 for diagnostics */
 		    /* ID number */
 		    num = (double) rlist[ireg] + (star->num / 100000.0);
 
-		    /* Spectral Type */
-		    isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+		    /* Spectral Type
+		    isp = (1000 * (int) star->isp[0]) + (int)star->isp[1]; */
 
 		    /* Write star position and magnitudes to stdout */
 		    if (nstarmax < 1) {
@@ -443,7 +444,8 @@ int	nlog;		/* 1 for diagnostics */
 
     int rnum;
     int jstar;
-    int istar, nstar, snum, isp;
+    int istar, nstar, snum;
+/*    int isp; */
     double num, ra, dec, rapm, decpm, mag, magb;
     char *str;
 
@@ -512,8 +514,8 @@ int	nlog;		/* 1 for diagnostics */
 	mag = star->xmag[0];
 	magb = star->xmag[1];
 
-	/* Spectral Type */
-	isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+	/* Spectral Type
+	isp = (1000 * (int) star->isp[0]) + (int)star->isp[1]; */
 
 	/* Save star position and magnitude in table */
 	gra[nstar] = ra;
@@ -820,7 +822,8 @@ int istar;	/* Star sequence number in ACT catalog region file */
     char dsgn;
     char line[256];
     int irh,irm,idd,idm;
-    double rs, ds, bvmag;
+    double rs, ds;
+/*    double bvmag; */
 
     /* Drop out if catalog pointer is not set */
     if (sc == NULL)
@@ -944,4 +947,5 @@ char	*filename;	/* Name of file for which to find size */
  * Oct  2 2002	Print stars as found in actread() if nstarmax < 1
  *
  * Mar 11 2003	Fix position limit testing
+ * Apr  3 2003	Drop unused type variables in actstar() and actread()
  */

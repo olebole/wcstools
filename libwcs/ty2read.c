@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** March 11, 2003
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2000-2003
@@ -105,10 +105,11 @@ int	nlog;		/* 1 for diagnostics */
     int jstar, iw;
     int nrmax = MAXREG;
     int nstar,i, ntot;
-    int istar, istar1, istar2, isp;
+    int istar, istar1, istar2;
+/*    int isp; */
     int pass;
     double num, ra, dec, rapm, decpm, mag, magb, magv;
-    double rra1, rra2, rra2a, rdec1, rdec2, dmarg, ddra, dddec;
+    double rra1, rra2, rra2a, rdec1, rdec2, dmarg;
     double rdist, ddist;
     char cstr[32], rastr[32], decstr[32];
     char *str;
@@ -309,8 +310,8 @@ int	nlog;		/* 1 for diagnostics */
 
 		if (pass) {
 
-		/* Spectral Type */
-		isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+		/* Spectral Type
+		isp = (1000 * (int) star->isp[0]) + (int)star->isp[1]; */
 
 		/* Write star position and magnitudes to stdout */
 		    if (nstarmax < 1) {
@@ -460,8 +461,9 @@ int	nlog;		/* 1 for diagnostics */
     int verbose;
     int rnum;
     int jstar;
-    int istar, istar1, istar2, nstar, isp;
-    double num, ra, dec, rapm, decpm, mag, magb, magv;
+    int istar, istar1, istar2, nstar;
+/*    int isp; */
+    double num, ra, dec, rapm, decpm, magb, magv;
 
     if (nlog == 1)
 	verbose = 1;
@@ -551,8 +553,8 @@ int	nlog;		/* 1 for diagnostics */
 	magv = star->xmag[0];
 	magb = star->xmag[1];
 
-	/* Spectral Type */
-	isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+	/* Spectral Type
+	isp = (1000 * (int) star->isp[0]) + (int)star->isp[1]; */
 
 	/* Save star position and magnitude in table */
 	gnum[jstar] = num;
@@ -1096,4 +1098,5 @@ char	*filename;	/* Name of file for which to find size */
  * Feb  3 2003	Include math.h because of fabs()
  * Feb 27 2003	Add 60 arcsec/century to margins of search box to get moving stars
  * Mar 11 2003	Fix position limit testing
+ * Apr  3 2003	Drop unused variables after lint
  */

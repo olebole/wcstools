@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** March 10, 2003
+ *** April 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -191,11 +191,10 @@ int	nlog;		/* Logging interval */
     int	farstar=0;	/* Most distant star */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
 
     double rra1, rra2, rdec1, rdec2;
     double num;		/* UA numbers */
-    int wrap, iwrap, nnfld;
+    int wrap, iwrap;
     int verbose;
     int znum, itot,iz, i;
     int itable, jtable,jstar;
@@ -205,10 +204,10 @@ int	nlog;		/* Logging interval */
     double mag, magb, magr;
     int istar, istar1, istar2, plate;
     int nzmax = NZONES;	/* Maximum number of declination zones */
-    int isp;
+/*    int isp;
+    char ispc[2]; */
     int pass;
     int magsort;
-    char ispc[2];
     char *str;
     char cstr[32], rastr[32], numstr[32], decstr[32], catid[32];
     char *title;
@@ -611,8 +610,8 @@ int	nlog;		/* Logging interval */
     UACstar star;	/* UA catalog entry for one star */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
-    int isp;
-    char ispc[2];
+/*    int isp;
+    char ispc[2]; */
 
     int znum;
     int jnum;
@@ -1181,4 +1180,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Jan 21 2003	Print arcminute radial distance, not arcsecond for instant out
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  * Mar 10 2003	Improve test for position
+ * Apr  3 2003	Drop unused variables after lint
  */

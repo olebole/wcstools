@@ -8,7 +8,7 @@ OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \
 	hget.o hput.o imio.o dateutil.o \
 	worldpos.o tnxpos.o dsspos.o platepos.o \
 	sortstar.o platefit.o iget.o fileutil.o polfit.o \
-	wcslib.o lin.o cel.o proj.o sph.o wcstrig.o 
+	wcslib.o lin.o cel.o proj.o sph.o wcstrig.o distort.o
 
 libwcs.a:	$(OBJS)
 	ar rv $@ $?
@@ -20,6 +20,7 @@ ctgread.o:	wcscat.h wcs.h fitshead.h wcslib.h
 catutil.o:	wcscat.h wcs.h fitshead.h wcslib.h
 cel.o:		wcslib.h
 dateutil.o:	fitsfile.h wcscat.h fitshead.h
+distort.o:	wcs.h fitshead.h wcslib.h
 dsspos.o:	wcs.h fitshead.h wcslib.h
 fileutil.o:	fitsfile.h fitshead.h
 findstar.o:	fitshead.h lwcs.h imio.h

@@ -1,5 +1,5 @@
 /*** File polfit.c
- *** July 25, 2001
+ *** April 3, 2003
  *** By Doug Mink, after Bevington, page 141
 
  *--- Polynomial least squares fitting program, almost identical to the
@@ -29,7 +29,7 @@ double	*a;		/* Vector containing current fit values */
 double	*stdev; 	/* Standard deviation of fit (returned) */
 {
     double sigma2sum;
-    double xterm,yterm,xi,yi,freedom;
+    double xterm,yterm,xi,yi;
     double *sumx, *sumy;
     double *array;
     int i,j,k,l,n,nmax;
@@ -187,4 +187,6 @@ double	*a;	/* Vector containing coeffiecients */
  * Feb 23 1998	Translate to C
  *
  * Jul 25 2001	Add polcomp to return computed values
+ *
+ * Apr  3 2003	Drop unused variable freedom in polfit()
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.h
- *** May 9, 2002
+ *** April 1, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2002
+ *** Copyright (C) 1994-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -32,6 +32,19 @@
 
 #include "wcslib.h"
 #include "fitshead.h"
+
+/* SIRTF distortion matrix coefficients */
+#define DISTMAX 10
+struct Distort {
+  int    a_order;                /* max power for the 1st dimension */
+  double a[DISTMAX][DISTMAX];  /* coefficient array of 1st dimension */
+  int    b_order;                /* max power for 1st dimension */
+  double b[DISTMAX][DISTMAX];  /* coefficient array of 2nd dimension */
+  int    ap_order;               /* max power for the 1st dimension */
+  double ap[DISTMAX][DISTMAX]; /* coefficient array of 1st dimension */
+  int    bp_order;               /* max power for 1st dimension */
+  double bp[DISTMAX][DISTMAX]; /* coefficient array of 2nd dimension */
+};
 
 struct WorldCoor {
   double	xref;		/* X reference coordinate value (deg) */
@@ -123,6 +136,8 @@ struct WorldCoor {
   struct prjprm prj;		/* WCSLIB projection parameters */
   struct IRAFsurface *lngcor;	/* RA/longitude correction structure */
   struct IRAFsurface *latcor;	/* Dec/latitude correction structure */
+  int		distcode;	/* Distortion code 0=none 1=SIRTF */
+  struct Distort distort;	/* SIRTF distortion coefficients */
   char *command_format[10];	/* WCS command formats */
 				/* where %s is replaced by WCS coordinates */
 				/* where %f is replaced by the image filename */
@@ -137,7 +152,7 @@ struct WorldCoor {
   char		wcschar;	/* WCS character (A-Z, null, space) */
 };
 
-/* Projections (1-26 are WCSLIB) */
+/* Projections (1-26 are WCSLIB) (values for wcs->prjcode) */
 #define WCS_PIX -1	/* Pixel WCS */
 #define WCS_LIN  0	/* Linear projection */
 #define WCS_AZP  1	/* Zenithal/Azimuthal Perspective */
@@ -189,6 +204,10 @@ struct WorldCoor {
 #define WCS_ALT		1	/* Use not best WCS projections */
 #define WCS_OLD		2	/* Use AIPS WCS projections */
 #define WCS_NEW		3	/* Use WCSLIB 2.5 WCS projections */
+
+/* Distortion codes (values for wcs->distcode) */
+#define DISTORT_NONE	0	/* No distortion coefficients */
+#define DISTORT_SIRTF	1	/* SIRTF distortion matrix */
 
 #ifndef PI
 #define PI	3.141592653589793238462643
@@ -463,6 +482,19 @@ extern "C" {
 	double equinox,	/* Equinox of coordinate system */
 	double epoch);	/* Epoch of coordinate system */
 
+    void pix2foc (	/* Convert pixel to focal plane coordinates */
+	struct WorldCoor *wcs,	/* World coordinate system structure */
+	double x,		/* Image pixel horizontal coordinate */
+	double y,		/* Image pixel vertical coordinate */
+	double *u,		/* Focal plane horizontal coordinate(returned) */
+	double *v)		/* Focal plane vertical coordinate (returned) */
+
+    void foc2pix (	/* Convert focal plane to pixel coordinates */
+	struct WorldCoor *wcs,	/* World coordinate system structure */
+	double u,		/* Focal plane horizontal coordinate */
+	double v,		/* Focal plane vertical coordinate */
+	double *x,		/* Image pixel horizontal coordinate(returned) */
+	double *y)		/* Image pixel vertical coordinate (returned) */
 
 };
 #else /* __cplusplus */
@@ -528,6 +560,8 @@ void wcsconv();		/* Convert between coordinate systems and equinoxes */
 int wcscsys();		/* Set coordinate system from string */
 double wcsceq();	/* Set equinox from string (return 0.0 if not obvious) */
 void wcscstr();		/* Return system string from system code, equinox, epoch */
+void pix2foc();		/*  pixel coordinates -> focal plane coordinates */
+void foc2pix();		/*  focal plane coordinates -> pixel coordinates */
 #endif
 #endif
 
@@ -620,4 +654,7 @@ void wcscstr();		/* Return system string from system code, equinox, epoch */
  * Apr  9 2002	Add wcs->wcsdep for pointer to WCS depending on this WCS
  * Apr 26 2002	Add wcs->wcsname and wcs->wcschar to identify WCS structure
  * May  9 2002	Add wcs->radvel and wcs->zvel for radial velocity in km/sec
+ *
+ * Apr  1 2003	Add wcs->distort Distort structure for distortion correction
+ * Apr  1 2003	Add foc2pix() and pix2foc() subroutines for distortion correction
  */
