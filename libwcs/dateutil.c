@@ -1,8 +1,8 @@
 /*** File libwcs/dateutil.c
- *** July 18, 2003
+ *** March 24, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1999-2003
+ *** Copyright (C) 1999-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -309,7 +309,7 @@ double	time;	/* Time as hh.mmssxxxx
     string = (char *) calloc (32, sizeof (char));
 
     /* Make time string */
-    if (time != 0.0) {
+    if (time != 0.0 || ndec > 0) {
 	if (ndec == 0)
 	    nf = 2;
 	else
@@ -331,7 +331,7 @@ double	time;	/* Time as hh.mmssxxxx
     /* Make FITS (ISO) date string */
     if (date == 0.0)
 	strcpy (string, tstring);
-    else if (time == 0.0)
+    else if (time == 0.0 && ndec < 1)
 	strcpy (string, dstring);
     else
 	sprintf (string, "%sT%s", dstring, tstring);
@@ -3998,4 +3998,6 @@ double	dnum, dm;
  * Mar  7 2003	Add conversions for heliocentric julian dates
  * May 20 2003	Declare nd in setdatedec()
  * Jul 18 2003	Add code to parse Las Campanas dates
+ *
+ * Mar 24 2004	If ndec > 0, add UT to FITS date even if it is 0:00:00
  */

@@ -42,6 +42,6 @@ subpix:    Subtract a constant value(s) from specified pixel(s)
 sumpix     Total pixel values in row, column, or specified area
 wcshead:   Print basic world coordinate system information for images
 xy2sky:    Print sky coordinates for given image pixel coordinates
-* program help    lists possible arguments
-* program version lists version of program
+* <program name> help    lists possible arguments
+* <program name> version lists version of program
 " | more

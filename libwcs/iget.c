@@ -1,8 +1,8 @@
 /*** File libwcs/iget.c
- *** September 23, 2003
+ *** February 26, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2003
+ *** Copyright (C) 1998-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -52,7 +52,6 @@
 
 #define MAX_LVAL 2000
 
-static char *igetc();
 static char *isearch();
 static char val[30];
 
@@ -345,7 +344,7 @@ char *str;	/* String (returned) */
 
 /* Extract character value for variable from IRAF keyword value string */
 
-static char *
+char *
 igetc (hstring,keyword0)
 
 char *hstring;	/* character string containing IRAF keyword value string
@@ -525,4 +524,6 @@ char *keyword;	/* character string containing the name of the variable
  * Jun 26 2002	Stop search for end of quoted keyword if > MAX_LVAL chars
  *
  * Sep 23 2003	Change mgets() to mgetstr() to avoid name collision at UCO Lick
+ *
+ * Feb 26 2004	Make igetc() accessible from outside this file
  */

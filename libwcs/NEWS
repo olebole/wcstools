@@ -1,13 +1,19 @@
 WCSTools subroutine release history
 
-December 12, 2003 - Release 3.5.2 (Doug Mink, SAO)
-Fix error message in wcsinit()
+April 16, 2004 - Release 3.5.3 (Doug Mink, SAO)
+Use strncsrch() in hget.c to get differently-cased keywords.
 
-December 3, 2003 - Release 3.5.1 (Doug Mink, SAO)
+February 3, 2004 - Release 3.5.2 (Doug Mink, SAO)
+In worldpix() in worldpos.c, allow ra/long. to exceed 180 if reference
+pixel is more than 180 degrees from image (1,1).
+
+December 12, 2003 - Release 3.5.1 (Doug Mink, SAO)
 Change p[0,1,2] initializations to p[1,2,3] in wcsinit.c to match proj.c
 (This affects constants for AZP,SIN,COP,COE,COD,COO,SZP,CEA,CYP,AIR,BON)
 Add wcs->naxes back into wcs structure for backward compatibility; it
 should always be equal to wcs->naxis.
+Fix bug in numdec() to return 0 if no digits after decimal point
+Fix call to setwcserr() with format in it
 
 November 17, 2003 - Release 3.5.0 (Doug Mink, SAO)
 Rename mgets() to mgetstr() in iget.c, wcsinit.c and fitshead.h

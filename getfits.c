@@ -1,5 +1,5 @@
 /* File getfits.c
- * May 2, 2003
+ * April 16, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -508,6 +508,9 @@ int	nkwd;
     hputi4 (header, "NAXIS", 2);
     hputi4 (header, "NAXIS1", wp);
     hputi4 (header, "NAXIS2", hp);
+    hdel (header, "NAXIS3");
+    hdel (header, "NAXIS4");
+    hdel (header, "NAXIS5");
     nbout = wp * bytepix;
     nbimage = nbout * hp;
     nblock = nbimage / 2880;
@@ -902,4 +905,6 @@ char *newname;
  *
  * Jan 30 2003	Fix typo in variable name 
  * May  2 2003	Fix bug if no keywords are deleted
+ *
+ * Apr 16 2004	Delete NAXISn for n > 2 in output image
  */

@@ -1,6 +1,6 @@
 /*  worldpos.c -- WCS Algorithms from Classic AIPS.
- *  April 3, 2002
- *  Copyright (C) 1994-1999
+ *  February 3, 2004
+ *  Copyright (C) 1994-2004
  *  Associated Universities, Inc. Washington DC, USA.
  *  With code added by Doug Mink, Smithsonian Astrophysical Observatory
  *                 and Allan Brighton and Andreas Wicenec, ESO
@@ -427,9 +427,16 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
       dt = xpos - xref;
       }
 
-    /* 0h wrap-around tests added by D.Wells 10/12/94: */
-    if (dt > 180.0) xpos -= 360.0;
-    if (dt < -180.0) xpos += 360.0;
+    /* 0h wrap-around tests added by D.Wells 10/12/1994: */
+    /* Modified to exclude weird reference pixels by D.Mink 2/3/2004 */
+    if (xrefpix*xinc > 180.0 || xrefpix*xinc < -180.0) {
+	if (dt > 360.0) xpos -= 360.0;
+	if (dt < 0.0) xpos += 360.0;
+	}
+    else {
+	if (dt > 180.0) xpos -= 360.0;
+	if (dt < -180.0) xpos += 360.0;
+	}
     /* NOTE: changing input argument xpos is OK (call-by-value in C!) */
 
     ra = degrad (xpos);
@@ -657,4 +664,6 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
  * Oct 21 1999	Drop unused y from worldpix()
  *
  * Apr  3 2002	Use GLS and SFL interchangeably
+ *
+ * Feb  3 2004	Let ra be >180 in worldpix() if ref pixel is >180 deg away
  */

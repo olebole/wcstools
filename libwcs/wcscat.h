@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** January 22, 2004
+ *** April 23, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -117,6 +117,9 @@ int actrnum();		/* Read sources from USNO ACT Catalog */
 int ty2rnum();		/* Read sources from Tycho 2 Catalog */
 int webrnum();		/* Read sources from catalog on the World Wide Web */
 
+/* Subroutines for extracting sources from catalogs by date range */
+int ctgrdate();		/* Read sources from SAO TDC ASCII format catalog */
+
 /* Subroutines for putting sources from catalogs into FITS WCS images */
 int gscbin();		/* Read sources from HST Guide Star Catalog */
 int tmcbin();		/* Read sources from 2MASS Point Source Catalog */
@@ -158,6 +161,7 @@ void RASortStars();
 void DecSortStars();
 void MagSortStars();
 void FluxSortStars();
+int MergeStars();
 
 /* Data structure for SAO TDC ASCII and binary star catalog entries */
 struct Star {
@@ -490,4 +494,6 @@ char *getrevmsg();	/* Return version/date string */
  * Jan 12 2004	Add 2MASS Extended Source catalog and size to star structure
  * Jan 14 2004	Add CatSource() subroutine to simplify help message creation
  * Jan 22 2004	Add setlimdeg() to print limit coordinates in degrees
+ * Mar 16 2004	Add MergeStars()
+ * Apr 23 2004	Add ctgrdate()
  */

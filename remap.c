@@ -1,5 +1,5 @@
 /* File remap.c
- * January 23, 2004
+ * April 28, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -25,6 +25,7 @@ extern void setsecpix2();
 extern void setrefpix();
 extern void setnpix();
 extern void setwcsproj();
+extern void setscale();
 
 static void usage();
 static int verbose = 0;		/* verbose flag */
@@ -38,12 +39,15 @@ static int fitsout = 1;
 static double secpix = 0;
 static double secpix2 = 0;
 static int bitpix0 = 0; /* Output BITPIX, =input if 0 */
-static FILE *fstack = NULL;
 static int RemapImage();
+static void getsection();
 extern struct WorldCoor *GetFITSWCS();
 static struct WorldCoor *wcsout = NULL;
+static char *irafheader;	/* IRAF image header */
 static char *headout;		/* FITS output header */
 static char *imout;		/* FITS output image */
+static int lhead;		/* Maximum number of bytes in FITS header */
+static int iraffile;
 static int eqsys = 0;
 static double equinox = 0.0;
 static outsys = 0;
@@ -84,7 +88,7 @@ char **av;
     wcsproj = NULL;
     wcsfile = NULL;
 
-    outname = outname0;
+    outname = NULL;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -206,6 +210,10 @@ char **av;
 		}
     	    break;
 
+	case 's':	/* Use BSCALE and BZERO to scale output image pixels */
+	    setscale (1);
+    	    break;
+
 	/* case 's':	 Number of samples per linear input pixel
     	    if (ac < 2)
     		usage(c, "needs a number of samples per input pixel");
@@ -319,23 +327,16 @@ char **av;
     if (readlist)
 	fclose (flist);
 
-    /* Pad out FITS file to 2880 blocks */
-    if (fstack != NULL) {
-	nblocks = nbstack / FITSBLOCK;
-	if (nblocks * FITSBLOCK < nbstack)
-	    nblocks = nblocks + 1;
-	nbytes = (nblocks * FITSBLOCK) - nbstack;
-	if (nbytes > 0) {
-	    blanks = (char *) malloc ((size_t) nbytes);
-	    for (i = 0;  i < nbytes; i++)
-		blanks[i] = 0;
-	    (void) fwrite (blanks, (size_t) 1, (size_t)nbytes, fstack);
-	    free (blanks);
-	    }
-	}
+    /* Write output image */
+    if (iraffile && !fitsout) {
+        if (irafwimage (outname, lhead, irafheader, headout, imout) > 0 && verbose)
+            printf ("%s: written successfully.\n", outname);
+        }
+    else {
+        if (fitswimage (outname, headout, imout) > 0 && verbose)
+            printf ("%s: written successfully.\n", outname);
+        }
 
-    if (fstack != NULL)
-	fclose (fstack);
     free (headout);
     wcsfree (wcsout);
     free (imout);
@@ -367,6 +368,7 @@ char	*message;	/* Error message */
     fprintf(stderr,"  -n num: integer pixel value for blank pixel\n");
     fprintf(stderr,"  -o name: Name for output image\n");
     fprintf(stderr,"  -p secpix: Output plate scale in arcsec/pixel (default =input)\n");
+    fprintf(stderr,"  -s: Set BZERO and BSCALE in output file from input file\n");
     /* fprintf(stderr,"  -s: Number of samples per linear input pixel\n"); */
     fprintf(stderr,"  -u: Delete distortion keywords from output file\n");
     fprintf(stderr,"  -v: Verbose\n");
@@ -386,30 +388,31 @@ char	*filename;	/* FITS or IRAF file filename */
 {
     char *image;		/* FITS input image */
     char *header;		/* FITS header */
-    int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
-    char *irafheader;		/* IRAF image header */
     int bitpix, bitpixout;
     double cra, cdec, dra, ddec;
-    int iraffile;
     int i, j, ii, jj, hpin, wpin, hpout, wpout, nbout, ix, iy, npout;
     int iin, iout, jin, jout;
     int iout1, iout2, jout1, jout2;
     int offscl, lblock;
     char pixname[256];
     struct WorldCoor *wcsin;
-    double bzin, bsin, bzout, bsout;
+    double bzin, bsin, bzout, bsout, bzx, bsx;
     double dx, dy, dx0, dy0, secpixin1, secpixin2, secpix1;
     double xout, yout, xin, yin, xpos, ypos, dpixi, dpixo;
-    double xmin, xmax, ymin, ymax;
+    double xmin, xmax, ymin, ymax, xin1, xin2, yin1, yin2;
     double pixratio;
+    char secstring[32];
     char history[80];
     char wcstemp[16];
     struct WorldCoor *GetWCSFITS();
+    int nbytevec;
+    char *outvec, *lastout;
     double *imvec, *endvec, *dvec;
-    int y;
+    int y, npix;
+    int addscale = 0;
 
-    /* Read IRAF header and image */
+    /* Read input IRAF header and image */
     if (isiraf (filename)) {
 	iraffile = 1;
 	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
@@ -433,7 +436,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	}
 
-    /* Read FITS image */
+    /* Or read input FITS image */
     else {
 	iraffile = 0;
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
@@ -458,8 +461,26 @@ char	*filename;	/* FITS or IRAF file filename */
 
     if (ifile < 1) {
 
+	/* Read output image if one is specified */
+	imout = NULL;
+	if (outname != NULL) {
+	    if ((headout = fitsrhead (outname, &lhead, &nbhead)) != NULL) {
+		if ((imout = fitsrimage (outname, nbhead, headout)) == NULL)
+		    fprintf (stderr, "REMAP: Overwriting file %s\n", outname);
+		}
+	    else{
+		fprintf (stderr, "REMAP: Overwriting file %s\n", outname);
+		}
+	    }
+	else
+	    outname = outname0;
+
+	/* Set output world coordinate system from existing output image header */
+	if (imout != NULL)
+	    wcsout = wcsinit (headout);
+
 	/* Set output world coordinate system from another image header */
-	if (wcsfile) {
+	else if (wcsfile) {
 	    wcsout = GetWCSFITS (wcsfile, verbose);
 	    outsys = wcsout->syswcs;
 	    headout = fitsrhead (wcsfile, &lhead, &nbhead);
@@ -508,7 +529,10 @@ char	*filename;	/* FITS or IRAF file filename */
 		lhead = (lblock+2) * 2880;
 	    else
 		lhead = (lblock+1) * 2880;
-	    headout = (char *) calloc (lhead, sizeof (char));
+	    if (!(headout = (char *) calloc (lhead, sizeof (char)))) {
+		fprintf (stderr, "REMAP: cannot allocate output image header\n");
+        	return (1);
+		}
 	    strcpy (headout, header);
 
 	    hputi4 (headout, "NAXIS1", nx);
@@ -579,55 +603,75 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 
 	/* Allocate space for output image */
-	npout = hpout * wpout;
-	nbout = npout * bitpixout / 8;
-	if (nbout < 0)
-	    nbout = -nbout;
-	imout = (char * ) calloc (nbout, 1);
+	if (imout == NULL) {
+	    npout = hpout * wpout;
+	    nbout = npout * bitpixout / 8;
+	    if (nbout < 0)
+		nbout = -nbout;
+	    if (!(imout = (char * ) calloc (nbout, 1))) {
+		fprintf (stderr, "REMAP: cannot allocate output image\n");
+        	return (1);
+		}
 
-	/* Fill output image */
-	bsin = 1.0;
-	hgetr8 (header, "BSCALE", &bsin);
-	bzin = 0.0;
-	hgetr8 (header, "BZERO", &bzin);
-	bsout = 1.0;
-	hgetr8 (header, "BSCALE", &bsout);
-	bzout = 0.0;
-	hgetr8 (header, "BZERO", &bzout);
+	    /* Fill output image */
+	    bsin = 1.0;
+	    hgetr8 (header, "BSCALE", &bsin);
+	    bzin = 0.0;
+	    hgetr8 (header, "BZERO", &bzin);
+	    bsout = 1.0;
+	    hgetr8 (header, "BSCALE", &bsout);
+	    bzout = 0.0;
+	    hgetr8 (header, "BZERO", &bzout);
 
-	/* Add source of WCS if not from command line */
-	if (wcsfile) {
-	    sprintf (history, "REMAP WCS from file %s", wcsfile);
-	    hputc (headout, "HISTORY", history);
+	    /* Delete data section keywords which do not apply to output image */
+	    hdel (headout, "DATASEC");
+	    hdel (headout, "CCDSEC");
+	    hdel (headout, "TRIMSEC");
+	    hdel (headout, "BIASSEC");
+	    hdel (headout, "ORIGSEC");
+
+	    /* Add source of WCS if not from command line */
+	    if (wcsfile) {
+		sprintf (history, "REMAP WCS from file %s", wcsfile);
+		hputc (headout, "HISTORY", history);
+		}
+
+	    /* Fill output image with value of blank pixels if not zero */
+	    if (blankpix != 0.0 || bzout != 0.0) {
+		if (!(imvec = (double *) calloc (wpout, sizeof (double)))) {
+		    fprintf (stderr, "REMAP: cannot allocate blank pixel vector\n");
+        	    return (1);
+		    }
+		if (verbose)
+		    fprintf (stderr,"REMAP: Filling output image with blank pixel %f\n",
+			     blankpix);
+
+		npix = hpout * wpout;
+		fillvec1 (imout, bitpixout, bzout, bsout, 1, npix, blankpix);
+		}
+
+	    /* Save blank pixel value in the image header */
+	    if (bitpixout > 0) {
+		int iblank;
+		if (blankpix > 0.0)
+		    iblank = (int) (blankpix + 0.5);
+		else if (blankpix < 0.0)
+		    iblank = (int) (blankpix - 0.5);
+		else
+		    iblank = 0;
+		hputi4 (headout, "BLANK", iblank);
+		}
+	    else {
+		hputnr8 (headout, "BLANK", 1, blankpix);
+		}
+
+	    /* Set output WCS output coordinate system to input coordinate system*/
+	    wcsout->sysout = wcsin->syswcs;
 	    }
-	}
 
-    /* Fill output image with value of blank pixels if not zero */
-    if (blankpix != 0.0) {
-	if (!(imvec = (double *) calloc (wpout, sizeof (double)))) {
-	    fprintf (stderr, "REMAP: cannot allocate blank pixel vector\n");
-            return (1);
+	/* Set local used parameters if filling existing image */
+	else {
 	    }
-	endvec = imvec + wpout;
-	for (dvec = imvec; dvec < endvec; dvec++)
-	    *dvec = blankpix;
-	for (y = 0; y < hpout; y++)
-	    putvec (image,bitpixout,bzout,bsout,0,wpout,(char *)imvec);
-	}
-
-    /* Save blank pixel value in the image header */
-    if (bitpixout > 0) {
-	int iblank;
-	if (blankpix > 0.0)
-	    iblank = (int) (blankpix + 0.5);
-	else if (blankpix < 0.0)
-	    iblank = (int) (blankpix - 0.5);
-	else
-	    iblank = 0;
-	hputi4 (header, "BLANK", iblank);
-	}
-    else {
-	hputnr8 (header, "BLANK", 1, blankpix);
 	}
 
     /* Set input WCS output coordinate system to output coordinate system */
@@ -636,32 +680,42 @@ char	*filename;	/* FITS or IRAF file filename */
     wpin = wcsin->nxpix;
     hpin = wcsin->nypix;
 
-    /* Set output WCS output coordinate system to input coordinate system*/
-    wcsout->sysout = wcsin->syswcs;
-
     sprintf (history, "REMAP input file %s", filename);
     hputc (headout, "HISTORY", history);
 
     /* Find limiting edges of input image in output image */
-    pix2wcs (wcsin, 1.0, 1.0, &xpos, &ypos);
+    if (hgets (header, "DATASEC", 32, secstring)) {
+	getsection (secstring, wpin, hpin, &xin1, &xin2, &yin1, &yin2);
+	if (verbose)
+	    printf ("REMAP: Input file %d x: %d-%d, y: %d-%d\n", ifile,
+		(int)(xin1+0.5), (int)(xin2+0.5), (int)(yin1+0.5),
+		(int)(yin2+0.5));
+	}
+    else {
+	xin1 = 1.0;
+	xin2 = (double) wpin;
+	yin1 = 1.0;
+	yin2 = (double) hpin;
+	}
+    pix2wcs (wcsin, xin1, yin1, &xpos, &ypos);
     wcs2pix (wcsout, xpos, ypos, &xout, &yout, &offscl);
     xmin = xout;
     xmax = xout;
     ymin = yout;
     ymax = yout;
-    pix2wcs (wcsin, 1.0, (double)hpin, &xpos, &ypos);
+    pix2wcs (wcsin, xin1, yin2, &xpos, &ypos);
     wcs2pix (wcsout, xpos, ypos, &xout, &yout, &offscl);
     if (xout < xmin) xmin = xout;
     if (xout > xmax) xmax = xout;
     if (yout < ymin) ymin = yout;
     if (yout > ymax) ymax = yout;
-    pix2wcs (wcsin, (double)wpin, 1.0, &xpos, &ypos);
+    pix2wcs (wcsin, xin2, yin1, &xpos, &ypos);
     wcs2pix (wcsout, xpos, ypos, &xout, &yout, &offscl);
     if (xout < xmin) xmin = xout;
     if (xout > xmax) xmax = xout;
     if (yout < ymin) ymin = yout;
     if (yout > ymax) ymax = yout;
-    pix2wcs (wcsin, (double)wpin, (double)hpin, &xpos, &ypos);
+    pix2wcs (wcsin, xin2, yin2, &xpos, &ypos);
     wcs2pix (wcsout, xpos, ypos, &xout, &yout, &offscl);
     if (xout < xmin) xmin = xout;
     if (xout > xmax) xmax = xout;
@@ -679,6 +733,16 @@ char	*filename;	/* FITS or IRAF file filename */
     if (verbose)
 	printf ("REMAP: Output x: %d-%d, y: %d-%d\n",
 		jout1,jout2,iout1,iout2);
+
+    /* Eliminate rescaling if input and output scaling is the same */
+    if (bzin == bzout && bsin == bsout) {
+	if (bzin != 0.0 && bsin != 1.0)
+	    addscale = 1;
+	else
+	    addscale = 0;
+	blankpix = (blankpix + bzin) / bsin;
+	setscale (0);
+	}
 
     /* Loop through vertical pixels (output image lines) */
     for (iout = iout1; iout <= iout2; iout++) {
@@ -701,7 +765,7 @@ char	*filename;	/* FITS or IRAF file filename */
 		dpixi = getpix1 (image,bitpix,wpin,hpin,bzin,bsin,jin,iin);
 
 		/* Read pixel from output file */
-		dpixo = getpix1 (image,bitpixout,wpout,hpout,bzout,bsout,jout,iout);
+		dpixo = getpix1 (imout,bitpixout,wpout,hpout,bzout,bsout,jout,iout);
 
 		/* If output pixel is blank, set rather than add */
 		if (dpixo == blankpix) {
@@ -710,6 +774,8 @@ char	*filename;	/* FITS or IRAF file filename */
 
 		/* Otherwise add to current pixel value and write to output image */
 		else {
+		    if (addscale)
+			dpixi = (dpixi - bzin);
 		    dpixo = dpixo + dpixi;
 		    putpix1 (imout,bitpixout,wpout,hpout,bzout,bsout,jout,iout,dpixo);
 		    }
@@ -723,21 +789,42 @@ char	*filename;	/* FITS or IRAF file filename */
     if (nlog > 0)
 	printf ("\n");
 
-    /* Write output image */
-    if (iraffile && !fitsout) {
-        if (irafwimage (outname, lhead, irafheader, headout, imout) > 0 && verbose)
-            printf ("%s: written successfully.\n", outname);
-        }
-    else {
-        if (fitswimage (outname, headout, imout) > 0 && verbose)
-            printf ("%s: written successfully.\n", outname);
-        }
-
     free (header);
     free (image);
     wcsfree (wcsin);
     return (0);
 }
+
+
+static void
+getsection (section, nx, ny, x1, x2, y1, y2)
+
+char	*section;	/* Header value string for *SEC keyword */
+int	nx;		/* Dimension in X */
+int	ny;		/* Dimension in Y */
+double	*x1;		/* Lower left x coordinate (returned) */
+double	*x2;		/* Lower right x coordinate (returned) */
+double	*y1;		/* Lower left y coordinate (returned) */
+double	*y2;		/* Upper right y coordinate (returned) */
+
+{
+    char *next;
+    *x1 = 1.0;
+    next = section;
+    if (*next == '[') next++;
+    *x1 = atof (next);
+    *x2 = (double) nx;
+    if ((next = strchr (next, ':')) != NULL)
+	*x2 = atof (next + 1);
+    *y1 = 1.0;
+    if ((next = strchr (next, ',')) != NULL)
+	*y1 = atof (next + 1);
+    *y2 = (double) ny;
+    if ((next = strchr (next, ':')) != NULL)
+	*y2 = atof (next + 1);
+    return;
+}
+
 
 /* Sep 28 1999	New program
  * Oct 22 1999	Drop unused variables after lint
@@ -764,4 +851,9 @@ char	*filename;	/* FITS or IRAF file filename */
  *
  * Jan 15 2004	Add -u to delete distortion keywords from output file
  * Jan 23 2004	Finish implementing blank pixel setting
+ * Feb 27 2004	Add -s option to use BZERO and BSCALE in output image
+ * Feb 27 2004	Fix bugs in BLANK initialization; allow multiple input files
+ * Feb 27 2004	Use DATASEC to limit input data coordinates if it is present
+ * Mar  1 2004	Do not rescale pixels if unnecessary
+ * Apr 28 2004	Return error on failure of any memory allocation
  */

@@ -1,10 +1,30 @@
-Version 3.5.2 (January 28, 2004)
+Version 3.5.3 (April 30, 2004)
+Use strncsrch() in hget.c to get differently-cased keywords.
+Add % option to getcol to format output a column at a time.
+Add -s option to imextract to ease setting of character string keyword values.
+Deal with lower case e and d in exponents of values returned by gethead.
+Fix bug which removed trailing zeroes from exponents of values dealt with by
+getcol, gettab, and cphead.
+In getfits, delete NAXISn for n > 2 in output image
+Add ctgrdate() to ctgread.c to allow searches of catalogs by date
+Update scat to search catalogs by date alone.
+Fix getpix handling of 0 0 for entire image.
+Return error on failure of any memory allocation in remap
+Fix sky position entry in getdate for heliocentric times
+Fix ty2read.c to read either CDROM with CRLF lines or CDS with LF lines
+
+Version 3.5.2 (March 17, 2004)
 Fix catalog subroutine argument problems found by Richard Mathar of Max Planck
 Add support for 2MASS extended source catalog and access to Sloan Survey catalog
 Add -u option to remap to delete distortion keywords from output file header
+Fix scat catalog merging using -s e flag
 Fix 2MASS Catalog search algorithm
-Fix blank pixel implementation in remap
+Fix blank pixel implementation in remap; add -s to BSCALE input and output
+Fix remap to write multiple input files to a single output file
+In remap do not rescale pixels if unnecessary
 Add pixel shifts to imrot
+In worldpix() in worldpos.c, allow ra/long to exceed 180 if reference
+pixel is more than 180 degrees from image (1,1).
 
 Version 3.5.1 (December 5, 2003)
 scat: Fix bugs in tabbed single-line search output

@@ -1,5 +1,5 @@
 /* File getcol.c
- * December 17, 2003
+ * April 15, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -66,6 +66,8 @@ static int *frstchar;		/* First character of column to use (1-n) */
 static int *lastchar;		/* Last character of column to use (1-n) */
 static int qmeancol = 0;	/* If 1, print mean of columns added in quadrature */
 				/* 0 = no mean of quadruature */
+static char **format;
+
 main (ac, av)
 int ac;
 char **av;
@@ -97,6 +99,7 @@ char **av;
     cop = (char **)calloc (maxnop, sizeof(char *));
     frstchar = (int *) calloc (MAX_NTOK, sizeof (int));
     lastchar = (int *) calloc (MAX_NTOK, sizeof (int));
+    format = (char **)calloc (MAX_NTOK, sizeof (char *));
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -153,6 +156,7 @@ char **av;
 		ranges = (char *) calloc (nrbytes, 1);
 		strcpy (ranges, *av);
 		}
+	    icol = atoi (*av);
 	    }
 
 	/* Set range and make a list of column numbers from it */
@@ -175,6 +179,14 @@ char **av;
 		if (strchr (*av,'.'))
 		    match = 1;
 		strcpy (ranges, *av);
+		}
+	    }
+
+	/* Read format string */
+	else if (*(str = *av) == '%') {
+	    if (icol > 0) {
+		format[icol] = (char *) calloc (1+strlen(*av), 1);
+		strcpy (format[icol], *av);
 		}
 	    }
 
@@ -400,6 +412,7 @@ usage ()
     fprintf (stderr,"Extract specified columns from an ASCII table file\n");
     fprintf (stderr,"Usage: [-abcefghijkmopqtv][-d num][-l num][-n num][-r lines][-s num] filename [col] [col] ...\n");
     fprintf(stderr," col: Number range (n1-n2,n3-n4...) or col.c1:c2\n");
+    fprintf(stderr," %f.dx: C output format for last column specified\n");
     fprintf(stderr,"  -a: Sum selected numeric column(s)\n");
     fprintf(stderr,"  -b: Input is bar-separate table file\n");
     fprintf(stderr,"  -c: Add count of number of lines in each column at end\n");
@@ -471,6 +484,9 @@ char	*lfile;		/* Name of file with lines to list */
     int jcond, jval;
     int unset;
     char token[MAX_LTOK];
+    int lform;
+    char *iform;
+    char cform;
     int nq, nqsum = 0;
 
     nent = NULL;
@@ -1093,8 +1109,19 @@ char	*lfile;		/* Name of file with lines to list */
 			    else
 				printf (" ");
 			    }
+			iform = format[inum[i]];
 			if (inum[i] > tokens.ntok || inum[i] < 1)
 			    printf ("___");
+			else if (iform) {
+			    lform = strlen (iform);
+			    cform = iform[lform-1];
+			    if (cform == 'f' || cform == 'g')
+				printf (iform, atof(token));
+			    else if (cform == 'd')
+				printf (iform, atoi(token));
+			    else
+				printf (iform, token);
+			    }
 			else if (ndec > -1 && isnum (token) == 2) {
 			    num2str (numstr, atof (token), 0, ndec);
 			    printf ("%s", numstr);
@@ -1425,8 +1452,12 @@ char *string;
 	    }
 	}
 
-    /* Remove trailing zeroes */
-    if (strchr (string, '.') != NULL) {
+    /* Remove trailing zeroes if they are not significant */
+    if (strchr (string, '.') != NULL &&
+	strsrch (string, "E-") == NULL &&
+	strsrch (string, "E+") == NULL &&
+	strsrch (string, "e-") == NULL &&
+	strsrch (string, "e+") == NULL) {
 	lstr = strlen (string);
 	s = string + lstr - 1;
 	while (*s == '0' && lstr > 1) {
@@ -1599,4 +1630,7 @@ void *pd1, *pd2;
  * Dec 10 2003	Fix number of decimal places in output
  * Dec 15 2003	Fix column operation option
  * Dec 17 2003	Drop undocumented -z option; print # comments if -h is set
+ *
+ * Apr 15 2004	Add % output format option
+ * Apr 15 2004	Avoid removing trailing zeroes from exponents
  */

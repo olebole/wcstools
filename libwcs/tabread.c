@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** January 5, 2004
+ *** March 19, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2004
@@ -67,6 +67,7 @@ static int tabhgetc();
 static int tabcont();
 static int tabsize();
 static int nndec = 0;
+static int verbose = 0;
 static char *taberr;
 static struct Tokens startok;
 
@@ -147,7 +148,6 @@ int	nlog;
     double num;
     int peak, i;
     int istar, nstars, lstar;
-    int verbose;
 
     sc = *starcat;
 
@@ -468,7 +468,7 @@ int	nlog;
     double mag, parallax, rv;
     double num;
     int peak;
-    int istar, nstars;
+    int istar, istar0, nstars;
     int imag;
     char *line;
     int sysref;		/* Catalog coordinate system */
@@ -523,13 +523,20 @@ int	nlog;
     wcscstr (cstr, sysout, eqout, epout);
 
     star->num = 0.0;
+    istar0 = 0;
 
     /* Loop through star list */
     line = startab->tabdata;
     for (jnum = 0; jnum < nnum; jnum++) {
 
+	/* Read forward from the last star if possible */
+	inum = (int) (tnum[jnum] + 0.5);
+	if ((double)inum != tnum[jnum] || inum < istar0 || istar0 == 0) {
+	    istar0 = 1;
+	    }
+
 	/* Loop through catalog to star */
-	for (istar = 1; istar <= nstars; istar++) {
+	for (istar = istar0; istar <= nstars; istar++) {
 	    if ((line = gettabline (startab, istar)) == NULL) {
 		if (nlog)
 		    fprintf (stderr,"TABRNUM: Cannot read star %d\n", istar);
@@ -558,6 +565,7 @@ int	nlog;
 
 	/* If star has been found in table, read rest of entry */
 	if (num == tnum[jnum]) {
+	    istar0 = istar;
 	    sc->istar = startab->iline;
 	    if (tabstar (istar, sc, star, nlog))
 		fprintf (stderr,"TABRNUM: Cannot read star %d\n", istar);
@@ -690,7 +698,6 @@ int	nlog;
     double num;
     int peak, i;
     int istar, nstars, lstar;
-    int verbose;
     double xpix, ypix, flux;
     int offscl;
     int bitpix, w, h;   /* Image bits/pixel and pixel width and height */
@@ -1840,16 +1847,23 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	    if (tabcomma != NULL) *tabcomma = ',';
 	    return (NULL);
 	    }
+	else if (verbose) {
+	    fprintf (stderr,"TABOPEN: tab table %s opened", tabfile);
+	}
 	}
 
     /* Allocate tab table structure */
     nbtab = sizeof(struct TabTable);
     if ((tabtable=(struct TabTable *) calloc(1,nbtab)) == NULL){
 	taberr = (char *) calloc (64 + strlen (tabfile), 1);
-	sprintf (taberr,"TABOPEN: cannot allocate Tab Table structure for %s",
-		 tabfile);
+	sprintf (taberr,"TABOPEN: cannot allocate %d bytes for tab table structure for %s",
+		 nbtab, tabfile);
 	if (tabcomma != NULL) *tabcomma = ',';
 	return (NULL);
+	}
+    else if (verbose) {
+	fprintf (stderr,"TABOPEN: allocated %d bytes for tab table structure for %s",
+		 nbtab, tabfile);
 	}
 
     tabtable->tabname = tabname;
@@ -1878,6 +1892,10 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	return (NULL);
 	}
     else {
+	if (verbose) {
+	    fprintf (stderr,"TABOPEN: allocated %d bytes for tab table for %s",
+		 lfile+2, tabfile);
+	    }
 	nr = fread (tabtable->tabbuff, 1, lfile, fcat);
 	if (fcat != stdin && nr < lfile) {
 	    fprintf (stderr,"TABOPEN: read only %d / %d bytes of file %s\n",
@@ -1886,6 +1904,10 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	    tabclose (tabtable);
 	    if (tabcomma != NULL) *tabcomma = ',';
 	    return (NULL);
+	    }
+	else if (verbose) {
+	    fprintf (stderr,"TABOPEN: read %d byte tab table from %s",
+		 lfile, tabfile);
 	    }
 	tabtable->tabbuff[lfile] = (char) 0;
 
@@ -1972,6 +1994,9 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	    if (tabcomma != NULL) *tabcomma = ',';
 	    return (NULL);
 	    }
+	else if (verbose) {
+	    fprintf (stderr,"TABOPEN: tab table %s header parsed", tabfile);
+	    }
 
     /* Enumerate entries in tab table catalog by counting newlines */
 	if (nbbuff > 0)
@@ -1985,6 +2010,9 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 		if (*tabnew == formfeed)
 		    break;
 		}
+	    }
+	if (verbose) {
+	    fprintf (stderr,"TABOPEN: %d lines in tab table %s", tabtable->nlines, tabfile);
 	    }
 	}
 
@@ -2650,5 +2678,7 @@ char    *filename;      /* Name of file to check */
  * Dec 10 2003	If magnitude ends in L and is a number, add 100.0
  * Dec 12 2003	Fix bug in wcs2pix() call in tabbin()
  *
- * Jan  5 2003	If more than 15 digits in numberic ID, drop excess off front
+ * Jan  5 2004	If more than 15 digits in numberic ID, drop excess off front
+ * Mar 16 2004	Be more clever about reading by number
+ * Mar 19 2004	Make verbose flag global
  */

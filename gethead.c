@@ -1,5 +1,5 @@
 /* File gethead.c
- * November 18, 2003
+ * April 15, 2004
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -960,7 +960,9 @@ char *string;
     /* Remove trailing zeroes if they are not significant */
     if (strchr (string, '.') != NULL &&
 	strsrch (string, "E-") == NULL &&
-	strsrch (string, "E+") == NULL) {
+	strsrch (string, "E+") == NULL &&
+	strsrch (string, "e-") == NULL &&
+	strsrch (string, "e+") == NULL) {
 	lstr = strlen (string);
 	s = string + lstr - 1;
 	while (*s == '0' && lstr > 1) {
@@ -1055,4 +1057,6 @@ char *string;
  * Jul 17 2003	Add root directory argumeht to isfilelist()
  * Oct 29 2003	Allow keyword specification from both list file and command line
  * Nov 18 2003	Fix strclean() to keep all of exponents (found by Anthony Miceli)
+ *
+ * Apr 15 2004	Allow e as well as E for exponents
  */

@@ -1,5 +1,5 @@
 /* File scat.c
- * January 23, 2004
+ * April 23, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -561,7 +561,7 @@ char **av;
 		if (ac > 1) {
 		    str1 = *(av + 1);
 		    cs = str1[0];
-		    if (strchr ("admnprs",(int)cs)) {
+		    if (strchr ("ademnprs",(int)cs)) {
 			cs1 = str1[1];
 			av++;
 			ac--;
@@ -1033,6 +1033,7 @@ double	eqout;		/* Equinox for output coordinates */
     int ngsc;
     int smag;
     int refcat;		/* reference catalog switch */
+    int nns;
     int icat, nndec, nnfld, nsfld;
     double date, time;
     int gcset;
@@ -1044,6 +1045,7 @@ double	eqout;		/* Equinox for output coordinates */
     double pra, pdec;
     char magname[16];
     char *temp1;
+    char *date1, *date2;
     void ep2dt();
     void PrintNum();
     int LenNum();
@@ -1435,15 +1437,12 @@ double	eqout;		/* Equinox for output coordinates */
 		    /* Merge found catalog objects within rad of each other */
 		    case SORT_MERGE:
 			if (verbose)
-			    fprintf (stderr, "SCAT: RA-sorting %d stars\n", ns);
-			RASortStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
-				     ns,nmagmax);
-			if (verbose)
 			    fprintf (stderr, "SCAT: Merging %d stars\n", ns);
 			if (rad0 == 0.0)
 			    rad0 = 1.5;
-			MergeStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
-				     ns,nmagmax,rad0);
+			nns = MergeStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
+				     ns,nmagmax,rad0,nlog);
+			ns = nns;
 			break;
 
 		    /* Sort found catalog objects from closest to furthest */
@@ -1451,6 +1450,130 @@ double	eqout;		/* Equinox for output coordinates */
 			XSortStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
 				    ns,nmagmax);
 			break;
+
+		    /* Sort found catalog objects in image by right ascension */
+		    case SORT_RA:
+			RASortStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
+				     ns,nmagmax);
+			break;
+
+		    /* Sort found catalog objects by declination */
+		    case SORT_DEC:
+			DecSortStars(gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
+				     ns,nmagmax);
+			break;
+
+		    /* Sort found catalog objects from brightest to faintest */
+		    case SORT_MAG:
+			MagSortStars(gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
+				     ns,nmagmax,sortmag);
+			break;
+		    }
+		}
+	    }
+
+	/* Find catalog entries specified by date */
+	else if (dec0 < -90.0 && epoch1 > 0.0 && epoch2 > 0.0) {
+
+	    /* Default to keep stars by order read */
+	    if (catsort == SORT_UNSET)
+		catsort = SORT_NONE;
+
+	    wfile = 0;
+
+	    /* Find the specified catalog stars */
+	    ng = ctgrdate (refcatname[icat], refcat,
+		      sysout,eqout,epout,&starcat[icat],epoch1,epoch2,
+		      ngmax,gnum,gra,gdec,gpra,gpdec,gm,gc,gobj,nlog);
+
+	    if (ng < 1) {
+		date1 = ep2fd (epoch1);
+		date2 = ep2fd (epoch2);
+		fprintf (stderr, "SCAT: No entries between %s and %s\n",
+			 date1, date2);
+		continue;
+		}
+
+	    if (gobj == NULL)
+		gobj1 = NULL;
+	    else if (gobj[0] == NULL)
+		gobj1 = NULL;
+	    else
+		gobj1 = gobj;
+	    /* if (ng > nfind)
+		ns = nfind;
+	    else */
+		ns = ng;
+
+	    /* Set flag if any proper motions are non-zero */
+	    if (mprop == 1 && !oneline) {
+		mprop = 0;
+		for (i = 0; i < ng; i++) {
+		    if (gpra[i] != 0.0 || gpdec[i] != 0.0) {
+			mprop = 1;
+			break;
+			}
+		    }
+		}
+	    if (mprop == 0 && starcat[icat] != NULL && starcat[icat]->entrv > 0)
+		mprop = 2;
+
+	    for (i = 0; i < ns; i++ ) {
+		gx[i] = 0.0;
+		gy[i] = 1.0;
+		}
+
+	    /* Find largest catalog number printed */
+	    if (starcat[icat] != NULL && starcat[icat]->nnfld != 0)
+		nnfld = starcat[icat]->nnfld;
+	    else {
+		maxnum = 0.0;
+		for (i = 0; i < ns; i++ ) {
+		    if (gnum[i] > maxnum)
+			maxnum = gnum[i];
+		    }
+		nnfld = CatNumLen (refcat, maxnum, nndec);
+		}
+
+	    printepoch = 1;
+
+	    /* Check to see whether gc is set at all */
+	    gcset = 0;
+	    for (i = 0; i < ns; i++ ) {
+		if (gc[i] != 0) {
+		    gcset = 1;
+		    break;
+		    }
+		}
+
+	    /* Set flag for plate, class, or type column */
+	    if (refcat == BINCAT || refcat == SAO  || refcat == PPM ||
+		refcat == BSC || refcat == SDSS)
+		typecol = 1;
+	    else if ((refcat == GSC || refcat == GSCACT) && classd < -1)
+		typecol = 3;
+	    else if (refcat == GSC || refcat == GSCACT ||
+		refcat == UJC || refcat == UB1 ||
+		refcat == USAC || refcat == USA1   || refcat == USA2 ||
+		refcat == UAC  || refcat == UA1    || refcat == UA2 ||
+		refcat == BSC  || (refcat == TABCAT&&gcset))
+		typecol = 2;
+	    else if (starcat[icat] != NULL && starcat[icat]->sptype > 0)
+		typecol = 1;
+	    else
+		typecol = 0;
+	    if (mprop == 2)
+		nmagr = nmag - 1;
+	    else
+		nmagr = nmag;
+	    if (printepoch)
+		nmagr = nmagr - 1;
+
+
+	    /* Sort catalogued objects, if requested */
+	    if (ns > 1) {
+
+		switch (catsort) {
 
 		    /* Sort found catalog objects in image by right ascension */
 		    case SORT_RA:
@@ -2608,7 +2731,7 @@ double	eqout;		/* Equinox for output coordinates */
 	strcat (headline,"	------------	------------");
 	if (refcat == TMPSC || refcat == TMIDR2)
 	    strcat (headline,"	-------	-------	-------");
-	if (refcat == TMXSC)
+	else if (refcat == TMXSC)
 	    strcat (headline,"	-------	-------	-------	------");
 	else if (refcat == IRAS)
 	    strcat (headline,"	-----	-----	-----	-----");
@@ -4251,4 +4374,8 @@ PrintGSClass ()
  * Jan 12 2004	Add support for 2MASS Extended Source Catalog
  * Jan 22 2004	Call setlimdeg() to optionally print limits in degrees
  * Jan 23 2004	Print radius in degrees in verbose mode if degout is set
+ * Feb 23 2004	Fix bug which printed too many ---'s for 2MASS PSC in tab mode
+ * Mar  4 2004	Fix bug in setting merge flag
+ * Mar 16 2004	Use star count returned from catalog merging subroutine
+ * Mar 17 2004	RA-sort in MergeStars(); add logging
  */

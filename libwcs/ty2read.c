@@ -1,8 +1,8 @@
 /*** File libwcs/ty2read.c
- *** December 1, 2003
+ *** April 30, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2000-2003
+ *** Copyright (C) 2000-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -794,12 +794,14 @@ int	nlog;		/* 1 for diagnostics */
 /* Tycho 2 region index for ty2regn() and ty2reg() */
 
 /* First region in each declination zone */
-int treg1[24]={9490,9346,9134,8840,8464,8022,7523,6989,6412,5838,5260,4663,
+static int treg1[24]={9490,9346,9134,8840,8464,8022,7523,6989,6412,5838,5260,4663,
 	       1,594,1178,1729,2259,2781,3246,3652,4014,4294,4492,4615};
  
 /* Last region in each declination zone */
-int treg2[24]={9537,9489,9345,9133,8839,8463,8021,7522,6988,6411,5837,5259,
+static int treg2[24]={9537,9489,9345,9133,8839,8463,8021,7522,6988,6411,5837,5259,
 	       593,1177,1728,2258,2780,3245,3651,4013,4293,4491,4614,4662};
+
+static int indnchar = 0;	/* Number of characters per line in table */
 
 /* TY2REGN -- read the range of stars in a region from the Tycho 2 Catalog
  * index table.
@@ -818,8 +820,8 @@ int	verbose;	/* 1 for diagnostics */
     char *buffer;	/* Buffer to hold index table */
     char *line;
     char *str;
+    char lf=(char)10;
     int deczone;
-    int nchar=44;	/* Number of characters per line in table */
     int lpath;
 
     *star1 = 0;
@@ -854,12 +856,18 @@ int	verbose;	/* 1 for diagnostics */
 	return (0);
 	}
 
+/* Figure out whether index file has LF or CRLF at end of lines */
+    if (buffer[42] == lf)
+	indnchar = 43;
+    else
+	indnchar = 44;
+
 /* Read first star from regionth line of region table */
-    line = buffer + ((region - 1) * nchar);
+    line = buffer + ((region - 1) * indnchar);
     *star1 = atoi (line);
 
 /* Read last star + 1 from region+1th line of region table */
-    *star2 = atoi (line+nchar);
+    *star2 = atoi (line+indnchar);
     free (buffer);
     free (tabpath);
     return (1);
@@ -888,7 +896,7 @@ int	verbose;	/* 1 for diagnostics */
     char *buffer;	/* Buffer to hold index table */
     char *line;
     char *str;
-    int nchar=44;	/* Number of characters per line in table */
+    char lf=(char)10;
     int nwrap;		/* 1 if 0h included in RA span*/
     int iwrap;
     int num1, num2;
@@ -921,6 +929,12 @@ int	verbose;	/* 1 for diagnostics */
 	fprintf (stderr,"TY2REG:  error reading region table %s\n",tabpath);
 	return (0);
 	}
+
+/* Figure out whether index file has LF or CRLF at end of lines */
+    if (buffer[42] == lf)
+	indnchar = 43;
+    else
+	indnchar = 44;
 
 /* Find region range to search based on declination */
     iz1 = ty2zone (dec1);
@@ -989,12 +1003,12 @@ int	verbose;	/* 1 for diagnostics */
 	for (irow = ir1 - 1; irow < ir2; irow++) {
 
 	/* Read next line of region table */
-	    line = buffer + (irow * nchar);
+	    line = buffer + (irow * indnchar);
 
 	/* Declination range of the gs region */
 	/* note:  southern dechi and declow are reversed */
 	    num1 = atoi (line);
-	    num2 = atoi (line+nchar);
+	    num2 = atoi (line+indnchar);
 	    dechi = atof (line + 29);
 	    declow = atof (line + 36);
 	    if (dechi > declow) {
@@ -1147,7 +1161,10 @@ int	nread;	/* Number of star entries to read */
     sc = (struct StarCat *) calloc (1, sizeof (struct StarCat));
     sc->byteswapped = 0;
 
-    sc->nbent = 208;
+    if (indnchar == 44)
+	sc->nbent = 208;
+    else
+	sc->nbent = 207;
     sc->nstars = lfile / sc->nbent;
 
     /* Separate filename from pathname and save in structure */
@@ -1347,4 +1364,6 @@ char	*filename;	/* Name of file for which to find size */
  * Oct  6 2003	Update ty2read() and ty2bin() for improved RefLim()
  * Nov 18 2003	Fix bugs in ty2bin()
  * Dec  1 2003	Add missing tab to n=-1 header
+ *
+ * Apr 30 2004	Allow either LF or CRLF at end of lines in index and catalog
  */

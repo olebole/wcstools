@@ -39,8 +39,10 @@ extern void addpix();   /* Add to one pixel in any data type 2-D array (0,0)*/
 extern void addpix1();  /* Add to one pixel in any data type 2-D array (1,1)*/
 extern void movepix();  /* Move one pixel value between two 2-D arrays (0,0) */
 extern void movepix1(); /* Move one pixel value between two 2-D arrays (1,1) */
-extern void getvec();   /* Read vector from 2-D array */
-extern void putvec();   /* Write vector into 2-D array */
+extern void getvec();   /* Read vector from a 2-D array */
+extern void putvec();   /* Write vector into a 2-D array */
+extern void fillvec();   /* Write constant into a vector */
+extern void fillvec1();   /* Write constant into a vector */
 extern void imswap();   /* Swap alternating bytes in a vector */
 extern void imswap2();  /* Swap bytes in a vector of 2-byte (short) integers */
 extern void imswap4();  /* Reverse bytes in a vector of 4-byte numbers */
@@ -57,4 +59,6 @@ extern int imswapped(); /* Return 1 if machine byte order is not FITS order */
 
  * Sep 27 1999	Add Fortran-indexed (1,1), not (0,0) image access *1()
  * Sep 28 1999	Add addpix()
+ *
+ * Feb 27 2004	Add fillvec()
  */

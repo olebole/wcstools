@@ -1,5 +1,5 @@
 /* File cphead.c
- * December 4, 2003
+ * April 15, 2004
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -646,8 +646,12 @@ char *string;
 	    }
 	}
 
-    /* Remove trailing zeroes */
-    if (strchr (string, '.') != NULL) {
+    /* Remove trailing zeroes if they are not significant */
+    if (strchr (string, '.') != NULL &&
+	strsrch (string, "E-") == NULL &&
+	strsrch (string, "E+") == NULL &&
+	strsrch (string, "e-") == NULL &&
+	strsrch (string, "e+") == NULL) {
 	lstr = strlen (string);
 	s = string + lstr - 1;
 	while (*s == '0' && lstr > 1) {
@@ -680,4 +684,6 @@ char *string;
  * Oct 23 2003	Add -w option to copy all WCS keywords
  * Oct 29 2003	Allow combination of keyword designation methods
  * Dec  4 2003	Initialize infile to null (bug found by Jean-Francois Le Borgne)
+ *
+ * Apr 15 2004	Avoid removing trailing zeroes from exponents
  */

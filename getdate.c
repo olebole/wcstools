@@ -1,5 +1,5 @@
 /* File getdate.c
- * November 21, 2003
+ * April 28, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -112,83 +112,86 @@ char **av;
     /* crack arguments */
     for (av++; --ac > 0; av++) {
 
-	/* Set input date format */
-	if (!strncmp (*av, "dt2", 3))
-	    intype = DTVIG;
-	else if (!strncmp (*av, "ep2", 3))
-	    intype = DTEP;
-	else if (!strncmp (*av, "epb2", 3))
-	    intype = DTEPB;
-	else if (!strncmp (*av, "epj2", 3))
-	    intype = DTEPJ;
-	else if (!strncmp (*av, "nfd2", 3)) {
-	    intype = DTFITS;
-	    nftok = 1;
+	if (typeset == 0) {
+
+	    /* Set input date format */
+	    if (!strncmp (*av, "dt2", 3))
+		intype = DTVIG;
+	    else if (!strncmp (*av, "ep2", 3))
+		intype = DTEP;
+	    else if (!strncmp (*av, "epb2", 3))
+		intype = DTEPB;
+	    else if (!strncmp (*av, "epj2", 3))
+		intype = DTEPJ;
+	    else if (!strncmp (*av, "nfd2", 3)) {
+		intype = DTFITS;
+		nftok = 1;
+		}
+	    else if (!strncmp (*av, "fd2", 3))
+		intype = DTFITS;
+	    else if (!strncmp (*av, "jd2", 3))
+		intype = DTJD;
+	    else if (!strncmp (*av, "hjd2", 4))
+		intype = DTHJD;
+	    else if (!strncmp (*av, "mjd2", 4))
+		intype = DTMJD;
+	    else if (!strncmp (*av, "mhjd2", 5))
+		intype = DTMHJD;
+	    else if (!strncmp (*av, "ts2", 3))
+		intype = DT1950;
+	    else if (!strncmp (*av, "tsi2", 4))
+		intype = DTIRAF;
+	    else if (!strncmp (*av, "tsu2", 4))
+		intype = DTUNIX;
+	    else if (!strncmp (*av, "lt2", 3))
+		intype = DTLT;
+	    else if (!strncmp (*av, "ut2", 3))
+		intype = DTUT;
+	    else if (!strncmp (*av, "doy2", 4))
+		intype = DTDOY;
+
+	    /* Set output date format */
+	    if (strsrch (*av, "2dt"))
+		outtype = DTVIG;
+	    else if (strsrch (*av, "2epb"))
+		outtype = DTEPB;
+	    else if (strsrch (*av, "2epj"))
+		outtype = DTEPJ;
+	    else if (strsrch (*av, "2ep"))
+		outtype = DTEP;
+	    else if (strsrch (*av, "2fd"))
+		outtype = DTFITS;
+	    else if (strsrch (*av, "2jd"))
+		outtype = DTJD;
+	    else if (strsrch (*av, "2hjd"))
+		outtype = DTHJD;
+	    else if (strsrch (*av, "2mhjd"))
+		outtype = DTMHJD;
+	    else if (strsrch (*av, "2mjd"))
+		outtype = DTMJD;
+	    else if (strsrch (*av, "2of"))
+		outtype = DTOF;
+	    else if (strsrch (*av, "2ofd"))
+		outtype = DTOFD;
+	    else if (strsrch (*av, "2oft"))
+		outtype = DTOFT;
+	    else if (strsrch (*av, "2tsi"))
+		outtype = DTIRAF;
+	    else if (strsrch (*av, "2tsu"))
+		outtype = DTUNIX;
+	    else if (strsrch (*av, "2ts"))
+		outtype = DT1950;
+	    else if (strsrch (*av, "2doy"))
+		outtype = DTDOY;
+
+	    if (intype > 0 || outtype > 0)
+		typeset = 1;
 	    }
-	else if (!strncmp (*av, "fd2", 3))
-	    intype = DTFITS;
-	else if (!strncmp (*av, "jd2", 3))
-	    intype = DTJD;
-	else if (!strncmp (*av, "hjd2", 4))
-	    intype = DTHJD;
-	else if (!strncmp (*av, "mjd2", 4))
-	    intype = DTMJD;
-	else if (!strncmp (*av, "mhjd2", 5))
-	    intype = DTMHJD;
-	else if (!strncmp (*av, "ts2", 3))
-	    intype = DT1950;
-	else if (!strncmp (*av, "tsi2", 4))
-	    intype = DTIRAF;
-	else if (!strncmp (*av, "tsu2", 4))
-	    intype = DTUNIX;
-	else if (!strncmp (*av, "lt2", 3))
-	    intype = DTLT;
-	else if (!strncmp (*av, "ut2", 3))
-	    intype = DTUT;
-	else if (!strncmp (*av, "doy2", 4))
-	    intype = DTDOY;
-
-	/* Set output date format */
-	if (strsrch (*av, "2dt"))
-	    outtype = DTVIG;
-	else if (strsrch (*av, "2epb"))
-	    outtype = DTEPB;
-	else if (strsrch (*av, "2epj"))
-	    outtype = DTEPJ;
-	else if (strsrch (*av, "2ep"))
-	    outtype = DTEP;
-	else if (strsrch (*av, "2fd"))
-	    outtype = DTFITS;
-	else if (strsrch (*av, "2jd"))
-	    outtype = DTJD;
-	else if (strsrch (*av, "2hjd"))
-	    outtype = DTHJD;
-	else if (strsrch (*av, "2mhjd"))
-	    outtype = DTMHJD;
-	else if (strsrch (*av, "2mjd"))
-	    outtype = DTMJD;
-	else if (strsrch (*av, "2of"))
-	    outtype = DTOF;
-	else if (strsrch (*av, "2ofd"))
-	    outtype = DTOFD;
-	else if (strsrch (*av, "2oft"))
-	    outtype = DTOFT;
-	else if (strsrch (*av, "2tsi"))
-	    outtype = DTIRAF;
-	else if (strsrch (*av, "2tsu"))
-	    outtype = DTUNIX;
-	else if (strsrch (*av, "2ts"))
-	    outtype = DT1950;
-	else if (strsrch (*av, "2doy"))
-	    outtype = DTDOY;
-
-	if (typeset == 0 && (intype > 0 || outtype > 0))
-	    typeset = 1;
 
 	/* Set RA, Dec, and equinox if WCS-generated argument */
-	else if (strsrch (*av,":") != NULL &&
-		 (outtype == DTHJD || outtype == DTMHJD) &&
-		 (intype != DTFITS || timestring != NULL)) {
+	else if (ac > 3 &&
+		 strsrch (*av,":") != NULL && strsrch (*(av+1),":") != NULL &&
+		 (strcsrch(*(av+2),"j")!=NULL || strcsrch(*(av+2),"b")!=NULL)) {
 	    if (ac < 3)
 		usage();
 	    else {
@@ -432,6 +435,11 @@ char	*timestring;	/* Input time string */
 			jd = dt2mjd (vdate, vtime);
 			printf (outform, jd);
 			break;
+		    case DTHJD:
+			jd = dt2jd (vdate, vtime);
+			jd = jd2hjd (jd, ra, dec, coorsys);
+			printf (outform, jd);
+			break;
 		    case DT1950:
 			ts = dt2ts (vdate, vtime);
 			if (outtime == ET) ts = ts2ets (ts);
@@ -556,6 +564,15 @@ char	*timestring;	/* Input time string */
 			    }
 			printf (outform, jd);
 			break;
+		    case DTHJD:
+			jd = fd2jd (fitsdate);
+			if (oldfits && timestring) {
+			    jd1 = fd2jd (timestring);
+			    jd = jd + jd1;
+			    }
+			jd = jd2hjd (jd, ra, dec, coorsys);
+			printf (outform, jd);
+			break;
 		    case DTOF:
 			newfdate = fd2of (fitsdate);
 			if (oldfits && timestring) {
@@ -662,6 +679,11 @@ char	*timestring;	/* Input time string */
 			break;
 		    case DTMJD:
 			jd = doy2mjd (vyear, vdoy);
+			printf (outform, jd);
+			break;
+		    case DTHJD:
+			jd = doy2jd (vyear, vdoy);
+			jd = jd2hjd (jd, ra, dec, coorsys);
 			printf (outform, jd);
 			break;
 		    case DT1950:
@@ -965,7 +987,6 @@ char	*timestring;	/* Input time string */
 			break;
 		    case DTHJD:
 			jd = mjd2jd (jd);
-			jd = jd2hjd (jd, ra, dec, coorsys);
 			printf (outform, jd);
 			break;
 		    case DTJD:
@@ -1073,6 +1094,11 @@ char	*timestring;	/* Input time string */
 			jd = ts2mjd (ts);
 			printf (outform, jd);
 			break;
+		    case DTHJD:
+			jd = ts2jd (ts);
+			jd = jd2hjd (jd, ra, dec, coorsys);
+			printf (outform, jd);
+			break;
 		    case DT1950:
 			printf (outform, ts);
 			if (outtime == ET) ts = ts2ets (ts);
@@ -1089,6 +1115,21 @@ char	*timestring;	/* Input time string */
 		if (verbose)
 		    printf ("%d -> ", its);
 		switch (outtype) {
+		    case DTEP:
+			ts = tsi2ts (ts);
+			epoch = ts2ep (ts);
+			printf (outform, epoch);
+			break;
+		    case DTEPB:
+			ts = tsi2ts (ts);
+			epoch = ts2epb (ts);
+			printf (outform, epoch);
+			break;
+		    case DTEPJ:
+			ts = tsi2ts (ts);
+			epoch = ts2epj (ts);
+			printf (outform, epoch);
+			break;
 		    case DTVIG:
 			tsi2dt (its, &vdate, &vtime);
 			if (outtime == ET) dt2et (&vdate, &vtime);
@@ -1113,6 +1154,23 @@ char	*timestring;	/* Input time string */
 			    }
 			printf ("%s\n", fitsdate);
 			break;
+		    case DTJD:
+			ts = tsi2ts (ts);
+			jd = ts2jd (ts);
+			if (outtime == ET) jd = jd2jed (jd);
+			printf (outform, jd);
+			break;
+		    case DTMJD:
+			ts = tsi2ts (ts);
+			jd = ts2mjd (ts);
+			printf (outform, jd);
+			break;
+		    case DTHJD:
+			ts = tsi2ts (ts);
+			jd = ts2jd (ts);
+			jd = jd2hjd (jd, ra, dec, coorsys);
+			printf (outform, jd);
+			break;
 		    case DT1950:
 			ts = tsi2ts (its);
 			if (outtime == ET) ts = ts2ets (ts);
@@ -1130,6 +1188,21 @@ char	*timestring;	/* Input time string */
 		if (verbose)
 		    printf ("%d -> ", lts);
 		switch (outtype) {
+		    case DTEP:
+			ts = tsu2ts (ts);
+			epoch = ts2ep (ts);
+			printf (outform, epoch);
+			break;
+		    case DTEPB:
+			ts = tsu2ts (ts);
+			epoch = ts2epb (ts);
+			printf (outform, epoch);
+			break;
+		    case DTEPJ:
+			ts = tsu2ts (ts);
+			epoch = ts2epj (ts);
+			printf (outform, epoch);
+			break;
 		    case DTVIG:
 			tsu2dt (lts, &vdate, &vtime);
 			if (outtime == ET) dt2et (&vdate, &vtime);
@@ -1153,6 +1226,23 @@ char	*timestring;	/* Input time string */
 				*tchar = (char) 0;
 			    }
 			printf ("%s\n", fitsdate);
+			break;
+		    case DTJD:
+			ts = tsu2ts (ts);
+			jd = ts2jd (ts);
+			if (outtime == ET) jd = jd2jed (jd);
+			printf (outform, jd);
+			break;
+		    case DTMJD:
+			ts = tsu2ts (ts);
+			jd = ts2mjd (ts);
+			printf (outform, jd);
+			break;
+		    case DTHJD:
+			ts = tsu2ts (ts);
+			jd = ts2jd (ts);
+			jd = jd2hjd (jd, ra, dec, coorsys);
+			printf (outform, jd);
 			break;
 		    case DTIRAF:
 			its = tsu2tsi (lts);
@@ -1215,6 +1305,11 @@ char	*timestring;	/* Input time string */
 			jd = ep2mjd (epoch);
 			printf (outform, jd);
 			break;
+		    case DTHJD:
+			jd = ep2jd (epoch);
+			jd = jd2hjd (jd, ra, dec, coorsys);
+			printf (outform, jd);
+			break;
 		    case DT1950:
 			ts = ep2ts (epoch);
 			if (outtime == ET) ts = ts2ets (ts);
@@ -1272,6 +1367,11 @@ char	*timestring;	/* Input time string */
 			jd = epb2mjd (epoch);
 			printf (outform, jd);
 			break;
+		    case DTHJD:
+			jd = epb2jd (epoch);
+			jd = jd2hjd (jd, ra, dec, coorsys);
+			printf (outform, jd);
+			break;
 		    case DT1950:
 			ts = epb2ts (epoch);
 			if (outtime == ET) ts = ts2ets (ts);
@@ -1325,6 +1425,11 @@ char	*timestring;	/* Input time string */
 			break;
 		    case DTMJD:
 			jd = epj2mjd (epoch);
+			printf (outform, jd);
+			break;
+		    case DTHJD:
+			jd = epj2jd (epoch);
+			jd = jd2hjd (jd, ra, dec, coorsys);
 			printf (outform, jd);
 			break;
 		    case DT1950:
@@ -1383,6 +1488,11 @@ char	*timestring;	/* Input time string */
 		    jd = ut2mjd ();
 		    printf (outform, jd);
 		    break;
+		case DTHJD:
+		    jd = ut2jd (epoch);
+		    jd = jd2hjd (jd, ra, dec, coorsys);
+		    printf (outform, jd);
+		    break;
 		case DT1950:
 		    ts = ut2ts ();
 		    if (outtime == ET) ts = ts2ets (ts);
@@ -1409,6 +1519,21 @@ char	*timestring;	/* Input time string */
 	    break;
 	case DTLT:
 	    switch (outtype) {
+		case DTEP:
+		    ts = lt2ts ();
+		    epoch = ts2ep (ts);
+		    printf (outform, epoch);
+			    break;
+		case DTEPB:
+		    ts = lt2ts ();
+		    epoch = ts2epb (ts);
+		    printf (outform, epoch);
+		    break;
+		case DTEPJ:
+		    ts = lt2ts ();
+		    epoch = ts2epj (ts);
+		    printf (outform, epoch);
+		    break;
 		case DTVIG:
 		    lt2dt (&vdate, &vtime);
 		    if (dateonly)
@@ -1424,6 +1549,23 @@ char	*timestring;	/* Input time string */
 			    *tchar = (char) 0;
 			}
 		    printf ("%s\n", newfdate);
+		    break;
+		case DTJD:
+		    ts = lt2ts ();
+		    jd = ts2jd (ts);
+		    if (outtime == ET) jd = jd2jed (jd);
+		    printf (outform, jd);
+		    break;
+		case DTMJD:
+		    ts = lt2ts ();
+		    jd = ts2mjd (ts);
+		    printf (outform, jd);
+		    break;
+		case DTHJD:
+		    ts = lt2ts ();
+		    jd = ts2jd (ts);
+		    jd = jd2hjd (jd, ra, dec, coorsys);
+		    printf (outform, jd);
 		    break;
 		case DT1950:
 		    ts = lt2ts ();
@@ -1475,4 +1617,6 @@ char	*timestring;	/* Input time string */
  * Mar  6 2003	Add conversions to and from HJD and MHJD
  * Jul 28 2003	Correctly convert FITS date AND time correctly
  * Nov 21 2003	Fix bug so times are not assumed to be coordinates
+ *
+ * Apr 28 2004	Add more Heliocentric Julian Date conversions
  */

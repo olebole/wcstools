@@ -1,5 +1,5 @@
 /*** File wcslib/imio.c
- *** January 28, 2004
+ *** February 27, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2004
@@ -40,10 +40,14 @@
  *		Copy pixel into 2D image of any numeric type (0,0 lower left)
  * Subroutine:	addpix1 (image, bitpix, w, h, bz, bs, x, y, dpix)
  *		Add pixel into 2D image of any numeric type (1,1 lower left)
- * Subroutine:	getvec (image, bitpix, bz, bs, pix1, npix, dpix)
+ * Subroutine:	getvec (image, bitpix, bz, bs, pix1, npix, dvec)
  *		Get vector from 2D image of any numeric type
- * Subroutine:	putvec (image, bitpix, bz, bs, pix1, npix, dpix)
+ * Subroutine:	putvec (image, bitpix, bz, bs, pix1, npix, dvec)
  *		Copy pixel vector into 2D image of any numeric type
+ * Subroutine:	fillvec (image, bitpix, bz, bs, pix1, npix, dpix)
+ *		Copy pixel value int a vector of any numeric type
+ * Subroutine:	fillvec1 (image, bitpix, bz, bs, pix1, npix, dpix)
+ *		Copy pixel value int a vector of any numeric type
  * Subroutine:	movepix (image1, bitpix, w1, x1, y1, image2, w2, x2, y2)
  *		Copy pixel from one image location to another
  * Subroutine:	imswap (bitpix,string,nbytes)
@@ -788,6 +792,114 @@ double	*dvec;		/* Vector of pixels to copy */
 }
 
 
+/* FILLVEC1 -- Copy single value into a vector of any numeric type */
+
+void
+fillvec1 (image, bitpix, bzero, bscale, pix1, npix, dpix)
+
+char	*image;		/* Vector to fill */
+int	bitpix;		/* Number of bits per pixel im image */
+			/*  16 = short, -16 = unsigned short, 32 = int */
+			/* -32 = float, -64 = double */
+double  bzero;		/* Zero point for pixel scaling */
+double  bscale;		/* Scale factor for pixel scaling */
+int	pix1;		/* First pixel to fill */
+int	npix;		/* Number of pixels to fill */
+double	*dpix;		/* Value with which to fill pixels */
+{
+    fillvec (image, bitpix, bzero, bscale, pix1-1, npix, dpix);
+    return;
+}
+
+
+/* FILLVEC -- Copy single value into a vector of any numeric type */
+
+void
+fillvec (image, bitpix, bzero, bscale, pix1, npix, dpix)
+
+char	*image;		/* Vector to fill */
+int	bitpix;		/* Number of bits per pixel im image */
+			/*  16 = short, -16 = unsigned short, 32 = int */
+			/* -32 = float, -64 = double */
+double  bzero;		/* Zero point for pixel scaling */
+double  bscale;		/* Scale factor for pixel scaling */
+int	pix1;		/* First pixel to fill */
+int	npix;		/* Number of pixels to fill */
+double	*dpix;		/* Value with which to fill pixels */
+{
+    char ipc;
+    short *im2, ip2;
+    int *im4, ip4;
+    unsigned short *imu, ipu;
+    float *imr, ipr;
+    double *imd, ipd;
+    int ipix, pix2;
+    double dp;
+
+    pix2 = pix1 + npix;
+
+    /* Scale data if either BZERO or BSCALE keyword has been set */
+    if (scale && (bzero != 0.0 || bscale != 1.0))
+	dp = (dp - bzero) / bscale;
+
+    switch (bitpix) {
+
+	case 8:
+	    if (dp < 0.0)
+		ipc = (char) (dp - 0.5);
+	    else
+		ipc = (char) (dp + 0.5);
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		image[ipix] = ipc;
+	    break;
+
+	case 16:
+	    im2 = (short *)image;
+	    if (dp < 0.0)
+		ip2 = (short) (dp - 0.5);
+	    else
+		ip2 = (short) (dp + 0.5);
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		im2[ipix] = ip2;
+	    break;
+
+	case 32:
+	    im4 = (int *)image;
+	    if (dp < 0.0)
+		ip4 = (int) (dp - 0.5);
+	    else
+		ip4 = (int) (dp + 0.5);
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		im4[ipix] = ip4;
+	    break;
+
+	case -16:
+	    imu = (unsigned short *)image;
+	    if (dp < 0.0)
+		ipu = (unsigned short) (dp - 0.5);
+	    else
+		ipu = (unsigned short) (dp + 0.5);
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		imu[ipix] = ipu;
+	    break;
+
+	case -32:
+	    imr = (float *)image;
+	    ipr = (float) dp;
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		imr[ipix] = ipr;
+	    break;
+
+	case -64:
+	    imd = (double *)image;
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		imd[ipix] = dp;
+	    break;
+	}
+    return;
+}
+
+
 /* IMSWAP -- Reverse bytes of any type of vector in place */
 
 void
@@ -972,4 +1084,5 @@ imswapped ()
  * May 20 2003	Declare scale0 in setscale()
  *
  * Jan 28 2004	Add image limit check to movepix()
+ * Feb 27 29094	Add fillvec() and fillvec1() to set vector to a constant
  */

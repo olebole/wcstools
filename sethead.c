@@ -31,7 +31,7 @@ static char prefix[2];
 static int version = 0;		/* If 1, print only program name and version */
 static int logfile = 0;
 static int first = 1;
-static char spchar = (char) 0;
+static char spchar = (char) 0;	/* Character to replace with spaces */
 static int nproc = 0;
 
 

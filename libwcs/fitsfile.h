@@ -1,8 +1,8 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** August 21, 2003
+ *** February 27, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -90,6 +90,8 @@ extern void movepix();	/* Move one pixel value between two 2-D arrays (0,0) */
 extern void movepix1();	/* Move one pixel value between two 2-D arrays (1,1) */
 extern void getvec();	/* Read vector from 2-D array */
 extern void putvec();	/* Write vector into 2-D array */
+extern void fillvec();   /* Write constant into a vector */
+extern void fillvec1();   /* Write constant into a vector */
 extern void imswap();	/* Swap alternating bytes in a vector */
 extern void imswap2();	/* Swap bytes in a vector of 2-byte (short) integers */
 extern void imswap4();	/* Reverse bytes in a vector of 4-byte numbers */
@@ -278,4 +280,6 @@ void compnut();	/* Compute nutation in longitude and obliquity and mean obliquit
  *
  * Mar  5 2003	Add isimlistd() to check image lists with root directory
  * Aug 20 2003	Add fitsrfull() to read n-dimensional simple FITS images
+ *
+ * Feb 27 2004  Add fillvec() and fillvec1()
  */

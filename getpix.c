@@ -1,5 +1,5 @@
 /* File getpix.c
- * September 17, 2003
+ * April 26, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -224,7 +224,6 @@ char **av;
 	        npix++;
 		}
 	    ac--;
-	    av++;
 	    }
 
 	/* Range of pixels to print (only one allowed) */
@@ -707,4 +706,6 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
  * Feb 20 2003	Add option to enter multiple pixel (x,y) as well as ranges
  * Mar 26 2003	Fix pixel counter bug in individual pixel printing
  * Sep 17 2003	Fix bug which broke use of 0 as substitute for 1-naxisn range
+ *
+ * Apr 26 2004	Fix handling of 0 0 for entire image
  */

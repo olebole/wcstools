@@ -1,8 +1,8 @@
 /*** File fitshead.h  FITS header access subroutines
- *** October 20, 2003
+ *** February 26, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -183,6 +183,9 @@ extern "C" {
 	const char* keyword,	/* IRAF keyword */
 	const int lstr,		/* maximum length of returned string */
 	char* string);		/* null-terminated string value (returned) */
+    char *igetc(		/* Extract string from IRAF keyword string */
+	const char* hstring,	/* Multiline IRAF keyword string value */
+	const char* keyword);	/* IRAF keyword */
 
 /* Subroutines in hput.c */
 /* All hput* routines return 0 if successful, else -1 */
@@ -324,6 +327,7 @@ extern int igeti4();	/* long integer from IRAF compound keyword value */
 extern int igetr4();	/* real from IRAF compound keyword value */
 extern int igetr8();	/* double from IRAF compound keyword value */
 extern int igets();	/* character string from IRAF compound keyword value */
+extern char *igetc();	/* Extract string from IRAF keyword string */
 
 /* Subroutines in hput.c */
 
@@ -400,4 +404,6 @@ extern char *getutime(); /* Return current UT as an ISO-format string */
  *
  * Sep 23 2003	Change mgets() to mgetstr() to avoid name collision at UCO Lick
  * Oct 20 2003	Add numdec() to return the number of decimal places in a string
+ *
+ * Feb 26 2004	Add igetc(), formerly internal to iget.c
  */

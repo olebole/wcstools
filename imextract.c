@@ -1,5 +1,5 @@
 /* File imextract.c
- * September 15, 2003
+ * April 15, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -32,6 +32,7 @@ static int nameout = 0;		/* If 1, write output file name */
 static char *suffix = NULL;	/* Suffix if set on command line */
 static char *outfile = NULL;	/* Output file name if set on command line */
 static char *outdir = NULL;	/* Output directory if set on command line */
+static char spchar = (char) 0;	/* Character to replace with spaces */
 
 main (ac, av)
 int ac;
@@ -140,6 +141,13 @@ char **av;
 		    outfile = *++av;
 		    ac--;
 		    break;
+		case 's':	/* Replace this character with spaces in string arguments */
+		    if (ac > 1) {
+			spchar= *(++av)[0];
+			ac--;
+			}
+		    break;
+
 		case 'v':	/* more verbosity */
 		    verbose++;
 		    break;
@@ -209,6 +217,7 @@ usage ()
     fprintf(stderr,"  -h: Add line to header of each output file with source\n");
     fprintf(stderr,"  -n: Write out name of output file\n");
     fprintf(stderr,"  -o: Specify output file name (without extension) \n");
+    fprintf(stderr,"  -s [char]: Replace this character with space in string values\n");
     fprintf(stderr,"  -v: Verbose\n");
     fprintf(stderr,"  -x: Add this extension instead of _n\n");
     exit (1);
@@ -484,8 +493,11 @@ char	*kwd[];		/* Names and values of those keywords */
 	    hputl (outheader, kwd[ikwd], 0);
 	else if (!strcmp (kwv,"NO") || !strcmp (kwv,"no"))
 	    hputl (outheader, kwd[ikwd], 0);
-	else
+	else {
+	    if (spchar)
+		stc2s (spchar, kwv);
 	    hputs (outheader, kwd[ikwd], kwv);
+	    }
 	if (verbose)
 	    printf ("%s = %s\n", kwd[ikwd], kwv);
 	*kwv0 = '=';
@@ -609,4 +621,6 @@ char	*kwd[];		/* Names and values of those keywords */
  * Jul 11 2003	Deal with range of images/spectra to extract
  * Jul 11 2003	Create a new header for each output file
  * Sep 15 2003	Fix bug which misread 2d part of 3d image
+ *
+ * Apr 15 2004	Add -s command to ease use of spaces in keyword values being set
  */

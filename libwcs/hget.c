@@ -1,8 +1,8 @@
 /*** File libwcs/hget.c
- *** December 9, 2003
+ *** April 28, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2002
+ *** Copyright (C) 1994-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -808,7 +808,7 @@ char *keyword0;	/* character string containing the name of the keyword
     char line[100];
     char *vpos, *cpar;
     char *q1, *q2, *v1, *v2, *c1, *brack1, *brack2;
-    int ipar, i;
+    int ipar, i, lkey;
 
 #ifdef USE_SAOLIB
     int iel=1, ip=1, nel, np, ier;
@@ -940,33 +940,49 @@ char *keyword0;	/* character string containing the name of the keyword
 	brack2 = strsrch (brack1,rbracket);
 	if (brack2 != NULL)
 	    *brack2 = '\0';
-	ipar = atoi (brack1);
-	cwhite[0] = ' ';
-	cwhite[1] = '\0';
-	if (ipar > 0) {
-	    for (i = 1; i <= ipar; i++) {
-		cpar = strtok (v1,cwhite);
-		v1 = NULL;
-		}
-	    if (cpar != NULL) {
-		strcpy (cval,cpar);
-		value = cval;
-		}
-	    else
-		value = NULL;
-	    }
-
-	/* If token counter is negative, include rest of value from token on */
-	else if (ipar < 0) {
-	    for (i = 1; i < -ipar; i++) {
-		v1 = strchr (v1, ' ');
-		if (v1 == NULL)
-		    break;
+	if (isnum (brack1)) {
+	    ipar = atoi (brack1);
+	    cwhite[0] = ' ';
+	    cwhite[1] = '\0';
+	    if (ipar > 0) {
+		for (i = 1; i <= ipar; i++) {
+		    cpar = strtok (v1,cwhite);
+		    v1 = NULL;
+		    }
+		if (cpar != NULL) {
+		    strcpy (cval,cpar);
+		    value = cval;
+		    }
 		else
-		    v1 = v1 + 1;
+		    value = NULL;
 		}
-	    if (v1 != NULL) {
-		strcpy (cval, v1);
+
+	    /* If token counter is negative, include rest of value */
+	    else if (ipar < 0) {
+		for (i = 1; i < -ipar; i++) {
+		    v1 = strchr (v1, ' ');
+		    if (v1 == NULL)
+			break;
+		    else
+			v1 = v1 + 1;
+		    }
+		if (v1 != NULL) {
+		    strcpy (cval, v1);
+		    value = cval;
+		    }
+		else
+		    value = NULL;
+		}
+	    }
+	else {
+	    lkey = strlen (brack1);
+	    for (i = 0; i < lkey; i++) {
+		if (brack1[i] > 64 && brack1[i] < 91)
+		    brack1[i] = brack1[i] + 32; 
+		}
+	    v1 = igetc (cval, brack1);
+	    if (v1) {
+		strcpy (cval,v1);
 		value = cval;
 		}
 	    else
@@ -1022,7 +1038,7 @@ char *keyword;	/* character string containing the name of the variable
     pval = NULL;
     while (headnext < headlast) {
 	nleft = headlast - headnext;
-	loc = strnsrch (headnext, keyword, nleft);
+	loc = strncsrch (headnext, keyword, nleft);
 
 	/* Exit if keyword is not found */
 	if (loc == NULL) {
@@ -1127,7 +1143,7 @@ char *keyword;	/* character string containing the name of the variable
     pval = NULL;
     while (headnext < headlast) {
 	nleft = headlast - headnext;
-	loc = strnsrch (headnext, keyword, nleft);
+	loc = strncsrch (headnext, keyword, nleft);
 
 	/* Exit if keyword is not found */
 	if (loc == NULL) {
@@ -1287,6 +1303,8 @@ char *s2;	/* String to look for */
     return (strnsrch (s1, s2, ls1));
 }
 
+static char *scase;
+static int lscase = 0;
 
 /* Find string s2 within string s1 */
 
@@ -1299,7 +1317,7 @@ int	ls1;	/* Length of string being searched */
 
 {
     char *s,*s1e;
-    char cfirst,clast;
+    char cfirst,clast, s2i;
     int i,ls2;
 
     /* Return null string if either pointer is NULL */
@@ -1390,6 +1408,7 @@ int	ls1;	/* Length of string being searched */
 	return (s1);
 
     /* Only a zero-length string can be found in a zero-length string */
+    os2 = NULL;
     if (ls1 ==0)
 	return (NULL);
 
@@ -1464,7 +1483,8 @@ int	ls1;	/* Length of string being searched */
 	    }
 	s++;
 	}
-    free (os2);
+    if (os2 != NULL)
+	free (os2);
     return (NULL);
 }
 
@@ -1668,4 +1688,8 @@ int set_saolib(hstring)
  * Aug 30 2002	Fix bug so strcsrch() really is case-insensitive
  * Oct 20 2003	Add numdec() to return number of decimal places in a string
  * Dec  9 2003	Fix numdec() to return 0 if no digits after decimal point
+ *
+ * Feb 26 2004	Extract value from keyword=value strings within a keyword value
+ * Apr  9 2004	Use strncsrch() in ksearch() to find differently-cased keywords
+ * Apr 28 2004	Free os2 in strncsrch() only if it is allocated
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/wcsinit.c
- *** December 12, 2003
+ *** February 26, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2003
+ *** Copyright (C) 1998-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -332,11 +332,21 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     else if (hgetr8 (hstring, "VELOCITY", &wcs->radvel))
 	wcs->zvel = wcs->radvel / cvel;
 
+    for (i = 0; i < 10; i++) {
+	wcs->prj.p[i] = 0.0;
+	}
+
     /* World coordinate system reference coordinate information */
     if (hgetsc (hstring, "CTYPE1", mchar, 16, ctype1)) {
 	if (!strncmp (ctype1+5,"ZPX", 3)) {
 	    iszpx = 1;
 	    ctype1[7] = 'N';
+
+	    /* IRAF ZPX parameters for ZPN projection */
+	    for (i = 0; i < 10; i++) {
+		sprintf (keyword,"projp%d",i);
+		mgetr8 (hstring, "WAT1",keyword, &wcs->prj.p[i]);
+		}
 	    }
 	else
 	    iszpx = 0;
@@ -429,7 +439,6 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 
 	/* FITS WCS interim proposal projection constants */
 	for (i = 0; i < 10; i++) {
-	    wcs->prj.p[i] = 0.0;
 	    sprintf (keyword,"PROJP%d",i);
 	    hgetr8c (hstring, keyword, mchar, &wcs->prj.p[i]);
 	    }
@@ -1280,5 +1289,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Dec  1 2003	Change p[0,1,2] initializations to p[1,2,3]
  * Dec  3 2003	Add back wcs->naxes for backward compatibility
  * Dec  3 2003	Remove unused variables j,m in wcsinitc()
- ( Dec 12 2003	Fix call to setwcserr() with format in it
+ * Dec 12 2003	Fix call to setwcserr() with format in it
+ *
+ * Feb 26 2004	Add parameters for ZPX projection
  */
