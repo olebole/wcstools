@@ -1,5 +1,5 @@
 /* File gettab.c
- * October 22, 1999
+ * January 4, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -58,7 +58,7 @@ char **av;
     char *kw1;
     char string[80];
     int icond,ncond;
-    char *vali, *calias;
+    char *vali, *calias, *valeq, *valgt, *vallt;
     char *cond[MAXCOND];
     char opcond[MAXCOND]; /* Logical conditions <, =, > */
     char *vcond[MAXCOND]; /* ASCII values to be tested against */
@@ -128,7 +128,7 @@ char **av;
 	    }
 
 	/* Set range and make a list of line numbers from it */
-	else if (strchr (*av + 1, '-') || strchr (*av + 1, ',')) {
+	else if (isrange (*av)) {
 	    if (ranges) {
 		temp = ranges;
 		ranges = (char *) calloc (strlen(ranges) + strlen(*av) + 2, 1);
@@ -235,43 +235,50 @@ char **av;
 
     /* Set conditions */
     for (icond = 0; icond < ncond; icond++) {
-	vali = strchr (cond[icond], '=');
-	if (vali != NULL) {
+	valeq = strchr (cond[icond], '=');
+	vallt = strchr (cond[icond], '<');
+	valgt = strchr (cond[icond], '>');
+	if (valeq != NULL || vallt != NULL || valgt != NULL) {
+	    vali = valeq;
+	    if (vali == NULL)
+		vali = vallt;
+	    if (vali == NULL)
+		vali = valgt;
 	    *vali = (char) 0;
 	    vcond[icond] = vali + 1;
-	    if (!isnum (vcond[icond]) && !strchr (vcond[icond],':'))
-		opcond[icond] = 's';
-	    else {
-		opcond[icond] = '=';
-		if (strchr (vcond[icond], ':'))
-		    xcond[icond] = str2dec (vcond[icond]);
+	    if (valeq != NULL) {
+		if (!isnum (vcond[icond]) && !strchr (vcond[icond],':'))
+		    opcond[icond] = 's';
+		else {
+		    opcond[icond] = '=';
+		    if (strchr (vcond[icond], ':'))
+			xcond[icond] = str2dec (vcond[icond]);
+		    else
+			xcond[icond] = atof (vcond[icond]);
+		    }
+		}
+	    else if (vallt != NULL) {
+		opcond[icond] = '<';
+		if (strchr (vcond[icond], ':')) {
+		    if (strsrch(cond[icond],"RA") || strsrch(cond[icond],"ra"))
+			xcond[icond] = str2ra (vcond[icond]);
+		    else
+			xcond[icond] = str2dec (vcond[icond]);
+		    }
 		else
 		    xcond[icond] = atof (vcond[icond]);
 		}
-	    }
-	vali = strchr (cond[icond], '<');
-	if (vali != NULL) {
-	    opcond[icond] = '<';
-	    *vali = (char) 0;
-	    vcond[icond] = vali + 1;
-	    if (strchr (vcond[icond], ':')) {
-		if (strsrch (cond[icond], "RA") || strsrch (cond[icond], "ra"))
-		    xcond[icond] = str2ra (vcond[icond]);
+	    else if (valgt != NULL) {
+		opcond[icond] = '>';
+		if (strchr (vcond[icond], ':')) {
+		    if (strsrch(cond[icond],"RA") || strsrch(cond[icond],"ra"))
+			xcond[icond] = str2ra (vcond[icond]);
+		    else
+			xcond[icond] = str2dec (vcond[icond]);
+		    }
 		else
-		    xcond[icond] = str2dec (vcond[icond]);
+		    xcond[icond] = atof (vcond[icond]);
 		}
-	    else
-		xcond[icond] = atof (vcond[icond]);
-	    }
-	vali = strchr (cond[icond], '>');
-	if (vali != NULL) {
-	    opcond[icond] = '>';
-	    *vali = (char) 0;
-	    vcond[icond] = vali + 1;
-	    if (strchr (vcond[icond], ':'))
-		xcond[icond] = str2dec (vcond[icond]);
-	    else
-		xcond[icond] = atof (vcond[icond]);
 	    }
 	}
 
@@ -409,6 +416,11 @@ char **av;
 	    }
 	}
 
+    else {
+	for (ifile = 0; ifile < nfile; ifile++)
+	    PrintValues (fn[ifile],nkwd,kwd,alias,ncond,cond,opcond,vcond,xcond);
+	}
+
     return (0);
 }
 
@@ -418,9 +430,9 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF header keyword values\n");
-    fprintf(stderr,"usage: gethead [-ahtv][-n num] file1.tab ... filen.tab kw1 kw2 ... kwn\n");
-    fprintf(stderr,"       gethead [-ahptv][-n num] @filelist kw1 kw2 ... kwn\n");
-    fprintf(stderr,"       gethead [-ahptv][-n num] <file1.tab kw1 kw2 ... kwn\n");
+    fprintf(stderr,"usage: gettab [-ahtv][-n num] file1.tab ... filen.tab kw1 kw2 ... kwn\n");
+    fprintf(stderr,"       gettab [-ahptv][-n num] @filelist kw1 kw2 ... kwn\n");
+    fprintf(stderr,"       gettab [-ahptv][-n num] <file1.tab kw1 kw2 ... kwn\n");
     fprintf(stderr,"  -a: List file even if keywords are not found\n");
     fprintf(stderr,"  -e: Print keyword=value list\n");
     fprintf(stderr,"  -h: Print column headings\n");
@@ -454,6 +466,7 @@ double	*xcond;	  /* Values to be tested against */
     char *filename;
     char outline[1000];
     char *line;
+    char *endline;
     char newline = 10;
     int ikwd, nfound;
     int i, iline, keep;
@@ -470,6 +483,11 @@ double	*xcond;	  /* Values to be tested against */
 
     if (verbose) {
 	fprintf (stderr,"Print table Values from tab table file %s\n", name);
+	}
+
+    if (tabout || printhead) {
+	*(tabtable->tabdata - 1) = 0;
+	printf ("%s\n", tabtable->tabhead);
 	}
 
     /* Find file name */
@@ -557,46 +575,54 @@ double	*xcond;	  /* Values to be tested against */
 
 	/* Extract desired columns */
 	if (!drop) {
-	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
-		if (!tabgetc (tabtable, line, col[ikwd], string, 80)) {
-		    str = strclean (string);
-		    if (ndec > -9 && isnum (str) && strchr (str, '.'))
-			num2str (str, atof(str), 0, ndec);
-		    if (verbose) {
-			if (alias[ikwd])
-			    printf ("%s/%s = %s", kwd[ikwd], alias[ikwd], str);
-			else
-			    printf ("%s = %s", kwd[ikwd], str);
-			}
-		    else if (assign) {
-			if (alias[ikwd])
-			    strcat (outline, alias[ikwd]);
-			else
-			    strcat (outline, kwd[ikwd]);
-			strcat (outline, "=");
-			strcat (outline, str);
-			}
-		    else
-			strcat (outline, str);
-		    nfound++;
-		    }
-		else if (verbose)
-		    printf ("%s not found", kwd[ikwd]);
-		else
-		    strcat (outline, "___");
-
-		if (verbose)
-		    printf ("\n");
-		else if (ikwd < nkwd-1) {
-		    if (tabout)
-			strcat (outline, "	");
-		    else
-			strcat (outline, " ");
-		    }
+	    if (nkwd == 0) {
+		endline = strchr (line+1, newline);
+		*endline = 0;
+		printf ("%s\n", line);
+		*endline = newline;
 		}
+	    else {
+		for (ikwd = 0; ikwd < nkwd; ikwd++) {
+		    if (!tabgetc (tabtable, line, col[ikwd], string, 80)) {
+			str = strclean (string);
+			if (ndec > -9 && isnum (str) && strchr (str, '.'))
+			    num2str (str, atof(str), 0, ndec);
+			if (verbose) {
+			    if (alias[ikwd])
+				printf ("%s/%s = %s",kwd[ikwd],alias[ikwd],str);
+			    else
+				printf ("%s = %s", kwd[ikwd], str);
+			    }
+			else if (assign) {
+			    if (alias[ikwd])
+				strcat (outline, alias[ikwd]);
+			    else
+				strcat (outline, kwd[ikwd]);
+			    strcat (outline, "=");
+			    strcat (outline, str);
+			    }
+			else
+			    strcat (outline, str);
+			nfound++;
+			}
+		    else if (verbose)
+			printf ("%s not found", kwd[ikwd]);
+		    else
+			strcat (outline, "___");
 
-	    if (!verbose && (nfile < 2 || nfound > 0 || listall))
-		printf ("%s\n", outline);
+		    if (verbose)
+			printf ("\n");
+		    else if (ikwd < nkwd-1) {
+			if (tabout)
+			    strcat (outline, "	");
+			else
+			    strcat (outline, " ");
+			}
+		    }
+
+		if (!verbose && (nfile < 2 || nfound > 0 || listall))
+		    printf ("%s\n", outline);
+		}
 	    }
 
 	line = strchr (line+1, newline);
@@ -680,4 +706,7 @@ char *string;
  * Jan 25 1999	Keep header information
  * Mar  9 1999	Add range of lines; rework command line decoding logic
  * Oct 22 1999	Drop unused variables after lint
+ *
+ * Jan  3 2000	Use isrange() to check for ranges
+ * Jan  4 2000	If no keywords are specified, print entire line if tests met
  */

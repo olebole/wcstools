@@ -1,5 +1,5 @@
 /* File getcol.c
- * December 14, 1999
+ * January 7, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -29,6 +29,7 @@ static int version = 0;		/* If 1, print only program name and version */
 static int nread = 0;		/* Number of lines to read (0=all) */
 static int nskip = 0;		/* Number of lines to skip */
 static int tabout = 0;		/* If 1, separate output fields with tabs */
+static int intcompare();
 
 main (ac, av)
 int ac;
@@ -39,6 +40,8 @@ char **av;
     char *filename;
     int systemp = 0;		/* Input search coordinate system */
     char *ranges = NULL;
+    char *lfile = NULL;
+    char *lranges = NULL;
     int match;
 
     if (ac == 1)
@@ -110,11 +113,25 @@ char **av;
 		meancol++;
 		break;
 
-	    case 'r':	/* Number of lines to read */
+	    case 'n':	/* Number of lines to read */
 		if (ac < 2)
 		    usage ();
 		nread = atoi (*++av);
 		ac--;
+		break;
+
+	    case 'r':	/* Range of lines to read */
+		if (ac < 2)
+		    usage ();
+		if (*(av+1)[0] == '@') {
+		    lfile = *++av + 1;
+		    ac--;
+		    }
+		else if (isrange (*(av+1))) {
+		    lranges = (char *) calloc (strlen(*av) + 1, 1);
+		    strcpy (lranges, *++av);
+		    ac--;
+		    }
 		break;
 
 	    case 's':	/* Number of lines to skip */
@@ -140,8 +157,9 @@ char **av;
 	else
 	    filename = *av;
 	}
-    ListFile (filename, ranges);
+    ListFile (filename, ranges, lranges, lfile);
 
+    free (lranges);
     free (ranges);
     return (0);
 }
@@ -153,38 +171,51 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Extract specified columns from an ASCII table file\n");
-    fprintf (stderr,"Usage: [-rsv] filename [column number range]\n");
+    fprintf (stderr,"Usage: [-amv][-n num][-r lines][-s num] filename [column number range]\n");
     fprintf(stderr,"  -a: Sum numeric colmuns\n");
     fprintf(stderr,"  -m: Compute mean of numeric colmuns\n");
-    fprintf(stderr,"  -r: Number of lines to read, if not all\n");
+    fprintf(stderr,"  -n: Number of lines to read, if not all\n");
+    fprintf(stderr,"  -r: Range or @file of lines to read, if not all\n");
     fprintf(stderr,"  -s: Number of lines to skip\n");
     fprintf(stderr,"  -v: Verbose\n");
     exit (1);
 }
 
 static int
-ListFile (filename, ranges)
+ListFile (filename, ranges, lranges, lfile)
 
 char	*filename;	/* File name */
 char	*ranges;	/* String with range of column numbers to list */
+char	*lranges;	/* String with range of lines to list */
+char	*lfile;		/* Name of file with lines to list */
 
 {
     int i, il, nbytes;
     char line[1024];
+    char fline[1024];
+    char *lastchar;
     FILE *fd;
+    FILE *lfd;
     int nlog;
     struct Tokens tokens;  /* Token structure */
     struct Range *range;
+    struct Range *lrange;
+    int *iline;
+    int nline;
+    int iln;
+    int nfdef = 9;
     double *sum;
     int *nsum;
     int *nent;
-    int lline;
+    int nlmax;
     int nfind, ntok, nt;
     int *inum;
     char *cwhite;
     char token[80];
 
     cwhite = NULL;
+    lrange = NULL;
+    iline = NULL;
 
     if (verbose)
 
@@ -196,6 +227,67 @@ char	*ranges;	/* String with range of column numbers to list */
 	nlog = 0;
     if (nread < 1)
 	nread = 100000;
+
+    /* Make list of line numbers to read from list or range on command line */
+    if (lranges != NULL) {
+	lrange = RangeInit (lranges, nfdef);
+	nline = rgetn (lrange);
+	nbytes = nline * sizeof (int);
+	if (!(iline = (int *) calloc (nline, sizeof(int))) ) {
+	    fprintf (stderr, "Could not calloc %d bytes for iline\n", nbytes);
+	    return;
+	    }
+	for (i = 0; i < nline; i++)
+	    iline[i] = rgeti4 (lrange);
+	qsort (iline, nline, sizeof(int), intcompare);
+	}
+
+    /* Make list of line numbers to read from file specified on command line */
+    if (lfile != NULL) {
+	if (!(lfd = fopen (lfile, "r")))
+            return (0);
+	nlmax = 100;
+	nline = 0;
+	nbytes = nlmax * sizeof(int);
+	if (!(iline = (int *) calloc (nlmax, sizeof(int))) ) {
+	    fprintf (stderr, "Could not calloc %d bytes for iline\n", nbytes);
+	    fclose (lfd);
+	    return;
+	    }
+	for (il = 0; il < nread; il++) {
+	    if (fgets (line, 1024, lfd) == NULL)
+		break;
+
+	    /* Drop linefeeds */
+	    lastchar = line + strlen(line) - 1;
+	    if (*lastchar < 32)
+		*lastchar = (char) 0;
+
+	    ntok = setoken (&tokens, line, cwhite);
+	    nt = 0;
+	    if (il > nlmax) {
+		nlmax = nlmax + 100;
+		nbytes = nlmax * sizeof(int);
+		if (!(iline = (int *) realloc (iline, nbytes))) {
+		    fprintf (stderr, "Could not realloc %d bytes for iline\n",
+			     nbytes);
+		    fclose (lfd);
+		    return;
+		    }
+		}
+	    for (i = 0; i < ntok; i++) {
+		if (getoken (tokens, i+1, token)) {
+		    iline[il] = atoi (token);
+		    if (iline[il] > 0) {
+			nline++;
+			break;
+			}
+		    }
+		}
+	    }
+	fclose (lfd);
+	qsort (iline, nline, sizeof(int), intcompare);
+	}
 
     /* Open input file */
     if (!strcmp (filename, "stdin"))
@@ -214,37 +306,54 @@ char	*ranges;	/* String with range of column numbers to list */
 
     /* Print entire selected lines */
     if (ranges == NULL) {
+	iln = 0;
 	for (il = 0; il < nread; il++) {
 	    if (fgets (line, 1024, fd) == NULL)
 		break;
-	    lline = strlen (line);
-	    if (line[lline-1] < 32)
-		line[lline-1] = 0;
+
+	    /* Skip if line is not on list, if there is one */
+	    if (iline != NULL) {
+		if (il+1 < iline[iln])
+		    continue;
+		else if (il+1 > iline[nline-1])
+		    break;
+		else
+		    iln++;
+		}
+
+	    /* Drop linefeeds */
+	    lastchar = line + strlen(line) - 1;
+	    if (*lastchar < 32)
+		*lastchar = (char) 0;
+
 	    printf ("%s\n", line);
 	    }
 	}
 
     /* Find columns specified by number */
     else {
-	int nfdef = 9;
 	range = RangeInit (ranges, nfdef);
 	nfind = rgetn (range);
 	nbytes = nfind * sizeof (double);
 	if (!(sum = (double *) calloc (nfind, sizeof (double))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for sum\n", nbytes);
+	    if (fd != stdin) fclose (fd);
 	    return;
 	    }
 	nbytes = nfind * sizeof (int);
 	if (!(nsum = (int *) calloc (nfind, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for nsum\n", nbytes);
+	    if (fd != stdin) fclose (fd);
 	    return;
 	    }
 	if (!(nent = (int *) calloc (nfind, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for nent\n", nbytes);
+	    if (fd != stdin) fclose (fd);
 	    return;
 	    }
 	if (!(inum = (int *) calloc (nfind, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for inum\n", nbytes);
+	    if (fd != stdin) fclose (fd);
 	    return;
 	    }
 	else {
@@ -252,9 +361,25 @@ char	*ranges;	/* String with range of column numbers to list */
 		inum[i] = rgeti4 (range);
 	    }
 	wfile = 0;
+	iln = 0;
 	for (il = 0; il < nread; il++) {
 	    if (fgets (line, 1024, fd) == NULL)
 		break;
+
+	    /* Skip if line is not on list, if there is one */
+	    if (iline != NULL) {
+		if (il+1 < iline[iln])
+		    continue;
+		else if (il > iline[nline-1])
+		    break;
+		else
+		    iln++;
+		}
+
+	    /* Drop linefeeds */
+	    lastchar = line + strlen(line) - 1;
+	    if (*lastchar < 32)
+		*lastchar = (char) 0;
 
 	    ntok = setoken (&tokens, line, cwhite);
 	    nt = 0;
@@ -339,11 +464,25 @@ char	*ranges;	/* String with range of column numbers to list */
     if (nent) free ((char *)nent);
     if (sum) free ((char *)sum);
 
+    if (fd != stdin) fclose (fd);
     return (nfind);
 }
+
+static int
+intcompare (int *i, int *j)
+{
+    if (*i > *j)
+	return (1);
+    if (*i < *j)
+	return (-1);
+    return (0);
+}
+
 
 /* Nov  2 1999	New program
  * Nov  3 1999	Add option to read from stdin as input filename
  * Dec  1 1999	Add options to print counts, means, and sums of columns
  * Dec 14 1999	Add option for tab-separated output
+ *
+ * Jan  7 2000	Add option to list range of lines or filed list of lines
  */

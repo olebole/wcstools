@@ -1,5 +1,5 @@
 /* File imcat.c
- * October 22, 1999
+ * January 11, 2000
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -729,6 +729,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	gobj1 = NULL;
     else
 	gobj1 = gobj;
+    if (refcat == TABCAT)
+	nndec = gettabndec();
 
     if (ng > ngmax)
 	nbg = ngmax;
@@ -1259,14 +1261,6 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline, "%10.5f	%s	%s	%.2f	%.2f	%2s",
 		     gnum[i],rastr,decstr,gmb[i],gm[i],isp);
 		    }
-		else if (refcat == BINCAT && nndec > 0) {
-		    sprintf (nform, "%%%d.%df	%%s	%%s	%%.2f	%%d",
-			     nndec+5, nndec);
-		    sprintf (headline,nform,gnum[i],rastr,decstr,gm[i],gc[i]);
-		    }
-		else if (refcat == BINCAT)
-		    sprintf (headline, "%10.0f	%s	%s	%.2f	%d",
-		     gnum[i],rastr,decstr,gm[i],gc[i]);
 		else if (nndec > 0) {
 		    sprintf (nform, "%%%d.%df	%%s	%%s	%%.2f	%%d",
 			     nndec+5, nndec);
@@ -1483,4 +1477,6 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Oct 15 1999	Free wcs using wcsfree()
  * Oct 22 1999	Drop unused variables after lint
  * Oct 22 1999	Change catread() to ctgread() to avoid system conflict
+ *
+ * Jan 11 2000	Get nndec for Starbase catalogs
  */

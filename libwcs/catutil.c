@@ -1,5 +1,5 @@
 /* File libwcs/catutil.c
- * November 3, 1999
+ * January 11, 2000
  * By Doug Mink
  */
 
@@ -245,11 +245,7 @@ char	*numstr;	/* Formatted number (returned) */
     else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
 	sprintf (numstr, "%10.5f", dnum);
 
-    /* Starbase tab-separated catalogs */
-    else if (refcat == TABCAT)
-	sprintf (numstr, "%9.4f", dnum);
-
-    /* TDC binary or ASCII catalogs */
+    /* Starbase tab-separated, TDC binary, or TDC ASCII catalogs */
     else if (nndec > 0) {
 	sprintf (nform,"%%%d.%df", nndec+5, nndec);
 	sprintf (numstr, nform, dnum);
@@ -290,11 +286,7 @@ int	nndec;		/* Number of decimal places ( >= 0) */
     else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
 	return (10);
 
-    /* Starbase tab-separated catalogs */
-    else if (refcat == TABCAT)
-	return (9);
-
-    /* TDC binary or ASCII catalogs */
+    /* Starbase tab-separated, TDC binary, or TDC ASCII catalogs */
     else if (nndec > 0) {
 	return (nndec + 5);
 	}
@@ -918,4 +910,6 @@ char *token;		/* token (returned) */
  * Oct 20 1999	Use strchr() in range decoding
  * Oct 21 1999	Fix arguments to catopen() and catclose() after lint
  * Nov  3 1999	Fix bug which lost last character on a line in getoken
+ *
+ * Jan 11 2000	Use nndec for Starbase files, too
  */

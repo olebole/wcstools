@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** November 16, 1999
+ *** January 10, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -139,8 +139,8 @@ int	nlog;
                           mag2,nsmax,tnum,tra,tdec,tmag,tmagb,tc,tobj,nlog);
         else if (refcat == TABCAT)
             nstar = tabread (catfile, distsort,
-                          cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-                          mag1,mag2,nsmax,tnum,tra,tdec,tmag,tc,tobj,nlog);
+                          cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
+                          mag2,nsmax,tnum,tra,tdec,tmag,tmagb,tc,tobj,nlog);
 	return (nstar);
 	}
 
@@ -416,7 +416,7 @@ int	nlog;
 			     tnum,tra,tdec,tmag,tmagb,tc,nlog);
 	else if (refcat == TABCAT)
 	    nstar = tabrnum (catfile,nnum,sysout,eqout,epout,
-			     tnum,tra,tdec,tmag,tc,tobj,nlog);
+			     tnum,tra,tdec,tmag,tmagb,tc,tobj,nlog);
 	else if (refcat == BINCAT)
 	    nstar = binrnum (catfile,nnum,sysout,eqout,epout,match,
 			     tnum,tra,tdec,tmag,tmagb,tc,tobj,nlog);
@@ -1125,4 +1125,6 @@ char	*in;	/* Character string */
  * Oct 22 1999	Fix declarations after lint
  * Oct 22 1999	Rename subroutines from cat* to ctg* to avoid system conflict
  * Nov 16 1999	Transfer dec degree sign if table format
+ *
+ * Jan 10 2000	Add second magnitude to tabread() and tabrnum()
  */

@@ -42,3 +42,4 @@ ln -s immatch bin/immsao
 ln -s immatch bin/immppm
 ln -s immatch bin/immiras
 ln -s immatch bin/immtycho
+cp -p wcstools bin

@@ -1,5 +1,5 @@
 /* File scat.c
- * November 29, 1999
+ * January 11, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -660,6 +660,7 @@ double	eqout;		/* Equinox for output coordinates */
     int icat, nndec;
     struct StarCat *starcat;
     double date, time;
+    int lid;
     void ep2dt();
     void PrintNum();
     int LenNum();
@@ -823,6 +824,8 @@ double	eqout;		/* Equinox for output coordinates */
 		gx[i] = 0.0;
 		gy[i] = 1.0;
 		}
+	    if (refcat == TABCAT)
+		nndec = gettabndec();
 
 	    /* Write out entries for use as image centers */
 	    if (searchcenter) {
@@ -969,6 +972,8 @@ double	eqout;		/* Equinox for output coordinates */
 		ns = ngmax;
 	    else
 		ns = ng;
+	    if (refcat == TABCAT)
+		nndec = gettabndec();
 
 	    /* Compute distance from star to search center */
 	    for (i = 0; i < ns; i++ ) {
@@ -1001,7 +1006,6 @@ double	eqout;		/* Equinox for output coordinates */
 			dds = drs;
 			}
 		    if (nohead & tabout) {
-			int lid;
 
 			/* Write tab table heading */
 			if (refcat == GSC)
@@ -1339,6 +1343,7 @@ double	eqout;		/* Equinox for output coordinates */
     if (tabout)
 
     /* Print column headings */
+    lid = CatNumLen(refcat, nndec);
     if (refcat == ACT)
 	strcpy (headline, "act_id  	");
     else if (refcat == BSC)
@@ -1369,8 +1374,13 @@ double	eqout;		/* Equinox for output coordinates */
 	strcpy (headline,"tycho_id  	");
     else if (refcat == HIP)
 	strcpy (headline,"hip_id  	");
-    else
-	strcpy (headline,"id       	");
+    else {
+	strcpy (headline,"id");
+	for (i = 0; i < lid-2; i++)
+	    headline[2+i] = ' ';
+	headline[lid] = '\t';
+	headline[lid+1] = (char) 0;
+	}
     if (sysout == WCS_GALACTIC)
 	strcat (headline,"long_gal   	lat_gal  	");
     else if (sysout == WCS_ECLIPTIC)
@@ -1403,14 +1413,17 @@ double	eqout;		/* Equinox for output coordinates */
     if (tabout)
 	printf ("%s\n", headline);
 
+    for (i = 0; i < lid; i++)
+	headline[i] = '-';
+    headline[lid] = (char) 0;
     if (refcat == USAC || refcat == USA1 || refcat == USA2 || refcat == HIP ||
 	refcat == UAC  || refcat == UA1  || refcat == UA2 || refcat == TYCHO ||
 	refcat == ACT)
-	sprintf(headline,"----------	--------	---------	----	-----	-----");
-    else if (refcat == BINCAT)
-        sprintf (headline,"----------	------------	------------	------	----");
+	strcat (headline,"	--------	---------	----	-----	-----");
+    else if (refcat == BINCAT || refcat == TABCAT)
+        strcat (headline,"	------------	------------	------	----");
     else
-        sprintf (headline,"----------	------------	------------	------");
+        strcat (headline,"	------------	------------	------");
     if (ranges == NULL)
 	strcat (headline, "	------");
     if (refcat == TABCAT && keyword != NULL)
@@ -2048,4 +2061,6 @@ int	ndec;	/* Number of decimal places in output */
  * Oct 22 1999	Increase default r for closest search to 1800 arcsec
  * Nov 19 1999	Use CatNum when concocting names from numbers
  * Nov 29 1999	Include fitsfile.h for date conversion
+ *
+ * Jan 11 2000	Get nndec for Starbase catalogs
  */

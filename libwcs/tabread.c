@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** November 30, 1999
+ *** January 11, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -41,6 +41,10 @@ static int tabhgetr8();
 static int tabhgeti4();
 static int tabhgetc();
 static int tabsize();
+static int nndec = 0;
+
+int gettabndec()
+{return (nndec); }
 
 static char *kwo = NULL;	/* Keyword returned by tabread(), tabrnum() */
 void settabkey (keyword0)
@@ -53,7 +57,7 @@ char *keyword0;
 int
 tabread (tabcatname,distsort,cra,cdec,dra,ddec,drad,
 	 sysout,eqout,epout,mag1,mag2,nstarmax,
-	 tnum,tra,tdec,tmag,tpeak,tkey,nlog)
+	 tnum,tra,tdec,tmag,tmagb,tpeak,tkey,nlog)
 
 char	*tabcatname;	/* Name of reference star catalog file */
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -71,6 +75,7 @@ double	*tnum;		/* Array of UJ numbers (returned) */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
 double	*tmag;		/* Array of magnitudes (returned) */
+double	*tmagb;		/* Array of second magnitudes (returned) */
 int	*tpeak;		/* Array of peak counts (returned) */
 char	**tkey;		/* Array of additional keyword values */
 int	nlog;
@@ -96,7 +101,7 @@ int	nlog;
     char *objname;
     int lname;
     double ra,dec, rapm, decpm;
-    double mag;
+    double mag, magb;
     double num;
     int peak, i;
     int istar, nstars;
@@ -178,6 +183,7 @@ int	nlog;
 	else
 	    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 	mag = star->xmag[0];
+	magb = star->xmag[1];
 	peak = star->peak;
 	if (drad > 0 || distsort)
 	    dist = wcsdist (cra,cdec,ra,dec);
@@ -197,6 +203,7 @@ int	nlog;
 		tra[nstar] = ra;
 		tdec[nstar] = dec;
 		tmag[nstar] = mag;
+		tmagb[nstar] = magb;
 		tpeak[nstar] = peak;
 		tdist[nstar] = dist;
 		if (kwo != NULL) {
@@ -222,6 +229,7 @@ int	nlog;
 		    tra[farstar] = ra;
 		    tdec[farstar] = dec;
 		    tmag[farstar] = mag;
+		    tmagb[farstar] = magb;
 		    tpeak[farstar] = peak;
 		    tdist[farstar] = dist;
 		    if (kwo != NULL) {
@@ -248,6 +256,7 @@ int	nlog;
 		tra[faintstar] = ra;
 		tdec[faintstar] = dec;
 		tmag[faintstar] = mag;
+		tmagb[faintstar] = magb;
 		tpeak[faintstar] = peak;
 		tdist[faintstar] = dist;
 		if (kwo != NULL) {
@@ -270,8 +279,8 @@ int	nlog;
 	    nstar++;
 	    jstar++;
 	    if (nlog == 1)
-		fprintf (stderr,"TABREAD: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
-			 num,ra,dec,cstr,mag,peak);
+		fprintf (stderr,"TABREAD: %11.6f: %9.5f %9.5f %s %5.2f %5.2f %d    \n",
+			 num,ra,dec,cstr,mag,magb,peak);
 
 	    /* End of accepted star processing */
 	    }
@@ -302,8 +311,8 @@ int	nlog;
 /* TABRNUM -- Read tab table stars with specified numbers */
 
 int
-tabrnum (tabcatname,nnum,sysout,eqout,epout,
-	 tnum,tra,tdec,tmag,tpeak,tkey,nlog)
+tabrnum (tabcatname, nnum, sysout, eqout, epout,
+	 tnum, tra, tdec, tmag, tmagb, tpeak, tkey, nlog)
 
 char	*tabcatname;	/* Name of reference star catalog file */
 int	nnum;		/* Number of stars to look for */
@@ -314,6 +323,7 @@ double	*tnum;		/* Array of star numbers to look for */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
 double	*tmag;		/* Array of magnitudes (returned) */
+double	*tmagb;		/* Array of second magnitudes (returned) */
 int	*tpeak;		/* Array of peak counts (returned) */
 char	**tkey;		/* Array of additional keyword values */
 int	nlog;
@@ -321,7 +331,7 @@ int	nlog;
     int jnum;
     int nstar;
     double ra,dec;
-    double mag;
+    double mag, magb;
     double num;
     int peak;
     int istar, nstars;
@@ -338,6 +348,7 @@ int	nlog;
     line = 0;
 
     nstar = 0;
+    nndec = 0;
     starcat = tabcatopen (tabcatname);
     if (starcat == NULL || starcat->nstars <= 0) {
 	fprintf (stderr,"TABRNUM: Cannot read catalog %s\n", tabcatname);
@@ -398,12 +409,14 @@ int	nlog;
 		dec = star->dec;
 		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 		mag = star->xmag[0];
+		magb = star->xmag[1];
 		peak = star->peak;
 
 		/* Save star position and magnitude in table */
 		tra[jnum] = ra;
 		tdec[jnum] = dec;
 		tmag[jnum] = mag;
+		tmagb[jnum] = magb;
 		tpeak[jnum] = peak;
 		if (kwo != NULL) {
 		    lname = strlen (star->objname) + 1;
@@ -413,8 +426,8 @@ int	nlog;
 		    }
 		nstar++;
 		if (nlog == 1)
-		    fprintf (stderr,"TABRNUM: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
-			     num,ra,dec,cstr,mag,peak);
+		    fprintf (stderr,"TABRNUM: %11.6f: %9.5f %9.5f %s %5.2f %5.2f %d    \n",
+			     num,ra,dec,cstr,mag,magb,peak);
 		/* End of accepted star processing */
 		}
 	    }
@@ -471,6 +484,7 @@ int	nlog;
     nstar = 0;
 
     /* Open tab table file */
+    nndec = 0;
     startab = tabopen (tabcatname);
     if (startab == NULL || startab->nlines <= 0) {
 	fprintf (stderr,"TABXYREAD: Cannot read catalog %s\n", tabcatname);
@@ -641,6 +655,7 @@ char *tabfile;	/* Tab table catalog file name */
     char cstr[32];
     struct TabTable *startab;
     struct StarCat *sc;
+    int i;
 
     /* Allocate catalog data structure */
     sc = (struct StarCat *) calloc (1, sizeof (struct StarCat));
@@ -650,19 +665,73 @@ char *tabfile;	/* Tab table catalog file name */
 	return (NULL);
     sc->startab = startab;
 
-    /* Extract positions of keywords we will want to use */
-    if (!(sc->entid = tabcol (startab, "ID")))
-	sc->entid = tabcol (startab, "id");
-    if (!(sc->entra = tabcol (startab, "RA")))
-	sc->entra = tabcol (startab, "ra");
-    if (!(sc->entdec = tabcol (startab, "DEC")))
-	sc->entdec = tabcol (startab, "dec");
-    if (!(sc->entmag = tabcol (startab, "MAG")))
-	sc->entmag = tabcol (startab, "mag");
-    if (!(sc->entpeak = tabcol (startab, "PEAK")))
-	sc->entpeak = tabcol (startab, "peak");
+    /* Find column and name of object identifier */
+    sc->entid = -1;
+    sc->keyid[0] = (char) 0;
+    if ((sc->entid = tabcol (startab, "ID")))
+	strcpy (sc->keyid, "ID");
+    else if ((sc->entid = tabcol (startab, "id")))
+	strcpy (sc->keyid, "id");
+    else if ((sc->entid = tabcont (startab, "_id"))) {
+	i = sc->entid;
+	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
+	}
+    sc->nndec = nndec;
+
+    /* Find column and name of object right ascension */
+    sc->entra = -1;
+    sc->keyra[0] = (char) 0;
+    if ((sc->entra = tabcol (startab, "RA")))
+	strcpy (sc->keyra, "RA");
+    else if ((sc->entra = tabcol (startab, "ra")))
+	strcpy (sc->keyra, "ra");
+    else if ((sc->entra = tabcont (startab, "ra"))) {
+	i = sc->entra;
+	strncpy (sc->keyra, startab->colname[i], startab->lcol[i]);
+	}
+
+    /* Find column and name of object declination */
+    sc->entdec = -1;
+    sc->keydec[0] = (char) 0;
+    if ((sc->entdec = tabcol (startab, "DEC")))
+	strcpy (sc->keydec, "DEC");
+    else if ((sc->entdec = tabcol (startab, "dec")))
+	strcpy (sc->keydec, "dec");
+    else if ((sc->entdec = tabcont (startab, "dec"))) {
+	i = sc->entdec;
+	strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
+	}
+
+    /* Find column and name of object first magnitude */
+    sc->entmag1 = -1;
+    sc->keymag1[0] = (char) 0;
+    if ((sc->entmag1 = tabcol (startab, "MAG")))
+	strcpy (sc->keymag1, "MAG");
+    else if ((sc->entmag1 = tabcol (startab, "mag")))
+	strcpy (sc->keymag1, "MAG");
+    else if ((sc->entmag1 = tabcol (startab, "magr")))
+	strcpy (sc->keymag1, "magr");
+
+    /* Find column and name of object second magnitude */
+    sc->entmag2 = -1;
+    sc->keymag2[0] = (char) 0;
+    if ((sc->entmag2 = tabcol (startab, "magb")))
+	strcpy (sc->keymag2, "magb");
+
+    /* Find column and name of object peak or plate number */
+    sc->entpeak = -1;
+    sc->keypeak[0] = (char) 0;
+    if ((sc->entpeak = tabcol (startab, "PEAK")))
+	strcpy (sc->keypeak, "PEAK");
+    else if ((sc->entpeak = tabcol (startab, "peak")))
+	strcpy (sc->keypeak, "peak");
+    else if ((sc->entpeak = tabcol (startab, "plate")))
+	strcpy (sc->keypeak, "plate");
+
+    sc->entadd = -1;
+    sc->keyadd[0] = (char) 0;
     if (kwo != NULL)
-	sc->entkey = tabcol (startab, kwo);
+	sc->entadd = tabcol (startab, kwo);
 
     /* Set catalog coordinate system */
     sc->coorsys = 0;
@@ -694,7 +763,9 @@ char *tabfile;	/* Tab table catalog file name */
     /* Set other stuff */
     sc->rasorted = 0;
     sc->nstars = startab->nlines;
-    if (sc->entmag)
+    if (sc->entmag1 && sc->entmag2)
+	sc->nmag = 2;
+    else if (sc->entmag1)
 	sc->nmag = 1;
     else
 	sc->nmag = 0;
@@ -732,6 +803,7 @@ struct Star *st; /* Star data structure, updated on return */
 {
     struct TabTable *startab = sc->startab;
     char *line;
+    int ndec, i, inum;
 
     if ((line = tabline (startab, istar)) == NULL) {
 	fprintf (stderr,"TABSTAR: Cannot read star %d\n", istar);
@@ -743,9 +815,26 @@ struct Star *st; /* Star data structure, updated on return */
 	st->num = tabgetr8 (startab,line,sc->entid);
     else
 	st->num = (double) istar;
+
+    /* Find number of decimal places in identifier */
+    inum = (st->num * 100000000.0) + 0.1;
+    for (i = 0; i < 8; i++) {
+	if (inum%((i+1)*10)) {
+	    ndec = 8 - i;
+	    if (ndec > nndec) {
+		nndec = ndec;
+		sc->nndec = nndec;
+		}
+	    break;
+	    }
+	}
     st->ra = tabgetra (startab, line, sc->entra);       /* Right ascension */
     st->dec = tabgetdec (startab, line, sc->entdec);    /* Declination */
-    st->xmag[0] = tabgetr8 (startab, line, sc->entmag);     /* Magnitude */
+    st->xmag[0] = tabgetr8 (startab, line, sc->entmag1);     /* Magnitude */
+    if (sc->entmag2)
+	st->xmag[1] = tabgetr8 (startab, line, sc->entmag2); /* Magnitude */
+    else
+	st->xmag[1] = 0.0;
     st->peak = tabgeti4 (startab, line, sc->entpeak);   /* Peak counts */
 
     /* Extract selected field */
@@ -785,34 +874,46 @@ char *tabfile;	/* Tab table catalog file name */
 	/* Find length of tab table catalog */
 	lfile = tabsize (tabfile);
 	if (lfile < 1) {
-	    fprintf (stderr,"TABOPEN: Tab table catalog %s has no entries\n",tabfile);
+	    fprintf (stderr,"TABOPEN: Tab table file %s has no entries\n",
+		     tabfile);
 	    return (NULL);
 	    }
 
 	/* Open tab table catalog */
 	if (!(fcat = fopen (tabfile, "r"))) {
-	    fprintf (stderr,"TABOPEN: Tab table catalog %s cannot be read\n",tabfile);
+	    fprintf (stderr,"TABOPEN: Tab table file %s cannot be read\n",
+		     tabfile);
 	    return (NULL);
 	    }
 	}
 
     /* Allocate tab table structure */
     if ((tabtable=(struct TabTable *) calloc(1,sizeof(struct TabTable)))==NULL){
-	fprintf (stderr,"TABOPEN: cannot allocate Tab Table structure\n");
+	fprintf (stderr,"TABOPEN: cannot allocate Tab Table structure for %s\n",
+		 tabfile);
 	return (NULL);
 	}
 
     /* Allocate space in structure for filename and save it */
     lfname = strlen (tabfile) + 1;
     if ((tabtable->filename = (char *)calloc (1, lfname)) == NULL) {
-	fprintf (stderr,"TABOPEN: cannot allocate filename in structure\n");
+	fprintf (stderr,"TABOPEN: cannot allocate filename %s in structure\n",
+		 tabfile);
+	(void) fclose (fcat);
 	tabclose (tabtable);
 	return (NULL);
 	}
     strncpy (tabtable->filename, tabfile, lfname);
 
     /* Allocate buffer to hold entire catalog and read it */
-    if ((tabtable->tabbuff = (char *) calloc (1, lfile)) != NULL) {
+    if ((tabtable->tabbuff = (char *) calloc (1, lfile)) == NULL) {
+	fprintf (stderr,"TABOPEN: cannot allocate buffer for tab table %s\n",
+		 tabfile);
+	(void) fclose (fcat);
+	tabclose (tabtable);
+	return (NULL);
+	}
+    else {
 	nr = fread (tabtable->tabbuff, 1, lfile, fcat);
 	if (fcat != stdin && nr < lfile) {
 	    fprintf (stderr,"TABOPEN: read only %d / %d bytes of file %s\n",
@@ -830,7 +931,9 @@ char *tabfile;	/* Tab table catalog file name */
 	    lastline = tabline;
 	    tabline = strchr (tabline,newline) + 1;
 	    }
-	if (strncmp (lastline,headend, 2)) {
+	if (strncmp (tabline,headend, 2)) {
+	    fprintf (stderr,"TABOPEN: No ---- line in tab table %s\n",tabfile);
+	    (void) fclose (fcat);
 	    tabclose (tabtable);
 	    return (NULL);
 	    }
@@ -840,6 +943,7 @@ char *tabfile;	/* Tab table catalog file name */
 	/* Extract positions of keywords we will want to use */
 	if (!tabparse (tabtable)) {
 	    fprintf (stderr,"TABOPEN: No columns in tab table %s\n",tabfile);
+	    (void) fclose (fcat);
 	    tabclose (tabtable);
 	    return (NULL);
 	    }
@@ -1249,6 +1353,26 @@ char	*keyword;		/* Column heading to find */
 }
 
 
+/* Search table of column headings for first with string (case-dependent) */
+
+int
+tabcont (tabtable, keyword)
+
+struct TabTable *tabtable;	/* Tab table structure */
+char	*keyword;		/* Part of column heading to find */
+
+{
+    int i;
+
+    for (i = 0; i < tabtable->ncols; i++) {
+	if (strnsrch (tabtable->colname[i], keyword, tabtable->lcol[i])) {
+	    return (i + 1);
+	    }
+	}
+    return (0);
+}
+
+
 /* TABSIZE -- return size of file in bytes */
 
 static int
@@ -1358,4 +1482,8 @@ char    *filename;      /* Name of file to check */
  * Oct 29 1999	Add tabxyread() for image catalogs
  * Nov 23 1999	Improve error checking on Starbase tables; istab() opens file
  * Nov 30 1999	Fix bugs found when compiling under SunOS 4.1.3
+ *
+ * Jan  4 2000	Always close file and print error message on tabopen() failures
+ * Jan  6 2000	If "id" not found, try heading with "_id" to catch scat output
+ * Jan 10 2000	Add second magnitude; save column headers in catalog structure
  */

@@ -1,5 +1,5 @@
 /* File libwcs/dateutil.c
- * December 20, 1999
+ * January 3, 2000
  * By Doug Mink
  */
 
@@ -761,7 +761,7 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 	    *iyr = (int) atof (nval);
 	    if (*iyr >= 0 && *iyr <= 49)
 		*iyr = *iyr + 2000;
-	    else if (*iyr < 100)
+	    else if (*iyr <= 100)
 		*iyr = *iyr + 1900;
 	    }
 	else
@@ -1202,4 +1202,5 @@ double	dnum, dm;
  * Dec 17 1999	Add all unimplemented conversions
  * Dec 20 1999	Add isdate(); leave date, time strings unchanged in fd2i()
  * Dec 20 1999	Make all fd2*() subroutines deal with time alone
+ * Jan  3 2000	In old FITS format, year 100 is assumed to be 2000
  */

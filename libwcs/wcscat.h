@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * November 1, 1999
+ * January 11, 2000
  * By Doug Mink, SAO
  */
 
@@ -122,12 +122,20 @@ struct StarCat {
     int entid;		/* Entry number for ID */
     int entra;		/* Entry number for right ascension */
     int entdec;		/* Entry number for declination */
-    int entmag;		/* Entry number for magnitude */
+    int entmag1;	/* Entry number for first or only magnitude */
+    int entmag2;	/* Entry number for second magnitude, if present */
     int entpeak;	/* Entry number for peak counts */
     int entepoch;	/* Entry number for epoch of observation */
     int entname;	/* Entry number for object name */
     int entprop;	/* Entry number for proper motion */
-    int entkey;		/* Entry number for additional keyword */
+    int entadd;		/* Entry number for additional keyword */
+    char keyid[16];	/* Entry name for ID */
+    char keyra[16];	/* Entry name for right ascension */
+    char keydec[16];	/* Entry name for declination */
+    char keymag1[16];	/* Entry name for first or only magnitude */
+    char keymag2[16];	/* Entry name for second magnitude, if present */
+    char keypeak[16];	/* Entry name for integer code */
+    char keyadd[16];	/* Entry name for additional keyword */
 };
 
 /* Subroutines for reading headers of TDC binary and ASCII catalogs */
@@ -167,6 +175,7 @@ double tabgetdec();	/* Return double declination in degrees from tab table*/
 double tabgetr8();	/* Return double number from tab table line */
 void tabclose();	/* Free all arrays left open by tab table structure */
 int istab();
+int gettabndec();	/* Return number of decimal places in tab catalog ids */
 
 #define MAXRANGE 20
 
@@ -247,4 +256,7 @@ int getoken();		/* Get specified token from tokenized string */
  * Oct 29 1999	Add tabget() subroutines
  * Nov  1 1999	Increase maximum number of tokens on a line from 20 to 100
  * Nov  2 1999	Move date utilities to fitsfile.h
+ *
+ * Jan 10 2000	Add column names to catalog data structure
+ * Jan 11 2000	Add gettabndec()
  */
