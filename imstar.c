@@ -1,5 +1,5 @@
 /* File imstar.c
- * October 17, 1996
+ * December 11, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -25,15 +25,17 @@ extern void setstarsig ();
 extern void setbmin ();
 extern void setmaxrad ();
 extern void setborder ();
+extern void setimcat();
+extern struct WorldCoor *GetFITSWCS();
 
 static double magoff = 0.0;
 static int rasort = 0;
-static char coorsys[4];
 static int printhead = 0;
 static int tabout = 0;
 static int nstar = 0;
 static double cra0 = 0.0;
 static double cdec0 = 0.0;
+static double eqout = 0.0;
 
 main (ac, av)
 int ac;
@@ -42,9 +44,8 @@ char **av;
     char *progname = av[0];
     char *str;
     double bmin;
+    char rastr[32], decstr[32];
     int maxrad;
-
-    *coorsys = 0;
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
@@ -54,32 +55,46 @@ char **av;
 	case 'v':	/* more verbosity */
 	    verbose++;
 	    break;
-	case 'b':	/* ouput FK4 (B1950) coordinates */
-	    strcpy (coorsys, "FK4");
+
+	case 'a':       /* Initial rotation angle in degrees */
+	    if (ac < 2)
+		usage();
+	    setrot (atof (*++av));
+	    ac--;
 	    break;
+
+	case 'b':	/* ouput FK4 (B1950) coordinates */
+	    eqout = 1950.0;
+	    break;
+
 	case 'c':	/* Set center RA and Dec */
 	    if (ac < 3)
 		usage (progname);
-	    cra0 = str2ra (*++av);
+	    strcpy (rastr, *++av);
 	    ac--;
-	    cdec0 = str2dec (*++av);
+	    strcpy (decstr, *++av);
+	    ac--;
+	    setcenter (rastr, decstr);
+	    break;
+
+	case 'd':	/* Read image star positions from DAOFIND file */
+	    if (ac < 2)
+		usage();
+	    setimcat (*++av);
 	    ac--;
 	    break;
-	case 'd':	/* Print each star as it is found */
-	    debug++;
-	    break;
+
 	case 'e':	/* Number of pixels to ignore around image edge */
 	    if (ac < 2)
 		usage (progname);
 	    setborder (atof (*++av));
 	    ac--;
 	    break;
+
 	case 'h':	/* ouput descriptive header */
 	    printhead++;
 	    break;
-	case 'j':	/* ouput FK5 (J2000) coordinates */
-	    strcpy (coorsys, "FK5");
-	    break;
+
 	case 'i':	/* Image star minimum peak value (or minimum sigma */
 	    if (ac < 2)
 		usage (progname);
@@ -90,18 +105,29 @@ char **av;
 		setbmin (bmin);
 	    ac--;
 	    break;
+
+	case 'j':	/* ouput FK5 (J2000) coordinates */
+	    eqout = 2000.0;
+	    break;
+
+	case 'k':	/* Print each star as it is found */
+	    debug++;
+	    break;
+
 	case 'm':	/* Magnitude offset */
 	    if (ac < 2)
 		usage (progname);
 	    magoff = atof (*++av);
 	    ac--;
 	    break;
+
 	case 'n':	/* Number of brightest stars to read */
 	    if (ac < 2)
 		usage (progname);
 	    nstar = atoi (*++av);
 	    ac--;
 	    break;
+
 	case 'r':	/* Maximum acceptable radius for a star */
 	    if (ac < 2)
 		usage (progname);
@@ -109,12 +135,15 @@ char **av;
 	    setmaxrad (maxrad);
 	    ac--;
 	    break;
+
 	case 's':	/* sort by RA */
 	    rasort = 1;
 	    break;
+
 	case 't':	/* tab table to stdout */
 	    tabout = 1;
 	    break;
+
 	default:
 	    usage (progname);
 	    break;
@@ -142,13 +171,15 @@ char *progname;
     fprintf (stderr,"Find stars in FITS and IRAF image files\n");
     fprintf(stderr,"%s: usage: [-vbsjt] [-m mag_off] [-n num] [-c ra dec]file.fts ...\n",
 	    progname);
+    fprintf(stderr,"  -a: initial rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: Output B1950 (FK4) coordinates \n");
     fprintf(stderr,"  -c: Use following RA and Dec as center \n");
-    fprintf(stderr,"  -d: Print each star as it is found for debugging \n");
+    fprintf(stderr,"  -d: Use following DAOFIND output catalog instead of search \n");
     fprintf(stderr,"  -e: Number of pixels to ignore around image edge \n");
     fprintf(stderr,"  -h: Print heading, else do not \n");
     fprintf(stderr,"  -i: Minimum peak value for star in image (<0=-sigma)\n");
     fprintf(stderr,"  -j: Output J2000 (FK5) coordinates \n");
+    fprintf(stderr,"  -k: Print each star as it is found for debugging \n");
     fprintf(stderr,"  -m: Magnitude offset\n");
     fprintf(stderr,"  -n: Number of brightest stars to print \n");
     fprintf(stderr,"  -r: Maximum radius for star in pixels \n");
@@ -181,7 +212,8 @@ char	*filename;	/* FITS or IRAF file filename */
     double *smag;		/* image star magnitudes */
     int *sp;			/* peak flux in counts */
     double ra, dec;
-    double cra,cdec,dra,ddec;
+    double cra,cdec,dra,ddec,secpix;
+    int wp, hp;
     char rastr[16], decstr[16];
     int i;
     char headline[160];
@@ -234,21 +266,8 @@ char	*filename;	/* FITS or IRAF file filename */
  * ascension, declination, and a plate magnitude
  */
 
-    wcs = wcsinit (header);
-    wcs->printsys = 0;
-    if (coorsys[1])
-	wcsoutinit (wcs, coorsys);
-    wcssize (wcs, &cra, &cdec, &dra, &ddec);
-    if (cra0 > 0.0)
-	cra = cra0;
-    if (cdec0 != 0.0)
-	cdec = cdec0;
-    if (cra0 > 0.0 || cdec0 != 0.0) {
-	if (coorsys[1])
-	    wcsshift (wcs,cra,cdec,coorsys);
-	else
-	    wcsshift (wcs,cra,cdec,wcs->radecsys);
-	}
+    wcs = GetFITSWCS (header,verbose, &cra, &cdec, &dra, &ddec, &secpix,
+	  &wp, &hp, eqout);
 
     /* Discover star-like things in the image, in pixels */
     ns = FindStars (header, image, &sx, &sy, &sb, &sp, debug);
@@ -333,13 +352,13 @@ char	*filename;	/* FITS or IRAF file filename */
 	pix2wcs (wcs, sx[i], sy[i], &ra, &dec);
 	ra2str (rastr, ra, 3);
 	dec2str (decstr, dec, 2);
-	sprintf (headline, "%d	%s	%s	%.2f	%.1f	%.1f	%.1f	%d",
+	sprintf (headline, "%d	%s	%s	%.2f	%.2f	%.2f	%.2f	%d",
 		 i+1, rastr,decstr, smag[i], sx[i], sy[i], sb[i], sp[i]);
 	fprintf (fd, "%s\n", headline);
 	if (tabout)
 	    printf ("%s\n", headline);
 	else if (verbose)
-	    printf ("%3d %s %s %6.2f %6.1f %6.1f %8.1f %d\n",
+	    printf ("%3d %s %s %6.2f %7.2f %7.2f %8.1f %d\n",
 		    i+1, rastr, decstr, smag[i],sx[i],sy[i],sb[i], sp[i]);
 	}
 
@@ -371,4 +390,7 @@ char	*filename;	/* FITS or IRAF file filename */
  * Aug 30 1996	Allow border to be set
  * Sep  1 1996	Move parameter defaults to lwcs.h
  * Oct 17 1996	Drop unused variables
+ * Dec 10 1996	Improve hot pixel rejection
+ * Dec 11 1996	Allow reading from DAOFIND file instead of searching image
+ * Dec 11 1996	Add WCS default rotation and use getfitswcs
  */

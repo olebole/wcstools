@@ -1,5 +1,5 @@
 /* File libwcs/imgetwcs.c
- * November 15, 1996
+ * December 10, 1996
  * By Doug Mink, based on UIowa code
  */
 
@@ -37,7 +37,7 @@ static double rad0 = 10.0;		/* Search box radius in arcseconds */
  */
 
 struct WorldCoor *
-GetFITSWCS (header, verbose, cra, cdec, dra, ddec, secpix, wp, hp, eqref)
+GetFITSWCS (header, verbose, cra, cdec, dra, ddec, secpix, wp, hp, eq2)
 
 char	*header;	/* Image FITS header */
 int	verbose;	/* Extra printing if =1 */
@@ -48,12 +48,13 @@ double	*ddec;		/* Declination half-width in degrees (returned) */
 double	*secpix;	/* Arcseconds per pixel (returned) */
 int	*wp;		/* Image width in pixels (returned) */
 int	*hp;		/* Image height in pixels (returned) */
-int	eqref;		/* Equinox of reference catalog (0=keep equinox) */
+double	eq2;		/* Equinox to return (0=keep equinox) */
 {
     int nax;
-    int equinox, eqcoor;
+    int equinox, eqcoor, eq1;
     double epoch, xref, yref;
     struct WorldCoor *wcs;
+    int eqref;
 
     /* Set image dimensions */
     nax = 0;
@@ -84,7 +85,12 @@ int	eqref;		/* Equinox of reference catalog (0=keep equinox) */
 
     /* Find center for pre-existing WCS, if there is one */
     wcs = wcsinit (header);
+    eqref = (int) eq2;
     if (iswcs (wcs)) {
+	if (eqref == 1950)
+	    wcsoutinit ("FK4");
+	else
+	    wcsoutinit ("FK5");
 	wcssize (wcs, cra, cdec, dra, ddec);
 	if (wcs->xref == 0.0 && wcs->yref == 0.0) {
 	    wcs->xref = *cra;
@@ -95,16 +101,6 @@ int	eqref;		/* Equinox of reference catalog (0=keep equinox) */
 	    wcs->yinc = *ddec / wcs->yrefpix;
 	    hchange (header,"PLTRAH","PLT0RAH");
 	    wcs->plate_fit = 0;
-	    }
-	if (eqref != 0.0 && wcs->equinox != eqref) {
-	    if (eqref > 1980) {
-		fk425e (cra, cdec, wcs->epoch);
-		wcsshift (wcs, *cra, *cdec, "FK5");
-		}
-	    else {
-		fk524e (cra, cdec, wcs->epoch);
-		wcsshift (wcs, *cra, *cdec, "FK4");
-		}
 	    }
 	}
 
@@ -124,23 +120,51 @@ int	eqref;		/* Equinox of reference catalog (0=keep equinox) */
 	    }
 
 	/* Equinox of coordinates */
-	if (hgeti4 (header, "EPOCH", &equinox) == 0) {
-	    if (hgeti4 (header, "EQUINOX", &equinox) == 0)
-		equinox = 1950;
+	epoch = 0.0;
+	equinox = 0;
+	if (hgeti4 (header, "EQUINOX", &equinox) == 0) {
+	    if (hgeti4 (header, "EPOCH", &equinox) == 0) {
+		equinox = 2000;
+		eq1 = 2000.0;
+		}
+	    else
+		hgetr8 (header, "EPOCH", &eq1);
 	    }
+	else {
+	    hgetr8 (header, "EQUINOX", &eq1);
+	    hgetr8 (header, "EPOCH", &epoch);
+	    }
+	if (equinox == 0) {
+	    equinox = 1950;
+	    eq1 = 1950.0;
 
 	/* Epoch of image (observation date) */
-	if (hgetdate (header," OBS-DATE", &epoch) == 0) {
-	    if (hgetdate (header," DATE-OBS", &epoch) == 0)
-		epoch = (double) equinox;
+	if (epoch == 0.0) {
+	    if (hgetdate (header," OBS-DATE", &epoch) == 0) {
+		if (hgetdate (header," DATE-OBS", &epoch) == 0)
+		    epoch = (double) equinox;
+		}
 	    }
+	if (epoch == 0)
+	    epoch = 1950.0;
 
 	/* If coordinate equinox not reference catalog equinox, convert */
 	if (equinox != eqref) {
-	    if (eqref > 1980)
-		fk425e (cra, cdec, epoch);
+	    eq2 = (double) eqref;
+	    if (eqref == 2000)
+		if (equinox == 1950)
+		    fk425e (cra, cdec, epoch);
+		else
+		    fk5prec (eq1, eq2, cra, cdec);
+		}
+	    else if (eqref == 1950) {
+		if (equinox == 2000)
+		    fk524e (cra, cdec, epoch);
+		else
+		    fk4prec (eq1, eq2, cra, cdec);
+		}
 	    else
-		fk524e (cra, cdec, epoch);
+		fk5prec (eq1, eq2, cra, cdec);
 	    }
 	}
 
@@ -381,4 +405,5 @@ double rad;
  * Nov  4 1996	Add reference pixel and projection to wcsset() call
  * Nov 14 1996	Add GetLimits() to deal with search limits around the poles
  * Nov 15 1996	Drop GetLimits(); code moved to individual catalog routines
+ * Dec 10 1996	Fix precession and make equinox double
  */

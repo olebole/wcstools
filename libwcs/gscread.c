@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** November 15, 1996
+ *** December 12, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -284,7 +284,7 @@ int	nlog;		/* 1 for diagnostics */
 /* Log operation */
 
 	    if (nlog > 0 && itable%nlog == 0)
-		fprintf (stderr,"GSCREAD: %4d / %4d: %5d / %5d  / %5d sources, region %4d.%04d\n",
+		fprintf (stderr,"GSCREAD: %4d / %4d: %5d / %5d  / %5d sources, region %4d.%04d\r",
 			 ireg,nreg,jstar,itable,ntable,rlist[ireg],num0);
 
 /* End of region */
@@ -294,7 +294,7 @@ int	nlog;		/* 1 for diagnostics */
 	(void) fclose (ift);
 	itot = itot + itable;
 	if (nlog > 0)
-	    fprintf (stderr,"GSCREAD: %4d / %4d: %5d / %5d  / %5d sources from region %4d\n",
+	    fprintf (stderr,"GSCREAD: %4d / %4d: %5d / %5d  / %5d sources from region %4d    \n",
 		     ireg+1,nreg,jstar,itable,ntable,rlist[ireg]);
 	}
 
@@ -672,4 +672,5 @@ char *path;	/* Pathname of GSC region FITS file */
  * Nov 13 1996	Return no more than maximum star number
  * Nov 13 1996	Write all error messages to stderr with subroutine names
  * Nov 15 1996	Implement search radius; change input arguments
+ * Dec 12 1996	Make logging run on single line per region
  */

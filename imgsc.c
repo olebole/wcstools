@@ -1,5 +1,5 @@
 /* File imgsc.c
- * November 15, 1996
+ * December 12, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -32,7 +32,8 @@ extern struct WorldCoor *GetFITSWCS();
 static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
 static int classd = -1;		/* Guide Star Catalog object classes */
-static double maglim = MAGLIM;	/* Guide Star Catalog magnitude limit */
+static double maglim1 = MAGLIM1; /* Guide Star Catalog bright magnitude limit */
+static double maglim2 = MAGLIM;	/* Guide Star Catalog faint magnitude limit */
 static char coorsys[4];		/* Output coordinate system */
 static int nstars = 0;		/* Number of brightest stars to list */
 static int printhead = 0;	/* 1 to print table heading */
@@ -109,8 +110,13 @@ char **av;
 	case 'm':	/* Magnitude limit */
 	    if (ac < 2)
 		usage ();
-	    maglim = atof (*++av);
+	    maglim2 = atof (*++av);
 	    ac--;
+	    if (ac > 1 && isnum (*(av+1))) {
+		maglim1 = maglim2;
+		maglim2 = atof (*++av);
+		ac--;
+		}
 	    break;
 
 	case 'n':	/* Number of brightest stars to read */
@@ -164,7 +170,7 @@ static void
 usage ()
 {
     fprintf (stderr,"Find HST GSC stars in FITS or IRAF image files\n");
-    fprintf (stderr,"Usage: [-vhstw] [-m mag_off] [-n num] [-p scale]\n");
+    fprintf (stderr,"Usage: [-vhstw] [-m [mag1] mag2] [-n num] [-p scale]\n");
     fprintf (stderr,"       [-b ra dec] [-j ra dec] FITS or IRAF file(s)\n");
     fprintf(stderr,"  -b: output B1950 (FK4) coordinates (optional center)\n");
     fprintf(stderr,"  -g: object type (0=stars 3=galaxies -1=all)\n");
@@ -211,6 +217,7 @@ char	*filename;	/* FITS or IRAF file filename */
     struct WorldCoor *wcs;	/* World coordinate system structure */
     char rastr[16], decstr[16];	/* coordinate strings */
     double cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, mag1, mag2, secpix;
+    double mag;
     int offscale, nlog;
     char headline[160];
 
@@ -243,7 +250,7 @@ char	*filename;	/* FITS or IRAF file filename */
 
     /* Read world coordinate system information from the image header */
     wcs = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-                &imw, &imh, 2000);
+                &imw, &imh, 2000.0);
     free (header);
     if (nowcs (wcs))
         return;
@@ -269,17 +276,25 @@ char	*filename;	/* FITS or IRAF file filename */
 	wcsoutinit (wcs, coorsys);
 
 /* Set the magnitude limits for the GSC search */
-    if (maglim == 0.0) {
+    if (maglim2 == 0.0) {
 	mag1 = 0.0;
 	mag2 = 0.0;
 	}
     else {
-	mag1 = -2.0;
-	mag2 = maglim;
+	mag1 = maglim1;
+	mag2 = maglim2;
+	}
+    if (mag2 < mag1) {
+	mag = mag1;
+	mag1 = mag2;
+	mag2 = mag;
 	}
 
-    ngmax = MAXREF;
-    nbytes = MAXREF * sizeof (double);
+    if (nstars > MAXREF)
+	ngmax = nstars;
+    else
+	ngmax = MAXREF;
+    nbytes = ngmax * sizeof (double);
     if (!(gnum = (double *) malloc (nbytes)))
 	fprintf (stderr, "Could not malloc %d bytes for gnum\n", nbytes);
     if (!(gra = (double *) malloc (nbytes)))
@@ -342,14 +357,21 @@ char	*filename;	/* FITS or IRAF file filename */
     if (nstars > 0 && ng > nstars) {
 	nbg = nstars;
 	if (verbose || printhead)
-	    printf ("%d / %d HST Guide Stars (brighter than %.1f)",
-		     nbg, ng, gm[nbg-1]);
+	    if (maglim1 > 0.0)
+		printf ("%d / %d HST Guide Stars (between %.1f and %.1f)",
+			nbg, ng, gm[0], gm[nbg-1]);
+	    else
+		printf ("%d / %d HST Guide Stars (brighter than %.1f)",
+			nbg, ng, gm[nbg-1]);
 	}
     else {
 	nbg = ng;
 	if (verbose || printhead) {
-	    if (maglim > 0.0)
-		printf ("%d HST Guide Stars brighter than %.1f", ng, maglim);
+	    if (maglim1 > 0.0)
+		printf ("%d HST Guide Stars between %.1f and %.1f",
+			 ng, maglim1, maglim2);
+	    else if (maglim2 > 0.0)
+		printf ("%d HST Guide Stars brighter than %.1f", ng, maglim2);
 	    else
 		printf ("%d HST Guide Stars", ng);
 	    }
@@ -468,4 +490,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Oct 16 1996	Write list of stars to stdout by default, -w to write file
  * Nov 14 1996	Add second magnitude for sort subroutines
  * Nov 15 1996	Change arguments for search routine
+ * Dec 10 1996	Change equinox in getfitswcs call to double
+ * Dec 12 1996	Allow bright as well as faint magnitude limit
  */

@@ -1,5 +1,5 @@
 /* File imujc.c
- * November 15, 1996
+ * December 13, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -32,7 +32,8 @@ extern void fk524e();
 
 static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
-static double maglim = MAGLIM;	/* Guide Star Catalog magnitude limit */
+static double maglim1 = MAGLIM1; /* USNO J Catalog bright magnitude limit */
+static double maglim2 = MAGLIM;	/* USNO J Catalog faint magnitude limit */
 static char coorsys[4];		/* Output coordinate system */
 static int nstars = 0;		/* Number of brightest stars to list */
 static int printhead = 0;	/* 1 to print table heading */
@@ -99,8 +100,13 @@ char **av;
 	case 'm':	/* Magnitude limit */
 	    if (ac < 2)
 		usage ();
-	    maglim = atof (*++av);
+	    maglim2 = atof (*++av);
 	    ac--;
+	    if (ac > 1 && isnum (*(av+1))) {
+		maglim1 = maglim2;
+		maglim2 = atof (*++av);
+		ac--;
+		}
 	    break;
 
 	case 'n':	/* Number of brightest stars to read */
@@ -161,14 +167,14 @@ static void
 usage ()
 {
     fprintf (stderr,"Find UJC stars in FITS or IRAF image files\n");
-    fprintf (stderr,"Usage: [-vwhst] [-m faint mag] [-n num] [-u plate]\n");
+    fprintf (stderr,"Usage: [-vwhst] [-m [mag1] mag2] [-n num] [-u plate]\n");
     fprintf (stderr,"       [-p scale] [-b ra dec] [-j ra dec] FITS or IRAF file(s)\n");
     fprintf (stderr,"       [-b ra dec] [-j ra dec] file.fts ...\n");
     fprintf (stderr,"  -b: output B1950 (FK4) coordinates (optional center)\n");
     fprintf (stderr,"  -c: Use following RA and Dec as center \n");
     fprintf (stderr,"  -h: print heading, else do not \n");
     fprintf (stderr,"  -j: output J2000 (FK5) coordinates (optional center)\n");
-    fprintf (stderr,"  -m: magnitude limit\n");
+    fprintf (stderr,"  -m: magnitude limit(s)\n");
     fprintf (stderr,"  -n: number of brightest stars to print \n");
     fprintf (stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
     fprintf (stderr,"  -s: sort by RA instead of flux \n");
@@ -207,6 +213,7 @@ char	*filename;	/* FITS or IRAF file filename */
     struct WorldCoor *wcs;	/* World coordinate system structure */
     char rastr[16], decstr[16];	/* coordinate strings */
     double cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, mag1, mag2, secpix;
+    double mag;
     int offscale, nlog;
     char headline[160];
 
@@ -240,7 +247,7 @@ char	*filename;	/* FITS or IRAF file filename */
 
     /* Read world coordinate system information from the image header */
     wcs = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-                &imw, &imh, 2000);
+                &imw, &imh, 2000.0);
     free (header);
     if (nowcs (wcs))
         return;
@@ -265,13 +272,18 @@ char	*filename;	/* FITS or IRAF file filename */
 	wcsoutinit (wcs, coorsys);
 
 /* Set magnitude limits for the UJ Catalog search */
-    if (maglim == 0.0) {
+    if (maglim2 == 0.0) {
 	mag1 = 0.0;
 	mag2 = 0.0;
 	}
     else {
-	mag1 = -2.0;
-	mag2 = maglim;
+	mag1 = maglim1;
+	mag2 = maglim2;
+	}
+    if (mag2 < mag1) {
+	mag = mag1;
+	mag1 = mag2;
+	mag2 = mag;
 	}
 
     numax = MAXREF;
@@ -337,14 +349,21 @@ char	*filename;	/* FITS or IRAF file filename */
     if (nstars > 0 && nu > nstars) {
 	nbu = nstars;
 	if (verbose || printhead)
-	    printf ("%d / %d UJ Catalog Stars brighter than %.1f",
-		    nbu, nu, um[nbu-1]);
+	    if (maglim1 > 0.0)
+		printf ("%d / %d UJ Catalog Stars between %.1f and %.1f",
+			nbu, nu, um[0], um[nbu-1]);
+	    else
+		printf ("%d / %d UJ Catalog Stars brighter than %.1f",
+			nbu, nu, um[nbu-1]);
 	}
     else {
 	nbu = nu;
 	if (verbose || printhead) {
-	    if (maglim > 0.0)
-		printf ("%d UJ Catalog Stars brighter than %.1f", nu, maglim);
+	    if (maglim1 > 0.0)
+		printf ("%d UJ Catalog Stars between %.1f and %.1f",
+		    nu, maglim1, maglim2);
+	    else if (maglim2 > 0.0)
+		printf ("%d UJ Catalog Stars brighter than %.1f", nu, maglim2);
 	    else
 		printf ("%d UJ Catalog Stars", nu);
 	    }
@@ -400,12 +419,14 @@ char	*filename;	/* FITS or IRAF file filename */
     if (tabout)
 	printf ("%s\n", headline);
     if (plate > 0) {
-	fprintf (fd, "PLATE	%d\n", plate);
+	if (wfile)
+	    fprintf (fd, "PLATE	%d\n", plate);
 	if (tabout)
 	    printf ("PLATE	%d\n", plate);
 	}
     if (rasort) {
-	fprintf (fd, "RASORT	T\n");
+	if (wfile)
+	    fprintf (fd, "RASORT	T\n");
 	if (tabout)
 	    printf ("RASORT	T\n");
 	}
@@ -470,4 +491,7 @@ char	*filename;	/* FITS or IRAF file filename */
  * Oct 16 1996  Write list of stars to stdout by default, -w to write file
  * Oct 18 1996	Write selected plate to tab table header
  * Nov 15 1996	Change arguments to UJCREAD
+ * Dec 10 1996	Change equinox in getfitswcs call to double
+ * Dec 12 1996	Allow bright as well as faint magnitude limit
+ * Dec 13 1996	Fix bug writing sorted header
  */

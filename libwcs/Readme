@@ -1,5 +1,8 @@
-libwcs Subroutines
+WCSTools libwcs Subroutines
 
+daoread.c
+  Read x, y, and magnitude from DAOFIND output file and return x, y, and
+  flux for use by IMSTAR or IMWCS.
 findstar.c
   findStars() gets the location and brightest pixel of stars in the given
   image.  Included are subroutines to find and reject bright pixels and
@@ -57,6 +60,9 @@ sortstars.c
 tabread.c
   Return stars from a tab table format catalog file for a given RA, Dec,
   and magnitude range.  Based on John Roll's Starbase format.
+uacread.c
+  Return USNO A Catalog stars from its standard CDROM format files for
+  a given RA, Dec, and magnitude range.
 ujcread.c
   Return USNO UJ Catalog stars from its standard CDROM format files for
   a given RA, Dec, and magnitude range.

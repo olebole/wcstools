@@ -1,5 +1,5 @@
 /* File scat.c
- * November 19, 1996
+ * December 13, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -39,7 +39,8 @@ static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
 static int classd = -1;		/* Guide Star Catalog object classes */
 static int uplate = 0;		/* UJ Catalog plate number to use */
-static double maglim = MAGLIM;	/* Guide Star Catalog magnitude limit */
+static double maglim1 = MAGLIM1; /* Catalog bright magnitude limit */
+static double maglim2 = MAGLIM;	/* Catalog faint magnitude limit */
 static char coorsys[4];		/* Output coordinate system */
 static int nstars = 0;		/* Number of brightest stars to list */
 static int printhead = 0;	/* 1 to print table heading */
@@ -147,8 +148,13 @@ char **av;
 	case 'm':	/* Magnitude limit */
 	    if (ac < 2)
 		usage ();
-	    maglim = atof (*++av);
+	    maglim2 = atof (*++av);
 	    ac--;
+	    if (ac > 1 && isnum (*(av+1))) {
+		maglim1 = maglim2;
+		maglim2 = atof (*++av);
+		ac--;
+		}
 	    break;
 
 	case 'n':	/* Number of brightest stars to read */
@@ -206,7 +212,7 @@ static void
 usage ()
 {
     fprintf (stderr,"Find catalog stars in a square on the sky\n");
-    fprintf (stderr,"Usage: [-1dhstvw] [-m mag_off] [-n num] [-r arcsec] [-b][-j] ra dec\n");
+    fprintf (stderr,"Usage: [-1dhstvw] [-m [mag1] mag2] [-n num] [-r arcsec] [-b][-j] ra dec\n");
     fprintf(stderr,"  -1: list single closest catalog source\n");
     fprintf(stderr,"  -b: output B1950 (FK4) coordinates around this center\n");
     fprintf(stderr,"  -c: reference catalog (gsc, ujc, or tab table file\n");
@@ -214,7 +220,7 @@ usage ()
     fprintf(stderr,"  -g: object type (0=stars 3=galaxies -1=all)\n");
     fprintf(stderr,"  -h: print heading, else do not \n");
     fprintf(stderr,"  -j: output J2000 (FK5) coordinates around this center\n");
-    fprintf(stderr,"  -m: magnitude limit\n");
+    fprintf(stderr,"  -m: magnitude limit(s)\n");
     fprintf(stderr,"  -n: number of brightest stars to print \n");
     fprintf(stderr,"  -o: object name \n");
     fprintf(stderr,"  -r: search radius in arcsec (default 10)\n");
@@ -251,6 +257,7 @@ ListCat ()
     FILE *fd;
     char rastr[16], decstr[16];	/* coordinate strings */
     double cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, mag1, mag2, box;
+    double mag;
     int offscale, nlog;
     char headline[160];
     char filename[80];
@@ -295,13 +302,13 @@ ListCat ()
 	}
 
 /* Set the magnitude limits for the catalog search */
-    if (maglim == 0.0) {
+    if (maglim2 == 0.0) {
 	mag1 = 0.0;
 	mag2 = 0.0;
 	}
     else {
-	mag1 = -2.0;
-	mag2 = maglim;
+	mag1 = maglim1;
+	mag2 = maglim2;
 	}
 
     if (nstars > MAXREF)
@@ -387,6 +394,9 @@ ListCat ()
 	    if (distsort)
 		printf ("%d / %d %s (closer than %.2f arcsec)\n",
 		     nbg, ng, title, 3600.0*gx[nbg-1]);
+	    else if (maglim1 > 0.0)
+		printf ("%d / %d %s (between %.1f and %.1f)\n",
+		     nbg, ng, title, gm[0], gm[nbg-1]);
 	    else
 		printf ("%d / %d %s (brighter than %.1f)\n",
 		     nbg, ng, title, gm[nbg-1]);
@@ -395,9 +405,12 @@ ListCat ()
     else {
 	nbg = ng;
 	if (verbose || printhead) {
-	    if (maglim > 0.0)
+	    if (maglim1 > 0.0)
+		printf ("%d %s between %.1f and %.1f\n",
+			ng, title, maglim1, maglim2);
+	    else if (maglim2 > 0.0)
 		printf ("%d %s brighter than %.1f\n",
-			ng, title, maglim);
+			ng, title, maglim2);
 	    else if (verbose)
 		printf ("%d %s\n", ng, title);
 	    }
@@ -471,6 +484,13 @@ ListCat ()
     if (tabout)
 	printf ("%s\n", headline);
 
+    if (uplate > 0) {
+	if (wfile)
+            fprintf (fd, "PLATE     %d\n", uplate);
+        if (tabout)
+            printf ("PLATE      %d\n", uplate);
+        }
+
     if (distsort) {
 	if (wfile)
 	    fprintf (fd, "DISTSORT	T\n");
@@ -511,7 +531,7 @@ ListCat ()
 	if (refcat == GSC)
 	    printf ("GSC number RA           Dec           Mag Type Arcsec\n");
 	else if (refcat == UAC)
-	    printf ("USNO A number  RA           Dec          MagR  MagB Plate  Arcsec\n");
+	    printf ("USNO A number  RA           Dec          MagB  MagR Plate  Arcsec\n");
 	else if (refcat == UJC)
 	    printf (" UJ number    RA           Dec           Mag  Plate Arcsec\n");
 	else
@@ -568,4 +588,8 @@ ListCat ()
  * Nov 13 1996	Set maximum nstar from command line if greater than default
  * Nov 14 1996	Set limits from subroutine
  * Nov 19 1996	Fix usage
+ * Dec 12 1996	Allow bright as well as faint magnitude limit
+ * Dec 12 1996	Fix header for UAC
+ * Dec 12 1996	Fix header for UAC magnitudes
+ * Dec 13 1996	Write plate into header if selected
  */

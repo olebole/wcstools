@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** October 15, 1996
+ *** December 10, 1996
  *** By Elwood Downey, revised by Doug Mink
  */
 
@@ -32,6 +32,11 @@ void setborder (brd)
 double brd;
 { fsborder = brd; return; }
 
+/* Set input catalog for image stars */
+static char imcatname[32] = "";
+void setimcat (cat)
+char *cat;
+{strcpy (imcatname, cat); return; }
 
 static int minsep = MINSEP;	/* Minimum separation for stars */
 static int minrad = MINRAD;	/* Minimum radius for a star */
@@ -94,6 +99,14 @@ int	verbose;	/* 1 to print each star's position */
     *ya = (double *) malloc (sizeof(double));
     *ba = (double *) malloc (sizeof(double));
     *pa = (int *) malloc (sizeof(int));
+
+    /* Read star list from file */
+    if (imcatname[0] != 0) {
+	int nlog;
+	if (verbose) nlog = 10;
+	nstars = daoread (imcatname, xa, ya, ba, pa,nlog);
+	return (nstars);
+	}
 
     /* Allocate a buffer to hold one image line */
     svec =  (double *) malloc (w * sizeof (double));
@@ -267,19 +280,38 @@ double	llimit;
 {
     double pix1, pix2, pix3;
 
+    /* Check for hot row */
     pix1 = getpix (image,bitpix,w,h,x-1,y-1);
     pix2 = getpix (image,bitpix,w,h,x,y-1);
     pix3 = getpix (image,bitpix,w,h,x+1,y-1);
     if (pix1 > llimit || pix2 > llimit || pix3 > llimit)
 	return (-1);
-    pix1 = getpix (image,bitpix,w,h,x-1,y);
-    pix3 = getpix (image,bitpix,w,h,x+1,y);
-    if (pix1 > llimit || pix3 > llimit)
-	return (-1);
     pix1 = getpix (image,bitpix,w,h,x-1,y+1);
     pix2 = getpix (image,bitpix,w,h,x,y+1);
     pix3 = getpix (image,bitpix,w,h,x+1,y+1);
     if (pix1 > llimit || pix2 > llimit || pix3 > llimit)
+	return (-1);
+
+    /* Check for hot column */
+    pix1 = getpix (image,bitpix,w,h,x-1,y-1);
+    pix2 = getpix (image,bitpix,w,h,x-1,y);
+    pix3 = getpix (image,bitpix,w,h,x-1,y+1);
+    if (pix1 > llimit || pix2 > llimit || pix3 > llimit)
+	return (-1);
+    pix1 = getpix (image,bitpix,w,h,x+1,y-1);
+    pix2 = getpix (image,bitpix,w,h,x+1,y);
+    pix3 = getpix (image,bitpix,w,h,x+1,y+1);
+    if (pix1 > llimit || pix2 > llimit || pix3 > llimit)
+	return (-1);
+
+    /* Check for hot pixel */
+    pix1 = getpix (image,bitpix,w,h,x-1,y);
+    pix3 = getpix (image,bitpix,w,h,x+1,y);
+    if (pix1 > llimit || pix3 > llimit)
+	return (-1);
+    pix1 = getpix (image,bitpix,w,h,x,y-1);
+    pix3 = getpix (image,bitpix,w,h,x,y+1);
+    if (pix1 > llimit || pix3 > llimit)
 	return (-1);
 
     putpix (image, bitpix, w, h, x, y, llimit);
@@ -599,4 +631,6 @@ double	background;
  * Aug 30 1996	Modify sigma computation; allow border to be set
  * Sep  1 1996	Set constants in lwcs.h
  * Oct 15 1996	Drop unused variables
+ * Dec 10 1996	Check for hot columns as well as hot rows
+ * Dec 10 1996	Add option to read image stars from DAOFIND file
  */

@@ -1,5 +1,5 @@
 /* fitshead.h  FITS and IRAF file access subroutines
- * November 1, 1996
+ * December 12, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -38,6 +38,9 @@ extern double str2dec ();
 
 /* Find given keyword entry in FITS header */
 extern char *ksearch ();
+
+/* Check to see whether a string is a number or not */
+extern int isnum ();
 
 /* Search for substring s2 within string s1 */
 extern char *strsrch ();	/* s1 null-terminated */
@@ -105,4 +108,5 @@ extern int imswapped();
  * Aug  6 1996	Add HPUTNR8 to save a specified number of decimal places
  * Aug  6 1996	Add MOVEPIX, HDEL and HCHANGE declarations
  * Nov  1 1996	Add DEG2STR
+ * Dec 12 1996	Add ISNUM
  */

@@ -1,5 +1,5 @@
 /* File imsize.c
- * October 31, 1996
+ * December 10, 1996
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -30,6 +30,7 @@ static int verbose = 0;		/* verbose/debugging flag */
 static int dss = 0;		/* Flag to drop extra stuff for DSS */
 static int dssc = 0;		/* Flag to drop extra stuff for DSS */
 static int ieq = 0;
+static double equinox = 0.0;
 
 main (ac, av)
 int ac;
@@ -54,6 +55,7 @@ char **av;
 	case 'b':	/* ouput B1950 (B1950) coordinates */
 	    strcpy (coorsys, "B1950");
 	    ieq = 1950;
+	    equinox = 1950.0;
 	    str1 = *(av+1);
 	    if (*(str+1) || !strchr (str1,':'))
 		setfk4 ();
@@ -92,6 +94,7 @@ char **av;
 	case 'j':	/* ouput J2000 (J2000) coordinates */
 	    str1 = *(av+1);
 	    ieq = 2000;
+	    equinox = 2000.0;
 	    if (*(str+1) || !strchr (str1,':'))
 		strcpy (coorsys, "J2000");
 	    else if (ac < 3)
@@ -236,7 +239,7 @@ char *name;
 
     /* Read world coordinate system information from the image header */
     wcs = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-                &wp, &hp, ieq);
+                &wp, &hp, equinox);
 
     /* Image center */
     ra2str (rstr, cra, 3);
@@ -256,25 +259,25 @@ char *name;
 	    else
 		sprintf (coorsys,"%6.1f",wcs->equinox);
 	    }
-	else if (hgeti4 (header,"EQUINOX",&ieq)) {
-	    if (ieq == 0)
-		ieq = 1950;
-	    if (ieq == 1950)
+	else if (hgetr8 (header,"EQUINOX",&equinox)) {
+	    if (equinox == 0)
+		equinox = 1950.0;
+	    if (equinox == 1950.0)
 		strcpy (coorsys, "B1950");
 	    else if (ieq == 2000)
 		strcpy (coorsys, "J2000");
 	    else
-		sprintf (coorsys,"%4d",ieq);
+		sprintf (coorsys,"%6.1f",equinox);
 	    }
-	else if (hgeti4 (header,"EPOCH",&ieq)) {
-	    if (ieq == 0)
-		ieq = 1950;
-	    if (ieq == 1950)
+	else if (hgetr8 (header,"EPOCH",&equinox)) {
+	    if (equinox == 0)
+		equinox = 1950.0;
+	    if (equinox == 1950.0)
 		strcpy (coorsys, "B1950");
-	    else if (ieq == 2000)
+	    else if (equinox == 2000.0)
 		strcpy (coorsys, "J2000");
 	    else
-		sprintf (coorsys,"%4d",ieq);
+		sprintf (coorsys,"%6.1f",equinox);
 	    }
 	else
 	    strcpy (coorsys, "J2000");
@@ -327,4 +330,5 @@ char *name;
  * Oct 16 1996  Rewrite to allow optional new center and use GetWCSFITS
  * Oct 17 1996	Do not print angular size and scale if not set
  * Oct 30 1996	Make equinox default to J2000 if not in image header
+ * Dec 10 1996	Change equinox in getfitswcs call to double
  */

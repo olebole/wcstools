@@ -21,6 +21,7 @@
 #define MINSTARS	4	/* Minimum stars from reference and image */
 #define MAXSTARS	25	/* Max star pairs we need to try using */
 #define MAXREF		100	/* Max reference stars to use in image region */
+#define MAGLIM1		-2	/* Faintest reference catalog magnitude to use*/
 #define MAGLIM		0	/* Faintest reference catalog magnitude to use*/
 #define PIXDIFF		10	/* +- this many pixels is a match */
 #define PSCALE		0	/* Plate scale in arcsec/pixel */

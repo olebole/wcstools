@@ -1,5 +1,5 @@
 /* File sgsc.c
- * November 19, 1996
+ * December 12, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -34,7 +34,8 @@ extern double wcsdist();
 static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
 static int classd = -1;		/* Guide Star Catalog object classes */
-static double maglim = MAGLIM;	/* Guide Star Catalog magnitude limit */
+static double maglim1 = MAGLIM1; /* Guide Star Catalog bright magnitude limit */
+static double maglim2 = MAGLIM;	/* Guide Star Catalog faint magnitude limit */
 static char coorsys[4];		/* Output coordinate system */
 static int nstars = 0;		/* Number of brightest stars to list */
 static int printhead = 0;	/* 1 to print table heading */
@@ -122,8 +123,13 @@ char **av;
 	case 'm':	/* Magnitude limit */
 	    if (ac < 2)
 		usage ();
-	    maglim = atof (*++av);
+	    maglim2 = atof (*++av);
 	    ac--;
+	    if (ac > 1 && isnum (*(av+1))) {
+		maglim1 = maglim2;
+		maglim2 = atof (*++av);
+		ac--;
+		}
 	    break;
 
 	case 'n':	/* Number of brightest stars to read */
@@ -217,6 +223,7 @@ ListGSC ()
     FILE *fd;
     char rastr[16], decstr[16];	/* coordinate strings */
     double cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, mag1, mag2, box;
+    double mag;
     int offscale, nlog;
     char headline[160];
     char filename[80];
@@ -242,13 +249,18 @@ ListGSC ()
 	}
 
 /* Set the magnitude limits for the GSC search */
-    if (maglim == 0.0) {
+    if (maglim2 == 0.0) {
 	mag1 = 0.0;
 	mag2 = 0.0;
 	}
     else {
-	mag1 = -2.0;
-	mag2 = maglim;
+	mag1 = maglim1;
+	mag2 = maglim2;
+	}
+    if (mag2 < mag1) {
+	mag = mag1;
+	mag1 = mag2;
+	mag2 = mag;
 	}
 
     if (nstars > MAXREF)
@@ -325,6 +337,9 @@ ListGSC ()
 	    if (distsort)
 		printf ("Closest %d / %d HST Guide Stars (closer than %.2f arcsec)\n",
 		     nbg, ng, 3600.0*gx[nbg-1]);
+	    else if (maglim1 > 0.0)
+		printf ("Brightest %d / %d HST Guide Stars (between %.1f and %.1f)\n",
+		     nbg, ng, gm[0], gm[nbg-1]);
 	    else
 		printf ("Brightest %d / %d HST Guide Stars (brighter than %.1f)\n",
 		     nbg, ng, gm[nbg-1]);
@@ -333,9 +348,12 @@ ListGSC ()
     else {
 	nbg = ng;
 	if (verbose || printhead) {
-	    if (maglim > 0.0)
+	    if (maglim1 > 0.0)
+		printf ("%d HST Guide Stars between %.1f and %.1f\n",
+			ng, maglim1, maglim2);
+	    else if (maglim2 > 0.0)
 		printf ("%d HST Guide Stars brighter than %.1f\n",
-			ng, maglim);
+			ng, maglim2);
 	    else if (verbose)
 		printf ("%d HST Guide Stars\n", ng);
 	    }
@@ -454,4 +472,5 @@ ListGSC ()
  * Nov 13 1996  Set maximum from command line if greater than default
  * Nov 14 1996	Set limits using subroutine
  * Nov 19 1996	Fix usage()
+ * Dec 12 1996	Allow bright as well as faint magnitude limit
  */

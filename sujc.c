@@ -1,5 +1,5 @@
 /* File sujc.c
- * November 19, 1996
+ * December 13, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -34,7 +34,8 @@ extern double wcsdist();
 static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
 static int plate = 0;           /* If not 0, use only stars from this plate */
-static double maglim = MAGLIM;	/* Guide Star Catalog magnitude limit */
+static double maglim1 = MAGLIM1; /* Guide Star Catalog magnitude limit */
+static double maglim2 = MAGLIM;	/* Guide Star Catalog magnitude limit */
 static char coorsys[4];		/* Output coordinate system */
 static int nstars = 0;		/* Number of brightest stars to list */
 static int printhead = 0;	/* 1 to print table heading */
@@ -115,8 +116,13 @@ char **av;
 	case 'm':	/* Magnitude limit */
 	    if (ac < 2)
 		usage ();
-	    maglim = atof (*++av);
+	    maglim2 = atof (*++av);
 	    ac--;
+	    if (ac > 1 && isnum (*(av+1))) {
+		maglim1 = maglim2;
+		maglim2 = atof (*++av);
+		ac--;
+		}
 	    break;
 
 	case 'n':	/* Number of brightest stars to read */
@@ -174,13 +180,13 @@ static void
 usage ()
 {
     fprintf (stderr,"Find USNO J Catalog stars in a square on the sky\n");
-    fprintf (stderr,"Usage: [-1dhstvw] [-m faint mag] [-n num] [-r arcsec] [-b][-j] ra dec\n");
+    fprintf (stderr,"Usage: [-1dhstvw] [-m [mag1] mag2] [-n num] [-r arcsec] [-b][-j] ra dec\n");
     fprintf(stderr,"  -1: list single closest catalog source\n");
     fprintf(stderr,"  -b: output B1950 (FK4) coordinates around this center\n");
     fprintf(stderr,"  -d: sort by distance from center instead of flux\n");
     fprintf(stderr,"  -h: print heading, else do not \n");
     fprintf(stderr,"  -j: output J2000 (FK5) coordinates around this center\n");
-    fprintf(stderr,"  -m: magnitude limit\n");
+    fprintf(stderr,"  -m: magnitude limit(s)\n");
     fprintf(stderr,"  -n: number of brightest stars to print \n");
     fprintf(stderr,"  -o: object name \n");
     fprintf(stderr,"  -r: search radius in arcsec (default 10)\n");
@@ -216,7 +222,7 @@ ListUJC ()
     int i, ngmax, nbytes;
     FILE *fd;
     char rastr[16], decstr[16];	/* coordinate strings */
-    double cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, mag1, mag2;
+    double cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, mag1, mag2, mag;
     int offscale, nlog;
     char headline[160];
     char filename[80];
@@ -247,13 +253,18 @@ ListUJC ()
 	}
 
 /* Set the magnitude limits for the UJC search */
-    if (maglim == 0.0) {
+    if (maglim2 == 0.0) {
 	mag1 = 0.0;
 	mag2 = 0.0;
 	}
     else {
-	mag1 = -2.0;
-	mag2 = maglim;
+	mag1 = maglim1;
+	mag2 = maglim2;
+	}
+    if (mag2 < mag1) {
+	mag = mag1;
+	mag1 = mag2;
+	mag2 = mag;
 	}
 
     if (nstars > MAXREF)
@@ -329,6 +340,9 @@ ListUJC ()
 	    if (distsort)
 		printf ("Closest %d / %d UJ Catalog stars (closer than %.2f arcsec)\n",
 		     nbg, ng, 3600.0*ux[nbg-1]);
+	    else if (mag1 > 0.0)
+		printf ("Brightest %d / %d UJ Catalog stars (between %.1f and %.1f)\n",
+		     nbg, ng, um[0], um[nbg-1]);
 	    else
 		printf ("Brightest %d / %d UJ Catalog stars (brighter than %.1f)\n",
 		     nbg, ng, um[nbg-1]);
@@ -337,9 +351,12 @@ ListUJC ()
     else {
 	nbg = ng;
 	if (verbose || printhead) {
-	    if (maglim > 0.0)
+	    if (maglim1 > 0.0)
+		printf ("%d UJ Catalog stars between %.1f and %.1f\n",
+			ng, maglim1, maglim2);
+	    else if (maglim2 > 0.0)
 		printf ("%d UJ Catalog stars brighter than %.1f\n",
-			ng, maglim);
+			ng, maglim2);
 	    else if (verbose)
 		printf ("%d UJ Catalog stars\n", ng);
 	    }
@@ -396,7 +413,8 @@ ListUJC ()
     if (tabout)
 	printf ("%s\n", headline);
     if (plate > 0) {
-        fprintf (fd, "PLATE     %d\n", plate);
+	if (wfile)
+            fprintf (fd, "PLATE     %d\n", plate);
         if (tabout)
             printf ("PLATE      %d\n", plate);
         }
@@ -462,4 +480,6 @@ ListUJC ()
  * Nov 13 1996	Use n argument to set maximum number of stars returned
  * Nov 15 1996	Change arguments to ujcread
  * Nov 19 1996	Fix usage()
+ * Dec 12 1996	Allow bright as wella s faint magnitude limits
+ * Dec 13 1996	Fix bug writing plate into header
  */

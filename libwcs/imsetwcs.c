@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * November 19, 1996
+ * December 10, 1996
  * By Doug Mink, based on UIowa code
  */
 
@@ -103,7 +103,7 @@ int	verbose;
     struct WorldCoor *wcs=0;	/* WCS structure */
 
     /* get nominal position and scale */
-    wcs = GetFITSWCS (header,verbose,&cra,&cdec,&dra,&ddec,&secpix,&imw,&imh,2000);
+    wcs = GetFITSWCS (header,verbose,&cra,&cdec,&dra,&ddec,&secpix,&imw,&imh,2000.0);
     if (nowcs (wcs)) {
 	ret = 0;
 	goto out;
@@ -471,14 +471,15 @@ int nfit;
  * Aug  7 1996	Save specified number of decimal places in header parameters
  * Aug  7 1996	Rename old center parameters
  * Aug 26 1996	Decrease default pixel tolerance from 20 to 10
- * Aug 26 1996	Drop unused variable EQ in SETFITSWCS
+ * Aug 26 1996	Drop unused variable EQ in setfitswcs
  * Aug 28 1996	Improve output format for matched stars
  * Sep  1 1996	Set some defaults in lwcs.h
  * Sep  3 1996	Fix bug to set plate scale from command line
  * Sep  4 1996	Print reference catalog name on separate line from entries
  * Sep 17 1996	Clean up code
- * Oct 15 1996	Break off GETFITSWCS into separate file
+ * Oct 15 1996	Break off getfitswcs into separate file
  * Nov 18 1996	Add USNO A catalog searching
  * Nov 18 1996	Write same number into CROAT2 as CROTA1
  * Nov 19 1996	If EPOCH was equinox in original image or not set, set it
+ * Dec 10 1996	Make equinox double in getfitswcs call
  */

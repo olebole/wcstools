@@ -1,29 +1,40 @@
-.TH imgsc(1) WCS "15 November 1996"
+.TH imgsc(1) WCS "12 December 1996"
 .SH Name
 imgsc \- Find HST GSC stars in FITS or IRAF image files
 .SH Synopsis
 imgsc [options] FITS or IRAF file(s)
 .SH Options
+.TP
 .B \-b [<RA> <Dec>]
 Output B1950 (FK4) coordinates (optional center)
+.TP
 .B \-g <class>
 Object class (0=stars 3=galaxies -1=all)
+.TP
 .B \-h
 Print heading, else do not 
+.TP
 .B \-j [<RA> <Dec>]
 Output J2000 (FK5) coordinates (optional center)
-.B \-m <magnitude>
-Magnitude limit
+.TP
+.B \-m [<bright magnitude>] <faint magnitude>
+Limiting catalog magnitude(s) (default none, bright -2 if only faint is given)
+.TP
 .B \-n <num>
 Number of brightest stars to print 
+.TP
 .B \-p <scale>
 Plate scale in arcsec per pixel (default 0)
+.TP
 .B \-s
 Sort by RA instead of flux 
+.TP
 .B \-t
 Tab table to standard output as well as file
+.TP
 .B \-v
 Verbose listing of processing intermediate results
+.TP
 .B \-w
 Write tab table output file imagename.gsc
 .SH Author

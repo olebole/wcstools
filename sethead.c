@@ -1,5 +1,5 @@
 /* File sethead.c
- * October 21, 1996
+ * December 12, 1996
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -20,7 +20,6 @@ static void SetValues ();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int newimage = 1;
-static int isnum ();
 static void SetValues ();
 
 main (ac, av)
@@ -246,26 +245,6 @@ char	*kwd[];		/* Names and values of those keywords */
     return;
 }
 
-static int
-isnum (string)
-
-char *string;	/* Character string */
-{
-    int lstr, i;
-    char cstr;
-
-    lstr = strlen (string);
-    for (i = 0; i < lstr; i++) {
-	cstr = string[i];
-	if ((cstr < 48 && cstr > 57) &&
-	    cstr != '+' && cstr != '-' &&
-	    cstr != 'D' && cstr != 'd' &&
-	    cstr != 'E' && cstr != 'e' &&
-	    cstr != '.')
-	    return (0);
-	}
-    return (1);
-}
-
 /* Oct 11 1996	New program
+ * Dec 12 1996	Move ISNUM subroutine to hget.c
  */

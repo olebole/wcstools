@@ -1,5 +1,5 @@
-/* File imhead.c
- * December 4, 1996
+/* File getpix.c
+ * December 6, 1996
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -15,7 +15,7 @@
 
 static void usage();
 static int PrintFITSHead ();
-static void PrintHead ();
+static void PrintPix ();
 
 static int verbose = 0;		/* verbose/debugging flag */
 
@@ -23,8 +23,9 @@ main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
+    char *fn;
+    int i, x[100], y[100];
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
@@ -35,47 +36,56 @@ char **av;
 	    verbose++;
 	    break;
 	default:
-	    usage(progname);
+	    usage();
 	    break;
 	}
     }
 
     /* now there are ac remaining file names starting at av[0] */
     if (ac == 0)
-	usage (progname);
+	usage ();
 
-    while (ac-- > 0) {
-	char *fn = *av++;
-	PrintHead (fn);
-	if (verbose)
-	    printf ("\n");
+    fn = *av++;
+
+    i = 0;
+    while (--ac > 0 && i < 100) {
+	x[i] = atoi (*av++);
+	ac--;
+	y[i] = atoi (*av++);
+	i++;
 	}
+    if (i > 0)
+	PrintPix (fn, i, x, y);
 
     return (0);
 }
 
 static void
-usage (progname)
-char *progname;
+usage ()
 {
-    fprintf (stderr,"Print FITS or IRAF image header\n");
-    fprintf(stderr,"%s: usage: [-v] file.fit ...\n", progname);
+    fprintf (stderr,"Print FITS or IRAF pixel values\n");
+    fprintf(stderr,"Usage: getpix [-v] file.fit x y ...\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
 }
 
 
 static void
-PrintHead (name)
+PrintPix (name, n, x, y)
 
 char *name;
+int n, *x, *y;
 
 {
     char *header;	/* FITS image header */
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
     int *irafheader;	/* IRAF image header */
+    char *image;	/* FITS or IRAF image */
     int iraffile;
+    double dpix;
+    int bitpix,xdim,ydim, ipix, i;
+    char pixname[128];
 
     /* Open IRAF image if .imh extension is present */
     if (strsrch (name,".imh")) {
@@ -83,8 +93,16 @@ char *name;
 	if ((irafheader = irafrhead (name, &lhead))) {
 	    header = iraf2fits (name, irafheader, lhead, &nbhead);
 	    free (irafheader);
-	    if (!header) {
+	    if (header == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
+		return;
+		}
+	    image = irafrimage (header);
+            if (image == NULL) {
+		hgets (header,"PIXFILE", 64, pixname);
+		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
+		free (irafheader);
+		free (header);
 		return;
 		}
 	    }
@@ -97,51 +115,49 @@ char *name;
     /* Open FITS file if .imh extension is not present */
     else {
 	iraffile = 0;
-	if (!(header = fitsrhead (name, &lhead, &nbhead))) {
+	if ((header = fitsrhead (name, &lhead, &nbhead))) {
+	    if (!(image = fitsrimage (name, nbhead, header))) {
+		fprintf (stderr, "Cannot read FITS image %s\n", name);
+		free (header);
+		return;
+		}
+	    }
+	else {
 	    fprintf (stderr, "Cannot read FITS file %s\n", name);
 	    return;
 	    }
 	}
     if (verbose) {
-	fprintf (stderr,"Print header from ");
+	fprintf (stderr,"Print pixel values from ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", name);
 	else
 	    fprintf (stderr,"FITS image file %s\n", name);
 	}
 
-    if (!PrintFITSHead (header) && verbose)
-	printf ("%s: no WCS fields found\n", name);
+/* Get value of specified pixel */
+    hgeti4 (header,"BITPIX",&bitpix);
+    hgeti4 (header,"NAXIS1",&xdim);
+    hgeti4 (header,"NAXIS2",&ydim);
 
-    free (header);
-    return;
-}
-
-
-static int
-PrintFITSHead (header)
-
-char	*header;	/* Image FITS header */
-{
-    char line[80], *iline, *endhead;
-    int i;
-
-    endhead = ksearch (header, "END") + 80;
-
-    for (iline = header; iline < endhead; iline = iline + 80) {
-	strncpy (line, iline, 80);
-	i = 79;
-	while (line[i] <= 32)
-	    line[i--] = 0;
-	printf ("%s\n",line);
+    for (i = 0; i < n; i++) {
+        dpix = getpix (image, bitpix, xdim, ydim, x[i]-1, y[i]-1);
+        if (bitpix > 0) {
+	    if (dpix > 0)
+        	ipix = (int) (dpix + 0.5);
+	    else if (dpix < 0)
+        	ipix = (int) (dpix - 0.5);
+	    else
+		ipix = 0;
+	    printf ("%s[%d,%d] = %d\n",name,x[i],y[i],ipix);
+	    }
+	else
+	    printf ("%s[%d,%d] = %.2f\n",name,x[i],y[i],dpix);
 	}
 
-    return (1);
+    free (header);
+    free (image);
+    return;
 }
-/* Jul 10 1996	New program
- * Jul 16 1996	Update header I/O
- * Aug 15 1996	Drop unnecessary reading of FITS image; clean up code
- * Aug 27 1996	Drop unused variables after lint
- * Nov 19 1996	Add linefeeds after filename in verbose mode
- * Dec  4 1996	Print "header" instead of "WCS" in verbose mode
+/* Dec  6 1996	New program
  */

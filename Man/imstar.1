@@ -1,34 +1,55 @@
-.TH imstar(1) WCS "17 October 1996"
+.TH imstar(1) WCS "12 December 1996"
 .SH Name
 imstar \- Find stars in FITS and IRAF image files
 .SH Synopsis
 imstar  [options] FITS or IRAF filename
 .SH Description
 .SH Options
+.TP
+.B \-a <angle>
+Initial rotation angle in degrees (default 0)
+.TP
 .B /-b
 Output B1950 (FK4) coordinates (default=image equinox)
+.TP
 .B /-c <RA> <Dec>
 Use following RA and Dec as center 
-.B /-d
-Print each star as it is found for debugging 
+.TP
+.B \-d <catalog name>
+Use this DAOFIND output catalog of X, Y, and magnitude instead of searching
+for stars in the image.  The format is simply white-space-separated numbers
+on a line, with # at the beginning of comment lines.
+.TP
 .B /-e <num>
 Number of pixels to ignore around image edge 
+.TP
 .B /-h
 Print heading, else do not 
+.TP
 .B /-i <num>
 Minimum peak value for star in image (<0=-sigma)
+.TP
 .B /-j
 Output J2000 (FK5) coordinates (default=image equinox)
+.TP
+.B /-k
+Print each star as it is found for debugging 
+.TP
 .B /-m <magnitude>
 Magnitude offset
+.TP
 .B /-n
 Number of brightest stars to print 
+.TP
 .B /-r
 Maximum radius for star in pixels 
+.TP
 .B /-s
 Sort by RA instead of flux 
+.TP
 .B /-t
 Tab table to standard output as well as file
+.TP
 .B /-v
 Verbose listing of processing intermediate results
 .SH Author

@@ -1,4 +1,4 @@
-.TH xy2sky(1) WCS "1 November 1996"
+.TH xy2sky(1) WCS "12 December 1996"
 .SH Name
 xy2sky \- Compute RA Dec from X Y using WCS in FITS and IRAF image files
 .SH Synopsis
@@ -20,16 +20,22 @@ given in the image header, but future versions will allow transformations
 to B1950/FK4, J2000/FK5, or galactic coordinates. Input and output files
 in the Starbase format will eventually be allowed. 
 .SH Options
+.TP
 .B \-b
 B1950 (FK4) output
+.TP
 .B \-d
 RA and Dec output in degrees
+.TP
 .B \-j
 J2000 (FK5) output
+.TP
 .B \-g
 Galactic longitude and latitude output
+.TP
 .B \-n <num>
 Number of decimal places in output RA seconds
+.TP
 .B \-v
 More descriptive output
 .SH See Also

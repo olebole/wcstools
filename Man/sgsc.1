@@ -1,4 +1,4 @@
-.TH sgsc(1) WCS "15 November 1996"
+.TH sgsc(1) WCS "12 December 1996"
 .SH Name
 sgsc \- Find HST GSC stars in a square on the sky
 .SH Synopsis
@@ -12,32 +12,46 @@ which case it goes to objectname.gsc or search.gsc. It is somewhat
 similar to RGSC, which can search from lists of coordinates but cannot
 sort the output. 
 .SH Options
+.TP
 .B \-1
 List single closest catalog source
+.TP
 .B \-b <RA> <Dec>
 Output B1950 (FK4) coordinates
+.TP
 .B \-d
 Sort by distance from center instead of flux
+.TP
 .B \-g <class>
 Object class (0=stars 3=galaxies -1=all)
+.TP
 .B \-h
 print heading, else do not 
+.TP
 .B \-j <RA> <Dec>
 Output J2000 (FK5) coordinates around this center
-.B \-m <magnitude>
-Faint magnitude limit
+.TP
+.B \-m [<bright magnitude>] <faint magnitude>
+Limiting catalog magnitude(s) (default none, bright -2 if only faint is given)
+.TP
 .B \-n <num>
 Number of brightest stars to print 
+.TP
 .B \-o <name>
 Object name used for output file naming
+.TP
 .B \-r <radius>
 Radius of search circle 1in arcsec (default 10)
+.TP
 .B \-s
 Sort by RA instead of flux 
+.TP
 .B \-t
 Tab table to standard output as well as file
+.TP
 .B \-v
 Verbose listing of processing intermediate results
+.TP
 .B \-w
 Write tab table output file imagename.gsc
 .SH See Also

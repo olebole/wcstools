@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** November 15, 1996
+ *** December 12, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -154,6 +154,8 @@ int	verbose;	/* 1 for diagnostics */
 	znum = zlist[iz];
 	if ((nstars = ujcopen (znum)) != 0) {
 
+	    jstar = 0;
+	    itable = 0;
 	    for (iwrap = 0; iwrap <= wrap; iwrap++) {
 
 	    /* Find first star based on RA */
@@ -170,9 +172,6 @@ int	verbose;	/* 1 for diagnostics */
 
 		if (istar1 == 0 || istar2 == 0)
 		    break;
-
-		jstar = 0;
-		itable = 0;
 
 	    /* Loop through zone catalog for this region */
 		for (istar = istar1; istar <= istar2; istar++) {
@@ -223,8 +222,8 @@ int	verbose;	/* 1 for diagnostics */
 
 		/* Log operation */
 		    if (nlog > 0 && itable%nlog == 0)
-			fprintf (stderr,"UJCREAD: %4d / %4d: %6d / %6d sources zone %d\r",
-				iz,nz,jstar,itable,znum);
+			fprintf (stderr,"UJCREAD: zone %d (%4d / %4d) %6d / %6d sources\r",
+				znum, iz, nz, jstar, itable);
 
 		/* End of star loop */
 		    }
@@ -236,8 +235,8 @@ int	verbose;	/* 1 for diagnostics */
 	    (void) fclose (fcat);
 	    itot = itot + itable;
 	    if (nlog > 0)
-		fprintf (stderr,"UJCREAD: %4d / %4d: %6d / %6d sources zone %d\n",
-			iz+1, nz, jstar, itable, znum);
+		fprintf (stderr,"UJCREAD: zone %d (%4d / %4d) %6d / %6d / %8d sources\n",
+			znum, iz+1, nz, jstar, itable, nstars);
 
 	/* End of zone processing */
 	    }
@@ -577,4 +576,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Nov 13 1996	Return no more than maximum star number
  * Nov 13 1996	Write all error messages to stderr with subroutine names
  * Nov 15 1996  Implement search radius; change input arguments
+ * Dec 12 1996	Improve logging
  */

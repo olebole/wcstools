@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** November 15, 1996
+ *** December 16, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -75,7 +75,7 @@ int	nlog;		/* Logging interval */
     int wrap, iwrap;
     int verbose;
     int znum, itot,iz, i;
-    int itable,jstar;
+    int itable, jtable,jstar;
     int nstar, nread;
     double ra,dec;
     double mag, magb;
@@ -99,9 +99,9 @@ int	nlog;		/* Logging interval */
 
     /* Keep right ascension between 0 and 360 degrees */
     if (ra1 < 0.0)
-	ra1 = 0.0;
+	ra1 = ra1 + 360.0;
     if (ra2 > 360.0)
-	ra2 = 360.0;
+	ra2 = ra2 - 360.0;
 
     /* Set declination limits for search */
     dec1 = cdec - ddec;
@@ -164,6 +164,8 @@ int	nlog;		/* Logging interval */
 	znum = zlist[iz];
 	if ((nstars = uacopen (znum)) != 0) {
 
+	    jstar = 0;
+	    jtable = 0;
 	    for (iwrap = 0; iwrap <= wrap; iwrap++) {
 
 	    /* Find first star based on RA */
@@ -182,12 +184,12 @@ int	nlog;		/* Logging interval */
 		    break;
 
 		nread = istar2 - istar1 + 1;
-		jstar = 0;
 		itable = 0;
 
 	    /* Loop through zone catalog for this region */
 		for (istar = istar1; istar <= istar2; istar++) {
 		    itable ++;
+		    jtable ++;
 
 		    if (uacstar (istar, &star)) {
 			fprintf (stderr,"UACREAD: Cannot read star %d\n", istar);
@@ -244,8 +246,8 @@ int	nlog;		/* Logging interval */
 					}
 				    }
 				}
-			    nstar = nstar + 1;
-			    jstar = jstar + 1;
+			    nstar++;
+			    jstar++;
 			    if (nlog == 1)
 				fprintf (stderr,"UACREAD: %04d.%08d: %9.5f %9.5f %5.2f\n",
 				    znum,istar,ra,dec,mag);
@@ -258,8 +260,8 @@ int	nlog;		/* Logging interval */
 
 		/* Log operation */
 		    if (nlog > 0 && itable%nlog == 0)
-			fprintf (stderr,"UACREAD: %2d / %2d: %8d / %8d / %8d sources zone %d\r",
-				iz, nz, jstar, itable, nread, znum);
+			fprintf (stderr,"UACREAD: zone %d (%2d / %2d) %8d / %8d / %8d sources\r",
+				znum, iz+1, nz, jstar, itable, nread);
 
 		/* End of star loop */
 		    }
@@ -271,8 +273,8 @@ int	nlog;		/* Logging interval */
 	    (void) fclose (fcat);
 	    itot = itot + itable;
 	    if (nlog > 0)
-		fprintf (stderr,"UACREAD: %2d / %2d: %8d / %8d / %8d sources zone %d\n",
-			iz+1, nz, jstar, itable, nread, znum);
+		fprintf (stderr,"UACREAD: zone %d (%2d / %2d) %8d / %8d / %8d sources      \n",
+			znum, iz+1, nz, jstar, jtable, nstars);
 
 	/* End of zone processing */
 	    }
@@ -283,7 +285,7 @@ int	nlog;		/* Logging interval */
 /* Summarize search */
     if (nlog > 0) {
 	if (nz > 1)
-	    fprintf (stderr,"UACREAD: %d zone: %d / %d found\n",nz,nstar,itot);
+	    fprintf (stderr,"UACREAD: %d zones: %d / %d found\n",nz,nstar,itot);
 	else
 	    fprintf (stderr,"UACREAD: 1 zone: %d / %d found\n",nstar,itable);
 	}
@@ -293,6 +295,98 @@ int	nlog;		/* Logging interval */
 	nstar = nstarmax;
 	}
     return (nstar);
+}
+
+
+int
+uacrnum (nstars,unum,ura,udec,umag,umagb,uplate,nlog)
+
+int	nstars;		/* Number of stars to find */
+double	*unum;		/* Array of UA numbers to find */
+double	*ura;		/* Array of right ascensions (returned) */
+double	*udec;		/* Array of declinations (returned) */
+double	*umag;		/* Array of red magnitudes (returned) */
+double	*umagb;		/* Array of blue magnitudes (returned) */
+int	*uplate;	/* Array of plate numbers (returned) */
+int	nlog;		/* Logging interval */
+{
+    UACstar star;	/* UA catalog entry for one star */
+
+    int verbose;
+    int znum, itot,iz, i;
+    int itable, jtable,jstar;
+    int nstar, nread, nzone;
+    int nfound = 0;
+    double ra,dec;
+    double mag, magb;
+    int istar, istar1, istar2, plate;
+    int nzmax = NZONES;	/* Maximum number of declination zones */
+    char *str;
+
+    itot = 0;
+    if (nlog > 0)
+	verbose = 1;
+    else
+	verbose = 0;
+
+    /* Set path to USNO A Catalog */
+    if ((str = getenv("UA_PATH")) != NULL )
+	strcpy (cdu,str);
+
+/* Loop through star list */
+    for (jstar = 0; jstar < nstars; jstar++) {
+
+    /* Get path to zone catalog */
+	znum = (int) unum[jstar];
+	if ((nzone = uacopen (znum)) != 0) {
+
+	    istar = (int) (((unum[jstar] - znum) * 100000000.0) + 0.5);
+
+	    if (uacstar (istar, &star)) {
+		fprintf (stderr,"UACRNUM: Cannot read star %d\n", istar);
+		break;
+		}
+
+	    /* Extract selected fields if not probable duplicate */
+	    else if (star.magetc > 0) {
+		ra = uacra (star.rasec); /* Right ascension in degrees */
+		dec = uacdec (star.decsec); /* Declination in degrees */
+		magb = uacmagb (star.magetc); /* Blue magnitude */
+		mag = uacmagr (star.magetc); /* Red magnitude */
+		plate = uacplate (star.magetc);	/* Plate number */
+
+		/* Save star position and magnitude in table */
+		ura[nfound] = ra;
+		udec[nfound] = dec;
+		umag[nfound] = mag;
+		umagb[nfound] = magb;
+		uplate[nfound] = plate;
+
+		nfound++;
+		if (nlog == 1)
+		    fprintf (stderr,"UACRNUM: %04d.%08d: %9.5f %9.5f %5.2f\n",
+			     znum,istar,ra,dec,mag);
+
+		/* Log operation */
+		if (nlog > 0 && jstar%nlog == 0)
+		    fprintf (stderr,"UACRNUM: %4d.%8d  %8d / %8d sources\r",
+			     znum, istar, jstar, nstar);
+
+		(void) fclose (fcat);
+		/* End of star processing */
+		}
+
+	    /* End of star */
+	    }
+
+	/* End of star loop */
+	}
+
+    /* Summarize search */
+    if (nlog > 0)
+	fprintf (stderr,"UACRNUM:  %d / %d found\n",nfound,nstars);
+
+    return (nfound);
 }
 
 
@@ -653,4 +747,6 @@ int nbytes = 12; /* Number of bytes to reverse */
 }
 
 /* Nov 15 1996	New subroutine
+ * Dec 11 1996	Set ra<0 to ra+360 and ra>360 to ra-360
+ * Dec 16 1996	Add code to read a specific star
  */

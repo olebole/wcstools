@@ -1,9 +1,10 @@
 CFLAGS= -g
 $CC= cc
 
-OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o wcscon.o slasubs.o \
-	fitswcs.o wcs.o gscread.o ujcread.o uacread.o tabread.o imrotate.o \
-	fitsio.o imhio.o hget.o hput.o imio.o worldpos.o platepos.o sortstar.o
+OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \
+	slasubs.o fitswcs.o wcs.o gscread.o ujcread.o uacread.o tabread.o \
+	imrotate.o fitsio.o imhio.o hget.o hput.o imio.o worldpos.o \
+	platepos.o sortstar.o
 
 libwcs.a:	$(OBJS)
 	ar rv $@ $?

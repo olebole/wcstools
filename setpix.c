@@ -1,5 +1,5 @@
-/* File edhead.c
- * December 11, 1996
+/* File setpix.c
+ * December 6, 1996
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,14 +17,16 @@
 static void usage();
 static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
-static void EditHead();
+static void SetPix();
 
 main (ac, av)
 int ac;
 char **av;
 {
-    char *progname = av[0];
     char *str;
+    char *fn;
+    char *value[100];
+    int i,x[100],y[100];
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
@@ -38,32 +40,37 @@ char **av;
 	    newimage++;
 	    break;
 	default:
-	    usage (progname);
+	    usage ();
 	    break;
 	}
     }
 
-    /* now there are ac remaining file names starting at av[0] */
+    /* now there are ac remaining arguments starting at av[0] */
     if (ac == 0)
-	usage (progname);
+	usage ();
 
-    while (ac-- > 0) {
-	char *fn = *av++;
-	EditHead (fn);
-	if (verbose)
-	    printf ("\n");
+    fn = *av++;
+
+    i = 0;
+    while (--ac > 2 && i < 100) {
+	x[i] = atoi (*av++);
+	ac--;
+	y[i] = atoi (*av++);
+	ac--;
+	value[i] = *av++;
+	i++;
 	}
+    if (i > 0)
+	SetPix (fn,i,x,y,value);
 
     return (0);
 }
 
 static void
-usage (progname)
-char *progname;
+usage ()
 {
-    fprintf (stderr,"Edit header of FITS or IRAF image file\n");
-    fprintf(stderr,"%s: usage: [-vn] file.fts file.imh...\n",
-	    progname);
+    fprintf (stderr,"Edit pixels of FITS or IRAF image file\n");
+    fprintf(stderr,"Usage: setpix [-vn] file.fts x y value ...\n");
     fprintf(stderr,"  -n: write new file, else overwrite \n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
@@ -71,9 +78,13 @@ char *progname;
 
 
 static void
-EditHead (filename)
+SetPix (filename,n,x,y,value)
 
 char	*filename;	/* FITS or IRAF file filename */
+int	n;		/* Number of pixels to set */
+int	*x,*y;		/* Horizontal and vertical coordinates of pixel */
+			/* (1-based) */
+char	**value;		/* value to insert into pixel */
 
 {
     char *image;		/* FITS image */
@@ -86,11 +97,15 @@ char	*filename;	/* FITS or IRAF file filename */
     char *head, *headend, *hlast;
     char headline[160];
     char newname[128];
+    char pixname[128];
     char tempname[128];
+    char history[64];
     FILE *fd;
     char *ext, *fname;
     char *editcom;
     char newline[1];
+    double dpix;
+    int bitpix,xdim,ydim;
 
     newline[0] = 10;
     strcpy (tempname, "fitshead.temp");
@@ -100,13 +115,20 @@ char	*filename;	/* FITS or IRAF file filename */
 	iraffile = 1;
 	if ((irafheader = irafrhead (filename, &lhead))) {
 	    header = iraf2fits (filename, irafheader, lhead, &nbhead);
-            if (!header) {
+            if (header == NULL) {
 		free (irafheader);
                 fprintf (stderr, "Cannot translate IRAF header %s/n", filename);
                 return;
                 }
+	    image = irafrimage (header);
+	    if (image == NULL) {
+		hgets (header,"PIXFILE", 64, pixname);
+		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
+		free (irafheader);
+		free (header);
+		return;
+		}
 	    }
-
 	else {
 	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
 	    free (header);
@@ -131,83 +153,32 @@ char	*filename;	/* FITS or IRAF file filename */
 	}
     if (verbose)
 
-    /* Write current header to temporary file */
-    if ((fd = fopen (tempname, "w"))) {
-	headend = ksearch (header, "END") + 80;
-	for (head = header; head < headend; head = head + 80) {
-	    for (i = 0; i< 80; i++)
-		headline[i] = 0;
-	    strncpy (headline,head,80);
-	    for (i = 79; i > 0; i--) {
-		if (headline[i] == ' ')
-		    headline[i] = 0;
-		else
-		    break;
-		}
-	    nbytes = i + 1;
-	    (void) fwrite (headline, 1, nbytes, fd);
-	    (void) fwrite (newline, 1, 1, fd);
-	    }
-	fclose (fd);
-	free (header);
-	}
-    else {
-	fprintf (stderr, "Cannot write temporary header file\n");
-	free (header);
-	if (iraffile)
-	    free (irafheader);
-	free (image);
-	return;
-	}
+    /* Change value of specified pixel */
+    hgeti4 (header,"BITPIX",&bitpix);
+    hgeti4 (header,"NAXIS1",&xdim);
+    hgeti4 (header,"NAXIS2",&ydim);
+    for (i = 0; i < n; i++) {
+	if (strchr (value[i],(int)'.'))
+	    dpix = (double) atoi (value[i]);
+	else
+	    dpix = atof (value[i]);
+	putpix (image, bitpix, xdim, ydim, x[i]-1, y[i]-1, dpix);
 
-    /* Run an editor on the temporary header file */
-    if (!(editcom = getenv ("EDITOR"))) {
-	editcom = (char *)malloc (32);
-	strcpy (editcom,"vi");
-	}
-    strcat (editcom," ");
-    strcat (editcom,tempname);
-    printf ("Edit command is '%s'\n",editcom);
-    if (system (editcom)) {
-	free (header);
-	if (iraffile)
-	    free (irafheader);
-	free (image);
-	return;
-	}
-
-    /* Read the new header from the temporary file */
-    if ((fd = fopen (tempname, "r"))) {
-	header = (char *) calloc (14400, 1);
-	head = header;
-	hlast = header + 14400 - 1;
-	for (i = 0; i< 81; i++)
-	    headline[i] = 0;
-	while (fgets (headline,82,fd)) {
-	    int i = 79;
-	    while (headline[i] == 0 || headline[i] == 10)
-		headline[i--] = ' ';
-	    strncpy (head,headline,80);
-	    head = head + 80;
-	    if (head > hlast) {
-		nhblk = (head - header) / 2880;
-		nhb = (nhblk + 1) * 2880;
-		header = (char *) realloc (header,nhb);
-		head = header + nhb;
-		hlast = hlast + 2880;
-		}
-	    for (i = 0; i< 80; i++)
-		headline[i] = 0;
+	/* Note addition as history line in header */
+	if (bitpix > 0) {
+	    int ipix = (int)dpix;
+	    sprintf (history, "SETPIX: pixel at row %d, column %d set to %d",
+		     x[i],y[i],ipix);
 	    }
-	fclose (fd);
-	}
-    else {
-	fprintf (stderr, "Cannot read temporary header file %s\n", tempname);
-	free (header);
-	if (iraffile)
-	    free (irafheader);
-	free (image);
-	return;
+	else if (dpix < 1.0 && dpix > -1.0)
+	    sprintf (history, "SETPIX: pixel at row %d, column %d set to %f",
+		     x[i],y[i],dpix);
+	else
+	    sprintf (history, "SETPIX: pixel at row %d, column %d set to %.2f",
+		     x[i],y[i],dpix);
+	hputc (header,"HISTORY",history);
+	if (verbose)
+	    printf ("%s\n", history);
 	}
 
     /* Make up name for new FITS or IRAF output file */
@@ -240,7 +211,7 @@ char	*filename;	/* FITS or IRAF file filename */
 
     /* Write fixed header to output file */
     if (iraffile) {
-	if (irafwhead (newname, lhead, irafheader, header) > 0 && verbose)
+	if (irafwimage (newname,lhead,irafheader,header,image) > 0 && verbose)
 	    printf ("%s rewritten successfully.\n", newname);
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
@@ -251,17 +222,12 @@ char	*filename;	/* FITS or IRAF file filename */
 	    printf ("%s: rewritten successfully.\n", newname);
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
-	free (image);
 	}
 
     free (header);
+    free (image);
     return;
 }
 
-/* Aug 15 1996	New program
- * Aug 26 1996	Change HGETC call to HGETS
- * Aug 27 1996	Read up to 82 characters per line to get newline
- * Aug 29 1996	Allow new file to be written
- * Oct 17 1996	Drop unused variables
- * Dec 11 1996	Allocate editcom if environment variable is not set
+/* Dec  6 1996	New program
  */

@@ -1,4 +1,4 @@
-.TH imsize(1) WCS "31 October 1996"
+.TH imsize(1) WCS "12 December 1996"
 .SH Name
 imsize \- Print size of image in WCS and pixels
 .SH Synopsis
@@ -11,16 +11,22 @@ IRAF .imh image headers to a FITS format before extracting the information.
 For IRAF files, the image dimensions and the object name are set from the
 binary portion of the header. 
 .SH Options
+.TP
 .B \-b [<RA> <Dec>]
 Output B1950 (B1950) coordinates (optional center)
+.TP
 .B \-c
 Format output without pixel dimensions (optional size change)
+.TP
 .B \-d
 Format output as input to DSS getimage (optional size change)
+.TP
 .B \-j [<RA> <Dec>]
 Output J2000 (J2000) coordinates (optional center)
+.TP
 .B \-p <scale>
 Initial plate scale in arcsec per pixel (default 0)
+.TP
 .B \-v
 Print more intermediate information for debugging
 .SH Author

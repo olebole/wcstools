@@ -1,5 +1,5 @@
 /* File imwcs.c
- * November 19, 1996
+ * December 11, 1996
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -43,6 +43,7 @@ extern void setstarsig ();
 extern void setclass();
 extern void setplate();
 extern void setrefcat();
+extern void setimcat();
 extern void setbmin();
 extern void setfrac();
 extern void setwcstype();
@@ -83,6 +84,13 @@ char **av;
 	    if (ac < 2)
 		usage();
 	    setrefcat (*++av);
+	    ac--;
+	    break;
+
+	case 'd':	/* Read image star positions from DAOFIND file */
+	    if (ac < 2)
+		usage();
+	    setimcat (*++av);
 	    ac--;
 	    break;
 
@@ -216,6 +224,7 @@ usage ()
     fprintf(stderr,"  -a: initial rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
     fprintf(stderr,"  -c: reference catalog (gsc, uac, ujc, tab table file\n");
+    fprintf(stderr,"  -d: Use following DAOFIND output catalog instead of search\n");
     fprintf(stderr,"  -e: WCS type (TAN default)\n");
     fprintf(stderr,"  -f: write FITS output no matter what input\n");
     fprintf(stderr,"  -g: Guide Star Catalog class (-1=all,0,3 (default -1)\n");
@@ -501,4 +510,6 @@ char *
  * Oct 11 1996	Fix DelWCS declaration and do not free strings in PrintWCS
  * Oct 17 1996	Fix bugs which Sun C ignored
  * Nov 19 1996	Revised search subroutines, USNO A catalog added
+ * Dec 10 1996	Revised WCS initialization
+ * Dec 10 1996	Add option to get image stars from DAOFIND output list
  */

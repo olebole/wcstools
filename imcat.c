@@ -1,5 +1,5 @@
 /* File imcat.c
- * November 15, 1996
+ * December 13, 1996
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -35,19 +35,20 @@ extern void setcenter();
 extern void setsecpix();
 
 
-static int verbose = 0;			/* verbose/debugging flag */
-static int wfile = 0;			/* True to print output file */
-static int refcat = GSC;		/* reference catalog switch */
-static char refcatname[32]="GSC";	/* reference catalog name */
-static int classd = -1;			/* Guide Star Catalog object classes */
-static int uplate = 0;			/* UJ Catalog plate number to use */
-static double maglim = MAGLIM;		/* reference catalog magnitude limit */
-static char coorsys[4];			/* Output coordinate system */
-static int nstars = 0;			/* Number of brightest stars to list */
-static int printhead = 0;		/* 1 to print table heading */
-static int tabout = 0;			/* 1 for tab table to standard output */
-static int rasort = 0;			/* 1 to sort stars by brighness */
-static int debug = 0;			/* True for extra information */
+static int verbose = 0;		/* verbose/debugging flag */
+static int wfile = 0;		/* True to print output file */
+static int refcat = GSC;	/* reference catalog switch */
+static char refcatname[32]="GSC"; /* reference catalog name */
+static int classd = -1;		/* Guide Star Catalog object classes */
+static int uplate = 0;		/* UJ Catalog plate number to use */
+static double maglim1 = MAGLIM1; /* reference catalog bright magnitude limit */
+static double maglim2 = MAGLIM;	/* reference catalog faint magnitude limit */
+static char coorsys[4];		/* Output coordinate system */
+static int nstars = 0;		/* Number of brightest stars to list */
+static int printhead = 0;	/* 1 to print table heading */
+static int tabout = 0;		/* 1 for tab table to standard output */
+static int rasort = 0;		/* 1 to sort stars by brighness */
+static int debug = 0;		/* True for extra information */
 
 main (ac, av)
 int ac;
@@ -132,8 +133,13 @@ char **av;
     	case 'm':	/* Limiting reference star magnitude */
     	    if (ac < 2)
     		usage();
-    	    maglim =  atof (*++av);
+    	    maglim2 =  atof (*++av);
     	    ac--;
+	    if (ac > 1 && isnum (*(av+1))) {
+		maglim1 = maglim2;
+		maglim2 = atof (*++av);
+		ac--;
+		}
     	    break;
 
 	case 'n':	/* Number of brightest stars to read */
@@ -199,14 +205,14 @@ usage ()
 {
     fprintf (stderr,"\n");
     fprintf (stderr,"List catalog stars in FITS and IRAF image files\n");
-    fprintf (stderr,"Usage: [-vhst] [-m mag] [-g class] [-c catalog]\n");
+    fprintf (stderr,"Usage: [-vhst] [-m [mag1] mag2] [-g class] [-c catalog]\n");
     fprintf (stderr,"       [-p scale] [-b ra dec] [-j ra dec] FITS or IRAF file(s)\n");
     fprintf (stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
     fprintf (stderr,"  -c: reference catalog (gsc, ujc, or tab table file\n");
     fprintf (stderr,"  -g: Guide Star Catalog class (-1=all,0,3 (default -1)\n");
     fprintf (stderr,"  -h: print heading, else do not \n");
     fprintf (stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
-    fprintf (stderr,"  -m: initial GSC or UJC limiting magnitude (default 17)\n");
+    fprintf (stderr,"  -m: GSC or UAC limiting magnitude(s) (default none)\n");
     fprintf (stderr,"  -n: number of brightest stars to print \n");
     fprintf (stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
     fprintf (stderr,"  -s: sort by RA instead of flux \n");
@@ -247,6 +253,7 @@ char	*filename;	/* FITS or IRAF file filename */
     struct WorldCoor *wcs;	/* World coordinate system structure */
     char rastr[16], decstr[16];	/* coordinate strings */
     double cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, mag1, mag2,secpix;
+    double mag;
     int offscale, nlog;
     char headline[160];
     char title[80];
@@ -295,7 +302,7 @@ char	*filename;	/* FITS or IRAF file filename */
 
     /* Read world coordinate system information from the image header */
     wcs = GetFITSWCS (header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-		&imw, &imh, 2000);
+		&imw, &imh, 2000.0);
     free (header);
     if (nowcs (wcs))
 	return;
@@ -321,13 +328,18 @@ char	*filename;	/* FITS or IRAF file filename */
 	wcsoutinit (wcs, coorsys);
 
 /* Set the magnitude limits for the search */
-    if (maglim == 0.0) {
+    if (maglim2 == 0.0) {
 	mag1 = 0.0;
 	mag2 = 0.0;
 	}
     else {
-	mag1 = -2.0;
-	mag2 = maglim;
+	mag1 = maglim1;
+	mag2 = maglim2;
+	}
+    if (mag2 < mag1) {
+	mag = mag1;
+	mag1 = mag2;
+	mag2 = mag;
 	}
 
     if (nstars > MAXREF)
@@ -408,14 +420,20 @@ char	*filename;	/* FITS or IRAF file filename */
     if (nstars > 0 && ng > nstars) {
 	nbg = nstars;
 	if (verbose || printhead)
-	    printf ("%d / %d %s brighter than %.1f",
-		     nbg, ng, title, gm[nbg-1]);
+	    if (mag2 > 0.0)
+		printf ("%d / %d %s between %.1f and %.1f",
+			nbg, ng, title, gm[0], gm[nbg-1]);
+	    else
+		printf ("%d / %d %s brighter than %.1f",
+			nbg, ng, title, gm[nbg-1]);
 	}
     else {
 	nbg = ng;
 	if (verbose || printhead) {
-	    if (maglim > 0.0)
-		printf ("%d %s brighter than %.1f",ng, title, maglim);
+	    if (maglim1 > 0.0)
+		printf ("%d %s between %.1f and %.1f",ng,title,maglim1,maglim2);
+	    else if (maglim2 > 0.0)
+		printf ("%d %s brighter than %.1f",ng, title, maglim2);
 	    else if (verbose)
 		printf ("%d %s", ng, title);
 	    }
@@ -479,6 +497,13 @@ char	*filename;	/* FITS or IRAF file filename */
 	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
+
+    if (uplate > 0) {
+	if (wfile)
+            fprintf (fd, "PLATE     %d\n", uplate);
+        if (tabout)
+            printf ("PLATE      %d\n", uplate);
+        }
 
     if (rasort) {
 	if (wfile)
@@ -592,4 +617,9 @@ char	*filename;	/* FITS or IRAF file filename */
  * Oct 16 1996	Write list of stars to standard output by default
  * Nov 13 1996	Add UA catalog reading capabilities
  * Nov 15 1996	Change catalog reading subroutine arguments
+ * Dec 10 1996	Change equinox in getfitswcs call to double
+ * Dec 12 1996	Version 1.2
+ * Dec 12 1996	Add option for bright as well as faint magnitude limits
+ * Dec 12 1996	Fix header for UAC magnitudes
+ * Dec 13 1996	Write plate into header if selected
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** November 21, 1996
+ *** December 12, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -20,6 +20,7 @@
  * Subroutine:	strsrch (s1, s2) finds string s2 in null-terminated string s1
  * Subroutine:	strnsrch (s1, s2, ls1) finds string s2 in ls1-byte string s1
  * Subroutine:	hlength (header,lhead) sets length of FITS header for searching
+ * Subroutine:  isnum (string) returns 1 if number, else 0
 
  * Copyright:   1995, 1996 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
@@ -740,6 +741,34 @@ int	ls1;	/* Length of string being searched */
 	}
     return (NULL);
 }
+
+int
+isnum (string)
+
+char *string;	/* Character string */
+{
+    int lstr, i, nd;
+    char cstr;
+
+    lstr = strlen (string);
+    nd = 0;
+    for (i = 0; i < lstr; i++) {
+	cstr = string[i];
+	if ((cstr < 48 || cstr > 57) &&
+	    cstr != '+' && cstr != '-' &&
+	    cstr != 'D' && cstr != 'd' &&
+	    cstr != 'E' && cstr != 'e' &&
+	    cstr != '.')
+	    return (0);
+	else if (cstr >= 47 && cstr <= 57)
+	    nd++;
+	}
+    if (nd > 0)
+	return (1);
+    else
+	return (0);
+}
+
 /* Oct 28 1994	New program
  *
  * Mar  1 1995	Search for / after second quote, not first one
@@ -747,7 +776,7 @@ int	ls1;	/* Length of string being searched */
  * May  4 1995	Declare STRSRCH in KSEARCH
  * Aug  7 1995  Fix line initialization in HGETC
  * Dec 22 1995	Add HGETRA and HGETDEC to get degrees from xx:xx:xx.xxx string
-
+ *
  * Jan 26 1996	Fix HGETL to not crash when parameter is not present
  * Feb  1 1996	Fix HGETC to deal with quotes correctly
  * Feb  1 1996	Fix HGETDEG to deal with sign correctly
@@ -770,4 +799,5 @@ int	ls1;	/* Length of string being searched */
  * Oct 15 1996	Clean up loops and fix ICOL assignment
  * Nov 13 1996	Handle integer degrees correctly in STR2DEC
  * Nov 21 1996	Make changes for Linux thanks to Sidik Isani
+ * Dec 12 1996	Add ISNUM to check to see whether strings are numbers
  */

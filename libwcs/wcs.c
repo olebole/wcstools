@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** November 5, 1996
+ *** December 13, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -72,6 +72,7 @@ char *hstring;	/* character string containing FITS header information
 	double dec_deg,ra_hours, secpix, cddet;
 	int ieq, i;
 	char ctypes[8][5];
+	char *str;
 
 	strcpy (ctypes[0],"-SIN");
 	strcpy (ctypes[1],"-TAN");
@@ -199,6 +200,7 @@ char *hstring;	/* character string containing FITS header information
 	/* Set up right ascension, declination, latitude, or longitude */
 	    else if (wcstemp[0] == 'R' ||
 		     wcstemp[0] == 'D' ||
+		     wcstemp[0] == 'A' ||
 		     wcstemp[1] == 'L') {
 		wcs->c1type[0] = wcstemp[0];
 		wcs->c1type[1] = wcstemp[1];
@@ -226,7 +228,7 @@ char *hstring;	/* character string containing FITS header information
 
 	/* If not linear or sky coordinates, drop out with error message */
 	    else {
-		(void)sprintf (wcserrmsg,"WCSINIT: CTYPE2 not sky coordinates or LINEAR -> no WCS\n");
+		(void)sprintf (wcserrmsg,"WCSINIT: CTYPE1 not sky coordinates or LINEAR -> no WCS\n");
 		free (wcs);
 		return (NULL);
 		}
@@ -253,6 +255,7 @@ char *hstring;	/* character string containing FITS header information
 	/* Set up right ascension, declination, latitude, or longitude */
 	    else if (wcstemp[0] == 'R' ||
 		     wcstemp[0] == 'D' ||
+		     wcstemp[0] == 'A' ||
 		     wcstemp[1] == 'L') {
 		wcs->c2type[0] = wcstemp[0];
 		wcs->c2type[1] = wcstemp[1];
@@ -271,7 +274,7 @@ char *hstring;	/* character string containing FITS header information
 		    wcs->coorflip = 1;
 		else
 		    wcs->coorflip = 0;
-		if (wcstemp[1] == 'L') {
+		if (wcstemp[1] == 'L' || wcstemp[0] == 'A') {
 		    wcs->degout = 1;
 		    wcs->ndec = 5;
 		    }
@@ -423,7 +426,17 @@ char *hstring;	/* character string containing FITS header information
 	wcs->changesys = 0;
 	wcs->printsys = 1;
 	wcs->tabsys = 0;
-	strcpy (wcs->search_format,"rgsc_%s");
+	if ((str = getenv("WCS_COMMAND")) != NULL ) {
+	    int icom;
+	    int lcom = strlen (str);
+	    for (icom = 0; icom < lcom; icom++) {
+		if (str[icom] == '_')
+		    str[icom] = ' ';
+		}
+	    strcpy (wcs->search_format, str);
+	    }
+	else
+	    strcpy (wcs->search_format, "rgsc %s");
 	return (wcs);
 }
 
@@ -502,6 +515,8 @@ struct WorldCoor *wcs;
 	strcpy (wcs->radecsys,"SGALACTC");
     else if (wcs->c1type[0] == 'H')
 	strcpy (wcs->radecsys,"HELIOECL");
+    else if (wcs->c1type[0] == 'A')
+	strcpy (wcs->radecsys,"ALTAZ");
 
     /* Otherwise set coordinate system from equinox */
     /* Systemless coordinates cannot be translated using b, j, or g commands */
@@ -536,6 +551,7 @@ char	*proj;	/* Projection */
 
 {
 	struct WorldCoor *wcs;
+	char *str;
 
 	wcs = (struct WorldCoor *) calloc (1, sizeof(struct WorldCoor));
 
@@ -586,7 +602,17 @@ char	*proj;	/* Projection */
 	wcs->changesys = 0;
 	wcs->printsys = 1;
 	wcs->tabsys = 0;
-	strcpy (wcs->search_format,"rgsc_%s");
+	if ((str = getenv("WCS_COMMAND")) != NULL ) {
+	    int icom;
+	    int lcom = strlen (str);
+	    for (icom = 0; icom < lcom; icom++) {
+		if (str[icom] == '_')
+		    str[icom] = ' ';
+		}
+	    strcpy (wcs->search_format, str);
+	    }
+	else
+	    strcpy (wcs->search_format, "rgsc %s");
 	return (wcs);
 }
 
@@ -864,13 +890,15 @@ char *command;		/* command with %s where coordinates will go */
 
     if (iswcs(wcs)) {
 	lcom = strlen (command);
-	for (icom = 0; icom < lcom; icom++) {
-	    if (command[icom] == '_')
-		wcs->search_format[icom] = ' ';
-	    else
-		wcs->search_format[icom] = command[icom];
+	if (lcom > 0) {
+	    for (icom = 0; icom < lcom; icom++) {
+		if (command[icom] == '_')
+		    wcs->search_format[icom] = ' ';
+		else
+		    wcs->search_format[icom] = command[icom];
+		}
+	    wcs->search_format[lcom] = 0;
 	    }
-	wcs->search_format[lcom] = 0;
 	}
     return;
 }
@@ -894,8 +922,6 @@ double	xfile,yfile;		/* Image pixel coordinates for WCS command */
 
     if (wcs->search_format[0] > 0)
 	strcpy (comform, wcs->search_format);
-    else if ((str = getenv("WCS_COMMAND")) != NULL )
-	strcpy (comform, str);
     else
 	strcpy (comform, "rgsc %s");
 
@@ -967,6 +993,10 @@ char *coorsys;
 	else
 	    wcs->changesys = 0;
 	if (strncmp(wcs->sysout,"GAL",3) == 0) {
+	    wcs->degout = 1;
+	    wcs->ndec = 5;
+	    }
+	else if (strncmp(wcs->sysout,"ALT",3) == 0) {
 	    wcs->degout = 1;
 	    wcs->ndec = 5;
 	    }
@@ -1058,6 +1088,12 @@ int	lstr;		/* Length of world coordinate string (returned) */
 	else if (!strncmp (wcs->sysout,"ECL",3)) {
 	    if (lstr > 9 && wcs->printsys)
 		strcat (wcstring," ecliptic");
+	    }
+
+	/* Label alt-az coordinates */
+	else if (!strncmp (wcs->sysout,"ALT",3)) {
+	    if (lstr > 7 && wcs->printsys)
+		strcat (wcstring," alt-az");
 	    }
 
 	/* Label equatorial coordinates */
@@ -1271,4 +1307,6 @@ wcserr ()
  * Oct 31 1996	Use inline degree <-> radian conversion functions
  * Nov  1 1996	Add option to change number of decimal places in PIX2WCST
  * Nov  5 1996	Set wcs->crot to 1 if rotation matrix is used
+ * Dec  2 1996	Add altitide/azimuth coordinates
+ * Dec 13 1996	Fix search format setting from environment
  */
