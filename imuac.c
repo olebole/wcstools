@@ -1,5 +1,5 @@
 /* File imuac.c
- * December 13, 1996
+ * January 10, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -485,4 +485,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Dec 12 1996	Add option to set upper and lower magnitudes
  * Dec 12 1996	Fix header for magnitudes
  * Dec 13 1996	Fix bug writing sorted header
+ * Jan 10 1997	Fix bug in RASortStars
  */

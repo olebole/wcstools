@@ -1,5 +1,5 @@
 /* File suac.c
- * December 16, 1996
+ * January 10, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -99,9 +99,8 @@ char **av;
 	    nfind++;
 	    }
 
-	else {
+	else if (*(str = *av) == '-') {
 	    char c;
-	    str = *av;
 	    while (c = *++str) {
 	    switch (c) {
 
@@ -134,7 +133,7 @@ char **av;
 	    case '1':	/* Get closest source */
 		distsort++;
 		nstars = 1;
-    		setradius (300.0);
+    		setradius (60.0);
 		break;
 
 	    case 'd':	/* Sort by distance from center */
@@ -280,18 +279,25 @@ double *uacnum;		/* USNO A Catalog zone.number */
     int imh, imw;	/* Image height and width in pixels */
     int i, numax, nbytes;
     FILE *fd;
-    double cra, cdec, dra, ddec, ra1, dec1, mag1, mag2, box;
+    double cra = -1.0;
+    double cdec = -90.0;
+    double ddec = 0.0;
+    double dra, ra1, dec1, mag1, mag2, box;
     double mag;
     int offscale, nlog;
     char headline[160];
     char filename[80];
 
-    if (verbose || printhead)
+    if (verbose || printhead) {
+	if (nstars == 1 && nfind == 0)
+	else
+	}
     if (verbose)
 	nlog = 1000;
     else
 	nlog = 0;
 
+    /* Find stars specified by number */
     if (uacnum != NULL) {
 	nbytes = nfind * sizeof (double);
 	if (!(unum = (double *) malloc (nbytes)))
@@ -321,8 +327,8 @@ double *uacnum;		/* USNO A Catalog zone.number */
 	    if (udec) free ((char *)udec);
 	    if (unum) free ((char *)unum);
 	    if (up) free ((char *)up);
-	    if (ux) free ((char *)up);
-	    if (uy) free ((char *)up);
+	    if (ux) free ((char *)ux);
+	    if (uy) free ((char *)uy);
 	    return;
 	    }
 	wfile = 0;
@@ -330,30 +336,31 @@ double *uacnum;		/* USNO A Catalog zone.number */
 	for (i = 0; i < nbg; i++ ) {
 	    if (strcmp (coorout,"FK4") == 0)
 		fk524 (&ura[i],&udec[i]);
+	    ux[i] = 0.0;
+	    uy[i] = 1.0;
 	    }
-	uy[i] = 1.0;
-	ux[0] = 0.0;
-	uy[0] = 0.0;
 	}
 
+    /* Find stars specified by location */
+    else {
+
     /* Set limits from defaults and command line information */
-    else if (GetArea (verbose,2000,&cra,&cdec,&dra,&ddec))
+    if (GetArea (verbose,2000,&cra,&cdec,&dra,&ddec))
 	return;
 
-    else {
     if (coorout[0] == 0)
 	strcpy (coorout, coorsys);
     if (strcmp (coorout, coorsys)) {
 	if (strcmp (coorout, "FK5") == 0) {
-	    ra2str (cra, rastr,3);
-	    dec2str (cdec, decstr,2);
+	    ra2str (rastr, cra, 3);
+	    dec2str (decstr, cdec, 2);
 	    }
 	else {
 	    ra1 = cra;
 	    dec1 = cdec;
 	    fk524 (&ra1,&dec1);
-	    ra2str (ra1, rastr,3);
-	    dec2str (dec1, decstr,2);
+	    ra2str (rastr, ra1, 3);
+	    dec2str (decstr, dec1, 2);
 	    }
 	}
     if (verbose || printhead) {
@@ -368,7 +375,7 @@ double *uacnum;		/* USNO A Catalog zone.number */
 	printf ("radius = %7.2f\n", ddec*3600.0);
 	}
 
-/* Set the magnitude limits for the GSC search */
+/* Set the magnitude limits for the UAC search */
     if (maglim2 == 0.0) {
 	mag1 = 0.0;
 	mag2 = 0.0;
@@ -444,15 +451,17 @@ double *uacnum;		/* USNO A Catalog zone.number */
     if (nstars > 0 && ng > nstars) {
 	nbg = nstars;
 	if (verbose || printhead) {
-	    if (nstars == 1)
-		printf ("Closest UA Catalog star\n");
-	    else if (distsort)
-		printf ("Closest %d / %d UA Catalog stars (closer than %.2f arcsec)\n",
-		     nbg, ng, 3600.0*ux[nbg-1]);
-	    else if (maglim1 > 0.0)
+	    if (nstars > 1 && distsort) {
+		if (nbg > 1)
+		    printf ("Closest %d / %d UA Catalog stars (closer than %.2f arcsec)\n",
+			     nbg, ng, 3600.0*ux[nbg-1]);
+		else
+		    printf ("Closest of %d UA Catalog stars\n", ng);
+		}
+	    else if (nstars > 1 && maglim1 > 0.0)
 		printf ("Brightest %d / %d UA Catalog stars (between R magnitude %.1f and %.1f)\n",
 		     nbg, ng, um[0], um[nbg-1]);
-	    else
+	    else if (nstars > 1)
 		printf ("Brightest %d / %d UA Catalog stars (brighter than R magnitude %.1f)\n",
 		     nbg, ng, um[nbg-1]);
 	    }
@@ -471,6 +480,7 @@ double *uacnum;		/* USNO A Catalog zone.number */
     /* Sort star-like objects in image by right ascension */
     if (rasort)
 	RASortStars (unum, ura, udec, ux, uy, um, umb, up, nbg);
+    }
 
     /* Open plate catalog file */
     if (wfile) {
@@ -501,21 +511,27 @@ double *uacnum;		/* USNO A Catalog zone.number */
     if (tabout)
 	printf ("%s\n", headline);
 
-    if (wfile)
-	fprintf (fd, "RA	%s\n", rastr);
-    if (tabout)
-	printf ("RA	%s\n", rastr);
+    if (cra >= 0.0) {
+	if (wfile)
+	    fprintf (fd, "RA	%s\n", rastr);
+	if (tabout)
+	    printf ("RA	%s\n", rastr);
+	}
 
-    if (wfile)
-	fprintf (fd, "DEC	%s\n", decstr);
-    if (tabout)
-	printf ("DEC	%s\n", decstr);
+    if (cdec >= -90.0) {
+	if (wfile)
+	    fprintf (fd, "DEC	%s\n", decstr);
+	if (tabout)
+	    printf ("DEC	%s\n", decstr);
+	}
 
-    dec2str (decstr, ddec, 2);
-    if (wfile)
-	fprintf (fd, "RADIUS	%s\n", decstr);
-    if (tabout)
-	printf ("RADIUS	%s\n", decstr);
+    if (ddec > 0.0) {
+	dec2str (decstr, ddec, 2);
+	if (wfile)
+	    fprintf (fd, "RADIUS	%s\n", decstr);
+	if (tabout)
+	    printf ("RADIUS	%s\n", decstr);
+	}
 
     if (strcmp (coorout,"FK4") == 0)
 	sprintf (headline, "EQUINOX	1950.0");
@@ -546,10 +562,12 @@ double *uacnum;		/* USNO A Catalog zone.number */
 	}
     if (wfile)
     if (tabout)
-    }
 
     /* Print column headings */
-    sprintf (headline,"UAC_NUMBER	RA      	DEC      	MAGB	MAGR	PLATE	ARCSEC");
+    if (strcmp (coorout,"FK4") == 0)
+	sprintf (headline,"UAC_NUMBER	RA1950  	DEC1950  	MAGB	MAGR	PLATE	ARCSEC");
+    else
+	sprintf (headline,"UAC_NUMBER	RA2000  	DEC2000  	MAGB	MAGR	PLATE	ARCSEC");
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
@@ -559,8 +577,14 @@ double *uacnum;		/* USNO A Catalog zone.number */
 	fprintf (fd, "%s\n", headline);
     if (tabout)
 	printf ("%s\n", headline);
-    if (printhead)
-	printf ("USNO A number  RA           Dec          MagB  MagR Plate  Arcsec\n");
+    if (printhead) {
+	if (nbg == 0)
+	    printf ("No USNO A 1.0 Stars Found\n");
+	else if (strcmp (coorout,"FK4") == 0)
+	    printf ("USNO A number  RA1950       Dec1950      MagB  MagR Plate  Arcsec\n");
+	else
+	    printf ("USNO A number  RA2000       Dec2000      MagB  MagR Plate  Arcsec\n");
+	}
 
     for (i = 0; i < nbg; i++) {
 	ra2str (rastr, ura[i], 3);
@@ -597,4 +621,9 @@ double *uacnum;		/* USNO A Catalog zone.number */
  * Dec 12 1996	Fix header for magnitudes
  * Dec 13 1996	Fix bug writing plate into header
  * Dec 13 1996	Add code to accept input center as colon'ed string
+ * Dec 17 1996	Fix UACREAD to keep closest stars, not brightest ones
+ * Dec 18 1996	Set radius to 1 minute, not 5, if finding closest star
+ * Dec 30 1996	Clean up closest star message
+ * Dec 30 1996	Print message instead of heading if no stars are found
+ * Jan 10 1997	Fix bug in RASortStars
  */

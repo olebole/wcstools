@@ -14,7 +14,7 @@
 
 /* The following are used in star matching (matchstar.c) */
 #define	FTOL	0.000001	/* Fractional change of chisqr() to be done */
-#define NMAX		500	/* Maximum number of minimization iterations */
+#define NMAX		750	/* Maximum number of minimization iterations */
 #define	NPEAKS		20	/* Binning peak history */
 
 /* The following are used in world coordinate system fitting (imsetwcs.c) */

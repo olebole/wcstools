@@ -1,5 +1,5 @@
 /* File imcat.c
- * December 13, 1996
+ * January 10, 1997
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -622,4 +622,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Dec 12 1996	Add option for bright as well as faint magnitude limits
  * Dec 12 1996	Fix header for UAC magnitudes
  * Dec 13 1996	Write plate into header if selected
+ * Jan 10 1997	Fix bug in RASort Stars which did not sort magnitudes
  */

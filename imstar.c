@@ -36,6 +36,7 @@ static int nstar = 0;
 static double cra0 = 0.0;
 static double cdec0 = 0.0;
 static double eqout = 0.0;
+static int daoout = 0;
 
 main (ac, av)
 int ac;
@@ -144,6 +145,10 @@ char **av;
 	    tabout = 1;
 	    break;
 
+	case 'w':	/* Write DAOFIND-format output file */
+	    daoout = 1;
+	    break;
+
 	default:
 	    usage (progname);
 	    break;
@@ -186,6 +191,7 @@ char *progname;
     fprintf(stderr,"  -s: Sort by RA instead of flux \n");
     fprintf(stderr,"  -t: Tab table to standard output as well as file\n");
     fprintf(stderr,"  -v: Verbose\n");
+    fprintf(stderr,"  -w: DAOFIND format output to standard output\n");
     exit (1);
 }
 
@@ -357,6 +363,9 @@ char	*filename;	/* FITS or IRAF file filename */
 	fprintf (fd, "%s\n", headline);
 	if (tabout)
 	    printf ("%s\n", headline);
+	if (daoout)
+	    printf ("%7.2f %7.2f %6.2f %d %s %s\n",
+		    sx[i],sy[i],smag[i],sp[i],rastr,decstr);
 	else if (verbose)
 	    printf ("%3d %s %s %6.2f %7.2f %7.2f %8.1f %d\n",
 		    i+1, rastr, decstr, smag[i],sx[i],sy[i],sb[i], sp[i]);

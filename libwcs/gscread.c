@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** December 12, 1996
+ *** December 18, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -39,6 +39,11 @@ int	nlog;		/* 1 for diagnostics */
     double ra1,ra2;	/* Limiting right ascensions of region in degrees */
     double dec1,dec2;	/* Limiting declinations of region in degrees */
     double dist = 0.0;  /* Distance from search center in degrees */
+    double faintmag=0.0; /* Faintest magnitude */
+    double maxdist=0.0; /* Largest distance */
+    int	faintstar=0;	/* Faintest star */
+    int	farstar=0;	/* Most distant star */
+    double *gdist;	/* Array of distances to stars */
     char *table;	/* FITS table */
     int nreg;		/* Number of input FITS tables files */
     int rlist[100];	/* List of input FITS tables files */
@@ -140,6 +145,7 @@ int	nlog;		/* 1 for diagnostics */
 	return (0);
 	}
 
+    gdist = (double *) malloc (nstarmax * sizeof (double));
     classd = -1;
 
 /* Set keyword list */
@@ -227,6 +233,8 @@ int	nlog;		/* 1 for diagnostics */
 		mag = msum / merrsum;
 		if (drad > 0)
 		    dist = wcsdist (cra,cdec,ra,dec);
+		else
+		    dist = 0.0;
 
 	/* Check magnitude amd position limits */
 		if (((mag1 != mag2 && (mag >= mag1 && mag <= mag2)) ||
@@ -237,15 +245,61 @@ int	nlog;		/* 1 for diagnostics */
      		    (dec >= dec1 && dec <= dec2)) {
 
 	/* Save star position in table */
-		    if (nstar <= nstarmax) {
+		    if (nstar < nstarmax) {
 			gnum[nstar] = (double)rnum + (0.0001 * (double) num);
 			gra[nstar] = ra;
 			gdec[nstar] = dec;
 			gmag[nstar] = mag;
 			gtype[nstar] = class;
+			gdist[nstar] = dist;
+			if (dist > maxdist) {
+			    maxdist = dist;
+			    farstar = nstar;
+			    }
+			if (mag > faintmag) {
+			    faintmag = mag;
+			    faintstar = nstar;
+			    }
 			}
-		    nstar = nstar + 1;
-		    jstar = jstar + 1;
+
+		/* If too many stars and radial search,
+		   replace furthest star */
+		    else if (drad > 0 && dist < maxdist) {
+			gra[farstar] = ra;
+			gdec[farstar] = dec;
+			gmag[farstar] = mag;
+			gtype[farstar] = class;
+			gdist[farstar] = dist;
+			maxdist = 0.0;
+
+		    /* Find new farthest star */
+			for (i = 0; i < nstarmax; i++) {
+			    if (gdist[i] > maxdist) {
+				maxdist = gdist[i];
+				farstar = i;
+				}
+			    }
+			}
+
+		/* If too many stars, replace faintest star */
+		    else if (mag < faintmag) {
+			gra[faintstar] = ra;
+			gdec[faintstar] = dec;
+			gmag[faintstar] = mag;
+			gtype[faintstar] = class;
+			gdist[faintstar] = dist;
+			faintmag = 0.0;
+
+		    /* Find new faintest star */
+			for (i = 0; i < nstarmax; i++) {
+			    if (gmag[i] > faintmag) {
+				faintmag = gmag[i];
+				faintstar = i;
+				}
+			    }
+			}
+		    nstar++;
+		    jstar++;
 		    if (nlog == 1)
 			fprintf (stderr,"GSCREAD: %04d.%04d: %9.5f %9.5f %5.2f %d %d\n",
 				rnum,num,ra,dec,mag,class,npos);
@@ -311,7 +365,206 @@ int	nlog;		/* 1 for diagnostics */
 		 nstar,nstarmax);
 	nstar = nstarmax;
 	}
+    free ((char *)gdist);
     return (nstar);
+}
+
+/* GSCRNUM -- Read HST Guide Star Catalog stars from CDROM */
+
+int
+gscrnum (nstars, gnum,gra,gdec,gmag,gtype,nlog)
+
+int	nstars;		/* Number of stars to find */
+double	*gnum;		/* Array of Guide Star numbers (returned) */
+double	*gra;		/* Array of right ascensions (returned) */
+double	*gdec;		/* Array of declinations (returned) */
+double	*gmag;		/* Array of magnitudes (returned) */
+int	*gtype;		/* Array of object types (returned) */
+int	nlog;		/* 1 for diagnostics */
+{
+    char *table;	/* FITS table */
+    int nreg;		/* Number of input FITS tables files */
+    char inpath[64];	/* Pathname for input FITS table file */
+    char entry[100];	/* Buffer for FITS table row */
+    int class, class0;	/* Object class (0>star, 3>other) */
+    struct Keyword kw[8];	/* Keyword structure */
+    struct Keyword *kwn;
+
+    int verbose;
+    int wrap;
+    int rnum, num0, num, itot,ireg,ltab;
+    int ik,nk,itable,ntable,jstar;
+    int nbline,npos,nbhead;
+    int nbr,nrmax,nstar,i, snum;
+    FILE *ift;
+    double ra,ra0,rasum,dec,dec0,decsum,perr,perr0,perr2,perrsum,msum;
+    double mag,mag0,merr,merr0,merr2,merrsum;
+    char *str;
+
+    itot = 0;
+    if (nlog == 1)
+	verbose = 1;
+    else
+	verbose = 0;
+    ltab = 10000;
+    table = malloc (10000);
+    for (i = 0; i < 100; i++)
+	entry[i] = 0;
+
+    /* Set path to Guide Star Catalog */
+    if ((str = getenv("GSC_NORTH")) != NULL )
+	strcpy (cdn,str);
+    if ((str = getenv("GSC_SOUTH")) != NULL )
+	strcpy (cds,str);
+
+/* Set keyword list */
+    nk = 8;
+    strcpy (kw[0].kname,"GSC_ID");
+    strcpy (kw[1].kname,"RA_DEG");
+    strcpy (kw[2].kname,"DEC_DEG");
+    strcpy (kw[3].kname,"POS_ERR");
+    strcpy (kw[4].kname,"MAG");
+    strcpy (kw[5].kname,"MAG_ERR");
+    strcpy (kw[6].kname,"MAG_BAND");
+    strcpy (kw[7].kname,"CLASS");
+    for (ik = 0; ik < nk; ik++) {
+	kw[ik].kn = 0;
+	kw[ik].kf = 0;
+	kw[ik].kl = 0;
+	}
+    nstar = 0;
+
+/* Loop through star list */
+    for (jstar = 0; jstar < nstars; jstar++) {
+	rnum = (int) gnum[jstar];
+	gscpath (rnum,inpath);
+	snum = (int) (((gnum[jstar] - (double)rnum) * 10000.0) + 0.01);
+
+    /* Read size and keyword info from FITS table header */
+	kwn = kw;
+	ift = fitsrtopen (inpath,&nk,&kwn,&ntable,&nbline,&nbhead);
+	if (ift == NULL) {
+	    fprintf (stderr,"GSCRNUM: File %s not found\n",inpath);
+	    return (0);
+	    }
+	num0 = 0;
+	rasum = 0.0;
+	decsum = 0.0;
+	msum = 0.0;
+	perrsum = 0.0;
+	merrsum = 0.0;
+	npos = 0;
+	num = 0;
+	fitsrtlset();
+	class = 0;
+
+	/* Loop through FITS table for this region */
+	for (itable = 0; itable <= ntable; itable++) {
+
+	    if (itable < ntable) {
+		nbr = fitsrtline (ift,nbhead,ltab,table,itable,nbline,entry);
+		if (nbr < nbline) {
+		    fprintf (stderr,"GSCRNUM: %d / %d bytes read, line %d / %d, region %d\n",
+			      nbr,nbline,itable,ntable,rnum);
+		    break;
+		    }
+
+	 /* Extract selected fields */
+
+		/* Star number within region */
+		num0 = ftgeti4 (entry, &kw[0]);
+		if (num0 < snum)
+		    continue;
+		else if (num == 0)
+		    num = num0;
+
+		/* Right ascension in degrees */
+		ra0 = ftgetr8 (entry, &kw[1]);
+
+		/* Declination in degrees */
+		dec0 = ftgetr8 (entry, &kw[2]);
+
+		/* Position error */
+		perr0 = ftgetr8 (entry, &kw[3]);
+
+		/* Magnitude */
+		mag0 = ftgetr8 (entry, &kw[4]);
+
+		/* Magnitude error */
+		merr0 = ftgetr8 (entry, &kw[5]);
+
+		/* Bandpass code */
+		/* band0 = ftgeti4 (entry, &kw[6]); */
+
+		/* Object class code */
+		class0 = ftgeti4 (entry, &kw[7]);
+		}
+	    else
+		num0 = 0;
+
+	    /* Compute mean position and magnitude for object */
+	    if (num != num0 && itable > 0 && npos > 0) {
+		ra = rasum / perrsum;
+		dec = decsum / perrsum;
+		mag = msum / merrsum;
+
+		/* Save star position in table */
+		gra[nstar] = ra;
+		gdec[nstar] = dec;
+		gmag[nstar] = mag;
+		gtype[nstar] = class;
+
+		nstar++;
+		if (nlog == 1)
+		    fprintf (stderr,"GSCRNUM: %04d.%04d: %9.5f %9.5f %5.2f %d %d\n",
+			     rnum,num,ra,dec,mag,class,npos);
+
+		/* Reset star position for averaging */
+		rasum = 0.0;
+		decsum = 0.0;
+		msum = 0.0;
+		perrsum = 0.0;
+		merrsum = 0.0;
+		npos = 0;
+		break;
+		}
+
+	    /* Add information from current line to current object */
+	    perr = perr0;
+	    perr2 = perr * perr;
+	    if (perr2 <= 0.0) perr2 = 0.01;
+	    rasum = rasum + (ra0 / perr2);
+	    decsum = decsum + (dec0 / perr2);
+	    perrsum = perrsum + (1.0 / perr2);
+	    if (merr0 <= 0.0) merr0 = 0.01;
+	    merr = merr0;
+	    merr2 = merr * merr;
+	    msum = msum + (mag0 / merr2);
+	    merrsum = merrsum + (1.0 / merr2);
+	    num = num0;
+	    class = class0;
+	    npos = npos + 1;
+
+/* Log operation */
+
+	    if (nlog > 0 && itable%nlog == 0)
+		fprintf (stderr,"GSCRNUM: %4d / %4d: %5d / %5d  / %5d sources, region %4d.%04d\r",
+			 jstar+1,nstars,itable,ntable,rnum,snum);
+
+/* End of region */
+	    }
+
+/* Close region input file */
+	(void) fclose (ift);
+	itot = itot + itable;
+	if (nlog > 0)
+	    fprintf (stderr,"GSCRNUM: %4d / %4d: %5d / %5d  / %5d sources, region %4d.%04d\n",
+		     jstar+1,nstars,itable,ntable,rnum,snum);
+	}
+
+/* close output file and summarize transfer */
+    free (table);
+    return (nstars);
 }
 
 
@@ -673,4 +926,6 @@ char *path;	/* Pathname of GSC region FITS file */
  * Nov 13 1996	Write all error messages to stderr with subroutine names
  * Nov 15 1996	Implement search radius; change input arguments
  * Dec 12 1996	Make logging run on single line per region
+ * Dec 17 1996  Add code to keep brightest or closest stars if too many found
+ * Dec 18 1996	Add code to get star information by number
  */

@@ -1,5 +1,5 @@
 /* File imgsc.c
- * December 12, 1996
+ * January 10, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -492,4 +492,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Nov 15 1996	Change arguments for search routine
  * Dec 10 1996	Change equinox in getfitswcs call to double
  * Dec 12 1996	Allow bright as well as faint magnitude limit
+ * Jan 10 1997	Fix bug in RASort Stars which did not sort magnitudes
  */

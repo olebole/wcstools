@@ -564,7 +564,7 @@ double ytry,ysave,sum,rtol,*psum;
 	    break;
 	if (*nfunk >= itmax) {
 	    fprintf (stderr,"Numerical Recipes run-time error...\n");
-	    fprintf (stderr,"%s\n","Too many iterations in AMOEBA");
+	    fprintf (stderr,"Too many iterations in AMOEBA %d > %d",*nfunk,itmax);
 	    fprintf (stderr,"...now exiting to system...\n");
 	    exit (1);
 	    }

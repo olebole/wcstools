@@ -1,5 +1,5 @@
 /* File libwcs/sortstar.c
- * November 13, 1996
+ * January 10, 1997
  * By Doug Mink
  */
 
@@ -190,7 +190,7 @@ int	ns;
 	sdec[i] = stars[i].dec;
 	sx[i] = stars[i].x;
 	sy[i] = stars[i].y;
-	sm1[i] = stars[i].b;
+	sm[i] = stars[i].b;
 	sm1[i] = stars[i].r;
 	sc[i] = stars[i].c;
 	}
@@ -292,4 +292,5 @@ void *ssp1, *ssp2;
 /* Jun 13 1996	New program
  * Oct 18 1996	Add sorting by X value
  * Nov 13 1996	Add second magnitude
+ * Jan 10 1997	Fix bug in RASortStars to return correct red magnitude
  */

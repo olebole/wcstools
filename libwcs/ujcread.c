@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** December 12, 1996
+ *** December 18, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -60,6 +60,11 @@ int	verbose;	/* 1 for diagnostics */
     double ra1,ra2;	/* Limiting right ascensions of region in degrees */
     double dec1,dec2;	/* Limiting declinations of region in degrees */
     double dist = 0.0;  /* Distance from search center in degrees */
+    double faintmag=0.0; /* Faintest magnitude */
+    double maxdist=0.0; /* Largest distance */
+    int	faintstar=0;	/* Faintest star */
+    int	farstar=0;	/* Most distant star */
+    double *udist;	/* Array of distances to stars */
     int nz;		/* Number of input UJ zone files */
     int zlist[NZONES];	/* List of input UJ zones */
     UJCstar star;	/* UJ catalog entry for one star */
@@ -67,7 +72,7 @@ int	verbose;	/* 1 for diagnostics */
     int wrap, iwrap;
     int znum, itot,iz;
     int nlog,itable,jstar;
-    int nstar;
+    int nstar, i;
     double ra,dec;
     double mag;
     int istar, istar1, istar2, plate;
@@ -143,6 +148,8 @@ int	verbose;	/* 1 for diagnostics */
 	return (0);
 	}
 
+    udist = (double *) malloc (nstarmax * sizeof (double));
+
 /* Logging interval */
     nlog = 0;
     nstar = 0;
@@ -190,6 +197,8 @@ int	verbose;	/* 1 for diagnostics */
 			plate = ujcplate (star.magetc);	/* Plate number */
 			if (drad > 0)
 			    dist = wcsdist (cra,cdec,ra,dec);
+			else
+			    dist = 0.0;
 
 		    /* Check magnitude amd position limits */
 			if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
@@ -207,9 +216,55 @@ int	verbose;	/* 1 for diagnostics */
 				udec[nstar] = dec;
 				umag[nstar] = mag;
 				uplate[nstar] = plate;
+				udist[nstar] = dist;
+				if (dist > maxdist) {
+				    maxdist = dist;
+				    farstar = nstar;
+				    }
+				if (mag > faintmag) {
+				    faintmag = mag;
+				    faintstar = nstar;
+				    }
 				}
-			    nstar = nstar + 1;
-			    jstar = jstar + 1;
+
+			/* If too many stars and radial search,
+			   replace furthest star */
+			    else if (drad > 0 && dist < maxdist) {
+				ura[farstar] = ra;
+				udec[farstar] = dec;
+				umag[farstar] = mag;
+				uplate[farstar] = plate;
+				udist[farstar] = dist;
+				maxdist = 0.0;
+
+			    /* Find new farthest star */
+				for (i = 0; i < nstarmax; i++) {
+				    if (udist[i] > maxdist) {
+					maxdist = udist[i];
+					farstar = i;
+					}
+				    }
+				}
+
+			/* If too many stars, replace faintest star */
+			    else if (mag < faintmag) {
+				ura[faintstar] = ra;
+				udec[faintstar] = dec;
+				umag[faintstar] = mag;
+				uplate[faintstar] = plate;
+				udist[faintstar] = dist;
+				faintmag = 0.0;
+
+			    /* Find new faintest star */
+				for (i = 0; i < nstarmax; i++) {
+				    if (umag[i] > faintmag) {
+					faintmag = umag[i];
+					faintstar = i;
+					}
+				    }
+				}
+			    nstar++;
+			    jstar++;
 			    if (nlog == 1)
 				fprintf (stderr,"UJCREAD: %04d.%04d: %9.5f %9.5f %5.2f\n",
 				    znum,istar,ra,dec,mag);
@@ -256,7 +311,97 @@ int	verbose;	/* 1 for diagnostics */
 		 nstar,nstarmax);
 	nstar = nstarmax;
 	}
+    free ((char *)udist);
     return (nstar);
+}
+
+
+int
+ujcrnum (nstars,unum,ura,udec,umag,uplate,nlog)
+
+int	nstars;		/* Number of stars to find */
+double	*unum;		/* Array of UA numbers to find */
+double	*ura;		/* Array of right ascensions (returned) */
+double	*udec;		/* Array of declinations (returned) */
+double	*umag;		/* Array of red magnitudes (returned) */
+int	*uplate;	/* Array of plate numbers (returned) */
+int	nlog;		/* Logging interval */
+{
+    UJCstar star;	/* UJ catalog entry for one star */
+
+    int verbose;
+    int znum, itot,iz, i;
+    int itable, jtable,jstar;
+    int nstar, nread, nzone;
+    int nfound = 0;
+    double ra,dec;
+    double mag;
+    int istar, istar1, istar2, plate;
+    int nzmax = NZONES;	/* Maximum number of declination zones */
+    char *str;
+
+    itot = 0;
+    if (nlog > 0)
+	verbose = 1;
+    else
+	verbose = 0;
+
+    /* Set path to USNO A Catalog */
+    if ((str = getenv("UA_PATH")) != NULL )
+	strcpy (cdu,str);
+
+/* Loop through star list */
+    for (jstar = 0; jstar < nstars; jstar++) {
+
+    /* Get path to zone catalog */
+	znum = (int) unum[jstar];
+	if ((nzone = ujcopen (znum)) != 0) {
+
+	    istar = (int) (((unum[jstar] - znum) * 100000000.0) + 0.5);
+
+	    if (ujcstar (istar, &star)) {
+		fprintf (stderr,"UACRNUM: Cannot read star %d\n", istar);
+		break;
+		}
+
+	    /* Extract selected fields if not probable duplicate */
+	    else if (star.magetc > 0) {
+		ra = ujcra (star.rasec); /* Right ascension in degrees */
+		dec = ujcdec (star.decsec); /* Declination in degrees */
+		mag = ujcmag (star.magetc); /* Magnitude */
+		plate = ujcplate (star.magetc);	/* Plate number */
+
+		/* Save star position and magnitude in table */
+		ura[nfound] = ra;
+		udec[nfound] = dec;
+		umag[nfound] = mag;
+		uplate[nfound] = plate;
+
+		nfound++;
+		if (nlog == 1)
+		    fprintf (stderr,"UJCRNUM: %04d.%08d: %9.5f %9.5f %5.2f\n",
+			     znum,istar,ra,dec,mag);
+
+		/* Log operation */
+		if (nlog > 0 && jstar%nlog == 0)
+		    fprintf (stderr,"UJCRNUM: %4d.%8d  %8d / %8d sources\r",
+			     znum, istar, jstar, nstar);
+
+		(void) fclose (fcat);
+		/* End of star processing */
+		}
+
+	    /* End of star */
+	    }
+
+	/* End of star loop */
+	}
+
+    /* Summarize search */
+    if (nlog > 0)
+	fprintf (stderr,"UJCRNUM:  %d / %d found\n",nfound,nstars);
+
+    return (nfound);
 }
 
 
@@ -577,4 +722,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Nov 13 1996	Write all error messages to stderr with subroutine names
  * Nov 15 1996  Implement search radius; change input arguments
  * Dec 12 1996	Improve logging
+ * Dec 17 1996	Add code to keep brightest or closest stars if too many found
+ * Dec 18 1996	Add code to read a specific star
  */

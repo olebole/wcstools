@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** December 16, 1996
+ *** December 17, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -68,9 +68,12 @@ int	nlog;		/* Logging interval */
     int nz;		/* Number of input UA zone files */
     int zlist[NZONES];	/* List of input UA zones */
     UACstar star;	/* UA catalog entry for one star */
-    double faintmag=0.0; /* Faintest magnitude */
     double dist = 0.0;	/* Distance from search center in degrees */
+    double faintmag=0.0; /* Faintest magnitude */
+    double maxdist=0.0; /* Largest distance */
     int	faintstar=0;	/* Faintest star */
+    int	farstar=0;	/* Most distant star */
+    double *udist;	/* Array of distances to stars */
 
     int wrap, iwrap;
     int verbose;
@@ -156,6 +159,8 @@ int	nlog;		/* Logging interval */
 	return (0);
 	}
 
+    udist = (double *) malloc (nstarmax * sizeof (double));
+
 /* Loop through region list */
     nstar = 0;
     for (iz = 0; iz < nz; iz++) {
@@ -205,6 +210,8 @@ int	nlog;		/* Logging interval */
 			plate = uacplate (star.magetc);	/* Plate number */
 			if (drad > 0)
 			    dist = wcsdist (cra,cdec,ra,dec);
+			else
+			    dist = 0.0;
 
 		    /* Check magnitude amd position limits and plate number */
 			if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
@@ -215,7 +222,7 @@ int	nlog;		/* Logging interval */
 			    (xplate == 0 || plate == xplate)) {
 
 			/* Save star position and magnitude in table */
-			    if (nstar <= nstarmax) {
+			    if (nstar < nstarmax) {
 				unum[nstar] = (double) znum +
 					      (0.00000001 * (double)istar);
 				ura[nstar] = ra;
@@ -223,9 +230,34 @@ int	nlog;		/* Logging interval */
 				umag[nstar] = mag;
 				umagb[nstar] = magb;
 				uplate[nstar] = plate;
+				udist[nstar] = dist;
+				if (dist > maxdist) {
+				    maxdist = dist;
+				    farstar = nstar;
+				    }
 				if (mag > faintmag) {
 				    faintmag = mag;
 				    faintstar = nstar;
+				    }
+				}
+
+			/* If too many stars and radial search,
+			   replace furthest star */
+			    else if (drad > 0 && dist < maxdist) {
+				ura[farstar] = ra;
+				udec[farstar] = dec;
+				umag[farstar] = mag;
+				umagb[farstar] = magb;
+				uplate[farstar] = plate;
+				udist[farstar] = dist;
+				maxdist = 0.0;
+
+			    /* Find new farthest star */
+				for (i = 0; i < nstarmax; i++) {
+				    if (udist[i] > maxdist) {
+					maxdist = udist[i];
+					farstar = i;
+					}
 				    }
 				}
 
@@ -236,6 +268,7 @@ int	nlog;		/* Logging interval */
 				umag[faintstar] = mag;
 				umagb[faintstar] = magb;
 				uplate[faintstar] = plate;
+				udist[faintstar] = dist;
 				faintmag = 0.0;
 
 			    /* Find new faintest star */
@@ -294,6 +327,7 @@ int	nlog;		/* Logging interval */
 		 nstar,nstarmax);
 	nstar = nstarmax;
 	}
+    free ((char *)udist);
     return (nstar);
 }
 
@@ -749,4 +783,5 @@ int nbytes = 12; /* Number of bytes to reverse */
 /* Nov 15 1996	New subroutine
  * Dec 11 1996	Set ra<0 to ra+360 and ra>360 to ra-360
  * Dec 16 1996	Add code to read a specific star
+ * Dec 17 1996	Keep closest stars, not brightest, if searching within radius
  */

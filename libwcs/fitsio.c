@@ -1,6 +1,6 @@
 /*** File libwcs/fitsio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** October 15, 1996
+ *** December 27, 1996
 
  * Module:      fitsio.c (FITS file reading and writing)
  * Purpose:     Read and write FITS image and table files
@@ -47,6 +47,11 @@
 #include "fitshead.h"
 
 static int verbose=0;		/* if 1 print diagnostics */
+static int nbskip=0;		/* Number of bytes to skip before header */
+
+void setbskip (nskip)
+int nskip;
+{ nbskip = nskip; return; }
 
 
 /* FITSRHEAD -- Read a FITS header */
@@ -76,6 +81,8 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 	    fprintf (stderr, "FITSRHEAD:  cannot read file %s\n", filename);
 	    return (NULL);
 	    }
+	if (nbskip > 0)
+	    (void)fseek (fd, (long)nbskip, SEEK_SET);
 	}
     else
 	fd = stdin;
@@ -122,6 +129,8 @@ int	*nbhead;	/* Actual length of image header in bytes (returned) */
 	    }
 
 /* Move current FITS record into header string */
+	for (i = 0; i < 2880; i++)
+	    if (fitsbuf[i] < 32) fitsbuf[i] = 32;
 	strncpy (headnext, fitsbuf, nbr);
 	*nbhead = *nbhead + nbr;
 	nrec = nrec + 1;
@@ -699,4 +708,6 @@ char	*image;		/* FITS image pixels */
  * Sep  4 1996	Fix mode when file is created
  * Oct 15 1996	Drop column argument from FGET* subroutines
  * Oct 15 1996	Drop unused variable 
+ * Dec 17 1996	Add option to skip bytes in file before reading the header
+ * Dec 27 1996	Turn nonprinting header characters into spaces
  */

@@ -1,5 +1,5 @@
 /* File imhead.c
- * December 4, 1996
+ * December 17, 1996
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,6 +17,7 @@ static void usage();
 static int PrintFITSHead ();
 static void PrintHead ();
 
+static int nskip = 0;		/* Number of bytes to skip */
 static int verbose = 0;		/* verbose/debugging flag */
 
 main (ac, av)
@@ -31,6 +32,14 @@ char **av;
 	char c;
 	while (c = *++str)
 	switch (c) {
+
+	case 'b':	/* bytes to skip */
+	    if (ac < 2)
+		usage();
+	    setbskip ((int) atof (*++av));
+	    ac--;
+	    break;
+
 	case 'v':	/* more verbosity */
 	    verbose++;
 	    break;
@@ -59,8 +68,9 @@ usage (progname)
 char *progname;
 {
     fprintf (stderr,"Print FITS or IRAF image header\n");
-    fprintf(stderr,"%s: usage: [-v] file.fit ...\n", progname);
+    fprintf(stderr,"%s: usage: [-v][-b num] file.fit ...\n", progname);
     fprintf(stderr,"  -v: verbose\n");
+    fprintf(stderr,"  -b: skip bytes\n");
     exit (1);
 }
 
@@ -144,4 +154,5 @@ char	*header;	/* Image FITS header */
  * Aug 27 1996	Drop unused variables after lint
  * Nov 19 1996	Add linefeeds after filename in verbose mode
  * Dec  4 1996	Print "header" instead of "WCS" in verbose mode
+ * Dec 17 1996	Add byte skipping before header
  */

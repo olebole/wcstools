@@ -1,5 +1,5 @@
 /* File imujc.c
- * December 13, 1996
+ * January 10, 1997
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -494,4 +494,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Dec 10 1996	Change equinox in getfitswcs call to double
  * Dec 12 1996	Allow bright as well as faint magnitude limit
  * Dec 13 1996	Fix bug writing sorted header
+ * Jan 10 1997	Fix bug in RASort Stars which did not sort magnitudes
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/tabcread.c
- *** November 19, 1996
+ *** December 18, 1996
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -55,13 +55,19 @@ int	nlog;
     double ra1,ra2;	/* Limiting right ascensions of region in degrees */
     double dec1,dec2;	/* Limiting declinations of region in degrees */
     double dist = 0.0;  /* Distance from search center in degrees */
+    double faintmag=0.0; /* Faintest magnitude */
+    double maxdist=0.0; /* Largest distance */
+    int faintstar=0;    /* Faintest star */
+    int farstar=0;      /* Most distant star */
+    double *tdist;      /* Array of distances to stars */
+
     int wrap;
     int jstar;
     int nstar;
     double ra,dec;
     double mag;
     double num;
-    int peak;
+    int peak, i;
     int istar;
     int verbose;
     char *line;
@@ -130,6 +136,7 @@ int	nlog;
 
 /* Logging interval */
     nstar = 0;
+    tdist = (double *) malloc (nstarmax * sizeof (double));
 
     if ((nstars = tabopen (tabcat)) > 0) {
 	jstar = 0;
@@ -151,6 +158,8 @@ int	nlog;
 	    peak = tabgeti4 (line, entpeak);	/* Peak counts */
 	    if (drad > 0)
 		dist = wcsdist (cra,cdec,ra,dec);
+	    else
+		dist = 0.0;
 
 	/* Check magnitude amd position limits */
 	    if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
@@ -160,13 +169,60 @@ int	nlog;
      		(dec >= dec1 && dec <= dec2)) {
 
 	    /* Save star position and magnitude in table */
-		if (nstar <= nstarmax) {
+		if (nstar < nstarmax) {
 		    tnum[nstar] = num;
 		    tra[nstar] = ra;
 		    tdec[nstar] = dec;
 		    tmag[nstar] = mag;
 		    tpeak[nstar] = peak;
+		    tdist[nstar] = dist;
+		    if (dist > maxdist) {
+			maxdist = dist;
+			farstar = nstar;
+			}
+		    if (mag > faintmag) {
+			faintmag = mag;
+			faintstar = nstar;
+			}
 		    }
+
+		/* If too many stars and radial search,
+		   replace furthest star */
+		else if (drad > 0 && dist < maxdist) {
+		    tra[farstar] = ra;
+		    tdec[farstar] = dec;
+		    tmag[farstar] = mag;
+		    tpeak[farstar] = peak;
+		    tdist[farstar] = dist;
+		    maxdist = 0.0;
+
+		    /* Find new farthest star */
+		    for (i = 0; i < nstarmax; i++) {
+			if (tdist[i] > maxdist) {
+			    maxdist = tdist[i];
+			    farstar = i;
+			    }
+			}
+		    }
+
+		/* If too many stars, replace faintest star */
+		else if (mag < faintmag) {
+		    tra[faintstar] = ra;
+		    tdec[faintstar] = dec;
+		    tmag[faintstar] = mag;
+		    tpeak[faintstar] = peak;
+		    tdist[faintstar] = dist;
+		    faintmag = 0.0;
+
+		    /* Find new faintest star */
+		    for (i = 0; i < nstarmax; i++) {
+			if (tmag[i] > faintmag) {
+			    faintmag = tmag[i];
+			    faintstar = i;
+			    }
+			}
+		    }
+		
 		nstar++;
 		jstar++;
 		if (nlog == 1)
@@ -199,7 +255,104 @@ int	nlog;
 	nstar = nstarmax;
 	}
 
+    free ((char *)tdist);
     return (nstar);
+}
+
+
+/* TABRNUM -- Read tab table stars with specified numbers */
+
+int
+tabrnum (tabcat, nstars, tnum,tra,tdec,tmag,tpeak,nlog)
+
+char	*tabcat;	/* Name of reference star catalog file */
+int	nstars;		/* Number of stars to look for */
+double	*tnum;		/* Array of UJ numbers (returned) */
+double	*tra;		/* Array of right ascensions (returned) */
+double	*tdec;		/* Array of declinations (returned) */
+double	*tmag;		/* Array of magnitudes (returned) */
+int	*tpeak;		/* Array of peak counts (returned) */
+int	nlog;
+{
+    int jstar;
+    int nstar;
+    double ra,dec;
+    double mag;
+    double num;
+    int peak;
+    int ncat;
+    int istar;
+    int verbose;
+    char *line;
+
+    line = 0;
+    if (nlog > 0)
+	verbose = 1;
+    else
+	verbose = 0;
+
+    nstar = 0;
+
+    /* Loop through star list */
+    for (jstar = 0; jstar < nstars; jstar++) {
+
+	/* Open catalog */
+        if ((ncat = tabopen (tabcat)) > 0) {
+	    jstar = 0;
+	    line = tabdata;
+
+	    /* Loop through catalog to star */
+	    for (istar = 1; istar <= nstars; istar++) {
+		line = tabstar (istar, line);
+		if (line == NULL) {
+		    fprintf (stderr,"TABRNUM: Cannot read star %d\n", istar);
+		    break;
+		    }
+		num = tabgetr8 (line, entid);	/* ID number */
+		if (num == tnum[jstar])
+		    break;
+		}
+
+	    if (num == tnum[jstar]) {
+
+		/* Extract selected fields  */
+		ra = tabgetra (line, entra);	/* Right ascension in degrees */
+		dec = tabgetdec (line, entdec);	/* Declination in degrees */
+		mag = tabgetr8 (line, entmag);	/* Magnitude */
+		peak = tabgeti4 (line, entpeak);	/* Peak counts */
+
+	    /* Save star position and magnitude in table */
+		tra[jstar] = ra;
+		tdec[jstar] = dec;
+		tmag[jstar] = mag;
+		tpeak[jstar] = peak;
+		nstar++;
+		if (nlog == 1)
+		    fprintf (stderr,"TABRNUM: %11.6f: %9.5f %9.5f %5.2f %d    \n",
+			   num,ra,dec,mag,peak);
+
+	    /* End of accepted star processing */
+		}
+
+	/* Log operation */
+	    if (nlog > 0 && jstar%nlog == 0)
+		fprintf (stderr,"TABRNUM: %5d / %5d / %5d sources catalog %s\r",
+			nstar,jstar,nstars,tabcat);
+
+	/* End of star loop */
+	    }
+
+	/* End of open catalog file */
+	}
+
+/* Summarize search */
+    if (nlog > 0)
+	fprintf (stderr,"TABRNUM: Catalog %s : %d / %d found\n",
+		 tabcat,nstar,nstars);
+
+    free (tabbuff);
+
+    return (nstars);
 }
 
 
@@ -514,4 +667,6 @@ char	*keyword;	/* sequence of entry on line */
  * Nov 13 1996	Write all error messages to stderr with subroutine names
  * Nov 15 1996  Implement search radius; change input arguments
  * Nov 19 1996	Allow lower case column headings
+ * Dec 18 1996	Add UJCRNUM to read specified catalog entries
+ * Dec 18 1996  Keep closest stars, not brightest, if searching within radius
  */
