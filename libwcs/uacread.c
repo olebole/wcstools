@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** February 9, 1999
+ *** June 16, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Subroutines to read from the USNO A and SA catalogs
@@ -221,47 +221,7 @@ int	nlog;		/* Logging interval */
 
     wcscstr (cstr, sysout, eqout, epout);
 
-    /* Set right ascension limits for search */
-    ra1 = cra - dra;
-    ra2 = cra + dra;
-
-    /* Keep right ascension between 0 and 360 degrees */
-    if (ra1 < 0.0)
-	ra1 = ra1 + 360.0;
-    if (ra2 > 360.0)
-	ra2 = ra2 - 360.0;
-
-    /* Set declination limits for search */
-    dec1 = cdec - ddec;
-    dec2 = cdec + ddec;
-
-    /* dec1 is always the smallest declination */
-    if (dec1 > dec2) {
-	dec = dec1;
-	dec1 = dec2;
-	dec2 = dec;
-	}
-
-    /* Search zones which include the poles cover 360 degrees in RA */
-    if (dec1 < -90.0) {
-	dec1 = -90.0;
-	ra1 = 0.0;
-	ra2 = 359.99999;
-	}
-    if (dec2 > 90.0) {
-	dec2 = 90.0;
-	ra1 = 0.0;
-	ra2 = 359.99999;
-	}
-    if (verbose) {
-	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
-	ra2str (rstr1, 16, ra1, 3);
-        dec2str (dstr1, 16, dec1, 2);
-	ra2str (rstr2, 16, ra2, 3);
-        dec2str (dstr2, 16, dec2, 2);
-	fprintf (stderr,"UACREAD: RA: %s-%s  Dec: %s-%s %s\n",
-		 rstr1,rstr2,dstr1,dstr2, cstr);
-	}
+    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
 
 /* mag1 is always the smallest magnitude */
     if (mag2 < mag1) {
@@ -1044,4 +1004,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Nov 24 1998	Fix bug reading SA-2.0 catalog
  *
  * Feb  9 1999	Improve documentation
+ * Jun 16 1999	Use SearchLim()
  */

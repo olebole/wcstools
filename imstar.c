@@ -1,5 +1,5 @@
 /* File imstar.c
- * June 10, 1999
+ * July 7, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -31,6 +31,7 @@ extern void setbmin();
 extern void setmaxrad();
 extern void setborder();
 extern void setimcat();
+extern void setparm();
 extern struct WorldCoor *GetFITSWCS();
 
 static double magoff = 0.0;
@@ -55,7 +56,7 @@ int ac;
 char **av;
 {
     char *str;
-    double bmin, arot;
+    double bmin, arot, drot;
     char rastr[32], decstr[32];
     int readlist = 0;
     char *lastchar;
@@ -75,197 +76,210 @@ char **av;
 	}
 
     /* crack arguments */
-    for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
-	char c;
-	if (*str == '@')
-	    str = str - 1;
-	while (c = *++str)
-	switch (c) {
-	case 'v':	/* more verbosity */
-	    verbose++;
-	    break;
-
-	case 'a':       /* Initial rotation angle in degrees */
-	    if (ac < 2)
-		usage();
-	    rot = atof (*++av);
-	    arot = fabs (rot);
-	    if (arot != 90.0 && arot != 180.0 && arot != 270.0) {
-		setrot (atof (*++av));
-		rot = 0.0;
-		}
-	    ac--;
-	    break;
-
-	case 'b':	/* ouput FK4 (B1950) coordinates */
-	    eqout = 1950.0;
-	    sysout = WCS_B1950;
-	    break;
-
-	case 'c':	/* Set center RA and Dec */
-	    if (ac < 3)
-		usage();
-	    strcpy (rastr, *++av);
-	    ac--;
-	    strcpy (decstr, *++av);
-	    ac--;
-	    setcenter (rastr, decstr);
-	    break;
-
-	case 'd':	/* Read image star positions from DAOFIND file */
-	    if (ac < 2)
-		usage();
-	    setimcat (*++av);
-	    imsearch = 0;
-	    ac--;
-	    break;
-
-	case 'e':	/* Number of pixels to ignore around image edge */
-	    if (ac < 2)
-		usage();
-	    setborder (atof (*++av));
-	    ac--;
-	    break;
-
-	case 'f':	/* Write ASCII catalog format for SKYMAP */
-	    ascfile = 1;
-	    tabfile = 0;
-	    break;
-
-	case 'h':	/* ouput descriptive header */
-	    printhead++;
-	    break;
-
-	case 'i':	/* Image star minimum peak value (or minimum sigma */
-	    if (ac < 2)
-		usage();
-	    bmin = atof (*++av);
-	    if (bmin < 0)
-		setstarsig (-bmin);
-	    else
-		setbmin (bmin);
-	    ac--;
-	    break;
-
-	case 'j':	/* ouput FK5 (J2000) coordinates */
-	    eqout = 2000.0;
-	    sysout = WCS_J2000;
-	    break;
-
-	case 'k':	/* Print each star as it is found */
-	    debug++;
-	    break;
-
-    	case 'l':	/* Left-right reflection before rotating */
-	    mirror = 1;
-    	    break;
-
-	case 'm':	/* Magnitude offset */
-	    if (ac < 2)
-		usage();
-	    magoff = atof (*++av);
-	    ac--;
-	    break;
-
-	case 'n':	/* Number of brightest stars to read */
-	    if (ac < 2)
-		usage();
-	    nstar = atoi (*++av);
-	    ac--;
-	    break;
-
-    	case 'p':	/* Plate scale in arcseconds per pixel */
-    	    if (ac < 2)
-    		usage();
-    	    setsecpix (atof (*++av));
-    	    ac--;
-    	    break;
-
-	case 'q':	/* Output region file shape for SAOimage */
-    	    if (ac < 2)
-    		usage();
-	    cstr = *++av;
-	    switch (cstr[0]){
-		case 'c':
-		    if (cstr[1] == 'i')
-			region_char = WCS_CIRCLE;
-		    else
-			region_char = WCS_CROSS;
-		    break;
-		case 'd':
-		    region_char = WCS_DIAMOND;
-		    break;
-		case 's':
-		    region_char = WCS_SQUARE;
-		    break;
-		case 'x':
-		    region_char = WCS_EX;
-		    break;
-		case 'v':
-		    region_char = WCS_VAR;
-		    break;
-		case '+':
-		    region_char = WCS_CROSS;
-		    break;
-		case 'o':
-		default:
-		    region_char = WCS_CIRCLE;
-		}
-	    if (region_radius == 0)
-		region_radius = 10;
-    	    ac--;
-	    break;
-
-	case 'r':	/* Maximum acceptable radius for a star */
-	    if (ac < 2)
-		usage();
-	    maxrad = (int) atof (*++av);
-	    region_radius = maxrad;
-	    setmaxrad (maxrad);
-	    ac--;
-	    break;
-
-	case 's':	/* sort by RA */
-	    rasort = 1;
-	    break;
-
-	case 't':	/* tab table to stdout */
-	    tabout = 1;
-	    break;
-
-	case 'u':	/* Set 16-bit int image file to unsigned */
-	    setuns = 1;
-	    break;
-
-	case 'w':	/* Write DAOFIND-format output file */
-	    daofile = 1;
-	    tabfile = 0;
-	    break;
-
-	case 'x':	/* X and Y coordinates of reference pixel */
-	    if (ac < 3)
-		usage();
-    	    setrefpix (atof (*++av), atof (*++av));
-	    ac--;
-	    ac--;
-    	    break;
-
-	case 'z':       /* Use AIPS classic WCS */
-	    setdefwcs (1);
-	    break;
-
-	case '@':	/* List of files to be read */
+    for (av++; --ac > 0; av++) {
+   	str = *av; 
+	if (*str == '@') {
 	    readlist++;
 	    listfile = ++str;
 	    str = str + strlen (str) - 1;
 	    av++;
 	    ac--;
+	    }
+	else if (strchr (str, '='))
+	    setparm (str);
+	else if (*str == '-') {
+	    char c;
+	    while (c = *++str) {
+		switch (c) {
+		case 'v':	/* more verbosity */
+		    verbose++;
+		    break;
+	
+		case 'a':       /* Initial rotation angle in degrees */
+		    if (ac < 2)
+			usage();
+		    drot = atof (*++av);
+		    arot = fabs (drot);
+		    if (arot != 90.0 && arot != 180.0 && arot != 270.0) {
+			setrot (drot);
+			rot = 0;
+			}
+		    else
+			rot = atoi (*av);
+		    ac--;
+		    break;
+	
+		case 'b':	/* ouput FK4 (B1950) coordinates */
+		    eqout = 1950.0;
+		    sysout = WCS_B1950;
+		    break;
+	
+		case 'c':	/* Set center RA and Dec */
+		    if (ac < 3)
+			usage();
+		    strcpy (rastr, *++av);
+		    ac--;
+		    strcpy (decstr, *++av);
+		    ac--;
+		    setcenter (rastr, decstr);
+		    break;
+	
+		case 'd':	/* Read image star positions from DAOFIND file */
+		    if (ac < 2)
+			usage();
+		    setimcat (*++av);
+		    imsearch = 0;
+		    ac--;
+		    break;
+	
+		case 'e':	/* Number of pixels to ignore around image edge */
+		    if (ac < 2)
+			usage();
+		    setborder (atof (*++av));
+		    ac--;
+		    break;
+	
+		case 'f':	/* Write ASCII catalog format for SKYMAP */
+		    ascfile = 1;
+		    tabfile = 0;
+		    break;
+	
+		case 'h':	/* ouput descriptive header */
+		    printhead++;
+		    break;
+	
+		case 'i':	/* Image star minimum peak value (or minimum sigma */
+		    if (ac < 2)
+			usage();
+		    bmin = atof (*++av);
+		    if (bmin < 0)
+			setstarsig (-bmin);
+		    else
+			setbmin (bmin);
+		    ac--;
+		    break;
+	
+		case 'j':	/* ouput FK5 (J2000) coordinates */
+		    eqout = 2000.0;
+		    sysout = WCS_J2000;
+		    break;
+	
+		case 'k':	/* Print each star as it is found */
+		    debug++;
+		    break;
+	
+    		case 'l':	/* Left-right reflection before rotating */
+		    mirror = 1;
+    		    break;
+	
+		case 'm':	/* Magnitude offset */
+		    if (ac < 2)
+			usage();
+		    magoff = atof (*++av);
+		    ac--;
+		    break;
+	
+		case 'n':	/* Number of brightest stars to read */
+		    if (ac < 2)
+			usage();
+		    nstar = atoi (*++av);
+		    ac--;
+		    break;
+	
+    		case 'p':	/* Plate scale in arcseconds per pixel */
+    		    if (ac < 2)
+    			usage();
+    		    setsecpix (atof (*++av));
+    		    ac--;
+    		    break;
+	
+		case 'q':	/* Output region file shape for SAOimage */
+    		    if (ac < 2)
+    			usage();
+		    cstr = *++av;
+		    switch (cstr[0]){
+			case 'c':
+			    if (cstr[1] == 'i')
+				region_char = WCS_CIRCLE;
+			    else
+				region_char = WCS_CROSS;
+			    break;
+			case 'd':
+			    region_char = WCS_DIAMOND;
+			    break;
+			case 's':
+			    region_char = WCS_SQUARE;
+			    break;
+			case 'x':
+			    region_char = WCS_EX;
+			    break;
+			case 'v':
+			    region_char = WCS_VAR;
+			    break;
+			case '+':
+			    region_char = WCS_CROSS;
+			    break;
+			case 'o':
+			default:
+			    region_char = WCS_CIRCLE;
+			}
+		    if (region_radius == 0)
+			region_radius = 10;
+    		    ac--;
+		    break;
+	
+		case 'r':	/* Maximum acceptable radius for a star */
+		    if (ac < 2)
+			usage();
+		    maxrad = (int) atof (*++av);
+		    region_radius = maxrad;
+		    setmaxrad (maxrad);
+		    ac--;
+		    break;
+	
+		case 's':	/* sort by RA */
+		    rasort = 1;
+		    break;
+	
+		case 't':	/* tab table to stdout */
+		    tabout = 1;
+		    break;
+	
+		case 'u':	/* Set 16-bit int image file to unsigned */
+		    setuns = 1;
+		    break;
+	
+		case 'w':	/* Write DAOFIND-format output file */
+		    daofile = 1;
+		    tabfile = 0;
+		    break;
 
-	default:
-	    usage();
-	    break;
+		case 'x':	/* X and Y coordinates of reference pixel */
+		    if (ac < 3)
+			usage();
+    		    setrefpix (atof (*++av), atof (*++av));
+		    ac--;
+		    ac--;
+    		    break;
+
+		case 'z':       /* Use AIPS classic WCS */
+		    setdefwcs (1);
+		    break;
+
+		default:
+		    usage();
+		}
+		}
+	    }
+
+	/* Otherwise assume that this argument is a FITS or IRAF file */
+	else {
+	    char *fn = str;
+	    ListStars (fn);
+	    if (verbose)
+		printf ("\n");
+	    }
 	}
-    }
 
     /* Find number of images to search and leave listfile open for reading */
     if (readlist) {
@@ -280,18 +294,6 @@ char **av;
 	    ListStars (filename);
 	    }
 	fclose (flist);
-	}
-
-    /* If no arguments left, print usage */
-    if (ac == 0)
-	usage();
-
-    /* now there are ac remaining file names starting at av[0] */
-    while (ac-- > 0) {
-	char *fn = *av++;
-	ListStars (fn);
-	if (verbose)
-	    printf ("\n");
 	}
 
     return (0);
@@ -445,6 +447,8 @@ char	*filename;	/* FITS or IRAF file filename */
 
     wcs = GetFITSWCS (filename, header,verbose, &cra, &cdec, &dra, &ddec,
 		      &secpix, &wp, &hp, &sysout, &eqout);
+    if (wcs == NULL && !tabfile)
+	daofile = 1;
 
     /* Discover star-like things in the image, in pixels */
     ns = FindStars (header, image, &sx, &sy, &sb, &sp, debug);
@@ -454,7 +458,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	}
 
     /* Save star positions */
-    if (nstar > 0)
+    if (nstar > 0 && ns > nstar)
 	ns = nstar;
 
     /* If no magnitude offset, set brightest star to 0 magnitude */
@@ -503,21 +507,23 @@ char	*filename;	/* FITS or IRAF file filename */
 	strcat (outfile, "m");
     else if (rot != 0)
 	strcat (outfile, "r");
-    if (rot < 10 && rot > -1) {
-	sprintf (temp,"%1d",rot);
-	strcat (outfile, temp);
-	}
-    else if (rot < 100 && rot > -10) {
-	sprintf (temp,"%2d",rot);
-	strcat (outfile, temp);
-	}
-    else if (rot < 1000 && rot > -100) {
-	sprintf (temp,"%3d",rot);
-	strcat (outfile, temp);
-	}
-    else {
-	sprintf (temp,"%4d",rot);
-	strcat (outfile, temp);
+    if (rot != 0) {
+	if (rot < 10 && rot > -1) {
+	    sprintf (temp,"%1d",rot);
+	    strcat (outfile, temp);
+	    }
+	else if (rot < 100 && rot > -10) {
+	    sprintf (temp,"%2d",rot);
+	    strcat (outfile, temp);
+	    }
+	else if (rot < 1000 && rot > -100) {
+	    sprintf (temp,"%3d",rot);
+	    strcat (outfile, temp);
+	    }
+	else {
+	    sprintf (temp,"%4d",rot);
+	    strcat (outfile, temp);
+	    }
 	}
 
     if (region_char)
@@ -658,7 +664,8 @@ char	*filename;	/* FITS or IRAF file filename */
     if (smag) free ((char *)smag);
     free ((char *)wcs);
     free (header);
-    free (image);
+    if (imsearch)
+	free (image);
     return;
 }
 
@@ -715,4 +722,9 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jun  9 1999	Set brightest magnitude for any magnitude offset (J-B Marquette)
  * Jun 10 1999	Add option to rotation and reflect image before searching
  * Jun 10 1999	Drop .fits or .imh file extension from output file name
+ * Jun 11 1999	Add parameter setting on command line
+ * Jul  1 1999	Only free image if it was allocated
+ * Jul  7 1999	Fix bug setting rotation
+ * Jul  7 1999	Do not add 0 to file name if no rotation
+ * Jul  7 1999	If -n argument more than found stars, list only number found
  */

@@ -1,5 +1,5 @@
 /* File skycoor.c
- * April 16, 1999
+ * July 8, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -125,7 +125,7 @@ char **av;
 		    rastr0, decstr0);
 	    r = wcsdist (ra, dec, ra1, dec1);
 	    if (r < 1.0) {
-		r = r / 3600.0;
+		r = r * 3600.0;
 		printf ("Distance is %.3f arcsec\n", r);
 		}
 	    else {
@@ -165,7 +165,7 @@ char **av;
 	case 'y':
 	    if (ac < 2)
 		usage();
-	    epoch = atof (*++av);
+	    epoch = fd2ep (*++av);
 	    ac--;
     	    break;
 
@@ -357,4 +357,6 @@ usage ()
  * Nov 30 1998	Add version and help commands for consistency
  *
  * Apr 16 1999	Add xyz <-> RA/DEC conversions using w and x arguments
+ * Jul  1 1999	Allow any legal FITS date format for epoch
+ * Jul  8 1999	Fix bug in computing difference in arcseconds
  */

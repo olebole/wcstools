@@ -1,8 +1,18 @@
+Version 2.6.3 (July 9, 1999)
+imwcs.c, immatch.c, imstar.c: Fix command line rotation angle setting
+imgetwcs.c: Fix bug when converting image coordinates to reference system
+imgetwcs.c: Fix bug so command line reference pixel is used correctly
+imsetwcs.c: Fix bug which reinitialized CDELT1 incorrectly when iterating
+sumpix.c: New program to add pixel values over rows. columns, or regions
+dateutil.c: New file with many date and time conversion subroutines
+fitswcs.c: Do not write J2000 or B1950 as RADECSYS; use FK5  and FK4
+
 Version 2.6.2
 imrotate.c: Fix bug which caused overflow in history header line
 imrotate.c: Rewrite to return pointer to rotated image
 gethead.c: Fix bug which sometimes caused garbage at start of output lines
 imstar.c: Add option to set brightest star in image to arbitary magnitude
+All catalog subroutines now use SearchLim() to set RA and Dec limits
 
 Version 2.6.1
 scat.c: Fix bug if -r last command; allow sexigesimal degree search radius

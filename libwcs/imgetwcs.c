@@ -1,5 +1,5 @@
 /* File libwcs/imgetwcs.c
- * June 2, 1999
+ * July 9, 1999
  * By Doug Mink, remotely based on UIowa code
  */
 
@@ -63,7 +63,7 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     double eq1, epoch, xref, yref, degpix, ra1, dec1;
     struct WorldCoor *wcs;
     int eqref;
-    char rstr[32],dstr[32], temp[16];
+    char rstr[64], dstr[64], temp[16], cstr[16];
 
     /* Set image dimensions */
     nax = 0;
@@ -98,10 +98,12 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	if (comsys == WCS_B1950) {
 	    hputi4 (header, "EPOCH", 1950);
 	    hputi4 (header, "EQUINOX", 1950);
+	    hputs (header, "RADECSYS", "FK4");
 	    }
 	else {
 	    hputi4 (header, "EPOCH", 2000);
 	    hputi4 (header, "EQUINOX", 2000);
+	    hputs (header, "RADECSYS", "FK5");
 	    }
 	if (hgetr8 (header, "SECPIX", secpix)) {
 	    degpix = *secpix / 3600.0;
@@ -203,7 +205,6 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 
     /* Print reference pixel position and value */
     if (verbose && (eq1 != *eqout || wcs->syswcs != *sysout)) {
-	char cstr[16];
 	ra2str (rstr, 32, ra1, 3);
         dec2str (dstr, 32, dec1, 2);
 	wcscstr (cstr, wcs->syswcs, wcs->equinox, wcs->epoch);
@@ -224,10 +225,19 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     /* Get center and size for catalog searching */
     wcssize (wcs, cra, cdec, dra, ddec);
 
+    /* Convert center to desired output coordinate system */
+    wcscon (wcs->syswcs, *sysout, wcs->equinox, *eqout, cra, cdec, wcs->epoch);
+
+    /* Compute plate scale to return if it was not set on the command line */
+    if (secpix0 <= 0.0)
+	*secpix = 3600.0 * 2.0 * *ddec / (double) *hp;
+
     /* Set reference pixel to center of image if it has not been set */
     if (wcs->xref == 0.0 && wcs->yref == 0.0) {
 	wcs->xref = *cra;
 	wcs->yref = *cdec;
+	ra1 = *cra;
+	dec1 = *cdec;
 	if (wcs->xrefpix == 0.0 && wcs->yrefpix == 0.0) {
 	    wcs->xrefpix = (double) wcs->nxpix * 0.5;
 	    wcs->yrefpix = (double) wcs->nypix * 0.5;
@@ -237,14 +247,32 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	/* hchange (header,"PLTRAH","PLT0RAH");
 	wcs->plate_fit = 0; */
 	}
-
-    /* Compute plate scale to return if it was not set on the command line */
-    if (secpix0 <= 0.0)
-	*secpix = 3600.0 * 2.0 * *ddec / (double) *hp;
+    else if (wcs->syswcs != *sysout && wcs->equinox != *eqout) {
+	wcscon (wcs->syswcs, *sysout, wcs->equinox, *eqout, &ra1, &dec1, wcs->epoch);
+	if (wcs->coorflip) {
+	    wcs->yref = ra1;
+	    wcs->xref = dec1;
+	    }
+	else {
+	    wcs->xref = ra1;
+	    wcs->yref = dec1;
+	    }
+	}
+    wcs->crval[0] = wcs->xref;
+    wcs->crval[1] = wcs->yref;
+    wcs->equinox = *eqout;
+    wcs->syswcs = *sysout;
+    wcs->sysout = *sysout;
+    wcs->eqout = *eqout;
+    wcs->sysin = *sysout;
+    wcs->eqin = *eqout;
+    wcscstr (cstr,*sysout,*eqout,wcs->epoch);
+    strcpy (wcs->radecsys, cstr);
+    strcpy (wcs->radecout, cstr);
+    strcpy (wcs->radecin, cstr);
 
     /* Print reference pixel position and value */
     if (verbose) {
-	char cstr[16];
 	ra2str (rstr, 32, ra1, 3);
         dec2str (dstr, 32, dec1, 2);
 	wcscstr (cstr,*sysout,*eqout,wcs->epoch);
@@ -252,22 +280,8 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 		wcs->xrefpix, wcs->yrefpix, rstr, dstr, cstr);
 	}
 
-    /* Convert center to desired output coordinate system */
-    wcscon (wcs->syswcs, *sysout, wcs->equinox, *eqout, cra, cdec, wcs->epoch);
-    wcs->xref = *cra;
-    wcs->yref = *cdec;
-    wcs->crval[0] = *cra;
-    wcs->crval[1] = *cdec;
-    wcs->equinox = *eqout;
-    wcs->syswcs = *sysout;
-    wcs->sysout = *sysout;
-    wcs->eqout = *eqout;
-    wcs->sysin = *sysout;
-    wcs->eqin = *eqout;
-
     /* Image size for catalog search */
     if (verbose) {
-	char rstr[64], dstr[64], cstr[16];
 	ra2str (rstr, 32, *cra, 3);
 	dec2str (dstr, 32, *cdec, 2);
 	wcscstr (cstr, *sysout, *eqout, wcs->epoch);
@@ -433,4 +447,6 @@ char*	ptype;
  * Apr  7 1999	Add filename argument to GetFITSWCS
  * Apr 29 1999	Add option to set image size
  * Jun  2 1999	Fix sign of CDELT1 if secpix2 and secpix0 are set
+ * Jul  7 1999	Fix conversion of center coordinates to refsys
+ * Jul  9 1999	Fix bug which reset command-line-set reference pixel coordinate
  */

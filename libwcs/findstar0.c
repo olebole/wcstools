@@ -194,21 +194,40 @@ int	verbose;	/* 1 to print each star's position */
 	    if (ipix++ % ispix == 0) {
 
 		/* Find stats to the left */
-		sv1 = svec + x - (nspix / 2);
+		sv1 = svec + x - nspix;
 		if (sv1 < svec) sv1 = svec;
-		sv2 = sv1 + nspix - 1;
-		if (sv2 >= svlim) sv2 = svlim - 1;
-		minsig = 0.0;
+		sv2 = svec + x;
+		lsigma = 0.0;
 		if (sv2 > sv1+1)
-		    mean1d (sv1, sv2, &minll, &minsig);
+		    mean1d (sv1, sv2, &lmean, &lsigma);
 		else {
-		    minll = noise;
-		    minsig = sigma;
+		    lmean = noise;
+		    lsigma = sigma;
 		    }
-		sigma = sqrt (minll);
-		if (minsig < sigma)
-		    minsig = sigma;
-		minll = minll + (starsig * minsig);
+		sigma = sqrt (lmean);
+		if (lsigma < sigma)
+		    lsigma = sigma;
+		lll = lmean + (starsig * lsigma);
+
+		/* Find stats to the right */
+		sv1 = svec + x;
+		sv2 = svec + x + nspix;
+		if (sv2 > svlim) sv2 = svlim;
+		rmean = 0.0;
+		if (sv2 > sv1+2)
+		    mean1d (sv1, sv2, &rmean, &rsigma);
+		else {
+		    rmean = noise;
+		    rsigma = nsigma;
+		    }
+		sigma = sqrt (rmean);
+		if (rsigma < sigma)
+		    rsigma = sigma;
+		rll = rmean + (starsig * rsigma);
+
+		/* pick lower as noise level */
+		minll = lll < rll ? lll : rll;
+		minsig = lsigma < rsigma ? lsigma : rsigma;
 		}
 
 	    /* Pixel is a candidate if above the noise */
@@ -542,16 +561,14 @@ double	*sigma;
     double sd;
     int x, y;
     int i;
-    double sum;
-    double dnpix;
-    int npix;
 
     pmin = -1.0e20;
     pmax = 1.0e20;
 
     for (i = 0; i < niterate; i++ ) {
-	sum = 0.0;
-	npix = 0;
+	double sum = 0.0;
+	double dnpix;
+	int npix = 0;
 
     /* Compute mean */
 	for (y = y1; y < y2; y++) {
@@ -601,55 +618,23 @@ double *mean;		/* Mean value of pixels (returned) */
 double *sigma;		/* Average deviation of pixels (returned) */
 {
     double *sv;
-    double p, pmin, pmax, pmean;
-    double sd;
-    int i;
-    int npix;
-    double dnpix;
-    double sum;
+    double sumx  = 0.0;
+    double sumxx = 0.0;
+    int npix = 0;
 
-    pmin = -1.0e20;
-    pmax = 1.0e20;
-
-    /* Iterate with sigma-clipping */
-    for (i = 0; i < niterate; i++ ) {
-	npix = 0;
-	sum = 0.0;
-
-	/* Compute mean */
-	for (sv = sv1; sv < sv2; sv++) {
-	    p = *sv;
-	    if (p > pmin && p < pmax) {
-		sum += p;
-		npix++;
-		}
-	    }
-	if (npix > 0) {
-	    dnpix = (double) npix;
-	    pmean = sum / dnpix;
-	    }
-	else
-	    pmean = 0.0;
-
-	/* Compute average deviation */
-	npix = 0;
-	sum = 0.0;
-	for (sv = sv1; sv < sv2; sv++) {
-	    p = *sv;
-	    if (p > pmin && p < pmax) {
-		sum += fabs (p - pmean);
-		npix++;
-		}
-	    }
-	if (npix > 0)
-	    sd = sum / dnpix;
-	else
-	    sd = 0.0;
-	pmin = pmean - (sd * starsig);
-	pmax = pmean + (sd * starsig);
+    /* Compute mean */
+    for (sv = sv1; sv < sv2; sv++) {
+	sumx += *sv;
+	npix++;
 	}
-    *mean = pmean;
-    *sigma = sd;
+    *mean = sumx / (double) npix;
+
+    /* Compute average deviation */
+    sumxx = 0.0;
+    for (sv = sv1; sv < sv2; sv++) {
+	sumxx += fabs (*sv - *mean);
+	}
+    *sigma = sumxx / (double) npix;
     return;
 }
 

@@ -1,12 +1,11 @@
 CFLAGS= -g
-#CFLAGS= -O
 $CC= cc
 
 OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \
 	slasubs.o fitswcs.o wcsinit.o wcs.o \
 	gscread.o ujcread.o uacread.o tabread.o binread.o catread.o actread.o \
 	catutil.o imrotate.o fitsfile.o imhfile.o hget.o hput.o imio.o \
-	worldpos.o tnxpos.o dsspos.o platepos.o \
+	dateutil.o worldpos.o tnxpos.o dsspos.o platepos.o \
 	sortstar.o platefit.o tnxfit.o iget.o \
 	wcslib.o lin.o cel.o proj.o sph.o wcstrig.o 
 
@@ -19,6 +18,7 @@ binread.o:	wcscat.h wcs.h
 catread.o:	wcscat.h wcs.h
 catutil.o:	wcscat.h wcs.h
 cel.o:		wcslib.h
+dateutil.o:	wcscat.h
 dsspos.o:	wcs.h
 findstar.o:	fitshead.h lwcs.h
 fitsfile.o:	fitsfile.h

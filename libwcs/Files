@@ -7,8 +7,7 @@ binread.c
 catread.c
   Return stars from catalog files in the TDC ASCII catalog format
 catutil.c
-  Subroutines for catalog identification, range decoding, and date format
-  conversion.
+  Subroutines for catalog identification and number range decoding
 cel.c
   WCSLIB spherical coordinate transformation drivers
 dsspos.c
@@ -20,6 +19,8 @@ dsspos.c
 daoread.c
   Read x, y, and magnitude from DAOFIND output file and return x, y, and
   flux for use by IMSTAR or IMWCS.
+dateutil.c
+  Subroutines for conversions between various date and time formats
 findstar.c
   findStars() gets the location and brightest pixel of stars in the given
   image.  Included are subroutines to find and reject bright pixels and

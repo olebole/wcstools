@@ -1,5 +1,5 @@
 /* File immatch.c
- * June 8, 1999
+ * July 7, 1999
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -56,7 +56,7 @@ int ac;
 char **av;
 {
     char *str;
-    double bmin, maglim1, maglim2;
+    double bmin, maglim1, maglim2, arot, drot;
     char rastr[16];
     char decstr[16];
     int readlist = 0;
@@ -173,7 +173,14 @@ char **av;
     	case 'a':	/* Initial rotation angle in degrees */
     	    if (ac < 2)
     		usage (progname);
-    	    setrot (atof (*++av));
+	    drot = atof (*++av);
+	    arot = fabs (drot);
+	    if (arot != 90.0 && arot != 180.0 && arot != 270.0) {
+		setrot (rot);
+		rot = 0;
+		}
+	    else
+		rot = atoi (*av);
     	    ac--;
     	    break;
 
@@ -518,7 +525,7 @@ char	*name;			/* Name of FITS or IRAF image file */
 
     /* Rotate and/or reflect image */
     if (imsearch  && (rot != 0 || mirror)) {
-	if ((newimage =RotFITS (name,header,&image,rot,mirror,bitpix,verbose))
+	if ((newimage = RotFITS (name,header,image,rot,mirror,bitpix,verbose))
 	    == NULL) {
 	    fprintf (stderr,"Image %s could not be rotated\n", name);
 	    free (header);
@@ -571,4 +578,6 @@ char *
  * Jan 26 1999	Add option to format output for IRAF coord fitting task
  * Apr 13 1999	Fix progname to drop / when full pathname
  * Jun  8 1999	Return image pointer from RotFITS, not flag
+ * Jun 10 1999	If -a argument is multiple of 90, rotate image
+ * Jul  7 1999	Fix bug setting rotation
  */

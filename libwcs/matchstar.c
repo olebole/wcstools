@@ -104,8 +104,8 @@ int	debug;
 	dxpeaks[i] = 0;
 	dypeaks[i] = 0;
 	}
-    bestdx = 0;
-    bestdy = 0;
+    bestdx = 0.0;
+    bestdy = 0.0;
     maxnbin = ns;
     if (ng > ns)
 	maxnbin = ng;

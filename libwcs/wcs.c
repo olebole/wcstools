@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** May 6, 1999
+ *** July 8, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -22,6 +22,8 @@
  * Subroutine:	wcscent (wcs) prints the image center and size in WCS units
  * Subroutine:	wcssize (wcs, cra, cdec, dra, ddec) returns image center and size
  * Subroutine:	wcsfull (wcs, cra, cdec, width, height) returns image center and size
+ * Subroutine:	wcsrange (wcs, ra1, ra2, dec1, dec2) returns image coordinate limits
+
  * Subroutine:	wcsshift (wcs,cra,cdec) resets the center of a WCS structure
  * Subroutine:	wcsdist (x1,y1,x2,y2) compute angular distance between ra/dec or lat/long
  * Subroutine:	wcscominit (wcs,command) sets up a command format for execution by wcscom
@@ -170,9 +172,9 @@ char	*proj;	/* Projection */
     /* Coordinate reference frame and equinox */
     wcs->equinox =  (double) equinox;
     if (equinox > 1980)
-	strcpy (wcs->radecsys,"J2000");
+	strcpy (wcs->radecsys,"FK5");
     else
-	strcpy (wcs->radecsys,"B1950");
+	strcpy (wcs->radecsys,"FK4");
     if (epoch > 0)
 	wcs->epoch = epoch;
     else
@@ -270,9 +272,9 @@ double	epoch;	/* Epoch of coordinates, used for FK4/FK5 conversion
     /* Coordinate reference frame and equinox */
     wcs->equinox =  (double) equinox;
     if (equinox > 1980)
-	strcpy (wcs->radecsys,"J2000");
+	strcpy (wcs->radecsys,"FK5");
     else
-	strcpy (wcs->radecsys,"B1950");
+	strcpy (wcs->radecsys,"FK4");
     if (epoch > 0)
 	wcs->epoch = epoch;
     else
@@ -1248,6 +1250,64 @@ double	*height;	/* Height in degrees (returned) */
 	*cdec = 0.0;
 	*width = 0.0;
 	*height = 0.0;
+	}
+
+    return;
+}
+
+
+/* Return minimum and maximum RA and Dec of image in degrees */
+
+void
+wcsrange (wcs, ra1, ra2, dec1, dec2)
+
+struct WorldCoor *wcs;	/* World coordinate system structure */
+double	*ra1;		/* Minimum right ascension of image (deg) (returned) */
+double	*ra2;		/* Maximum right ascension of image (deg) (returned) */
+double	*dec1;		/* Minimum declination of image (deg) (returned) */
+double	*dec2;		/* Maximum declination of image (deg) (returned) */
+
+{
+    double xpos1, xpos2, xpos3, xpos4, ypos1, ypos2, ypos3, ypos4;
+
+    if (iswcs(wcs)) {
+
+	/* Compute image corner coordinates in degrees */
+	(void) pix2wcs (wcs,1.0,1.0,&xpos1,&ypos1);
+	(void) pix2wcs (wcs,1.0,wcs->nypix,&xpos2,&ypos2);
+	(void) pix2wcs (wcs,wcs->nxpix,1.0,&xpos3,&ypos3);
+	(void) pix2wcs (wcs,wcs->nxpix,wcs->nypix,&xpos4,&ypos4);
+
+	/* Find minimum right ascension or longitude */
+	*ra1 = xpos1;
+	if (xpos2 < *ra1) *ra1 = xpos2;
+	if (xpos3 < *ra1) *ra1 = xpos3;
+	if (xpos4 < *ra1) *ra1 = xpos4;
+
+	/* Find maximum right ascension or longitude */
+	*ra2 = xpos1;
+	if (xpos2 > *ra2) *ra2 = xpos2;
+	if (xpos3 > *ra2) *ra2 = xpos3;
+	if (xpos4 > *ra2) *ra2 = xpos4;
+
+	/* Find minimum declination or latitude */
+	*dec1 = ypos1;
+	if (ypos2 < *dec1) *dec1 = ypos2;
+	if (ypos3 < *dec1) *dec1 = ypos3;
+	if (ypos4 < *dec1) *dec1 = ypos4;
+
+	/* Find maximum declination or latitude */
+	*dec2 = ypos1;
+	if (ypos2 > *dec2) *dec2 = ypos2;
+	if (ypos3 > *dec2) *dec2 = ypos3;
+	if (ypos4 > *dec2) *dec2 = ypos4;
+	}
+
+    else {
+	*ra1 = 0.0;
+	*ra2 = 0.0;
+	*dec1 = 0.0;
+	*dec2 = 0.0;
 	}
 
     return;
@@ -2490,4 +2550,6 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Apr  7 1999	Add code to put file name in error messages
  * Apr  7 1999	Document utility subroutines at end of file
  * May  6 1999	Fix bug printing height of LINEAR image
+ * Jun 16 1999	Add wcsrange() to return image RA and Dec limits
+ * Jul  8 1999	Always use FK5 and FK4 instead of J2000 and B1950 in RADECSYS
  */

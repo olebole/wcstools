@@ -1,5 +1,5 @@
 /* File setpix.c
- * April 29, 1999
+ * June 29, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -177,7 +177,7 @@ char	**value;		/* value to insert into pixel */
     bzero = 0.0;
     hgetr8 (header,"BZERO",&bzero);
     bscale = 1.0;
-    hgetr8 (header,"BZERO",&bscale);
+    hgetr8 (header,"BSCALE",&bscale);
 
     for (i = 0; i < n; i++) {
 	if (strchr (value[i],(int)'.'))
@@ -292,4 +292,5 @@ char	**value;		/* value to insert into pixel */
  *
  * Feb 12 1999	Initialize dxisn to 1 so it works for 1-D images
  * Apr 29 1999	Add BZERO and BSCALE
+ * Jun 29 1999	Fix typo in BSCALE setting
  */

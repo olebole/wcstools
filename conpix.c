@@ -1,5 +1,5 @@
 /* File conpix.c
- * April 29, 1999
+ * June 29, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -247,7 +247,7 @@ double	*opcon;		/* Constants for operations */
     bzero = 0.0;
     hgetr8 (header,"BZERO",&bzero);
     bscale = 1.0;
-    hgetr8 (header,"BZERO",&bscale);
+    hgetr8 (header,"BSCALE",&bscale);
 
     if (!(imvec = (double *) calloc (xdim, sizeof (double))))
 	return;
@@ -279,7 +279,7 @@ double	*opcon;		/* Constants for operations */
 		    break;
 		}
 	    }
-	putvec (image, bitpix, pixoff, xdim, imvec);
+	putvec (image, bitpix, bzero, bscale, pixoff, xdim, imvec);
 	pixoff = pixoff + xdim;
 	if (verbose) {
 	    fprintf (stderr, "Row %4d operations complete", y);
@@ -433,4 +433,6 @@ double	*opcon;		/* Constants for operations */
  *
  * Feb 12 1999	Initialize dimensions to one so it works with 1-D images
  * Apr 29 1999	Add BZERO and BSCALE
+ * Jun 17 1999	Finish adding BZERO and BSCALE
+ * Jun 29 1999	Fix typo in BSCALE setting
  */

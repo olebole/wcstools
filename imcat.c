@@ -1,5 +1,5 @@
 /* File imcat.c
- * May 12, 1999
+ * July 8, 1999
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -608,10 +608,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 	return;
 
     /* Set up limits for search */
-    ra1 = cra - dra;
-    ra2 = cra + dra;
-    dec1 = cdec - ddec;
-    dec2 = cdec + ddec;
+    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, 0);
     epout = wcs->epoch;
     if (verbose || printhead) {
 	char rastr1[16],rastr2[16],decstr1[16],decstr2[16], cstr[16];
@@ -900,12 +897,12 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (snum,"%d", (int)gnum[i]);
 		else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
 		    sprintf (snum,"%10.5f", gnum[i]);
-		else {
-		    if (gobj != NULL && gobj[i] != NULL) {
-			if (strlen (gobj[i]) < 32)
-			    strcpy (snum, gobj[i]);
+		else if (gobj1 != NULL) {
+		    if (gobj1[i] != NULL) {
+			if (strlen (gobj1[i]) < 32)
+			    strcpy (snum, gobj1[i]);
 			else
-			    strncpy (snum, gobj[i], 31);
+			    strncpy (snum, gobj1[i], 31);
 			printobj = 1;
 			}
 		    else
@@ -1431,4 +1428,6 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Apr 13 1999	Fix progname to drop / when full pathname
  * Apr 20 1999	Fix minor bug in character assignment code
  * May 12 1999	Adjust command listing
+ * Jun 17 1999	Use SearchLim() to compute search limits
+ * Jul  8 1999	Fix bug when noll object name list
  */

@@ -278,6 +278,13 @@ extern "C" {
         double  *width,         /* Width in degrees (returned) */
         double  *height);       /* Height in degrees (returned) */
 
+    void wcsrange(
+        struct WorldCoor *wcs,  /* World coordinate system structure */
+        double  *ra1,           /* Min. right ascension of image (deg) (returned) */
+        double  *ra2,           /* Max. right ascension of image (deg) (returned) */
+        double  *dec1,          /* Min. declination of image (deg) (returned) */
+        double  *dec2);         /* Max. declination of image (deg) (returned) */
+
     void setwcserr(		/* Set WCS error message for later printing */
 	char *errmsg);		/* Error mesage < 80 char */
     void wcserr();		/* Print WCS error message to stderr */
@@ -390,6 +397,7 @@ void wcsshift();	/* Reset the center of a WCS structure */
 void wcscent();		/* Print the image center and size in WCS units */
 void wcssize();		/* Return RA and Dec of image center, size in RA and Dec */
 void wcsfull();		/* Return RA and Dec of image center, size in degrees */
+void wcsrange();	/* Return min and max RA and Dec of image in degrees */
 double wcsdist();	/* Distance in degrees between two sky coordinates */
 void wcscominit();	/* Initialize catalog search command set by -wcscom */
 void wcscom();		/* Execute catalog search command set by -wcscom */
@@ -503,4 +511,5 @@ void wcscstr();		/* Return system string from system code, equinox, epoch */
  * Dec  2 1998	Add WCS type for planet surface
 
  * Jan 20 1999	Add declaration of wcsfree()
+ * Jun 16 1999	Add declaration of wcsrange()
  */

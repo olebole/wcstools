@@ -1,5 +1,5 @@
 /* File scat.c
- * June 7, 1999
+ * July 1, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -223,7 +223,7 @@ char **av;
 	    }
 
 	/* Set range and make a list of star numbers from it */
-	else if (strchr (*av + 1, '-') || strchr (*av + 1, ',')) {
+	else if (isrange (*av)) {
 	    if (ranges) {
 		temp = ranges;
 		ranges = (char *) calloc (strlen(ranges) + strlen(*av) + 2, 1);
@@ -386,7 +386,7 @@ char **av;
     	    case 'q':	/* Output equinox in years */
     		if (ac < 2)
     		    usage(progname);
-    		eqout = atof (*++av);
+    		eqout = fd2ep (*++av);
     		ac--;
     		break;
 
@@ -441,7 +441,7 @@ char **av;
 	    case 'y':	/* Set output coordinate epoch */
 		if (ac < 2)
 		    usage(progname);
-		epoch0 = atof (*++av);
+		epoch0 = fd2ep (*++av);
 		ac--;
 		break;
 
@@ -2076,4 +2076,6 @@ int	ndec;	/* Number of decimal places in output */
  * Jun  4 1999	Use calloc() instead of malloc() for proper initialization
  * Jun  4 1999	Allow rectangular in addition to square and circular searches
  * Jun  7 1999	Allow radius input in sexagesimal
+ * Jun 30 1999	Use isrange() to check for a range of source numbers
+ * Jul  1 1999	Allow any legal FITS date format for epoch
  */

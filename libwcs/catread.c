@@ -99,49 +99,10 @@ int	nlog;
 	verbose = 1;
     else
 	verbose = 0;
+
     wcscstr (cstr, sysout, eqout, epout);
 
-    /* Set right ascension limits for search */
-    ra1 = cra - dra;
-    ra2 = cra + dra;
-
-    /* Keep right ascension between 0 and 360 degrees */
-    if (ra1 < 0.0)
-	ra1 = ra1 + 360.0;
-    if (ra2 > 360.0)
-	ra2 = ra2 - 360.0;
-
-    /* Set declination limits for search */
-    dec1 = cdec - ddec;
-    dec2 = cdec + ddec;
-
-    /* dec1 is always the smallest declination */
-    if (dec1 > dec2) {
-	dec = dec1;
-	dec1 = dec2;
-	dec2 = dec;
-	}
-
-    /* Search zones which include the poles cover 360 degrees in RA */
-    if (dec1 < -90.0) {
-	dec1 = -90.0;
-	ra1 = 0.0;
-	ra2 = 359.99999;
-	}
-    if (dec2 > 90.0) {
-	dec2 = 90.0;
-	ra1 = 0.0;
-	ra2 = 359.99999;
-	}
-    if (verbose) {
-	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
-	ra2str (rstr1, 16, ra1, 3);
-        dec2str (dstr1, 16, dec1, 2);
-	ra2str (rstr2, 16, ra2, 3);
-        dec2str (dstr2, 16, dec2, 2);
-	fprintf (stderr,"CATREAD: RA: %s - %s  Dec: %s - %s\n",
-		 rstr1,rstr2,dstr1,dstr2);
-	}
+    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
 
 /* If RA range includes zero, split it in two */
     wrap = 0;
@@ -1258,4 +1219,5 @@ char	*in;	/* Character string */
  * Feb 11 1999	Change starcat.insys to starcat.coorsys for consistency
  * Feb 17 1999	Fix per star coordinate system bugs
  * May 20 1999	Add option to read epoch of coordinates
+ * Jun 16 1999	Use SearchLim()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** June 3, 1999
+ *** June 16, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -102,47 +102,7 @@ int	nlog;
     else
 	verbose = 0;
 
-    /* Set right ascension limits for search */
-    ra1 = cra - dra;
-    ra2 = cra + dra;
-
-    /* Keep right ascension between 0 and 360 degrees */
-    if (ra1 < 0.0)
-	ra1 = ra1 + 360.0;
-    if (ra2 > 360.0)
-	ra2 = ra2 - 360.0;
-
-    /* Set declination limits for search */
-    dec1 = cdec - ddec;
-    dec2 = cdec + ddec;
-
-    /* dec1 is always the smallest declination */
-    if (dec1 > dec2) {
-	dec = dec1;
-	dec1 = dec2;
-	dec2 = dec;
-	}
-
-    /* Search zones which include the poles cover 360 degrees in RA */
-    if (dec1 < -90.0) {
-	dec1 = -90.0;
-	ra1 = 0.0;
-	ra2 = 359.99999;
-	}
-    if (dec2 > 90.0) {
-	dec2 = 90.0;
-	ra1 = 0.0;
-	ra2 = 359.99999;
-	}
-    if (verbose) {
-	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
-	ra2str (rstr1, 16, ra1, 3);
-        dec2str (dstr1, 16, dec1, 2);
-	ra2str (rstr2, 16, ra2, 3);
-        dec2str (dstr2, 16, dec2, 2);
-	fprintf (stderr,"TABREAD: RA: %s - %s  Dec: %s - %s\n",
-		 rstr1,rstr2,dstr1,dstr2);
-	}
+    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
 
     /* If RA range includes zero, split it in two */
     wrap = 0;
@@ -1236,4 +1196,5 @@ char    *filename;      /* Name of file to check */
  * Mar  2 1999	Rewrite tabhgetx() to use tabhgetc() for all header reading
  * May 28 1999	Add tabcatopen() and tabstar() and use them
  * Jun  3 1999	Fix bug so header parameters are read correctly
+ * Jun 16 1999	Use SearchLim()
  */

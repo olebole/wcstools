@@ -1,5 +1,5 @@
 /* File imstack.c
- * November 30, 1998
+ * June 29, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -18,8 +18,7 @@ static void usage();
 static int StackImage();
 
 static int verbose = 0;		/* verbose flag */
-static int debug = 0;		/* debugging flag */
-static int wfits = 0;		/* if 1, write FITS header before data */
+static int wfits = 1;		/* if 1, write FITS header before data */
 static char *newname = "imstack.out";
 static int nfiles = 0;
 static int nbstack = 0;
@@ -59,13 +58,9 @@ char **av;
 	    verbose++;
 	    break;
 
-	case 'f':	/* Write FITS header to output file */
-	    wfits++;
+	case 'n':	/* Write only image data to output file */
+	    wfits = 0;
 	    strcpy (newname,"imstack.fit");
-	    break;
-
-	case 'k':	/* Print extra debugging information */
-	    debug++;
 	    break;
 
 	case '@':	/* List of files to be read */
@@ -157,7 +152,7 @@ usage ()
     fprintf (stderr,"Stack FITS or IRAF images into single FITS image\n");
     fprintf(stderr,"usage: imstack [-vf] file1.fit file2.fit ... filen.fit\n");
     fprintf(stderr,"       imstack [-vf] @filelist\n");
-    fprintf(stderr,"  -f: Print output FITS header, else do not \n");
+    fprintf(stderr,"  -n: Do not print output FITS header\n");
     fprintf(stderr,"  -v: Verbose\n");
     exit (1);
 }

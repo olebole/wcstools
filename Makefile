@@ -1,5 +1,4 @@
 CFLAGS= -g
-#CFLAGS= -O
 CC=cc
 LIBWCS = libwcs/libwcs.a
 LIBS = $(LIBWCS) -lm
@@ -9,7 +8,7 @@ BIN = bin
 all:	delwcs delhead edhead fixpix gethead i2f imcat imhead immatch imrot \
 	imsize imstar imwcs scat sethead addpix getpix setpix sky2xy \
 	keyhead skycoor subpix xy2sky wcshead conpix gettab newfits \
-	imstack imextract
+	imstack imextract sumpix
 
 addpix: addpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/addpix addpix.c $(LIBS)
@@ -35,7 +34,7 @@ gethead: gethead.c $(LIBWCS) libwcs/fitsfile.h
 gettab: gettab.c $(LIBWCS) libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/gettab gettab.c $(LIBS)
 
-getpix: getpix.c $(LIBWCS) libwcs/fitsfile.h
+getpix: getpix.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/getpix getpix.c $(LIBS)
 
 i2f: i2f.c $(LIBWCS) libwcs/fitsfile.h
@@ -94,6 +93,9 @@ skycoor: skycoor.c $(LIBWCS) libwcs/wcs.h
 
 subpix: subpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/subpix subpix.c $(LIBS)
+
+sumpix: sumpix.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
+	$(CC) $(CFLAGS) -o $(BIN)/sumpix sumpix.c $(LIBS)
 
 wcshead: wcshead.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/wcshead wcshead.c $(LIBS)

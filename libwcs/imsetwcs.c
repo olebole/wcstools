@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * April 21, 1999
+ * July 9, 1999
  * By Doug Mink, based on UIowa code
  */
 
@@ -201,7 +201,7 @@ getfield:
 		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gmb,gc,NULL,verbose*100);
     else if (refcat == TABCAT)
 	ng = tabread (refcatname,cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
-		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gc,verbose);
+		      mag1,mag2,ngmax,gnum,gra,gdec,gm,gc,verbose*100);
     else if (refcat == TXTCAT)
 	ng = catread (refcatname,cra,cdec,dra,ddec,0.0,refsys,refeq,wcs->epoch,
 		      mag1,mag2,ngmax,gnum,gra,gdec,gm,verbose);
@@ -271,9 +271,10 @@ getfield:
 		printf (" %10.5f",gnum[ig]);
 	    else
 		printf (" %9d",(int)gnum[ig]);
-	    printf (" %s %s %5.2f %6.1f %6.1f\n",
+	    printf (" %s %s %5.2f %6.1f %6.1f\r",
 		    rstr,dstr,gm[ig],gx[ig],gy[ig]);
 	    }
+	printf ("\n");
 	}
 
     if (ng < minstars) {
@@ -373,9 +374,10 @@ getfield:
 		xmag = -2.5 * log10 (sb[is]);
 		if (!is) mdiff = gm[0] - xmag;
 		xmag = xmag + mdiff;
-		printf ("%4d %s %s %6.2f %6.1f %6.1f %d\n",
+		printf ("%4d %s %s %6.2f %6.1f %6.1f %d\r",
 			is+1, rastr, decstr, xmag, sx[is], sy[is], sp[is]);
 		}
+	    printf ("\n");
 	    }
 
 	/* Match offsets between all pairs of image stars and reference stars
@@ -537,7 +539,7 @@ getfield:
     if (iterate) {
 	setdcenter (wcs->xref, wcs->yref);
 	setrefpix (wcs->xrefpix, wcs->yrefpix);
-	setsecpix (3600.0 * wcs->xinc);
+	setsecpix (-3600.0 * wcs->xinc);
 	setsecpix2 (3600.0 * wcs->yinc);
 	setrot (wcs->rot);
 	iterate = 0;
@@ -551,7 +553,7 @@ getfield:
 	pix2wcs (wcs, x, y, &ra, &dec);
 	setdcenter (ra, dec);
 	setrefpix (x, y);
-	setsecpix (3600.0 * wcs->xinc);
+	setsecpix (-3600.0 * wcs->xinc);
 	setsecpix2 (3600.0 * wcs->yinc);
 	setrot (wcs->rot);
 	recenter = 0;
@@ -852,4 +854,7 @@ int recenter;
  * Feb 10 1999	Finish support for ACT reference catalog
  * Apr  7 1999	Add file name to GetFITSWCS call
  * Apr 21 1999	Fix RA residual bug: *cos(dec), not /cos(dec)
+ * Jul  7 1999	Fix bug setting secpix when iterating
+ * Jul  7 1999	List catalog and image stars without linefeeds
+ * Jul  9 1999	Log tabread() every 100 if verbose
  */

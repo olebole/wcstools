@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * June 4, 1999
+ * July 2, 1999
  * By Doug Mink, SAO
  */
 
@@ -27,6 +27,7 @@
 int RefCat();
 void CatNum();
 int CatNumLen();
+void SearchLim();
 
 /* Subroutines for extracting sources from catalogs by sky region */
 int gscread();		/* Read sources from HST Guide Star Catalog */
@@ -167,9 +168,26 @@ struct Range {
 
 /* Subroutines for dealing with ranges */
 struct Range *RangeInit();	/* Initialize range structure from string */
+int isrange();		/* Return 1 if string is a range of numbers, else 0 */
 int rgetn();		/* Return number of values in all ranges */
 int rgeti4();		/* Return next number in range as integer */
 double rgetr8();	/* Return next number in range as double */
+void rstart();		/* Restart range */
+
+/* Subroutines for translating dates and times */
+double fd2ep();	/* FITS standard date string to fractional year (epoch) */
+double fd2jd();	/* FITS standard date string to Julian date */
+void jd2dt();	/* Julian date to yyyy.mmdd hh.mmssss */
+double dt2jd();	/* yyyy.ddmm and hh.mmsss to Julian date */
+void jd2dt();	/* Julian date to yyyy.mmdd hh.mmssss */
+double dt2ts();	/* yyyy.ddmm and hh.mmsss to seconds since 1950.0 */ 
+void ts2dt();	/* seconds since 1950.0 to yyyy.mmdd hh.mmssss */
+double dt2ep();	/* yyyy.ddmm and hh.mmsss to fractional year (epoch) */
+void ep2dt();	/* fractional year to yyyy.mmdd hh.mmssss */
+double ts2jd();	/* seconds since 1950.0 to yyyy.mmdd hh.mmssss */
+double jd2ts();	/* Julian date to seconds since 1950.0 */
+void ts2i();	/* seconds since 1950.0 to year, month, day, hours, min, sec */
+double ep2jd();	/* fractional year to Julian Date */
 
 /* Shapes for SAOimage region file output */
 #define WCS_CIRCLE 1	/* shape for SAOimage plotting */
@@ -197,4 +215,8 @@ double rgetr8();	/* Return next number in range as double */
  * May 14 1999	Update Star and StarCat structure to cover tab tables
  * May 19 1999	Update StarCat structure to include epoch from catalog
  * June 4 1999	Add CatNumLen()
-*/
+ * Jun 14 1999	Add SearchLim()
+ * Jun 30 1999	Add isrange()
+ * Jul  1 1999	Add declarations for date/time conversions in dateutil.c
+ * Jul  2 1999	Add rstart()
+ */

@@ -63,6 +63,8 @@ sky2xy.c
 skycoor.c
   Convert between J2000, B1950, and Galactic coordinates from the command
   line or a file.
+sumpix.c
+  Total pixel values in row, column, or specified area
 wcshead.c
   Print basic world coordinate system information on one line per image
 xy2sky.c

@@ -1,5 +1,5 @@
 /* File gethead.c
- * June 9, 1999
+ * June 21, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -174,7 +174,7 @@ char **av;
 
 	/* Print column headings if tab table or headings requested */
 	if (printhead) {
-	    if (nfile > 1) {
+	    if (nfile > 1 || listall) {
 		printf ("FILENAME");
 		if (maxlfn > 8) {
 		    for (i = 8; i < maxlfn; i++)
@@ -202,7 +202,7 @@ char **av;
 		}
 
 	    /* Print field-defining hyphens if tab table output requested */
-	    if (nfile > 1) {
+	    if (nfile > 1 || listall) {
 		if (tabout) {
 		    printf ("--------");
 		    if (maxlfn > 8) {
@@ -339,7 +339,7 @@ char	*kwd[];	/* Names of keywords for which to print values */
     else
 	filename = filename + 1;
 
-    if (nfile > 1) {
+    if (nfile > 1 || listall) {
 	if (tabout)
 	    sprintf (fnform, "%%-%ds	", maxlfn);
 	else
@@ -479,4 +479,5 @@ char *string;
  * Apr  1 1999	Add warning if too many files or keywords on command line
  * Apr  2 1999	Add -f and -m to change maximum number of files or keywords
  * Jun  9 1999	Initialize outline so Linux doesn't print garbage
+ * Jun 21 1999	Fix bug so that -a option works, always printing filename
  */

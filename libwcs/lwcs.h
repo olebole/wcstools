@@ -1,9 +1,13 @@
+/* File lwcs.h
+ * June 11, 1999
+ * By Doug Mink
+ */
 
 /* The following are used in star finding (findstar.c) */
 #define	NSTATPIX	25	/* Stats are computed for +- this many pixels */
 #define	ISTATPIX	10	/* Stats are computed every this many pixels */
 #define	MAXWALK		20	/* Farthest distance to walk from seed */
-#define	BURNEDOUT	65535	/* Clamp pixels brighter than this */
+#define	BURNEDOUT	0	/* Clamp pixels brighter than this, if > 0 */
 #define NITERATE	5	/* Number of iterations for sigma clipping */
 #define STARSIGMA	5.0	/* Stars must be this many sigmas above mean */
 #define BORDER		10	/* Ignore this much of the edge */
@@ -26,3 +30,6 @@
 #define PIXDIFF		10	/* +- this many pixels is a match */
 #define PSCALE		0	/* Plate scale in arcsec/pixel */
 				/* (if nonzero, this overrides image header) */
+
+/* Jun 11 1999	Set BURNEDOUT to 0 so it is ignored
+ */

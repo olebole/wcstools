@@ -1,5 +1,5 @@
 /* File addpix.c
- * April 29, 1999
+ * June 29, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -173,7 +173,7 @@ char	**value;	/* value to insert into pixel */
     bzero = 0.0;
     hgetr8 (header,"BZERO",&bzero);
     bscale = 1.0;
-    hgetr8 (header,"BZERO",&bscale);
+    hgetr8 (header,"BSCALE",&bscale);
 
     for (i = 0; i < n; i++) {
 	if (strchr (value[i],(int)'.'))
@@ -289,4 +289,5 @@ char	**value;	/* value to insert into pixel */
  * Nov 30 1998	Add version and help commands for consistency
  *
  * Apr 29 1999	Add BZERO and BSCALE
+ * Jun 29 1999	Fix typo in BSCALE setting
  */

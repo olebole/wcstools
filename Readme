@@ -6,7 +6,7 @@ image, using specific keywords in the image header which relate pixel
 position within the image to position on the sky.  Auxillary programs
 search star catalogs and manipulate images.
 
-This is version 2.6 of the WCSTools package developed by Doug Mink
+This is version 2.6.3 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code from
 
@@ -91,6 +91,8 @@ sky2xy	Print image pixel coordinates for given sky coordinates on the
 
 skycoor	Convert between J2000, B1950, and Galactic coordinates from the
 	command line or a file.
+
+sumpix	Total pixel values over an image row or column or a specified area
 
 wcshead	Print basic world coordinate system information on one line per image
 

@@ -1,5 +1,5 @@
 /* File libwcs/fitswcs.c
- * April 7, 1999
+ * July 8, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      fitswcs.c (FITS file WCS reading and deleting)
@@ -385,7 +385,13 @@ struct WorldCoor *wcs;	/* WCS structure */
 	hputr8 (header, "EPOCH", wcs->equinox);
     else if (!hgetr8 (header, "EPOCH", &ep))
 	hputr8 (header, "EPOCH", wcs->equinox);
-    hputs (header, "RADECSYS", wcs->radecsys);
+
+    if (wcs->radecsys[0] == 'B' || wcs->radecsys[0] == 'b')
+	hputs (header, "RADECSYS", "FK4");
+    else if (wcs->radecsys[0] == 'J' || wcs->radecsys[0] == 'j')
+	hputs (header, "RADECSYS", "FK5");
+    else
+	hputs (header, "RADECSYS", wcs->radecsys);
 
     /* Set standard FITS WCS keywords */
     strcpy (wcstemp, "RA---");
@@ -477,4 +483,5 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Oct 28 1998	Delete EQUINOX, RADECSYS, SECPIX1, SECPIX2 from imwcs
  *
  * Apr  7 1999	Add file name to error message if WCS error
+ * Jul  8 1999	Write RADECSYS as FK5 or FK4 instead of J2000 or B1950
  */

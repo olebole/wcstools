@@ -13,13 +13,11 @@
 #include <math.h>
 #include "wcs.h"
 #include "libwcs/lwcs.h"
-#include "libwcs/wcscat.h"
 
 static void usage();
 
 static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
-static int classd = -1;		/* Guide Star Catalog object classes */
 static int tabout = 0;		/* 1 for tab table to standard output */
 static int debug = 0;		/* True for extra information */
 static char *objname = NULL;	/* Object name for output */
@@ -27,7 +25,6 @@ static char *keyword = NULL;	/* Column to add to tab table output */
 static char progpath[128];
 static int ncat = 0;
 static int version = 0;		/* If 1, print only program name and version */
-static int match = 0;		/* If 1, match num exactly in BIN or ASC cats*/
 
 main (ac, av)
 int ac;
@@ -37,8 +34,6 @@ char **av;
     char rastr[16];
     char decstr[16];
     int i, lcat;
-    char *refcatname[5];	/* reference catalog names */
-    char *refcatn;
     char *temp;
     int systemp = 0;		/* Input search coordinate system */
     char *ranges = NULL;
@@ -158,9 +153,7 @@ char	*ranges;	/* String with range of column numbers to list */
     int nlog, closest;
     char temp[80];
     char isp[4];
-    int refcat;		/* reference catalog switch */
     int icat, nndec;
-    struct StarCat *starcat;
 
     if (verbose || printhead)
 
@@ -171,18 +164,13 @@ char	*ranges;	/* String with range of column numbers to list */
     else
 	nlog = 0;
 
-    if (!(refcat = RefCat (refcatname[icat], title, &sysref, &eqref, &epref))) {
-	fprintf (stderr,"ListCat: Catalog '%s' is missing\n", refcatname[icat]);
-	return (0);
-	}
-
     /* Find columns specified by number */
     if (ranges != NULL) {
 	int nfdef = 9;
 	range = RangeInit (ranges, nfdef);
 	nfind = rgetn (range);
 	nbytes = nfind * sizeof (int);
-	if (!(inum = (int *) calloc (nfind, sizeof(int))) {
+	if (!(inum = (int *) calloc (nfind, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for unum\n", nbytes);
 	    return;
 	    }

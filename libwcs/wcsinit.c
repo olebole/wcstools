@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** April 7, 1999
+ *** July 8, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcsinit.c (World Coordinate Systems)
@@ -626,9 +626,9 @@ char *hstring;	/* character string containing FITS header information
     wcs->syswcs = wcscsys (wcs->radecsys);
 
     if (wcs->syswcs == WCS_B1950)
-	strcpy (wcs->radecout, "B1950");
+	strcpy (wcs->radecout, "FK4");
     else if (wcs->syswcs == WCS_J2000)
-	strcpy (wcs->radecout, "J2000");
+	strcpy (wcs->radecout, "FK5");
     else
 	strcpy (wcs->radecout, wcs->radecsys);
     wcs->sysout = wcscsys (wcs->radecout);
@@ -793,4 +793,5 @@ struct WorldCoor *wcs;
  * Feb 19 1999	Add PIXSCALE as possible default arcseconds per pixel
  * Apr  7 1999	Add error checking for NAXIS and NAXIS1 keywords
  * Apr  7 1999	Do not set systring if epoch is 0 and not RA/Dec
+ * Jul  8 1999	In RADECSYS, use FK5 and FK4 instead of J2000 and B1950
  */

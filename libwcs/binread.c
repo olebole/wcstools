@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** February 11, 1999
+ *** June 16, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -124,16 +124,8 @@ int	nlog;
 	return (0);
 	}
 
-    /* Set right ascension limits for search */
-    ra1 = cra - dra;
-    ra2 = cra + dra;
-
-    /* Keep right ascension between 0 and 360 degrees */
-    if (ra1 < 0.0)
-	ra1 = ra1 + 360.0;
-    if (ra2 > 360.0)
-	ra2 = ra2 - 360.0;
-
+    SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
+  
     sysref = starcat->coorsys;
     eqref = starcat->equinox;
     epref = starcat->epoch;
@@ -1054,4 +1046,5 @@ char    *filename;      /* Name of file to check */
  * Feb  1 1999	Add match argument to binrnum() 
  * Feb  2 1999	Set number of decimal places in star number
  * Feb 11 1999	Change starcat.insys to starcat.coorsys
+ * Jun 16 1999	Use SearchLim()
  */

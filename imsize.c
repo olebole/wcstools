@@ -1,5 +1,5 @@
 /* File imsize.c
- * April 7, 1999
+ * June 17, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -29,8 +29,10 @@ static double frac = 0.0;
 static int verbose = 0;		/* verbose/debugging flag */
 static int dss = 0;		/* Flag to drop extra stuff for DSS */
 static int dssc = 0;		/* Flag to drop extra stuff for DSS */
-static double equinox = 0.0;
-static int eqsys = -1;
+static double eqout = 0.0;
+static double eqim = 0.0;
+static int sysout = 0;
+static int sysim = 0;
 static int printepoch = 0;
 static int printrange = 0;	/* Flag to print range rather than center */
 static int version = 0;		/* If 1, print only program name and version */
@@ -72,13 +74,11 @@ char **av;
 	    break;
 
 	case 'b':	/* ouput B1950 (B1950) coordinates */
-	    equinox = 1950.0;
-	    eqsys = WCS_B1950;
+	    eqout = 1950.0;
+	    sysout = WCS_B1950;
 	    str1 = *(av+1);
-	    if (*(str+1) || !strchr (str1,':')) {
-		setsys (WCS_B1950);
+	    if (*(str+1) || !strchr (str1,':'))
 		strcpy (coorsys, "B1950");
-		}
 	    else if (ac < 3)
 		usage ();
 	    else {
@@ -94,9 +94,8 @@ char **av;
 
 	case 'c':	/* Change output for DSS */
 	    strcpy (coorsys, "J2000");
-	    equinox = 2000.0;
-	    eqsys = WCS_J2000;
-	    setsys (WCS_J2000);
+	    eqout = 2000.0;
+	    sysout = WCS_J2000;
 	    dssc++;
 	    str1 = *(av+1);
 	    if (!*(str+1) && (strchr (str1,'-') || strchr (str1,'+')) ) {
@@ -111,9 +110,8 @@ char **av;
 
 	case 'd':	/* Change output for DSS */
 	    strcpy (coorsys, "J2000");
-	    equinox = 2000.0;
-	    eqsys = WCS_J2000;
-	    setsys (WCS_J2000);
+	    eqout = 2000.0;
+	    sysout = WCS_J2000;
 	    dss++;
 	    str1 = *(av+1);
 	    if (!*(str+1) && (strchr (str1,'-') || strchr (str1,'+')) ) {
@@ -132,12 +130,10 @@ char **av;
 
 	case 'j':	/* ouput J2000 (J2000) coordinates */
 	    str1 = *(av+1);
-	    equinox = 2000.0;
-	    eqsys = WCS_J2000;
-	    if (*(str+1) || !strchr (str1,':')) {
-		setsys (WCS_J2000);
+	    eqout = 2000.0;
+	    sysout = WCS_J2000;
+	    if (*(str+1) || !strchr (str1,':'))
 		strcpy (coorsys, "J2000");
-		}
 	    else if (ac < 3)
 		usage ();
 	    else {
@@ -223,6 +219,7 @@ usage ()
     fprintf (stderr,"  -e: Add epoch of image to output line\n");
     fprintf (stderr,"  -j: Output J2000 (J2000) coordinates (optional center)\n");
     fprintf (stderr,"  -p: Initial plate scale in arcsec per pixel (default 0)\n");
+    fprintf (stderr,"  -r: Print range in RA and Dec\n");
     fprintf (stderr,"  -v: Verbose\n");
     fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     exit (1);
@@ -294,11 +291,14 @@ char *name;
 
     /* Read world coordinate system information from the image header */
     wcs = GetFITSWCS (name, header, verbose, &cra, &cdec, &dra, &ddec, &secpix,
-		      &wp, &hp, &eqsys, &equinox);
+		      &wp, &hp, &sysim, &eqim);
     if (nowcs (wcs)) {
 	printf ("%s: No WCS for file, cannot compute image size\n", name);
 	return;
 	}
+
+    /* Convert to desired output coordinates */
+    wcscon (sysim, sysout, eqim, eqout, &cra, &cdec, wcs->epoch);
 
     /* Image center */
     ra2str (rstr, 16, cra, 3);
@@ -310,6 +310,8 @@ char *name;
 
     if (coorsys[0] == 0)
 	wcscstr (coorsys, wcs->syswcs, wcs->equinox, 0.0);
+    else
+	wcsoutinit (wcs, coorsys);
 
     /* Print information */
     if (frac > 0.0) {
@@ -323,40 +325,11 @@ char *name;
 
     /* Print coverage of image in right ascension and declination */
     if (printrange) {
-	xpix[0] = 1.0;
-	ypix[0] = 1.0;
-	xpix[1] = 1.0;
-	ypix[1] = (double) wcs->nypix;
-	xpix[2] = (double) wcs->nxpix;
-	ypix[2] = 1.0;
-	xpix[3] = (double) wcs->nxpix;
-	ypix[3] = (double) wcs->nypix;
-	for (i = 0; i < 4; i++)
-	    (void) pix2wcs (wcs,xpix[i],ypix[i],&xpos[i],&ypos[i]);
-	xmin = xpos[0];
-	xmax = xpos[0];
-	ymin = ypos[0];
-	ymax = ypos[0];
-	for (i = 1; i < 4; i++) {
-	    if (xpos[i] < xmin)
-		xmin = xpos[i];
-	    if (xpos[i] > xmax)
-		xmax = xpos[i];
-	    if (ypos[i] < ymin)
-		ymin = ypos[i];
-	    if (ypos[i] > ymax)
-		ymax = ypos[i];
-	    }
+	wcsrange (wcs, &xmin, &xmax, &ymin, &ymax);
 	ra2str (ramin, 32, xmin, 3);
 	ra2str (ramax, 32, xmax, 3);
 	dec2str (decmin, 32, ymin, 3);
 	dec2str (decmax, 32, ymax, 3);
-	/* dx1 = wcsdist (xpos[0],ypos[0],xpos[2],ypos[2]);
-	dx2 = wcsdist (xpos[1],ypos[1],xpos[3],ypos[3]);
-	dx = 0.5 * (dx1 + dx2) * 3600.0 / (double)wcs->nxpix;
-	dy1 = wcsdist (xpos[0],ypos[0],xpos[1],ypos[1]);
-	dy2 = wcsdist (xpos[2],ypos[2],xpos[3],ypos[3]);
-	dy = 0.5 * (dy1 + dy2) * 3600.0 / (double)wcs->nypix; */
 	dx = wcs->xinc * 3600.0;
 	dy = wcs->yinc * 3600.0;
 	strcpy (blanks, "                                       ");
@@ -449,4 +422,5 @@ char *name;
  * Nov 30 1998	Add version and help commands for consistency
  *
  * Apr  7 1999	Add file name argument to GetFITSWCS
+ * Jun 17 1999	Fix coordinate conversion
  */

@@ -1,5 +1,5 @@
 /* File getpix.c
- * April 29, 1999
+ * July 2, 1999
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <math.h>
 #include "fitsfile.h"
+#include "wcscat.h"
 
 static void usage();
 static int PrintFITSHead ();
@@ -19,6 +20,9 @@ static void PrintPix ();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;		/* If 1, print only program name and version */
+static int nline = 10;		/* Number of pixels printer per line */
+static char *pform = NULL;	/* Format in which to print pixels */
+static int pixlabel = 0;	/* If 1, label pixels in output */
 
 main (ac, av)
 int ac;
@@ -26,7 +30,8 @@ char **av;
 {
     char *str;
     char *fn;
-    int i, x[100], y[100];
+    char *rrange;       /* Row range string */
+    char *crange;       /* Column range string */
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -37,35 +42,61 @@ char **av;
 	usage();
 	}
 
+    crange = NULL;
+    rrange = NULL;
+    fn = NULL;
+
     /* crack arguments */
-    for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
-	char c;
-	while (c = *++str)
-	switch (c) {
-	case 'v':	/* more verbosity */
-	    verbose++;
-	    break;
-	default:
-	    usage();
-	    break;
+    for (av++; --ac > 0; av++) {
+	str = *av;
+
+	/* output format */
+	if (str[0] == '%') {
+	    pform = *av;
+	    }
+
+	/* other command */
+	else if (str[0] == '-') {
+	    char c;
+	    while (c = *++str)
+	    switch (c) {
+
+		case 'v':	/* more verbosity */
+		    verbose++;
+		    break;
+
+		case 'l':	/* label pixels */
+		    pixlabel++;
+		    break;
+
+		case 'n':	/* Number of pixels per line */
+		    if (ac < 2)
+			usage();
+		    nline = atoi (*++av);
+		    ac--;
+		    break;
+
+		default:
+		    usage();
+		    break;
+		}
+	    }
+
+	/* range of pixels to print */
+        else if (isnum (str) || isrange (str)) {
+	    if (crange == NULL)
+		crange = str;
+	    else
+		rrange = str;
+	    }
+
+	/* file name */
+	else
+	    fn = str;
+
+	if (fn && crange && rrange)
+            PrintPix (fn, crange, rrange);
 	}
-    }
-
-    /* now there are ac remaining file names starting at av[0] */
-    if (ac == 0)
-	usage ();
-
-    fn = *av++;
-
-    i = 0;
-    while (--ac > 0 && i < 100) {
-	x[i] = atoi (*av++);
-	ac--;
-	y[i] = atoi (*av++);
-	i++;
-	}
-    if (i > 0)
-	PrintPix (fn, i, x, y);
 
     return (0);
 }
@@ -76,17 +107,21 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF pixel values\n");
-    fprintf(stderr,"Usage: getpix [-v] file.fit x y ...\n");
+    fprintf(stderr,"Usage: getpix [-v][-n num][format] file.fit x_range y_range ...\n");
+    fprintf(stderr,"  -n: number of pixel values printed per page\n");
+    fprintf(stderr,"  -v: label pixels\n");
     fprintf(stderr,"  -v: verbose\n");
+    fprintf(stderr,"   %: C format for each pixel value\n");
     exit (1);
 }
 
 
 static void
-PrintPix (name, n, x, y)
+PrintPix (name, crange, rrange)
 
 char *name;
-int n, *x, *y;
+char *crange;   /* Column range string */
+char *rrange;   /* Row range string */
 
 {
     char *header;	/* FITS image header */
@@ -98,8 +133,13 @@ int n, *x, *y;
     double bscale;	/* Scale factor for pixel scaling */
     int iraffile;
     double dpix;
-    int bitpix,xdim,ydim, ipix, i;
+    char *c;
+    int *yi;
+    int bitpix,xdim,ydim, ipix, i, nx, ny, ix, iy, x, y, n, iline;
     char pixname[128];
+    char nform[8];
+    struct Range *xrange;    /* X range structure */
+    struct Range *yrange;    /* Y range structure */
 
     /* Open IRAF image if .imh extension is present */
     if (isiraf (name)) {
@@ -141,7 +181,12 @@ int n, *x, *y;
 	    }
 	}
     if (verbose) {
-	fprintf (stderr,"Print pixel values from ");
+	if (!strcmp (crange, "0"))
+	    fprintf (stderr,"Print rows %s in ", rrange);
+	else if (!strcmp (rrange, "0"))
+	    fprintf (stderr,"Print columns %s in ", crange);
+	else
+	    fprintf (stderr,"Print rows %s, columns %s in ", rrange, crange);
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", name);
 	else
@@ -157,21 +202,192 @@ int n, *x, *y;
     bzero = 0.0;
     hgetr8 (header,"BZERO",&bzero);
     bscale = 1.0;
-    hgetr8 (header,"BZERO",&bscale);
+    hgetr8 (header,"BSCALE",&bscale);
 
-    for (i = 0; i < n; i++) {
-        dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x[i]-1,y[i]-1);
-        if (bitpix > 0) {
-	    if (dpix > 0)
-        	ipix = (int) (dpix + 0.5);
-	    else if (dpix < 0)
-        	ipix = (int) (dpix - 0.5);
-	    else
-		ipix = 0;
-	    printf ("%s[%d,%d] = %d\n",name,x[i],y[i],ipix);
-	    }
+/* Set format if not already set */
+    if (pform == NULL) {
+	pform = (char *) calloc (8,1);
+	if (bitpix > 0)
+	    strcpy (pform, "%d");
 	else
-	    printf ("%s[%d,%d] = %.2f\n",name,x[i],y[i],dpix);
+	    strcpy (pform, "%.2f");
+	}
+
+/* Print entire columns */
+    if (!strcmp (rrange, "0")) {
+	xrange = RangeInit (crange, xdim);
+	nx = rgetn (xrange);
+	ny = ydim;
+	for (ix = 0; ix < nx; ix++) {
+	    rstart (xrange);
+	    x = rgeti4 (xrange) - 1;
+	    for (y = 0; y < ny; y++) {
+        	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
+	        if (bitpix > 0) {
+		    if (dpix > 0)
+	 		ipix = (int) (dpix + 0.5);
+		    else if (dpix < 0)
+		 	ipix = (int) (dpix - 0.5);
+		    else
+			ipix = 0;
+		    }
+		if (verbose) {
+		    printf ("%s[%d,%d] = ",name,x,y);
+		    if (bitpix > 0)
+			printf (pform, ipix);
+		    else
+			printf (pform, dpix);
+		    printf ("\n");
+		    }
+		else {
+		    if (bitpix > 0)
+			printf (pform, ipix);
+		    else
+			printf (pform, dpix);
+		    if ((y+1) % nline == 0)
+			printf ("\n");
+		    else
+			printf (" ");
+		    }
+		}
+	    if (y % nline != 0)
+		printf ("\n");
+	    if (nx > 1)
+		printf ("\n");
+	    }
+	free (xrange);
+	}
+
+/* Print entire rows */
+    else if (!strcmp (crange, "0")) {
+	yrange = RangeInit (rrange, xdim);
+	ny = rgetn (yrange);
+	nx = xdim;
+	for (iy = 0; iy < ny; iy++) {
+	    y = rgeti4 (yrange) - 1;
+	    for (x = 0; x < nx; x++) {
+        	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
+	        if (bitpix > 0) {
+		    if (dpix > 0)
+	 		ipix = (int) (dpix + 0.5);
+		    else if (dpix < 0)
+		 	ipix = (int) (dpix - 0.5);
+		    else
+			ipix = 0;
+		    }
+		if (verbose) {
+		    printf ("%s[%d,%d] = ",name,x,y);
+		    if (bitpix > 0)
+			printf (pform, ipix);
+		    else
+			printf (pform, dpix);
+		    printf ("\n");
+		    }
+		else {
+		    if (bitpix > 0)
+			printf (pform, ipix);
+		    else
+			printf (pform, dpix);
+		    if ((x+1) % nline == 0)
+			printf ("\n");
+		    else
+			printf (" ");
+		    }
+		}
+	    if (x % nline != 0)
+		printf ("\n");
+	    if (ny > 1)
+		printf ("\n");
+	    }
+	free (yrange);
+	}
+
+/* Print a region of a two-dimensional image */
+    else {
+	xrange = RangeInit (crange, xdim);
+	nx = rgetn (xrange);
+
+	/* Make list of y coordinates */
+	yrange = RangeInit (rrange, ydim);
+	ny = rgetn (yrange);
+	yi = (int *) calloc (ny, sizeof (int));
+	for (i = 0; i < ny; i++) {
+	    yi[i] = rgeti4 (yrange) - 1;
+	    }
+
+	/* Label horizontal pixels */
+	if (!verbose && pixlabel) {
+	    printf ("     ");
+	    rstart (xrange);
+	    strcpy (nform, pform);
+	    if ((c = strchr (nform,'.')) != NULL) {
+		*c = 'd';
+		c[1] = (char) 0;
+		}
+	    else if ((c = strchr (nform,'f')) != NULL) {
+		*c = 'd';
+		}
+	    for (ix = 0; ix < nx; ix++) {
+		x = rgeti4 (xrange);
+		printf (" ");
+		printf (nform, x);
+		}
+	    printf ("\n");
+	    }
+	if (verbose)
+	    iy = -1;
+	else
+	    iy = ny;
+
+	/* Loop through rows starting with the last one */
+	for (i = 0; i < ny; i++) {
+	    if (verbose)
+		iy++;
+	    else
+		iy--;
+	    rstart (xrange);
+	    if (!verbose && pixlabel)
+		printf ("%4d: ",yi[iy]+1);
+
+	    /* Loop through columns */
+	    for (ix = 0; ix < nx; ix++) {
+		x = rgeti4 (xrange) - 1;
+        	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,yi[iy]);
+	        if (bitpix > 0) {
+		    if ((c = strchr (pform,'f')) != NULL)
+			*c = 'd';
+		    if (dpix > 0)
+	 		ipix = (int) (dpix + 0.5);
+		    else if (dpix < 0)
+		 	ipix = (int) (dpix - 0.5);
+		    else
+			ipix = 0;
+		    }
+		else {
+		    if ((c = strchr (pform,'d')) != NULL)
+			*c = 'f';
+		    }
+		if (verbose) {
+		    printf ("%s[%d,%d] = ",name,x+1,yi[i]+1);
+		    if (bitpix > 0)
+			printf (pform, ipix);
+		    else
+			printf (pform, dpix);
+		    printf ("\n");
+		    }
+		else {
+		    if (bitpix > 0)
+			printf (pform, ipix);
+		    else
+			printf (pform, dpix);
+		    printf (" ");
+		    }
+		}
+	    if (!verbose)
+		printf ("\n");
+	    }
+	free (xrange);
+	free (yrange);
 	}
 
     free (header);
@@ -191,4 +407,6 @@ int n, *x, *y;
  *
  * Feb 12 1999	Initialize dxisn to 1 so it works for 1-D images
  * Apr 29 1999	Add BZERO and BSCALE
+ * Jun 29 1999	Fix typo in BSCALE setting
+ * Jul  2 1999	Use ranges instead of individual pixels
  */
