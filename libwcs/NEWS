@@ -1,10 +1,17 @@
 WCSTools subroutine release history
 
+December 3, 2003 - Release 3.5.1 (Doug Mink, SAO)
+Change p[0,1,2] initializations to p[1,2,3] in wcsinit.c to match proj.c
+(This affects constants for AZP,SIN,COP,COE,COD,COO,SZP,CEA,CYP,AIR,BON)
+Add wcs->naxes back into wcs structure for backward compatibility; it
+should always be equal to wcs->naxis.
+
 November 17, 2003 - Release 3.5.0 (Doug Mink, SAO)
 Rename mgets() to mgetstr() in iget.c, wcsinit.c and fitshead.h
 Add numdec() to hget.c to return number of decimal places in numeric string
 Change wcs->naxes to wcs->naxis to prepare for WCSLIB 3.*
 In iraf2fits() and irafrimage(), use image, not physical, dimensions.
+In iraf2fits(), set NAXISi to image dimensions, NPAXISi to physical dimensions.
 Fix bugs in wcsfull() in wcs.c
 Move all distortion-related code to distort.c; include unistd.h
 Include stdlib.h instead of malloc.h in lin.c and drop malloc.h from matchstar.c

@@ -1,5 +1,5 @@
 /*** File libwcs/ubcread.c
- *** October 6, 2003
+ *** December 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2003
@@ -42,6 +42,10 @@ static int ucat=UB1;
 /* USNO B-1.0 directory pathname; replaced by UB1_PATH environment variable.
  * This may also be a URL to a catalog search engine */
 static char ub1path[64]="/data/ub1";
+
+/* USNO YB6 directory pathname; replaced by YB6_PATH environment variable.
+ * This may also be a URL to a catalog search engine */
+static char yb6path[64]="/data/astrocat2/usnoyb6";
 
 static char *ubpath;
 
@@ -90,7 +94,7 @@ static void ubcswap();
 static int nbent = 80;
 
 
-/* UBCREAD -- Return USNO-B1.0 sources in specified region */
+/* UBCREAD -- Return USNO B1.0 or YB6 sources in specified region */
 
 int
 ubcread (refcatname,distsort,cra,cdec,dra,ddec,drad,dradi,sysout,eqout,epout,
@@ -161,12 +165,17 @@ int	nlog;		/* Logging interval */
 	verbose = 0;
 
     /* Set catalog code and path to catalog */
-    if (strncmp (refcatname,"ub",2)==0 ||
-        strncmp (refcatname,"UB",2)==0) {
+    if (strncasecmp (refcatname,"ub",2)==0) {
 	if ((str = getenv("UB1_PATH")) != NULL)
 	    strcpy (ub1path,str);
 	ucat = UB1;
 	ubpath = ub1path;
+	}
+    else if (strncasecmp (refcatname,"yb",2)==0) {
+	if ((str = getenv("YB6_PATH")) != NULL)
+	    strcpy (yb6path,str);
+	ucat = YB6;
+	ubpath = yb6path;
 	}
     else {
 	fprintf (stderr, "UBCREAD:  %s not a USNO catalog\n", refcatname);
@@ -244,7 +253,7 @@ int	nlog;		/* Logging interval */
 	printf ("%s	ra          	dec         	", catid);
 	printf ("magb1 	magr1 	magb1 	magb2 	magn  	ura  	udec  	");
 	printf ("pm	ni	arcmin\n");
-	printf ("------------	------------	------------    ");
+	printf ("------------	------------	------------	");
 	printf ("-----	-----	-----	-----	-----	-----	-----	");
 	printf ("--	--	------\n");
 	}
@@ -585,12 +594,17 @@ int	nlog;		/* Logging interval */
     char *str;
 
     /* Set catalog code and path to catalog */
-    if (strncmp (refcatname,"ub",2)==0 ||
-        strncmp (refcatname,"UB",2)==0) {
+    if (strncasecmp (refcatname,"ub",2)==0) {
 	if ((str = getenv("UB1_PATH")) != NULL)
 	    strcpy (ub1path,str);
 	ucat = UB1;
 	ubpath = ub1path;
+	}
+    else if (strncasecmp (refcatname,"yb",2)==0) {
+	if ((str = getenv("YB6_PATH")) != NULL)
+	    strcpy (yb6path,str);
+	ucat = YB6;
+	ubpath = yb6path;
 	}
     else {
 	fprintf (stderr, "UBCREAD:  %s not a USNO catalog\n", refcatname);
@@ -749,12 +763,17 @@ int	nlog;		/* Logging interval */
 	verbose = 0;
 
     /* Set catalog code and path to catalog */
-    if (strncmp (refcatname,"ub",2)==0 ||
-        strncmp (refcatname,"UB",2)==0) {
+    if (strncasecmp (refcatname,"ub",2)==0) {
 	if ((str = getenv("UB1_PATH")) != NULL)
 	    strcpy (ub1path,str);
 	ucat = UB1;
 	ubpath = ub1path;
+	}
+    else if (strncasecmp (refcatname,"yb",2)==0) {
+	if ((str = getenv("YB6_PATH")) != NULL)
+	    strcpy (yb6path,str);
+	ucat = YB6;
+	ubpath = yb6path;
 	}
     else {
 	fprintf (stderr, "UBCBIN:  %s not a USNO catalog\n", refcatname);
@@ -1382,4 +1401,6 @@ int nbytes = nbent; /* Number of bytes to reverse */
  * Aug 22 2003	Add radi argument for inner edge of search annulus
  * Sep 25 2003	Add ubcbin() to fill an image with sources
  * Oct  6 2003	Update ubcread() and ubcbin() for improved RefLim()
+ * Dec  1 2003	Add missing tab to n=-1 header
+ * Dec  3 2003	Add USNO YB6 catalog
  */

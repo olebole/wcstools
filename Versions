@@ -1,3 +1,13 @@
+Version 3.5.1 (December 5, 2003)
+scat: Fix bugs in tabbed single-line search output
+cphead: Initialize previously uninitialized variable (infile)
+Change p[0,1,2] initializations to p[1,2,3] in wcsinit.c to match proj.c
+This affects constants for AZP,SIN,COP,COE,COD,COO,SZP,CEA,CYP,AIR,BON in
+all programs which convert between WCS and image coordinates.
+*read.c: Add tab after declination dashline (-----) for -n -1 output.
+Add wcs->naxes to wcs structure for backward compatibility
+Fix bug in DelWCSFITS() which caused problems when imwcs -e used.
+
 Version 3.5.0 (November 22, 2003)
 bincat: New program to create an image out of a catalog or a portion thereof
 cphead: Add -w option to copy all WCS keywords;
@@ -9,7 +19,18 @@ sub1: Fix bug which failed to find any stars in regions with certain centers
 gethead: Fix bug which dropped last zero of exponent in values
 getpix: Fix bug so 0 works as substitute for 1-NAXISn on command line
 imextract: Fix bugs to deal with 3D images
-skycoor.c: add -a option to compute the position angle between two coordinates
+skycoor: add -a option to compute the position angle between two coordinates
+Subroutines:
+wcs.h: Change wcs->naxes to wcs->naxis to prepare for WCSLIB 3.*
+iget.c, wcsinit.c and fitshead.h: Rename mgets() to mgetstr() in
+hget.c:  Add numdec() to return number of decimal places in numeric string
+imhread.c: In iraf2fits() and irafrimage(), use image, not physical, dimensions.
+In iraf2fits(), set NAXISi to image dimensions, NPAXISi to physical dimensions.
+wcs.c: Fix bugs in wcsfull().
+distort.c, wcsinit.c, wcs.c: Move all distortion-related code to distort.c and
+include unistd.h.
+lin.c: Include stdlib.h instead of malloc.h
+matchstar.c: Drop malloc.h from matchstar.c
 *read.c: Add radi argument for inner radius of annulus if rad is set and
          radi is greater than zero.  Add *bin() subroutines for image filling.
          Move proper motion margin and wrap computation to RefLim()

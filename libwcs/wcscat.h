@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** September 25, 2003
+ *** December 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -53,6 +53,7 @@
 #define UCAC1		22	/* USNO CCD Astrograph Catalog 1.0 */
 #define UCAC2		23	/* USNO CCD Astrograph Catalog 2.0 */
 #define TMIDR2		24	/* 2MASS IDR2 Point Source Catalog */
+#define YB6		25	/* USNO YB6 Catalog */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */
@@ -475,4 +476,5 @@ char *getrevmsg();	/* Return version/date string */
  * May 20 2003	Add TMIDR2 for 2MASS PSC Interim Data Release 2
  * Sep 16 2003	Add SORT_MERGE for scat
  * Sep 25 2003	Add *bin() subroutines for catalog binning
+ * Dec  3 2003	Add USNO YB6 catalog
  */

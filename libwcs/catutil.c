@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** October 6, 2003
+ *** December 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -140,7 +140,12 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	*catprop = 0;
 	}
     else if (refcat == GSC2) {
-	strcpy (title, "GSC 2.2");
+	if (strchr (refcatname, '3')) {
+	    strcpy (title, "GSC 2.3");
+	    }
+	else {
+	    strcpy (title, "GSC 2.2");
+	    }
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
@@ -164,6 +169,15 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	*catprop = 1;
 	*nmag = 5;
 	refcat = UB1;
+	}
+    else if (refcat == YB6) {
+	strcpy (title, "USNO-YB6 Catalog");
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	*catprop = 1;
+	*nmag = 5;
+	refcat = YB6;
 	}
     else if (refcat == USA1 || refcat == USA2 || refcat == USAC) {
 	*syscat = WCS_J2000;
@@ -422,6 +436,9 @@ char	*refcatname;	/* Name of reference catalog */
     else if (strncasecmp(refcatname,"uj",2)==0 &&
 	     strcsrch(refcatname, ".tab") == NULL)
 	refcat = UJC;
+    else if (strncasecmp(refcatname,"yb6",3)==0 &&
+	     strcsrch(refcatname, ".tab") == NULL)
+	refcat = YB6;
     else if (strncasecmp(refcatname,"sao",3)==0 &&
 	     strcsrch(refcatname, ".tab") == NULL) {
 	starcat = binopen ("SAO");
@@ -533,8 +550,16 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "GSC");
     else if (refcat ==  GSCACT)	/* HST GSC revised with ACT */
 	strcpy (catname, "GSC-ACT");
-    else if (refcat ==  GSC2)	/* GSC II */
-	strcpy (catname, "GSC II");
+    else if (refcat ==  GSC2) {	/* GSC II */
+	if (strchr (refcatname, '3')) {
+	    strcpy (catname, "GSC 2.3");
+	    }
+	else {
+	    strcpy (catname, "GSC 2.2");
+	    }
+	}
+    else if (refcat == YB6)	/* USNO YB6 Star Catalog */
+	strcpy (catname, "USNO-YB6");
     else if (refcat ==  UJC)	/* USNO UJ Star Catalog */
 	strcpy (catname, "UJC");
     else if (refcat ==  UAC)	/* USNO A Star Catalog */
@@ -605,6 +630,8 @@ int	refcat;		/* Catalog code */
 	strcpy (catid,"usnoa1_id     ");
     else if (refcat == UB1)
 	strcpy (catid,"usnob1_id    ");
+    else if (refcat == YB6)
+	strcpy (catid,"usnoyb6_id   ");
     else if (refcat == UA2)
 	strcpy (catid,"usnoa2_id     ");
     else if (refcat == UCAC1)
@@ -690,6 +717,10 @@ char *progname;	/* Program name which might contain catalog code */
     else if (strsrch (progname,"ub") != NULL) {
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "ub1");
+	}
+    else if (strsrch (progname,"yb6") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "yb6");
 	}
     else if (strsrch (progname,"ua2") != NULL) {
 	refcatname = (char *) calloc (1,8);
@@ -784,8 +815,8 @@ char	*numstr;	/* Formatted number (returned) */
 	    sprintf (numstr, "%13.8f", dnum);
 	}
 
-    /* USNO-B1.0 */
-    else if (refcat == UB1) {
+    /* USNO-B1.0  and USNO-YB6 */
+    else if (refcat == UB1 || refcat == YB6) {
 	if (nnfld < 0)
 	    sprintf (numstr, "%012.7f", dnum);
 	else
@@ -933,8 +964,8 @@ int	nndec;		/* Number of decimal places ( >= 0) */
 	refcat == UAC  || refcat == UA1  || refcat == UA2)
 	return (13);
 
-    /* USNO-B1.0 */
-    else if (refcat == UB1)
+    /* USNO-B1.0 and YB6 */
+    else if (refcat == UB1 || refcat == YB6)
 	return (12);
 
     /* GSC II */
@@ -1030,8 +1061,8 @@ int	refcat;		/* Catalog code */
 	refcat == UAC  || refcat == UA1  || refcat == UA2)
 	return (8);
 
-    /* USNO B1.0 */
-    else if (refcat == UB1)
+    /* USNO B1.0 and USNO YB6 */
+    else if (refcat == UB1 || refcat == YB6)
 	return (7);
 
     /* GSC II */
@@ -1108,6 +1139,18 @@ char	*magname;	/* Name of magnitude, returned */
 	else
 	    strcpy (magname, "MagB1");
 	}
+    else if (refcat == YB6) {
+	if (imag == 5)
+	    strcpy (magname, "MagK");
+	else if (imag == 4)
+	    strcpy (magname, "MagH");
+	else if (imag == 3)
+	    strcpy (magname, "MagJ");
+	else if (imag == 2)
+	    strcpy (magname, "MagR");
+	else
+	    strcpy (magname, "MagB");
+	}
     else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT) {
 	if (imag == 2)
 	    strcpy (magname, "MagV");
@@ -1165,6 +1208,20 @@ int	refcat;		/* Catalog code */
 	    return (4);
 	else
 	    return (3);	/* B */
+	}
+    else if (refcat == YB6) {
+	if (cmag == 'K')
+	    return (5);
+	else if (cmag == 'H')
+	    return (4);
+	else if (cmag == 'J')
+	    return (3);
+	else if (cmag == 'R')
+	    return (2);
+	else if (cmag == 'B')
+	    return (1);
+	else
+	    return (3);	/* J */
 	}
     else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT) {
 	if (cmag == 'B')
@@ -2673,4 +2730,5 @@ vottail ()
  * Sep 29 2003	Add proper motion margins and wrap arguments to RefLim()
  * Oct  1 2003	Add code in RefLim() for all-sky images
  * Oct  6 2003	Add code in RefLim() to cover near-polar searches
+ * Dec  3 2003	Implement GSC 2.3 and USNO-YB6
  */

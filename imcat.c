@@ -1,5 +1,5 @@
 /* File imcat.c
- * November 22, 2003
+ * December 4, 2003
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -898,7 +898,7 @@ int	*region_char;	/* Character for SAOimage region file output */
     else if (verbose) {
 	if (refcat==UAC  || refcat==UA1  || refcat==UA2 || refcat==UB1 ||
 	    refcat==USAC || refcat==USA1 || refcat==USA2 || refcat==GSC  ||
-	    refcat==GSCACT || refcat==TMPSC || refcat==TMIDR2)
+	    refcat==GSCACT || refcat==TMPSC || refcat==TMIDR2 || refcat == YB6)
 	    nlog = 1000;
 	else
 	    nlog = 100;
@@ -1337,11 +1337,13 @@ int	*region_char;	/* Character for SAOimage region file output */
     else if (refcat ==IRAS)
 	strcat (headline,"f10m  	f25m  	f60m  	f100m 	");
     else if (refcat == GSC2)
-	strcat (headline,"magf  	magj 	magv	magn	class	");
+	strcat (headline,"magf  	magj 	magv	magn	");
     else if (refcat == UCAC2)
 	strcat (headline,"magj 	magh 	magk 	magc 	");
     else if (refcat == UB1)
 	strcat (headline,"magb1 	magr1	magb2	magr2	magn 	");
+    else if (refcat == YB6)
+	strcat (headline,"magb  	magr 	magj 	magh 	magk 	");
     else if (refcat == TMPSC || refcat == TMIDR2)
 	strcat (headline,"magj   	magh   	magk   	");
     else {
@@ -1374,6 +1376,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"peak	");
     if (mprop)
 	strcat (headline, "pmra 	pmdec	");
+    if (refcat == GSC2)
+	strcat (headline,"class	");
     strcat (headline,"x    	y    ");
     if (refcat == TABCAT && keyword != NULL) {
 	strcat (headline,"	");
@@ -1396,10 +1400,10 @@ int	*region_char;	/* Character for SAOimage region file output */
     else if (refcat == IRAS)
 	strcat (headline,"-	------	------	------"); /* 4 fluxes */
     else if (refcat == GSC2)
-	strcat (headline,"	-----	-----	-----	-----"); /* 4 magnitudes + class*/
+	strcat (headline,"	-----	-----	-----	-----"); /* 4 magnitudes */
     else if (refcat == HIP)
 	strcat (headline,"	-----	-----	-----"); /* 4 magnitudes */
-    else if (refcat == UB1)
+    else if (refcat == UB1 || refcat == YB6)
 	strcat (headline,"	-----	-----	-----	-----");
     else {
 	for (imag = 1; imag < nmag; imag++) {
@@ -1416,6 +1420,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline, "	-----");		/* plate or peak */
     if (mprop)
 	strcat (headline, "	------	------");	/* Proper motion */
+    if (refcat == GSC2)
+	strcat (headline,"	-----");		/* GSC2 object class */
     strcat (headline, "	------	------");		/* X and Y */
     if (refcat == TABCAT && keyword != NULL)
 	strcat (headline,"	------");		/* Additional keyword */
@@ -1479,6 +1485,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 		printf ("MagJ  MagH  MagK  MagC    X       Y   \n");
 	    else if (refcat == UB1)
 		printf ("MagB1 MagR1 MagB2 MagR2 MagN  PM NI    X       Y   \n");
+	    else if (refcat == YB6)
+		printf ("MagB  MagR  MagJ  MagH  MagK    X       Y   \n");
 	    else if (refcat == IRAS)
 		printf ("f10m  f25m  f60m  f100m   X       Y   \n");
 	    else if (refcat == HIP)
@@ -1553,6 +1561,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%5.2f	%2d	%2d",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],
 		     gm[4][i],gc[i]/100,gc[i]%100);
+		else if (refcat == YB6)
+		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%5.2f",
+		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],
+		     gm[4][i]);
 		else if (refcat == TMPSC || refcat == TMIDR2) {
 		    sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
 		    for (imag = 0; imag < 3; imag++) {
@@ -1653,6 +1665,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline,"%s %s %s %5.2f %5.2f %5.2f %5.2f %5.2f %2d %2d",
 			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],
 			     gm[3][i],gm[4][i],gc[i]/100,gc[i]%100);
+		else if (refcat == YB6)
+		    sprintf (headline,"%s %s %s %5.2f %5.2f %5.2f %5.2f %5.2f",
+			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],
+			     gm[3][i],gm[4][i]);
 		else if (refcat==IRAS) {
 		    sprintf (headline, "%s %s %s", numstr, rastr, decstr);
 		    for (imag = 0; imag < 3; imag++) {
@@ -1953,4 +1969,5 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Aug 22 2003	Add inner radius = 0.0 argument to ctgread call
  * Oct  7 2003	Add -f to print only number of catalog stars in image
  * Nov 22 2003	Add class to GSC II output
+ * Dec  4 2003	Add support for USNO YB6 catalog and GSC 2.3
  */

@@ -42,10 +42,11 @@ i2f.c
   Read two-dimensional IRAF image file and write FITS image file
 imcat.c
   List catalog sources which should be found in the area of the sky
-  covered by a specific image. Specific catalogs supported include the
-  GSC II, the 2MASS Point Source Catalog, the HST Guide Star Catalog,
-  the USNO-A2.0 Catalog, the Tycho-2 Catalog, the PPM Catalog, the IRAS
-  Point Source Catalog, and the SAO Catalog.
+  covered by a specific image.  Specific catalogs supported include
+  the GSC II, the USNO-B1.0 Catalog, the 2MASS Point Source Catalog,
+  the HST Guide Star Catalog, the USNO-A2.0 Catalog, the USNO UCAC2
+  Catalog, the Tycho-2 Catalog, the PPM Catalog, the IRAS Point Source
+  Catalog, and the SAO Catalog.
 imextract.c
   Extract 1- or 2-dimensional images from 2- or 3-dimensional images
 imhead.c
@@ -62,9 +63,13 @@ imstar.c
   Find and list the n brightest stars in an IRAF or FITS image, with their
   sky coordinates if there is WCS information in the image header. 
 imwcs.c
-  Automaticaly find stars in a FITS or IRAF image, match them to HST Guide
-  or UJC Stars, compute the relation between sky coordinates and image
+  Automaticaly find stars in a FITS or IRAF image, match them to catalog
+  stars, compute the relation between sky coordinates and image
   coordinates, and write in in the image header. [after U of Iowa SETWCS]
+  Specific catalogs supported include the GSC II, the USNO-B1.0 Catalog,
+  the 2MASS Point Source Catalog, the HST Guide Star Catalog, the
+  USNO-A2.0 Catalog, the USNO UCAC2 Catalog, the Tycho-2 Catalog,
+  the PPM Catalog, the IRAS Point Source Catalog, and the SAO Catalog.
 isnum.c
   Return 1 if argument is an integer, 2 if it is floating point, else 0
 isrange.c
@@ -81,10 +86,11 @@ sethead.c
 setpix.c
   Set specified pixel(s) to specified value(s)
 scat.c
-  Search a source catalog given a region on the sky.  Specific catalogs
-  supported include the GSC II, the 2MASS Point Source Catalog, the HST
-  Guide Star Catalog, the USNO-A2.0 Catalog, the Tycho-2 Catalog, the
-  PPM Catalog, the IRAS Point Source Catalog, and the SAO Catalog.
+  Search a source catalog given a region on the sky.
+  Specific catalogs supported include the GSC II, the USNO-B1.0 Catalog,
+  the 2MASS Point Source Catalog, the HST Guide Star Catalog, the
+  USNO-A2.0 Catalog, the USNO UCAC2 Catalog, the Tycho-2 Catalog,
+  the PPM Catalog, the IRAS Point Source Catalog, and the SAO Catalog.
 sky2xy.c
   Print image pixel coordinates for given sky coordinates on the command line
   or in a list file. 

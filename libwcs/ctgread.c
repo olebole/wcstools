@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** November 18, 2003
+ *** December 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -133,7 +133,7 @@ int	nlog;
 			     sysout,eqout,epout,mag1,mag2,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == GSC2)
-            nstar = gsc2read (cra,cdec,dra,ddec,drad,dradi,distsort,
+            nstar = gsc2read (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
@@ -145,7 +145,7 @@ int	nlog;
             nstar = ujcread (catfile,cra,cdec,dra,ddec,drad,distsort,
 			     sysout,eqout,epout,mag1,mag2,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
-        else if (refcat == UB1)
+        else if (refcat == UB1 || refcat == YB6)
             nstar = ubcread (catfile,distsort,
                           cra,cdec,dra,ddec,drad,dradi,sysout,eqout,epout,mag1,
                           mag2,sortmag,nsmax,tnum,tra,tdec,tpra,tpdec,tmag,
@@ -546,7 +546,7 @@ int	nlog;
 	         refcat == UAC  || refcat == UA1  || refcat == UA2)
 	    nstar = uacrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
-	else if (refcat == UB1)
+	else if (refcat == UB1 || refcat == YB6)
 	    nstar = ubcrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == UJC || refcat == USNO)
@@ -779,7 +779,7 @@ int	nlog;
             nstar = uacbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == UJC || refcat == USNO)
             nstar = ujcbin (catfile,wcs,header,image,mag1,mag2,magscale,nlog);
-        else if (refcat == UB1)
+        else if (refcat == UB1 || refcat == YB6)
             nstar = ubcbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == UCAC1 || refcat == UCAC2)
             nstar = ucacbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
@@ -1852,4 +1852,5 @@ char	*in;	/* Character string */
  * Aug 22 2003	Add radi argument for inner edge of search annulus
  * Sep 25 2003	Add ctgbin() to fill an image with sources
  * Nov 18 2003	Initialize image size and bits/pixel from header in ctgbin()
+ * Dec  3 2003	Add filename to gsc2read() call; add USNO YB6 Catalog
  */

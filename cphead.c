@@ -1,5 +1,5 @@
 /* File cphead.c
- * October 29, 2003
+ * December 4, 2003
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -65,6 +65,7 @@ char **av;
 
     ilistfile = NULL;
     klistfile = NULL;
+    infile = NULL;
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
     kwd = (char **)calloc (maxnkwd, sizeof(char *));
@@ -678,4 +679,5 @@ char *string;
  * Oct 20 2003	Keep same number of decimal places unless -p option used
  * Oct 23 2003	Add -w option to copy all WCS keywords
  * Oct 29 2003	Allow combination of keyword designation methods
+ * Dec  4 2003	Initialize infile to null (bug found by Jean-Francois Le Borgne)
  */

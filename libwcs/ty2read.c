@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** November 18, 2003
+ *** December 1, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2000-2003
@@ -207,7 +207,7 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("program	scat %s\n", revmessage);
 	printf ("tycho2_id	ra          	dec         	");
 	printf ("magb 	magv 	ura   	udec  	arcmin\n");
-	printf ("----------	------------	------------    ");
+	printf ("----------	------------	------------	");
 	printf ("-----	-----	------	------	------\n");
 	}
 
@@ -1346,4 +1346,5 @@ char	*filename;	/* Name of file for which to find size */
  * Oct  1 2003	Use wcs2pix() to decide whether to accept position in ty2bin()
  * Oct  6 2003	Update ty2read() and ty2bin() for improved RefLim()
  * Nov 18 2003	Fix bugs in ty2bin()
+ * Dec  1 2003	Add missing tab to n=-1 header
  */

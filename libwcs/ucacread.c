@@ -1,5 +1,5 @@
 /*** File libwcs/ucacread.c
- *** November 18, 2003
+ *** December 1, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2003
@@ -257,7 +257,7 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("ucac_id   	ra          	dec         	");
 	if (ucat == UCAC1) {
 	    printf ("mag 	ura   	udec  	arcmin\n");
-	    printf ("----------	------------	------------    ");
+	    printf ("----------	------------	------------	");
 	    printf ("-----	------	------	------\n");
 	    }
 	else {
@@ -1282,4 +1282,5 @@ char *string;	/* Address of Integer*4 or Real*4 vector */
  * Oct  6 2003	Update ubcread() and ubcbin() for improved RefLim()
  * Nov 10 2003	Fix byte-swapping test in ucacopen() found by Ed Beshore
  * Nov 18 2003	Initialize image size and bits/pixel from header in ucacbin()
+ * Dec  1 2003	Add missing tab to n=-1 header
  */

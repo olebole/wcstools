@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** November 17, 2003
+ *** December 1, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -271,7 +271,7 @@ int	nlog;		/* 1 for diagnostics */
 	CatID (catid, refcat);
 	printf ("%s	ra          	dec         	", catid);
 	printf ("magv 	ulass	band	n	arcmin\n");
-	printf ("---------	------------	------------    ");
+	printf ("---------	------------	------------	");
 	printf ("-----	-----	----	-	------\n");
 	}
 
@@ -1498,4 +1498,5 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Sep 25 2003	Add gscbin() to fill an image with sources
  * Oct  6 2003	Update gscread() and gscbin() for improved RefLim()
  * Nov 18 2003	Initialize image size and bits/pixel from header in gscbin()
+ * Dec  1 2003	Add missing tab to n=-1 header
  */

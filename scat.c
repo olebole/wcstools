@@ -1,5 +1,5 @@
 /* File scat.c
- * November 22, 2003
+ * December 3, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -1250,7 +1250,7 @@ double	eqout;		/* Equinox for output coordinates */
 	else if (verbose) {
 	    if (refcat==UAC || refcat==UA1 || refcat==UA2 || refcat==UB1 ||
 		refcat==USAC || refcat==USA1 || refcat==USA2 || refcat==GSC ||
-		refcat==GSCACT || refcat==TMPSC || refcat==TMIDR2)
+		refcat==GSCACT || refcat==TMPSC || refcat==TMIDR2 || refcat == YB6)
 		nlog = 1000;
 	    else
 		nlog = 100;
@@ -1870,6 +1870,8 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("magj  	magh   	magk   	");
 			else if (refcat == UB1)
 			    printf ("magb1	magr1	magb2	magr2	magn 	");
+			else if (refcat == YB6)
+			    printf ("magb 	magr 	magj 	magh 	magk 	");
 			else if (refcat == UCAC2)
 			    printf ("magj 	magh 	magk 	magc 	");
 			else if (nmagr > 0) {
@@ -1894,8 +1896,7 @@ double	eqout;		/* Equinox for output coordinates */
 			if ((starcat[icat]!=NULL && starcat[icat]->entrv>0) &&
 			    mprop == 2)
 			    printf ("velocity	");
-			printf ("n    	");
-			printf ("dra");
+			printf ("n 	dra");
 			for (i = 3; i < LenNum(das,2); i++)
 			    printf (" ");
 			printf ("	ddec");
@@ -1942,15 +1943,15 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("-------	-------	-------	");
 			else if (nmagr > 0) {
 			    for (imag = 0; imag < nmagr; imag++)
-				printf ("----- 	");
+				printf ("-----	");
 			    }
 			if (typecol == 1)
-			    printf ("---   	");
+			    printf ("---	");
 			if ((starcat[icat]!=NULL && starcat[icat]->entrv>0) &&
 			    mprop == 2)
 			    printf ("---------	");
 			if (mprop == 1)
-			    printf ("------     ------  ");
+			    printf ("------	------	");
 			if (refcat == UB1)
 			    printf ("--	--	");
 			printf ("--	");
@@ -2542,8 +2543,10 @@ double	eqout;		/* Equinox for output coordinates */
 	    strcat (headline,"	magj  	magh  	magk  ");
 	else if (refcat == UB1)
 	    strcat (headline, "	magb1	magr1	magb2	magr2	magn 	pm	ni");
+	else if (refcat == YB6)
+	    strcat (headline, "	magb 	magr 	magj 	magh 	magk ");
 	else if (refcat == GSC2)
-	    strcat (headline,"	magf	magj	magv  	magn 	class");
+	    strcat (headline,"	magf	magj	magv  	magn ");
 	else if (refcat == UCAC2)
 	    strcat (headline,"	magj	magh	magk  	magc ");
 	else if (refcat == IRAS)
@@ -2578,6 +2581,8 @@ double	eqout;		/* Equinox for output coordinates */
 	    strcat (headline," 	velocity");
 	if (mprop == 1)
 	    strcat (headline,"	pmra  	pmdec ");
+	if (refcat == GSC2)
+	    strcat (headline,"	class");
 	if (ranges == NULL)
 	    strcat (headline,"	arcsec");
 	if (refcat == TABCAT && keyword != NULL) {
@@ -2607,7 +2612,7 @@ double	eqout;		/* Equinox for output coordinates */
 	else if (refcat == IRAS)
 	    strcat (headline,"	-----	-----	-----	-----");
 	else if (refcat==HIP || refcat == GSC2)
-	    strcat (headline,"	-----	-----	-----	-----	-----");
+	    strcat (headline,"	-----	-----	-----	-----");
 	else if (nmagr > 0) {
 	    for (imag = 0; imag < nmagr; imag++)
 		strcat (headline,"	-----");
@@ -2626,6 +2631,8 @@ double	eqout;		/* Equinox for output coordinates */
 	    strcat (headline,"	--------");
 	if (mprop == 1)
 	    strcat (headline,"	------	------");
+	if (refcat == GSC2)
+	    strcat (headline,"	-----");
 	if (ranges == NULL)
 	    strcat (headline, "	------");
 	if (refcat == TABCAT && keyword != NULL)
@@ -2672,6 +2679,8 @@ double	eqout;		/* Equinox for output coordinates */
 		    strcpy (headline, "USNO_A2_number ");
 		else if (refcat == UB1)
 		    strcpy (headline, "USNO_B1_number ");
+		else if (refcat == YB6)
+		    strcpy (headline, "USNO_YB6_number ");
 		else if (refcat == UCAC1)
 		    strcpy (headline, "UCAC1_num    ");
 		else if (refcat == UCAC2)
@@ -2752,6 +2761,8 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, "  MagB  MagR");
 	    else if (refcat == UB1)
 		strcat (headline, "  MagB1  MagR1  MagB2  MagR2  MagN ");
+	    else if (refcat == YB6)
+		strcat (headline, "  MagB   MagR   MagJ   MagH   MagK ");
 	    else if (refcat == UJC)
 		strcat (headline, "  Mag ");
 	    else if (refcat == GSC || refcat == GSCACT)
@@ -2974,6 +2985,9 @@ double	eqout;		/* Equinox for output coordinates */
 		    sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f	%.2f	%2d	%2d",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],gm[4][i],
 		     gc[i]/100, gc[i]%100);
+		else if (refcat == YB6)
+		    sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f	%.2f",
+		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],gm[4][i]);
 		else if (refcat == HIP)
 		    sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
@@ -3889,7 +3903,7 @@ PrintWebHelp ()
     fprintf (out, "-------  ------------------------------------------------\n");
     fprintf (out, "catalog  gsc (HST GSC),  ua2 (USNO-A2.0),  gsc2 (GSC II),\n");
     fprintf (out, "         gsca (GSC-ACT), ty2 (Tycho-2),    tmc (2MASS PSC),\n");
-    fprintf (out, "         ub1 (USNO-B1.0), ppm, sao, etc.\n");
+    fprintf (out, "         ub1 (USNO-B1.0), ucac2 (UCAC2), ppm, sao, etc.\n");
     fprintf (out, "ra       right ascension in degrees or hh:mm:ss.sss\n");
     fprintf (out, "dec      declination in degrees or [+/-]dd:mm:ss.sss\n");
     fprintf (out, "sys      coordinate system (B1950, J2000, Ecliptic, Galactic\n");
@@ -4201,4 +4215,6 @@ PrintGSClass ()
  * Aug 22 2003	Add -r second radius giving search annulus
  * Sep 23 2003	Add -s e to merge all catalog objects less than rad0 apart
  * Nov 22 2003	Add class to GSC II output
+ * Dec  3 2003	Fix bugs in single line tab-separated output headers
+ * Dec  3 2003	Add support for USNO YB6 Catalog
  */

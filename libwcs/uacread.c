@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** November 18, 2003
+ *** December 1, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -327,7 +327,7 @@ int	nlog;		/* Logging interval */
 	CatID (catid, ucat);
 	printf ("%s	ra          	dec         	", catid);
 	printf ("magb 	magr  	arcmin\n");
-	printf ("-------------	------------	------------    ");
+	printf ("-------------	------------	------------	");
 	printf ("-----	-----	------\n");
 	}
 
@@ -1503,4 +1503,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Sep 25 2003	Add usabin() and uacbin() to fill an image with sources
  * Oct  6 2003	Update uacread() and uacbin() for improved RefLim()
  * Nov 18 2003	Initialize image size and bits/pixel from header in uacbin()
+ * Dec  1 2003	Add missing tab to n=-1 header
  */

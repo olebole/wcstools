@@ -1,5 +1,5 @@
 /*** File libwcs/imgetwcs.c
- *** October 6, 2003
+ *** December 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -85,7 +85,7 @@ int	*hp;		/* Image height in pixels (returned) */
 int	*sysout;	/* Coordinate system to return (0=image, returned) */
 double	*eqout;		/* Equinox to return (0=image, returned) */
 {
-    int nax;
+    int nax, naxes;
     double eq1, xref, yref, degpix, ra1, dec1, x, y, dx, dy;
     double xmin, xmax, ymin, ymax, ra2, dec2, ra3, dec3, ra4, dec4;
     struct WorldCoor *wcs;
@@ -382,9 +382,15 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     wcsininit (wcs, wcs->radecsys);
     wcsoutinit (wcs, wcs->radecsys);
 
+    naxes = wcs->naxis;
+    if (naxes < 1 || naxes > 9) {
+	naxes = wcs->naxes;
+	wcs->naxis = naxes;
+	}
+
     if (usecdelt) {
 	hputnr8 (header, "CDELT1", 9, wcs->xinc);
-	if (wcs->naxis > 1) {
+	if (naxes > 1) {
 	    hputnr8 (header, "CDELT2", 9, wcs->yinc);
 	    hputnr8 (header, "CROTA2", 9, wcs->rot);
 	    }
@@ -395,7 +401,7 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	}
     else {
 	hputnr8 (header, "CD1_1", 9, wcs->cd[0]);
-	if (wcs->naxis > 1) {
+	if (naxes > 1) {
 	    hputnr8 (header, "CD1_2", 9, wcs->cd[1]);
 	    hputnr8 (header, "CD2_1", 9, wcs->cd[2]);
 	    hputnr8 (header, "CD2_2", 9, wcs->cd[3]);
@@ -647,4 +653,5 @@ char *dateobs;
  * Sep 23 2003	In setproj(), use strcasecmp() instead of strcmp()
  * Sep 26 2003	If reference pixel not set, set center correctly
  * Oct  6 2003	Change wcs->naxes to wcs->naxis to match WCSLIB 3.2
+ * Dec  3 2003	Add wcs->naxes back as an alternative
  */

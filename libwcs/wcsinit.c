@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** November 3, 2003
+ *** December 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -228,7 +228,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     double dec_deg,ra_hours, secpix, ra0, ra1, dec0, dec1, cvel;
     double cdelt1, cdelt2, cd[4], pc[16];
     char keyword[16];
-    int ieq, i, j, m, naxes, cd11p, cd12p, cd21p, cd22p;
+    int ieq, i, naxes, cd11p, cd12p, cd21p, cd22p;
     int ilat;	/* coordinate for latitude or declination */
     /*
     int ix1, ix2, iy1, iy2, idx1, idx2, idy1, idy2;
@@ -291,6 +291,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	return (NULL);
 	}
     wcs->naxis = naxes;
+    wcs->naxes = naxes;
     wcs->lin.naxis = naxes;
     wcs->nxpix = 0;
     hgetr8 (hstring, "NAXIS1", &wcs->nxpix);
@@ -441,36 +442,36 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	if (wcs->prjcode == WCS_AZP || wcs->prjcode == WCS_SIN ||
 	    wcs->prjcode == WCS_COP || wcs->prjcode == WCS_COE ||
 	    wcs->prjcode == WCS_COD || wcs->prjcode == WCS_COO) {
-	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
-	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[1]);
+	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[1]);
+	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[2]);
 	    }
 	else if (wcs->prjcode == WCS_SZP) {
-	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
-	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[1]);
-	    if (wcs->prj.p[2] == 0.0)
-		wcs->prj.p[2] = 90.0;
-	    hgetr8c (hstring, pvkey3, mchar, &wcs->prj.p[2]);
+	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[1]);
+	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[2]);
+	    if (wcs->prj.p[3] == 0.0)
+		wcs->prj.p[3] = 90.0;
+	    hgetr8c (hstring, pvkey3, mchar, &wcs->prj.p[3]);
 	    }
 	else if (wcs->prjcode == WCS_CEA) {
-	    if (wcs->prj.p[0] == 0.0)
-		wcs->prj.p[0] = 1.0;
-	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
-	    }
-	else if (wcs->prjcode == WCS_CYP) {
-	    if (wcs->prj.p[0] == 0.0)
-		wcs->prj.p[0] = 1.0;
-	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
 	    if (wcs->prj.p[1] == 0.0)
 		wcs->prj.p[1] = 1.0;
-	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[1]);
+	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[1]);
+	    }
+	else if (wcs->prjcode == WCS_CYP) {
+	    if (wcs->prj.p[1] == 0.0)
+		wcs->prj.p[1] = 1.0;
+	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[1]);
+	    if (wcs->prj.p[2] == 0.0)
+		wcs->prj.p[2] = 1.0;
+	    hgetr8c (hstring, pvkey2, mchar, &wcs->prj.p[2]);
 	    }
 	else if (wcs->prjcode == WCS_AIR) {
-	    if (wcs->prj.p[0] == 0.0)
-		wcs->prj.p[0] = 90.0;
-	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
+	    if (wcs->prj.p[1] == 0.0)
+		wcs->prj.p[1] = 90.0;
+	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[1]);
 	    }
 	else if (wcs->prjcode == WCS_BON) {
-	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[0]);
+	    hgetr8c (hstring, pvkey1, mchar, &wcs->prj.p[1]);
 	    }
 	else if (wcs->prjcode == WCS_ZPN) {
 	    for (i = 0; i < 10; i++) {
@@ -1275,4 +1276,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Sep 23 2003	Change mgets() to mgetstr() to avoid name collision at UCO Lick
  * Oct  1 2003	Rename wcs->naxes to wcs->naxis to match WCSLIB 3.2
  * Nov  3 2003	Initialize distortion coefficients in distortinit() in distort.c
+ * Dec  1 2003	Change p[0,1,2] initializations to p[1,2,3]
+ * Dec  3 2003	Add back wcs->naxes for backward compatibility
+ * Dec  3 2003	Remove unused variables j,m in wcsinitc()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** November 18, 2003
+ *** December 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -1259,7 +1259,7 @@ char	*image;		/* FITS image pixels */
 {
     int nbhead, nbimage, nblocks, bytepix, i, nbhw;
     int bitpix, naxis, iaxis, naxisi, nbytes, nbw, nbpad, nbwp;
-    char *endhead, *lasthead, *padding;
+    char *endhead, *padding;
     double bzero, bscale;
     char keyword[32];
 
@@ -1749,4 +1749,5 @@ fitserr ()
  * Aug 20 2003	Add fitsrfull() to read n-dimensional FITS images
  * Aug 21 2003	Modify fitswimage() to always write n-dimensional FITS images
  * Nov 18 2003	Fix minor bug in fitswhdu()
+ * Dec  3 2003	Remove unused variable lasthead in fitswhdu()
  */

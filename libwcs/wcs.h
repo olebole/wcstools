@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.h
- *** November 3, 2003
+ *** December 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2003
@@ -103,7 +103,8 @@ struct WorldCoor {
   int		coorflip;	/* 0 if x=RA, y=Dec; 1 if x=Dec, y=RA */
   int		offscl;		/* 0 if OK, 1 if offscale */
   int		wcson;		/* 1 if WCS is set, else 0 */
-  int		naxis;		/* Number of axes in image */
+  int		naxis;		/* Number of axes in image (for WCSLIB 3.0) */
+  int		naxes;		/* Number of axes in image */
   int		wcsproj;	/* WCS_OLD: AIPS worldpos() and worldpix()
 				   WCS_NEW: Mark Calabretta's WCSLIB subroutines
 				   WCS_BEST: WCSLIB for all but CAR,COE,NCP
@@ -674,4 +675,5 @@ void foc2pix();		/*  focal plane coordinates -> pixel coordinates */
  * May  1 2003	Add missing semicolons after C++ declarations of previous two functions
  * Oct  1 2003	Rename wcs->naxes to wcs->naxis to match WCSLIB 3.2
  * Nov  3 2003	Add distinit(), setdistcode(), and getdistcode() to distort.c
+ * Dec  3 2003	Add back wcs->naxes for backward compatibility
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/fitswcs.c
- *** November 3, 2003
+ *** December 5, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -134,11 +134,16 @@ int verbose;
 
 {
     static char flds[15][8];
+    char keyword[8];
     int i;
     int n, nfields;
     double eq;
     char rastr[16],decstr[16];
 
+    n = 0;
+
+    /* Delete standard WCS fields */
+    nfields = 15;
     strcpy (flds[0], "CTYPE1");
     strcpy (flds[1], "CTYPE2");
     strcpy (flds[2], "CRVAL1");
@@ -158,12 +163,24 @@ int verbose;
     strcpy (flds[12], "PC1_2");
     strcpy (flds[13], "PC2_1");
     strcpy (flds[14], "PC2_2");
-
-    n = 0;
-    nfields = 19;
-
     for (i = 0; i < nfields; i++) {
 	if (hdel (header, flds[i])) {
+	    n++;
+	    if (verbose)
+		fprintf (stderr,"%s: deleted\n", flds[i]);
+	    }
+	}
+
+    /* Delete projection parameters */
+    for (i = 0; i < 10; i++) {
+	sprintf (keyword, "PV1_%d", i);
+	if (hdel (header, keyword)) {
+	    n++;
+	    if (verbose)
+		fprintf (stderr,"%s: deleted\n", flds[i]);
+	    }
+	sprintf (keyword, "PV2_%d", i);
+	if (hdel (header, keyword)) {
 	    n++;
 	    if (verbose)
 		fprintf (stderr,"%s: deleted\n", flds[i]);
@@ -592,4 +609,5 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Feb 10 2003	Print 12 decimal places instead of 9 for CD matrix and CDELT
  * Oct 23 2003	Add PCi_j to DelWCSFITS()
  * Nov  3 2003	In SetFITSWCS(), add distortion code if in WCS
+ * Dec  5 2003	Fix bug, delete projection parameters in DelWCSFITS()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** November 3, 2003
+ *** December 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2003
@@ -149,6 +149,7 @@ char	*proj;	/* Projection */
 
     /* Image dimensions */
     wcs->naxis = 2;
+    wcs->naxes = 2;
     wcs->lin.naxis = 2;
     wcs->nxpix = nxpix;
     wcs->nypix = nypix;
@@ -249,6 +250,7 @@ double	epoch;	/* Epoch of coordinates, used for FK4/FK5 conversion
 
     /* Image dimensions */
     wcs->naxis = 2;
+    wcs->naxes = 2;
     wcs->lin.naxis = 2;
     wcs->nxpix = naxis1;
     wcs->nypix = naxis2;
@@ -888,6 +890,10 @@ double *pc;		/* Rotation matrix, ignored if NULL */
 	return;
 
     naxes = wcs->naxis;
+    if (naxes < 1 || naxes > 9) {
+	naxes = wcs->naxes;
+	wcs->naxis = naxes;
+	}
     wcs->cdelt[0] = cdelt1;
     if (cdelt2 != 0.0)
 	wcs->cdelt[1] = cdelt2;
@@ -949,6 +955,10 @@ struct WorldCoor *wcs;	/* World coordinate system structure */
     int i, mem, naxes;
 
     naxes = wcs->naxis;
+    if (naxes < 1 || naxes > 9) {
+	naxes = wcs->naxes;
+	wcs->naxis = naxes;
+	}
     mem = naxes * naxes * sizeof(double);
     if (wcs->lin.piximg == NULL)
 	wcs->lin.piximg = (double*)malloc(mem);
@@ -1901,10 +1911,12 @@ int	lstr;		/* Length of world coordinate string (returned) */
 	        lstr = lstr - minlength;
 		}
 	    else {
-		if (wcs->tabsys)
+		if (wcs->tabsys) {
 		    strncpy (wcstring,"*************	*************",lstr);
-		else
+		    }
+		else {
 		    strncpy (wcstring,"**************************",lstr);
+		    }
 		lstr = 0;
 		}
 	    }
@@ -2725,4 +2737,6 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Sep 29 2003	Fix bug to deal with all-sky images orrectly in wcsfull()
  * Oct  1 2003	Rename wcs->naxes to wcs->naxis to match WCSLIB 3.2
  * Nov  3 2003	Set distortion code by calling setdistcode() in wcstype()
+ * Dec  3 2003	Add back wcs->naxes for compatibility
+ * Dec  3 2003	Add braces in if...else in pix2wcst()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** November 18, 2003
+ *** December 1, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1999-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -209,7 +209,7 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("program	scat %s\n", revmessage);
 	printf ("act_id    	ra          	dec         	");
 	printf ("magb 	magv 	ura   	udec  	arcmin\n");
-	printf ("----------	------------	------------    ");
+	printf ("----------	------------	------------	");
 	printf ("-----	-----	------	------	------\n");
 	}
 
@@ -1171,4 +1171,5 @@ char	*filename;	/* Name of file for which to find size */
  * Sep 25 2003	Add actbin() to fill an image with sources
  * Oct  6 2003	Update actread() and actbin() for improved RefLim()
  * Nov 18 2003	Initialize image size and bits/pixel from header in actbin()
+ * Dec  1 2003	Add missing tab to n=-1 header
  */

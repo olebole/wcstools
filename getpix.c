@@ -16,7 +16,7 @@
 #include "libwcs/wcscat.h"
 
 static void usage();
-static void PrintPix ();
+static void PrintPix();
 
 
 static int verbose = 0;		/* verbose/debugging flag */

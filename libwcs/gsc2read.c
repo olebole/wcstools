@@ -1,5 +1,5 @@
 /*** File libwcs/gsc2read.c
- *** August 22, 2003
+ *** December 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2003
@@ -41,14 +41,15 @@
 #define LINE    1024
 
 /* GSC II search engine URL */
-char gsc2url[64]="http://www-gsss.stsci.edu/cgi-bin/gsc22query.exe";
+char gsc22url[64]="http://www-gsss.stsci.edu/cgi-bin/gsc22query.exe";
 
 /* GSC2READ -- Read GSC II catalog stars over the web */
 
 int
-gsc2read (cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,mag1,mag2,
-	 sortmag,nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
+gsc2read (refcatname,cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
+	  mag1,mag2,sortmag,nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
 
+char	*refcatname;	/* Name of catalog (UB1 only, for now) */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
@@ -78,6 +79,12 @@ int	nlog;		/* 1 for diagnostics */
     int nstar;
     double ra, dec, mag;
     char rastr[32], decstr[32];
+    char *gsc2url;
+
+/*    if (strchr (refcatname, '3'))
+	gsc2url = gsc23url;
+    else */
+	gsc2url = gsc22url;
 
     if (nstarmax < 1)
 	nlog = -1;
@@ -182,4 +189,5 @@ int	nlog;		/* 1 for diagnostics */
  * Apr 24 2003	Set nmag to 5 to include epoch, which is not printed
  * Aug 22 2003	Add radi argument for inner edge of search annulus
  * Nov 22 2003	Return object class (c column) as gtype
+ * Dec  3 2003	Add option to access GSC 2.3 over the Web
  */
