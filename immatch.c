@@ -1,5 +1,5 @@
 /* File immatch.c
- * April 10, 2002
+ * January 23, 2003
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -415,6 +415,8 @@ char	*command;		/* Name of program being executed */
 	fprintf (stderr,"Match USNO SA1.0 Catalog to image stars from WCS in image file\n");
     else if (strsrch (progname,"usa2") != NULL)
 	fprintf (stderr,"Match USNO SA2.0 Catalog to image stars from WCS in image file\n");
+    else if (strsrch (progname,"ub1") != NULL)
+	fprintf (stderr,"Match USNO B1.0 Catalog to image stars from WCS in image file\n");
     else if (strsrch (progname,"act") != NULL)
 	fprintf (stderr,"Match USNO ACT Catalog to image stars from WCS in image file\n");
     else if (strsrch (progname,"bsc") != NULL)
@@ -602,4 +604,6 @@ char	*name;			/* Name of FITS or IRAF image file */
  * Dec 17 2001	Set mirror and rotation in FindStars()
  *
  * Apr 10 2002	Accept letter as well as number for magnitude
+ *
+ * Jan 23 2003	Add USNO-B1.0 Catalog
  */

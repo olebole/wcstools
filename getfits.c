@@ -1,5 +1,5 @@
 /* File getfits.c
- * December 16, 2002
+ * January 30, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -416,7 +416,7 @@ int	nkwd;
 
 	/* Delete keyword */
 	if (hdel (header, kwd[ikwd]) && verbose)
-	    printf ("%s: %s deleted\n", filename, kwd[ikwd]);
+	    printf ("%s: %s deleted\n", name, kwd[ikwd]);
 	}
 
 
@@ -897,4 +897,6 @@ char *newname;
 /* Oct 22 2002	New program based on t2f
  * Dec  6 2002	Initialize bytepix, which wasn't
  * Dec 16 2002	Add -k option to delete FITS keywords when copying
+ *
+ * Jan 30 2003	Fix typo in variable name 
  */

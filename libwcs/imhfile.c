@@ -195,7 +195,7 @@ int	*lihead;	/* Length of IRAF image header in bytes (returned) */
     *lihead = 0;
 
     /* open the image header file */
-    fd = fopen (filename, "r");
+    fd = fopen (filename, "rb");
     if (fd == NULL) {
 	fprintf (stderr, "IRAFRHEAD:  cannot open file %s to read\n", filename);
 	return (NULL);
@@ -275,9 +275,9 @@ char	*fitsheader;	/* FITS image header (filled) */
 
     /* Open pixel file, ignoring machine name if present */
     if ((bang = strchr (pixname, '!')) != NULL )
-	fd = fopen (bang + 1, "r");
+	fd = fopen (bang + 1, "rb");
     else
-	fd = fopen (pixname, "r");
+	fd = fopen (pixname, "rb");
 
     /* If not at pathname in header, try same directory as header file */
     if (!fd) {
@@ -286,7 +286,7 @@ char	*fitsheader;	/* FITS image header (filled) */
 	newpixname[len-3] = 'p';
 	newpixname[len-2] = 'i';
 	newpixname[len-1] = 'x';
-	fd = fopen (newpixname, "r");
+	fd = fopen (newpixname, "rb");
 	}
 
     /* Print error message and exit if pixel file is not found */
@@ -1856,4 +1856,6 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * Aug 24 2001	In isiraf(), return 0 if argument contains an equal sign
  *
  * Apr  8 2002	Fix bug in error message for unidentified nbits in fits2iraf()
+ *
+ * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/binread.c
- *** August 6, 2002
+ *** February 4, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2002
+ *** Copyright (C) 1998-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -1195,7 +1195,7 @@ char	*filename;	/* Name of file for which to find size */
     long filesize;
 
     /* Open file */
-    if ((diskfile = fopen (filename, "r")) == NULL)
+    if ((diskfile = fopen (filename, "rb")) == NULL)
 	return (-1);
 
     /* Move to end of the file */
@@ -1224,7 +1224,7 @@ char    *filename;      /* Name of file to check */
     char line[8];
     int nbr;
 
-    if ((diskfile = fopen (filename, "r")) == NULL)
+    if ((diskfile = fopen (filename, "rb")) == NULL)
 	return (0);
     else {
 	nbr = fread (line, 1, 4, diskfile);
@@ -1313,4 +1313,6 @@ char *from, *last, *to;
  * Mar 25 2002	Fix bugs dealing with radial velocity
  * Mar 26 2002	Don't set object name unless header says it is there
  * Aug  6 2002	Make sc->entmag into vector, but only use first position
+ *
+ * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  */

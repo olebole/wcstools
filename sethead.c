@@ -1,5 +1,5 @@
 /* File sethead.c
- * November 7, 2002
+ * February 4, 2003
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -193,12 +193,12 @@ char **av;
 			    dq = strchr (kwdi, dquote);
 			    kwdc = kwdi;
 			    if (sq != NULL && (dq > sq || dq == NULL)) {
-				kwdc = strchr (sq, squote);
+				kwdc = strchr (sq+1, squote);
 				if (kwdc != NULL)
 				    kwdc = kwdc + 1;
 				}
 			    else if (dq != NULL && (sq > dq || sq == NULL)) {
-				kwdc = strchr (dq, dquote);
+				kwdc = strchr (dq+1, dquote);
 				if (kwdc != NULL)
 				    kwdc = kwdc + 1;
 				}
@@ -848,4 +848,6 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Jan  9 2002	Add -s command to replace char with space in input value strings
  * Feb  5 2002	Add -l command to log files as they are processed
  * Nov  7 2002	If writing to a multiextension FITS file, write a new file
+ *
+ * Feb  4 2003	Fix bug dealing with quotes in @ files
  */

@@ -1,4 +1,4 @@
-.TH scat(1) WCSTools "6 July 2001"
+.TH scat(1) WCSTools "30 January 2003"
 .SH Name
 scat \- Find catalog stars in a square or circle on the sky
 .SH Synopsis
@@ -6,10 +6,10 @@ scat [options] [-b or -j] ra dec
 .SH Description
 .I scat
 is a utility for finding all of the Hubble Space Telescope Guide Star
-Catalog (GSC), U.S. Naval Observatory A (UAC), SA (USAC), or UJ (UJC)
-Catalogs, or locally catalogued objects in a specified region of the sky
-and listing their sky coordinates to standard output. If the -w flag is
-set, they are written to a file objectname.catalogname, where objectname
+Catalog (GSC), U.S. Naval Observatory A2.0 (UA2), B1.0 (UB1), SA2.0 (USA2),
+or UJ (UJC) Catalogs, or locally catalogued objects in a specified region
+of the sky and listing their sky coordinates to standard output. If the -w
+flag is set, they are written to a file objectname.catalogname, where objectname
 is given by the argument to -o on the command line, defaulting to "search",
 and catalogname is given by the argument to -c on the command line. The
 catalog defaults to the GSC, if no -c argument is present. scat resembles
@@ -24,7 +24,8 @@ List the single closest catalog source
 Output B1950 (FK4) coordinates around this center
 .TP
 .B \-c <name>
-Reference catalog (gsc, uac, ujc, or tab table file
+Reference catalog (gsc(=HST GSC), ua2(=USNO-A2.0), TMC(=2MASS Point Source Catalog),
+gsc2(=GSC II), ub1(=USNO-B1.0), local file, etc.)
 .TP
 .B \-d
  Output RA and Dec in degrees instead of hh:mm:ss dd:mm:ss

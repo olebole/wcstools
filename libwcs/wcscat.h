@@ -1,7 +1,7 @@
 /*** File libwcs/wcscat.h
- *** October 30, 2002
+ *** January 16, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
- *** Copyright (C) 1998-2002
+ *** Copyright (C) 1998-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -49,11 +49,12 @@
 #define TMPSC		18	/* 2MASS Point Source Catalog */
 #define GSCACT		19	/* GSC-ACT revised Guide Star Catalog */
 #define GSC2		20	/* GSC II version 2.2 */
+#define UB1		21	/* USNO B-1.0 Star Catalog */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */
 #define WEBCAT		-4	/* Tab catalog via the web */
-#define NUMCAT		19	/* Number of predefined catalogs */
+#define NUMCAT		21	/* Number of predefined catalogs */
 
 /* Subroutines for dealing with catalogs */
 int RefCat();		/* Return catalog type code, title, coord. system */
@@ -438,4 +439,6 @@ void vottail();		/* Terminate VOTable SCAT output */
  * May 13 2002	Add NumNdec(), gsc2read(), and gsc2rnum()
  * Aug  6 2002	Make magnitude entries and positions vectors of 10
  * Oct 30 2002	Add epoch keyword and FITS date to StarCat data structure
+ *
+ * Jan 16 2003	Add USNO-B1.0 catalog
  */

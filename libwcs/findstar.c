@@ -1,7 +1,7 @@
 /*** File libwcs/findstar.c
- *** May 13, 2002
+ *** January 29, 2003
  *** By Doug Mink, after Elwood Downey
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -50,6 +50,8 @@ static void rotstar();
 extern void setminmatch();
 extern void setnitmax();
 extern void setminstars();
+extern void setminpmqual();
+extern void setminid();
 
 /* Set input catalog for image stars */
 static char imcatname[256] = "";
@@ -890,6 +892,10 @@ char *parstring;
 	setnitmax ((int) atof (parvalue));
     else if (!strcmp (parname, "minstars"))
 	setminstars ((int) atof (parvalue));
+    else if (!strcmp (parname, "minpmqual"))
+	setminpmqual ((int) atof (parvalue));
+    else if (!strcmp (parname, "minid"))
+	setminid ((int) atof (parvalue));
     return;
 }
 
@@ -1034,4 +1040,7 @@ int	h;	/* Original height of image */
  * Jan 23 2002	Skip recomputation of noise if istat is zero
  * Jan 23 2002	Set scale flag if BSCALE and BZERO not used
  * May 13 2002	Fix bugs found by lint
+ *
+ * Jan 23 2003	Add setminpmqual() to setparm() for USNO-B1.0
+ * Jan 29 2003	Add setminid() to setparm() for USNO-B1.0
  */

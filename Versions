@@ -1,5 +1,20 @@
-Version 3.2.1 (January 3, 2003)
+Version 3.3.0 (February 6, 2003)
+scat,imcat,imwcs,immatch: Add support for USNO-B1.0 Catalog including minid and minpmq
+scat: add argument ndec=n to set number of decimal places in output
+sethead: fix bug parsing files of settings with quotes
+gethead: initialize some uninitialized variables
+ubcread.c: Add new subroutines to deal with USNO-B1.0 Catalog
+tabread.c: Deal with proper motion in catalogs by enlarging search boxes
+ty2read.c: include math.h because of use of fabs()
+gsc2read.c: Fix bug so imwcs works with GSC II search results
+proj.c: Use local copysgn() and copysgni() instead of (sometimes) system copysign
+Change fopen option from "r" to "rb" in all binary-reading subroutines
+so WCSTools will work under Windows
+
+Version 3.2.1 (January 7, 2003)
 delhead: Fix bug so arbitrary number of keywords can be deleted
+xy2sky: Fix fatal bug in tab output from file, and ignore commented out input
+file lines
 wcsinit.c: Read PVi_0 for ZPN projection; initialize PVi_j only once
 
 Version 3.2.0 (December 6, 2002)

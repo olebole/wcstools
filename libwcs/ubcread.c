@@ -1,8 +1,8 @@
 /*** File libwcs/ubcread.c
- *** November 25, 2002
+ *** February 4, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2002
+ *** Copyright (C) 2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -33,6 +33,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include "wcs.h"
@@ -40,15 +41,9 @@
 
 static int ucat=UB1;
 
-/* USNO B-1.0 directory pathname; replaced by UB1_PATH environment variable
- * Use this if CDROMs have been transferred to a single hard disk
- * Otherwise set to null string ("") and use cdroot
+/* USNO B-1.0 directory pathname; replaced by UB1_PATH environment variable.
  * This may also be a URL to a catalog search engine */
 static char ub1path[64]="/data/ub1";
-
-/* Uncomment following line to use ESO USNO-B server for UB1
-static char ub1path[64]="http://archive.eso.org/skycat/servers/usnob-server";
- */
 
 static char *ubpath;
 
@@ -59,19 +54,33 @@ typedef struct {
 static int nstars;	/* Number of stars in catalog */
 static int cswap = 0;	/* Byte reverse catalog to Intel/DEC order if 1 */
 static double *udist;	/* Array of distances to stars */
-static int ndist = 0;
+static int ndist = 0;	/* Number of stars in distance array */
+static int minpmqual = 3; /* Proper motion quality limit (0=bad, 9=good)*/
+void setminpmqual (n)
+int n; { minpmqual = n; return; }
+int getminpmqual ()
+{ return (minpmqual); }
+
+static int minid = 0; /* Minimum number of plate ID's (<0 excludes Tycho-2) */
+void setminid (n)
+int n; { minid = n; return; }
+int getminid ()
+{ return (minid); }
+
 
 static FILE *fcat;
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
-#define NZONES 24
+#define NZONES 1800
 
 static double ubcra();
 static double ubcdec();
-static double ubcmagr();
-static double ubcmagb();
+static double ubcmag();
+static double ubcpra();
+static double ubcpdec();
+static int ubcpmq();
 static int ubcmagerr();
 static int ubcgsc();
-static int ubcplate();
+static int ubcndet();
 
 static int ubczones();
 static int ubczone();
@@ -82,20 +91,11 @@ static int ubcstar();
 static void ubcswap();
 static int nbent = 80;
 
-static int xplate = 0;	/* If nonzero, use objects only from this plate */
-void setuplate (xplate0)
-int xplate0;
-{ xplate = xplate0; return; }
-int getuplate ()
-{ return (xplate); }
-
-/* UBCREAD -- Read USNO B Catalog stars */
-
 int
 ubcread (refcatname,distsort,cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-	 mag1,mag2,sortmag,nstarmax,unum,ura,udec,umag,uplate,nlog)
+	 mag1,mag2,sortmag,nstarmax,unum,ura,udec,upra,updec,umag,upmni,nlog)
 
-char	*refcatname;	/* Name of catalog (UBC, USAC, UBC2, USAC2) */
+char	*refcatname;	/* Name of catalog (UB1 only, for now) */
 int	distsort;	/* 1 to sort stars by distance from center */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
@@ -111,8 +111,10 @@ int	nstarmax;	/* Maximum number of stars to be returned */
 double	*unum;		/* Array of UB numbers (returned) */
 double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
+double	*upra;		/* Array of right ascension proper motions (returned) */
+double	*updec;		/* Array of declination proper motions (returned) */
 double	**umag;		/* Array of red and blue magnitudes (returned) */
-int	*uplate;	/* Array of plate numbers (returned) */
+int	*upmni;		/* Array of number of ids and pm quality (returned) */
 int	nlog;		/* Logging interval */
 {
     double ra1,ra2;	/* Limiting right ascensions of region in degrees */
@@ -123,27 +125,28 @@ int	nlog;		/* Logging interval */
     double dist = 0.0;	/* Distance from search center in degrees */
     double faintmag=0.0; /* Faintest magnitude */
     double maxdist=0.0; /* Largest distance */
+    double ddra, dddec;
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
+    int pmqual;
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
 
     double rra1, rra2, rdec1, rdec2;
     double num;		/* UB numbers */
-    int wrap, iwrap, nnfld;
+    double rapm, decpm;
+    int wrap, iwrap;
     int verbose;
     int znum, itot,iz, i;
     int itable, jtable,jstar;
-    int nstar, nread;
-    int uara1, uara2, uadec1, uadec2;
+    int nstar, nread, pass;
+    int ubra1, ubra2, ubdec1, ubdec2;
     double ra,dec;
-    double mag, magb, magr;
-    int istar, istar1, istar2, plate;
+    double mag, magtest;
+    int istar, istar1, istar2, pmni, nid;
     int nzmax = NZONES;	/* Maximum number of declination zones */
-    int isp;
     int magsort;
-    char ispc[2];
     char *str;
     char cstr[32], rastr[32], numstr[32], decstr[32], catid[32];
     char *title;
@@ -155,43 +158,12 @@ int	nlog;		/* Logging interval */
 	verbose = 0;
 
     /* Set catalog code and path to catalog */
-    if (strncmp (refcatname,"us",2)==0 ||
-        strncmp (refcatname,"US",2)==0) {
-	if (strchr (refcatname, '2') != NULL) {
-	    if ((str = getenv("USA2_PATH")) != NULL)
-		strcpy (usa2path,str);
-	    ucat = USA2;
-	    ubpath = usa2path;
-	    }
-	else {
-	    if ((str = getenv("USA1_PATH")) != NULL)
-		strcpy (usa1path,str);
-	    ucat = USA1;
-	    ubpath = usa1path;
-	    }
-	}
-    else if (strncmp (refcatname,"ua",2)==0 ||
+    if (strncmp (refcatname,"ub",2)==0 ||
         strncmp (refcatname,"UB",2)==0) {
-	if (strchr (refcatname, '2') != NULL) {
-	    if ((str = getenv("UB2_PATH")) != NULL)
-		strcpy (ua2path,str);
-	    else if ((str = getenv("UB2_ROOT")) != NULL) {
-		ua2path[0] = 0;
-		strcpy (cdroot,str);
-		}
-	    ucat = UB2;
-	    ubpath = ua2path;
-	    }
-	else {
-	    if ((str = getenv("UB1_PATH")) != NULL)
-		strcpy (ua1path,str);
-	    else if ((str = getenv("UB1_ROOT")) != NULL) {
-		ua1path[0] = 0;
-		strcpy (cdroot,str);
-		}
-	    ucat = UB1;
-	    ubpath = ua1path;
-	    }
+	if ((str = getenv("UB1_PATH")) != NULL)
+	    strcpy (ub1path,str);
+	ucat = UB1;
+	ubpath = ub1path;
 	}
     else {
 	fprintf (stderr, "UBCREAD:  %s not a USNO catalog\n", refcatname);
@@ -202,7 +174,7 @@ int	nlog;		/* Logging interval */
     if (!strncmp (ubpath, "http:",5)) {
 	return (webread (ubpath,refcatname,distsort,cra,cdec,dra,ddec,drad,
 			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
-			 unum,ura,udec,NULL,NULL,umag,uplate,nlog));
+			 unum,ura,udec,upra,updec,umag,upmni,nlog));
 	}
 
     wcscstr (cstr, sysout, eqout, epout);
@@ -215,60 +187,76 @@ int	nlog;		/* Logging interval */
 	mag2 = mag1;
 	mag1 = mag;
 	}
-    if (sortmag == 1)
-	magsort = 0;
-    else
-	magsort = 1;
 
-    /* Find UB Star Catalog regions in which to search */
-    rra1 = ra1;
-    rra2 = ra2;
-    rdec1 = dec1;
-    rdec2 = dec2;
+    /* Sort by 4th magnitude = R2 if sort magnitude is not set */
+    if (sortmag > 0 && sortmag < 6)
+	magsort = sortmag - 1;
+    else
+	magsort = 3;
+
+    /* Find RA and Dec limits in catalog coordinate system */
     RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
 	    &rra1, &rra2, &rdec1, &rdec2, verbose);
+
+    /* Expand region if proper motion is involved */
+    if (minpmqual < 11) {
+	rra1 = ra1 - 0.01;
+	rra2 = ra2 + 0.01;
+	rdec1 = dec1 - 0.01;
+	rdec2 = dec2 + 0.01;
+	}
+
+    /* Find declination zones to search */
     nz = ubczones (rra1, rra2, rdec1, rdec2, nzmax, zlist, verbose);
     if (nz <= 0) {
-	fprintf (stderr, "UBCREAD:  no USNO A zones found\n");
+	fprintf (stderr, "UBCREAD:  no USNO B zones found\n");
 	return (0);
 	}
 
-    /* Write header if printing star entries as found */
-    if (nstarmax < 1) {
-	title = CatName (ucat, refcatname);
-	printf ("catalog        %s\n", title);
-	free ((char *)title);
-	ra2str (rastr, 31, cra, 3);
-	printf ("ra     %s\n", rastr);
-	dec2str (decstr, 31, cdec, 2);
-	printf ("dec    %s\n", decstr);
-	if (drad != 0.0)
-	    printf ("radmin     %.1f\n", drad*60.0);
-	else {
-	    printf ("dramin     %.1f\n", dra*60.0* cosdeg (cdec));
-	    printf ("ddecmin    %.1f\n", ddec*60.0);
-	    }
-	printf ("radecsys       %s\n", cstr);
-	printf ("equinox        %.3f\n", eqout);
-	printf ("epoch  %.3f\n", epout);
-	CatID (catid, ucat);
-	printf ("%s	ra          	dec         	", catid);
-	printf ("magb 	magr  	arcmin\n");
-	printf ("-------------	------------	------------    ");
-	printf ("-----	-----	------\n");
-	}
-
-    /* If RA range includes zero, set a flat */
+    /* If RA range includes zero, set flag */
     wrap = 0;
     if (rra1 > rra2)
 	wrap = 1;
     else
 	wrap = 0;
 
-    uara1 = (int) (rra1 * 360000.0 + 0.5);
-    uara2 = (int) (rra2 * 360000.0 + 0.5);
-    uadec1 = (int) ((rdec1 * 360000.0) + 32400000.5);
-    uadec2 = (int) ((rdec2 * 360000.0) + 32400000.5);
+    /* Write header if printing star entries as found */
+    if (nstarmax < 1) {
+	title = CatName (ucat, refcatname);
+	printf ("catalog	%s\n", title);
+	free ((char *)title);
+	ra2str (rastr, 31, cra, 3);
+	printf ("ra	%s\n", rastr);
+	dec2str (decstr, 31, cdec, 2);
+	printf ("dec	%s\n", decstr);
+	printf ("rpmunit	tsec/century\n");
+	printf ("dpmunit	arcsec/century\n");
+	if (drad != 0.0)
+	    printf ("radmin	%.1f\n", drad*60.0);
+	else {
+	    printf ("dramin	%.1f\n", dra*60.0* cosdeg (cdec));
+	    printf ("ddecmin	%.1f\n", ddec*60.0);
+	    }
+	printf ("radecsys	%s\n", cstr);
+	printf ("equinox	%.3f\n", eqout);
+	printf ("epoch  %.3f\n", epout);
+	CatID (catid, ucat);
+	printf ("%s	ra          	dec         	", catid);
+	printf ("magb1 	magr1 	magb1 	magb2 	magn  	ura  	udec  	");
+	printf ("pm	ni	arcmin\n");
+	printf ("------------	------------	------------    ");
+	printf ("-----	-----	-----	-----	-----	-----	-----	");
+	printf ("--	--	------\n");
+	}
+
+    /* Convert RA and Dec limits to same units as catalog for quick filter */
+    ubra1 = (int) (rra1 * 360000.0 + 0.5);
+    ubra2 = (int) (rra2 * 360000.0 + 0.5);
+    ubdec1 = (int) ((rdec1 * 360000.0) + 32400000.5);
+    ubdec2 = (int) ((rdec2 * 360000.0) + 32400000.5);
+
+    /* Convert dra to angular units for rectangular box on sky */
+    dra = dra / cos (degrad (cdec));
     
     if (nstarmax > ndist) {
 	if (ndist > 0)
@@ -322,81 +310,141 @@ int	nlog;		/* Logging interval */
 			}
 
 		/* Extract selected fields */
-		    else {
 
-		    /* Check position limits */
-     			if ((star.decsec >= uadec1 && star.decsec <= uadec2) &&
-			    ((wrap && (star.rasec>=uara1 || star.rasec<=uara2)) ||
-			     (!wrap && (star.rasec>=uara1 && star.rasec<=uara2))
-			    )){
+		/* Check rough position limits */
+     		    if ((star.decsec >= ubdec1 && star.decsec <= ubdec2) &&
+			((wrap && (star.rasec>=ubra1 || star.rasec<=ubra2)) ||
+			(!wrap && (star.rasec>=ubra1 && star.rasec<=ubra2))
+			)){
 
-			/* Check magnitude, distance, and plate number */
-			    magb = ubcmagb (star.magetc);
-			    magr = ubcmagr (star.magetc);
-			    if (magsort == 1)
-				mag = magr;
-			    else
-				mag = magb;
-			    plate = ubcplate (star.magetc);
+			/* Set magnitude by which to sort and test */
+			mag = ubcmag (star.mag[magsort]);
+			if (sortmag == 0) {
+			    if (mag > 30.0)
+				mag = ubcmag (star.mag[1]);
+			    if (mag > 30.0)
+				mag = ubcmag (star.mag[2]);
+			    if (mag > 30.0)
+				mag = ubcmag (star.mag[0]);
+			    }
+			pass = 1;
+			if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+			    pass = 0;
+
+			if (pass) {
+			    nid = ubcndet (star.pmerr);
+			    if (nid < minid) {
+				if (minid > 0 && nid > 0)
+				    pass = 0;
+				}
+			    if (minid < 0 && nid < -minid)
+				pass = 0;
+			    }
+
+			/* Test distance limits */
+			if (pass) {
 			    ra = ubcra (star.rasec);
 			    dec = ubcdec (star.decsec);
-			    wcscon (sysref,sysout,eqref,eqout,&ra,&dec,epout);
+			    pmqual = ubcpmq (star.pm);
+			    if (nid == 0)
+				pmqual = 10;
+			    pmni = (100 * pmqual) + nid;
+
+			    /* Convert to search equinox and epoch */
+			    if (pmqual < minpmqual) {
+				rapm = 0.0;
+				decpm = 0.0;
+				wcscon (sysref,sysout,eqref,eqout,
+					&ra,&dec,epout);
+				}
+			    else {
+				rapm = ubcpra (star.pm);
+				decpm = ubcpdec (star.pm);
+				wcsconp (sysref,sysout,eqref,eqout,epref,epout,
+					 &ra, &dec, &rapm, &decpm);
+				}
+
 			    if (distsort || drad > 0)
 				dist = wcsdist (cra,cdec,ra,dec);
+			    else if (dra > 0.0 || ddec > 0.0) {
+				if (ra >= cra)
+				    ddra = ra - cra;
+				else
+				    ddra = cra - ra;
+				ddra = ddra * cos (degrad(dec));
+				if (dec >= cdec)
+				    dddec = dec - cdec;
+				else
+				    dddec = cdec - dec;
+				}
 			    else
 				dist = 0.0;
-			    if ((mag1==mag2 || (mag>=mag1 && mag<=mag2)) &&
-				(drad == 0.0 || dist < drad) &&
-				(xplate == 0 || plate == xplate)) {
 
-				/* br2sp (NULL, magb, mag, ispc);
-				isp = (1000 * (int)ispc[0]) + (int)ispc[1]; */
-				num = (double) znum +
-				      (0.00000001 * (double)istar);
+			/* Test spatial limits */
+			    if (drad > 0.0) {
+				if (dist > drad)
+				    pass = 0;
+				}
+			    else if (ddra > dra || dddec > ddec)
+				pass = 0;
+			    }
 
-			    /* Write star position and magnitudes to stdout */
-				if (nstarmax < 1) {
-				    CatNum (ucat, -13, 0, num, numstr);
-				    ra2str (rastr, 31, ra, 3);
-				    dec2str (decstr, 31, dec, 2);
-				    dist = wcsdist (cra,cdec,ra,dec) * 60.0;
-				    printf ("%s	%s	%s", numstr,rastr,decstr);
-				    printf ("	%.2f	%.2f	%.2f\n",
-					magb, magr, dist);
-				    }
+			if (pass) {
+			    num = (double) znum +
+				  (0.0000001 * (double)istar);
+
+			/* Write star position and magnitudes to stdout */
+			    if (nstarmax < 1) {
+				CatNum (ucat, -12, 0, num, numstr);
+				ra2str (rastr, 31, ra, 3);
+				dec2str (decstr, 31, dec, 2);
+				dist = wcsdist (cra,cdec,ra,dec) * 60.0;
+				printf ("%s	%s	%s", numstr,rastr,decstr);
+				for (i = 0; i < 5; i++)
+				    printf ("	%.2f",ubcmag(star.mag[i]));
+				printf ("	%6.3f	%6.2f",
+					rapm*240000.0, decpm*3600000.0);
+				printf ("	%d	%d", pmqual, nid);
+				printf ("	%.2f\n", dist/60.0);
+				}
 
 			    /* Save star position and magnitude in table */
-				else if (nstar < nstarmax) {
-				    unum[nstar] = num;
-				    ura[nstar] = ra;
-				    udec[nstar] = dec;
-				    umag[0][nstar] = magb;
-				    umag[1][nstar] = magr;
-				    uplate[nstar] = plate;
-				    udist[nstar] = dist;
-				    if (dist > maxdist) {
-					maxdist = dist;
-					farstar = nstar;
-					}
-				    if (mag > faintmag) {
-					faintmag = mag;
-					faintstar = nstar;
-					}
+			    else if (nstar < nstarmax) {
+				unum[nstar] = num;
+				ura[nstar] = ra;
+				udec[nstar] = dec;
+				upra[nstar] = rapm;
+				updec[nstar] = decpm;
+				for (i = 0; i < 5; i++)
+				    umag[i][nstar] = ubcmag (star.mag[i]);
+				upmni[nstar] = pmni;
+				udist[nstar] = dist;
+				if (dist > maxdist) {
+				    maxdist = dist;
+				    farstar = nstar;
 				    }
+				if (mag > faintmag) {
+				    faintmag = mag;
+				    faintstar = nstar;
+				    }
+				}
 
 			    /* If too many stars and distance sorting,
 				replace furthest star */
-				else if (distsort) {
-				    if (dist < maxdist) {
-					unum[farstar] = num;
-					ura[farstar] = ra;
-					udec[farstar] = dec;
-					umag[0][farstar] = magb;
-					umag[1][farstar] = magr;
-					uplate[farstar] = plate;
-					udist[farstar] = dist;
+			    else if (distsort) {
+				if (dist < maxdist) {
+				    unum[farstar] = num;
+				    ura[farstar] = ra;
+				    udec[farstar] = dec;
+				    udec[farstar] = dec;
+				    upra[farstar] = rapm;
+				    for (i = 0; i < 5; i++)
+					umag[i][farstar] = ubcmag (star.mag[i]);
+				    upmni[farstar] = pmni;
+				    udist[farstar] = dist;
 
-				    /* Find new farthest star */
+				/* Find new farthest star */
+				    if (nstarmax > 1) {
 					maxdist = 0.0;
 					for (i = 0; i < nstarmax; i++) {
 					    if (udist[i] > maxdist) {
@@ -405,35 +453,54 @@ int	nlog;		/* Logging interval */
 						}
 					    }
 					}
-				    }
-
-			    /* If too many stars, replace faintest star */
-				else if (mag < faintmag) {
-				    unum[faintstar] = num;
-				    ura[faintstar] = ra;
-				    udec[faintstar] = dec;
-				    umag[0][faintstar] = magb;
-				    umag[1][faintstar] = magr;
-				    uplate[faintstar] = plate;
-				    udist[faintstar] = dist;
-
-			    /* Find new faintest star */
-				    faintmag = 0.0;
-				    for (i = 0; i < nstarmax; i++) {
-					if (umag[magsort][i] > faintmag) {
-					    faintmag = umag[magsort][i];
-					    faintstar = i;
-					    }
+				    else {
+					maxdist = dist;
+					farstar = 0;
 					}
 				    }
-				nstar++;
-				jstar++;
-				if (nlog == 1)
-				    fprintf (stderr,"UBCREAD: %04d.%08d: %9.5f %9.5f %s %5.2f %5.2f\n",
-					znum,istar,ra,dec,cstr,magb,magr);
+				}
+
+			    /* If too many stars, replace faintest star */
+			    else if (mag < faintmag) {
+				unum[faintstar] = num;
+				ura[faintstar] = ra;
+				udec[faintstar] = dec;
+				upra[faintstar] = rapm;
+				updec[faintstar] = decpm;
+				for (i = 0; i < 5; i++)
+				    umag[i][faintstar] = ubcmag (star.mag[i]);
+				upmni[faintstar] = pmni;
+				udist[faintstar] = dist;
+
+			    /* Find new faintest star */
+				faintmag = 0.0;
+				for (i = 0; i < nstarmax; i++) {
+				    magtest = umag[magsort][i];
+				    if (sortmag == 0) {
+					if (faintmag < 30.0)
+					    faintmag = umag[1][i];
+					if (faintmag < 30.0)
+					    faintmag = umag[2][i];
+					if (faintmag < 30.0)
+					    faintmag = umag[0][i];
+					}
+				    if (magtest > faintmag) {
+					faintmag = magtest;
+					faintstar = i;
+					}
+				    }
+				}
+			    nstar++;
+			    jstar++;
+			    if (nlog == 1) {
+				fprintf (stderr,"UBCREAD: %04d.%07d: %9.5f %9.5f %s\n",
+					znum,istar,ra,dec,cstr);
+				for (i = 0; i < 5; i++)
+				    fprintf (stderr, " %5.2f", ubcmag(star.mag[i]));
+				fprintf (stderr,"\n");
+				}
 
 			    /* End of accepted star processing */
-				}
 			    }
 
 		    /* End of individual star processing */
@@ -478,7 +545,7 @@ int	nlog;		/* Logging interval */
 
 
 int
-ubcrnum (refcatname,nnum,sysout,eqout,epout,unum,ura,udec,umag,uplate,nlog)
+ubcrnum (refcatname,nnum,sysout,eqout,epout,unum,ura,udec,upra,updec,umag,upmni,nlog)
 
 char	*refcatname;	/* Name of catalog (UBC, USAC, UBC2, USAC2) */
 int	nnum;		/* Number of stars to find */
@@ -488,64 +555,36 @@ double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	*unum;		/* Array of UB numbers to find */
 double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
+double	*upra;		/* Array of right ascension proper motions (returned) */
+double	*updec;		/* Array of declination proper motions (returned) */
 double	**umag;		/* Array of blue and red magnitudes (returned) */
-int	*uplate;	/* Array of plate numbers (returned) */
+int	*upmni;		/* Array of number of ids and pm quality (returned) */
 int	nlog;		/* Logging interval */
 {
     UBCstar star;	/* UB catalog entry for one star */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
-    int isp;
-    char ispc[2];
+    double epref=2000.0;	/* Catalog epoch */
 
     int znum;
     int jnum;
+    int i;
     int nzone;
     int nfound = 0;
+    int pmqual;
     double ra,dec;
-    double magr, magb;
+    double rapm, decpm;
     double dstar;
-    int istar, plate;
+    int istar, pmni, nid;
     char *str;
 
     /* Set catalog code and path to catalog */
-    if (strncmp (refcatname,"us",2)==0 ||
-        strncmp (refcatname,"US",2)==0) {
-	if (strchr (refcatname, '2') != NULL) {
-	    if ((str = getenv("USA2_PATH")) != NULL)
-		strcpy (usa2path,str);
-	    ucat = USA2;
-	    ubpath = usa2path;
-	    }
-	else {
-	    if ((str = getenv("USA1_PATH")) != NULL)
-		strcpy (usa1path,str);
-	    ucat = USA1;
-	    ubpath = usa1path;
-	    }
-	}
-    else if (strncmp (refcatname,"ua",2)==0 ||
+    if (strncmp (refcatname,"ub",2)==0 ||
         strncmp (refcatname,"UB",2)==0) {
-	if (strchr (refcatname, '2') != NULL) {
-	    if ((str = getenv("UB2_PATH")) != NULL)
-		strcpy (ua2path,str);
-	    else if ((str = getenv("UB2_ROOT")) != NULL) {
-		ua2path[0] = 0;
-		strcpy (cdroot,str);
-		}
-	    ucat = UB2;
-	    ubpath = ua2path;
-	    }
-	else {
-	    if ((str = getenv("UB1_PATH")) != NULL)
-		strcpy (ua1path,str);
-	    else if ((str = getenv("UB1_ROOT")) != NULL) {
-		ua1path[0] = 0;
-		strcpy (cdroot,str);
-		}
-	    ucat = UB1;
-	    ubpath = ua1path;
-	    }
+	if ((str = getenv("UB1_PATH")) != NULL)
+	    strcpy (ub1path,str);
+	ucat = UB1;
+	ubpath = ub1path;
 	}
     else {
 	fprintf (stderr, "UBCREAD:  %s not a USNO catalog\n", refcatname);
@@ -555,7 +594,7 @@ int	nlog;		/* Logging interval */
     /* If root pathname is a URL, search and return */
     if (!strncmp (ubpath, "http:",5)) {
 	return (webrnum (ubpath,refcatname,nnum,sysout,eqout,epout,
-			 unum,ura,udec,NULL,NULL,umag,uplate,nlog));
+			 unum,ura,udec,upra,updec,umag,upmni,nlog));
 	}
 
 
@@ -565,7 +604,7 @@ int	nlog;		/* Logging interval */
     /* Get path to zone catalog */
 	znum = (int) unum[jnum];
 	if ((nzone = ubcopen (znum)) != 0) {
-	    dstar = (unum[jnum] - znum) * 100000000.0;
+	    dstar = (unum[jnum] - znum) * 10000000.0;
 	    istar = (int) (dstar + 0.5);
 	    if (istar > nzone) {
 		fprintf (stderr,"UBCRNUM: Star %d > max. in zone %d\n",
@@ -582,24 +621,42 @@ int	nlog;		/* Logging interval */
 	    else {
 		ra = ubcra (star.rasec); /* Right ascension in degrees */
 		dec = ubcdec (star.decsec); /* Declination in degrees */
-		magb = ubcmagb (star.magetc); /* Blue magnitude */
-		magr = ubcmagr (star.magetc); /* Red magnitude */
-		plate = ubcplate (star.magetc);	/* Plate number */
-		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
+		pmqual = ubcpmq (star.pm);
+		nid = ubcndet (star.pmerr);
+		if (nid == 0)
+		    pmqual = 10;
+		pmni = (100 * pmqual) + nid;
+
+		/* Convert to desired equinox and epoch */
+		if (pmqual < minpmqual) {
+		    rapm = 0.0;
+		    decpm = 0.0;
+		    wcscon (sysref,sysout,eqref,eqout,&ra,&dec,epout);
+		    }
+		else {
+		    rapm = ubcpra (star.pm);
+		    decpm = ubcpdec (star.pm);
+		    wcsconp (sysref,sysout,eqref,eqout,epref,epout,
+			     &ra, &dec, &rapm, &decpm);
+		    }
 
 		/* Save star position and magnitude in table */
 		ura[nfound] = ra;
 		udec[nfound] = dec;
-		umag[0][nfound] = magb;
-		umag[1][nfound] = magr;
-		/* br2sp (NULL, magb, magr, ispc);
-		isp = (1000 * (int)ispc[0]) + (int)ispc[1]; */
-		uplate[nfound] = plate;
+		upra[nfound] = rapm;
+		updec[nfound] = decpm;
+		upmni[nfound] = pmni;
+		for (i = 0; i< 5; i++)
+		    umag[i][nfound] = ubcmag (star.mag[i]);
 
 		nfound++;
-		if (nlog == 1)
-		    fprintf (stderr,"UBCRNUM: %04d.%08d: %9.5f %9.5f %5.2f %5.2f\n",
-			     znum,istar,ra,dec,magb,magr);
+		if (nlog == 1) {
+		    fprintf (stderr,"UBCRNUM: %04d.%08d: %9.5f %9.5f",
+			     znum,istar,ra,dec);
+		    for (i = 0; i < 5; i++)
+			fprintf (stderr, " %5.2f", ubcmag(star.mag[i]));
+		    fprintf (stderr, "\n");
+		    }
 
 		/* Log operation */
 		if (nlog > 0 && jnum%nlog == 0)
@@ -623,10 +680,6 @@ int	nlog;		/* Logging interval */
     return (nfound);
 }
 
-
-/* Declination zone numbers */
-int azone[NZONES]={0,75,150,225,300,375,450,525,600,675,750,825,900,
-	      975,1050,1125,1200,1275,1350,1425,1500,1575,1650,1725};
 
 /* UBCZONES -- figure out which UB zones will need to be searched */
 
@@ -656,11 +709,11 @@ int	verbose;	/* 1 for diagnostics */
     i = 0;
     if (iz2 >= iz1) {
 	for (iz = iz1; iz <= iz2; iz++)
-	    zones[i++] = azone[iz];
+	    zones[i++] = iz;
 	}
     else {
 	for (iz = iz2; iz <= iz1; iz++)
-	    zones[i++] = azone[iz];
+	    zones[i++] = iz;
 	}
 
     nrgn = i;
@@ -695,31 +748,69 @@ int decsec;	/* Declination in 100ths of arcseconds from UB catalog entry */
 }
 
 
-/* UBCMAGR -- returns the red magnitude from the UB star structure */
+/* UBCMAG -- returns a magnitude from the UBC star structure */
 
 static double
-ubcmagr (magetc)
+ubcmag (magetc)
 
-int magetc;	/* Quality, plate, and magnitude from UB catalog entry */
+int magetc;	/* Magnitude 4 bytes from UB catalog entry */
 {
+    double xmag;
     if (magetc < 0)
-	return ((double) (-magetc % 1000) * 0.1);
+	xmag = (double) (-magetc % 10000) * 0.01;
     else
-	return ((double) (magetc % 1000) * 0.1);
+	xmag = (double) (magetc % 10000) * 0.01;
+    if (xmag == 0.00)
+	xmag = 99.99;
+    return (xmag);
 }
 
 
-/* UBCMAGB -- returns the blue magnitude from the UB star structure */
+/* UBCPRA -- returns RA proper motion in arcsec/year from UBC star structure */
 
 static double
-ubcmagb (magetc)
+ubcpra (magetc)
+
+int magetc;	/* Proper motion field from UB catalog entry */
+{
+    double pm;
+    if (magetc < 0)
+	pm = (double) (-magetc % 10000);
+    else
+	pm = (double) (magetc % 10000);
+    pm = ((pm * 0.002) - 10.0) / 3600.0;
+    return (pm);
+}
+
+
+/* UBCPDEC -- returns Dec proper motion in arcsec/year from UBC star structure */
+
+static double
+ubcpdec (magetc)
+
+int magetc;	/* Proper motion field from UB catalog entry */
+{
+    double pm;
+    if (magetc < 0)
+	pm = (double) ((-magetc % 100000000) / 10000);
+    else
+	pm = (double) ((magetc % 100000000) / 10000);
+    pm = ((pm * 0.002) - 10.0) / 3600.0;
+    return (pm);
+}
+
+
+/* UBCPMQ -- returns proper motion probability (1-9) */
+
+static int
+ubcpmq (magetc)
 
 int magetc;	/* Quality, plate, and magnitude from UB catalog entry */
 {
     if (magetc < 0)
-	return ((double) ((-magetc / 1000) % 1000) * 0.1);
+	return (-magetc / 100000000);
     else
-	return ((double) ((magetc / 1000) % 1000) * 0.1);
+	return (magetc / 100000000);
 }
 
 
@@ -737,32 +828,17 @@ int magetc;	/* Quality, plate, and magnitude from UB catalog entry */
 }
 
 
-/* UBCTY2 -- returns 1 if UB star is in the Tycho-2 Catalog */
+/* UBCNDET -- returns number of detections; 0 = Tycho-2 Catalog */
 
 static int
-ubcty2 (star)
-
-int *star;	/* Quality, plate, and magnitude from UB catalog entry */
-{
-    int num = star->pmerr;
-    if (num < 0)
-	return ((-num / 100000000) % 1);
-    else
-	return ((num / 100000000) % 1);
-}
-
-
-/* UBCPLATE -- returns the plate number from the UB star structure */
-
-static int
-ubcplate (magetc)
+ubcndet (magetc)
 
 int magetc;	/* Quality, plate, and magnitude from UB catalog entry */
 {
     if (magetc < 0)
-	return ((-magetc / 100000000) % 1);
+	return (-magetc / 100000000);
     else
-	return ((magetc / 100000000) % 1);
+	return (magetc / 100000000);
 }
 
 
@@ -773,12 +849,12 @@ ubczone (dec)
 
 double dec;	/* declination in degrees */
 {
-    double zonesize = 7.5;	/* number of degrees per declination zone */
+    double zonesize = 0.1;	/* number of degrees per declination zone */
     int zone;
 
     zone = (int) ((dec + 90.0) / zonesize);
-    if (zone > 23)
-	zone = 23;
+    if (zone > 1799)
+	zone = 1799;
     else if (zone < 0)
 	zone = 0;
     return (zone);
@@ -878,7 +954,7 @@ int znum;	/* UB Catalog zone */
 	nstars = (int) statbuff.st_size / nbent;
 
 /* Open zone catalog */
-    if (!(fcat = fopen (zonepath, "r"))) {
+    if (!(fcat = fopen (zonepath, "rb"))) {
 	fprintf (stderr,"UB zone catalog %s cannot be read\n",zonepath);
 	return (0);
 	}
@@ -918,26 +994,15 @@ int zn;		/* UB zone number */
 char *path;	/* Pathname of UB zone file */
 
 {
-    int iz;		/* Zone index (0000 = 0, 0075 = 1, ...) */
-
     /* Return error code and null path if zone is out of range */
-    if (zn < 0 || zn > 1725) {
-	fprintf (stderr, "UBCPATH: zone %d out of range 0-1725\n",zn);
-	path[0] = 0;
+    if (zn < 0 || zn > 1799) {
+	fprintf (stderr, "UBCPATH: zone %d out of range 0-1799\n",zn);
+	path[0] = (char) 0;
 	return (-1);
 	}
 
-    /* Set path for USNO SA zone catalog */
-    if (ucat == USA1 || ucat == USA2)
-	sprintf (path,"%s/zone%04d.cat", ubpath, zn);
-
-    /* Set zone catalog path when USNO A is in a single directory */
-    else if (strlen (ubpath) > 0)
-	sprintf (path,"%s/zone%04d.cat", ubpath, zn);
-
-    else {
-	return (-1);
-	}
+    /* Set path for USNO-B1.0 zone catalog */
+    sprintf (path,"%s/%03d/b%04d.cat", ubpath, zn/10, zn);
 
     return (0);
 }
@@ -1000,5 +1065,6 @@ int nbytes = nbent; /* Number of bytes to reverse */
     return;
 }
 
-/* Nov 25 2002	New subroutine based on ubcread.c
+/* Jan 30 2003	New subroutine based on ubcread.c
+ * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  */

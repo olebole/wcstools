@@ -1,8 +1,8 @@
 /*** File libwcs/ctgread.c
- *** October 30, 2002
+ *** January 16, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2002
+ *** Copyright (C) 1998-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -78,6 +78,7 @@ int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
+int	sortmag;	/* Number of magnitude by which to limit and sort */
 int	nsmax;		/* Maximum number of stars to be returned */
 struct StarCat **starcat; /* Catalog data structure */
 double	*tnum;		/* Array of ID numbers (returned) */
@@ -141,6 +142,11 @@ int	nlog;
             nstar = ujcread (catfile,cra,cdec,dra,ddec,drad,distsort,
 			     sysout,eqout,epout,mag1,mag2,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
+        else if (refcat == UB1)
+            nstar = ubcread (catfile,distsort,
+                          cra,cdec,dra,ddec,drad,sysout,eqout,epout,mag1,
+                          mag2,sortmag,nsmax,tnum,tra,tdec,tpra,tpdec,tmag,
+			  tc,nlog);
         else if (refcat == TMPSC)
             nstar = tmcread (cra,cdec,dra,ddec,drad,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
@@ -511,6 +517,9 @@ int	nlog;
 	         refcat == UAC  || refcat == UA1  || refcat == UA2)
 	    nstar = uacrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
+	else if (refcat == UB1)
+	    nstar = ubcrnum (catfile,nnum,sysout,eqout,epout,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == UJC || refcat == USNO)
 	    nstar = ujcrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
@@ -1541,4 +1550,6 @@ char	*in;	/* Character string */
  * Aug  6 2002	Change keymag to avector of strings
  * Oct 29 2002	Change UZC format to /u; add /f as fractional hours and degrees
  * Oct 30 2002	Read epoch as MJD or ISO data+time as well as yyyy.ddmm for /y
+ *
+ * Jan 16 2003	Add USNO-B1.0 Catalog
  */

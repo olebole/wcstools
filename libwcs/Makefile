@@ -3,9 +3,10 @@ CC= cc
 
 OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \
 	slasubs.o fitswcs.o wcsinit.o wcs.o ty2read.o webread.o tmcread.o \
-	gscread.o gsc2read.o ujcread.o uacread.o tabread.o binread.o ctgread.o \
-	actread.o catutil.o imrotate.o fitsfile.o imhfile.o hget.o hput.o \
-	imio.o dateutil.o worldpos.o tnxpos.o dsspos.o platepos.o \
+	gscread.o gsc2read.o ujcread.o uacread.o ubcread.o tabread.o binread.o \
+	ctgread.o actread.o catutil.o imrotate.o fitsfile.o imhfile.o \
+	hget.o hput.o imio.o dateutil.o \
+	worldpos.o tnxpos.o dsspos.o platepos.o \
 	sortstar.o platefit.o iget.o fileutil.o polfit.o \
 	wcslib.o lin.o cel.o proj.o sph.o wcstrig.o 
 
@@ -47,6 +48,7 @@ tmcread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
 tnxpos.o:	wcs.h fitshead.h wcslib.h
 ty2read.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
 uacread.o:	fitshead.h wcs.h wcscat.h wcslib.h
+ubcread.o:	fitshead.h wcs.h wcscat.h wcslib.h
 ujcread.o:	fitshead.h wcs.h wcscat.h wcslib.h
 wcs.o:		fitshead.h wcs.h wcslib.h
 wcsinit.o:	fitshead.h wcs.h wcslib.h

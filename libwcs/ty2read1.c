@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** February 3, 2003
+ *** January 28, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2000-2003
@@ -29,7 +29,6 @@
 
 #include <unistd.h>
 #include <stdio.h>
-#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -95,6 +94,8 @@ int	nlog;		/* 1 for diagnostics */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
+    double ddra, dddec;
+    int pass;
     struct StarCat *starcat;
     struct Star *star;
     int verbose;
@@ -182,8 +183,16 @@ int	nlog;		/* 1 for diagnostics */
     rdec2 = dec2;
     RefLim (cra, cdec, dra, ddec, sysout, sysref, eqout, eqref, epout,
 	    &rra1, &rra2, &rdec1, &rdec2, verbose);
+
+    /* Increase limits to deal with proper motion
+    rra1 = rra1 - 0.01;
+    rra2 = rra2 + 0.01;
+    rdec1 = rdec1 - 0.01;
+    rdec2 = rdec2 + 0.01;
+
+    /* Set flag if RA range includes zero */
+    rra2a = rra2;
     if (rra1 > rra2) {
-	rra2a = rra2;
 	rra2 = 360.0;
 	if (!wrap) wrap = 1;
 	}
@@ -212,6 +221,9 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("-----	-----	------	------	------\n");
 	}
 
+    /* Convert dra to angular units for rectangular box on sky */
+    dra = dra / cos (degrad (cdec));
+
     /* If searching through RA = 0:00, split search in two */
     for (iw = 0; iw <= wrap; iw++) {
 
@@ -221,9 +233,9 @@ int	nlog;		/* 1 for diagnostics */
 	    fprintf (stderr,"TY2READ:  no Tycho 2 region for %.2f-%.2f %.2f %.2f\n",
 		     rra1, rra2, rdec1, rdec2);
 	    rra1 = 0.0;
-	    rra2 = rra2a;
 	    continue;
 	    }
+	rra2 = rra2a;
 
 	/* Loop through region list */
 	for (ireg = 0; ireg < nreg; ireg++) {
@@ -268,24 +280,46 @@ int	nlog;		/* 1 for diagnostics */
 		/* Spectral Type */
 		isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 
-		/* Compute distance from search center */
-		if (drad > 0 || distsort)
-		    dist = wcsdist (cra,cdec,ra,dec);
-		else
-		    dist = 0.0;
+		/* Check magnitude limits */
+		pass = 1;
+		if (mag1 != mag2 && (mag < mag1 || mag > mag2))
+		    pass = 0;
 
-		/* Check magnitude and position limits */
-		if ((mag1 == mag2 || (mag >= mag1 && mag <= mag2)) &&
-		    ((wrap && (ra <= ra1 || ra >= ra2)) ||
-		    (!wrap && (ra >= ra1 && ra <= ra2))) &&
-		    ((drad > 0.0 && dist <= drad) ||
-     		    (drad == 0.0 && dec >= dec1 && dec <= dec2))) {
+		/* Check rough position limits */
+		if ((wrap && (ra < rra1 && ra > rra2)) ||
+		    (!wrap && (ra < rra1 || ra > rra2)))
+		    pass = 0;
+		
+		/* Check exact position limits */
+		if (pass) { 
+		    if (drad > 0 || distsort)
+			dist = wcsdist (cra,cdec,ra,dec);
+		    else if (dra > 0.0 || ddec > 0.0) {
+			if (ra >= cra)
+			    ddra = ra - cra;
+			else
+			    ddra = cra - ra;
+			ddra = ddra * cos (degrad(dec));
+			if (dec >= cdec)
+			    dddec = dec - cdec;
+			else
+			    dddec = cdec - dec;
+			}
+		    else
+			dist = 0.0;
+		    if  (drad > 0.0) {
+			if (dist > drad)
+			    pass = 0;
+			}
+		    else if (ddra > dra || dddec > ddec)
+			pass = 0;
+		    }
 
 		/* Write star position and magnitudes to stdout */
+		if (pass) {
 		    if (nstarmax < 1) {
 			ra2str (rastr, 31, ra, 3);
 			dec2str (decstr, 31, dec, 2);
-			dist = wcsdist (cra,cdec,ra,dec) * 60.0;
 			printf ("%010.5f	%s	%s", num,rastr,decstr);
 			printf ("	%5.2f	%5.2f	%6.3f	%6.2f	%.2f\n",
 				magb, magv, rapm*240000.0, decpm*3600000.0,
@@ -386,7 +420,6 @@ int	nlog;		/* 1 for diagnostics */
 	    ty2close (starcat);
 	    }
 	rra1 = 0.0;
-	rra2 = rra2a;
 	}
 
 /* close output file and summarize transfer */
@@ -1060,5 +1093,5 @@ char	*filename;	/* Name of file for which to find size */
  * Apr 10 2002	Separate catalog and output sort mags (in:vb out: bv)
  * Oct  3 2002	Print stars as found in ty2read() if nstarmax < 1
  *
- * Feb  3 2003	Include math.h because of fabs()
+ * Jan 28 2003	Improve position checking; increase first pass ranges for pm
  */

@@ -941,7 +941,7 @@ int	debug;		/* Printed debugging information if not zero */
 	setdcenter (cra, cdec);
 	}
     getrefpix (&cx, &cy);
-    if (cx == -99999.0 && yref0 == -99999.0) {
+    if (cx == -99999.0) {
 	cx = tx / dmatch;
 	cy = ty / dmatch;
 	setrefpix (cx, cy);
@@ -1889,4 +1889,6 @@ int nitmax;
  *
  * Jul 31 2002	Add getnfit() to return current number of parameters being fit
  * Aug 30 2002	Fix WCSMatch() to set scale in arcsec, not degrees
+ *
+ * Jan 30 2003	Remove uninitialized variable in WCSMatch()
  */ 

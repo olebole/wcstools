@@ -1,8 +1,8 @@
 /*** File libwcs/tabread.c
- *** October 30, 2002
+ *** February 4, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -125,6 +125,8 @@ int	nlog;
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
     double magt;
+    double ddra, dddec;
+    int pass;
     char cstr[32];
     struct Star *star;
     struct StarCat *sc;	/* Star catalog data structure */
@@ -207,6 +209,9 @@ int	nlog;
 	sysref = sysout;
     wcscstr (cstr, sysout, eqout, epout);
 
+    /* Convert dra to angular units for rectangular box on sky */
+    dra = dra / cos (degrad (cdec));
+
     /* Loop through catalog */
     for (istar = 1; istar <= nstars; istar++) {
 
@@ -243,11 +248,6 @@ int	nlog;
 	else
 	    peak = star->peak;
 
-	if (drad > 0 || distsort)
-	    dist = wcsdist (cra,cdec,ra,dec);
-	else
-	    dist = 0.0;
-
 	/* Set magnitude for faint star rejection */
 	if (sc->nmag > 0) {
 	    magt = star->xmag[magsort];
@@ -260,12 +260,43 @@ int	nlog;
 	else
 	    magt = mag1;
 
-	/* Check magnitude and position limits */
-	if ((mag1 == mag2 || (magt >= mag1 && magt <= mag2)) &&
-	    ((wrap && (ra >= ra1 || ra <= ra2)) ||
-	    (!wrap && (ra >= ra1 && ra <= ra2))) &&
-	    ((drad > 0.0 && dist < drad) ||
-     	    (drad == 0.0 && dec >= dec1 && dec <= dec2))) {
+	/* Check magnitude limits */
+	pass = 1;
+	if (mag1 != mag2 && (magt < mag1 || magt > mag2))
+	    pass = 0;
+
+	/* Check rough position limits */
+	if  ((!wrap && (ra < ra1 || ra > ra2)) ||
+	    (wrap && (ra < ra1 && ra > ra2)))
+	    pass = 0;
+
+	/* Check exact position limits */
+	if (pass) {
+	    if (drad > 0 || distsort)
+		dist = wcsdist (cra,cdec,ra,dec);
+	    else if (dra > 0.0 || ddec > 0.0) {
+		if (ra >= cra)
+		    ddra = ra - cra;
+		else
+		    ddra = cra - ra;
+		ddra = ddra * cos (degrad(dec));
+		if (dec >= cdec)
+		    dddec = dec - cdec;
+		else
+		    dddec = cdec - dec;
+		}
+	    else
+		dist = 0.0;
+	    if  (drad > 0.0) {
+		if (dist > drad)
+		    pass = 0;
+		}
+	    else if (ddra > dra || dddec > ddec)
+		pass = 0;
+	    }
+
+	/* Add this star's information to the list if still OK */
+	if (pass) {
 
 	    /* Save star position and magnitude in table */
 	    if (nstar < nstarmax) {
@@ -618,7 +649,6 @@ int	nlog;
     double xi, yi, magi, flux;
     char *line;
     int istar, nstars;
-    int verbose;
     struct TabTable *startab;
     int entx, enty, entmag;
 
@@ -818,6 +848,7 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
     struct TabTable *startab;
     struct StarCat *sc;
     int i, lnum, ndec, istar, nbsc, icol, j;
+    int entpmq, entnid;
     char *line;
     double dnum;
 
@@ -927,6 +958,8 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	strcpy (sc->keyrpm, "ura");
     else if ((sc->entrpm = tabcol (startab, "rapm")))
 	strcpy (sc->keyrpm, "rapm");
+    else if ((sc->entrpm = tabcol (startab, "pmra")))
+	strcpy (sc->keyrpm, "pmra");
     else if ((sc->entrpm = tabcol (startab, "ux")))
 	strcpy (sc->keyrpm, "ux");
 
@@ -937,6 +970,8 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	strcpy (sc->keydpm, "udec");
     else if ((sc->entdpm = tabcol (startab, "decpm")))
 	strcpy (sc->keydpm, "decpm");
+    else if ((sc->entdpm = tabcol (startab, "pmdec")))
+	strcpy (sc->keydpm, "pmdec");
     else if ((sc->entdpm = tabcol (startab, "uy")))
 	strcpy (sc->keydpm, "uy");
 
@@ -1054,6 +1089,10 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
     else if ((sc->entpeak = tabcol (startab, "field"))) {
 	strcpy (sc->keypeak, "field");
 	sc->plate = 1;
+	}
+    else if ((entpmq = tabcol (startab, "pm")) &&
+	     (entnid = tabcol (startab, "ni"))) {
+	sc->entpeak = (entpmq * 100) + entnid;
 	}
 
     /* Find column and name of object spectral type */
@@ -1220,6 +1259,7 @@ int	verbose;	/* 1 to print error messages */
     char *cn;
     int ndec, i, imag;
     int lnum, ireg, inum;
+    int pmq, nid;
 
     if ((line = gettabline (startab, istar)) == NULL) {
 	if (verbose)
@@ -1381,7 +1421,12 @@ int	verbose;	/* 1 to print error messages */
 	st->epoch = sc->epoch;
 
     /* Peak counts */
-    if (sc->entpeak > 0)
+    if (sc->entpeak > 100) {
+	pmq = tabgeti4 (&startok, sc->entpeak/100);
+	nid = tabgeti4 (&startok, sc->entpeak%100);
+	st->peak = (pmq * 100) + nid;
+	}
+    else if (sc->entpeak > 0)
 	st->peak = tabgeti4 (&startok, sc->entpeak);
     else
 	st->peak = 0;
@@ -1411,7 +1456,7 @@ char	*tabfile;	/* Tab table catalog file name */
 int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 {
     FILE *fcat;
-    int nr, lfile, lfname, lfa, lname, lline;
+    int nr, lfile, lname, lline;
     char *tabnew, *tabline, *lastline;
     char *tabcomma, *nextline;
     char *thisname, *tabname;
@@ -1542,7 +1587,7 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	    else {
 		lname = strlen (tabname);
 		thisname = tabtable->tabbuff;
-		while (*thisname != NULL) {
+		while (*thisname != (char) 0) {
 		    while (*thisname==' ' || *thisname==newline ||
 		   	   *thisname==formfeed || *thisname==(char)13)
 			thisname++;
@@ -1833,7 +1878,6 @@ char	*keyword;		/* column header of desired value */
 char	*string;		/* character string (returned) */
 int	maxchar;	/* Maximum number of characters in returned string */
 {
-    int ntok;
     int ientry = tabcol (tabtable, keyword);
 
     return (tabgetc (tabtok, ientry, string, maxchar));
@@ -1974,7 +2018,7 @@ struct TabTable *tabtable;	/* Tab table structure */
     char *hyphens;
     char *hyphlast;
     char *nextab;
-    int i, icol, ientry;
+    int icol;
     int nbytes, nba;
 
     /* Return if no column names in header */
@@ -2255,4 +2299,8 @@ char    *filename;      /* Name of file to check */
  * Aug  6 2002	Pass through magnitude keywords
  * Aug  6 2002	Return initial string if token not found by tabgetc()
  * Oct 30 2002	Add code to pass epoch as a final magnitude (but not RV, yet)
+ *
+ * Jan 26 2003	Add code to pass USNO-B1.0 pm quality and no. of ids
+ * Jan 28 2003	Improve spatial position test
+ * Feb  4 2003	Compare character to 0, not NULL
  */

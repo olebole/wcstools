@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** February 4, 2003
+ *** February 3, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2003
@@ -168,7 +168,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	*mwcs = '%';
 
     if (fd < 0) {
-	snprintf (fitserrmsg,79, "FITSRHEAD:  cannot read file %s\n", filename);
+	sprintf (fitserrmsg, "FITSRHEAD:  cannot read file %s\n", filename);
 	return (NULL);
 	}
 
@@ -200,7 +200,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 				     nbr,nbytes,ntry);
 			}
 		    else {
-			snprintf(fitserrmsg,79,"FITSRHEAD: '%d / %d bytes of header read from %s\n"
+			sprintf(fitserrmsg,"FITSRHEAD: '%d / %d bytes of header read from %s\n"
 				,nbr,nbytes,filename);
 #ifndef VMS
 			if (fd != STDIN_FILENO)
@@ -337,7 +337,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 			npos = nblock * 2880;
 			}
 		    if (ipos < npos) {
-			snprintf (fitserrmsg,79,"FITSRHEAD: %d / %d bytes skipped\n",
+			sprintf (fitserrmsg,"FITSRHEAD: %d / %d bytes skipped\n",
 				 ipos,npos);
 			break;
 			}
@@ -423,14 +423,14 @@ int	nlog;		/* Note progress mod this rows */
 
 	fd = fitsropen (filename);
 	if (fd < 0) {
-	    snprintf (fitserrmsg,79, "FITSRSECT:  cannot read file %s\n", filename);
+	    sprintf (fitserrmsg, "FITSRSECT:  cannot read file %s\n", filename);
 	    return (NULL);
 	    }
 
 	/* Skip over FITS header and whatever else needs to be skipped */
 	if (lseek (fd, nbhead, SEEK_SET) < 0) {
 	    (void)close (fd);
-	    snprintf (fitserrmsg,79, "FITSRSECT:  cannot skip header of file %s\n",
+	    sprintf (fitserrmsg, "FITSRSECT:  cannot skip header of file %s\n",
 		     filename);
 	    return (NULL);
 	    }
@@ -450,7 +450,7 @@ int	nlog;		/* Note progress mod this rows */
     bitpix = 0;
     hgeti4 (header,"BITPIX",&bitpix);
     if (bitpix == 0) {
-	/* snprintf (fitserrmsg,79, "FITSRSECT:  BITPIX is 0; image not read\n"); */
+	/* sprintf (fitserrmsg, "FITSRSECT:  BITPIX is 0; image not read\n"); */
 	close (fd);
 	return (NULL);
 	}
@@ -554,14 +554,14 @@ char	*header;	/* FITS header for image (previously read) */
 
 	fd = fitsropen (filename);
 	if (fd < 0) {
-	    snprintf (fitserrmsg,79, "FITSRIMAGE:  cannot read file %s\n", filename);
+	    sprintf (fitserrmsg, "FITSRIMAGE:  cannot read file %s\n", filename);
 	    return (NULL);
 	    }
 
 	/* Skip over FITS header and whatever else needs to be skipped */
 	if (lseek (fd, nbhead, SEEK_SET) < 0) {
 	    (void)close (fd);
-	    snprintf (fitserrmsg,79, "FITSRIMAGE:  cannot skip header of file %s\n",
+	    sprintf (fitserrmsg, "FITSRIMAGE:  cannot skip header of file %s\n",
 		     filename);
 	    return (NULL);
 	    }
@@ -581,7 +581,7 @@ char	*header;	/* FITS header for image (previously read) */
     bitpix = 0;
     hgeti4 (header,"BITPIX",&bitpix);
     if (bitpix == 0) {
-	/* snprintf (fitserrmsg,79, "FITSRIMAGE:  BITPIX is 0; image not read\n"); */
+	/* sprintf (fitserrmsg, "FITSRIMAGE:  BITPIX is 0; image not read\n"); */
 	close (fd);
 	return (NULL);
 	}
@@ -625,7 +625,7 @@ char	*header;	/* FITS header for image (previously read) */
 	(void)close (fd);
 #endif
     if (nbr < nbimage) {
-	snprintf (fitserrmsg,79, "FITSRIMAGE:  %d of %d bytes read from file %s\n",
+	sprintf (fitserrmsg, "FITSRIMAGE:  %d of %d bytes read from file %s\n",
 		 nbr, nbimage, filename);
 	return (NULL);
 	}
@@ -686,7 +686,7 @@ char	*inpath;	/* Pathname for FITS tables file to read */
 	if (fd >= 0)
 	    break;
 	else if (ntry == 2) {
-	    snprintf (fitserrmsg,79, "FITSROPEN:  cannot read file %s\n", inpath);
+	    sprintf (fitserrmsg, "FITSROPEN:  cannot read file %s\n", inpath);
 	    return (-1);
 	    }
 	}
@@ -725,7 +725,7 @@ int	*nbhead;	/* Number of characters before table starts */
 /* Read FITS header from input file */
     header = fitsrhead (inpath, &lhead, nbhead);
     if (!header) {
-	snprintf (fitserrmsg,79,"FITSRTOPEN:  %s is not a FITS file\n",inpath);
+	sprintf (fitserrmsg,"FITSRTOPEN:  %s is not a FITS file\n",inpath);
 	return (0);
 	}
 
@@ -733,7 +733,7 @@ int	*nbhead;	/* Number of characters before table starts */
     temp[0] = 0;
     (void) hgets (header,"XTENSION",16,temp);
     if (strncmp (temp, "TABLE", 5)) {
-	snprintf (fitserrmsg,79, "FITSRTOPEN:  %s is not a FITS table file\n",inpath);
+	sprintf (fitserrmsg, "FITSRTOPEN:  %s is not a FITS table file\n",inpath);
 	free ((void *) header);
 	return (0);
 	}
@@ -741,7 +741,7 @@ int	*nbhead;	/* Number of characters before table starts */
 /* If it is a FITS file, get table information from the header */
     else {
 	if (fitsrthead (header, nk, kw, nrows, nchar)) {
-	    snprintf (fitserrmsg,79, "FITSRTOPEN: Cannot read FITS table from %s\n",inpath);
+	    sprintf (fitserrmsg, "FITSRTOPEN: Cannot read FITS table from %s\n",inpath);
 	    free ((void *) header);
 	    return (-1);
 	    }
@@ -786,7 +786,7 @@ int	*nchar;		/* Number of characters in one table row (returned) */
     temp[0] = 0;
     hgets (header,"XTENSION",16,temp);
     if (strncmp (temp, "TABLE", 5) != 0) {
-	snprintf (fitserrmsg,79, "FITSRTHEAD:  Not a FITS table file\n");
+	sprintf (fitserrmsg, "FITSRTHEAD:  Not a FITS table file\n");
 	free (temp);
 	return (-1);
 	}
@@ -797,7 +797,7 @@ int	*nchar;		/* Number of characters in one table row (returned) */
     *nrows = 0;
     hgeti4 (header,"NAXIS2", nrows);
     if (*nrows <= 0 || *nchar <= 0) {
-	snprintf (fitserrmsg,79, "FITSRTHEAD: cannot read %d x %d table\n",
+	sprintf (fitserrmsg, "FITSRTHEAD: cannot read %d x %d table\n",
 		 *nrows,*nchar);
 	return (-1);
 	}
@@ -812,14 +812,14 @@ int	*nchar;		/* Number of characters in one table row (returned) */
 	    free ((void *)pw);
 	pw = (struct Keyword *) calloc (nfields, sizeof(struct Keyword));
 	if (pw == NULL) {
-	    snprintf (fitserrmsg,79,"FITSRTHEAD: cannot allocate table structure\n");
+	    sprintf (fitserrmsg,"FITSRTHEAD: cannot allocate table structure\n");
 	    return (-1);
 	    }
 	if (bfields > 0)
 	    free ((void *)lpnam);
 	lpnam = (int *) calloc (nfields, sizeof(int));
 	if (lpnam == NULL) {
-	    snprintf (fitserrmsg,79,"FITSRTHEAD: cannot allocate length structure\n");
+	    sprintf (fitserrmsg,"FITSRTHEAD: cannot allocate length structure\n");
 	    return (-1);
 	    }
 	bfields = nfields;
@@ -1074,14 +1074,14 @@ char	*image;		/* FITS image pixels */
 	if (!access (filename, 0)) {
 	    fd = open (filename, O_WRONLY);
 	    if (fd < 3) {
-		snprintf (fitserrmsg,79, "FITSWIMAGE:  file %s not writeable\n", filename);
+		sprintf (fitserrmsg, "FITSWIMAGE:  file %s not writeable\n", filename);
 		return (0);
 		}
 	    }
 	else {
 	    fd = open (filename, O_RDWR+O_CREAT, 0666);
 	    if (fd < 3) {
-		snprintf (fitserrmsg,79, "FITSWIMAGE:  cannot create file %s\n", filename);
+		sprintf (fitserrmsg, "FITSWIMAGE:  cannot create file %s\n", filename);
 		return (0);
 		}
 	    }
@@ -1113,7 +1113,7 @@ char	*image;		/* FITS image pixels */
 	if (!access (filename, 0)) {
 	    fd = open (filename, O_WRONLY);
 	    if (fd < 3) {
-		snprintf (fitserrmsg,79, "FITSWEXT:  file %s not writeable\n",
+		sprintf (fitserrmsg, "FITSWEXT:  file %s not writeable\n",
 			 filename);
 		return (0);
 		}
@@ -1121,7 +1121,7 @@ char	*image;		/* FITS image pixels */
 	else {
 	    fd = open (filename, O_APPEND, 0666);
 	    if (fd < 3) {
-		snprintf (fitserrmsg,79, "FITSWEXT:  cannot append to file %s\n",
+		sprintf (fitserrmsg, "FITSWEXT:  cannot append to file %s\n",
 			 filename);
 		return (0);
 		}
@@ -1177,7 +1177,7 @@ char	*image;		/* FITS image pixels */
     
     nbw = write (fd, header, nbytes);
     if (nbw < nbhead) {
-	snprintf (fitserrmsg,79, "FITSWHDU:  wrote %d / %d bytes of header to file %s\n",
+	sprintf (fitserrmsg, "FITSWHDU:  wrote %d / %d bytes of header to file %s\n",
 		 nbw, nbytes, filename);
 	close (fd);
 	return (0);
@@ -1197,7 +1197,7 @@ char	*image;		/* FITS image pixels */
     naxis2 = 1;
     hgeti4 (header,"NAXIS2",&naxis2);
     if (bitpix == 0) {
-	/* snprintf (fitserrmsg,79, "FITSWHDU:  BITPIX is 0; image not written\n"); */
+	/* sprintf (fitserrmsg, "FITSWHDU:  BITPIX is 0; image not written\n"); */
 	close (fd);
 	return (0);
 	}
@@ -1239,7 +1239,7 @@ char	*image;		/* FITS image pixels */
 	imswap (bitpix, image, nbimage);
 
     if (nbw < nbimage) {
-	snprintf (fitserrmsg,79, "FITSWHDU:  wrote %d / %d bytes of image to file %s\n",
+	sprintf (fitserrmsg, "FITSWHDU:  wrote %d / %d bytes of image to file %s\n",
 		 nbw, nbimage, filename);
 	return (0);
 	}
@@ -1305,7 +1305,7 @@ char	*filename0;	/* Name of input FITS image file */
 
     /* Read input file header */
     if ((oldhead = fitsrhead (filename0, &lhead0, &nbhead0)) == NULL) {
-	snprintf (fitserrmsg, 79,"FITSCIMAGE: header of input file %s cannot be read\n",
+	sprintf (fitserrmsg,"FITSCIMAGE: header of input file %s cannot be read\n",
 		 filename0);
 	return (0);
 	}
@@ -1316,7 +1316,7 @@ char	*filename0;	/* Name of input FITS image file */
     /* If overwriting, be more careful if new header is longer than old */
     if (!strcmp (filename, filename0) && nbhead > nbhead0) {
 	if ((image = fitsrimage (filename0, nbhead0, oldhead)) == NULL) {
-	    snprintf (fitserrmsg,79, "FITSCIMAGE:  cannot read image from file %s\n",
+	    sprintf (fitserrmsg, "FITSCIMAGE:  cannot read image from file %s\n",
 		     filename0);
 	    free (oldhead);
 	    return (0);
@@ -1330,14 +1330,14 @@ char	*filename0;	/* Name of input FITS image file */
 	fdin = -1;
 	fdin = fitsropen (filename0);
 	if (fdin < 0) {
-	    snprintf (fitserrmsg, 79,"FITSCIMAGE:  cannot read file %s\n", filename0);
+	    sprintf (fitserrmsg,"FITSCIMAGE:  cannot read file %s\n", filename0);
 	    return (0);
 	    }
 
 	/* Skip over FITS header */
 	if (lseek (fdin, nbhead0, SEEK_SET) < 0) {
 	    (void)close (fdin);
-	    snprintf (fitserrmsg,79, "FITSCIMAGE:  cannot skip header of file %s\n",
+	    sprintf (fitserrmsg, "FITSCIMAGE:  cannot skip header of file %s\n",
 		     filename0);
 	    return (0);
 	    }
@@ -1351,14 +1351,14 @@ char	*filename0;	/* Name of input FITS image file */
     if (!access (filename, 0)) {
 	fdout = open (filename, O_WRONLY);
 	if (fdout < 3) {
-	    snprintf (fitserrmsg,79, "FITSCIMAGE:  file %s not writeable\n", filename);
+	    sprintf (fitserrmsg, "FITSCIMAGE:  file %s not writeable\n", filename);
 	    return (0);
 	    }
 	}
     else {
 	fdout = open (filename, O_RDWR+O_CREAT, 0666);
 	if (fdout < 3) {
-	    snprintf (fitserrmsg,79, "FITSCHEAD:  cannot create file %s\n", filename);
+	    sprintf (fitserrmsg, "FITSCHEAD:  cannot create file %s\n", filename);
 	    return (0);
 	    }
 	}
@@ -1372,7 +1372,7 @@ char	*filename0;	/* Name of input FITS image file */
     /* Write header to file */
     nbw = write (fdout, header, nbhead);
     if (nbw < nbhead) {
-	snprintf (fitserrmsg, 79,"FITSCIMAGE:  wrote %d / %d bytes of header to file %s\n",
+	sprintf (fitserrmsg,"FITSCIMAGE:  wrote %d / %d bytes of header to file %s\n",
 		 nbw, nbytes, filename);
 	close (fdout);
 	close (fdin);
@@ -1410,7 +1410,7 @@ char	*filename0;	/* Name of input FITS image file */
     close (fdin);
 
     if (nbw < nbimage) {
-	snprintf (fitserrmsg, 79, "FITSWIMAGE:  wrote %d / %d bytes of image to file %s\n",
+	sprintf (fitserrmsg, "FITSWIMAGE:  wrote %d / %d bytes of image to file %s\n",
 		 nbw, nbimage, filename);
 	return (0);
 	}
@@ -1437,14 +1437,14 @@ char	*header;	/* FITS image header */
     if (!access (filename, 0)) {
 	fd = open (filename, O_WRONLY);
 	if (fd < 3) {
-	    snprintf (fitserrmsg, 79, "FITSWHEAD:  file %s not writeable\n", filename);
+	    sprintf (fitserrmsg, "FITSWHEAD:  file %s not writeable\n", filename);
 	    return (0);
 	    }
 	}
     else {
 	fd = open (filename, O_RDWR+O_CREAT, 0666);
 	if (fd < 3) {
-	    snprintf (fitserrmsg, 79, "FITSWHEAD:  cannot create file %s\n", filename);
+	    sprintf (fitserrmsg, "FITSWHEAD:  cannot create file %s\n", filename);
 	    return (0);
 	    }
 	}
@@ -1499,7 +1499,7 @@ char    *filename;      /* Name of file for which to find size */
 
     /* If no FITS file extension, try opening the file */
     else {
-	if ((diskfile = fopen (filename, "rb")) == NULL)
+	if ((diskfile = fopen (filename, "r")) == NULL)
 	    return (0);
 	else {
 	    nbr = fread (keyword, 1, 8, diskfile);
@@ -1619,5 +1619,6 @@ fitserr ()
  * Jan 28 2002	In fitsrhead(), allow stdin to include extension and/or WCS selection
  * Jun 18 2002	Save error messages as fitserrmsg and use fitserr() to print them
  * Oct 21 2002	Add fitsrsect() to read a section of an image
- * Feb 4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
+ *
+ * Feb  3 2003	Change snprintf() to sprintf() for old C compilers
  */

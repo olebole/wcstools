@@ -1,8 +1,8 @@
 /*** File libwcs/catutil.c
- *** October 26, 2002
+ *** January 27, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2002
+ *** Copyright (C) 1998-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -144,6 +144,15 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	*catprop = 0;
 	*nmag = 1;
 	refcat = GSC;
+	}
+    else if (strncasecmp(refcatname,"ub",2)==0) {
+	strcpy (title, "USNO-B1.0 Catalog");
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	*catprop = 1;
+	*nmag = 5;
+	refcat = UB1;
 	}
     else if (strncasecmp(refcatname,"usa",3)==0 &&
 	     strsrch(refcatname, ".tab") == NULL) {
@@ -411,6 +420,8 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "TYCHO");
     else if (refcat ==  UA1)	/* USNO A-1.0 Star Catalog */
 	strcpy (catname, "USNO-A1.0");
+    else if (refcat ==  UB1)	/* USNO B-1.0 Star Catalog */
+	strcpy (catname, "USNO-B1.0");
     else if (refcat ==  UA2)	/* USNO A-2.0 Star Catalog */
 	strcpy (catname, "USNO-A2.0");
     else if (refcat ==  USA1)	/* USNO SA-1.0 Star Catalog */
@@ -455,6 +466,8 @@ int	refcat;		/* Catalog code */
 	strcpy (catid,"usnoa_id      ");
     else if (refcat == UA1)
 	strcpy (catid,"usnoa1_id     ");
+    else if (refcat == UB1)
+	strcpy (catid,"usnob1_id    ");
     else if (refcat == UA2)
 	strcpy (catid,"usnoa2_id     ");
     else if (refcat == UJC)
@@ -532,6 +545,10 @@ char *progname;	/* Program name which might contain catalog code */
     else if (strsrch (progname,"ua1") != NULL) {
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "ua1");
+	}
+    else if (strsrch (progname,"ub") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "ub1");
 	}
     else if (strsrch (progname,"ua2") != NULL) {
 	refcatname = (char *) calloc (1,8);
@@ -616,6 +633,14 @@ char	*numstr;	/* Formatted number (returned) */
 	    sprintf (numstr, "%013.8f", dnum);
 	else
 	    sprintf (numstr, "%13.8f", dnum);
+	}
+
+    /* USNO-B1.0 */
+    else if (refcat == UB1) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%012.7f", dnum);
+	else
+	    sprintf (numstr, "%12.7f", dnum);
 	}
 
     /* GSC II */
@@ -735,6 +760,10 @@ int	nndec;		/* Number of decimal places ( >= 0) */
 	refcat == UAC  || refcat == UA1  || refcat == UA2)
 	return (13);
 
+    /* USNO-B1.0 */
+    else if (refcat == UB1)
+	return (12);
+
     /* GSC II */
     else if (refcat == GSC2)
 	return (13);
@@ -818,6 +847,10 @@ int	refcat;		/* Catalog code */
 	refcat == UAC  || refcat == UA1  || refcat == UA2)
 	return (8);
 
+    /* USNO B1.0 */
+    else if (refcat == UB1)
+	return (7);
+
     /* GSC II */
     else if (refcat == GSC2)
 	return (0);
@@ -868,6 +901,18 @@ char	*magname;	/* Name of magnitude, returned */
 	else
 	    strcpy (magname, "MagB");
 	}
+    else if (refcat == UB1) {
+	if (imag == 5)
+	    strcpy (magname, "MagN");
+	else if (imag == 4)
+	    strcpy (magname, "MagR2");
+	else if (imag == 3)
+	    strcpy (magname, "MagB2");
+	else if (imag == 2)
+	    strcpy (magname, "MagR1");
+	else
+	    strcpy (magname, "MagB1");
+	}
     else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT) {
 	if (imag == 2)
 	    strcpy (magname, "MagV");
@@ -917,6 +962,14 @@ int	refcat;		/* Catalog code */
 	    return (2);
 	else
 	    return (1);	/* B */
+	}
+    if (refcat == UB1) {
+	if (cmag == 'N')
+	    return (5);
+	else if (cmag == 'R')
+	    return (4);
+	else
+	    return (3);	/* B */
 	}
     else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT) {
 	if (cmag == 'B')
@@ -1047,7 +1100,7 @@ void
 SearchLim (cra, cdec, dra, ddec, syscoor, ra1, ra2, dec1, dec2, verbose)
 
 double	cra, cdec;	/* Center of search area  in degrees */
-double	dra, ddec;	/* Horizontal and verticla half-widths of area */
+double	dra, ddec;	/* Horizontal and vertical half-widths of area in degrees */
 int	syscoor;	/* Coordinate system */
 double	*ra1, *ra2;	/* Right ascension limits in degrees */
 double	*dec1, *dec2;	/* Declination limits in degrees */
@@ -1132,6 +1185,25 @@ int	verbose;	/* 1 to print limits, else 0 */
     double ra1, ra2, ra3, ra4, dec1, dec2, dec3, dec4;
     double dec;
 
+    /* Set declination limits for search */
+    dec1 = cdec - ddec;
+    dec2 = cdec + ddec;
+
+    /* dec1 is always the smallest declination */
+    if (dec1 > dec2) {
+	dec = dec1;
+	dec1 = dec2;
+	dec2 = dec;
+	}
+
+    /* Adjust width in right ascension to that at max absolute declination */
+    if (fabs (dec1) > fabs (dec2)) {
+	if (fabs (dec1) > fabs (cdec))
+	    dra = dra * (cos (degrad(cdec)) / cos (degrad(dec1)));
+	    }
+    else if (fabs(dec2) > fabs (cdec))
+	dra = dra * (cos (degrad(cdec)) / cos (degrad(dec2)));
+
     /* Set right ascension limits for search */
     ra1 = cra - dra;
     ra2 = cra + dra;
@@ -1143,17 +1215,6 @@ int	verbose;	/* 1 to print limits, else 0 */
 	ra2 = ra2 - 360.0;
     ra3 = ra1;
     ra4 = ra2;
-
-    /* Set declination limits for search */
-    dec1 = cdec - ddec;
-    dec2 = cdec + ddec;
-
-    /* dec1 is always the smallest declination */
-    if (dec1 > dec2) {
-	dec = dec1;
-	dec1 = dec2;
-	dec2 = dec;
-	}
     dec3 = dec2;
     dec4 = dec1;
 
@@ -2283,4 +2344,7 @@ vottail ()
  * Aug  1 2002	In agets(), read through / if reading to end of line
  * Sep 18 2002	Add vothead() and vottail() for VOTable output from scat
  * Oct 26 2002	Fix bugs in vothead()
+ *
+ * Jan 23 2003	Add USNO-B1.0 Catalog
+ * Jan 27 2003	Adjust dra in RefLimit to max width in RA seconds in region
  */

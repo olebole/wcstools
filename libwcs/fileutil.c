@@ -1,8 +1,8 @@
 /*** File libwcs/fileutil.c
- *** August 1, 2002
+ *** February 4, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1999-2002
+ *** Copyright (C) 1999-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -130,7 +130,7 @@ char    *filename;      /* Name of file for which to find number of lines */
 	}
 
     /* Open file */
-    if ((diskfile = fopen (filename, "r")) == NULL)
+    if ((diskfile = fopen (filename, "rb")) == NULL)
         return (NULL);
 
    /* Find length of file */
@@ -179,7 +179,7 @@ char    *filename;      /* Name of file for which to find size */
     long filesize;
 
     /* Open file */
-    if ((diskfile = fopen (filename, "r")) == NULL)
+    if ((diskfile = fopen (filename, "rb")) == NULL)
         return (-1);
 
     /* Move to end of the file */
@@ -356,4 +356,6 @@ char	*string;
  * Jan  8 2002	Add sts2c() and stc2s() for space-replaced strings
  * Mar 22 2002	Clean up isfilelist()
  * Aug  1 2002	Return 1 if file is stdin in isfile()
+ *
+ * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  */

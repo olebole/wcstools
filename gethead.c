@@ -1,5 +1,5 @@
 /* File gethead.c
- * June 20, 2002
+ * February 5, 2003
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -435,15 +435,21 @@ char **av;
 	}
 
     /* Check extensions for range and set accordingly */
-    if (isrange (extensions)) {
-	erange = RangeInit (extensions, nrmax);
-	nfext = rgetn (erange);
-	extension = calloc (1, 8);
+    if (extensions != NULL) {
+	if (isrange (extensions)) {
+	    erange = RangeInit (extensions, nrmax);
+	    nfext = rgetn (erange);
+	    extension = calloc (1, 8);
+	    }
+	else {
+	    extension = extensions;
+	    if (extension)
+		nfext = 1;
+	    }
 	}
     else {
-	extension = extensions;
-	if (extension)
-	    nfext = 1;
+	extension = NULL;
+	nfext = 0;
 	}
 
     /* Read through headers of images */
@@ -1030,4 +1036,6 @@ char *string;
  * Jun 18 2002	List filename(s) if -x used
  * Jun 19 2002	Add verbose argument to GetFITShead()
  * Jun 20 2002	If -x and no argument, read all extensions
+ *
+ * Feb  5 2003	Set nfext tp zero if no extensions
  */

@@ -1,5 +1,5 @@
 /* File scat.c
- * December 6, 2002
+ * February 4, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -19,6 +19,7 @@
 #define EP_JD	1
 #define EP_MJD	2
 #define EP_FD	3
+#define EP_EP	4
 
 
 static void PrintUsage();
@@ -53,6 +54,9 @@ static double epoch1 = 0.0;	/* Earliest epoch for catalog search */
 static double epoch2 = 0.0;	/* Latest epoch for catalog search */
 static int syscoor = 0;		/* Input search coordinate system */
 static int nstars = 0;		/* Number of brightest stars to list */
+static int ndra = 3;		/* Number of decimal places in RA seconds */
+static int nddec = 2;		/* Number of decimal places in Dec seconds */
+static int nddeg = 7;		/* Number of decimal places in degree output */
 static int printhead = 0;	/* 1 to print table heading */
 static int printprog = 0;	/* 1 to print program name and version */
 static int printepoch = 0;	/* 1 to print epoch of entry */
@@ -95,11 +99,15 @@ static char *refcatname[5];	/* reference catalog names */
 static char *ranges;		/* Catalog numbers to print */
 static int http=0;		/* Set to one if http header needed on output */
 static int padspt = 0;		/* Set to one to pad out long spectral type */
-static int nmagmax = 4;
+static int nmagmax = 5;
 static int sortmag = 0;
 static int lofld = 0;		/* Length of object name field in output */
 static webdump = 0;
 static int votab = 0;		/* If 1, print output as VOTable XML */
+static int minid = 0;		/* Minimum number of plate IDs for USNO-B1.0 */
+static int minpmqual = 0;	/* Minimum USNO-B1.0 proper motion quality */
+extern void setminpmqual();
+extern void setminid();
 
 main (ac, av)
 int ac;
@@ -211,6 +219,10 @@ char **av;
 	else if (strchr (*av, '=')) {
             if (scatparm (*av))
 		fprintf (stderr, "SCAT: %s is not a parameter.\n", *av);
+	    refcat = RefCat (refcatname[ncat-1],title,&sysref,&eqref,&epref,&mprop,&nmag);
+	    if (nmag > nmagmax)
+		nmagmax = nmag;
+	    ndcat = CatNdec (refcat);
 	    }
 
 	/* Set search RA, Dec, and equinox if colon in argument */
@@ -370,6 +382,10 @@ char **av;
 		refcatn = (char *) calloc (1, lcat + 2);
 		strcpy (refcatn, *av);
 		refcatname[ncat] = refcatn;
+		refcat = RefCat (refcatn,title,&sysref,&eqref,&epref,&mprop,&nmag);
+		if (nmag > nmagmax)
+		    nmagmax = nmag;
+		ndcat = CatNdec (refcat);
 		ncat = ncat + 1;
 		ac--;
 		break;
@@ -598,7 +614,9 @@ char **av;
 		    dateform = EP_MJD;
 		else if (str[1] == 'f')
 		    dateform = EP_FD;
-		else if (ac < 2)
+		else
+		    dateform = EP_EP;
+		if (ac < 2)
 		    PrintUsage (str);
 		if ((cep2 = strchr (*(av+1), ','))) {
 		    av++;
@@ -614,12 +632,14 @@ char **av;
 			epoch2 = fd2ep (cep2);
 		    ac--;
 		    }
-		else if (isnum (*(av+1))) {
+		else if (strchr (*(av+1), '.')) {
 		    av++;
-		    if (strchr (*av, '.'))
-			epoch0 = atof (*av);
-		    else
-			epoch0 = fd2ep (*av);
+		    epoch0 = atof (*av);
+		    ac--;
+		    }
+		else {
+		    av++;
+		    epoch0 = fd2ep (*av);
 		    ac--;
 		    }
 		break;
@@ -799,18 +819,44 @@ char **av;
 	}
 
     /* Free memory used for search results and return */
-    if (gx) free ((char *)gx);
-    if (gy) free ((char *)gy);
-    if (gm) {
-	for (imag = 0; i < nmagmax; i++)
-	    if (gm[imag]) free ((char *)gm[imag]);
-	free ((char *)gm);
+    if (gx) {
+	free ((char *)gx);
+	gx = NULL;
 	}
-    if (gra) free ((char *)gra);
-    if (gdec) free ((char *)gdec);
-    if (gnum) free ((char *)gnum);
-    if (gc) free ((char *)gc);
-    if (gobj) free ((char *)gobj);
+    if (gy) {
+	free ((char *)gy);
+	gy = NULL;
+	}
+    if (gm) {
+	for (imag = 0; i < nmagmax; i++) {
+	    if (gm[imag]) {
+		free ((char *)gm[imag]);
+		gm[imag] = NULL;
+		}
+	    }
+	free ((char *)gm);
+	gm = NULL;
+	}
+    if (gra) {
+	free ((char *)gra);
+	gra = NULL;
+	}
+    if (gdec) {
+	free ((char *)gdec);
+	gdec = NULL;
+	}
+    if (gnum) {
+	free ((char *)gnum);
+	gnum = NULL;
+	}
+    if (gc) {
+	free ((char *)gc);
+	gc = NULL;
+	}
+    if (gobj) {
+	free ((char *)gobj);
+	gobj = NULL;
+	}
 
     return (0);
 }
@@ -864,6 +910,8 @@ char	*command;	/* Command where error occurred or NULL */
 	fprintf (dev,"Find USNO SA-1.0 Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"usa2") != NULL)
 	fprintf (dev,"Find USNO SA-2.0 Catalog stars in a region on the sky\n");
+    else if (strsrch (progname,"ub1") != NULL)
+	fprintf (dev,"Find USNO B-1.0 Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"tmc") != NULL)
 	fprintf (dev,"Find 2MASS Point Source Catalog stars in a region on the sky\n");
     else if (strsrch (progname,"sao") != NULL)
@@ -1154,7 +1202,7 @@ double	eqout;		/* Equinox for output coordinates */
 	else if (debug)
 	    nlog = 1;
 	else if (verbose) {
-	    if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
+	    if (refcat == UAC || refcat == UA1 || refcat == UA2 || refcat==UB1 ||
 		refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		refcat == GSC  || refcat == GSCACT || refcat == TMPSC)
 		nlog = 1000;
@@ -1166,13 +1214,13 @@ double	eqout;		/* Equinox for output coordinates */
 
 	/* If more magnitudes are needed, allocate space for them */
 	if (nmag > nmagmax) {
-	    nmagmax = nmag;
 	    if (gm) {
 		for (imag = 0; imag < nmagmax; imag++)
 		    free ((char *) gm[imag]);
 		free ((char *)gm);
 		gm = NULL;
 		}
+	    nmagmax = nmag;
 	    if (!(gm = (double **) calloc (nmagmax, sizeof(double *))))
 		fprintf (stderr, "Could not calloc %d bytes for gm\n",
 			 nmagmax*sizeof(double *));
@@ -1248,7 +1296,9 @@ double	eqout;		/* Equinox for output coordinates */
 		      nfind, sysout, eqout, epout, match, &starcat[icat],
 		      gnum, gra, gdec, gpra, gpdec, gm, gc, gobj, nlog);
 
-	    if (gobj[0] == NULL)
+	    if (gobj == NULL)
+		gobj1 = NULL;
+	    else if (gobj[0] == NULL)
 		gobj1 = NULL;
 	    else
 		gobj1 = gobj;
@@ -1258,7 +1308,7 @@ double	eqout;		/* Equinox for output coordinates */
 		ns = ng;
 
 	    /* Set flag if any proper motions are non-zero */
-	    if (mprop == 1) {
+	    if (mprop == 1 && !oneline) {
 		mprop = 0;
 		for (i = 0; i < ng; i++) {
 		    if (gpra[i] != 0.0 || gpdec[i] != 0.0) {
@@ -1309,7 +1359,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    else if ((refcat == GSC || refcat == GSCACT) && classd < -1)
 		typecol = 3;
 	    else if (refcat == GSC || refcat == GSCACT ||
-		refcat == UJC ||
+		refcat == UJC || refcat == UB1 ||
 		refcat == USAC || refcat == USA1   || refcat == USA2 ||
 		refcat == UAC  || refcat == UA1    || refcat == UA2 ||
 		refcat == BSC  || (refcat == TABCAT&&gcset))
@@ -1337,12 +1387,12 @@ double	eqout;		/* Equinox for output coordinates */
 			num2str (decstr, gdec[i], 10, 5);
 			}
 		    else if (degout) {
-			deg2str (rastr, 32, gra[i], 7);
-			deg2str (decstr, 32, gdec[i], 7);
+			deg2str (rastr, 32, gra[i], nddeg);
+			deg2str (decstr, 32, gdec[i], nddeg);
 			}
 		    else {
-			ra2str (rastr, 32, gra[i], 3);
-			dec2str (decstr, 32, gdec[i], 2);
+			ra2str (rastr, 32, gra[i], ndra);
+			dec2str (decstr, 32, gdec[i], nddec);
 			}
 		    wcscstr (cstr, sysout, eqout, epout);
 		    if (printobj && gobj1 != NULL)
@@ -1368,6 +1418,8 @@ double	eqout;		/* Equinox for output coordinates */
 			refcat == USAC || refcat == USA1 || refcat == USA2)
 			rad0 = 900.0;
 		    else if ( refcat == UAC  || refcat == UA1  || refcat == UA2)
+			rad0 = 120.0;
+		    else if (refcat == UB1)
 			rad0 = 120.0;
 		    else if ( refcat == GSC2 || refcat == TMPSC)
 			rad0 = 120.0;
@@ -1453,11 +1505,13 @@ double	eqout;		/* Equinox for output coordinates */
 		ns = ng;
 
 	    /* Set flag if any proper motions are non-zero */
-	    mprop = 0;
-	    for (i = 0; i < ns; i++) {
-		if (gpra[i] != 0.0 || gpdec[i] != 0.0) {
-		    mprop = 1;
-		    break;
+	    if (mprop == 1 && !oneline) {
+		mprop = 0;
+		for (i = 0; i < ns; i++) {
+		    if (gpra[i] != 0.0 || gpdec[i] != 0.0) {
+			mprop = 1;
+			break;
+			}
 		    }
 		}
 	    if (mprop == 0 && starcat[icat] != NULL && starcat[icat]->entrv > 0)
@@ -1497,7 +1551,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    else if ((refcat == GSC || refcat == GSCACT) && classd < -1)
 		typecol = 3;
 	    else if (refcat == GSC || refcat == GSCACT ||
-		refcat == UJC || 
+		refcat == UJC ||  refcat == UB1 ||
 		refcat == USAC || refcat == USA1   || refcat == USA2 ||
 		refcat == UAC  || refcat == UA1    || refcat == UA2 ||
 		refcat == BSC  || (refcat == TABCAT&&gcset))
@@ -1572,6 +1626,10 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("search	%s\n", listfile);
 			printf ("equinox	%.1f\n", eqout);
 			printf ("epoch	%.1f\n", epout);
+			if (minid != 0)		/* Min number of plate IDs for USNO-B1.0 */
+			    printf ("minid	%d\n", minid);
+			if (minpmqual > 0)	/* Min proper motion quality for USNO-B1.0 */
+			    printf ("minpmq	%d\n", minpmqual);
 			if (dra0 > 0.0) {
 			    printf ("drasec	%.2f\n", dra*3600.0);
 			    printf ("ddecsec	%.2f\n", ddec*3600.0);
@@ -1607,7 +1665,7 @@ double	eqout;		/* Equinox for output coordinates */
 			    }
 		        printf ("srch_ra     	srch_dec    	");
 		        if (srchcat != NULL) {
-			    if (smag > 1) {
+			    if (smag > 0) {
 				for (imag = 0; imag < smag; imag++) {
 				    if (strlen (srchcat->keymag[imag]) >0)
 					printf ("s_%s	", srchcat->keymag[imag]);
@@ -1640,7 +1698,7 @@ double	eqout;		/* Equinox for output coordinates */
 				    printf ("s_rv    	");
 				}
 			    if (srchcat->mprop > 0)
-				    printf ("s_ura 	s_udec	");
+				    printf ("s_pra 	s_pdec	");
 				
 			    }
 			if (refcat == TABCAT && starcat[icat]->keyid[0] >0) {
@@ -1660,9 +1718,12 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("f10m 	f25m 	f60m 	f100m	");
 			else if (refcat == TMPSC)
 			    printf ("magj  	magh   	magk   	");
+			else if (refcat == UB1)
+			    printf ("magb1	magr1	magb2	magr2	magn 	");
 			else if (nmagr > 0) {
 			    for (imag = 0; imag < nmagr; imag++) {
-				if (strlen (starcat[icat]->keymag[imag]) >0)
+				if (starcat[icat] != NULL &&
+				    strlen (starcat[icat]->keymag[imag]) >0)
 				    printf ("%s	", starcat[icat]->keymag[imag]);
 				else if (nmagr > 1)
 				    printf ("mag%d  ", imag+1);
@@ -1673,7 +1734,9 @@ double	eqout;		/* Equinox for output coordinates */
 			if (typecol == 1)
 			    printf ("spt   	");
 			if (mprop == 1)
-			    printf ("Ura    	Udec  	");
+			    printf ("pmra       pmdec   ");
+			if (refcat == UB1)
+			    printf ("pm	ni	");
 			if ((starcat[icat]!=NULL && starcat[icat]->entrv>0) &&
 			    mprop == 2)
 			    printf ("velocity	");
@@ -1729,11 +1792,13 @@ double	eqout;		/* Equinox for output coordinates */
 			    }
 			if (typecol == 1)
 			    printf ("---   	");
-			if (mprop == 1)
-			    printf ("------	------	");
 			if ((starcat[icat]!=NULL && starcat[icat]->entrv>0) &&
 			    mprop == 2)
 			    printf ("---------	");
+			if (mprop == 1)
+			    printf ("------     ------  ");
+			if (refcat == UB1)
+			    printf ("--	--	");
 			printf ("--	");
 			for (i = 0; i < LenNum(das,2); i++)
 			    printf ("-");
@@ -1761,12 +1826,12 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("%s ", numstr);
 			}
 		    if (degout) {
-			num2str (rastr, cra, 12, 7);
-			num2str (decstr, cdec, 12, 7);
+			num2str (rastr, cra, 12, nddeg);
+			num2str (decstr, cdec, 12, nddeg);
 			}
 		    else {
-			ra2str (rastr, 32, cra, 3);
-			dec2str (decstr, 32, cdec, 2);
+			ra2str (rastr, 32, cra, ndra);
+			dec2str (decstr, 32, cdec, nddec);
 			}
 		    if (tabout)
 			printf ("%s	%s", rastr, decstr);
@@ -1813,10 +1878,10 @@ double	eqout;		/* Equinox for output coordinates */
 			    }
 			if (srchcat->mprop == 1) {
 			    if (degout)
-				pra = (srch->rapm * 3600.0 * 1000.0);
+				pra = srch->rapm * 360000.0;
 			    else
-				pra = (srch->rapm * 240.0 * 1000.0);
-			    pdec = srch->decpm * 3600.0 * 1000.0;
+				pra = srch->rapm * 24000.0;
+			    pdec = srch->decpm * 360000.0;
 			    if (tabout)
 				printf ("	%7.3f	%6.2f", pra, pdec);
 			    else
@@ -1825,10 +1890,10 @@ double	eqout;		/* Equinox for output coordinates */
 			}
 		    if (mprop == 1) {
 			if (degout)
-			    pra = (gpra[0] * 3600.0 * 1000.0);
+			    pra = gpra[0] * 360000.0;
 			else
-			    pra = (gpra[0] * 240.0 * 1000.0);
-			pdec = gpdec[0] * 3600.0 * 1000.0;
+			    pra = gpra[0] * 24000.0;
+			pdec = gpdec[0] * 360000.0;
 			}
 
 		    if (gobj1 != NULL) {
@@ -1840,12 +1905,12 @@ double	eqout;		/* Equinox for output coordinates */
 		    else
 			CatNum (refcat,-nnfld,nndec,gnum[0],numstr);
 		    if (degout) {
-			num2str (rastr, gra[0], 12, 7);
-			num2str (decstr, gdec[0], 12, 7);
+			num2str (rastr, gra[0], 12, nddeg);
+			num2str (decstr, gdec[0], 12, nddeg);
 			}
 		    else {
-			ra2str (rastr, 32, gra[0], 3);
-			dec2str (decstr, 32, gdec[0], 2);
+			ra2str (rastr, 32, gra[0], ndra);
+			dec2str (decstr, 32, gdec[0], nddec);
 			}
 		    if (tabout)
 			printf ("	%s	%s	%s",
@@ -1936,10 +2001,18 @@ double	eqout;		/* Equinox for output coordinates */
 			}
 		    if (mprop == 1) {
 			if (tabout)
-			     printf ("	%7.3f	%6.2f", pra, pdec);
+			    printf ("  %7.3f   %6.2f", pra, pdec);
 			else
-			     printf (" %7.3f %6.2f", pra, pdec);
+			    printf (" %7.3f %6.2f", pra, pdec);
 			}
+		    if (refcat == UB1) {
+			if (tabout)
+			    printf ("	%2d	%2d", gc[0]/100, gc[0]%100);
+			else
+			    printf (" %2d %2d", gc[0]/100, gc[0]%100);
+			}
+
+		    /* Number of stars in search radius */
 		    if (tabout)
 			printf ("	%d", ng);
 		    else
@@ -2068,18 +2141,36 @@ double	eqout;		/* Equinox for output coordinates */
 		printf ("%s\n", headline);
 
 	    if (!ranges) {
-		ra2str (rastr, 32, cra, 3);
+		ra2str (rastr, 32, cra, ndra);
 		if (wfile)
 		    fprintf (fd, "ra	%s\n", rastr);
 		else
 		    printf ("ra	%s\n", rastr);
-		dec2str (decstr, 32, cdec, 2);
+		dec2str (decstr, 32, cdec, nddec);
 		if (wfile)
 		    fprintf (fd, "dec	%s\n", decstr);
 		else
 		    printf ("dec	%s\n", decstr);
 		}
 
+	    /* Minimum number of plate IDs for USNO-B1.0 catalog */
+	    if (minid != 0) {
+		sprintf (headline, "minid	%d", minid);
+		if (wfile)
+		    fprintf (fd, "%s\n", headline);
+		if (tabout)
+		     printf ("%s\n", headline);
+		}
+
+	    /* Minimum proper motion quality for USNO-B1.0 catalog */
+	    if (minpmqual > 0) {
+		sprintf (headline, "minpmq	%d", minpmqual);
+		if (wfile)
+       		    fprintf (fd, "%s\n", headline);
+       		if (tabout)
+		    printf ("%s\n", headline);
+		}
+	
 	    if (wfile)
 		fprintf (fd, "equinox	%.1f\n", eqout);
 	    else
@@ -2201,6 +2292,8 @@ double	eqout;		/* Equinox for output coordinates */
 	    strcat (headline,"	magb	magr	plate");
 	else if (refcat == TMPSC)
 	    strcat (headline,"	magj  	magh  	magk  ");
+	else if (refcat == UB1)
+	    strcat (headline, "	magb1	magr1	magb2	magr2	magn 	pm	ni");
 	else if (refcat == GSC2)
 	    strcat (headline,"	magf	magj	magv  	magn ");
 	else if (refcat == IRAS)
@@ -2217,10 +2310,13 @@ double	eqout;		/* Equinox for output coordinates */
 	    strcat (headline,"	mag	plate");
 	else if (nmagr > 0) {
 	    for (imag = 0; imag < nmagr; imag++) {
-		if (nmagr == 1)
-		    sprintf (temp, "	mag  ", imag);
-		else
+	    	if (starcat[icat] == NULL &&
+		    strlen (starcat[icat]->keymag[imag]) > 0)
+		    sprintf (temp, "	%s ", starcat[icat]->keymag[imag]);
+		else if (nmagr > 1)
 		    sprintf (temp, "	mag%d ", imag);
+		else
+		    sprintf (temp, "	mag  ");
 		strcat (headline, temp);
 		}
 	    }
@@ -2231,7 +2327,7 @@ double	eqout;		/* Equinox for output coordinates */
 	if (mprop == 2)
 	    strcat (headline," 	velocity");
 	if (mprop == 1)
-	    strcat (headline,"	Ura    	Udec  ");
+	    strcat (headline,"	pmra  	pmdec");
 	if (ranges == NULL)
 	    strcat (headline,"	arcsec");
 	if (refcat == TABCAT && keyword != NULL) {
@@ -2266,6 +2362,8 @@ double	eqout;		/* Equinox for output coordinates */
 	    }
 	if (refcat == GSC || refcat == GSCACT)
 	    strcat (headline,"	-----	----	-");
+	else if (refcat == UB1)
+	    strcat (headline,"	--	--");
 	else if (typecol == 1)
 	    strcat (headline,"	----");
 	else if (typecol == 2)
@@ -2318,6 +2416,8 @@ double	eqout;		/* Equinox for output coordinates */
 		    strcpy (headline, "USNO_A1_number ");
 		else if (refcat == UA2)
 		    strcpy (headline, "USNO_A2_number ");
+		else if (refcat == UB1)
+		    strcpy (headline, "USNO_B1_number ");
 		else if (refcat == TMPSC)
 		    strcpy (headline, "2MASS_num. ");
 		else if (refcat == UJC)
@@ -2390,6 +2490,8 @@ double	eqout;		/* Equinox for output coordinates */
 	    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		refcat == UAC  || refcat == UA1  || refcat == UA2)
 		strcat (headline, "  MagB  MagR");
+	    else if (refcat == UB1)
+		strcat (headline, "  MagB1  MagR1  MagB2  MagR2  MagN ");
 	    else if (refcat == UJC)
 		strcat (headline, "  Mag ");
 	    else if (refcat == GSC || refcat == GSCACT)
@@ -2411,7 +2513,7 @@ double	eqout;		/* Equinox for output coordinates */
 		    if (starcat != NULL &&
 			strlen(starcat[icat]->keymag[imag]) > 0) {
 			strcat (headline," ");
-			sprintf (temp, " %s", starcat[icat]->keymag[imag]);
+			sprintf (temp, " %s ", starcat[icat]->keymag[imag]);
 			strcat (headline, temp);
 			}
 		    else if (nmagr > 1) {
@@ -2426,6 +2528,8 @@ double	eqout;		/* Equinox for output coordinates */
 		refcat == UAC  || refcat == UA1  || refcat == UA2 ||
 		refcat == UJC)
 		strcat (headline, "  Plate");
+	    else if (refcat == UB1)
+		strcat (headline, " PM  NI");
 	    else if (refcat == GSC || refcat == GSCACT)
 		strcat (headline, " Class Band N");
 	    else if (typecol == 1)
@@ -2493,12 +2597,12 @@ double	eqout;		/* Equinox for output coordinates */
 	    }
 	if (gy[i] > 0.0) {
 	    if (degout) {
-		deg2str (rastr, 32, gra[i], 7);
-		deg2str (decstr, 32, gdec[i], 7);
+		deg2str (rastr, 32, gra[i], nddeg);
+		deg2str (decstr, 32, gdec[i], nddeg);
 		}
 	    else {
-		ra2str (rastr, 32, gra[i], 3);
-		dec2str (decstr, 32, gdec[i], 2);
+		ra2str (rastr, 32, gra[i], ndra);
+		dec2str (decstr, 32, gdec[i], nddec);
 		}
 	    if (gx[i] > 0.0)
 		gdist = 3600.0 * gx[i];
@@ -2603,6 +2707,10 @@ double	eqout;		/* Equinox for output coordinates */
 			strcat (headline, temp);
 			}
 		    }
+		else if (refcat == UB1)
+		    sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f	%.2f	%2d	%2d",
+		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],gm[4][i],
+		     gc[i]/100, gc[i]%100);
 		else if (refcat == HIP)
 		    sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
@@ -2619,6 +2727,10 @@ double	eqout;		/* Equinox for output coordinates */
 	            sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
 		    for (imag = 0; imag < nmagr; imag++) {
 			sprintf (temp, "	%.2f", gm[imag][i]);
+			strcat (headline, temp);
+			}
+		    if (typecol == 2) {
+			sprintf (temp, "	%d", gc[i]);
 			strcat (headline, temp);
 			}
 		    }
@@ -2753,7 +2865,11 @@ double	eqout;		/* Equinox for output coordinates */
 		if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		    refcat == UAC  || refcat == UA1  || refcat == UA2 ||
 		    refcat == UJC) {
-		    sprintf (temp," %4d ", gc[i]);
+		    sprintf (temp," %4d", gc[i]);
+		    strcat (headline, temp);
+		    }
+		else if (refcat == UB1) {
+		    sprintf (temp," %2d %2d", gc[i]/100, gc[i]%100);
 		    strcat (headline, temp);
 		    }
 		else if (refcat == GSC || refcat == GSCACT) {
@@ -2881,12 +2997,12 @@ double	*drad;		/* Radius to search in degrees (0=box) (returned) */
             num2str (dstr, *cdec, 10, 5);
 	    }
 	else if (syscoor==WCS_ECLIPTIC || syscoor==WCS_GALACTIC || degout0) {
-	    deg2str (rstr, 32, *cra, 7);
-            deg2str (dstr, 32, *cdec, 7);
+	    deg2str (rstr, 32, *cra, nddeg);
+            deg2str (dstr, 32, *cdec, nddeg);
 	    }
 	else {
-	    ra2str (rstr, 32, *cra, 3);
-            dec2str (dstr, 32, *cdec, 2);
+	    ra2str (rstr, 32, *cra, ndra);
+            dec2str (dstr, 32, *cdec, nddec);
 	    }
 	wcscstr (cstr, syscoor, 0.0, 0.0);
 	fprintf (stderr,"Center:  %s   %s %s\n", rstr, dstr, cstr);
@@ -2896,12 +3012,12 @@ double	*drad;		/* Radius to search in degrees (0=box) (returned) */
 	wcscon (syscoor, sysout, 0.0, 0.0, cra, cdec, epout);
 	if (verbose) {
 	    if (syscoor == WCS_ECLIPTIC || syscoor == WCS_GALACTIC || degout0) {
-		deg2str (rstr, 32, *cra, 7);
-        	deg2str (dstr, 32, *cdec, 7);
+		deg2str (rstr, 32, *cra, nddeg);
+        	deg2str (dstr, 32, *cdec, nddeg);
 		}
 	    else {
-		ra2str (rstr, 32, *cra, 3);
-        	dec2str (dstr, 32, *cdec, 2);
+		ra2str (rstr, 32, *cra, ndra);
+        	dec2str (dstr, 32, *cdec, nddec);
 		}
 	    wcscstr (cstr, syscoor, 0.0, 0.0);
 	    fprintf (stderr,"Center:  %s   %s %s\n", rstr, dstr, cstr);
@@ -2917,7 +3033,6 @@ double	*drad;		/* Radius to search in degrees (0=box) (returned) */
 	    }
 	else {
 	    *dra = dra0 / 3600.0;
-	    *dra = *dra / cos (degrad (*cdec));
 	    *ddec = ddec0 / 3600.0;
 	    }
 	}
@@ -3008,12 +3123,12 @@ int	nnfld;		/* Number of characters in ID field */
 	num2str (decstr, dec, 10, 5);
 	}
     else if (sys2 == WCS_ECLIPTIC || sys2 == WCS_GALACTIC || degout0) {
-	deg2str (rastr, 32, ra, 7);
-	deg2str (decstr, 32, dec, 7);
+	deg2str (rastr, 32, ra, nddeg);
+	deg2str (decstr, 32, dec, nddeg);
 	}
     else {
-	ra2str (rastr, 32, ra, 3);
-	dec2str (decstr, 32, dec, 2);
+	ra2str (rastr, 32, ra, ndra);
+	dec2str (decstr, 32, dec, nddec);
 	}
 
     /* Set type of catalog being searched */
@@ -3305,6 +3420,39 @@ char *parstring;
 	    degout0 = 0;
 	}
 
+    /* Number of decimal places in output positions */
+    else if (!strcasecmp (parname, "ndec")) {
+	if (isnum (parvalue)) {
+	    if (degout0) {
+		nddeg = atoi (parvalue);
+		if (nddeg < 0 || nddeg > 10)
+		    nddeg = 7;
+		}
+	    else {
+		ndra = atoi (parvalue);
+		if (ndra < 0 || ndra > 10)
+		    ndra = 3;
+		nddec = ndra - 1;
+		}
+	    }
+	}
+
+    /* Minimum proper motion quality for USNO-B1.0 catalog */
+    else if (!strcasecmp (parname, "minpmq")) {
+	if (isnum (parvalue)) {
+	    minid = atoi (parvalue);
+	    setminpmqual (minid);
+	    }
+	}
+
+    /* Minimum number of plate ID's for USNO-B1.0 catalog */
+    else if (!strcasecmp (parname, "minid")) {
+	if (isnum (parvalue)) {
+	    minid = atoi (parvalue);
+	    setminid (minid);
+	    }
+	}
+
     /* Output in VOTable XML instead of tab-separated table */
     else if (!strcasecmp (parname, "format")) {
 	if (!strncasecmp (parvalue, "vot", 3)) {
@@ -3446,7 +3594,7 @@ PrintWebHelp ()
     fprintf (out, "-------  ------------------------------------------------\n");
     fprintf (out, "catalog  gsc (HST GSC),  ua2 (USNO-A2.0),  gsc2 (GSC II),\n");
     fprintf (out, "         gsca (GSC-ACT), ty2 (Tycho-2),    tmc (2MASS PSC),\n");
-    fprintf (out, "         act (USNO ACT), usa2 (USNO-SA2.0), ppm, sao, etc.\n");
+    fprintf (out, "         ub1 (USNO-B1.0), ppm, sao, etc.\n");
     fprintf (out, "ra       right ascension in degrees or hh:mm:ss.sss\n");
     fprintf (out, "dec      declination in degrees or [+/-]dd:mm:ss.sss\n");
     fprintf (out, "sys      coordinate system (B1950, J2000, Ecliptic, Galactic\n");
@@ -3725,4 +3873,13 @@ PrintGSClass ()
  * Oct 30 2002	Print out coordinate epoch
  * Nov  4 2002	Add entry-by-entry epoch filter
  * Dec  6 2002	Fix epoch output format bug
+ *
+ * Jan 26 2003	Add USNO-B1.0 Catalog
+ * Jan 28 2003	Assume dra on command line in RA arcseconds, not sky
+ * Jan 28 2003	Add option to set number of decimal places over web
+ * Jan 29 2003	Add options to set min ID and min PM qual for USNO-B1.0
+ * Jan 29 2003	Add header lines if USNO-B1.0 ID or PM quality limits
+ * Jan 29 2003	Print magnitude headers from Starbase files
+ * Jan 30 2003	Put proper motion back into one line output
+ * Feb  4 2003	Fix bug freeing magnitude vectors prior to reallocating them
  */

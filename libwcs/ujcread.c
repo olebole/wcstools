@@ -1,8 +1,8 @@
 /*** File libwcs/ujcread.c
- *** September 19, 2001
+ *** February 4, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -667,7 +667,7 @@ int znum;	/* UJ Catalog zone */
 	nstars = (int) statbuff.st_size / 12;
 
 /* Open zone catalog */
-    if (!(fcat = fopen (zonepath, "r"))) {
+    if (!(fcat = fopen (zonepath, "rb"))) {
 	fprintf (stderr,"UJCOPEN: Zone catalog %s cannot be read\n",zonepath);
 	return (0);
 	}
@@ -812,4 +812,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Jan 11 2001	All printing is to stderr
  * Jun  7 2001	Add proper motion flag and number of magnitudes to RefCat()
  * Sep 19 2001	Drop fitshead.h; it is in wcs.h
+ *
+ * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  */

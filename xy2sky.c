@@ -1,5 +1,5 @@
 /* File xy2sky.c
- * June 19, 2002
+ * January 7, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -308,7 +308,7 @@ char **av;
 		    if (!fgets (linebuff, 1023, fd))
 			break;
 		    line = linebuff;
-		    if (line[1] == '#')
+		    if (line[0] == '#')
 			continue;
 		    if (ncm || ncx)
 			setoken (&tokens, line, "");
@@ -329,11 +329,11 @@ char **av;
 			}
 		    }
 		if (pix2wcst (wcs, x, y, wcstring, lstr)) {
-		    /* Remove coordinate system if tab table output */
+		    /* Remove coordinate system if tab table output
 		    if (tabtable) {
 			ctab = strrchr (wcstring, (char) 9);
 			*ctab = (char) 0;
-			}
+			} */
 		    if (wcs->sysout == WCS_ECLIPTIC) {
 			sprintf(temp,"%.5f",wcs->epoch);
 			strcat (wcstring, " ");
@@ -624,4 +624,7 @@ char *listfile;		/* Name of file with list of input coordinates */
  * Apr  8 2002	Free wcs structure if no WCS is found in file header
  *
  * Jun 19 2002	Add verbose argument to GetWCSFITS()
+ *
+ * Jan  7 2003	Fix bug which dropped declination for tab output from file
+ * Jan  7 2003	Fix bug which failed to ignore #-commented-out input file lines
  */

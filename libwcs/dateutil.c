@@ -1,8 +1,8 @@
 /*** File libwcs/dateutil.c
- *** September 10, 2002
+ *** January 30, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1999-2002
+ *** Copyright (C) 1999-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -2890,12 +2890,12 @@ double tsec;	/* time since 1950.0 in UT seconds */
 
     /* Elapsed time as of 0:00 UT */
     if (tsec >= 0.0) {
-	its = (int) (ts + 0.5);
+	its = (int) (tsec + 0.5);
 	tsd = (double) (its % 86400);
 	ts = tsec - tsd;
 	}
     else {
-	its = (int) (-ts + 0.5);
+	its = (int) (-tsec + 0.5);
 	tsd = (double) (86400 - (its % 86400));
 	ts = tsec - tsd;
 	}
@@ -3815,4 +3815,6 @@ double	dnum, dm;
  * Jul  8 2002	If first character of string is -, check for other -'s in isdate
  * Sep 10 2002	Add ET/TDT/TT conversion from UT subroutines
  * Sep 10 2002	Add sidereal time conversions
+ *
+ * Jan 30 2003	Fix typo in ts2gst()
  */

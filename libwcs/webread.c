@@ -1,9 +1,9 @@
 /*** File webread.c
- *** October 3, 2002
+ *** January 28, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
- *** Copyright (C) 2000-2002
+ *** Copyright (C) 2000-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -119,41 +119,50 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
     if (!strncmp (caturl+lurl-4,"scat",4)) {
 
 	/* Center coordinates of search */
-	sprintf (srchurl, "?catalog=%s&ra=%.7f&dec=%.7f&system=%s&",
+	sprintf (srchurl, "?catalog=%s&ra=%.7f&dec=%.7f&system=%s",
 		 refcatname, cra, cdec, cstr);
 
 	/* Search radius or box size */
 	if (drad != 0.0) {
 	    dtemp = drad * 3600.0;
-	    sprintf (temp, "radius=%.3f&",dtemp);
+	    sprintf (temp, "&radius=%.3f",dtemp);
 	    strcat (srchurl, temp);
 	    }
 	else {
 	    dtemp = dra * 3600.0;
-	    sprintf (temp, "dra=%.3f&",dtemp);
+	    sprintf (temp, "&dra=%.3f",dtemp);
 	    strcat (srchurl, temp);
 	    dtemp = ddec * 3600.0;
-	    sprintf (temp, "ddec=%.3f&",dtemp);
+	    sprintf (temp, "&ddec=%.3f",dtemp);
 	    strcat (srchurl, temp);
 	    }
 
 	/* Sort by magnitude or distance for cutoff */
 	if (sortmag > 0) {
-	    sprintf (temp,"sort=m$d&", sortmag);
+	    sprintf (temp,"&sort=m%d", sortmag);
 	    strcat (srchurl, temp);
 	    }
 	if (distsort)
-	    strcat (srchurl, "sort=distance&");
+	    strcat (srchurl, "&sort=distance");
 
 	/* Magnitude limits */
 	if (mag1 != mag2) {
-	    sprintf (temp, "mag1=%.2f&mag=%.2f&",mag1,mag2);
+	    sprintf (temp, "&mag1=%.2f&mag=%.2f",mag1,mag2);
 	    strcat (srchurl, temp);
 	    }
 
 	/* Epoch for coordinates */
 	if (epout != 0.0) {
-	    sprintf (temp, "epoch=%.5f&", epout);
+	    sprintf (temp, "&epoch=%.5f", epout);
+	    strcat (srchurl, temp);
+	    }
+
+	/* Number of decimal places in RA seconds */
+	sprintf (temp, "&ndec=4");
+
+	/* Maximum number of stars to return */
+	if (nstarmax > 0) {
+	    sprintf (temp, "&nstar=%d", nstarmax);
 	    strcat (srchurl, temp);
 	    }
 	if (nlog > 0)
@@ -315,9 +324,9 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 
 	/* Set up search query */
 	wcscstr (cstr, sysout, eqout, epout);
-	sprintf (srchurl, "?catalog=%s&num=%s&outsys=%s&",refcatname,numlist,csys);
+	sprintf (srchurl, "?catalog=%s&num=%s&ndec=4&outsys=%s",refcatname,numlist,csys);
 	if (epout != 0.0) {
-	    sprintf (temp, "epoch=%.5f&", epout);
+	    sprintf (temp, "&epoch=%.5f", epout);
 	    strcat (srchurl, temp);
 	    }
 	}
@@ -782,4 +791,7 @@ FileINetParse(file, port, adrinet)
  * Apr  8 2002	Fix bug in ESO USNO-A2.0 server code
  * Aug  6 2002	Make starcat->entmag and starcat->keymag into vectors
  * Oct  3 2002	If nstarmax is less than 1, print results from web directly
+ *
+ * Jan 27 2003	Add maximum number of stars to be returned to webread()
+ * Jan 28 2003	Add number of decimal places to webread() and webrnum()
  */

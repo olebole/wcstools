@@ -284,12 +284,8 @@ const char *prjrev_errmsg[] = {
    "Invalid projection parameters",
    "Invalid value of (x,y)"};
 
-
-#ifndef copysign /* may be defined in math.h */
-#define copysign(X, Y) ((Y) < 0.0 ? -fabs(X) : fabs(X))
-#endif
-
-
+#define copysgn(X, Y) ((Y) < 0.0 ? -fabs(X) : fabs(X))
+#define copysgni(X, Y) ((Y) < 0 ? -abs(X) : abs(X))
 
 /*==========================================================================*/
 
@@ -417,7 +413,7 @@ struct prjprm *prj;
 
 {
    strcpy(prj->code, "AZP");
-   prj->flag   = copysign(AZP, prj->flag);
+   prj->flag   = copysgni (AZP, prj->flag);
    prj->phi0   =  0.0;
    prj->theta0 = 90.0;
 
@@ -541,7 +537,7 @@ double *phi, *theta;
       s = atan2deg (1.0, s);
 
       if (fabs(t) > 1.0) {
-         t = copysign(90.0,t);
+         t = copysgn (90.0,t);
          if (fabs(t) > 1.0+tol) {
             return 2;
          }
@@ -599,7 +595,7 @@ struct prjprm *prj;
 
 {
    strcpy(prj->code, "SZP");
-   prj->flag   = copysign(SZP, prj->flag);
+   prj->flag   = copysgni (SZP, prj->flag);
    prj->phi0   =  0.0;
    prj->theta0 = 90.0;
 
@@ -785,7 +781,7 @@ struct prjprm *prj;
 
 {
    strcpy(prj->code, "TAN");
-   prj->flag   = copysign(TAN, prj->flag);
+   prj->flag   = copysgni (TAN, prj->flag);
    prj->phi0   =  0.0;
    prj->theta0 = 90.0;
 
@@ -977,7 +973,7 @@ struct prjprm *prj;
 
 {
    strcpy(prj->code, "SIN");
-   prj->flag   = copysign(SIN, prj->flag);
+   prj->flag   = copysgni (SIN, prj->flag);
    prj->phi0   =  0.0;
    prj->theta0 = 90.0;
 
@@ -1265,7 +1261,7 @@ struct prjprm *prj;
    const double tol = 1.0e-13;
 
    strcpy(prj->code, "ZPN");
-   prj->flag   = copysign(ZPN, prj->flag);
+   prj->flag   = copysgni (ZPN, prj->flag);
    prj->phi0   =  0.0;
    prj->theta0 = 90.0;
 
@@ -1982,7 +1978,7 @@ double *phi, *theta;
       if (fabs(s) > 1.0+tol) {
          return 2;
       }
-      s = copysign(1.0,s);
+      s = copysgn (1.0,s);
    }
 
    *phi   = x*prj->w[1];
@@ -2410,7 +2406,7 @@ double *x, *y;
 
    if (fabs(theta) == 90.0) {
       *x = 0.0;
-      *y = copysign(prj->w[0],theta);
+      *y = copysgn (prj->w[0],theta);
    } else if (theta == 0.0) {
       *x = prj->w[1]*phi;
       *y = 0.0;
@@ -2477,7 +2473,7 @@ double *phi, *theta;
       if (fabs(z) > 1.0+tol) {
          return 2;
       }
-      z = copysign(1.0,z) + y0*s/PI;
+      z = copysgn (1.0,z) + y0*s/PI;
    } else {
       z = asin(z)*prj->w[4] + y0*s/PI;
    }
@@ -2486,7 +2482,7 @@ double *phi, *theta;
       if (fabs(z) > 1.0+tol) {
          return 2;
       }
-      z = copysign(1.0,z);
+      z = copysgn (1.0,z);
    }
 
    *theta = asindeg (z);
@@ -2590,7 +2586,7 @@ double *phi, *theta;
       if (fabs(s) > 1.0+tol) {
          return 2;
       }
-      s = copysign(1.0,s);
+      s = copysgn (1.0,s);
    }
 
    xp = 2.0*z*z - 1.0;
@@ -2637,7 +2633,7 @@ struct prjprm *prj;
 
 {
    strcpy(prj->code, "COP");
-   prj->flag   = copysign(COP, prj->flag);
+   prj->flag   = copysgni (COP, prj->flag);
    prj->phi0   = 0.0;
    prj->theta0 = prj->p[1];
 
@@ -3343,7 +3339,7 @@ double *phi, *theta;
       *theta = 0.0;
    } else if (fabs(w-90.0) < tol) {
       *phi = 0.0;
-      *theta = copysign(90.0,y);
+      *theta = copysgni (90.0,y);
    } else {
       /* Iterative solution using weighted division of the interval. */
       if (y > 0.0) {
@@ -3527,13 +3523,13 @@ double *x, *y;
       if (fabs(xf) > 1.0+tol) {
          return 2;
       }
-      xf = copysign(1.0,xf);
+      xf = copysgn (1.0,xf);
    }
    if (fabs(yf) > 1.0) {
       if (fabs(yf) > 1.0+tol) {
          return 2;
       }
-      yf = copysign(1.0,yf);
+      yf = copysgn (1.0,yf);
    }
 
    *x = prj->w[0]*(xf + x0);
@@ -3777,13 +3773,13 @@ double *x, *y;
       if (fabs(xf) > 1.0+tol) {
          return 2;
       }
-      xf = copysign(1.0,xf);
+      xf = copysgn (1.0,xf);
    }
    if (fabs(yf) > 1.0) {
       if (fabs(yf) > 1.0+tol) {
          return 2;
       }
-      yf = copysign(1.0,yf);
+      yf = copysgn (1.0,yf);
    }
 
    *x = prj->w[0]*(x0 + xf);
@@ -3994,7 +3990,7 @@ double *x, *y;
 
    if (fabs(theta) == 90.0) {
       *x = 0.0;
-      *y = copysign(2.0*prj->w[0],theta);
+      *y = copysgn (2.0*prj->w[0],theta);
       return 0;
    }
 
@@ -4132,13 +4128,13 @@ double *x, *y;
       if (fabs(xf) > 1.0+tol) {
          return 2;
       }
-      xf = copysign(1.0,xf);
+      xf = copysgn (1.0,xf);
    }
    if (fabs(yf) > 1.0) {
       if (fabs(yf) > 1.0+tol) {
          return 2;
       }
-      yf = copysign(1.0,yf);
+      yf = copysgn (1.0,yf);
    }
 
    *x = prj->w[0]*(xf + x0);
@@ -4328,4 +4324,7 @@ double *phi, *theta;
  * Sep 19 2001  Doug Mink - Make above changes for WCSLIB 2.7
  *
  * Mar 15 2002	Doug Mink - Make above changes for WCSLIB 2.8.2
+ *
+ * Feb  3 2003	Doug Mink - Use locally defined copysgn() and copysgni(),
+ *		            not copysign()
  */

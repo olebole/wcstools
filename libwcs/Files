@@ -111,6 +111,9 @@ tnxpos.c
 uacread.c
   Return USNO A and SA Catalog stars from their standard CDROM format
   files for a given RA, Dec, and magnitude range or list of star numbers.
+ubcread.c
+  Return USNO B Catalog stars from their standard format files for a
+  given RA, Dec, and magnitude range or list of star numbers.
 ujcread.c
   Return USNO UJ Catalog stars from its standard CDROM format files for
   a given RA, Dec, and magnitude range or list of star numbers.

@@ -1,8 +1,8 @@
 /*** File libwcs/uacread.c
- *** October 2, 2002
+ *** February 4, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2002
+ *** Copyright (C) 1996-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -426,7 +426,7 @@ int	nlog;		/* Logging interval */
 				    dist = wcsdist (cra,cdec,ra,dec) * 60.0;
 				    printf ("%s	%s	%s", numstr,rastr,decstr);
 				    printf ("	%.2f	%.2f	%.2f\n",
-					magb, magr, dist);
+					magb, magr, dist / 60.0);
 				    }
 
 			    /* Save star position and magnitude in table */
@@ -965,7 +965,7 @@ int znum;	/* UA Catalog zone */
 	nstars = (int) statbuff.st_size / 12;
 
 /* Open zone catalog */
-    if (!(fcat = fopen (zonepath, "r"))) {
+    if (!(fcat = fopen (zonepath, "rb"))) {
 	fprintf (stderr,"UA zone catalog %s cannot be read\n",zonepath);
 	return (0);
 	}
@@ -1149,4 +1149,7 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Apr 10 2002	Simplify use of magsort
  * Jul 31 2002	Drop extra magb argument in uacrnum()
  * Oct  2 2002	Print current scat revision message
+ *
+ * Jan 21 2003	Print arcminute radial distance, not arcsecond for instant out
+ * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  */

@@ -23,6 +23,10 @@ saosao - SAO Catalog from SAO binary format catalog file
 saoty2 - Tycho-2 Catalog from CDROM or hard disk
 saoua1 - USNO-A1.0 Catalog from 10 CDROMs (or same files on hard disk)
 saoua2 - USNO-A2.0 Catalog from 11 CDROMs (or same files on hard disk)
+saoub1 - USNO-B1.0 Catalog from hard disk
+saoub1i3 - USNO-B1.0 Catalog from hard disk (objects on 3 or more plates)
+saoub1i4 - USNO-B1.0 Catalog from hard disk (objects on 4 or more plates)
+saoub1i5 - USNO-B1.0 Catalog from hard disk (objects on all 5 plates)
 saoujc - USNO J Catalog from CDROM or hard disk
 saousa1 - USNO-SA1.0 Catalog from CDROM or hard disk
 saousa2 - USNO-SA2.0 Catalog from CDROM or hard disk
@@ -43,3 +47,7 @@ saomgsca - GSC-ACT Catalog from 2 CDROMs (or same files on hard disk)
 saomgsc2 - GSC II Catalog over the Internet
 saomtmc - 2MASS Point Source Catalog from 11 CDROMs (or same files on hard disk)
 saomua2 - USNO-A2.0 Catalog from 11 CDROMs (or same files on hard disk)
+saomub1 - USNO-B1.0 Catalog from files on hard disk
+
+Note that all of these scripts will work with catalogs accessed over the
+web if the appropriate environment variables have been set.

@@ -1,5 +1,5 @@
 /* File imwcs.c
- * July 31, 2002
+ * January 23, 2003
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -528,6 +528,8 @@ char    *command;
 	fprintf (stderr,"Set WCS in FITS and IRAF image files using USNO SA1.0 Catalog stars)\n");
     else if (strsrch (progname,"usa2") != NULL)
 	fprintf (stderr,"Set WCS in FITS and IRAF image files using USNO SA2.0 Catalog stars)\n");
+    else if (strsrch (progname,"ub1") != NULL)
+	fprintf (stderr,"Set WCS in FITS and IRAF image files using USNO B1.0 Catalog stars)\n");
     else if (strsrch (progname,"act") != NULL)
 	fprintf (stderr,"Set WCS in FITS and IRAF image files using USNO ACT Catalog stars)\n");
     else if (strsrch (progname,"bsc") != NULL)
@@ -933,4 +935,6 @@ char	*name;		/* FITS or IRAF image filename */
  *
  * Apr 10 2002	Accept letter as well as number for magnitude
  * Jul 31 2002	Add iteration with more parameters fit
+ *
+ * Jan 23 2003	Add USNO-B1.0 Catalog
  */
