@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** June 10, 2002
+ *** August 1, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2002
@@ -1825,15 +1825,22 @@ char *value;      /* String (returned) */
 
     /* Transfer token value to returned string */
     rval = value;
-    if (lval < 0)
+    if (lval < 0) {
 	lastval = value - lval - 1;
-    else
+	while (*pval != '\n' && pval < lastring && rval < lastval) {
+	    if (lval > 0 && *pval == ' ')
+		break;
+	    *rval++ = *pval++;
+	    }
+	}
+    else {
 	lastval = value + lval - 1;
-    while (*pval != '\n' && *pval != '/' &&
-	   pval < lastring && rval < lastval) {
-	if (lval > 0 && *pval == ' ')
-	    break;
-	*rval++ = *pval++;
+	while (*pval != '\n' && *pval != '/' &&
+	    pval < lastring && rval < lastval) {
+	    if (lval > 0 && *pval == ' ')
+		break;
+	    *rval++ = *pval++;
+	    }
 	}
     if (rval < lastval)
 	*rval = (char) 0;
@@ -2163,4 +2170,5 @@ FILE	*fd;		/* Output file descriptor; none if NULL */
  * Apr 10 2002	Add CatMagNum() to translate single letters to mag sequence number
  * May 13 2002	In agets(), allow arbitrary number of spaces around : or =
  * Jun 10 2002	In isrange(), return 0 if string is null or empty
+ * Aug  1 2002	In agets(), read through / if reading to end of line
  */

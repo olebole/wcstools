@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** June 26, 2002
+ *** August 30, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2002
@@ -1350,6 +1350,124 @@ int	ls1;	/* Length of string being searched */
 }
 
 
+/* Find string s2 within null-terminated string s1 (case-free search) */
+
+char *
+strcsrch (s1, s2)
+
+char *s1;	/* String to search */
+char *s2;	/* String to look for */
+
+{
+    int ls1;
+    ls1 = strlen (s1);
+    return (strncsrch (s1, s2, ls1));
+}
+
+
+/* Find string s2 within string s1 (case-free search) */
+
+char *
+strncsrch (s1, s2, ls1)
+
+char	*s1;	/* String to search */
+char	*s2;	/* String to look for */
+int	ls1;	/* Length of string being searched */
+
+{
+    char *s,*s1e, sl, *os2;
+    char cfirst,clast,ocfirst,oclast;
+    int i,ls2;
+
+    /* Return null string if either pointer is NULL */
+    if (s1 == NULL || s2 == NULL)
+	return (NULL);
+
+    /* A zero-length pattern is found in any string */
+    ls2 = strlen (s2);
+    if (ls2 ==0)
+	return (s1);
+
+    /* Only a zero-length string can be found in a zero-length string */
+    if (ls1 ==0)
+	return (NULL);
+
+    /* For one or two characters, set opposite case first and last letters */
+    if (ls2 < 3) {
+	cfirst = s2[0];
+	if (cfirst > 96 && cfirst < 123)
+	    ocfirst = cfirst - 32;
+	else if (cfirst > 64 && cfirst < 91)
+	    ocfirst = cfirst + 32;
+	else
+	    ocfirst = cfirst;
+	if (ls2 > 1) {
+	    clast = s2[1];
+	    if (clast > 96 && clast < 123)
+		oclast = clast - 32;
+	    else if (clast > 64 && clast < 91)
+		oclast = clast + 32;
+	    else
+		oclast = clast;
+	    }
+	}
+
+    /* Else duplicate string with opposite case letters for comparison */
+    else {
+	os2 = (char *) calloc (ls2, 1);
+	for (i = 0; i < ls2; i++) {
+	    if (s2[i] > 96 && s2[i] < 123)
+		os2[i] = s2[i] - 32;
+	    else if (s2[i] > 64 && s2[i] < 91)
+		os2[i] = s2[i] + 32;
+	    else
+		os2[i] = s2[i];
+	    }
+	cfirst = s2[0];
+	ocfirst = os2[0];
+	clast = s2[ls2-1];
+	oclast = os2[ls2-1];
+	}
+
+    /* Loop through input string, character by character */
+    s1e = s1 + ls1 - ls2 + 1;
+    s = s1;
+    while (s < s1e) { 
+
+	/* Search for first character in pattern string */
+	if (*s == cfirst || *s == ocfirst) {
+
+	    /* If single character search, return */
+	    if (ls2 == 1)
+		return (s);
+
+	    /* Search for last character in pattern string if first found */
+	    sl = s[ls2-1];
+	    if (sl == clast || sl == oclast) {
+
+		/* If two-character search, return */
+		if (ls2 == 2)
+		    return (s);
+
+		/* If 3 or more characters, check for rest of search string */
+		i = 1;
+		while (i < ls2 && (s[i] == s2[i] || s[i] == os2[i]))
+		    i++;
+
+		/* If entire string matches, return */
+		if (i >= ls2) {
+		    free (os2);
+		    return (s);
+		    }
+		}
+	    }
+	s++;
+	}
+    free (os2);
+    return (NULL);
+}
+
+
 int
 notnum (string)
 
@@ -1520,4 +1638,6 @@ int set_saolib(hstring)
  * Apr  3 2002	Add hgetr8c(), hgeti4c(), and hgetsc() for multiple WCS handling
  * Apr 26 2002	Fix bug in hgetsc(), hgeti4c(), and hgetr8c() found by Bill Joye
  * Jun 26 2002	Do not drop leading or trailing spaces in multi-line values
+ * Aug  6 2002	Add strcsrch() and strncsrch() for case-insensitive searches
+ * Aug 30 2002	Fix bug so strcsrch() really is case-insensitive
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/imgetwcs.c
- *** October 19, 2001
+ *** August 2, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -409,6 +409,10 @@ setsecpix (secpix)		/* Set first axis arcseconds per pixel */
 double secpix;
 { secpix0 = secpix; return; }
 
+double
+getsecpix ()		/* Return first axis arcseconds per pixel */
+{ return (secpix0); }
+
 void
 setsecpix2 (secpix)		/* Set second axis arcseconds per pixel */
 double secpix;
@@ -440,16 +444,22 @@ char *rastr, *decstr;
 void
 setdcenter (ra, dec)		/* Set center sky coordinates in degrees */
 double ra, dec;
-{
-    ra0 = ra;
-    dec0 = dec;
-    return;
-}
+{ ra0 = ra; dec0 = dec; return; }
 
 void
-setrefpix (x, y)
+getcenter (ra, dec)		/* Return initial reference sky coordinates */
+double *ra, *dec;
+{ *ra = ra0; *dec = dec0; return; }
+
+void
+setrefpix (x, y)		/* Set reference pixel image coordinates */
 double x, y;
 { xref0 = x; yref0 = y; return; }
+
+void
+getrefpix (x, y)		/* Return initial ref pixel image coordinates */
+double *x, *y;
+{ *x = xref0; *y = yref0; return; }
 
 void
 setproj (ptype)
@@ -578,4 +588,5 @@ char *dateobs;
  * Oct 19 2001	Allow DATE-OBS to be set
  *
  * Apr  3 2002	Update projection types to match list in wcs.h and wcs.c
+ * Aug  2 2002	Add getsecpix(), getrefpix(), getcneter() to return presets
  */

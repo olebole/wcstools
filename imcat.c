@@ -1,5 +1,5 @@
 /* File imcat.c
- * June 19, 2002
+ * August 6, 2002
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -1507,11 +1507,18 @@ int	*region_char;	/* Character for SAOimage region file output */
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],isp);
 		    }
 		else {
-		    sprintf (temp, "%s	%s	%s	%5.2f",
-			     numstr, rastr, decstr, gm[0][i]);
-		    strcat (headline, temp);
+		    sprintf (headline, "%s	%s	%s",
+			     numstr, rastr, decstr);
+		    for (imag = 0; imag < nmag; imag++) {
+			sprintf (temp, "	%5.2f",gm[imag][i]);
+			strcat (headline, temp);
+			}
 		    if (gcset) {
 			sprintf (temp, "	%d", gc[i]);
+			strcat (headline, temp);
+			}
+		    if (sptype == 1) {
+			sprintf (temp, "	%s", isp);
 			strcat (headline, temp);
 			}
 		    }
@@ -1573,21 +1580,21 @@ int	*region_char;	/* Character for SAOimage region file output */
 		else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
 		    sprintf (headline,"%s %s %s %6.2f %6.2f",
 			     numstr,rastr,decstr,gm[0][i],gm[1][i],isp);
-		else if (refcat == TABCAT) {
-		    sprintf (headline,"%s %s %s %6.2f",
-			     numstr,rastr,decstr,gm[0][i]);
-		    if (gcset) {
+		else {
+		    sprintf (headline,"%s %s %s",
+			     numstr,rastr,decstr);
+		    for (imag = 0; imag < nmag; imag++) {
+			sprintf (temp, " %5.2f",gm[imag][i]);
+			strcat (headline, temp);
+			}
+		    if (sptype == 1) {
+			sprintf (temp, " %2s", isp);
+			strcat (headline, temp);
+			}
+		    if (refcat == TABCAT && gcset) {
 			sprintf(temp,"	%d", gc);
 			strcat (headline, temp);
 			}
-		    }
-		else if (refcat == BINCAT) {
-		    sprintf (headline,"%s %s %s %6.2f %2s",
-			     numstr, rastr, decstr, gm[0][i], isp);
-		    }
-		else {
-		    sprintf (headline, "%s %s %s %6.2f",
-			     numstr, rastr, decstr, gm[0][i]);
 		    }
 
 		/* Add image pixel coordinates to output line */
@@ -1774,4 +1781,5 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Apr 10 2002	Fix magnitude number bug and add magnitude letter
  * May  1 2002	Add -a command to set initial rotation angle
  * Jun 19 2002	Add verbose argument to GetFITShead()
+ * Aug  6 2002	Print all magnitudes for BINARY, TABTABLE, or ASCII catalogs
  */

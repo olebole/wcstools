@@ -1,5 +1,5 @@
 /*** File libwcs/fileutil.c
- *** March 23, 2002
+ *** August 1, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1999-2002
@@ -250,7 +250,9 @@ isfile (filename)
 
 char    *filename;      /* Name of file to check */
 {
-    if (access (filename, R_OK))
+    if (!strcasecmp (filename, "stdin"))
+	return (1);
+    else if (access (filename, R_OK))
 	return (0);
     else
 	return (1);
@@ -353,4 +355,5 @@ char	*string;
  * Jan  4 2002	Allow getfilebuffer() to read from stdin
  * Jan  8 2002	Add sts2c() and stc2s() for space-replaced strings
  * Mar 22 2002	Clean up isfilelist()
+ * Aug  1 2002	Return 1 if file is stdin in isfile()
  */

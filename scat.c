@@ -1,5 +1,5 @@
 /* File scat.c
- * April 10, 2002
+ * August 6, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -913,7 +913,7 @@ double	eqout;		/* Equinox for output coordinates */
     int magsort;
     int typecol;
     int band;
-    int imag;
+    int imag, nmagr;
     int sysout = 0;
     char headline[160];
     char filename[80];
@@ -1093,6 +1093,13 @@ double	eqout;		/* Equinox for output coordinates */
 	    else
 	    }
 
+	/* Figure out which catalog we are searching */
+	if (!(refcat = RefCat (refcatname[icat],title,&sysref,&eqref,
+			       &epref,&mprop,&nmag))) {
+	    fprintf (stderr,"ListCat: Catalog '%s' is missing\n", refcatname[icat]);
+	    return (0);
+	    }
+
 	if (webdump)
 	    nlog = -1;
 	else if (debug)
@@ -1107,13 +1114,6 @@ double	eqout;		/* Equinox for output coordinates */
 	    }
 	else
 	    nlog = 0;
-
-	/* Figure out which catalog we are searching */
-	if (!(refcat = RefCat (refcatname[icat],title,&sysref,&eqref,
-			       &epref,&mprop,&nmag))) {
-	    fprintf (stderr,"ListCat: Catalog '%s' is missing\n", refcatname[icat]);
-	    return (0);
-	    }
 
 	/* If more magnitudes are needed, allocate space for them */
 	if (nmag > nmagmax) {
@@ -1263,6 +1263,10 @@ double	eqout;		/* Equinox for output coordinates */
 		typecol = 1;
 	    else
 		typecol = 0;
+	    if (mprop == 2)
+		nmagr = nmag - 1;
+	    else
+		nmagr = nmag;
 
 	    /* Write out entries for use as image centers */
 	    if (searchcenter) {
@@ -1440,6 +1444,12 @@ double	eqout;		/* Equinox for output coordinates */
 	    else
 		typecol = 0;
 
+	    /* Set number of magnitudes (n-1 if radial velocity present) */
+	    if (mprop == 2)
+		nmagr = nmag - 1;
+	    else
+		nmagr = nmag;
+
 	    /* Compute distance from star to search center */
 	    for (i = 0; i < ns; i++ ) {
 		gx[i] = wcsdist (cra, cdec, gra[i], gdec[i]);
@@ -1486,6 +1496,8 @@ double	eqout;		/* Equinox for output coordinates */
 			else
 			    smag = srchcat->nmag;
 			}
+		    else
+			smag = 1;
 		    if (nohead && tabout) {
 
 			/* Write tab table heading */
@@ -1503,8 +1515,13 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("radsec	%.2f\n", drs);
 			else if (rad0 < 0)
 			    printf ("boxsec	%.2f\n", dds);
-			if (mprop == 1) {
-			    printf ("pmunit	mas/yr\n");
+			if (mprop==1 || (srchcat != NULL && srchcat->mprop==1)) {
+			    if (degout)
+				printf ("pmunit	mas/yr\n");
+			    else {
+				printf ("rpmunit	ms/yr\n");
+				printf ("dpmunit	mas/yr\n");
+				}
 			    }
 
 		        /* Write column headings */
@@ -1526,33 +1543,21 @@ double	eqout;		/* Equinox for output coordinates */
 		        printf ("srch_ra     	srch_dec    	");
 		        if (srchcat != NULL) {
 			    if (smag > 1) {
-				if (strlen (srchcat->keymag1) >0)
-				    printf ("%s	", srchcat->keymag1);
-				else
-				    printf ("smag1	");
-				if (strlen (srchcat->keymag2) >0)
-				    printf ("%s	", srchcat->keymag2);
-				else
-				    printf ("smag2	");
-				if (srchcat->nmag > 2) {
-				    if (strlen (srchcat->keymag3) >0)
-					printf ("%s	", srchcat->keymag3);
+				for (imag = 0; imag < smag; imag++) {
+				    if (strlen (srchcat->keymag[imag]) >0)
+					printf ("s_%s	", srchcat->keymag[imag]);
+				    else if (smag > 1)
+					printf ("s_mag%d	", imag+1);
 				    else
-					printf ("smag3	");
+					printf ("s_mag	");
 				    }
-				}
-			    else if (smag > 0) {
-				if (strlen (srchcat->keymag1) >0)
-				    printf ("%s	", srchcat->keymag1);
-				else
-				    printf ("s_mag	");
 				}
 			    if (srchcat->nepoch)
 				printf ("epoch    	");
 			    if (srchcat->sptype) {
 				if (strlen (srch->isp) > 2) {
 				    padspt = 1;
-				    printf ("srch_spt       	");
+				    printf ("s_spt       	");
 				    }
 				else {
 				    padspt = 0;
@@ -1567,8 +1572,10 @@ double	eqout;		/* Equinox for output coordinates */
 				    printf ("%s	", tstr);
 				    }
 				else
-				    printf ("s_vel    	");
+				    printf ("s_rv    	");
 				}
+			    if (srchcat->mprop > 0)
+				    printf ("s_ura 	s_udec	");
 				
 			    }
 			if (refcat == TABCAT && starcat[icat]->keyid[0] >0) {
@@ -1580,31 +1587,7 @@ double	eqout;		/* Equinox for output coordinates */
 			headline[nnfld] = (char) 0;
 			printf ("%s", headline);
 			printf ("	ra          	dec        	");
-			if (refcat == TABCAT) {
-			    if (starcat[icat]->nmag > 1) {
-				if (strlen (starcat[icat]->keymag1) >0)
-				    printf ("%s	", starcat[icat]->keymag1);
-				else
-				    printf ("mag1	");
-				if (strlen (starcat[icat]->keymag2) > 0)
-				    printf ("%s	", starcat[icat]->keymag2);
-				else
-				    printf ("mag2	");
-				if (starcat[icat]->nmag > 2) {
-				    if (strlen (starcat[icat]->keymag3) >0)
-				        printf ("%s	", starcat[icat]->keymag3);
-				    else
-					printf ("mag3	");
-				    }
-				}
-			    else if (starcat[icat]->nmag > 0) {
-				if (starcat[icat]->keymag1[0] >0)
-				    printf ("%s	", starcat[icat]->keymag1);
-				else
-				    printf ("mag	");
-				}
-			    }
-			else if (refcat == GSC2)
+			if (refcat == GSC2)
 			    printf ("magf 	magj 	magv 	magn 	");
 			else if (refcat == HIP)
 			    printf ("magb 	magv 	parlx	parer	");
@@ -1612,18 +1595,23 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("f10m 	f25m 	f60m 	f100m	");
 			else if (refcat == TMPSC)
 			    printf ("magj  	magh   	magk   	");
-			else if (starcat[icat]!=NULL && starcat[icat]->entrv>0){
-			    if (nmag > 1)
-				printf ("magb  	velocity 	");
-			    else
-				printf ("velocity 	");
+			else if (nmagr > 0) {
+			    for (imag = 0; imag < nmagr; imag++) {
+				if (strlen (starcat[icat]->keymag[imag]) >0)
+				    printf ("%s	", starcat[icat]->keymag[imag]);
+				else if (nmagr > 1)
+				    printf ("mag%d  ", imag+1);
+				else
+				    printf ("mag    ");
+				}
 			    }
-			else if (nmag > 1)
-			    printf ("magb  	magr  	");
-			else
-			    printf ("mag   	");
 			if (typecol == 1)
 			    printf ("spt   	");
+			if (mprop == 1)
+			    printf ("Ura    	Udec  	");
+			if ((starcat[icat]!=NULL && starcat[icat]->entrv>0) &&
+			    mprop == 2)
+			    printf ("velocity	");
 			printf ("n    	");
 			printf ("dra");
 			for (i = 3; i < LenNum(das,2); i++)
@@ -1645,11 +1633,7 @@ double	eqout;		/* Equinox for output coordinates */
 			    }
 			printf ("------------	------------	");
 			if (srchcat != NULL) {
-			    if (smag > 0)
-				printf ("-----	");
-			    if (smag > 1)
-				printf ("-----	");
-			    if (smag > 2)
+			    for (imag = 0; imag < smag; imag++)
 				printf ("-----	");
 			    if (srchcat->nepoch)
 				printf ("---------	");
@@ -1661,6 +1645,8 @@ double	eqout;		/* Equinox for output coordinates */
 				}
 			    if (srchcat->entrv > 0)
 				printf ("---------	");
+			    if (srchcat->mprop == 1)
+				printf ("------	------	");
 			    }
 			strcpy (headline,"----------------------");
 			headline[nnfld] = (char) 0;
@@ -1672,18 +1658,17 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("-----	-----	-----	-----	");
 			else if (refcat == TMPSC)
 			    printf ("-------	-------	-------	");
-			else if (starcat[icat]!=NULL && starcat[icat]->entrv>0){
-			    if (nmag > 1)
-				printf ("----- 	---------	");
-			    else
-				printf ("---------	");
+			else if (nmagr > 0) {
+			    for (imag = 0; imag < nmagr; imag++)
+				printf ("----- 	");
 			    }
-			else if (nmag > 1)
-			    printf ("-----	-----	");
-			else
-			    printf ("-----	");
 			if (typecol == 1)
 			    printf ("---   	");
+			if (mprop == 1)
+			    printf ("------	------	");
+			if ((starcat[icat]!=NULL && starcat[icat]->entrv>0) &&
+			    mprop == 2)
+			    printf ("---------	");
 			printf ("--	");
 			for (i = 0; i < LenNum(das,2); i++)
 			    printf ("-");
@@ -1724,22 +1709,12 @@ double	eqout;		/* Equinox for output coordinates */
 			printf ("%s %s", rastr, decstr);
 		    if (srchcat != NULL && srch != NULL) {
 			if (smag > 0) {
-			    if (tabout)
-				printf ("	%5.2f", srch->xmag[0]);
-			    else
-				printf (" %5.2f", srch->xmag[0]);
-			    }
-			if (smag > 1) {
-			    if (tabout)
-				printf ("	%5.2f", srch->xmag[1]);
-			    else
-				printf (" %5.2f", srch->xmag[1]);
-			    }
-			if (smag > 2) {
-			    if (tabout)
-				printf ("	%5.2f", srch->xmag[2]);
-			    else
-				printf (" %5.2f", srch->xmag[2]);
+			    for (imag = 0; imag < smag; imag++) {
+				if (tabout)
+				    printf ("	%5.2f", srch->xmag[imag]);
+				else
+				    printf (" %5.2f", srch->xmag[imag]);
+				}
 			    }
 			if (srchcat->nepoch) {
 			    ep2dt (srch->epoch, &date, &time);
@@ -1766,9 +1741,31 @@ double	eqout;		/* Equinox for output coordinates */
 				printf ("  %s ", srch->isp);
 			    }
 			if (srchcat->entrv > 0) {
-			    printf ("	%9.2f", srch->radvel);
+			    if (tabout)
+				printf ("	%9.2f", srch->radvel);
+			    else
+				printf (" %9.2f", srch->radvel);
+			    }
+			if (srchcat->mprop == 1) {
+			    if (degout)
+				pra = (srch->rapm * 3600.0 * 1000.0);
+			    else
+				pra = (srch->rapm * 240.0 * 1000.0);
+			    pdec = srch->decpm * 3600.0 * 1000.0;
+			    if (tabout)
+				printf ("	%7.3f	%6.2f", pra, pdec);
+			    else
+				printf (" %7.3f %6.2f", pra, pdec);
 			    }
 			}
+		    if (mprop == 1) {
+			if (degout)
+			    pra = (gpra[0] * 3600.0 * 1000.0);
+			else
+			    pra = (gpra[0] * 240.0 * 1000.0);
+			pdec = gpdec[0] * 3600.0 * 1000.0;
+			}
+
 		    if (gobj1 != NULL) {
 			if (strlen (gobj1[0]) > 0)
 			    strcpy (numstr, gobj1[0]);
@@ -1833,33 +1830,13 @@ double	eqout;		/* Equinox for output coordinates */
 				}
 			    }
 			}
-		    else if (starcat[icat] != NULL && starcat[icat]->entrv>0) {
-			if (nmag > 1) {
+		    else if (nmagr > 0) {
+			for (imag = 0; imag < nmagr; imag++) {
 			    if (tabout)
-				printf ("	%5.2f	%9.2f",
-					gm[0][0], gm[1][0]);
+				printf ("	%5.2f", gm[imag][0]);
 			    else
-				printf (" %5.2f %9.2f",
-					gm[0][0], gm[1][0]);
+				printf (" %5.2f", gm[imag][0]);
 			    }
-			else {
-			    if (tabout)
-				printf ("	%9.2f", gm[0][0]);
-			    else
-				printf (" %9.2f", gm[0][0]);
-			    }
-			}
-		    else if (nmag > 1) {
-			if (tabout)
-			    printf ("	%5.2f	%5.2f", gm[0][0], gm[1][0]);
-			else
-			    printf (" %5.2f %5.2f", gm[0][0], gm[1][0]);
-			}
-		    else {
-			if (tabout)
-			    printf ("	%5.2f", gm[0][0]);
-			else
-			    printf (" %5.2f", gm[0][0]);
 			}
 		    if (typecol == 1) {
 			isp[0] = gc[0] / 1000;
@@ -1872,6 +1849,18 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("	%2s ", isp);
 			else
 			    printf (" %2s ", isp);
+			}
+		    if (starcat[icat] != NULL && starcat[icat]->entrv>0) {
+			if (tabout)
+			    printf ("	%9.2f", gm[nmagr][0]);
+			else
+			    printf (" %9.2f", gm[nmagr][0]);
+			}
+		    if (mprop == 1) {
+			if (tabout)
+			     printf ("	%7.3f	%6.2f", pra, pdec);
+			else
+			     printf (" %7.3f %6.2f", pra, pdec);
 			}
 		    if (tabout)
 			printf ("	%d", ng);
@@ -1989,125 +1978,125 @@ double	eqout;		/* Equinox for output coordinates */
 		}
             }
 
-    /* Write heading */
-    if (tabout && nohead) {
-	catalog = CatName (refcat, refcatname[icat]);
-	sprintf (headline, "catalog	%s", catalog);
-	if (wfile)
-	    fprintf (fd, "%s\n", headline);
-	else
-	    printf ("%s\n", headline);
-
-	if (!ranges) {
-	    ra2str (rastr, 32, cra, 3);
+	/* Write heading */
+	if (tabout && nohead) {
+	    catalog = CatName (refcat, refcatname[icat]);
+	    sprintf (headline, "catalog	%s", catalog);
 	    if (wfile)
-		fprintf (fd, "ra	%s\n", rastr);
+		fprintf (fd, "%s\n", headline);
 	    else
-		printf ("ra	%s\n", rastr);
-	    dec2str (decstr, 32, cdec, 2);
-	    if (wfile)
-		fprintf (fd, "dec	%s\n", decstr);
-	    else
-		printf ("dec	%s\n", decstr);
-	    }
+		printf ("%s\n", headline);
 
-	if (wfile)
-	    fprintf (fd, "equinox	%.1f\n", eqout);
-	else
-	    printf ("equinox	%.1f\n", eqout);
-
-	if (wfile)
-	    fprintf (fd, "epoch	%.1f\n", epout);
-	else
-	    printf ("epoch	%.1f\n", epout);
-
-	if (mprop == 1) {
-	    if (degout) {
+	    if (!ranges) {
+		ra2str (rastr, 32, cra, 3);
 		if (wfile)
-		    fprintf (fd, "rpmunit	arcsec/century\n");
+		    fprintf (fd, "ra	%s\n", rastr);
 		else
-		    printf ("rpmunit	arcsec/century\n");
-		}
-	    else {
+		    printf ("ra	%s\n", rastr);
+		dec2str (decstr, 32, cdec, 2);
 		if (wfile)
-		    fprintf (fd, "rpmunit	tsec/century\n");
+		    fprintf (fd, "dec	%s\n", decstr);
 		else
-		    printf ("rpmunit	tsec/century\n");
+		    printf ("dec	%s\n", decstr);
 		}
-	    if (wfile)
-		fprintf (fd, "dpmunit	arcsec/century\n");
-	    else
-		printf ("dpmunit	arcsec/century\n");
-	    }
 
-	das = dra * cos (degrad(cdec)) * 3600.0;
-	dds = ddec * 3600.0;
-	drs = drad * 3600.0;
-	if (drs <= 0.0)
-	    drs = sqrt (das*das + dds*dds);
-	if (das <= 0.0) {
-	    das = drs;
-	    dds = drs;
-	    }
- 	if (dra0 > 0.0) {
-	    if (wfile) {
-		fprintf (fd, "drasec	%.2f\n", dra*3600.0);
-		fprintf (fd, "ddecsec	%.2f\n", ddec*3600.0);
-		}
-	    else {
-		printf ("drasec	%.2f\n", dra0);
-		printf ("ddecsec	%.2f\n", ddec0);
-		}
-	    }
-	else if (rad0 > 0) {
 	    if (wfile)
-		fprintf (fd, "radsec	%.2f\n", drs);
+		fprintf (fd, "equinox	%.1f\n", eqout);
 	    else
-		printf ("radsec	%.2f\n", drs);
-	    }
-	else if (rad0 < 0) {
-	    if (wfile)
-		fprintf (fd, "boxsec	%.2f\n",dds);
-	    else
-		printf ("boxsec	%.2f\n",dds);
-	    }
+		printf ("equinox	%.1f\n", eqout);
 
-	if (catsort > 0) {
-	    switch (catsort) {
-		case SORT_DEC:
+	    if (wfile)
+		fprintf (fd, "epoch	%.1f\n", epout);
+	    else
+		printf ("epoch	%.1f\n", epout);
+
+	    if (mprop == 1) {
+		if (degout) {
 		    if (wfile)
-			fprintf (fd, "catsort	dec\n");
+			fprintf (fd, "rpmunit	arcsec/century\n");
 		    else
-			printf ("catsort	dec\n");
-		    break;
-		case SORT_DIST:
+			printf ("rpmunit	arcsec/century\n");
+		    }
+		else {
 		    if (wfile)
-			fprintf (fd, "catsort	dist\n");
+			fprintf (fd, "rpmunit	tsec/century\n");
 		    else
-			printf ("catsort	dist\n");
-		    break;
-		case SORT_MAG:
-		    if (wfile)
-			fprintf (fd, "catsort	mag\n");
-		    else
-			printf ("catsort	mag\n");
-		    break;
-		case SORT_RA:
-		    if (wfile)
-			fprintf (fd, "catsort	ra\n");
-		    else
-			printf ("catsort	ra\n");
-		    break;
-		case SORT_X:
-		    if (wfile)
-			fprintf (fd, "catsort	x\n");
-		    else
-			printf ("catsort	x\n");
-		    break;
-		default:
-		    break;
+			printf ("rpmunit	tsec/century\n");
+		    }
+		if (wfile)
+		    fprintf (fd, "dpmunit	arcsec/century\n");
+		else
+		    printf ("dpmunit	arcsec/century\n");
 		}
-	    }
+
+	    das = dra * cos (degrad(cdec)) * 3600.0;
+	    dds = ddec * 3600.0;
+	    drs = drad * 3600.0;
+	    if (drs <= 0.0)
+		drs = sqrt (das*das + dds*dds);
+	    if (das <= 0.0) {
+		das = drs;
+		dds = drs;
+		}
+ 	    if (dra0 > 0.0) {
+		if (wfile) {
+		    fprintf (fd, "drasec	%.2f\n", dra*3600.0);
+		    fprintf (fd, "ddecsec	%.2f\n", ddec*3600.0);
+		    }
+		else {
+		    printf ("drasec	%.2f\n", dra0);
+		    printf ("ddecsec	%.2f\n", ddec0);
+		    }
+		}
+	    else if (rad0 > 0) {
+		if (wfile)
+		    fprintf (fd, "radsec	%.2f\n", drs);
+		else
+		    printf ("radsec	%.2f\n", drs);
+		}
+	    else if (rad0 < 0) {
+		if (wfile)
+		    fprintf (fd, "boxsec	%.2f\n",dds);
+		else
+		    printf ("boxsec	%.2f\n",dds);
+		}
+
+	    if (catsort > 0) {
+		switch (catsort) {
+		    case SORT_DEC:
+			if (wfile)
+			    fprintf (fd, "catsort	dec\n");
+			else
+			    printf ("catsort	dec\n");
+			break;
+		    case SORT_DIST:
+			if (wfile)
+			    fprintf (fd, "catsort	dist\n");
+			else
+			    printf ("catsort	dist\n");
+			break;
+		    case SORT_MAG:
+			if (wfile)
+			    fprintf (fd, "catsort	mag\n");
+			else
+			    printf ("catsort	mag\n");
+			break;
+		    case SORT_RA:
+			if (wfile)
+			    fprintf (fd, "catsort	ra\n");
+			else
+			    printf ("catsort	ra\n");
+			break;
+		    case SORT_X:
+			if (wfile)
+			    fprintf (fd, "catsort	x\n");
+			else
+			    printf ("catsort	x\n");
+			break;
+		    default:
+			break;
+		    }
+		}
 
 	if (wfile)
 	else
@@ -2146,20 +2135,19 @@ double	eqout;		/* Equinox for output coordinates */
 	    strcat (headline,"	mag	class	band	N");
 	else if (refcat == UJC)
 	    strcat (headline,"	mag	plate");
-	else if (nmag == 2) {
-	    if (mprop == 2)
-		strcat (headline,"	mag  	velocity");
-	    else
-		strcat (headline,"	mag1 	mag2 ");
-	    }
-	else {
-	    if (mprop == 2)
-		strcat (headline,"	velocity");
-	    else
-		strcat (headline,"	mag  ");
+	else if (nmagr > 0) {
+	    for (imag = 0; imag < nmagr; imag++) {
+		if (nmagr == 1)
+		    sprintf (temp, "	mag  ", imag);
+		else
+		    sprintf (temp, "	mag%d ", imag);
+		strcat (headline, temp);
+		}
 	    }
 	if (typecol == 1)
 	    strcat (headline,"	type");
+	if (mprop == 2)
+	    strcat (headline," 	velocity");
 	if (mprop == 1)
 	    strcat (headline,"	Ura    	Udec  ");
 	if (ranges == NULL)
@@ -2190,24 +2178,20 @@ double	eqout;		/* Equinox for output coordinates */
 	    strcat (headline,"	-----	-----	-----	-----");
 	else if (refcat==HIP || refcat == GSC2)
 	    strcat (headline,"	-----	-----	-----	-----");
-	else if (nmag == 2) {
-	    if (mprop == 2)
-		strcat (headline,"	-----	--------");
-	    else
-		strcat (headline,"	-----	-----");
+	else if (nmagr > 0) {
+	    for (imag = 0; imag < nmagr; imag++)
+		strcat (headline,"	-----");
 	    }
-	else if (mprop == 2)
-	    strcat (headline,"	--------");
-	else
-	    strcat (headline,"	-----");
 	if (refcat == GSC || refcat == GSCACT)
 	    strcat (headline,"	-----	----	-");
 	else if (typecol == 1)
 	    strcat (headline,"	----");
 	else if (typecol == 2)
 	    strcat (headline,"	-----");
+	if (mprop == 2)
+	    strcat (headline,"	--------");
 	if (mprop == 1)
-	    strcat (headline,"	-------	------");
+	    strcat (headline,"	------	------");
 	if (ranges == NULL)
 	    strcat (headline, "	------");
 	if (refcat == TABCAT && keyword != NULL)
@@ -2338,50 +2322,28 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, "  MagB  MagV  Parlx Parer");
 	    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
 		strcat (headline, "  MagB   MagV ");
-	    else if (refcat == TABCAT && gcset) {
-		if (strlen(starcat[icat]->keymag1) > 0) {
-		    strcat (headline," ");
-		    strcat (headline, starcat[icat]->keymag1);
-		    }
-		else if (starcat[icat]->nmag > 1)
-		    strcat (headline, " Mag1");
-		else
-		    strcat (headline, " Mag");
-		if (starcat[icat]->nmag > 1) {
-		    if (strlen(starcat[icat]->keymag2) > 0) {
-			strcat (headline,"   ");
-			strcat (headline, starcat[icat]->keymag2);
+	    else if (nmagr > 0) {
+		for (imag = 0; imag < nmagr; imag++) {
+		    if (starcat != NULL &&
+			strlen(starcat[icat]->keymag[imag]) > 0) {
+			strcat (headline," ");
+			sprintf (temp, " %s", starcat[icat]->keymag[imag]);
+			strcat (headline, temp);
+			}
+		    else if (nmagr > 1) {
+			sprintf (temp, " Mag%d", imag+1);
+			strcat (headline, temp);
 			}
 		    else
-			strcat (headline, "   Mag2");
+			strcat (headline, " Mag");
 		    }
-		if (typecol == 1)
-		    strcat (headline, " Type");
-		if (gcset)
-		    strcat (headline, "     Peak");
 		}
-	    else if (nmag > 1) {
-		if (mprop == 2 && typecol == 1)
-		    strcat (headline, "  Mag Type  Velocity");
-		else if (mprop == 2)
-		    strcat (headline, "  Mag   Velocity");
-		else if (typecol == 1)
-		    strcat (headline, "  Mag1  Mag2 Type");
-		else
-		    strcat (headline, "  Mag1  Mag2");
-		}
-	    else if (nmag > 0) {
-		if (mprop == 2 && typecol == 1)
-		    strcat (headline, "Type Velocity");
-		else if (mprop == 2)
-		    strcat (headline, " Velocity");
-		else if (typecol == 1)
-		    strcat (headline, " Mag   Type");
-		else
-		    strcat (headline, "  Mag ");
-		}
-	    else if (typecol == 1)
+	    if (typecol == 1)
 		strcat (headline, " Type");
+	    if (gcset)
+		strcat (headline, "     Peak");
+	    if (mprop == 2)
+		strcat (headline, " Velocity");
 	    if (ranges == NULL)
 		strcat (headline, "  Arcsec");
 	    if (gobj1 != NULL) {
@@ -2463,123 +2425,101 @@ double	eqout;		/* Equinox for output coordinates */
 	    else
 		CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
 
+
 	    /* Print or write tab-delimited output line for one star */
 	    if (tabout) {
-	    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
-		refcat == UAC  || refcat == UA1  || refcat == UA2)
-		sprintf (headline, "%s	%s	%s	%.1f	%.1f	%d",
-		 numstr, rastr, decstr, gm[0][i], gm[1][i], gc[i]);
-	    else if (refcat == GSC || refcat == GSCACT)
-	        sprintf (headline,
+		if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
+		    refcat == UAC  || refcat == UA1  || refcat == UA2)
+		    sprintf (headline, "%s	%s	%s	%.1f	%.1f	%d",
+		     numstr, rastr, decstr, gm[0][i], gm[1][i], gc[i]);
+		else if (refcat == GSC || refcat == GSCACT)
+	            sprintf (headline,
 			 "%s	%s	%s	%.2f	%d	%d	%d",
 			 numstr, rastr, decstr, gm[0][i], gc[i], band, ngsc);
-	    else if (refcat == TMPSC) {
-		sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
-		for (imag = 0; imag < 3; imag++) {
-		    if (gm[imag][i] > 100.0)
-			sprintf (temp, "	%6.3fL", gm[imag][i]-100.0);
-		    else
-			sprintf (temp, "	%6.3f ", gm[imag][i]);
+		else if (refcat == TMPSC) {
+		    sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
+		    for (imag = 0; imag < 3; imag++) {
+			if (gm[imag][i] > 100.0)
+			    sprintf (temp, "	%6.3fL", gm[imag][i]-100.0);
+			else
+			    sprintf (temp, "	%6.3f ", gm[imag][i]);
+			strcat (headline, temp);
+			}
+		    }
+		else if (refcat == GSC2)
+		    sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f",
+		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
+		else if (refcat == IRAS) {
+		    sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
+		    for (imag = 0; imag < 4; imag++) {
+			if (gm[imag][i] > 100.0) {
+			    flux = 1000.0 * pow (10.0, -(gm[imag][i]-100.0) / 2.5);
+			    sprintf (temp, "	%.2fL", flux);
+			    }
+			else {
+			    flux = 1000.0 * pow (10.0, -gm[imag][i] / 2.5);
+			    sprintf (temp, "	%.2f ", flux);
+			    }
+			strcat (headline, temp);
+			}
+		    }
+		else if (refcat == HIP)
+		    sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f",
+		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
+		else if (refcat == UJC)
+	            sprintf (headline, "%s	%s	%s	%.2f	%d",
+		     numstr, rastr, decstr, gm[0][i], gc[i]);
+		else if (refcat==SAO || refcat==PPM || refcat == BSC)
+	            sprintf (headline, "%s	%s	%s	%.2f",
+		     numstr, rastr, decstr, gm[0][i]);
+		else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
+	            sprintf (headline, "%s	%s	%s	%.2f	%.2f",
+		     numstr, rastr, decstr, gm[0][i], gm[1][i]);
+		else {
+	            sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
+		    for (imag = 0; imag < nmagr; imag++) {
+			sprintf (temp, "	%.2f", gm[imag][i]);
+			strcat (headline, temp);
+			}
+		    }
+		if (typecol == 1) {
+		    sprintf (temp, "	%2s", isp);
 		    strcat (headline, temp);
 		    }
-		}
-	    else if (refcat == GSC2)
-		sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f",
-		 numstr, rastr, decstr, gm[0][i], gm[1][i], gm[2][i], gm[3][i]);
-	    else if (refcat == IRAS) {
-		sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
-		for (imag = 0; imag < 4; imag++) {
-		    if (gm[imag][i] > 100.0) {
-			flux = 1000.0 * pow (10.0, -(gm[imag][i]-100.0) / 2.5);
-			sprintf (temp, "	%.2fL", flux);
-			}
-		    else {
-			flux = 1000.0 * pow (10.0, -gm[imag][i] / 2.5);
-			sprintf (temp, "	%.2f ", flux);
-			}
-		    strcat (headline, temp);
+		if (mprop == 2) {
+		    sprintf (temp, "	%8.2f", gm[nmagr][i]);
+	            strcat (headline, temp);
 		    }
-		}
-	    else if (refcat == HIP)
-		sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f",
-		 numstr, rastr, decstr, gm[0][i], gm[1][i], gm[2][i],
-		 gm[3][i]);
-	    else if (refcat == UJC)
-	        sprintf (headline, "%s	%s	%s	%.2f	%d",
-		 numstr, rastr, decstr, gm[0][i], gc[i]);
-	    else if (refcat==SAO || refcat==PPM || refcat == BSC) {
-	        sprintf (headline, "%s	%s	%s	%.2f",
-		 numstr, rastr, decstr, gm[0][i]);
-		}
-	    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT) {
-	        sprintf (headline, "%s	%s	%s	%.2f	%.2f",
-		 numstr, rastr, decstr, gm[0][i], gm[1][i]);
-		}
-	    else if (refcat == TABCAT) {
-		if (mprop == 2)
-		    sprintf (headline, "%s	%s	%s	%.2f	%8.2f",
-			 numstr, rastr, decstr, gm[0][i], gm[1][i]);
-		else
-		    sprintf (headline, "%s	%s	%s	%.2f",
-			 numstr, rastr, decstr, gm[0][i]);
-		}
-	    else if (refcat == BINCAT) {
-		sprintf (headline, "%s	%s	%s	%.2f	%2s",
-			 numstr, rastr, decstr, gm[0][i], isp);
-		}
-	    else if (nmag > 1) {
-		if (mprop == 2)
-		    sprintf (headline, "%s	%s	%s	%.2f	%8.2f",
-			 numstr, rastr, decstr, gm[0][i], gm[1][i]);
-		else
-		    sprintf (headline, "%s	%s	%s	%.2f	%.2f",
-			 numstr, rastr, decstr, gm[0][i], gm[1][i]);
-		}
-	    else if (nmag == 1) {
-		if (mprop == 2)
-		    sprintf (headline, "%s	%s	%s	%8.2f",
-			 numstr, rastr, decstr, gm[0][i]);
-		else
-		    sprintf (headline, "%s	%s	%s	%.2f",
-			 numstr, rastr, decstr, gm[0][i]);
-		}
-	    else
-	        sprintf (headline, "%s	%s	%s",
-		 numstr, rastr, decstr);
-	    if (typecol == 1) {
-		sprintf (temp, "	%2s", isp);
-		strcat (headline, temp);
-		}
-	    if (mprop == 1) {
-	        sprintf (temp, "	%7.3f	%6.2f", pra, pdec);
-	        strcat (headline, temp);
-		}
-	    if (refcat == TABCAT && gcset) {
-	        sprintf (temp, "	%d", gc[i]);
-	        strcat (headline, temp);
-		}
+		if (mprop == 1) {
+	            sprintf (temp, "	%7.3f	%6.2f", pra, pdec);
+	            strcat (headline, temp);
+		    }
+		if (refcat == TABCAT && gcset) {
+	            sprintf (temp, "	%d", gc[i]);
+	            strcat (headline, temp);
+		    }
 
-	    if (ranges == NULL) {
-	        sprintf (temp, "	%.2f", gdist);
-	        strcat (headline, temp);
-		}
-	    if (refcat == TABCAT && keyword != NULL) {
-		strcat (headline, "	");
-		strcat (headline, gobj[i]);
-		}
-	    if ((refcat == BINCAT || refcat == TXTCAT) &&
-		 gobj1 != NULL && gobj[i] != NULL) {
-		if (starcat[icat] == NULL || starcat[icat]->stnum > 0) {
+		if (ranges == NULL) {
+	            sprintf (temp, "	%.2f", gdist);
+	            strcat (headline, temp);
+		    }
+		if (refcat == TABCAT && keyword != NULL) {
 		    strcat (headline, "	");
 		    strcat (headline, gobj[i]);
 		    }
-		}
-	    if (printxy) {
-		strcat (headline, "	");
-		strcat (numstr, xstr);
-		strcat (headline, "	");
-		strcat (numstr, ystr);
-		}
+		if ((refcat == BINCAT || refcat == TXTCAT) &&
+		     gobj1 != NULL && gobj[i] != NULL) {
+		    if (starcat[icat] == NULL || starcat[icat]->stnum > 0) {
+			strcat (headline, "	");
+			strcat (headline, gobj[i]);
+			}
+		    }
+		if (printxy) {
+		    strcat (headline, "	");
+		    strcat (numstr, xstr);
+		    strcat (headline, "	");
+		    strcat (numstr, ystr);
+		    }
 		if (wfile)
 		    fprintf (fd, "%s\n", headline);
 		else
@@ -2630,65 +2570,36 @@ double	eqout;		/* Equinox for output coordinates */
 			     numstr, rastr, decstr, gm[0][i], gc[i], band, ngsc);
 		else if (refcat == UJC)
 		    sprintf (headline,"%s %s %s %6.2f %4d",
-			     numstr, rastr, decstr, gm[i],gc[i]);
-		else if (refcat==SAO || refcat==PPM || refcat == BSC) {
-		    sprintf (headline,"  %s  %s %s %6.2f  %2s",
-			     numstr,rastr,decstr,gm[0][i],isp);
-		    }
-		else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT) {
+			     numstr, rastr, decstr, gm[0][i],gc[i]);
+		else if (refcat==SAO || refcat==PPM || refcat == BSC)
+		    sprintf (headline,"  %s  %s %s %6.2f",
+			     numstr,rastr,decstr,gm[0][i]);
+		else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
 		    sprintf (headline,"%s %s %s %6.2f %6.2f ",
 			     numstr,rastr,decstr,gm[0][i],gm[1][i]);
+		else {
+		    sprintf (headline,"%s %s %s ", numstr, rastr, decstr);
+		    for (imag = 0; imag < nmagr; imag++) {
+			sprintf (temp, " %6.2f", gm[imag][i]);
+			strcat (headline, temp);
+			}
 		    }
-		else if (refcat == TABCAT) {
-		    if (gcset && typecol == 1)
-			sprintf (headline,"%s %s %s %6.2f  %2s %7d",
-				 numstr, rastr, decstr, gm[0][i],isp,gc[i]);
-		    else if (gcset)
-			sprintf (headline,"%s %s %s %6.2f %7d",
-				 numstr, rastr, decstr, gm[0][i],gc[i]);
-		    else if (mprop == 2 && typecol == 1)
-			sprintf (headline, "%s %s %s %6.2f  %2s %9.2f",
-			     numstr, rastr, decstr, gm[0][i], isp, gm[1][i]);
-		    else if (mprop == 2)
-			sprintf (headline, "%s %s %s %6.2f %9.2f",
-			     numstr, rastr, decstr, gm[0][i], gm[1][i]);
-		    else if (typecol == 1)
-			sprintf (headline,"%s %s %s %6.2f  %2s",
-				 numstr, rastr, decstr, gm[0][i], isp);
-		    else
-			sprintf (headline,"%s %s %s %6.2f",
-				 numstr, rastr, decstr, gm[0][i]);
+		if (typecol == 1) {
+		    sprintf (temp, " %2s", isp);
+		    strcat (headline, temp);
 		    }
-		else if (nmag > 1) {
-		    if (mprop == 2 && typecol == 1)
-			sprintf (headline, "%s %s %s %6.2f  %2s %9.2f",
-			     numstr, rastr, decstr, gm[0][i], isp, gm[1][i]);
-		    else if (mprop == 2)
-			sprintf (headline, "%s %s %s %6.2f %9.2f",
-			     numstr, rastr, decstr, gm[0][i], gm[1][i]);
-		    else if (typecol == 1)
-			sprintf (headline, "%s %s %s %6.2f %6.2f  %2s",
-			     numstr, rastr, decstr, gm[0][i], gm[1][i], isp);
-		    else
-			sprintf (headline, "%s %s %s %6.2f %6.2f",
-			     numstr, rastr, decstr, gm[0][i], gm[1][i]);
+		if (mprop == 2) {
+		    sprintf (temp, " %9.2f", gm[nmagr][i]);
+		    strcat (headline, temp);
 		    }
-		else if (nmag > 0) {
-		    if (mprop == 2 && typecol == 1)
-			sprintf (headline, "%s %s %s  %2s %9.2f",
-			     numstr, rastr, decstr, isp, gm[0][i]);
-		    else if (mprop == 2)
-			sprintf (headline, "%s %s %s %9.2f",
-			     numstr, rastr, decstr, gm[0][i]);
-		    else if (typecol == 1)
-			sprintf (headline, "%s %s %s %6.2f  %2s",
-			     numstr, rastr, decstr, gm[0][i], isp);
-		    else
-			sprintf (headline, "%s %s %s %6.2f",
-			     numstr, rastr, decstr, gm[0][i]);
+	    	if (mprop == 1) {
+	    	    sprintf (temp, " %7.3f %6.2f", pra, pdec);
+	    	    strcat (headline, temp);
 		    }
-		else
-		    sprintf (headline, "%s %s %s", numstr, rastr, decstr);
+		if (gcset) {
+		    sprintf (temp," %7d",gc[i]);
+		    strcat (headline, temp);
+		    }
 
 		/* Add distance from search center */
 		if (ranges == NULL) {
@@ -2725,7 +2636,6 @@ double	eqout;		/* Equinox for output coordinates */
 		    printf ("%s\n", headline);
 		}
 	    }
-	}
 
 	/* If searching more than one catalog, separate them with blank line */
 	if (ncat > 0 && icat < ncat-1)
@@ -2738,6 +2648,7 @@ double	eqout;		/* Equinox for output coordinates */
 		gobj[i] = NULL;
 		}
 	    }
+	}
 	}
 
     /* Close output file */
@@ -3595,4 +3506,9 @@ PrintGSClass ()
  * Apr  3 2002	Add magnitude number to sort options
  * Apr  8 2002	Add magnitude number to magnitude limit setting
  * Apr 10 2002	Fix magnitude number bug and add magnitude letter
+ * Aug  2 2002	Fix bug printing UJC magnitudes
+ * Aug  5 2002	Add proper motion of searched catalog in one-line output
+ * Aug  5 2002	Handle magnitudes and proper motions for search catalogs
+ * Aug  6 2002	Rewrite to handle vectors of magnitudes
+ * Aug  6 2002	Fix proper motion units to sec|arcsec/year
  */

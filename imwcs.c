@@ -1,5 +1,5 @@
 /* File imwcs.c
- * April 10, 2002
+ * July 31, 2002
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -46,6 +46,7 @@ extern void settolerance();
 extern void setreflim();
 extern void setrot();
 extern void setnfit();
+extern void setnfiterate();
 extern void setsecpix();
 extern void setsecpix2();
 extern void setcenter();
@@ -306,6 +307,17 @@ char **av;
     			    setiterate (i);
 			    break;
 	
+			case 'n':	/* Increase number of parameters fit */
+			    c2 = *(str1+1);
+			    if ((int)c2 > 47 && (int)c2 < 58) {
+				i = (int) c2 - 48;
+				str1++;
+				}
+			    else
+				i = 1;
+    			    setnfiterate (i);
+			    break;
+	
 			case 'r':	/* Recenter fit and rerun */
     			    setrecenter (1);
 			    break;
@@ -549,7 +561,7 @@ char    *command;
     fprintf(stderr,"  -n: list of parameters to fit (12345678; negate for refinement)\n");
     fprintf(stderr,"  -o: name for output image, no argument to overwrite\n");
     fprintf(stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
-    fprintf(stderr,"  -q: <i>terate, <r>ecenter, <s>igma clip, <p>olynomial, <t>olerance reduce\n");
+    fprintf(stderr,"  -q: <i>terate, <r>ecenter, <s>igma clip, <p>olynomial, <t>olerance reduce, <n>more params\n");
     fprintf(stderr,"  -r: rotation angle in degrees before fitting (default 0)\n");
     fprintf(stderr,"  -s: use this fraction extra stars (default 1.0)\n");
     fprintf(stderr,"  -t: offset tolerance in pixels (default %d)\n", PIXDIFF);
@@ -923,4 +935,5 @@ char *
  * Dec 17 2001	Set mirror and rotation in FindStars()
  *
  * Apr 10 2002	Accept letter as well as number for magnitude
+ * Jul 31 2002	Add iteration with more parameters fit
  */

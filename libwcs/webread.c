@@ -1,5 +1,5 @@
 /*** File webread.c
- *** April 8, 2002
+ *** August 6, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -243,10 +243,10 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 	starcat->epoch = 2000.0;
 	starcat->equinox = 2000.0;
 	starcat->nmag = 2;
-	starcat->entmag1 = 5;
-	starcat->entmag2 = 4;
-	strcpy (starcat->keymag1, "magb");
-	strcpy (starcat->keymag2, "magr");
+	starcat->entmag[0] = 5;
+	starcat->entmag[1] = 4;
+	strcpy (starcat->keymag[0], "magb");
+	strcpy (starcat->keymag[1], "magr");
 	}
 
     /* Extract desired sources from catalog  and return them */
@@ -777,4 +777,5 @@ FileINetParse(file, port, adrinet)
  * Sep 21 2001	Debug searches of ESO USNO-A2.0 and GSC catalogs
  *
  * Apr  8 2002	Fix bug in ESO USNO-A2.0 server code
+ * Aug  6 2002	Make starcat->entmag and starcat->keymag into vectors
  */

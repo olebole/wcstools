@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** March 26, 2002
+ *** August 6, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2002
@@ -315,7 +315,7 @@ int	nlog;
 		star->xmag[mrv] = star->radvel;
 
 	    /* Magnitude */
-	    if (sc->entmag1 > 0)
+	    if (sc->entmag[0] > 0)
 		mag = star->xmag[magsort];
 
 	    /* Spectral Type */
@@ -804,9 +804,9 @@ char *bincat;	/* Binary catalog file name */
     sc->entdec = nb + 8;
     sc->entpeak = nb + 16;
     if (sc->nmag > 0)
-	sc->entmag1 = nb + 18;
+	sc->entmag[0] = nb + 18;
     else
-	sc->entmag1 = 0;
+	sc->entmag[0] = 0;
     nb = nb + 18 + (sc->nmag * 2);
     if (sc->mprop == 1) {
 	sc->entrpm = nb;
@@ -1095,9 +1095,9 @@ int istar;	/* Star sequence number in binary catalog */
     moveb (sc->catline, (char *) st->isp, 2, sc->entpeak, 0);
 
     /* Magnitudes */
-    if (sc->entmag1 > 0) {
+    if (sc->entmag[0] > 0) {
 	for (i = 0; i < nmag; i++) {
-	    moveb (sc->catline, (char *) st->mag, 2, sc->entmag1+(i*2), i*2);
+	    moveb (sc->catline, (char *) st->mag, 2, sc->entmag[0]+(i*2), i*2);
 	    if (sc->byteswapped)
 		binswap2 (&st->mag[i], 2);
 	    st->xmag[i] = 0.01 * (double) st->mag[i];
@@ -1312,4 +1312,5 @@ char *from, *last, *to;
  *
  * Mar 25 2002	Fix bugs dealing with radial velocity
  * Mar 26 2002	Don't set object name unless header says it is there
+ * Aug  6 2002	Make sc->entmag into vector, but only use first position
  */

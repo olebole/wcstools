@@ -1,5 +1,5 @@
 /*** File wcslib/imio.c
- *** June 4, 2002
+ *** July 19, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -618,7 +618,7 @@ int	x2, y2;		/* Row and column for output pixel */
 /* GETVEC -- Get vector from 2D image of any numeric type */
 
 void
-getvec (image, bitpix, bzero, bscale, pix1, npix, dvec)
+getvec (image, bitpix, bzero, bscale, pix1, npix, dvec0)
 
 char	*image;		/* Image array from which to extract vector */
 int	bitpix;		/* Number of bits per pixel in image */
@@ -628,7 +628,7 @@ double  bzero;		/* Zero point for pixel scaling */
 double  bscale;		/* Scale factor for pixel scaling */
 int	pix1;		/* Offset of first pixel to extract */
 int	npix;		/* Number of pixels to extract */
-double	*dvec;		/* Vector of pixels (returned) */
+double	*dvec0;		/* Vector of pixels (returned) */
 
 {
     short *im2;
@@ -636,9 +636,11 @@ double	*dvec;		/* Vector of pixels (returned) */
     unsigned short *imu;
     float *imr;
     double *imd;
+    double *dvec;
     int ipix, pix2;
 
     pix2 = pix1 + npix;
+    dvec = dvec0;
 
     switch (bitpix) {
 
@@ -681,10 +683,10 @@ double	*dvec;		/* Vector of pixels (returned) */
 
     /* Scale data if either BZERO or BSCALE keyword has been set */
     if (scale && (bzero != 0.0 || bscale != 1.0)) {
-	double *dp = dvec;
+	dvec = dvec0;
 	for (ipix = pix1; ipix < pix2; ipix++) {
-	    *dp = (*dp * bscale) + bzero;
-	    dp++;
+	    *dvec = (*dvec * bscale) + bzero;
+	    dvec++;
 	    }
 	}
 
@@ -959,4 +961,5 @@ imswapped ()
  * Jan 23 2002	Add global scale switch to turn off scaling
  * Jun  4 2002	In getvec() and putvec(), change dpix to dvec
  * Jun  4 2002	Add addvec() to add to a vector
+ * Jul 19 2002	Fix getvec() bug rescaling scaled numbers
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** May 6, 2002
+ *** August 6, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2002
@@ -927,16 +927,9 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 	sc->isname[ldesc] = (char) 0;
 	}
 
-    if (sc->entrv > 0 && sc->nmag < 2) {
+    if (sc->entrv > 0 && sc->nmag < 10) {
 	sc->nmag = sc->nmag + 1;
-	if (sc->nmag == 2)
-	    strcpy (sc->keymag2, "velocity");
-	else if (sc->nmag == 3)
-	    strcpy (sc->keymag3, "velocity");
-	else if (sc->nmag == 4)
-	    strcpy (sc->keymag4, "velocity");
-	else
-	    strcpy (sc->keymag1, "velocity");
+	strcpy (sc->keymag[sc->nmag-1], "velocity");
 	}
 
     /* Enumerate entries in ASCII catalog by counting newlines */
@@ -1517,4 +1510,5 @@ char	*in;	/* Character string */
  * Jan 31 2002	Always return NULL for object if no object name in catalog
  * Mar 12 2002	Add /a flag for positions in radians
  * May  6 2002	Allow object names to be up to 79 characters
+ * Aug  6 2002	Change keymag to avector of strings
  */

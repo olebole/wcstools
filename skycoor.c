@@ -1,5 +1,5 @@
 /* File skycoor.c
- * April 23, 2002
+ * August 7, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -61,6 +61,7 @@ char **av;
     char errmsg[80];
     char eqstr[16];
     double pos[3];
+    int nosys;
 
     listname = NULL;
     coorout[0] = (char) 0;
@@ -330,13 +331,18 @@ char **av;
 		av++;
 		sys0 = wcscsys (csys);
 		eqin = wcsceq (csys);
+		nosys = 0;
 		}
-	    else if (sys1 == WCS_J2000)
+	    else if (sys1 == WCS_J2000) {
+		nosys = 1;
 		sys0 = WCS_B1950;
-	    else
+		}
+	    else {
+		nosys = 1;
 		sys0 = WCS_J2000;
+		}
 	    if (sys1 < 0) {
-		if (degout)
+		if (degout || nosys)
 		    sys1 = sys0;
 		else if (offra != 0.0 || offdec != 0.0)
 		    sys1 = sys0;
@@ -536,4 +542,5 @@ char *errstring;
  * Dec 12 2001	If not verbose, -r option only prints separation number
  *
  * Apr 23 2002	If verbose, print differences in RA and Dec for -r, too.
+ * Aug  7 2002	If no i/o coordinate system set, assume in and out J2000
  */

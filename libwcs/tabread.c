@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** May 6, 2002
+ *** August 6, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -248,17 +248,16 @@ int	nlog;
 	    dist = 0.0;
 
 	/* Set magnitude for faint star rejection */
-	magt = star->xmag[magsort];
-	if (magt == 99.90 && sc->nmag > 1)
-	    magt = star->xmag[0];
-	if (magt == 99.90 && sc->nmag > 1)
-	    magt = star->xmag[1];
-	if (magt == 99.90 && sc->nmag > 2)
-	    magt = star->xmag[2];
-	if (magt == 99.90 && sc->nmag > 3)
-	    magt = star->xmag[3];
-	if (magt > 100.0)
-	    magt = magt - 100.0;
+	if (sc->nmag > 0) {
+	    magt = star->xmag[magsort];
+	    imag = 0;
+	    while (magt == 99.90 && imag < sc->nmag)
+		magt = star->xmag[imag++];
+	    if (magt > 100.0)
+		magt = magt - 100.0;
+	    }
+	else
+	    magt = mag1;
 
 	/* Check magnitude and position limits */
 	if ((mag1 == mag2 || (magt >= mag1 && magt <= mag2)) &&
@@ -293,7 +292,7 @@ int	nlog;
 		    maxdist = dist;
 		    farstar = nstar;
 		    }
-		if (magt > faintmag) {
+		if (sc->nmag > 0 && magt > faintmag) {
 		    faintmag = magt;
 		    faintstar = nstar;
 		    }
@@ -334,7 +333,7 @@ int	nlog;
 		}
 
 	    /* Otherwise if too many stars, replace faintest star */
-	    else if (magt < faintmag) {
+	    else if (sc->nmag > 0 && magt < faintmag) {
 		tnum[faintstar] = num;
 		tra[faintstar] = ra;
 		tdec[faintstar] = dec;
@@ -359,15 +358,9 @@ int	nlog;
 		/* Find new faintest star */
 		for (i = 0; i < nstarmax; i++) {
 		    magt = tmag[magsort][i];
-		    magt = tmag[magsort][i];
-		    if (magt == 99.90 && sc->nmag > 1)
-			magt = tmag[0][i];
-		    if (magt == 99.90 && sc->nmag > 1)
-			magt = tmag[0][i];
-		    if (magt == 99.90 && sc->nmag > 2)
-			magt = tmag[2][i];
-		    if (magt == 99.90 && sc->nmag > 3)
-			magt = tmag[3][i];
+		    imag = 0;
+		    while (magt == 99.90 && imag < sc->nmag)
+			magt = tmag[imag++][i];
 		    if (magt > 100.0)
 			magt = magt - 100.0;
 		    if (magt > faintmag) {
@@ -556,7 +549,10 @@ int	nlog;
 			     &ra, &dec, &rapm, &decpm);
 		else
 		    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
-		mag = star->xmag[0];
+		if (sc->nmag > 0)
+		    mag = star->xmag[0];
+		else
+		    mag = 99.99;
 		if (sc->sptype)
 		    peak = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 		else
@@ -816,10 +812,11 @@ struct TabTable *tabtable;
 int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 {
     char cstr[32];
+    char keyword[16];
     char *tabname;
     struct TabTable *startab;
     struct StarCat *sc;
-    int i, lnum, ndec, istar, nbsc;
+    int i, lnum, ndec, istar, nbsc, icol, j;
     char *line;
     double dnum;
 
@@ -896,63 +893,31 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
 	}
 
-    /* Find column and name of object first magnitude */
-    sc->entmag1 = -1;
-    sc->keymag1[0] = (char) 0;
-    if ((sc->entmag1 = tabcol (startab, "MAG")))
-	strcpy (sc->keymag1, "mag");
-    else if ((sc->entmag1 = tabcol (startab, "mag")))
-	strcpy (sc->keymag1, "mag");
-    else if ((sc->entmag1 = tabcol (startab, "magv")))
-	strcpy (sc->keymag1, "magv");
-    else if ((sc->entmag1 = tabcol (startab, "magr")))
-	strcpy (sc->keymag1, "magr");
-    else if ((sc->entmag1 = tabcol (startab, "magj")))
-	strcpy (sc->keymag1, "magj");
-    else if ((sc->entmag1 = tabcol (startab, "Fmag")))
-	strcpy (sc->keymag1, "Fmag");
-    else if ((sc->entmag1 = tabcont (startab, "mag"))) {
-	i = sc->entmag1 - 1;
-	strncpy (sc->keymag1, startab->colname[i], startab->lcol[i]);
+    /* Check columns for magnitudes and save columns and names */
+    sc->nmag = 0;
+    icol = 0;
+    for (i = 0; i < startab->ncols; i++) {
+	icol = icol + 1;
+	if (icol == sc->entid) continue;
+	if (icol == sc->entra) continue;
+	if (icol == sc->entdec) continue;
+	for (j = 0; j < 16; j++) keyword[j] = (char)0;
+	if (startab->lcol[i] < 16)
+	    strncpy (keyword, startab->colname[i], startab->lcol[i]);
+	else
+	    strncpy (keyword, startab->colname[i], 15);
+	if (strcsrch (keyword, "mag") && !strcsrch (keyword, "err")) {
+	    strcpy (sc->keymag[sc->nmag], keyword);
+	    sc->entmag[sc->nmag] = icol;
+	    sc->nmag++;
+	    }
+	else if ((keyword[0] == 'M' || keyword[0] == 'm') &&
+		 !strcsrch (keyword, "err")) {
+	    strcpy (sc->keymag[sc->nmag], keyword);
+	    sc->entmag[sc->nmag] = icol;
+	    sc->nmag++;
+	    }
 	}
-
-    /* Find column and name of object second magnitude */
-    sc->entmag2 = -1;
-    sc->keymag2[0] = (char) 0;
-    if ((sc->entmag2 = tabcol (startab, "magb")))
-	strcpy (sc->keymag2, "magb");
-    else if ((sc->entmag2 = tabcol (startab, "magr")))
-	strcpy (sc->keymag2, "magr");
-    else if ((sc->entmag2 = tabcol (startab, "magh")))
-	strcpy (sc->keymag2, "magh");
-    else if ((sc->entmag2 = tabcol (startab, "Jmag")))
-	strcpy (sc->keymag2, "Jmag");
-
-    /* Find column and name of object third magnitude */
-    sc->entmag3 = -1;
-    sc->keymag3[0] = (char) 0;
-    if ((sc->entmag3 = tabcol (startab, "magk")))
-	strcpy (sc->keymag3, "magk");
-    else if ((sc->entmag3 = tabcol (startab, "Vmag")))
-	strcpy (sc->keymag3, "Vmag");
-
-    /* Find column and name of object third magnitude */
-    sc->entmag4 = -1;
-    sc->keymag4[0] = (char) 0;
-    if ((sc->entmag4 = tabcol (startab, "Nmag")))
-	strcpy (sc->keymag4, "Nmag");
-
-    /* Set number of magnitudes */
-    if (sc->entmag1 && sc->entmag2 && sc->entmag3 && sc->entmag4)
-	sc->nmag = 4;
-    else if (sc->entmag1 && sc->entmag2 && sc->entmag3)
-	sc->nmag = 3;
-    else if (sc->entmag1 && sc->entmag2)
-	sc->nmag = 2;
-    else if (sc->entmag1)
-	sc->nmag = 1;
-    else
-	sc->nmag = 0;
 
     /* Find column and name of object right ascension proper motion */
     sc->entrpm = -1;
@@ -1051,11 +1016,9 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
     else if ((sc->entrv = tabcol (startab, "cz")))
 	strcpy (sc->keyrv, "cz");
     if (sc->entrv > 0 && sc->nmag < 2) {
-	if (sc->nmag == 0)
-	    strcpy (sc->keymag1, sc->keyrv);
-	else
-	    strcpy (sc->keymag2, sc->keyrv);
-	sc->nmag = sc->nmag + 1;
+	strcpy (sc->keymag[sc->nmag], sc->keyrv);
+	sc->entmag[sc->nmag] = sc->entrv;
+	sc->nmag++;
 	}
 
     /* Find column and name of object peak or plate number */
@@ -1234,7 +1197,7 @@ int	verbose;	/* 1 to print error messages */
     char *uscore;
     char cnum[32];
     char *cn;
-    int ndec, i;
+    int ndec, i, imag;
     int lnum, ireg, inum;
 
     if ((line = gettabline (startab, istar)) == NULL) {
@@ -1318,21 +1281,14 @@ int	verbose;	/* 1 to print error messages */
     st->dec = tabgetdec (&startok, sc->entdec);
 
     /* Magnitudes */
-    st->xmag[0] = tabgetr8 (&startok, sc->entmag1);
-    if (sc->entmag2)
-	st->xmag[1] = tabgetr8 (&startok, sc->entmag2);
-    else
-	st->xmag[1] = 0.0;
-    if (sc->entmag3)
-	st->xmag[2] = tabgetr8 (&startok, sc->entmag3);
-    else
-	st->xmag[2] = 0.0;
-    if (sc->entmag4)
-	st->xmag[3] = tabgetr8 (&startok, sc->entmag4);
-    else
-	st->xmag[3] = 0.0;
+    for (imag = 0; imag < sc->nmag; imag++) {
+	if (sc->entmag[imag])
+	    st->xmag[imag] = tabgetr8 (&startok, sc->entmag[imag]);
+	else
+	    st->xmag[imag] = 0.0;
+	}
 
-    /* Right ascension proper motion */
+    /* Convert right ascension proper motion to degrees/year */
     st->rapm = tabgetr8 (&startok, sc->entrpm);
     if (sc->rpmunit == PM_MASYR)
 	st->rapm = st->rapm / 3600000.0;
@@ -1351,7 +1307,7 @@ int	verbose;	/* 1 to print error messages */
     else
 	st->rapm = 0.0;
 
-    /* Declination proper motion */
+    /* Convert declination proper motion to degrees/year */
     st->decpm = tabgetr8 (&startok, sc->entdpm);
     if (sc->dpmunit == PM_MASYR)
 	st->decpm = st->decpm / 3600000.0;
@@ -1383,8 +1339,10 @@ int	verbose;	/* 1 to print error messages */
 	st->peak = 0;
 
     /* Spectral type */
-    if (sc->enttype > 0)
+    if (sc->enttype > 0) {
+	strcpy (st->isp, "__");
 	tabgetc (&startok, sc->enttype, st->isp, 24);
+	}
 
     /* Extract selected field */
     if (kwo != NULL)
@@ -1751,6 +1709,7 @@ int	ientry;	/* sequence of entry on line */
 {
     char str[24];
 
+    strcpy (str, "0.0");
     if (tabgetc (tabtok, ientry, str, 24))
 	return (0.0);
     else
@@ -1768,6 +1727,7 @@ int	ientry;		/* sequence of entry on line */
 {
     char str[24];
 
+    strcpy (str, "0.0");
     if (tabgetc (tabtok, ientry, str, 24))
 	return (0.0);
     else
@@ -1785,6 +1745,7 @@ int	ientry;		/* sequence of entry on line */
 {
     char str[24];
 
+    strcpy (str, "0.0");
     if (tabgetc (tabtok, ientry, str, 24))
 	return (0.0);
     else if (isnum (str))
@@ -1804,6 +1765,7 @@ int	ientry;		/* sequence of entry on line */
 {
     char str[24];
 
+    strcpy (str, "0");
     if (tabgetc (tabtok, ientry, str, 24))
 	return (0);
     else if (isnum (str))
@@ -1842,7 +1804,9 @@ char	*string;	/* Character string (returned) */
 int	maxchar;	/* Maximum number of characters in returned string */
 {
 
-    if (getoken (tabtok, ientry, string, maxchar))
+    if (ientry > tabtok->ntok)
+	return (0);
+    else if (getoken (tabtok, ientry, string, maxchar))
 	return (0);
     else
 	return (-1);
@@ -2239,4 +2203,8 @@ char    *filename;      /* Name of file to check */
  * Dec  3 2001	Initialize keyword search variables in tabhgetc()
  *
  * May  6 2002	Allow object names to be up to 79 characters long
+ * Aug  5 2002	Deal correctly with magnitude-less catalogs
+ * Aug  5 2002	Add magu, magb, magv for UBV magnitudes
+ * Aug  6 2002	Pass through magnitude keywords
+ * Aug  6 2002	Return initial string if token not found by tabgetc()
  */

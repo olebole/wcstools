@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** April 10, 2002
+ *** July 31, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -120,7 +120,7 @@ int getuplate ()
 
 int
 usaread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,
-	 sortmag,nstarmax,unum,ura,udec,umag,umagb,uplate,nlog)
+	 sortmag,nstarmax,unum,ura,udec,umag,uplate,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
@@ -567,8 +567,7 @@ int	nlog;		/* Logging interval */
 
 
 int
-uacrnum (refcatname,nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,uplate,
-	 nlog)
+uacrnum (refcatname,nnum,sysout,eqout,epout,unum,ura,udec,umag,uplate,nlog)
 
 char	*refcatname;	/* Name of catalog (UAC, USAC, UAC2, USAC2) */
 int	nnum;		/* Number of stars to find */
@@ -1149,4 +1148,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Nov 20 2001	Change cos(degrad()) to cosdeg()
  *
  * Apr 10 2002	Simplify use of magsort
+ * Jul 31 2002	Drop extra magb argument in uacrnum()
  */

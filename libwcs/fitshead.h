@@ -1,5 +1,5 @@
 /*** File fitshead.h  FITS header access subroutines
- *** April 8, 2002
+ *** August 30, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -116,6 +116,14 @@ extern "C" {
 	const char* s1,		/* String to search */
 	const char* s2);	/* String to look for */
     char *strnsrch (		/* Find string s2 within string s1 */
+	const char* s1,		/* String to search */
+	const char* s2,		/* String to look for */
+	const int ls1);		/* Length of string being searched */
+
+    char *strcsrch (		/* Find string s2 within string s1 (no case) */
+	const char* s1,		/* String to search */
+	const char* s2);	/* String to look for */
+    char *strncsrch (		/* Find string s2 within string s1 (no case) */
 	const char* s1,		/* String to search */
 	const char* s2,		/* String to look for */
 	const int ls1);		/* Length of string being searched */
@@ -296,6 +304,8 @@ extern char *blsearch();
 /* Search for substring s2 within string s1 */
 extern char *strsrch ();	/* s1 null-terminated */
 extern char *strnsrch ();	/* s1 ls1 characters long */
+extern char *strcsrch ();	/* s1 null-terminated (case-insensitive) */
+extern char *strncsrch ();	/* s1 ls1 characters long (case-insensitive) */
 
 /* Set length of header which is not null-terminated */
 extern int hlength();
@@ -383,4 +393,5 @@ extern char *getutime(); /* Return current UT as an ISO-format string */
  *
  * Apr  3 2002	Add hgeti4c(), hgetr8c(), and hgetsc()
  * Apr  8 2002	Include sys/types.h
+ * Aug 30 2002	Add strcsrch() and strncsrch()
  */

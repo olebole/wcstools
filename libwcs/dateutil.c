@@ -1,5 +1,5 @@
 /*** File libwcs/dateutil.c
- *** July 8, 2002
+ *** August 30, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1999-2002
@@ -58,6 +58,7 @@
  *	Convert year and day of year to FITS date string
  * doy2mjd (year, doy)
  *	Convert year and day of year to modified Julian date
+ *
  * dt2doy (date, time, year, doy)
  *	Convert date as yyyy.ddmm and time as hh.mmsss to year and day of year
  * dt2ep, dt2epb, dt2epj (date, time)
@@ -76,6 +77,7 @@
  *	Convert date (yyyy.ddmm) and time (hh.mmsss) to seconds since 1980-01-01
  * dt2tsu (date,time)
  *	Convert date (yyyy.ddmm) and time (hh.mmsss) to seconds since 1970-01-01
+ *
  * ep2dt, epb2dt, epj2dt (epoch,date, time)
  *	Convert fractional year to date as yyyy.ddmm and time as hh.mmsss
  * ep2fd, epb2fd, epj2fd (epoch)
@@ -88,6 +90,20 @@
  *	Convert fractional year as used in epoch to modified Julian date
  * ep2ts, epb2ts, epj2ts (epoch)
  *	Convert fractional year to seconds since 1950.0
+ *
+ * et2fd (string)
+ *	Convert from ET (or TDT or TT) in FITS format to UT in FITS format
+ * fd2et (string)
+ *	Convert from UT in FITS format to ET (or TDT or TT) in FITS format
+ * jd2jed (dj)
+ *	Convert from Julian Date to Julian Ephemeris Date
+ * jed2jd (dj)
+ *	Convert from Julian Ephemeris Date to Julian Date
+ * ts2ets (tsec)
+ *	Convert from UT in seconds since 1950-01-01 to ET in same format
+ * ets2ts (tsec)
+ *	Convert from ET in seconds since 1950-01-01 to UT in same format
+ *
  * fd2ep, fd2epb, fd2epj (string)
  *	Convert FITS date string to fractional year
  *	Convert time alone to fraction of Besselian year
@@ -115,6 +131,7 @@
  *	Convert FITS standard date string to old-format FITS date string
  * fd2oft (string)
  *	Convert time part of FITS standard date string to FITS date string
+ *
  * jd2doy (dj, year, doy)
  *	Convert Julian date to year and day of year
  * jd2dt (dj,date,time)
@@ -129,6 +146,7 @@
  *	Convert Julian date to modified Julian date
  * jd2ts (dj)
  *	Convert Julian day to seconds since 1950.0
+ *
  * lt2dt()
  *	Return local time as yyyy.mmdd and time as hh.mmssss
  * lt2fd()
@@ -139,6 +157,7 @@
  *	Return local time as Unix seconds since 1970-01-01 00:00
  * lt2ts()
  *	Return local time as Unix seconds since 1950-01-01 00:00
+ *
  * mjd2doy (dj,year,doy)
  *	Convert modified Julian date to date as year and day of year
  * mjd2dt (dj,date,time)
@@ -153,6 +172,7 @@
  *	Convert modified Julian date to Julian date
  * mjd2ts (dj)
  *	Convert modified Julian day to seconds since 1950.0
+ *
  * ts2dt (tsec,date,time)
  *	Convert seconds since 1950.0 to date as yyyy.ddmm and time as hh.mmsss
  * ts2ep, ts2epb, ts2epj (tsec)
@@ -175,6 +195,9 @@
  *	Convert UT seconds since 1970-01-01 to local seconds since 1980-01-01
  * tsu2dt (tsec,date,time)
  *	Convert seconds since 1970-01-01 to date as yyyy.ddmm, time as hh.mmsss
+ *
+ * utdt (dj)
+ *	Compute difference between UT and dynamical time (ET-UT)
  * ut2dt (year, doy)
  *	Current Universal Time to year and day of year
  * ut2dt (date, time)
@@ -1690,7 +1713,201 @@ char *string;	/* FITS date string, which may be:
 }
 
 
-/* FD2FD-- convert any FITS standard date to old FITS standard date */
+/* TAI-UTC from the U.S. Naval Observatory */
+/* ftp://maia.usno.navy.mil/ser7/tai-utc.dat */
+static double taijd[23]={2441317.5, 2441499.5, 2441683.5, 2442048.5, 2442413.5,
+	      2442778.5, 2443144.5, 2443509.5, 2443874.5, 2444239.5, 2444786.5,
+	      2445151.5, 2445516.5, 2446247.5, 2447161.5, 2447892.5, 2448257.5,
+	      2448804.5, 2449169.5, 2449534.5, 2450083.5, 2450630.5, 2451179.5};
+static double taidt[23]={10.0,11.0,12.0,13.0,14.0,15.0,16.0,17.0,18.0,19.0,
+	   20.0,21.0,22.0,23.0,24.0,25.0,26.0,27.0,28.0,29.0,30.0,31.0,32.0};
+static double dttab[173]={13.7,13.4,13.1,12.9,12.7,12.6,12.5,12.5,12.5,12.5,
+	   12.5,12.5,12.5,12.5,12.5,12.5,12.5,12.4,12.3,12.2,12.0,11.7,11.4,
+	   11.1,10.6,10.2, 9.6, 9.1, 8.6, 8.0, 7.5, 7.0, 6.6, 6.3, 6.0, 5.8,
+	    5.7, 5.6, 5.6, 5.6, 5.7, 5.8, 5.9, 6.1, 6.2, 6.3, 6.5, 6.6, 6.8,
+            6.9, 7.1, 7.2, 7.3, 7.4, 7.5, 7.6, 7.7, 7.7, 7.8, 7.8,7.88,7.82,
+	   7.54, 6.97, 6.40, 6.02, 5.41, 4.10, 2.92, 1.82, 1.61, 0.10,-1.02,
+	  -1.28,-2.69,-3.24,-3.64,-4.54,-4.71,-5.11,-5.40,-5.42,-5.20,-5.46,
+	  -5.46,-5.79,-5.63,-5.64,-5.80,-5.66,-5.87,-6.01,-6.19,-6.64,-6.44,
+	  -6.47,-6.09,-5.76,-4.66,-3.74,-2.72,-1.54,-0.02, 1.24, 2.64, 3.86,
+	   5.37, 6.14, 7.75, 9.13,10.46,11.53,13.36,14.65,16.01,17.20,18.24,
+	  19.06,20.25,20.95,21.16,22.25,22.41,23.03,23.49,23.62,23.86,24.49,
+	  24.34,24.08,24.02,24.00,23.87,23.95,23.86,23.93,23.73,23.92,23.96,
+	  24.02,24.33,24.83,25.30,25.70,26.24,26.77,27.28,27.78,28.25,28.71,
+	  29.15,29.57,29.97,30.36,30.72,31.07,31.35,31.68,32.18,32.68,33.15,
+	  33.59,34.00,34.47,35.03,35.73,36.54,37.43,38.29,39.20,40.18,41.17,
+	  42.23};
+
+
+/* ET2FD-- convert from ET (or TDT or TT) in FITS format to UT in FITS format */
+
+char *
+et2fd (string)
+
+char *string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+{
+    double dj0, dj, tsec, dt;
+
+    dj0 = fd2jd (string);
+    dt = utdt (dj0);
+    dj = dj0 - (dt / 86400.0);
+    dt = utdt (dj);
+    tsec = fd2ts (string);
+    tsec = tsec - dt;
+    return (ts2fd (tsec));
+}
+
+
+/* FD2ET-- convert from UT in FITS format to ET (or TDT or TT) in FITS format */
+
+char *
+fd2et (string)
+
+char *string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+{
+    double dj, tsec, dt;
+
+    dj = fd2jd (string);
+    dt = utdt (dj);
+    tsec = fd2ts (string);
+    tsec = tsec + dt;
+    return (ts2fd (tsec));
+}
+
+
+/* JD2JED-- convert from Julian Date to Julian Ephemeris Date */
+
+double
+jd2jed (dj)
+
+double dj;	/* Julian Date */
+{
+    double dt;
+
+    dt = utdt (dj);
+    return (dj + (dt / 86400.0));
+}
+
+
+/* JED2JD-- convert from Julian Ephemeris Date to Julian Date */
+
+double
+jed2jd (dj)
+
+double dj;	/* Julian Ephemeris Date */
+{
+    double dj0, dt;
+
+    dj0 = dj;
+    dt = utdt (dj);
+    dj = dj0 - (dt / 86400.0);
+    dt = utdt (dj);
+    return (dj - (dt / 86400.0));
+}
+
+
+/* TS2ETS-- convert from UT in seconds since 1950-01-01 to ET in same format */
+
+double
+ts2ets (tsec)
+
+double tsec;
+{
+    double dj, dt;
+
+    dj = ts2jd (tsec);
+    dt = utdt (dj);
+    return (tsec + dt);
+}
+
+
+/* ETS2TS-- convert from ET in seconds since 1950-01-01 to UT in same format */
+
+double
+ets2ts (tsec)
+
+double tsec;
+{
+    double dj, dj0, dt;
+
+    dj0 = ts2jd (tsec);
+    dt = utdt (dj0);
+    dj = dj0 - (dt / 86400.0);
+    dt = utdt (dj);
+    return (tsec - dt);
+}
+
+
+/* UTDT-- Compute difference between UT and dynamical time (ET-UT) */
+
+double
+utdt (dj)
+
+double dj;	/* Julian Date (UT) */
+{
+    double dt, date, time, ts, ts1, ts0, date0, yfrac, diff, cj;
+    int i, iyr, iyear;
+
+    /* If after 1972-01-01, use tabulated TAI-UT */
+    if (dj >= 2441317.5) {
+	dt = 0.0;
+	for (i = 22;  i > 0; i--) {
+	    if (dj >= taijd[i])
+		dt = taijd[i];
+	    }
+	dt = dt + 32.84;
+	}
+
+    /* For 1800-01-01 to 1972-01-01, use table of ET-UT from AE */
+    else if (dj >= 2378496.5) {
+	jd2dt (dj, &date, &time);
+	ts = jd2ts (dj);
+	iyear = (int) date;
+	iyr = iyear - 1800;
+	date0 = (double) iyear + 0.0101;
+	ts0 = dt2ts (date0, 0.0);
+	date0 = (double) (iyear + 1) + 0.0101;
+	ts1 = dt2ts (date0, 0.0);
+	yfrac = (ts - ts0) / (ts1 - ts0);
+	diff = dttab[iyr+1] - dttab[iyr];
+	dt = dttab[iyr] + (diff * yfrac);
+	}
+
+    /* Compute back to 1600 using formula from McCarthy and Babcock (1986) */
+    else if (dj >= 2305447.5) {
+	cj = (dj - 2378496.5) / 36525.0;
+	dt = 5.156 + 13.3066 * (cj - 0.19) * (cj - 0.19);
+	}
+
+    /* Compute back to 948 using formula from Stephenson and Morrison (1984) */
+    else if (dj >= 2067309.5) {
+	cj = (dj - 2378496.5) / 36525.0;
+	dt = 25.5 * cj * cj;
+	}
+
+    /*Compute back to 390 BC using formula from Stephenson and Morrison (1984)*/
+    else if (dj >= 0.0) {
+	cj = (dj = 2378496.5) / 36525.0;
+	dt = 1360.0 + (320.0 * cj) + (44.3 * cj * cj);
+	}
+
+    else
+	dt = 0.0;
+    return (dt);
+}
+
+
+/* FD2OFD-- convert any FITS standard date to old FITS standard date */
 
 char *
 fd2ofd (string)

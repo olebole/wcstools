@@ -1,5 +1,5 @@
 /*** File libwcs/gscread.c
- *** March 28, 2002
+ *** July 31, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -150,7 +150,7 @@ int	nlog;		/* 1 for diagnostics */
     if (refcat == GSCACT) {
 	url = cdna;
 	if ((str = getenv("GSCACT_NORTH")) == NULL)
-	    str = getenv ("GSCA_PATH");
+	    str = getenv ("GSCACT_PATH");
 	if (str != NULL) url = str;
 	if (!strncmp (url, "http:",5))
 	    return (webread (url,"gscact",distsort,cra,cdec,dra,ddec,drad,
@@ -1134,7 +1134,7 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Apr 24 2001	Add bandpass code and number of entries to object class
  * Apr 24 2001	Return individual entries if class is < -1
  * May 23 2001	Add support for GSC-ACT
- * May 30 2001	Use GSC_NORTH and GSCA_NORTH instead of *_PATH for consistency
+ * May 30 2001	Use GSC_NORTH and GSCACT_NORTH instead of *_PATH for consistency
  * Jun 27 2001  Print stars as found in gscread() if nstarmax < 1
  * Jun 27 2001	Allocate distance array only if larger one is needed
  * Jun 27 2001	Add gscfree() to free table buffer and distance array
@@ -1143,4 +1143,5 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Nov 20 2001	Change cos(degrad)) to cosdeg()
  *
  * Mar 28 2002	Change pathnames to /data/astrocat
+ * JUl 31 2002	Always check for GSCACT_PATH, not GSCA_PATH
  */

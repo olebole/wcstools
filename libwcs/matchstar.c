@@ -1,5 +1,5 @@
 /*** File libwcs/matchstar.c
- *** November 16, 2001
+ *** August 30, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -865,6 +865,96 @@ int	debug;		/* Printed debugging information if not zero */
 
 
 /* Find shift, scale, and rotation of image stars to best-match reference stars
+ */
+
+void
+WCSMatch (nmatch, sbx, sby, gbra, gbdec, debug)
+
+int	nmatch;		/* Number of matched stars */
+double	*sbx;		/* Image star X coordinates in pixels */
+double	*sby;		/* Image star Y coordinates in pixels */
+double	*gbra;		/* Reference star right ascensions in degrees */
+double	*gbdec;		/* Reference star right ascensions in degrees */
+int	debug;		/* Printed debugging information if not zero */
+
+{
+    int i;
+    char rastr[16], decstr[16];
+    double xref0, yref0, xinc0, yinc0, rot0, xrefpix0, yrefpix0, cd0[4];
+    double xdiff, ydiff;
+    char *vi;
+    char vc;
+    int offscl;
+    int nsc, j;
+    double tx = 0.0;
+    double ty = 0.0;
+    double tra = 0.0;
+    double tdec = 0.0;
+    double tdiff = 0.0;
+    double cra, cdec, cx, cy, scale;
+    double dmatch;
+    double skydiff, imdiff;
+    extern double getsecpix();
+    extern getcenter(), getrefpix();
+
+    dmatch = (double) nmatch;
+
+    if (debug) {
+	fprintf (stderr,"%d matched stars:\n", nmatch);
+	}
+
+    /* too few hits */
+    if (nmatch < 2)
+	return;
+
+    /* Compute plate scale and center of stars */
+    nsc = 0;
+    for (i = 0; i < nmatch; i++) {
+	tx = tx + sbx[i];
+	ty = ty + sby[i];
+	tra = tra + gbra[i];
+	tdec = tdec + gbdec[i];
+	for (j = i+1; j < nmatch; j++) {
+	    skydiff = wcsdist (gbra[i], gbdec[i], gbra[j], gbdec[j]);
+	    xdiff = sbx[j] - sbx[i];
+	    ydiff = sby[j] - sby[i];
+	    imdiff = sqrt ((xdiff * xdiff) + (ydiff * ydiff));
+	    scale = skydiff / imdiff;
+	    tdiff = tdiff + scale;
+	    nsc++;
+	    if (debug) {
+		fprintf (stderr,"%d %d: sky: %8g, image: %8g, %8g deg/pix", 
+			i, j, skydiff, imdiff, scale);
+		fprintf (stderr," = %8g arcsec/pix\n", scale * 3600.0);
+		}
+	    }
+	}
+    
+    /* Reset image center based on star matching */
+    getcenter (&cra, &cdec);
+    if (cra == -99.0 && cdec == -99.0) {
+	cra = tra / dmatch;
+	cdec = tdec / dmatch;
+	setdcenter (cra, cdec);
+	}
+    getrefpix (&cx, &cy);
+    if (cx == -99999.0 && yref0 == -99999.0) {
+	cx = tx / dmatch;
+	cy = ty / dmatch;
+	setrefpix (cx, cy);
+	}
+    scale = getsecpix();
+    if (scale == 0.0) {
+	scale = tdiff / (double) nsc;
+	setsecpix (3600.0 * scale);
+	}
+    if (debug)
+	fprintf (stderr,"scale = %8g deg/pix = %8g arcsec/pix\n", scale, scale*3600.0);
+    return;
+}
+
+
+/* Find shift, scale, and rotation of image stars to best-match reference stars
  * Return count of total coincidences found, else 0 if none or -1 if trouble.
  */
 
@@ -1709,6 +1799,10 @@ int nfit;
 }
 
 int
+getnfit ()
+{ return (pfit0); }
+
+int
 iscdfit ()
 { return (cdfit); }
 
@@ -1789,4 +1883,7 @@ int nitmax;
  * Nov  6 2001	Add setnitmax() to set maximum number of amoeba iterations
  * Nov  7 2001	Add setminbin to set minimum number of matches for fit
  * Nov 16 2001	Allocate slightly more than maxbin to handle dense fields
+ *
+ * Jul 31 2002	Add getnfit() to return current number of parameters being fit
+ * Aug 30 2002	Fix WCSMatch() to set scale in arcsec, not degrees
  */ 

@@ -1,5 +1,5 @@
 /*** File libwcs/imsetwcs.c
- *** April 10, 2002
+ *** August 2, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu (based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -42,6 +42,7 @@ extern int FocasMatch();
 extern int StarMatch();
 extern int ReadMatch();
 extern int FitMatch();
+extern int WCSMatch();
 extern int FitPlate();
 extern struct WorldCoor *GetFITSWCS ();
 extern char *getimcat();
@@ -49,6 +50,8 @@ extern void SetFITSWCS();
 extern void fk524e();
 extern iscdfit();
 extern void setminbin();
+extern void setnfit();
+extern int getnfit();
 
 /* Set the C* WCS fields in a FITS header based on a reference catalog
  * by finding stars in the image and in the reference catalog and
@@ -74,6 +77,7 @@ static int classd = -1;                 /* Guide Star Catalog object classes */
 static int uplate = 0;                  /* UJ Catalog plate number to use */
 static int iterate0 = 0;		/* If 1, search field again */
 static int toliterate0 = 0;		/* if 1, halve tolerances when iter */
+static int nfiterate0 = 0;		/* if 1, add two parameters to fit */
 static int recenter0 = 0;		/* If 1, search again with new center*/
 static char matchcat[32]="";		/* Match catalog name */
 static int irafout = 0;			/* if 1, write X Y RA Dec out */
@@ -134,7 +138,7 @@ int	verbose;
     int minstars;
     int ngmax;
     int nbin, nbytes;
-    int iterate, toliterate;
+    int iterate, toliterate, nfiterate;
     int nmagmax = 8;
     int imag, magsort;
     int niter = 0;
@@ -161,6 +165,7 @@ int	verbose;
 
     iterate = iterate0;
     toliterate = toliterate0;
+    nfiterate = nfiterate0;
     gnum = NULL;
     gra = NULL;
     gdec = NULL;
@@ -185,6 +190,9 @@ int	verbose;
 	    ret = 0;
 	    goto out;
 	    }
+
+	if (nbin > 1)
+	    WCSMatch (nbin, &sx, &sy, &gra, &gdec, verbose);
 
 	/* Set WCS from image header and command line */
 	wcs = GetFITSWCS (filename,header,verbose,&cra,&cdec,&dra,&ddec,
@@ -761,6 +769,17 @@ match:
 	free (wcs);
 	goto getfield;
 	}
+    if (nfiterate) {
+	int nfit = getnfit ();
+	wcssize (wcs, &cra, &cdec, &dra, &ddec);
+	if (verbose)
+	    printf ("\n fitting %d instead of %d parameters\n", nfit+2, nfit);
+	if (nfit < 7)
+	    nfit = nfit + 2;
+	setnfit (nfit);
+	nfiterate--;
+	goto getstars;
+	}
 
 done:
     if (wcs) free (wcs);
@@ -1000,6 +1019,12 @@ int iter;
   return; }
 
 void
+setnfiterate (iter)
+int iter;
+{ nfiterate0 = nfiterate0 + iter;
+  return; }
+
+void
 setiteratet (iter)
 int iter;
 { toliterate0 = toliterate0 + iter;
@@ -1179,4 +1204,6 @@ setmagfit ()
  * Jan 23 2002	Add zap=0 to FindStar() argument list
  * Jan 24 2002	Handle catalog nmag = 0 safely
  * Apr 10 2002	Allow sort/limit magnitude to be specified by letter as well as number
+ * Jul 31 2002	Add iteration with increasing number of parameters to be fit
+ * Aug  2 2002	Use WCSMatch() to set initial values for pre-matched stars
  */

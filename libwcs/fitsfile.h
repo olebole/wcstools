@@ -1,5 +1,5 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** June 18, 2002
+ *** August 30, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2002
@@ -213,6 +213,13 @@ time_t ut2tsu();	/* Current UT to Unix seconds since 1970-01-01T00:00 */
 double ut2ts(); /* Current UT to IRAF seconds since 1950-01-01T00:00 */
 int sts2c();	/* Replaces spaces in a string with a specified character */
 int stc2s();	/* Replaces a specified character in a string with spaces */
+char *et2fd();	/* ET (or TDT or TT) in FITS format to UT in FITS format */
+char *fd2et();	/* UT in FITS format to ET (or TDT or TT) in FITS format */
+double jd2jed(); /* Convert from Julian Date to Julian Ephemeris Date */
+double jed2jd(); /* Convert from Julian Ephemeris Date to Julian Date */
+double ets2ts(); /* ET in seconds since 1950-01-01 to UT in same format */
+double ts2ets(); /* UT in seconds since 1950-01-01 to ET in same format */
+double utdt();	/* Compute difference between UT and dynamical time (ET-UT) */
 
 #endif /* fitsfile_h_ */
 
@@ -253,4 +260,5 @@ int stc2s();	/* Replaces a specified character in a string with spaces */
  * Jan  8 2002	Add sts2c() and stc2s()
  * Apr  8 2002	Change all long declarations to time_t for compatibility
  * Jun 18 2002	Add fitserr() to print error messages
+ * Aug 30 2002	Add Ephemeris Time date conversions
  */

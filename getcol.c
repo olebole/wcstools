@@ -1,5 +1,5 @@
 /* File getcol.c
- * June 19, 2002
+ * July 19, 2002
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -16,6 +16,7 @@
 
 #define	MAX_LTOK	256
 #define	MAX_NTOK	256
+#define MAXFILES	2000
 
 static void usage();
 static int ListFile();
@@ -23,10 +24,15 @@ static int iscolop();
 static int iscol();
 static double median();
 
+static int maxnfile = MAXFILES;
+
 static double badval = 0.0;	/* Value to ignore */
+static int nocomment = 0;	/* 1 if comments to be dropped */
 static int isbadval = 0;	/* 1 if badval is set */
+static int maxlfn = 0;
 static int maxncond = 100;
 static int maxnop = 100;
+static int listpath = 0;	/* 1 to list pathnames */
 static int verbose = 0;		/* Verbose/debugging flag */
 static int debug = 0;		/* True for extra information */
 static int sumcol = 0;		/* True to sum column values */
@@ -65,6 +71,10 @@ char **av;
 {
     char *str;
     char *temp;
+    char **fn;
+    int nfile = 0;
+    int ifile;
+    int nbytes, lfn;
     char *filename;
     char *ranges = NULL;
     char *lfile = NULL;
@@ -75,6 +85,7 @@ char **av;
     int nrbytes = 0;
 
     cwhite = NULL;
+    fn = (char **)calloc (maxnfile, sizeof(char *));
 
     if (ac == 1)
         usage ();
@@ -164,6 +175,24 @@ char **av;
 		    match = 1;
 		strcpy (ranges, *av);
 		}
+	    }
+
+	/* Read and save file name */
+	else if (isfile (*av)) {
+	    if (nfile >= maxnfile) {
+		maxnfile = maxnfile * 2;
+		nbytes = maxnfile * sizeof (char *);
+		fn = (char **) realloc ((void *)fn, nbytes);
+		}
+	    fn[nfile] = *av;
+	    if (listpath || (filename = strrchr (fn[nfile],'/')) == NULL)
+		filename = fn[nfile];
+	    else
+		filename = filename + 1;
+	    lfn = strlen (filename);
+	    if (lfn > maxlfn)
+		maxlfn = lfn;
+	    nfile++;
 	    }
 
 	/* Condition */
@@ -299,12 +328,20 @@ char **av;
 		verbose++;
 		break;
 
+	    case 'w':	/* Print file pathnames */
+		listpath++;
+		break;
+
 	    case 'x':	/* Value to ignore */
 		if (ac < 2)
 		    usage ();
 		badval = atof (*++av);
 		isbadval++;
 		ac--;
+		break;
+
+	    case 'z':	/* Totally ignore comments */
+		nocomment++;
 		break;
 
 	    default:
@@ -337,9 +374,15 @@ char **av;
 
 	/* File to read */
 	else
-	    filename = *av;
+	    usage();
 	}
-    (void)ListFile (filename, ranges, lranges, lfile);
+
+    if (nfile <= 0) {
+	fprintf (stderr, "GETHEAD: no files specified\n");
+	exit (1);
+	}
+    for (ifile = 0; ifile < nfile; ifile++)
+	(void)ListFile (fn[ifile], ranges, lranges, lfile);
 
     free (lranges);
     free (ranges);
@@ -376,7 +419,9 @@ usage ()
     fprintf(stderr,"  -s: Number of lines to skip\n");
     fprintf(stderr,"  -t: Starbase tab table output\n");
     fprintf(stderr,"  -v: Verbose\n");
+    fprintf(stderr,"  -w: Print file pathnames\n");
     fprintf(stderr,"  -x num: Set value to ignore\n");
+    fprintf(stderr,"  -x: Drop comments\n");
     exit (1);
 }
 
@@ -441,6 +486,9 @@ char	*lfile;		/* Name of file with lines to list */
 
     if (verbose)
 
+    if (listpath)
+	printf ("%s ", filename);
+
     if (debug)
 	nlog = 1;
     else if (verbose)
@@ -483,8 +531,16 @@ char	*lfile;		/* Name of file with lines to list */
 		break;
 
 	    /* Skip lines with comments */
-	    if (line[0] == '#')
-		continue;
+	    if (nextline[0] == '#') {
+		if (nocomment) {
+		    while (line[0] == '#') {
+			if (fgets (nextline, 1023, lfd) == NULL)
+			    break;
+			}
+		    }
+		else
+		    continue;
+		}
 
 	    /* Drop linefeeds */
 	    lastchar = nextline + strlen(nextline) - 1;
@@ -541,6 +597,12 @@ char	*lfile;		/* Name of file with lines to list */
 	for (i = 0; i < nskip; i++) {
 	    if (fgets (line, 1023, fd) == NULL)
 		break;
+	    if (nocomment) {
+		while (line[0] == '#') {
+		    if (fgets (line, 1023, fd) == NULL)
+			break;
+		    }
+		}
 	    }
 	}
 
@@ -554,9 +616,18 @@ char	*lfile;		/* Name of file with lines to list */
 	    if (fgets (nextline, 1023, fd) == NULL)
 		break;
 
+
 	    /* Skip lines with comments */
-	    if (nextline[0] == '#')
-		continue;
+	    if (nextline[0] == '#') {
+		if (nocomment) {
+		    while (nextline[0] == '#') {
+			if (fgets (nextline, 1023, lfd) == NULL)
+			    break;
+			}
+		    }
+		else
+		    continue;
+		}
 
 	    /* Add lines with escaped linefeeds */
 	    lastchar = nextline + strlen(nextline) - 1;
@@ -597,7 +668,7 @@ char	*lfile;		/* Name of file with lines to list */
 		*lastchar = (char) 0;
 
 	    /* Echo line if it is a comment */
-	    if (line[0] == '#') {
+	    if (line[0] == '#' && !nocomment) {
 		printf ("%s\n", line);
 		continue;
 		}
@@ -775,6 +846,14 @@ char	*lfile;		/* Name of file with lines to list */
 	    if (fgets (nextline, 1023, fd) == NULL)
 		break;
 
+	    /* Ignore line if it is a comment and nocomment flag is set */
+	    if (line[0] == '#' && nocomment) {
+		while (line[0] == '#') {
+		    if (fgets (nextline, 1023, fd) == NULL)
+			break;
+		    }
+		}
+
 	    /* Clear control character at end of string */
 	    lastchar = line + strlen(line) - 1;
 	    if (*lastchar < 32)
@@ -812,7 +891,8 @@ char	*lfile;		/* Name of file with lines to list */
 
 	    /* Echo line if it is a comment */
 	    if (line[0] == '#') {
-		printf ("%s\n", line);
+		if (!nocomment)
+		    printf ("%s\n", line);
 		continue;
 		}
 
@@ -1457,4 +1537,6 @@ void *pd1, *pd2;
  * Apr 12 2002	Fix bug in computing median of filtered file
  * Apr 12 2002	Add -x option to set ignorable value
  * Jun 19 2002	Fix bug that could read files as letter operations
+ * Jul 18 2002	Read multiple files; add option to print pathname
+ * Jul 19 2002	Ignore commented lines completely if -z
  */

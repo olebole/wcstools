@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** May 13, 2002
+ *** August 6, 2002
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2002
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -211,10 +211,7 @@ struct StarCat {
     int entid;		/* Entry number for ID */
     int entra;		/* Entry number for right ascension */
     int entdec;		/* Entry number for declination */
-    int entmag1;	/* Entry number for first or only magnitude */
-    int entmag2;	/* Entry number for second magnitude, if present */
-    int entmag3;	/* Entry number for third magnitude, if present */
-    int entmag4;	/* Entry number for fourth magnitude, if present */
+    int entmag[10];	/* Entry numbers for up to 10 magnitudes */
     int entpeak;	/* Entry number for peak counts */
     int entepoch;	/* Entry number for epoch of observation */
     int entname;	/* Entry number for object name */
@@ -231,10 +228,7 @@ struct StarCat {
     char keyid[16];	/* Entry name for ID */
     char keyra[16];	/* Entry name for right ascension */
     char keydec[16];	/* Entry name for declination */
-    char keymag1[16];	/* Entry name for first or only magnitude */
-    char keymag2[16];	/* Entry name for second magnitude, if present */
-    char keymag3[16];	/* Entry name for third magnitude, if present */
-    char keymag4[16];	/* Entry name for fourth magnitude, if present */
+    char keymag[10][16]; /* Entry name for up to 10 magnitudes */
     char keyrpm[16];	/* Entry name for right ascension proper motion */
     char keydpm[16];	/* Entry name for declination proper motion */
     char keypeak[16];	/* Entry name for integer code */
@@ -436,4 +430,5 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * Apr 10 2002	Add CatMagNum()
  * May  6 2002	Increase object name length from 31 to 79 characters
  * May 13 2002	Add NumNdec(), gsc2read(), and gsc2rnum()
+ * Aug  6 2002	Make magnitude entries and positions vectors of 10
  */
