@@ -32,6 +32,7 @@ static int logrange = 1;	/* Log pixel change in image header */
 static char *pform = NULL;	/* Format in which to print pixels */
 
 
+int
 main (ac, av)
 int ac;
 char **av;

@@ -1,3 +1,15 @@
+Version 3.5.6 (September 3, 2004)
+remap: Add -t num option to split each output pixel in num in each dimension.
+scat: Print error message and exit if no catalog found (instead of hanging).
+sethead: Add option to add, subtract, multiply, or divide a constant
+  to or from a  keyword value.
+taking mean of num x num samples from input image
+Clean up code in libwcs subroutines (mostly declaring undeclared subroutines)
+fitsfile.c: If SIMPLE=F, read "image" data based on file size - header, and
+write data based on the NBDATA keyword.
+catutil.c: Parse up to 1000 columns instead of 100 in setoken()
+hput.c:  Fix bug so comments are not pushed onto next line if value lengthens
+
 Version 3.5.5 (July 19, 2004)
 delhead, delwcs, imwcs: keep blank lines when deleting keywords from
 multi-extension FITS headers
@@ -11,7 +23,7 @@ line at the end of a FITS header when a keyword is deleted.
 
 Version 3.5.4 (May 19, 2004)
 delhead, keyhead, sethead: Add ability to overwrite multi-extension headers.
-scat: Exit with error message and menu if no cataog is given
+scat: Exit with error message and menu if no catalog is given
 
 Version 3.5.3 (April 30, 2004)
 getcol: Add % option to format output a column at a time.

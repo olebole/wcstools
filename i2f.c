@@ -24,6 +24,7 @@ static char outname[128];	/* Name for output image */
 static char outdir[256];	/* Output directory pathname */
 static int first = 1;
 
+int
 main (ac, av)
 int ac;
 char **av;

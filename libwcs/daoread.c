@@ -1,8 +1,8 @@
 /*** File libwcs/daoread.c
- *** May 27, 2003
+ *** August 30, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -32,12 +32,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include "wcscat.h"
+#include "fitsfile.h"
 
 static int nlines;	/* Number of lines in catalog */
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
-
-static int daoopen();
-static char *daoline();
 
 static char newline = 10;
 static char *daobuff;
@@ -118,7 +117,7 @@ int	nlog;		/* 1 to print each star's position */
 
 /* DAOOPEN -- Open DAOFIND catalog, returning number of entries */
 
-static int
+int
 daoopen (daofile)
 
 char *daofile;	/* DAOFIND catalog file name */
@@ -166,7 +165,7 @@ char *daofile;	/* DAOFIND catalog file name */
 
 /* DAOLINE -- Get DAOFIND catalog entry for one star; return 0 if successful */
 
-static char *
+char *
 daoline (iline, line)
 
 int iline;	/* Star sequence number in DAOFIND catalog */
@@ -199,4 +198,7 @@ char *line;	/* Pointer to iline'th entry (returned updated) */
  * Jul 20 2001	Return magnitude as well as flux
  *
  * May 27 2003	Use getfilesize() to get length of file
+ *
+ * Aug  3 2004	Move daoopen() and daoline() declarations to wcscat.h
+ * Aug 30 2004	Include fitsfile.h
  */

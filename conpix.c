@@ -35,6 +35,7 @@ static int setgnoise = 0;	/* If 1, pixels have been set to random noise */
 static int addgnoise = 0;	/* If 1, pixels have random noise added */
 
 
+int
 main (ac, av)
 int ac;
 char **av;

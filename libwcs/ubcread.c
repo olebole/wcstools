@@ -1,8 +1,8 @@
 /*** File libwcs/ubcread.c
- *** December 12, 2003
+ *** August 27, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2003
+ *** Copyright (C) 2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -36,6 +36,7 @@
 #include <math.h>
 #include "wcs.h"
 #include "wcscat.h"
+#include "fitsfile.h"
 
 static int ucat=UB1;
 
@@ -1410,4 +1411,6 @@ int nbytes = nbent; /* Number of bytes to reverse */
  * Dec  1 2003	Add missing tab to n=-1 header
  * Dec  4 2003	Add USNO YB6 catalog
  * Dec 12 2003	Fix bug in wcs2pix() call in ubcbin()
+ *
+ * Aug 27 2004	Include fitsfile.h
  */

@@ -27,6 +27,7 @@ static int version = 0;		/* If 1, print only program name and version */
 static int xl[MAXFIX],yl[MAXFIX]; /* Lower left corners of regions (1 based) */
 static int xr[MAXFIX],yr[MAXFIX]; /* Upper right corners of regions (1 based) */
 
+int
 main (ac, av)
 int ac;
 char **av;

@@ -1,7 +1,7 @@
 /*** File libwcs/actread.c
- *** December 12, 2003
+ *** August 30, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
- *** Copyright (C) 1999-2003
+ *** Copyright (C) 1999-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <math.h>
 #include <string.h>
 #include <stdio.h>
 #include "fitsfile.h"
@@ -1173,4 +1174,6 @@ char	*filename;	/* Name of file for which to find size */
  * Nov 18 2003	Initialize image size and bits/pixel from header in actbin()
  * Dec  1 2003	Add missing tab to n=-1 header
  * Dec 12 2003	Fix bug in wcs2pix() call in actbin()
+ *
+ * Aug 30 2004	Include math.h
  */

@@ -63,6 +63,7 @@ static int imsearch = 1;	/* If 1, search for stars in image */
 static int region_char;
 static int region_radius;
 
+int
 main (ac, av)
 int ac;
 char **av;

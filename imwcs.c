@@ -76,6 +76,7 @@ extern void setmirror();
 extern void setrotate();
 extern void setrevmsg();
 
+int
 main (ac, av)
 int ac;
 char **av;

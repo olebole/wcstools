@@ -1,5 +1,5 @@
 /* File getcol.c
- * July 14, 2004
+ * August 30, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -12,7 +12,7 @@
 #include <unistd.h>
 #include <math.h>
 #include "libwcs/wcscat.h"
-#include "libwcs/fitshead.h"
+#include "libwcs/fitsfile.h"
 
 #define	MAX_LTOK	256
 #define	MAX_NTOK	256
@@ -68,6 +68,7 @@ static int qmeancol = 0;	/* If 1, print mean of columns added in quadrature */
 				/* 0 = no mean of quadruature */
 static char **format;
 
+int
 main (ac, av)
 int ac;
 char **av;
@@ -1525,6 +1526,7 @@ double	*x;
 	return ((x[lhs] + x[rhs]) / 2.0);
 }
 
+static int
 iscol (string)
 
 char *string;   /* Character string */
@@ -1634,4 +1636,5 @@ void *pd1, *pd2;
  * Apr 15 2004	Add % output format option
  * Apr 15 2004	Avoid removing trailing zeroes from exponents
  * Jul 14 2004	Fix bug in online help message
+ * Aug 30 2004
  */

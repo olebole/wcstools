@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** July 1, 2004
+ *** August 31, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2004
@@ -85,7 +85,7 @@
 
 static int verbose=0;		/* Print diagnostics */
 static char fitserrmsg[80];
-static fitsinherit = 1;		/* Append primary header to extension header */
+static int fitsinherit = 1;		/* Append primary header to extension header */
 void
 setfitsinherit (inh)
 int inh;
@@ -587,6 +587,7 @@ char	*header;	/* FITS header for image (previously read) */
     int fd;
     int nbimage, naxis1, naxis2, bytepix, nbread;
     int bitpix, naxis, nblocks, nbytes, nbleft, nbr;
+    int simple;
     char *image, *imleft;
 
     /* Open the image file and read the header */
@@ -611,6 +612,20 @@ char	*header;	/* FITS header for image (previously read) */
     else
 	fd = STDIN_FILENO;
 #endif
+
+    /* If SIMPLE=F in header, simply put post-header part of file in buffer */
+    hgetl (header, "SIMPLE", &simple);
+    if (!simple) {
+	nbytes = getfilesize (filename) - nbhead;
+	if ((image = (char *) malloc (nbytes + 1)) == NULL) {
+	    /* snprintf (fitserrmsg,79, "FITSRIMAGE:  %d-byte image buffer cannot be allocated\n"); */
+	    (void)close (fd);
+	    return (NULL);
+	    }
+	hputi4 (header, "NBDATA", nbytes);
+	nbread = read (fd, image, nbytes);
+	return (image);
+	}
 
     /* Compute size of image in bytes using relevant header parameters */
     naxis = 1;
@@ -690,7 +705,7 @@ char	*header;	/* FITS header for image (previously read) */
 {
     int fd;
     int nbimage, naxisi, iaxis, bytepix, nbread;
-    int bitpix, naxis, nblocks, nbytes, nbleft, nbr;
+    int bitpix, naxis, nblocks, nbytes, nbleft, nbr, simple;
     char keyword[16];
     char *image, *imleft;
 
@@ -716,6 +731,20 @@ char	*header;	/* FITS header for image (previously read) */
     else
 	fd = STDIN_FILENO;
 #endif
+
+    /* If SIMPLE=F in header, simply put post-header part of file in buffer */
+    hgetl (header, "SIMPLE", &simple);
+    if (!simple) {
+	nbytes = getfilesize (filename) - nbhead;
+	if ((image = (char *) malloc (nbytes + 1)) == NULL) {
+	    /* snprintf (fitserrmsg,79, "FITSRIMAGE:  %d-byte image buffer cannot be allocated\n"); */
+	    (void)close (fd);
+	    return (NULL);
+	    }
+	hputi4 (header, "NBDATA", nbytes);
+	nbread = read (fd, image, nbytes);
+	return (image);
+	}
 
     /* Find number of bytes per pixel */
     bitpix = 0;
@@ -1289,7 +1318,7 @@ char	*header;	/* FITS image header */
 char	*image;		/* FITS image pixels */
 {
     int nbhead, nbimage, nblocks, bytepix, i, nbhw;
-    int bitpix, naxis, iaxis, naxisi, nbytes, nbw, nbpad, nbwp;
+    int bitpix, naxis, iaxis, naxisi, nbytes, nbw, nbpad, nbwp, simple;
     char *endhead, *padding;
     double bzero, bscale;
     char keyword[32];
@@ -1344,30 +1373,40 @@ char	*image;		/* FITS image pixels */
 	return (0);
 	}
 
-    /* Compute size of pixel in bytes */
-    bytepix = bitpix / 8;
-    if (bytepix < 0) bytepix = -bytepix;
-    nbimage = bytepix;
-
-    /* Compute size of image in bytes using relevant header parameters */
-    naxis = 1;
-    hgeti4 (header,"NAXIS",&naxis);
-    for (iaxis = 1; iaxis <= naxis; iaxis++) {
-	sprintf (keyword, "NAXIS%d", iaxis);
-	naxisi = 1;
-	hgeti4 (header,keyword,&naxisi);
-	nbimage = nbimage * naxisi;
+    /* If SIMPLE=F in header, just write whatever is in the buffer */
+    hgetl (header, "SIMPLE", &simple);
+    if (!simple) {
+	hgeti4 (header, "NBDATA", &nbytes);
+	nbimage = nbytes;
 	}
 
-    /* Number of bytes to write is an integral number of FITS blocks */
-    nblocks = nbimage / FITSBLOCK;
-    if (nblocks * FITSBLOCK < nbimage)
-	nblocks = nblocks + 1;
-    nbytes = nblocks * FITSBLOCK;
+    else {
 
-    /* Byte-reverse image before writing, if necessary */
-    if (imswapped ())
-	imswap (bitpix, image, nbimage);
+	/* Compute size of pixel in bytes */
+	bytepix = bitpix / 8;
+	if (bytepix < 0) bytepix = -bytepix;
+	nbimage = bytepix;
+
+	/* Compute size of image in bytes using relevant header parameters */
+	naxis = 1;
+	hgeti4 (header,"NAXIS",&naxis);
+	for (iaxis = 1; iaxis <= naxis; iaxis++) {
+	    sprintf (keyword, "NAXIS%d", iaxis);
+	    naxisi = 1;
+	    hgeti4 (header,keyword,&naxisi);
+	    nbimage = nbimage * naxisi;
+	    }
+
+	/* Number of bytes to write is an integral number of FITS blocks */
+	nblocks = nbimage / FITSBLOCK;
+	if (nblocks * FITSBLOCK < nbimage)
+	    nblocks = nblocks + 1;
+	nbytes = nblocks * FITSBLOCK;
+
+	/* Byte-reverse image before writing, if necessary */
+	if (imswapped ())
+	    imswap (bitpix, image, nbimage);
+	}
 
     /* Write image to file */
     nbw = write (fd, image, nbimage);
@@ -1379,15 +1418,19 @@ char	*image;		/* FITS image pixels */
 
     /* Write extra zeroes to make an integral number of 2880-byte blocks */
     nbpad = nbytes - nbimage;
-    padding = (char *)calloc (1, nbpad);
-    nbwp = write (fd, padding, nbpad);
-    if (nbwp < nbpad) {
-	snprintf (fitserrmsg,79, "FITSWHDU:  wrote %d / %d bytes of image padding to file %s\n",
+    if (nbpad > 0) {
+	padding = (char *)calloc (1, nbpad);
+	nbwp = write (fd, padding, nbpad);
+	if (nbwp < nbpad) {
+	    snprintf (fitserrmsg,79, "FITSWHDU:  wrote %d / %d bytes of image padding to file %s\n",
 		 nbwp, nbpad, filename);
-	(void)close (fd);
-	return (0);
+	    (void)close (fd);
+	    return (0);
+	    }
+	free (padding);
 	}
-    free (padding);
+    else
+	nbwp = 0;
 
     (void)close (fd);
 
@@ -1420,7 +1463,6 @@ char	*filename0;	/* Name of input FITS image file */
     int nbhead0;	/* Length of input file image header */
     int lhead0;
     int nbbuff, nbuff, ibuff, nbr, nbdata;
-    int fitsheadsize();
 
     /* Compute size of image in bytes using relevant header parameters */
     naxis = 1;
@@ -1873,4 +1915,6 @@ fitserr ()
  * May  3 2004	Add ibhead as position of header read in file
  * May 19 2004	Do not reset ext if NULL in fitswexhead()
  * Jul  1 2004	Initialize INHERIT to 1
+ * Aug 30 2004	Move fitsheadsize() declaration to fitsfile.h
+ * Aug 31 2004	If SIMPLE=F, put whatever is in file after header in image
  */

@@ -27,6 +27,7 @@ static int compvar = 0;	/* If 1, compute variance over range */
 static int compstd = 0;	/* If 1, compute standard deviation over range */
 static int ndec = -1;	/* Number of decimal places in outout */
 
+int
 main (ac, av)
 int ac;
 char **av;

@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.h
- *** December 3, 2003
+ *** August 30, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2003
+ *** Copyright (C) 1994-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -494,6 +494,11 @@ extern "C" {
     char *getdistcode (	/* Return distortion code string for CTYPEi */
 	struct WorldCoor *wcs);	/* World coordinate system structure */
 
+    int DelDistort (	/* Delete all distortion-related fields */
+	char *header,	/* FITS header */
+	int verbose);	/* If !=0, print keywords as deleted */
+
+
     void pix2foc (	/* Convert pixel to focal plane coordinates */
 	struct WorldCoor *wcs,	/* World coordinate system structure */
 	double x,		/* Image pixel horizontal coordinate */
@@ -575,6 +580,7 @@ void wcscstr();		/* Return system string from system code, equinox, epoch */
 void distortinit();	/* Set distortion coefficients from FITS header */
 void setdistcode();	/* Set WCS distortion code string from CTYPEi value */
 char *getdistcode();	/* Return distortion code string for CTYPEi */
+int DelDistort();	/* Delete all distortion-related fields */
 void pix2foc();		/*  pixel coordinates -> focal plane coordinates */
 void foc2pix();		/*  focal plane coordinates -> pixel coordinates */
 #endif
@@ -676,4 +682,6 @@ void foc2pix();		/*  focal plane coordinates -> pixel coordinates */
  * Oct  1 2003	Rename wcs->naxes to wcs->naxis to match WCSLIB 3.2
  * Nov  3 2003	Add distinit(), setdistcode(), and getdistcode() to distort.c
  * Dec  3 2003	Add back wcs->naxes for backward compatibility
+ *
+ * Aug 30 2004	Add DelDistort()
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/hput.c
- *** July 1, 2004
+ *** September 3, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1995-2004
@@ -519,7 +519,7 @@ char *value;	/* character string containing the value for variable
     /* Add comment in the appropriate place */
 	if (lcom > 0) {
 	    if (lc+2+lcom > 80)
-		lcom = 78 - lc;
+		lcom = 77 - lc;
 	    vp = v1 + lc + 2;     /* Jul 16 1997: was vp = v1 + lc * 2 */
 	    *vp = '/';
 	    vp = vp + 1;
@@ -1190,4 +1190,5 @@ int	ndec;		/* Number of decimal places in degree string */
  * Jan  4 2002	Fix placement of comments
  *
  * Jul  1 2004	Add headshrink to optionally keep blank lines in header
+ * Sep  3 2004	Fix bug so comments are not pushed onto next line if long value
  */

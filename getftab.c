@@ -1,5 +1,5 @@
-/* File gettab.c
- * April 15, 2004
+/* File getftab.c
+ * August 17, 2004
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -45,7 +45,6 @@ static char **ccond;		/* Comparison characters */
 static char *tcond;		/* Condition character */
 struct TabTable *tabtable;
 
-int
 main (ac, av)
 int ac;
 char **av;

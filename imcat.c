@@ -1,5 +1,5 @@
 /* File imcat.c
- * January 22, 2004
+ * August 30, 2004
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -56,7 +56,7 @@ static int obname[5];		/* If 1, print object name, else number */
 static struct StarCat *starcat[5]; /* Star catalog data structure */
 static int nmagmax = 4;
 static int sortmag = 0;		/* Magnitude by which to sort stars */
-static webdump = 0;
+static int webdump = 0;
 static char *progname;		/* Name of program as executed */
 static int minid = 0;		/* Minimum number of plate IDs for USNO-B1.0 */
 static int minpmqual = 0;	/* Minimum USNO-B1.0 proper motion quality */
@@ -64,9 +64,11 @@ static int minpmqual = 0;	/* Minimum USNO-B1.0 proper motion quality */
 extern int getminpmqual();
 extern int getminid();
 extern void setrevmsg();
+extern void setrot();
 
 static void ImageLim();
 
+int
 main (ac, av)
 int ac;
 char **av;
@@ -1950,4 +1952,5 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Jan 14 2004	Add support for Sloan Digital Sky Survey Photometric Catalog
  * Jan 22 2004	Add support for 2MASS Extended Source Catalog
  * Jan 22 2004	Call setlimdeg() to optionally print limits in degrees
+ * Aug 30 2004	Fix declarations
  */

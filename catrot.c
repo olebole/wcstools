@@ -1,5 +1,5 @@
-/* File imrot.c
- * June 14, 2004
+/* File catrot.c
+ * August 3, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -33,8 +33,11 @@ static int version = 0;		/* If 1, print only program name and version */
 static int xshift = 0;
 static int yshift = 0;
 static int shifted = 0;
+static char newline = 10;
 
-int
+static int nlines;	/* Number of lines in catalog */
+static char *daobuff;
+
 main (ac, av)
 int ac;
 char **av;
@@ -101,53 +104,15 @@ char **av;
 	else if (str[0] == '-') {
 	    while ((c = *++str) != 0) {
 		switch (c) {
- 	   	case 'f':	/* FITS file output */
-		    fitsout++;
-		    break;
-
-		case 'a': /* Flip image around N-S axis if IRAF header says */
-		    automirror = 1;
-		    break;
-
-		case 'i':	/* Turn off inheritance from Primary header */
-		    setfitsinherit (0);
-		    break;
 
 		case 'l':	/* image flipped around N-S axis */
 		    mirror = 1;
-		    break;
-
-		case 'o':	/* Specifiy output image filename */
-		    if (ac < 2)
-			usage ();
-		    if (*(av+1)[0] == '-' || *(str+1) != (char)0)
-			overwrite++;
-		    else {
-			strcpy (outname, *(av+1));
-			overwrite = 0;
-			av++;
-			ac--;
-			}
 		    break;
 
 		case 'r':	/* Rotation angle in degrees */
 		    if (ac < 2)
 			usage ();
 		    rotate = (int) atof (*++av);
-		    ac--;
-		    break;
-
-		case 's':	/* split input FITS multiextension image file */
-		    if (ac < 2)
-			usage ();
-		    nsplit = atoi (*++av);
-		    ac--;
-		    break;
-
-		case 'x':	/* Number of bits per pixel */
-		    if (ac < 2)
-			usage ();
-		    bitpix = (int) atof (*++av);
 		    ac--;
 		    break;
 
@@ -163,7 +128,7 @@ char **av;
 	    }
 
         /* Image file */
-        else if (isfits (str) || isiraf (str)) {
+        else if (isfile (str)) {
             if (nfile >= maxnfile) {
                 maxnfile = maxnfile * 2;
                 fn = (char **) realloc ((void *)fn, maxnfile);
@@ -173,7 +138,7 @@ char **av;
             }
 
         else {
-	    fprintf (stderr,"IMROT: %s is not a FITS or IRAF file \n",str);
+	    fprintf (stderr,"CATROT: %s is not an image catalog file \n",str);
             usage();
             }
 
@@ -182,14 +147,14 @@ char **av;
     /* Process files in file of filenames */
     if (readlist) {
 	if ((flist = fopen (listfile, "r")) == NULL) {
-	    fprintf (stderr,"IMROT: List file %s cannot be read\n",
+	    fprintf (stderr,"CATROT: List file %s cannot be read\n",
 		     listfile);
 	    usage ();
 	    }
 	while (fgets (filename, 128, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
 	    if (*lastchar < 32) *lastchar = 0;
-	    imRot (filename);
+	    CaTRot (filename);
 	    if (verbose)
 		printf ("\n");
 	    }
@@ -203,25 +168,11 @@ char **av;
 	    lfn = strlen (fname);
 	    if (lfn < 8)
 		lfn = 8;
-	    if (nsplit > 0) {
-		fni = (char *)calloc (lfn+4, 1);
-		for (i = 1; i <= nsplit; i++) {
-		    sprintf (fni, "%s,%d", fname, i);
-		    if (verbose)
-			printf ("%s:\n", fni);
-		    imRot (fni);
-		    if (verbose)
-  			printf ("\n");
-		    }
-		free (fni);
-		}
-	    else {
-		if (verbose)
-		    printf ("%s:\n", fname);
-		imRot (fname);
-		if (verbose)
-  		    printf ("\n");
-		}
+	    if (verbose)
+		printf ("%s:\n", fname);
+	    CatRot (fname);
+	    if (verbose)
+  		printf ("\n");
 	    }
 	}
 
@@ -237,36 +188,20 @@ usage ()
 {
     if (version)
 	exit (-1);
-    fprintf (stderr,"Shift, Rotate, and/or Reflect FITS and IRAF image files\n");
-    fprintf(stderr,"Usage: [-vm][-r rot][-s num] [xshift yshift] file.fits ...\n");
-    fprintf(stderr,"  xshift: integer horizontal pixel shift, applied first\n");
-    fprintf(stderr,"  yshift: integer vertical pixel shift, applied first\n");
-    fprintf(stderr,"  -a: mirror if IRAF image WCS says to\n");
-    fprintf(stderr,"  -f: write FITS image from IRAF input\n");
-    fprintf(stderr,"  -i: Do not append primary header to extension header\n");
+    fprintf (stderr,"Rotate and/or Reflect catalog of objects in an image\n");
+    fprintf(stderr,"Usage: [-vl][-o outputfile][-r rot] file ...\n");
     fprintf(stderr,"  -l: reflect image across vertical axis\n");
-    fprintf(stderr,"  -o: allow overwriting of input image, else write new one\n");
     fprintf(stderr,"  -r: image rotation angle in degrees (default 0)\n");
-    fprintf(stderr,"  -s: split n-extension FITS file\n");
     fprintf(stderr,"  -v: verbose\n");
-    fprintf(stderr,"  -x: output pixel size in bits (FITS code, default=input)\n");
     exit (1);
 }
 
 static void
-imRot (name)
+CatRot (name)
 char *name;
 {
-    char *image;		/* FITS image */
-    char *header;		/* FITS header */
-    int lhead;			/* Maximum number of bytes in FITS header */
-    int nbhead;			/* Actual number of bytes in FITS header */
-    int iraffile;		/* 1 if IRAF image */
-    char *irafheader;		/* IRAF image header */
     char newname[256];		/* Name for revised image */
     char *ext;
-    char *newimage;
-    char *imext, *imext1;
     char *fname;
     char extname[16];
     int lext, lroot;
@@ -278,89 +213,93 @@ char *name;
     double ctemp;
 
     /* If not overwriting input file, make up a name for the output file */
-    if (!overwrite) {
-	fname = strrchr (name, '/');
-	if (fname)
-	    fname = fname + 1;
-	else
-	    fname = name;
-	ext = strrchr (fname, '.');
-	if (ext != NULL) {
-	    lext = (fname + strlen (fname)) - ext;
-	    lroot = ext - fname;
-	    strncpy (newname, fname, lroot);
-	    *(newname + lroot) = 0;
-	    }
-	else {
-	    lext = 0;
-	    lroot = strlen (fname);
-	    strcpy (newname, fname);
-	    }
-	imext = strchr (fname, ',');
-	imext1 = NULL;
-	if (imext == NULL) {
-	    imext = strchr (fname, '[');
-	    if (imext != NULL) {
-		imext1 = strchr (fname, ']');
-		*imext1 = (char) 0;
-		}
-	    }
-	}
+    fname = strrchr (name, '/');
+    if (fname)
+	fname = fname + 1;
     else
-	strcpy (newname, name);
-
-    /* Open IRAF image */
-    if (isiraf (name)) {
-	iraffile = 1;
-	if ((irafheader = irafrhead (name, &lhead)) != NULL) {
-	    if ((header = iraf2fits (name, irafheader, lhead, &nbhead)) == NULL) {
-		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
-		free (irafheader);
-		return;
-		}
-	    if ((image = irafrimage (header)) == NULL) {
-		hgetm (header,"PIXFIL", 255, pixname);
-		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
-		free (irafheader);
-		free (header);
-		return;
-		}
-	    }
-	else {
-	    fprintf (stderr, "Cannot read IRAF header file %s\n", name);
-	    return;
-	    }
+	fname = name;
+    ext = strrchr (fname, '.');
+    if (ext != NULL) {
+	lext = (fname + strlen (fname)) - ext;
+	lroot = ext - fname;
+	strncpy (newname, fname, lroot);
+	*(newname + lroot) = 0;
 	}
-
-    /* Open FITS file */
     else {
-	iraffile = 0;
-	if ((header = fitsrhead (name, &lhead, &nbhead)) != NULL) {
-	    if ((image = fitsrimage (name, nbhead, header)) == NULL) {
-		fprintf (stderr, "Cannot read FITS image %s\n", name);
-		free (header);
-		return;
-		}
-	    }
-	else {
-	    fprintf (stderr, "Cannot read FITS file %s\n", name);
-	    return;
-	    }
+	lext = 0;
+	lroot = strlen (fname);
+	strcpy (newname, fname);
 	}
-
-    /* Set mirror flag if IRAF WCS is mirrored and automirror is set */
-    if (hgetr8 (header, "LTM1_1", &ctemp)) {
-	if (ctemp < 0 && automirror)
-	    mirror = 1;
-	}
-
-
-    /* Use output filename if it is set on the command line */
-    if (outname[0] > 0)
-	strcpy (newname, outname);
 
     /* Create new file name */
-    else if (!overwrite) {
+    if (shifted)
+	strcat (newname, "s");
+    if (mirror)
+	strcat (newname, "m");
+    if (rotate != 0) {
+	strcat (newname, "r");
+	if (rotate < 10 && rotate > -1)
+	    sprintf (temp,"%1d",rotate);
+	else if (rotate < 100 && rotate > -10)
+	    sprintf (temp,"%2d",rotate);
+	else if (rotate < 1000 && rotate > -100)
+	    sprintf (temp,"%3d",rotate);
+	else
+	    sprintf (temp,"%4d",rotate);
+	strcat (newname, temp);
+	}
+    if (lext > 0)
+	strcat (newname, ext);
+
+    if (daoopen (newname) > 0) {
+	line = daobuff;
+
+    /* Loop through catalog */
+	for (iline = 1; iline <= nlines; iline++) {
+	    line = daoline (iline, line);
+	    if (line == NULL) {
+		fprintf (stderr,"CATROT: Cannot read line %d\n", iline);
+		break;
+		}
+	    else if (line[0] == '#') {
+		printf ("%s", line);
+		}
+	    else {
+
+		/* Extract X, Y, magnitude  */
+		sscanf (line,"%lg %lg %lg", &xi, &yi, &magi);
+
+		/* Rotate star position */
+		nstars++;
+		rotstar (&xi, *yi, nxpix, nypix, rotate, mirror);
+
+		if (nlog == 1)
+		    fprintf (stderr,"CATROT: %6d: %9.5f %9.5f %6.2f\n",
+			   nstars,xi,yi,magi);
+		}
+
+	    /* Log operation */
+	    if (nlog > 0 && iline%nlog == 0)
+		fprintf (stderr,"CATROT: %5d / %5d / %5d stars from catalog %s\r",
+			nstars, iline, nlines, daocat);
+
+	    /* End of star loop */
+	    }
+
+	/* End of open catalog file */
+	}
+
+/* Summarize search */
+    if (nlog > 0)
+	fprintf (stderr,"DAOREAD: Catalog %s : %d / %d / %d found\n",
+		 daocat, nstars, iline, nlines);
+
+    free (daobuff);
+
+    return (nstars);
+}
+
+    /* Create new file name */
 	if (imext != NULL) {
 	    if (hgets (header, "EXTNAME",8,extname)) {
 		strcat (newname, ".");

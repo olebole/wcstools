@@ -1,8 +1,8 @@
 /*** File libwcs/imgetwcs.c
- *** December 3, 2003
+ *** July 26, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -88,6 +88,7 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     int nax, naxes;
     double eq1, xref, yref, degpix, ra1, dec1, x, y, dx, dy;
     double xmin, xmax, ymin, ymax, ra2, dec2, ra3, dec3, ra4, dec4;
+    double dra0, dra1, dra2, dra3, dra4;
     struct WorldCoor *wcs;
     char rstr[64], dstr[64], temp[16], cstr[16];
 
@@ -303,15 +304,6 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     pix2wcs (wcs, x, y, cra, cdec);
     wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,cra,cdec,wcs->epoch);
 
-    /* Find maximum half-width in right ascension */
-    *dra = fabs (ra1 - *cra);
-    if (fabs (ra2 - *cra) > *dra)
-	*dra = fabs (ra2 - *cra);
-    if (fabs (ra3 - *cra) > *dra)
-	*dra = fabs (ra3 - *cra);
-    if (fabs (ra4 - *cra) > *dra)
-	*dra = fabs (ra4 - *cra);
-
     /* Find maximum half-width in declination */
     *ddec = fabs (dec1 - *cdec);
     if (fabs (dec2 - *cdec) > *ddec)
@@ -320,6 +312,28 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	*ddec = fabs (dec3 - *cdec);
     if (fabs (dec4 - *cdec) > *ddec)
 	*ddec = fabs (dec4 - *cdec);
+
+    /* Find maximum half-width in right ascension */
+    dra0 = (dx / dy) * (*ddec / cos (*cdec));
+    dra1 = ra1 - *cra;
+    dra2 = ra2 - *cra;
+    if (*cra < 0 && *cra + dra0 > 0.0) {
+	dra1 = -(dra1 - 360.0);
+	dra2 = -(dra2 - 360.0);
+	}
+    dra3 = *cra - ra3;
+    dra4 = *cra - ra4;
+    if (*cra > 0 && *cra - dra0 < 0.0) {
+	dra3 = -(dra3 - 360.0);
+	dra4 = -(dra4 - 360.0);
+	}
+    *dra = dra1;
+    if (dra2 > *dra)
+	*dra = dra2;
+    if (dra3 > *dra)
+	*dra = dra3;
+    if (dra4 > *dra)
+	*dra = dra4;
 
     /* wcssize (wcs, cra, cdec, dra, ddec); */
 
@@ -654,4 +668,6 @@ char *dateobs;
  * Sep 26 2003	If reference pixel not set, set center correctly
  * Oct  6 2003	Change wcs->naxes to wcs->naxis to match WCSLIB 3.2
  * Dec  3 2003	Add wcs->naxes back as an alternative
+ *
+ * Jul 26 2004	Fix image size when wrapping around RA=0:00
  */

@@ -29,6 +29,7 @@ static int version = 0;		/* If 1, print only program name and version */
 static int logfile = 0;
 static int nproc = 0;
 
+int
 main (ac, av)
 int ac;
 char **av;

@@ -1,5 +1,5 @@
 /*** File libwcs/sortstar.c
- *** March 17, 2004
+ *** August 30, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2004
@@ -696,7 +696,7 @@ void *ssp1, *ssp2;
 	return (0);
 }
 
-static logmerge = 0;
+static int logmerge = 0;
 
 /* MergeStars -- Merge multiple entries within given radius */
 /*               return mean ra, dec, proper motion, and magnitude(s) */
@@ -1008,4 +1008,5 @@ double	rad;		/* Maximum separation in arcseconds to merge */
  * Mar 17 2004	RA-sort before and after merging catalog in MergeStars()
  * Mar 17 2004	Rewrite StarMerge() to merge RA-sorted catalog quickly
  * Mar 18 2004	Add logging to StarMerge()
+ * Aug 30 2004	Fix bad declaration
  */

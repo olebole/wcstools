@@ -1,8 +1,8 @@
 /*** File libwcs/ujcread.c
- *** December 12, 2003
+ *** August 30, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -31,8 +31,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "wcs.h"
 #include "wcscat.h"
+#include "fitsfile.h"
 
 static char cdu[64]="/data/ujcat/catalog"; /* pathname of UJ 1.0 CDROM */
 
@@ -1078,4 +1080,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Oct  6 2003	Update ujcread() and ujcbin() for improved RefLim()
  * Nov 18 2003	Initialize image size and bits/pixel from header in ujcbin()
  * Dec 12 2003	Fix bug in wcs2pix() call in ujcbin()
+ *
+ * Aug 30 2004	Include fitsfile.h and math.h
  */

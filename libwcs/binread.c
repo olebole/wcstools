@@ -1,8 +1,8 @@
 /*** File libwcs/binread.c
- *** December 12, 2003
+ *** August 27, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2003
+ *** Copyright (C) 1998-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -47,12 +47,14 @@ static int ndist = 0;
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <math.h>
 #include <string.h>
 #include <strings.h>
 #include <sys/types.h>
 #include <fcntl.h>
 #include "wcs.h"
 #include "wcscat.h"
+#include "fitsfile.h"
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif
@@ -1561,4 +1563,6 @@ char *from, *last, *to;
  * Oct  6 2003	Update binread() and binbin() for improved RefLim()
  * Nov 18 2003	Initialize image size and bits/pixel from header in binbin()
  * Dec 12 2003	Fix bug in wcs2pix() call in binbin()
+ *
+ * Aug 27 2004	Include math.h
  */

@@ -1,9 +1,9 @@
 /*** File webread.c
- *** January 14, 2004
+ *** August 30, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
- *** Copyright (C) 2000-2003
+ *** Copyright (C) 2000-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -419,7 +419,7 @@ int	nlog;		/* 1 to print diagnostic messages */
 
     /* Open port to HTTP server, send command, and fill buffer with return */
     if ((tabbuff = webbuff (srchurl, diag, &lbuff)) == NULL) {
-	fprintf (stderr,"WEBOPEN: cannot read URL %s", srchurl);
+	fprintf (stderr,"WEBOPEN: cannot read URL %s\n", srchurl);
 	return (NULL);
 	}
     if (!strchr (tabbuff, '	') && !strchr (tabbuff, ',') && !strchr (tabbuff, '|')) {
@@ -548,17 +548,17 @@ int	*lbuff;	/* Length of buffer (returned) */
     server[lserver] = (char) 0;
 
     /* Open port to HTTP server */
-    if ( !(sok = SokOpen(server, 80, XFREAD | XFWRITE)) ) {
+    if ( !(sok = SokOpen (server, 80, XFREAD | XFWRITE)) ) {
 	free (server);
 	return (NULL);
 	}
 
     /* Send HTTP command */
-    fprintf(sok, "GET %s HTTP/1.1\nHost: %s\n\n", urlpath, server);
+    fprintf(sok, "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n", urlpath, server);
     fflush(sok);
     free (server);
 
-    fscanf(sok, "%*s %d %*s\n", &status);
+    fscanf(sok, "%*s %d %*s\r\n", &status);
 
     /* Skip continue lines
     if (status == 100) {
@@ -827,4 +827,5 @@ FileINetParse(file, port, adrinet)
  * Jan  5 2004	Convert SDSS table from comma-separated to tab-separated
 		in webopen(); initialize nbcont to 0 in webbuff()
  * Jan 14 2004	Return error if data but no objects returned in webopen()
+ * Aug 30 2004	Send CR-LF termination to HTTP GET, not just LF
  */

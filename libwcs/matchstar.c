@@ -1,8 +1,8 @@
 /*** File libwcs/matchstar.c
- *** November 18, 2003
+ *** August 30, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -892,7 +892,7 @@ int	debug;		/* Printed debugging information if not zero */
     double dmatch;
     double skydiff, imdiff;
     extern double getsecpix();
-    extern getcenter(), getrefpix();
+    extern void getcenter(),getrefpix(),setdcenter(),setrefpix(),setsecpix();
 
     dmatch = (double) nmatch;
 
@@ -1858,7 +1858,7 @@ int nitmax;
  * Oct  1 1999	Add ReadMatch() to read a set of matches from a file
  * Oct 20 1999	Include wcscat.h
  *
- * Feb 15 2000	Add iscdfit() to return wheterh CD matrix is being fit
+ * Feb 15 2000	Add iscdfit() to return whether CD matrix is being fit
  * Mar 10 2000	Add debug statement to list max matches as they are found
  * Mar 10 2000	Change loop order to image stars first
  * Dec 18 2000	Write half of ReadMatch() to deal with ASCII files
@@ -1887,4 +1887,6 @@ int nitmax;
  * Mar 13 2003	Do not include malloc.h on Apples and Convexes
  * Apr  3 2003	Clean up code with lint
  * Nov 18 2003	Drop include of malloc.h; it is in stdlib.h
+ *
+ * Aug 30 2004	Declare void various external set*() calls
  */ 

@@ -20,11 +20,12 @@ binread.o:	wcscat.h wcs.h fitshead.h wcslib.h
 ctgread.o:	wcscat.h wcs.h fitshead.h wcslib.h
 catutil.o:	wcscat.h wcs.h fitshead.h wcslib.h
 cel.o:		wcslib.h
-dateutil.o:	fitsfile.h wcscat.h fitshead.h
+daoread.o:	wcscat.h
+dateutil.o:	fitsfile.h fitshead.h
 distort.o:	wcs.h fitshead.h wcslib.h
 dsspos.o:	wcs.h fitshead.h wcslib.h
 fileutil.o:	fitsfile.h fitshead.h
-findstar.o:	fitshead.h lwcs.h imio.h
+findstar.o:	fitshead.h lwcs.h imio.h wcscat.h
 fitsfile.o:	fitsfile.h fitshead.h
 fitswcs.o:	fitsfile.h wcs.h fitshead.h wcslib.h
 gscread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
@@ -38,15 +39,15 @@ imio.o:		fitshead.h imio.h
 imsetwcs.o:	fitshead.h wcs.h lwcs.h wcscat.h wcslib.h
 imrotate.o:	fitshead.h imio.h
 lin.o:		wcslib.h
-matchstar.o:	fitshead.h wcs.h lwcs.h wcslib.h
+matchstar.o:	fitshead.h wcs.h lwcs.h wcslib.h wcscat.h
 platefit.o:	wcs.h fitshead.h wcslib.h
 platepos.o:	wcs.h fitshead.h wcslib.h
-polfit.o:	
+polfit.o:	wcscat.h
 proj.o:		wcslib.h
 sdssread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
 sortstar.o:	wcscat.h
 sph.o:		wcslib.h
-tabread.o:	fitshead.h wcs.h wcslib.h
+tabread.o:	fitshead.h wcs.h wcslib.h wcscat.h
 tmcread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
 tnxpos.o:	wcs.h fitshead.h wcslib.h
 ty2read.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h

@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** July 13, 2004
+ *** August 30, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2004
@@ -1625,7 +1625,7 @@ char *string;   /* Numeric string */
     char *cdot;
     int lstr;
 
-    if (notnum (string))
+    if (notnum (string) && !strchr (string, ':'))
         return (-1);
     else {
         lstr = strlen (string);
@@ -1737,4 +1737,5 @@ int set_saolib(hstring)
  * Apr  9 2004	Use strncsrch() in ksearch() to find differently-cased keywords
  * Apr 28 2004	Free os2 in strncsrch() only if it is allocated
  * Jul 13 2004	Accept D, d, E, or e as exponent delimiter in floating points
+ * Aug 30 2004	Change numdec() to accept sexigesimal numbers (:'s)
  */

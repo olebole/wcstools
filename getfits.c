@@ -66,6 +66,7 @@ static double epoch0 = 0.0;	/* Epoch for coordinates */
 static int syscoor = 0;		/* Input search coordinate system */
 static double eqcoor = 0.0;	/* Input search coordinate system */
 
+int
 main (ac, av)
 int ac;
 char **av;

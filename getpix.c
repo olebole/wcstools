@@ -1,5 +1,5 @@
 /* File getpix.c
- * April 26, 2004
+ * August 30, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -26,7 +26,7 @@ static char *pform = NULL;	/* Format in which to print pixels */
 static int pixlabel = 0;	/* If 1, label pixels in output */
 static int gtcheck = 0;		/* If 1, list pixels greater than gtval */
 static int ltcheck = 0;		/* If 1, list pixels less than ltval */
-static nopunct=0;		/* If 1, print output with no punctuation */
+static int nopunct=0;		/* If 1, print output with no punctuation */
 static double gtval = 0.0;
 static double ltval = 0.0;
 static double ra0 = -99.0;	/* Initial center RA in degrees */
@@ -37,7 +37,9 @@ static double ddec0 = 0.0;	/* Search box height */
 static double eqcoor = 2000.0;  /* Equinox of search center */
 static int syscoor = 0;         /* Input search coordinate system */
 
+int
 main (ac, av)
+
 int ac;
 char **av;
 {
@@ -708,4 +710,5 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
  * Sep 17 2003	Fix bug which broke use of 0 as substitute for 1-naxisn range
  *
  * Apr 26 2004	Fix handling of 0 0 for entire image
+ * Aug 30 2004	Fix declarations
  */

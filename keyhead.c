@@ -33,6 +33,7 @@ static int logfile = 0;
 static int nproc = 0;
 
 
+int
 main (ac, av)
 int ac;
 char **av;

@@ -34,6 +34,7 @@ static double decpm = 0.0;	/* Declination proper motion in mas/year */
 static int epset = 0;
 
 
+int
 main (ac, av)
 int ac;
 char **av;

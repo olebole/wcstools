@@ -1,5 +1,5 @@
 /* File scat.c
- * May 12, 2004
+ * August 30, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -64,7 +64,7 @@ static int printhead = 0;	/* 1 to print table heading */
 static int printprog = 0;	/* 1 to print program name and version */
 static int printepoch = 0;	/* 1 to print epoch of entry */
 static int nohead = 1;		/* 1 to print table heading */
-static searchcenter = 0;	/* 1 to print simpler format */
+static int searchcenter = 0;	/* 1 to print simpler format */
 static int tabout = 0;		/* 1 for tab table to standard output */
 static int catsort = SORT_UNSET; /* Default to sort stars by magnitude */
 static int debug = 0;		/* True for extra information */
@@ -105,7 +105,7 @@ static int padspt = 0;		/* Set to one to pad out long spectral type */
 static int nmagmax = 5;
 static int sortmag = 0;
 static int lofld = 0;		/* Length of object name field in output */
-static webdump = 0;
+static int webdump = 0;
 static int votab = 0;		/* If 1, print output as VOTable XML */
 static int minid = 0;		/* Minimum number of plate IDs for USNO-B1.0 */
 static int minpmqual = 0;	/* Minimum USNO-B1.0 proper motion quality */
@@ -114,6 +114,7 @@ extern void setminpmqual();
 extern void setminid();
 extern void setrevmsg();
 
+int
 main (ac, av)
 int ac;
 char **av;
@@ -387,10 +388,12 @@ char **av;
 		strcpy (refcatn, *av);
 		refcatname[ncat] = refcatn;
 		refcat = RefCat (refcatn,title,&sysref,&eqref,&epref,&mprop,&nmag);
-		if (nmag > nmagmax)
-		    nmagmax = nmag;
-		ndcat = CatNdec (refcat);
-		ncat = ncat + 1;
+		if (refcat) {
+		    if (nmag > nmagmax)
+			nmagmax = nmag;
+		    ndcat = CatNdec (refcat);
+		    ncat = ncat + 1;
+		    }
 		ac--;
 		break;
 
@@ -4384,4 +4387,6 @@ PrintGSClass ()
  * Mar 16 2004	Use star count returned from catalog merging subroutine
  * Mar 17 2004	RA-sort in MergeStars(); add logging
  * May 12 2004	Exit with error message if no catalog name is given
+ * Aug 30 2004	Fix two subroutine declarations
+ * Aug 30 2004	Drop out if RefCat cannot find catalog
  */

@@ -15,6 +15,7 @@ static int replace = 0;         /* character replacement flag */
 static char c1, c2;
 static void usage();
 
+int
 main (ac, av)
 int ac;
 char **av;

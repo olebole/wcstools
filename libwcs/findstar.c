@@ -1,7 +1,7 @@
 /*** File libwcs/findstar.c
- *** June 2, 2003
+ *** August 3, 2004
  *** By Doug Mink, after Elwood Downey
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -37,8 +37,6 @@
 
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 
-extern int daoread();
-
 static int HotPixel();
 static int starRadius();
 static void starCentroid();
@@ -46,7 +44,7 @@ static int BrightWalk ();
 static double FindFlux ();
 static void mean2d();
 static void mean1d();
-static void rotstar();
+static void rotstars();
 extern void setminmatch();
 extern void setnitmax();
 extern void setminstars();
@@ -198,7 +196,7 @@ int	zap;		/* If 1, set star to background after reading */
 	else
 	    nstars = daoread (imcatname, xa, ya, ba, pa, nlog);
 	if (rotate != 0 || mirror)
-	    rotstar (nstars, *xa, *ya, w, h);
+	    rotstars (nstars, *xa, *ya, w, h);
 	return (nstars);
 	}
 
@@ -900,7 +898,7 @@ char *parstring;
 }
 
 static void
-rotstar (nstars, xa, ya, w, h)
+rotstars (nstars, xa, ya, w, h)
 
 int	nstars;	/* Number of stars found in image */
 double	*xa;	/* X coordinates of stars */
@@ -910,90 +908,87 @@ int	h;	/* Original height of image */
 
 {
     int istar;
+    void rotstar();
+
+    /* Rotate star postions one at a time */
+    for (istar = 0; istar < nstars; istar++)
+	rotstar (&xa[istar], &ya[istar], w, h, rotate, mirror);
+
+    return;
+}
+
+void
+rotstar (x, y, w, h, rot, reflect)
+
+double	*x;	/* X coordinates of stars */
+double	*y;	/* Y coordinates of stars */
+int	w;	/* Original width of image */
+int	h;	/* Original height of image */
+double	rot;	/* Rotation angle in degrees */
+int	reflect; /* 1 if image is reflected, else 0 */
+
+{
+    int istar;
     double xn = (double) w;
     double yn = (double) h;
 
-    if (rotate == 1)
-	rotate = 90;
-    else if (rotate == 2)
-	rotate = 180;
-    else if (rotate == 3)
-	rotate = 270;
-    else if (rotate < 0)
-	rotate = rotate + 360;
-    else if (rotate > 360)
-	rotate = rotate - 360;
+    if (rot == 1)
+	rot = 90;
+    else if (rot == 2)
+	rot = 180;
+    else if (rot == 3)
+	rot = 270;
+    else if (rot < 0)
+	rot = rot + 360;
+    else if (rot > 360)
+	rot = rot - 360;
 
     /* Rotate star postions one at a time */
 
     /* Mirror coordinates without rotation */
     if (rotate < 45.0 && rotate > -45.0) {
-	xn = (double) w;
-	yn = (double) h;
-	if (mirror) {
-	    for (istar = 0; istar < nstars; istar++)
-		xa[istar] = xn - xa[istar] - 1.0;
-	    }
+	if (reflect)
+	    *x = xn - *x - 1.0;
 	}
 
     /* Rotate by 90 degrees */
     else if (rotate >= 45 && rotate < 135) {
-	yn = (double) w;
-	xn = (double) h;
-	if (mirror) {
-	    for (istar = 0; istar < nstars; istar++) {
-		xa[istar] = yn - ya[istar] - 1.0;
-		ya[istar] = xn - xa[istar] - 1.0;
-		}
+	if (reflect) {
+	    *x = yn - *y - 1.0;
+	    *y = xn - *x - 1.0;
 	    }
 	else {
-	    for (istar = 0; istar < nstars; istar++) {
-		xa[istar] = yn - ya[istar] - 1.0;
-		ya[istar] = xa[istar];
-		}
+	    *x = yn - *y - 1.0;
+	    *y = *x;
 	    }
 	}
 
     /* Rotate by 180 degrees */
     else if (rotate >= 135 && rotate < 225) {
-	xn = (double) w;
-	yn = (double) h;
-	if (mirror) {
-	    for (istar = 0; istar < nstars; istar++)
-		ya[istar] = yn - ya[istar] - 1.0;
-	    }
+	if (reflect)
+	    *y = yn - *y - 1.0;
 	else {
-	    for (istar = 0; istar < nstars; istar++) {
-		xa[istar] = xn - xa[istar] - 1.0;
-		ya[istar] = yn - ya[istar] - 1.0;
-		}
+	    *x = xn - *x - 1.0;
+	    *y = yn - *y - 1.0;
 	    }
 	}
 
     /* Rotate by 270 degrees */
     else if (rotate >= 225 && rotate < 315) {
-	yn = (double) w;
-	xn = (double) h;
-	if (mirror) {
-	    for (istar = 0; istar < nstars; istar++) {
-		xa[istar] = ya[istar];
-		ya[istar] = xa[istar];
-		}
+	if (reflect) {
+	    *x = *y;
+	    *y = *x;
 	    }
 	else {
-	    for (istar = 0; istar < nstars; istar++) {
-		xa[istar] = ya[istar];
-		ya[istar] = xn - xa[istar] - 1.0;
-		}
+	    *x = *y;
+	    *y = xn - *x - 1.0;
 	    }
 	}
 
     /* If rotating by more than 315 degrees, assume top-bottom reflection */
     else if (rotate >= 315 && mirror) {
-	for (istar = 0; istar < nstars; istar++) {
-	    xa[istar] = ya[istar];
-	    ya[istar] = xa[istar];
-	    }
+	*x = *y;
+	*y = *x;
 	}
     return;
 }
@@ -1045,4 +1040,7 @@ int	h;	/* Original height of image */
  * Jan 29 2003	Add setminid() to setparm() for USNO-B1.0
  * Apr  3 2003	Fix bug setting minll if bmin is less than 0
  * Jun  2 2003	Fix bug to setcale(0) if bscale == 1, not 0 (J-B Marquette)
+ *
+ * Aug  3 2004	Move single star image position rotation into rotstar()
+ * Aug  3 2004	Move daoread() declaration to wcscat.h
  */

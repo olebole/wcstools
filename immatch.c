@@ -1,5 +1,5 @@
 /* File immatch.c
- * July 1, 2004
+ * August 30, 2004
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -58,10 +58,12 @@ extern void setirafout();
 extern void setmagfit();
 extern void setimfrac();
 extern void setsortmag();
+extern void setparm();
 extern void setmirror();
 extern void setrotate();
 extern void setrevmsg();
 
+int
 main (ac, av)
 int ac;
 char **av;
@@ -609,4 +611,5 @@ char	*name;			/* Name of FITS or IRAF image file */
  * Apr 13 2003	Set revision message for subroutines using setrevmsg()
  *
  * Jul  1 2004	Drop unused declaration of DelWCSFITS()
+ * Aug 30 2004	Fix declarations
  */

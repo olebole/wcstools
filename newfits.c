@@ -1,5 +1,5 @@
 /* File newfits.c
- * September 25, 2003
+ * August 30, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -27,6 +27,7 @@ extern void setsecpix();
 extern void setsecpix2();
 extern void setrefpix();
 extern void setcdelt();
+extern void setproj();
 extern struct WorldCoor *GetFITSWCS();
 
 static int verbose = 0;	/* verbose/debugging flag */
@@ -39,6 +40,7 @@ static int extend = 0;	/* If 1, write primary header, add other files as ext */
 static char *pixfile;	/* Pixel file name */
 static char *newname;	/* FITS extension file name */
 
+int
 main (ac, av)
 int ac;
 char **av;
@@ -474,4 +476,6 @@ char *name;
  *
  * May 28 2003	Add -g for image with galactic coordinate WCS
  * Sep 25 2003	Add -t to set projection
+ *
+ * Aug 30 2004	Declare undeclared setproj() subroutine
  */

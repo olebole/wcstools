@@ -22,6 +22,7 @@ static int verbose = 0;		/* Verbose/debugging flag */
 static int newimage = 0;	/* New image flag */
 static int version = 0;		/* If 1, print only program name and version */
 
+int
 main (ac, av)
 int ac;
 char **av;

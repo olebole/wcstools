@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * July 22, 2003
+ * August 30, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -15,11 +15,13 @@
 #include "libwcs/fitsfile.h"
 
 static void PrintUsage();
+extern void setrot(),setsys(),setcenter(),setsecpix(),setrefpix(),setdateobs();
 extern struct WorldCoor *GetFITSWCS ();	/* Read WCS from FITS or IRAF header */
 extern char *GetFITShead();
 static int version = 0;		/* If 1, print only program name and version */
 
 
+int
 main (ac, av)
 int ac;
 char **av;
@@ -434,5 +436,7 @@ char	*command;
  * Apr  7 2003	Add -o option to print only x or y coordinate
  * Apr 24 2003	Initialize FITS header completely if needed
  * Jul 22 2003	Initialize sysout; move most static variables into main()
- *		(bug found and fix suggested by Takehiko Wada, ISAS)
+ * Jul 22 2003	(bug found and fix suggested by Takehiko Wada, ISAS)
+ *
+ * Aug 30 2004	Declare undeclared void subroutines
  */

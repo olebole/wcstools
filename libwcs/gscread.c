@@ -1,8 +1,8 @@
 /*** File libwcs/gscread.c
- *** December 12, 2003
+ *** August 27, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <math.h>
 #include <string.h>
 #include "fitsfile.h"
 #include "wcs.h"
@@ -1500,4 +1501,6 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Nov 18 2003	Initialize image size and bits/pixel from header in gscbin()
  * Dec  1 2003	Add missing tab to n=-1 header
  * Dec 12 2003	Fix bug in wcs2pix() call in gscbin()
+ *
+ * Aug 27 2004	Include math.h
  */

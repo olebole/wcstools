@@ -25,6 +25,7 @@ static char *editcom0;		/* Editor command from command line */
 static int version = 0;		/* If 1, print only program name and version */
 
 
+int
 main (ac, av)
 int ac;
 char **av;

@@ -29,6 +29,7 @@ static int restwave = 0;	/* If 1, print first dimension limits */
 static int printhead = 1;	/* 1 until header has been printed */
 
 
+int
 main (ac, av)
 int ac;
 char **av;

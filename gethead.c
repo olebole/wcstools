@@ -58,6 +58,7 @@ static int nproc = 0;
 static char *extensions;	/* Extension number(s) or name to read */
 static char *extension;		/* Extension number or name to read */
 
+int
 main (ac, av)
 int ac;
 char **av;

@@ -1,8 +1,8 @@
 /*** File libwcs/imsetwcs.c
- *** December 12, 2003
+ *** August 30, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu (based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -47,8 +47,8 @@ extern int FitPlate();
 extern struct WorldCoor *GetFITSWCS ();
 extern char *getimcat();
 extern void SetFITSWCS();
-extern void fk524e();
-extern iscdfit();
+extern void fk425e(), fk524e();
+extern int iscdfit();
 extern void setminbin();
 extern void setnfit();
 extern int getnfit();
@@ -162,6 +162,8 @@ int	verbose;
     struct StarCat *starcat;
     int npfit;
     extern int NParamFit();
+    extern void setdcenter(),setsys(),setrefpix(),setsecpix();
+    extern void setsecpix2(),setrot();
 
     iterate = iterate0;
     toliterate = toliterate0;
@@ -565,7 +567,7 @@ match:
 	ra = wcs->xref;
 	dec = wcs->yref;
 	if (refsys == WCS_J2000) {
-	    (void)fk524e (&ra, &dec, refep);
+	    fk524e (&ra, &dec, refep);
 	    ra2str (rstr, 32, ra, 3);
 	    dec2str (dstr, 32, dec, 2);
 	    printf ("# Optical axis= %s  %s B1950  x= %.2f y= %.2f\n",
@@ -1210,4 +1212,6 @@ setmagfit ()
  *
  * Aug 22 2003	Add inner radius =0.0 argument to ctgread call
  * Dec 12 2003	Add second argument to CatName()
+ *
+ * Aug 30 2004	Declare void undeclared set*() subroutines
  */

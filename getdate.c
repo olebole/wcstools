@@ -1,5 +1,5 @@
 /* File getdate.c
- * April 28, 2004
+ * August 30, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -42,16 +42,25 @@
 
 static void usage();
 static void ConvertDate();
+extern double epb2ep();
+extern double epj2ep();
 extern double mjd2mhjd();
 extern double mjd2hjd();
 extern double mhjd2mjd();
 extern double mhjd2jd();
 extern double mhjd2hjd();
+extern double mjd2doy();
 extern double jd2hjd();
 extern double jd2mhjd();
 extern double hjd2jd();
 extern double hjd2mjd();
 extern double hjd2mhjd();
+extern int jd2tsi();
+extern double jd2tsu();
+extern int jd2tsi();
+extern double jd2tsu();
+extern void tsi2dt();
+extern void setdatedec();
 
 static int verbose = 0;		/* Verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
@@ -78,6 +87,7 @@ static double dec = 0.0;
 static int coorsys = WCS_J2000;
 extern void sdatedec();
 
+int
 main (ac, av)
 int ac;
 char **av;

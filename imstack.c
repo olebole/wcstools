@@ -28,6 +28,7 @@ static int version = 0;		/* If 1, print only program name and version */
 static char *outfile = NULL;	/* If not null, output filename */
 static char *extroot;
 
+int
 main (ac, av)
 int ac;
 char **av;

@@ -1,5 +1,5 @@
 /*** File fitshead.h  FITS header access subroutines
- *** February 26, 2004
+ *** August 30, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2004
@@ -358,6 +358,7 @@ extern void dec2str();
 
 extern void deg2str();
 extern void num2str();
+extern int numdec();	/* Return number of decimal places in number */
 
 extern char *getltime(); /* Return current local time in ISO format */
 extern char *getutime(); /* Return current UT as an ISO-format string */
@@ -410,4 +411,5 @@ extern char *getutime(); /* Return current UT as an ISO-format string */
  *
  * Feb 26 2004	Add igetc(), formerly internal to iget.c
  * Jul  1 2004	Add setheadshrink() for hdel()
+ * Aug 30 2004	Add numdec() to non-C++ declarations
  */

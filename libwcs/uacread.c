@@ -1,8 +1,8 @@
 /*** File libwcs/uacread.c
- *** December 12, 2003
+ *** August 30, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -33,8 +33,10 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 #include "wcs.h"
 #include "wcscat.h"
+#include "fitsfile.h"
 
 static int ucat=UA2;
 
@@ -1507,4 +1509,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Nov 18 2003	Initialize image size and bits/pixel from header in uacbin()
  * Dec  1 2003	Add missing tab to n=-1 header
  * Dec 12 2003	Fix bug in wcs2pix() call in uacbin(); fix usacbin() subroutine
+ *
+ * Aug 30 2004	Include fitsfile.h and math.h
  */

@@ -16,6 +16,7 @@ static char c1, c2;
 static void usage();
 static void PrintRoot();
 
+int
 main (ac, av)
 int ac;
 char **av;

@@ -1,5 +1,5 @@
 /* File sethead.c
- * July 1, 2004
+ * September 7, 2004
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -19,6 +19,11 @@ static int maxnkwd = MAXKWD;
 static int maxnfile = MAXFILES;
 #define MAXNEW 1024
 
+#define KEY_ADD 1
+#define KEY_SUB 2
+#define KEY_MUL 3
+#define KEY_DIV 4
+
 static void usage();
 static void SetValues ();
 
@@ -35,6 +40,7 @@ static char spchar = (char) 0;	/* Character to replace with spaces */
 static int nproc = 0;
 
 
+int
 main (ac, av)
 int ac;
 char **av;
@@ -49,7 +55,7 @@ char **av;
     int readlist = 0;
     int ifile;
     int icom, lcom;
-    char filename[128];
+    char filename[1024];
     char *keybuff, *kw1, *kw2, *kwdi, *kwdc;
     FILE *flist;
     char *listfile;
@@ -341,10 +347,11 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     char *irafheader;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
     int newimage;	/* 1 to awrite new image file, else 0 */
-    int i, lext, lroot;
+    int i, lext, lroot, ndec, isra;
     char *image;
     char newname[MAXNEW];
     char *newval;
+    char string[80];
     char *ext, *fname, *imext, *imext1;
     char *kw, *kwv, *kwl, *kwv0, *knl;
     char *v, *vq0, *vq1;
@@ -365,9 +372,15 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     char keyroot[8];
     char ctemp;
     int lval, ii, lv, lnl;
+    int ival0, ival1;
+    double dval0, dval1;
     int bitpix = 0;
     char newline = 10;
+    int keyop = 0;
+    char *opkey;
+    char ops[8];
 
+    strcpy (ops, "=+-*/");
     newimage = newimage0;
 
     /* Open IRAF image if .imh extension is present */
@@ -377,6 +390,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    if ((header = iraf2fits (filename, irafheader, lhead, &nbhead)) == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
 		free (irafheader);
+		irafheader = NULL;
 		return;
 		}
 	    }
@@ -433,8 +447,30 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    else
 		kwv0 = NULL;
 	    }
-	else
-	    kwv0 = strchr (kwd[ikwd],'=');
+	else {
+	    kwv0 = strchr (kwd[ikwd], '=');
+	    keyop = 0;
+	    if (kwv0 == NULL) {
+		kwv0 = strchr (kwd[ikwd], '+');
+		if (kwv0 != NULL)
+		    keyop = KEY_ADD;
+		else {
+		    kwv0 = strchr (kwd[ikwd], '/');
+		    if (kwv0 != NULL)
+			keyop = KEY_DIV;
+		    else {
+			kwv0 = strchr (kwd[ikwd], '*');
+			if (kwv0 != NULL)
+			    keyop = KEY_MUL;
+			else {
+			    kwv0 = strchr (kwd[ikwd], '-');
+			    if (kwv0 != NULL)
+				keyop = KEY_SUB;
+			    }
+			}
+		    }
+		}
+	    }
 	if (kwv0 == NULL) {
 
 	    /* Get current length of header buffer */
@@ -492,6 +528,101 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		if (strlen (newkey) > 8)
 		    newkey[8] = (char) 0;
 		hchange (header, kwd[ikwd], newkey);
+		opkey = newkey;
+		}
+	    else
+		opkey = kwd[ikwd];
+
+	    /* Add, subtract, multiply, or divide keyword value by constant */
+	    if (keyop) {
+		if (!hgets (header, opkey, 72,string)) {
+		    if (verbose)
+			printf ("* %s %c %s keyword not in header.\n",
+			    opkey, ops[keyop], kwv);
+		    continue;
+		    }
+		if (!isnum (string) && !strchr (string,':')) {
+		    if (verbose) 
+			printf ("* %s = %s in header is not a number.\n",
+			    opkey, ops[keyop], string);
+		    continue;
+		    }
+		if (!isnum (kwv) && !strchr (kwv, ':')) {
+		    if (verbose) 
+			printf ("* %s %c %s not a number.\n",
+			    opkey, ops[keyop], kwv);
+		    continue;
+		    }
+
+		/* Make sexagesimal output */
+		if (strchr (string, ':')) {
+		    if (strsrch (opkey, "RA") || strsrch (opkey, "HA")) {
+			isra = 1;
+			dval0 = str2ra (string);
+			}
+		    else {
+			isra = 0;
+			dval0 = str2dec (string);
+			}
+		    if (strchr (kwv, ':')) {
+			if (isra)
+			    dval1 = str2ra (kwv);
+			else
+			    dval1 = str2dec (kwv);
+			}
+		    else
+			dval1 = atof (kwv);
+		    
+		    if (keyop == KEY_ADD)
+			dval0 = dval0 + dval1;
+		    else if (keyop == KEY_SUB)
+			dval0 = dval0 - dval1;
+		    else if (keyop == KEY_MUL)
+			dval0 = dval0 * dval1;
+		    else if (keyop == KEY_DIV && dval1 != 0)
+			dval0 = dval0 / dval1;
+		    ndec = numdec (string);
+		    if (isra)
+			ra2str (string, 32, dval0, ndec);
+		    else
+			dec2str (string, 32, dval0, ndec);
+		    hputs (header, opkey, string);
+		    }
+
+		/* Make integer output */
+		else if (isnum (string) == 1) {
+		    if (kwv[0] == '-')
+			ival1 = (int) (atof (kwv) - 0.5);
+		    else
+			ival1 = (int) (atof (kwv) + 0.5);
+		    ival0 = atoi (string);
+		    if (keyop == KEY_ADD)
+			ival0 = ival0 + ival1;
+		    else if (keyop == KEY_SUB)
+			ival0 = ival0 - ival1;
+		    else if (keyop == KEY_MUL)
+			ival0 = ival0 * ival1;
+		    else if (keyop == KEY_DIV && ival1 != 0)
+			ival0 = ival0 / ival1;
+		    hputi4 (header, kwd[ikwd], ival0);
+		    }
+
+		/* Make floating point output */
+		else {
+		    dval0 = atof (string);
+		    ndec = numdec (string);
+		    dval1 = atof (kwv);
+		    if (keyop == KEY_ADD)
+			dval0 = dval0 + dval1;
+		    else if (keyop == KEY_SUB)
+			dval0 = dval0 - dval1;
+		    else if (keyop == KEY_MUL)
+			dval0 = dval0 * dval1;
+		    else if (keyop == KEY_DIV && dval1 != 0)
+			dval0 = dval0 / dval1;
+		    hputnr8 (header, kwd[ikwd], ndec, dval0);
+		    }
+		continue;
 		}
 
 	    /* Write comment without quotes, filling spaces first */
@@ -647,6 +778,28 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	strcat (history, " ");
 	for (ikwd = 0; ikwd < nkwd; ikwd++) {
 	    kwv0 = strchr (kwd[ikwd],'=');
+	    if (kwv0 == NULL)
+	    keyop = 0;
+	    if (kwv0 == NULL) {
+		kwv0 = strchr (kwd[ikwd], '+');
+		if (kwv != NULL)
+		    keyop = KEY_ADD;
+		else {
+		    kwv0 = strchr (kwd[ikwd], '/');
+		    if (kwv != NULL)
+			keyop = KEY_DIV;
+		    else {
+			kwv0 = strchr (kwd[ikwd], '*');
+			if (kwv != NULL)
+			    keyop = KEY_MUL;
+			else {
+			    kwv0 = strchr (kwd[ikwd], '-');
+			    if (kwv != NULL)
+				keyop = KEY_SUB;
+			    }
+			}
+		    }
+		}
 	    if (kwv0)
 		*kwv0 = (char) 0;
 	    lhist = strlen (history);
@@ -671,7 +824,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		}
 	    strcat (history, kwd[ikwd]);
 	    if (kwv0)
-		*kwv0 = '=';
+		*kwv0 = ops[keyop];
 	    if (nkwd == 2 && ikwd < nkwd-1)
 		strcat (history, " and ");
 	    else if (ikwd < nkwd-1)
@@ -764,6 +917,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
 	free (irafheader);
+	irafheader = NULL;
 	}
 
     /* If there is no data, write header by itself */
@@ -790,6 +944,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
 	free (image);
+	image = NULL;
 	}
 
     else {
@@ -816,8 +971,11 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	}
 
     free (header);
-    if (image != NULL)
+    header = NULL;
+    if (image != NULL) {
 	free (image);
+	image = NULL;
+	}
     return;
 }
 
@@ -881,4 +1039,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * May  3 2004	Add code to overwrite header if revised one fits
  * Jul  1 2004	Fix bug deciding when to write extension header in place
  * Jul  1 2004	Change first extension if no extension specified
+ * Aug 30 2004	Add option to add, subtract, multiply, or divide constant
+ * Sep  7 2004	Set buffer pointers to null after freeing buffers
+ * Sep  7 2004	Change input filename length from 128 to 1024
  */

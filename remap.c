@@ -1,5 +1,5 @@
 /* File remap.c
- * April 28, 2004
+ * August 30, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -50,7 +50,7 @@ static int lhead;		/* Maximum number of bytes in FITS header */
 static int iraffile;
 static int eqsys = 0;
 static double equinox = 0.0;
-static outsys = 0;
+static int outsys = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int mode = REMAP_CLOSEST;
 static int remappix=0;		/* Number of samples of input pixels */
@@ -63,6 +63,7 @@ static int ny = 0;
 static int nlog = 0;
 static int undistort = 0;
 
+int
 main (ac, av)
 int ac;
 char **av;
@@ -214,12 +215,12 @@ char **av;
 	    setscale (1);
     	    break;
 
-	/* case 's':	 Number of samples per linear input pixel
+	case 't':	/* Number of samples per linear input pixel */
     	    if (ac < 2)
     		usage(c, "needs a number of samples per input pixel");
     	    remappix = atoi (*++av);
     	    ac--;
-    	    break; */
+    	    break;
 
 	case 'u':	/* Delete distortion keywords */
 	    undistort++;
@@ -369,7 +370,7 @@ char	*message;	/* Error message */
     fprintf(stderr,"  -o name: Name for output image\n");
     fprintf(stderr,"  -p secpix: Output plate scale in arcsec/pixel (default =input)\n");
     fprintf(stderr,"  -s: Set BZERO and BSCALE in output file from input file\n");
-    /* fprintf(stderr,"  -s: Number of samples per linear input pixel\n"); */
+    fprintf(stderr,"  -t: Number of samples per linear output pixel\n");
     fprintf(stderr,"  -u: Delete distortion keywords from output file\n");
     fprintf(stderr,"  -v: Verbose\n");
     fprintf(stderr,"  -w type: Output WCS type (input is default)\n");
@@ -394,12 +395,13 @@ char	*filename;	/* FITS or IRAF file filename */
     int i, j, ii, jj, hpin, wpin, hpout, wpout, nbout, ix, iy, npout;
     int iin, iout, jin, jout;
     int iout1, iout2, jout1, jout2;
+    int idiff, jdiff;
     int offscl, lblock;
     char pixname[256];
     struct WorldCoor *wcsin;
     double bzin, bsin, bzout, bsout, bzx, bsx;
-    double dx, dy, dx0, dy0, secpixin1, secpixin2, secpix1;
-    double xout, yout, xin, yin, xpos, ypos, dpixi, dpixo;
+    double dx, dy, dx0, dy0, secpixin1, secpixin2, secpix1, dpix, dnpix;
+    double xout, yout, xin, yin, xpos, ypos, dpixi, dpixo, xout0, yout0;
     double xmin, xmax, ymin, ymax, xin1, xin2, yin1, yin2;
     double pixratio;
     char secstring[32];
@@ -411,6 +413,7 @@ char	*filename;	/* FITS or IRAF file filename */
     double *imvec, *endvec, *dvec;
     int y, npix;
     int addscale = 0;
+    double *dxout, *dyout;
 
     /* Read input IRAF header and image */
     if (isiraf (filename)) {
@@ -597,10 +600,6 @@ char	*filename;	/* FITS or IRAF file filename */
 	pixratio = wcsin->xinc / wcsout->xinc;
 	if (remappix == 0)
 	    remappix = 1;
-	else if (pixratio > remappix) {
-	    fprintf (stderr, "REMAP: remapping %.1f pixels from 1; %d too small\n",
-		     pixratio, remappix);
-	    }
 
 	/* Allocate space for output image */
 	if (imout == NULL) {
@@ -744,39 +743,73 @@ char	*filename;	/* FITS or IRAF file filename */
 	setscale (0);
 	}
 
+    dxout = (double *) calloc (remappix, sizeof (double));
+    dyout = (double *) calloc (remappix, sizeof (double));
+    if (remappix > 1) {
+	dpix = 1.0 / (double) remappix;
+	dx = -0.5 + (0.5 * dpix);
+	for (idiff = 0; idiff < remappix; idiff++) {
+	    dxout[idiff] = dx;
+	    dyout[idiff] = dx;
+	    dx = dx + dpix;
+	    }
+	}
+    else {
+	dxout[0] = 0.0;
+	dyout[0] = 0.0;
+	}
+
     /* Loop through vertical pixels (output image lines) */
     for (iout = iout1; iout <= iout2; iout++) {
-	yout = (double) iout;
+	yout0 = (double) iout;
 
 	/* Loop through horizontal pixels (output image columns) */
 	for (jout = jout1; jout <= jout2; jout++) {
-	    xout = (double) jout;
+	    xout0 = (double) jout;
 
-	    /* Get WCS coordinates of this pixel in output image */
-	    pix2wcs (wcsout, xout, yout, &xpos, &ypos);
+	    /* Read pixel from output file */
+	    dpixo = getpix1 (imout,bitpixout,wpout,hpout,bzout,bsout,jout,iout);
+	    dpix = 0.0;
+	    dnpix = 0.0;
 
-	    /* Get image coordinates of this subpixel in input image */
-	    wcs2pix (wcsin, xpos, ypos, &xin, &yin, &offscl);
-	    if (!offscl) {
-		iin = (int) (yin + 0.5);
-		jin = (int) (xin + 0.5);
+	    for (idiff = 0; idiff < remappix; idiff++) {
+		xout = xout0 + dxout[idiff];
 
-		/* Read pixel from input file */
-		dpixi = getpix1 (image,bitpix,wpin,hpin,bzin,bsin,jin,iin);
+		for (jdiff = 0; jdiff < remappix; jdiff++) {
+		    yout = yout0 + dyout[idiff];
 
-		/* Read pixel from output file */
-		dpixo = getpix1 (imout,bitpixout,wpout,hpout,bzout,bsout,jout,iout);
+		    /* Get WCS coordinates of this pixel in output image */
+		    pix2wcs (wcsout, xout, yout, &xpos, &ypos);
+
+		    /* Get image coordinates of this subpixel in input image */
+		    wcs2pix (wcsin, xpos, ypos, &xin, &yin, &offscl);
+		    if (!offscl) {
+			iin = (int) (yin + 0.5);
+			jin = (int) (xin + 0.5);
+
+			/* Read pixel from input file */
+			dpixi = getpix1 (image,bitpix,wpin,hpin,bzin,bsin,jin,iin);
+			if (dpixi != blankpix) {
+			    dpix = dpix + dpixi;
+			    dnpix = dnpix + 1.0;
+			    }
+			}
+		    }
+		if (dnpix > 0.0)
+		    dpix = dpix / dnpix;
+		else
+		    dpix = blankpix;
 
 		/* If output pixel is blank, set rather than add */
 		if (dpixo == blankpix) {
-		    putpix1 (imout,bitpixout,wpout,hpout,bzout,bsout,jout,iout,dpixi);
+		    putpix1 (imout,bitpixout,wpout,hpout,bzout,bsout,jout,iout,dpix);
 		    }
 
 		/* Otherwise add to current pixel value and write to output image */
 		else {
 		    if (addscale)
-			dpixi = (dpixi - bzin);
-		    dpixo = dpixo + dpixi;
+			dpix = (dpix - bzin);
+		    dpixo = dpixo + dpix;
 		    putpix1 (imout,bitpixout,wpout,hpout,bzout,bsout,jout,iout,dpixo);
 		    }
 		}
@@ -856,4 +889,5 @@ double	*y2;		/* Upper right y coordinate (returned) */
  * Feb 27 2004	Use DATASEC to limit input data coordinates if it is present
  * Mar  1 2004	Do not rescale pixels if unnecessary
  * Apr 28 2004	Return error on failure of any memory allocation
+ * Aug 30 2004	Add multiple samples from output to input images
  */

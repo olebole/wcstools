@@ -40,6 +40,7 @@ static int printfile=1;		/* If 1, print filename first if >1 files */
 static int keyeqval=0;		/* If 1, print keyword=value, not just value */
 static char *rootdir=NULL;	/* Root directory for input files */
 
+int
 main (ac, av)
 int ac;
 char **av;

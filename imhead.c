@@ -24,6 +24,7 @@ static int fitsout = 0;		/* If 1, write exact FITS header */
 static int zbitpix = 0;		/* If 1, set BITPIX to 0 for dataless header */
 static int version = 0;		/* If 1, print only program name and version */
 
+int
 main (ac, av)
 int ac;
 char **av;

@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** April 23, 2004
+ *** August 31, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -102,6 +102,9 @@ int ctgread();		/* Read sources from SAO TDC ASCII format catalog */
 int actread();		/* Read sources from USNO ACT Catalog */
 int ty2read();		/* Read sources from Tycho 2 Catalog */
 int webread();		/* Read sources from catalog on the World Wide Web */
+int daoread();		/* Read image source positions from x y mag file */
+int daoopen();		/* Open image source position x y mag file */
+char *daoline();	/* Read line from image source position x y mag file */
 
 /* Subroutines for extracting sources from catalogs by ID number */
 int gscrnum();		/* Read sources from HST Guide Star Catalog */
@@ -362,7 +365,7 @@ void rstart();		/* Restart range */
 #define WCS_PVAR 16	/* pixel variable (+ and x) shape for HSTGSC plotting */
 
 /* Structure and subroutines for access to tokens within a string */
-#define MAXTOKENS 100    /* Maximum number of tokens to parse */
+#define MAXTOKENS 200    /* Maximum number of tokens to parse */
 #define MAXWHITE 20     /* Maximum number of whitespace characters */
 struct Tokens {
     char *line;         /* Line which has been parsed */
@@ -496,4 +499,5 @@ char *getrevmsg();	/* Return version/date string */
  * Jan 22 2004	Add setlimdeg() to print limit coordinates in degrees
  * Mar 16 2004	Add MergeStars()
  * Apr 23 2004	Add ctgrdate()
+ * Aug 31 2004	Increase MAXTOKENS from 100 to 200
  */

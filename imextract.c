@@ -34,6 +34,7 @@ static char *outfile = NULL;	/* Output file name if set on command line */
 static char *outdir = NULL;	/* Output directory if set on command line */
 static char spchar = (char) 0;	/* Character to replace with spaces */
 
+int
 main (ac, av)
 int ac;
 char **av;

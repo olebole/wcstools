@@ -1,5 +1,5 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** May 6, 2004
+ *** August 27, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2004
@@ -60,6 +60,7 @@ extern int fitscimage();
 extern int isfits();		/* Return 1 if file is a FITS file */
 extern void fitserr();          /* Print FITS error message to stderr */
 extern void setfitsinherit();	/* Set flag to append primary data header */
+extern int fitsheadsize();	/* Return size of fitsheader in bytes */
 
 /* FITS table file access subroutines in fitsfile.c */
 extern int fitsrtopen();
@@ -286,4 +287,5 @@ void compnut();	/* Compute nutation in longitude and obliquity and mean obliquit
  * Feb 27 2004  Add fillvec() and fillvec1()
  * May  3 2004	Add setfitsinherit()
  * May  6 2004	Add fitswexhead()
+ * Aug 27 2004	Add fitsheadsize()
  */
