@@ -8,7 +8,7 @@ BIN = bin
 all:	delwcs delhead edhead fixpix gethead i2f imcat imhead immatch imrot \
 	imsize imstar imwcs scat sethead addpix getpix setpix sky2xy \
 	keyhead skycoor subpix xy2sky wcshead conpix gettab newfits \
-	imstack imextract sumpix
+	imstack imextract sumpix remap getcol
 
 addpix: addpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/addpix addpix.c $(LIBS)
@@ -28,14 +28,17 @@ edhead: edhead.c $(LIBWCS) libwcs/fitsfile.h
 fixpix: fixpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/fixpix fixpix.c $(LIBS)
 
+getcol: getcol.c $(LIBWCS) libwcs/wcscat.h
+	$(CC) $(CFLAGS) -o $(BIN)/getcol getcol.c $(LIBS)
+
 gethead: gethead.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/gethead gethead.c $(LIBS)
 
-gettab: gettab.c $(LIBWCS) libwcs/wcscat.h
-	$(CC) $(CFLAGS) -o $(BIN)/gettab gettab.c $(LIBS)
-
 getpix: getpix.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/getpix getpix.c $(LIBS)
+
+gettab: gettab.c $(LIBWCS) libwcs/wcscat.h
+	$(CC) $(CFLAGS) -o $(BIN)/gettab gettab.c $(LIBS)
 
 i2f: i2f.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/i2f i2f.c $(LIBS)
@@ -66,6 +69,9 @@ imwcs: imwcs.c $(LIBWCS) libwcs/fitsfile.h libwcs/lwcs.h
 
 immatch: immatch.c $(LIBWCS) libwcs/fitsfile.h libwcs/lwcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/immatch immatch.c $(LIBS)
+
+immwcs: immwcs.c $(LIBWCS) libwcs/fitsfile.h libwcs/lwcs.h
+	$(CC) $(CFLAGS) -o $(BIN)/immwcs immwcs.c $(LIBS)
 
 keyhead: keyhead.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/keyhead keyhead.c $(LIBS)

@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** October 20, 1999
+ *** December 3, 1999
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -1175,6 +1175,15 @@ char *string;	/* Character string */
 
     lstr = strlen (string);
     nd = 0;
+
+    /* Return 0 if string starts with a D or E */
+    cstr = string[0];
+    if (cstr == 'D' || cstr == 'd' ||
+	cstr == 'E' || cstr == 'e') {
+	return (0);
+	}
+
+    /* Numeric strings contain 0123456789-+ and d or e for exponents */
     for (i = 0; i < lstr; i++) {
 	cstr = string[i];
 	if ((cstr < 48 || cstr > 57) &&
@@ -1259,4 +1268,5 @@ int set_saolib(hstring)
  * Oct 14 1999	In ksearch(), search only to null not to end of buffer
  * Oct 15 1999	Return 1 from hgetndec() if successful
  * Oct 20 1999	Drop unused variable after lint (val in hgetndec)
+ * Dec  3 1999	Fix isnum() to reject strings starting with a d or e
  */

@@ -13,4 +13,4 @@ SAOtng, Skycat, and DS9 image display programs:
 
   cel.c dsspos.c fitshead.h fitsfile.c fitsfile.h hget.c hput.c iget.c
   imhfile.c imio.c lin.c platepos.c proj.c slasubs.c sph.c tnxpos.c
-  wcs.c wcs.h wcscon.c wcslib.c wcslib.h wcstrig.c worldpos.c
+  wcs.c wcs.h wcscon.c wcslib.c wcslib.h wcstrig.c worldpos.c dateutil.c

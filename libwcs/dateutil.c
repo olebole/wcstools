@@ -1,5 +1,5 @@
 /* File libwcs/dateutil.c
- * November 2, 1999
+ * December 6, 1999
  * By Doug Mink
  */
 
@@ -225,7 +225,7 @@ double	tsec;	/* seconds since 1950.0 */
 {
     double dj;	/* Julian date (returned) */
 
-    dj = 2433282.5 + (tsec / 8.6400);
+    dj = 2433282.5 + (tsec / 86400.0);
     return (dj);
 }
 
@@ -703,4 +703,5 @@ double	dnum, dm;
 /* Jul  1 1999	New file, based on iolib/jcon.f and iolib/vcon.f and hgetdate()
  * Oct 21 1999	Fix declarations after lint
  * Oct 27 1999	Fix bug to return epoch if fractional year input
+ * Dec  6 1999	Fix bug in ts2jd() found by Pete Ratzlaff (SAO)
  */

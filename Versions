@@ -1,3 +1,9 @@
+Version 2.6.10 (December 6, 1999)
+remap:   Added -i flag to set output BITPIX and avoid overflows
+hget.c:  Fix bug in isnum() so numeric strings starting with d or e are
+         not decreed to be numbers.
+dateutil.c: Fix bug in ts2jd() which caused JD to be much too big
+
 Version 2.6.9 (December 1, 1999)
 edhead:  Added -e option to select an editor and none editor option to
          simply filter a header, removing control characters without editing

@@ -1,5 +1,5 @@
 /* File remap.c
- * November 19, 1999
+ * December 3, 1999
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -25,7 +25,6 @@ extern void setwcsproj();
 
 static void usage();
 static int verbose = 0;		/* verbose flag */
-static int debug = 0;		/* debugging flag */
 static char *outname0 = "remap.fits";
 static char *outname;
 
@@ -33,6 +32,7 @@ static int nfiles = 0;
 static int nbstack = 0;
 static int fitsout = 0;
 static double secpix = 0;
+static int bitpix0 = 0; /* Output BITPIX, =input if 0 */
 static FILE *fstack = NULL;
 static int RemapImage();
 extern struct WorldCoor *GetFITSWCS();
@@ -117,6 +117,13 @@ char **av;
 	    setcenter (rastr, decstr);
     	    break;
 
+	case 'i':	/* Bits per output pixel in FITS code */
+    	    if (ac < 2)
+    		usage();
+    	    bitpix0 = atoi (*++av);
+    	    ac--;
+    	    break;
+
     	case 'j':	/* Output image center on command line in J2000 */
     	    if (ac < 3)
     		usage();
@@ -128,18 +135,17 @@ char **av;
 	    setcenter (rastr, decstr);
     	    break;
 
-	case 'v':	/* more verbosity */
-	    verbose++;
-	    break;
-
-	case 'k':	/* Print extra debugging information */
-	    debug++;
-	    break;
-
     	case 'l':	/* Logging interval for processing */
     	    if (ac < 2)
     		usage();
     	    nlog = atoi (*++av);
+    	    ac--;
+    	    break;
+
+	case 'n':	/* Number of samples per linear input pixel */
+    	    if (ac < 2)
+    		usage();
+    	    remappix = atoi (*++av);
     	    ac--;
     	    break;
 
@@ -148,13 +154,6 @@ char **av;
     		usage();
 	    outname = *++av;
 	    ac--;
-    	    break;
-
-	case 'n':	/* Number of samples per linear input pixel */
-    	    if (ac < 2)
-    		usage();
-    	    remappix = atoi (*++av);
-    	    ac--;
     	    break;
 
     	case 'p':	/* Output image plate scale in arcseconds per pixel */
@@ -168,6 +167,10 @@ char **av;
 		ac--;
 		}
     	    break;
+
+	case 'v':	/* more verbosity */
+	    verbose++;
+	    break;
 
 	case 'w':	/* Set WCS projection */
 	    if (ac < 2)
@@ -289,11 +292,13 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Remap FITS or IRAF images into single FITS image using WCS\n");
-    fprintf(stderr,"usage: remap [-vf][-a rot][-b ra dec][-j ra dec][-l num] file1.fit file2.fit ... filen.fit\n");
-    fprintf(stderr,"       remap [-vf][-a rot][-b ra dec][-j ra dec][-l num] @filelist\n");
+    fprintf(stderr,"usage: remap [-vf][-a rot][[-b][-j] ra dec][-i bits][-l num] file1.fit file2.fit ... filen.fit\n");
+    fprintf(stderr,"       remap [-vf][-a rot][[-b][-j] ra dec][-i bits][-l num] @filelist\n");
     fprintf(stderr,"  -a: Output rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: Output center in B1950 (FK4) RA and Dec\n");
+    fprintf(stderr,"  -f: Force FITS output\n");
     fprintf(stderr,"  -g: Output center in galactic longitude and latitude\n");
+    fprintf(stderr,"  -i: Number of bits per output pixel (default is input)\n");
     fprintf(stderr,"  -j: Output center in J2000 (FK5) RA and Dec\n");
     fprintf(stderr,"  -l: Log every num rows of input image\n");
     fprintf(stderr,"  -n: Number of samples per linear input pixel\n");
@@ -320,7 +325,7 @@ char	*filename;	/* FITS or IRAF file filename */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     char *irafheader;		/* IRAF image header */
-    int bitpix;
+    int bitpix, bitpixout;
     double cra, cdec, dra, ddec;
     char *headout;
     int iraffile;
@@ -429,6 +434,14 @@ char	*filename;	/* FITS or IRAF file filename */
     else if (hgetr8 (headout, "SECPIX", &secpix1))
 	hputr8 (headout, "SECPIX", secpix);
 
+    hgeti4 (header, "BITPIX", &bitpix);
+    if (bitpix0 != 0) {
+	hputi4 (headout, "BITPIX", bitpix0);
+	bitpixout = bitpix0;
+	}
+    else
+	bitpixout = bitpix;
+
     /* Set output WCS from command line and first image header */
     wcsout = GetFITSWCS (filename, headout, verbose, &cra, &cdec, &dra,
 			 &ddec, &secpix, &wpout, &hpout, &eqsys, &equinox);
@@ -447,9 +460,8 @@ char	*filename;	/* FITS or IRAF file filename */
     strcpy (wcsin->radecout, wcsout->radecsys);
 
     /* Allocate space for output image */
-    hgeti4 (headout, "BITPIX", &bitpix);
     npout = hpout * wpout;
-    nbout = npout * bitpix / 8;
+    nbout = npout * bitpixout / 8;
     if (nbout < 0) nbout = -nbout;
     imout = (char * ) calloc (nbout, 1);
 
@@ -502,7 +514,7 @@ char	*filename;	/* FITS or IRAF file filename */
 			    /* Add fraction of input image pixel to output image */
 			    ix = (int)(xout + 0.5);
 			    iy = (int)(yout + 0.5);
-			    addpix1 (imout,bitpix,wpout,hpout,bzout,bsout,
+			    addpix1 (imout,bitpixout,wpout,hpout,bzout,bsout,
 				    ix, iy, dpixi);
 			    }
 			}
@@ -539,4 +551,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Oct 22 1999	Drop unused variables after lint
  * Oct 22 1999	Add optional second plate scale argument
  * Nov 19 1999	Add galactic coordinate output option
+ * Dec  3 1999	Add option to set output BITPIX
  */
