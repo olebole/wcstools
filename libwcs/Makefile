@@ -62,3 +62,6 @@ wcslib.o:	wcslib.h
 wcstrig.o:	wcslib.h
 webread.o:	wcscat.h
 worldpos.o:	wcs.h fitshead.h wcslib.h
+
+clean:
+	rm -f *.a *.o

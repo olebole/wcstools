@@ -1,5 +1,5 @@
 /*** File libwcs/fitswcs.c
- *** July 19, 2004
+ *** September 16, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2004
@@ -458,6 +458,8 @@ struct WorldCoor *wcs;	/* WCS structure */
 
 
     /* Set new center coordinates */
+    if (wcs->xref < 0)
+	wcs->xref = 360.0 + wcs->xref;
     hputra (header,"RA",wcs->xref);
     hputdec (header,"DEC",wcs->yref);
     hputr8 (header, "EQUINOX", wcs->equinox);
@@ -613,4 +615,5 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Dec  5 2003	Fix bug, delete projection parameters in DelWCSFITS()
  *
  * Jul 19 2004	Print error message in verbose mode only
+ * Sep 16 2004	Add 360.0 to negative right ascensions in SetFITSWCS()
  */

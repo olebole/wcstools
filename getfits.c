@@ -1,5 +1,5 @@
 /* File getfits.c
- * April 16, 2004
+ * September 17, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -114,7 +114,6 @@ char **av;
 		usage ("Right ascension given but no declination");
 	    else {
 		strcpy (rastr, *av);
-		ac--;
 		strcpy (decstr, *++av);
 		ra0 = str2ra (rastr);
 		dec0 = str2dec (decstr);
@@ -236,20 +235,31 @@ char **av;
 		}
     	    }
 
-        /* center and size of section to extract */
-        else if (isnum (str)) {
-	    if (!xcpix)
-		xcpix = atoi (str);
-	    else if (!ycpix)
-		ycpix = atoi (str);
-	    else if (!xdpix)
-		xdpix = atoi (str);
-	    else if (!ydpix)
-		ydpix = atoi (str);
+        /* center or center and size of section to extract */
+        else if (isnum (*av)) {
+	    if (ac > 2 && isnum (*(av+1)) && (syscoor = wcscsys (*(av+2))) > 0) {
+		ra0 = str2ra (*av++);
+		ac--;
+		dec0 = str2dec (*av++);
+		ac--;
+		eqcoor = wcsceq (*av);
+		xcpix = -1;
+		ycpix = -1;
+		}
+	    else {
+		if (!xcpix)
+		    xcpix = atoi (str);
+		else if (!ycpix)
+		    ycpix = atoi (str);
+		else if (!xdpix)
+		    xdpix = atoi (str);
+		else if (!ydpix)
+		    ydpix = atoi (str);
+		}
 	    }
 
         /* range of pixels to extract */
-        else if (isrange (str)) {
+        else if (isrange (*av)) {
 	    if (crange == NULL)
 		crange = str;
 	    else
@@ -908,4 +918,6 @@ char *newname;
  * May  2 2003	Fix bug if no keywords are deleted
  *
  * Apr 16 2004	Delete NAXISn for n > 2 in output image
+ * Sep 15 2004	Fix bug dealing with center specified as sky coordinates
+ * Sep 17 2004	Add option to set extraction center as decimal degrees
  */

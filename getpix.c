@@ -1,5 +1,5 @@
 /* File getpix.c
- * August 30, 2004
+ * September 21, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -661,7 +661,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 			printf (pform, ipix);
 		    else
 			printf (pform, dpix);
-		    if ((x+1) % nline == 0)
+		    if ((ix+1) % nline == 0)
 			printf ("\n");
 		    else
 			printf (" ");
@@ -711,4 +711,5 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
  *
  * Apr 26 2004	Fix handling of 0 0 for entire image
  * Aug 30 2004	Fix declarations
+ * Sep 21 2004	Fix bug which used x instead of ix for number of elements printed
  */

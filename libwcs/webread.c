@@ -1,5 +1,5 @@
 /*** File webread.c
- *** August 30, 2004
+ *** September 10, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -423,8 +423,10 @@ int	nlog;		/* 1 to print diagnostic messages */
 	return (NULL);
 	}
     if (!strchr (tabbuff, '	') && !strchr (tabbuff, ',') && !strchr (tabbuff, '|')) {
-	fprintf (stderr,"Message returned from %s\n", srchurl);
-	fprintf (stderr,"%s\n", tabbuff);
+	if (diag) {
+	    fprintf (stderr,"Message returned from %s\n", srchurl);
+	    fprintf (stderr,"%s\n", tabbuff);
+	    }
 	return (NULL);
 	}
 
@@ -828,4 +830,5 @@ FileINetParse(file, port, adrinet)
 		in webopen(); initialize nbcont to 0 in webbuff()
  * Jan 14 2004	Return error if data but no objects returned in webopen()
  * Aug 30 2004	Send CR-LF termination to HTTP GET, not just LF
+ * Sep 10 2004	Print server messages only if verbose flag is on
  */

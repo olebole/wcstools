@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.c
- *** December 3, 2003
+ *** September 17, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2003
+ *** Copyright (C) 1994-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -1301,10 +1301,6 @@ double	*height;	/* Height in degrees (returned) */
 	if (strncmp (wcs->ptype,"LINEAR",6) &&
 	    strncmp (wcs->ptype,"PIXEL",5)) {
 	    *width = wcsdist (xpos1,ypos1,xpos2,ypos2);
-	    if (xpos1 < xpos2 && wcs->xinc < 0)
-		*width = 360.0 - *width;
-	    else if (xpos1 > xpos2 && wcs->xinc > 0)
-		*width = 360.0 - *width;
 	    }
 	else
 	    *width = sqrt (((ypos2-ypos1) * (ypos2-ypos1)) +
@@ -1856,13 +1852,6 @@ int	lstr;		/* Length of world coordinate string (returned) */
 
 	pix2wcs (wcs,xpix,ypix,&xpos,&ypos);
 
-	/* Keep ra/longitude within range
-	if (xpos < 0.0)
-	    xpos = xpos + 360.0;
-
-	else if (xpos > 360.0)
-	    xpos = xpos - 360.0; */
-
 	/* If point is off scale, set string accordingly */
 	if (wcs->offscl) {
 	    (void)sprintf (wcstring,"Off map");
@@ -2130,6 +2119,15 @@ double	*xpos,*ypos;	/* RA and Dec in degrees (returned) */
 	*xpos = xp;
 	*ypos = yp;
 	}
+
+    /* Keep RA/longitude within range if spherical coordinate output */
+    if (wcs->sysout > 0 && wcs->sysout < 10) {
+	if (*xpos < 0.0)
+	    *xpos = *xpos + 360.0;
+	else if (*xpos > 360.0)
+	    *xpos = *xpos - 360.0;
+	}
+
     return;
 }
 
@@ -2739,4 +2737,7 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Nov  3 2003	Set distortion code by calling setdistcode() in wcstype()
  * Dec  3 2003	Add back wcs->naxes for compatibility
  * Dec  3 2003	Add braces in if...else in pix2wcst()
+ *
+ * Sep 17 2004	If spherical coordinate output, keep 0 < long/RA < 360
+ * Sep 17 2004	Fix bug in wcsfull() when wrapping around RA=0:00
  */

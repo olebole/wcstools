@@ -1,5 +1,5 @@
 /*** File libwcs/hput.c
- *** September 3, 2004
+ *** September 16, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1995-2004
@@ -65,6 +65,8 @@ setheadshrink (hsh)
 int hsh;
 {headshrink = hsh; return;}
 
+static void fixnegzero();
+
 
 /*  HPUTI4 - Set int keyword = ival in FITS header string */
 
@@ -126,6 +128,9 @@ float rval;		/* float number */
     /* Translate value from binary to ASCII */
     sprintf (value,"%f",rval);
 
+    /* Remove sign if string is -0 or extension thereof */
+    fixnegzero (value);
+
     /* Put value into header string */
     return (hputc (hstring,keyword,value));
 }
@@ -144,6 +149,9 @@ double	dval;		/* double number */
 
     /* Translate value from binary to ASCII */
     sprintf (value,"%g",dval);
+
+    /* Remove sign if string is -0 or extension thereof */
+    fixnegzero (value);
 
     /* Put value into header string */
     return (hputc (hstring,keyword,value));
@@ -177,6 +185,9 @@ double	dval;		/* double number */
 	sprintf (value, format, dval);
 	}
 
+    /* Remove sign if string is -0 or extension thereof */
+    fixnegzero (value);
+
     /* Put value into header string */
     return (hputc (hstring,keyword,value));
 }
@@ -195,6 +206,9 @@ double ra;		/* Right ascension in degrees */
 
     /* Translate value from binary to ASCII */
     ra2str (value, 30, ra, 3);
+
+    /* Remove sign if string is -0 or extension thereof */
+    fixnegzero (value);
 
     /* Put value into header string */
     return (hputs (hstring,keyword,value));
@@ -215,8 +229,41 @@ double dec;		/* Declination in degrees */
     /* Translate value from binary to ASCII */
     dec2str (value, 30, dec, 2);
 
+    /* Remove sign if string is -0 or extension thereof */
+    fixnegzero (value);
+
     /* Put value into header string */
     return (hputs (hstring,keyword,value));
+}
+
+
+/* FIXNEGZERO -- Drop - sign from beginning of any string which is all zeros */
+
+static void
+fixnegzero (string)
+
+char *string;
+{
+    int i, lstr;
+
+    if (string[0] != '-')
+	return;
+
+    /* Drop out if any non-zero digits in this string */
+    lstr = (int) strlen (string);
+    for (i = 1; i < lstr; i++) {
+	if (string[i] > '0' && string[i] <= '9')
+	    return;
+	if (string[i] == 'd' || string[i] == 'e' || string[i] == ' ')
+	    break;
+	}
+
+    /* Drop - from start of string; overwrite string in place */
+    for (i = 1; i < lstr; i++)
+	string[i-1] = string[i];
+    string[lstr-1] = (char) 0;
+
+    return;
 }
 
 
@@ -1191,4 +1238,5 @@ int	ndec;		/* Number of decimal places in degree string */
  *
  * Jul  1 2004	Add headshrink to optionally keep blank lines in header
  * Sep  3 2004	Fix bug so comments are not pushed onto next line if long value
+ * Sep 16 2004	Add fixnegzero() to avoid putting signed zero values in header
  */

@@ -157,3 +157,12 @@ xy2sky: xy2sky.c $(LIBWCS) libwcs/wcs.h libwcs/wcscat.h
 
 $(LIBWCS): libwcs/*.c libwcs/*.h
 	cd libwcs; make
+
+objclean:
+	cd libwcs; make clean
+
+binclean:
+	rm -f ./bin/*
+
+clean:
+	make objclean; make binclean

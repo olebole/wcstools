@@ -1,5 +1,5 @@
 /*** File libwcs/imsetwcs.c
- *** August 30, 2004
+ *** September 17, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu (based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2004
@@ -732,6 +732,7 @@ match:
 	free (wcs); */
 
 	wcssize (wcs, &cra, &cdec, &dra, &ddec);
+	if (cra < 0.0) cra = cra + 360.0;
 	iterate--;
 	imfrac = 0.0;
 	goto getstars;
@@ -757,8 +758,8 @@ match:
 	}
     if (recenter) {
 	double ra, dec, x, y;
-	x = 0.5*wcs->nxpix;
-	y = 0.5*wcs->nypix;
+	x = 0.5 * wcs->nxpix;
+	y = 0.5 * wcs->nypix;
 	pix2wcs (wcs, x, y, &ra, &dec);
 	setdcenter (ra, dec);
 	setsys (wcs->syswcs);
@@ -880,6 +881,8 @@ int	verbose;	/* True for more information */
 	pix2wcs (wcs, sx1[i], sy1[i], &sra, &sdec);
 	sep = 3600.0 * wcsdist(gra1[i],gdec1[i],sra,sdec);
 	rsep = 3600.0 * ((gra1[i]-sra) * cos(degrad(sdec)));
+	if (rsep > sep)
+	    rsep = 3600.0 * ((gra1[i] - sra - 360.0) * cos(degrad(sdec)));
 	rsep2 = rsep * rsep;
 	dsep = 3600.0 * (gdec1[i] - sdec);
 	dsep2 = dsep * dsep;

@@ -1,5 +1,5 @@
 /* File immatch.c
- * August 30, 2004
+ * September 15, 2004
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -538,7 +538,7 @@ char	*name;			/* Name of FITS or IRAF image file */
 
     /* Rotate and/or reflect image */
     if (imsearch  && (rot != 0 || mirror)) {
-	if ((newimage = RotFITS (name,header,image,rot,mirror,bitpix,verbose))
+	if ((newimage = RotFITS (name,header,image,0,0,rot,mirror,bitpix,verbose))
 	    == NULL) {
 	    fprintf (stderr,"Image %s could not be rotated\n", name);
 	    free (header);
@@ -612,4 +612,5 @@ char	*name;			/* Name of FITS or IRAF image file */
  *
  * Jul  1 2004	Drop unused declaration of DelWCSFITS()
  * Aug 30 2004	Fix declarations
+ * Sep 15 2004	Add missing 0 shift arguments to RotFITS() call (Rob Creager)
  */

@@ -391,6 +391,7 @@ int	debug;
 
     /* Reset image center based on star matching */
     wcs->xref = wcs->xref + (bestdx * wcs->xinc);
+    if (wcs->xref < 0.0) wcs->xref = 360.0 + wcs->xref;
     wcs->yref = wcs->yref + (bestdy * wcs->yinc);
 
     /* Fit WCS to matched stars */
@@ -546,6 +547,7 @@ int	debug;
 	    }
 
 	xref_p = wcs->xref;
+	if (xref_p < 0.0) xref_p = 360.0 + xref_p;
 	yref_p = wcs->yref;
 	xrefpix = wcs->xrefpix;
 	yrefpix = wcs->yrefpix;
@@ -1036,6 +1038,7 @@ int	debug;		/* Printed debugging information if not zero */
     gra_p = gbra;
     gdec_p = gbdec;
     xref_p = wcs->xref;
+    if (xref_p < 0.0) xref_p = 360.0 + xref_p;
     yref_p = wcs->yref;
     xrefpix = wcs->xrefpix;
     yrefpix = wcs->yrefpix;
@@ -1204,6 +1207,7 @@ int	debug;		/* Printed debugging information if not zero */
 	    }
 
 	xref_p = wcs->xref;
+	if (xref_p < 0.0) xref_p = 360.0 + xref_p;
 	yref_p = wcs->yref;
 	xrefpix = wcs->xrefpix;
 	yrefpix = wcs->yrefpix;
@@ -1463,8 +1467,10 @@ struct WorldCoor *wcs0;
 	    sum += p[i][j];
 	vp[j] = sum / (double)nfit1;
 	}
-    if (vfit[1] > -1)
+    if (vfit[1] > -1) {
 	wcsf->xref = xref_p + vp[vfit[1]];
+	if (wcsf->xref < 0.0) wcsf->xref = 360.0 + wcsf->xref;
+	}
     if (vfit[2] > -1)
 	wcsf->yref = yref_p + vp[vfit[2]];
     if (vfit[6] > -1) {

@@ -1,5 +1,5 @@
 /*** File libwcs/imgetwcs.c
- *** July 26, 2004
+ *** September 16, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2004
@@ -449,6 +449,14 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	    }
 	wcscstr (cstr, *sysout, *eqout, wcs->epoch);
 	fprintf (stderr,"Search at %s %s %s", rstr, dstr, cstr);
+	if (wcs->degout) {
+	    deg2str (rstr, 32, *dra, 6);
+            deg2str (dstr, 32, *ddec, 6);
+	    }
+	else {
+	    ra2str (rstr, 32, *dra, 3);
+	    dec2str (dstr, 32, *ddec, 2);
+	    }
 	fprintf (stderr," +- %s %s\n", rstr, dstr);
 	fprintf (stderr,"Image width=%d height=%d, %g arcsec/pixel\n",
 				*wp, *hp, *secpix);
@@ -670,4 +678,5 @@ char *dateobs;
  * Dec  3 2003	Add wcs->naxes back as an alternative
  *
  * Jul 26 2004	Fix image size when wrapping around RA=0:00
+ * Sep 16 2004	Fix verbose mode search size in GetFITSWCS()
  */

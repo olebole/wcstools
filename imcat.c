@@ -1,5 +1,5 @@
 /* File imcat.c
- * August 30, 2004
+ * September 16, 2004
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -1755,7 +1755,7 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
     double ymax = wcs->nypix + 0.5;
     double ycen = 0.5 + (wcs->nypix * 0.5);
     double ra[8], dec[8];
-    int i;
+    int i, wrap;
 
     /* Find sky coordinates of corners and middles of sides */
     pix2wcs (wcs, xmin, ymin, &ra[0], &dec[0]);
@@ -1767,16 +1767,60 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
     pix2wcs (wcs, xmax, ycen, &ra[6], &dec[6]);
     pix2wcs (wcs, xmax, ymax, &ra[7], &dec[7]);
 
-    /* Find minimum and maximum right ascensions and declinations */
-    *ramin = ra[0];
-    *ramax = ra[0];
+    /* Find minimum and maximum right ascensions watch for wrap-around */
+    if (wcs->rot > 315.0 || wcs->rot <= 45.0) {
+	*ramin = ra[5];
+	if (ra[6] < *ramin)
+	    *ramin = ra[6];
+	if (ra[7] < *ramin)
+	    *ramin = ra[7];
+	*ramax = ra[0];
+	if (ra[1] > *ramax)
+	   *ramax = ra[1];
+	if (ra[2] > *ramax)
+	   *ramax = ra[2];
+	}
+    else if (wcs->rot > 225.0 && wcs->rot <= 135.0) {
+	*ramin = ra[0];
+	if (ra[1] < *ramin)
+	    *ramin = ra[1];
+	if (ra[2] < *ramin)
+	    *ramin = ra[2];
+	*ramax = ra[5];
+	if (ra[6] > *ramax)
+	   *ramax = ra[5];
+	if (ra[7] > *ramax)
+	   *ramax = ra[7];
+	}
+    else if (wcs->rot > 225.0 && wcs->rot <= 315.0) {
+	*ramin = ra[0];
+	if (ra[3] < *ramin)
+	    *ramin = ra[3];
+	if (ra[5] < *ramin)
+	    *ramin = ra[5];
+	*ramax = ra[2];
+	if (ra[4] > *ramax)
+	   *ramax = ra[4];
+	if (ra[7] > *ramax)
+	   *ramax = ra[7];
+	}
+    else {
+	*ramin = ra[2];
+	if (ra[4] < *ramin)
+	   *ramin = ra[4];
+	if (ra[7] < *ramin)
+	   *ramin = ra[7];
+	*ramax = ra[0];
+	if (ra[3] > *ramax)
+	    *ramax = ra[3];
+	if (ra[5] > *ramax)
+	    *ramax = ra[5];
+	}
+
+    /* Find minimum and maximum declinations */
     *decmin = dec[0];
     *decmax = dec[0];
     for (i = 0; i < 8; i++) {
-	if (ra[i] < *ramin)
-	   *ramin = ra[i];
-	if (ra[i] > *ramax)
-	   *ramax = ra[i];
 	if (dec[i] < *decmin)
 	   *decmin = dec[i];
 	if (dec[i] > *decmax)
@@ -1784,17 +1828,19 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
 	}
 
     /* Set center and extent */
-    *cra = 0.5 * (*ramin + *ramax);
-    *cdec = 0.5 * (*decmin + *decmax);
-    if (*ramax - *ramin > 180.0)
-	*dra = 360.0 + *ramin  - *ramax;
-    else
+    if (*ramin > *ramax) {
+	*cra = 0.5 * (*ramin - 360.0 + *ramax);
+	*dra = 0.5 * (*ramax - (*ramin - 360.0));
+	}
+    else {
+	*cra = 0.5 * (*ramin + *ramax);
 	*dra = 0.5 * (*ramax - *ramin);
+	}
+    *cdec = 0.5 * (*decmin + *decmax);
     *ddec = 0.5 * (*decmax - *decmin);
 
     return;
 }
-
 
 /* May 21 1996	New program
  * Jul 11 1996	Update file reading
@@ -1953,4 +1999,5 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Jan 22 2004	Add support for 2MASS Extended Source Catalog
  * Jan 22 2004	Call setlimdeg() to optionally print limits in degrees
  * Aug 30 2004	Fix declarations
+ * Sep 16 2004	Fix RA limits in ImageLim() to deal with wrap through 0:00
  */

@@ -1,5 +1,5 @@
 /* File imstar.c
- * January 23, 2002
+ * September 15, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -495,7 +495,7 @@ char	*filename;	/* FITS or IRAF file filename */
 
     /* Rotate and/or reflect image */
     if (imsearch && (rot != 0 || mirror)) {
-	if ((newimage=RotFITS(filename,header,image,rot,mirror,bitpix,verbose))
+	if ((newimage=RotFITS(filename,header,image,0,0,rot,mirror,bitpix,verbose))
 	    == NULL) {
 	    fprintf (stderr,"Image %s could not be rotated\n", filename);
 	    if (iraffile)
@@ -885,4 +885,6 @@ char	*filename;	/* FITS or IRAF file filename */
  *
  * Jan 22 2002	Set edge pixels as integer, not float
  * Jan 23 2002	Add zap=1 to FindStars() call
+ *
+ * Sep 15 2004	Add missing 0 shift arguments to RotFITS() call (Rob Creager)
  */

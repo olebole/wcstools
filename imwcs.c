@@ -1,5 +1,5 @@
 /* File imwcs.c
- * July 1, 2004
+ * September 15, 2004
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -590,7 +590,7 @@ char	*name;		/* FITS or IRAF image filename */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
-    int bpix;
+    int bpix = 0;
     char *image;		/* Image */
     char *header;		/* FITS header */
     char *irafheader;		/* IRAF image header */
@@ -670,7 +670,7 @@ char	*name;		/* FITS or IRAF image filename */
 
     /* Rotate and/or reflect image */
     if ((imsearch || writeheader) && (rot != 0 || mirror)) {
-	if ((newimage = RotFITS (name,header,image,rot,mirror,bitpix,verbose))
+	if ((newimage = RotFITS (name,header,image,0,0,rot,mirror,bitpix,verbose))
 	    == NULL) {
 	    fprintf (stderr,"Image %s could not be rotated\n", name);
 	    if (iraffile)
@@ -945,4 +945,5 @@ char	*name;		/* FITS or IRAF image filename */
  * Apr 13 2003	Set revision message for subroutines using setrevmsg()
  *
  * Jul  1 2004	If working on FITS extension, keep blank lines in header
+ * Sep 15 2004	Add missing 0 shift arguments to RotFITS() call (Rob Creager)
  */

@@ -1,9 +1,21 @@
+Version 3.5.7 (October 5, 2004)
+imwcs, immatch, imcat: Fix catalog search problems when working around RA=0:00
+imwcs, immatch, imstar: Add 0 shift arguments to RotFITS call
+newfits: Add -w option to transfer WCS from one FITS file to a new one
+scat: do not print anything if no stars are found unless in verbose mode or
+providing VOTable output.
+webread.c: Do not print server messages unless in verbose mode
+imrotate.c: Fix bug when reading CRPIX from header to reset WCS
+hput.c: Avoid writing negative zero values into image headers
+wcs.c: Keep RA/Long between 0 and 360 in pix2wcs() and fix bug in wcsfull()
+fitsutil.c: Drop next_token() to avoid name conflict
+
 Version 3.5.6 (September 3, 2004)
-remap: Add -t num option to split each output pixel in num in each dimension.
+remap: Add -t num option to split each output pixel in num in each dimension,
+  taking mean of num x num samples from input image
 scat: Print error message and exit if no catalog found (instead of hanging).
 sethead: Add option to add, subtract, multiply, or divide a constant
   to or from a  keyword value.
-taking mean of num x num samples from input image
 Clean up code in libwcs subroutines (mostly declaring undeclared subroutines)
 fitsfile.c: If SIMPLE=F, read "image" data based on file size - header, and
 write data based on the NBDATA keyword.

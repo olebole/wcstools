@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** August 31, 2004
+ *** September 2, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2004
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -365,8 +365,8 @@ void rstart();		/* Restart range */
 #define WCS_PVAR 16	/* pixel variable (+ and x) shape for HSTGSC plotting */
 
 /* Structure and subroutines for access to tokens within a string */
-#define MAXTOKENS 200    /* Maximum number of tokens to parse */
-#define MAXWHITE 20     /* Maximum number of whitespace characters */
+#define MAXTOKENS 1000    /* Maximum number of tokens to parse */
+#define MAXWHITE 20     /* Maximum number of different whitespace characters */
 struct Tokens {
     char *line;         /* Line which has been parsed */
     int lline;          /* Number of characters in line */
@@ -500,4 +500,5 @@ char *getrevmsg();	/* Return version/date string */
  * Mar 16 2004	Add MergeStars()
  * Apr 23 2004	Add ctgrdate()
  * Aug 31 2004	Increase MAXTOKENS from 100 to 200
+ * Sep  2 2004	Increase MAXTOKENS from 200 to 1000
  */

@@ -1,5 +1,5 @@
 /* File newfits.c
- * August 30, 2004
+ * September 29, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -34,10 +34,11 @@ static int verbose = 0;	/* verbose/debugging flag */
 static int bitpix = 0;	/* number of bits per pixel (FITS code, 0=no image) */
 static int version = 0;	/* If 1, print only program name and version */
 static int wcshead = 0;	/* If 1, add WCS information from command line */
-static int nx = 100;	/* width of image in pixels */
-static int ny = 100;	/* height of image in pixels */
+static int nx = 0;	/* width of image in pixels */
+static int ny = 0;	/* height of image in pixels */
 static int extend = 0;	/* If 1, write primary header, add other files as ext */
 static char *pixfile;	/* Pixel file name */
+static char *wcsfile;	/* FITS WCS file name */
 static char *newname;	/* FITS extension file name */
 
 int
@@ -206,6 +207,14 @@ char **av;
     		case 'v':	/* More verbosity */
     		    verbose++;
     		    break;
+
+    		case 'w':	/* Input FITS WCS file */
+    		    if (ac < 2)
+    			usage();
+		    wcsfile = *++av;
+		    ac--;
+		    wcshead++;
+		    break;
 	
 		case 'x':	/* Reference pixel X and Y coordinates */
 		    if (ac < 3)
@@ -273,6 +282,7 @@ usage ()
     fprintf(stderr,"  -s num num: size of image in x and y pixels (default 100x100)\n");
     fprintf(stderr,"  -t proj: set FITS CTYPE projection (default TAN)\n");
     fprintf(stderr,"  -v: verbose\n");
+    fprintf(stderr,"  -w file: Read FITS WCS from this file\n");
     fprintf(stderr,"  -x num num: X and Y coordinates of reference pixel (default is center)\n");
     exit (1);
 }
@@ -374,17 +384,35 @@ char *name;
 	return;
 	}
 
-    lhead = 14400;
-    header = (char *) calloc (1, lhead);
-    strcpy (header, "END ");
-    for (i = 4; i < lhead; i++)
-	header[i] = ' ';
-    hlength (header, 14400);
-    hputl (header, "SIMPLE", 1);
+    if (wcsfile)
+	header = fitsrhead (wcsfile, &lhead, &nbhead);
+    else {
+	lhead = 14400;
+	header = (char *) calloc (1, lhead);
+	strcpy (header, "END ");
+	for (i = 4; i < lhead; i++)
+	    header[i] = ' ';
+	hlength (header, 14400);
+	hputl (header, "SIMPLE", 1);
+	hputi4 (header, "NAXIS", 2);
+	}
     hputi4 (header, "BITPIX", bitpix);
-    hputi4 (header, "NAXIS", 2);
-    hputi4 (header, "NAXIS1", nx);
-    hputi4 (header, "NAXIS2", ny);
+    if (nx > 0)
+	hputi4 (header, "NAXIS1", nx);
+    else if (wcsfile)
+	hgeti4 (header, "NAXIS1", &nx);
+    else {
+	nx = 100;
+	hputi4 (header, "NAXIS1", nx);
+	}
+    if (ny > 0)
+	hputi4 (header, "NAXIS2", ny);
+    else if (wcsfile)
+	hgeti4 (header, "NAXIS2", &ny);
+    else {
+	ny = 100;
+	hputi4 (header, "NAXIS2", ny);
+	}
     if (bitpix < 0)
 	nbimage = (-bitpix / 8) * nx * ny;
     else
@@ -436,13 +464,19 @@ char *name;
 
     /* Initialize header */
     if (wcshead) {
-	wcs = GetFITSWCS (name,header,verbose,&cra,&cdec,&dra,&ddec,&secpix,
+	if (wcsfile)
+	    wcs = GetFITSWCS (wcsfile,header,verbose,&cra,&cdec,&dra,&ddec,&secpix,
+			  &wp,&hp,&sysout,&eqout);
+	else
+	    wcs = GetFITSWCS (name,header,verbose,&cra,&cdec,&dra,&ddec,&secpix,
 			  &wp,&hp,&sysout,&eqout);
 	wcsfree (wcs);
 	}
 
-    hputc (header, "COMMENT", "FITS (Flexible Image Transport System) format is defined in 'Astronomy");
-    hputc (header, "COMMENT", "and Astrophysics' vol 376, page 359; bibcode 2001A&A...376..359H.");
+    if (!wcsfile) {
+	hputc (header, "COMMENT", "FITS (Flexible Image Transport System) format is defined in 'Astronomy");
+	hputc (header, "COMMENT", "and Astrophysics' vol 376, page 359; bibcode 2001A&A...376..359H.");
+	}
 
     if (fitswimage (name, header, image) > 0 && verbose) {
 	if (image == NULL)
@@ -478,4 +512,5 @@ char *name;
  * Sep 25 2003	Add -t to set projection
  *
  * Aug 30 2004	Declare undeclared setproj() subroutine
+ * Sep 29 2004	Add option to read WCS from another file
  */

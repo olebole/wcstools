@@ -1,5 +1,5 @@
 /*** File libwcs/imrotate.c
- *** January 28, 2004
+ *** September 15, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2004
@@ -109,11 +109,11 @@ int	verbose;
 	bitpix2 = bitpix1;
 
     /* Shift WCS fields in header */
-    if (hgetr8 (header, "CRPIX1", crpix)) {
+    if (hgetr8 (header, "CRPIX1", &crpix)) {
 	crpix = crpix + xshift;
 	hputr8 (header, "CRPIX1", crpix);
 	}
-    if (hgetr8 (header, "CRPIX2", crpix)) {
+    if (hgetr8 (header, "CRPIX2", &crpix)) {
 	crpix = crpix + yshift;
 	hputr8 (header, "CRPIX2", crpix);
 	}
@@ -624,4 +624,5 @@ int	verbose;	/* Print progress if 1 */
  * Nov 27 2001	Add bitpix=8
  *
  * Jan 28 2004	Add xshift and yshift arguments to shift image
+ * Sep 15 2004	Fix bugs in calls to hgetr8 for crpix (found by Rob Creager)
  */

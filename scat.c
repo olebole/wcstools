@@ -1,5 +1,5 @@
 /* File scat.c
- * August 30, 2004
+ * September 17, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -46,8 +46,6 @@ static double eqcoor = 2000.0;	/* Equinox of search center */
 static int degout0 = 0;		/* 1 if degrees output instead of hms */
 static double ra0 = -99.0;	/* Initial center RA in degrees */
 static double dec0 = -99.0;	/* Initial center Dec in degrees */
-static double cra1;		/* Output center RA in degrees */
-static double cdec1;		/* Output center Dec in degrees */
 static double rad0 = 0.0;	/* Search box radius */
 static double rad1 = 0.0;	/* Inner search annulus radius */
 static double dra0 = 0.0;	/* Search box width */
@@ -61,6 +59,7 @@ static int ndra = 3;		/* Number of decimal places in RA seconds */
 static int nddec = 2;		/* Number of decimal places in Dec seconds */
 static int nddeg = 7;		/* Number of decimal places in degree output */
 static int printhead = 0;	/* 1 to print table heading */
+static int printabhead = 1;	/* 1 to print tab table heading if no sources */
 static int printprog = 0;	/* 1 to print program name and version */
 static int printepoch = 0;	/* 1 to print epoch of entry */
 static int nohead = 1;		/* 1 to print table heading */
@@ -414,8 +413,12 @@ char **av;
 		break;
 
 	    case 'h':	/* output descriptive header */
-		printhead++;
-		printprog++;
+		if (tabout)
+		    printabhead = 0;
+		else {
+		    printhead++;
+		    printprog++;
+		    }
 		break;
 
 	    case 'i':	/* ouput catalog object name instead of number */
@@ -626,6 +629,11 @@ char **av;
 		    }
 		else
 		    tabout = 1;
+		if (printhead) {
+		    printabhead = 0;
+		    printhead = 0;
+		    printprog = 0;
+		    }
 		break;
 
 	    case 'u':       /* Print following 2 numbers at start of line */
@@ -2430,6 +2438,12 @@ double	eqout;		/* Equinox for output coordinates */
 	/* Write heading */
 	if (votab)
 	    vothead (refcat,refcatname[icat],mprop,typecol,ns,cra,cdec,drad);
+
+	else if (ng == 0 && (!tabout || (tabout && !printabhead))) {
+	    if (verbose)
+		printf ("No %s Stars Found\n", title);
+	    }
+
 	else if (tabout && nohead) {
 	    catalog = CatName (refcat, refcatname[icat]);
 	    sprintf (headline, "catalog	%s", catalog);
@@ -2644,152 +2658,147 @@ double	eqout;		/* Equinox for output coordinates */
 		    }
 		}
 
-	if (wfile)
-	else
+	    if (wfile)
+	    else
 
-	/* Print column headings */
-	if (refcat == TABCAT && strlen(starcat[icat]->keyid) > 0)
-	    sprintf (headline,"%s          ", starcat[icat]->keyid);
-	else
-	    CatID (headline, refcat);
-	headline[nnfld] = (char) 0;
+	    /* Print column headings */
+	    if (refcat == TABCAT && strlen(starcat[icat]->keyid) > 0)
+		sprintf (headline,"%s          ", starcat[icat]->keyid);
+	    else
+		CatID (headline, refcat);
+	    headline[nnfld] = (char) 0;
 
-	if (sysout == WCS_GALACTIC)
-	    strcat (headline,"	long_gal   	lat_gal  ");
-	else if (sysout == WCS_ECLIPTIC)
-	    strcat (headline,"	long_ecl   	lat_ecl  ");
-	else if (sysout == WCS_B1950)
-	    strcat (headline,"	ra1950      	dec1950  ");
-	else
-	    strcat (headline,"	ra      	dec      ");
-	if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
-	    refcat == UAC  || refcat == UA1  || refcat == UA2)
-	    strcat (headline,"	magb	magr	plate");
-	else if (refcat == TMPSC || refcat == TMIDR2)
-	    strcat (headline,"	magj  	magh  	magk  ");
-	else if (refcat == TMXSC)
-	    strcat (headline,"	magj  	magh  	magk  	size  ");
-	else if (refcat == UB1)
-	    strcat (headline, "	magb1	magr1	magb2	magr2	magn 	pm	ni");
-	else if (refcat == YB6)
-	    strcat (headline, "	magb 	magr 	magj 	magh 	magk ");
-	else if (refcat == SDSS)
-	    strcat (headline, "	magu 	magg 	magr 	magi 	magz ");
-	else if (refcat == GSC2)
-	    strcat (headline,"	magf	magj	magv  	magn ");
-	else if (refcat == UCAC2)
-	    strcat (headline,"	magj	magh	magk  	magc ");
-	else if (refcat == IRAS)
-	    strcat (headline,"	f10m  	f25m  	f60m   	f100m ");
-	else if (refcat == HIP)
-	    strcat (headline,"	magb	magv	parlx 	parer");
-	else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
-	    strcat (headline,"	magb	magv");
-	else if (refcat==HIP)
-	    strcat (headline,"	magb 	magv 	prllx	parer");
-	else if (refcat == GSC || refcat == GSCACT)
-	    strcat (headline,"	mag	class	band	N");
-	else if (refcat == UJC)
-	    strcat (headline,"	mag	plate");
-	else if (nmagr > 0) {
-	    for (imag = 0; imag < nmagr; imag++) {
-	    	if (starcat[icat] != NULL &&
-		    strlen (starcat[icat]->keymag[imag]) > 0)
-		    sprintf (temp, "	%s ", starcat[icat]->keymag[imag]);
-		else if (nmagr > 1)
-		    sprintf (temp, "	mag%d ", imag);
-		else
-		    sprintf (temp, "	mag  ");
-		strcat (headline, temp);
+	    if (sysout == WCS_GALACTIC)
+		strcat (headline,"	long_gal   	lat_gal  ");
+	    else if (sysout == WCS_ECLIPTIC)
+		strcat (headline,"	long_ecl   	lat_ecl  ");
+	    else if (sysout == WCS_B1950)
+		strcat (headline,"	ra1950      	dec1950  ");
+	    else
+		strcat (headline,"	ra      	dec      ");
+	    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
+		refcat == UAC  || refcat == UA1  || refcat == UA2)
+		strcat (headline,"	magb	magr	plate");
+	    else if (refcat == TMPSC || refcat == TMIDR2)
+		strcat (headline,"	magj  	magh  	magk  ");
+	    else if (refcat == TMXSC)
+		strcat (headline,"	magj  	magh  	magk  	size  ");
+	    else if (refcat == UB1)
+		strcat (headline, "	magb1	magr1	magb2	magr2	magn 	pm	ni");
+	    else if (refcat == YB6)
+		strcat (headline, "	magb 	magr 	magj 	magh 	magk ");
+	    else if (refcat == SDSS)
+		strcat (headline, "	magu 	magg 	magr 	magi 	magz ");
+	    else if (refcat == GSC2)
+		strcat (headline,"	magf	magj	magv  	magn ");
+	    else if (refcat == UCAC2)
+		strcat (headline,"	magj	magh	magk  	magc ");
+	    else if (refcat == IRAS)
+		strcat (headline,"	f10m  	f25m  	f60m   	f100m ");
+	    else if (refcat == HIP)
+		strcat (headline,"	magb	magv	parlx 	parer");
+	    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
+		strcat (headline,"	magb	magv");
+	    else if (refcat==HIP)
+		strcat (headline,"	magb 	magv 	prllx	parer");
+	    else if (refcat == GSC || refcat == GSCACT)
+		strcat (headline,"	mag	class	band	N");
+	    else if (refcat == UJC)
+		strcat (headline,"	mag	plate");
+	    else if (nmagr > 0) {
+		for (imag = 0; imag < nmagr; imag++) {
+		    if (starcat[icat] != NULL &&
+			strlen (starcat[icat]->keymag[imag]) > 0)
+			sprintf (temp, "	%s ", starcat[icat]->keymag[imag]);
+		    else if (nmagr > 1)
+			sprintf (temp, "	mag%d ", imag);
+		    else
+			sprintf (temp, "	mag  ");
+		    strcat (headline, temp);
+		    }
 		}
-	    }
-	if (typecol == 1)
-	    strcat (headline,"	type");
-	if (printepoch)
-	    strcat (headline, " epoch     ");
-	if (mprop == 2)
-	    strcat (headline," 	velocity");
-	if (mprop == 1)
-	    strcat (headline,"	pmra  	pmdec ");
-	if (refcat == GSC2)
-	    strcat (headline,"	class");
-	if (ranges == NULL)
-	    strcat (headline,"	arcsec");
-	if (refcat == TABCAT && keyword != NULL) {
-	    strcat (headline,"	");
-	    strcat (headline, keyword);
-	    }
-	if (catsort == SORT_MERGE)
-	    strcat (headline,"	nmatch");
-	if (gobj1 != NULL) {
-	    if (starcat[icat] == NULL ||
-		(starcat[icat] != NULL && starcat[icat]->stnum > 0))
-		strcat (headline,"	object");
-	    }
-	if (printxy)
-	    strcat (headline, "	X      	Y      ");
+	    if (typecol == 1)
+		strcat (headline,"	type");
+	    if (printepoch)
+		strcat (headline, " epoch     ");
+	    if (mprop == 2)
+		strcat (headline," 	velocity");
+	    if (mprop == 1)
+		strcat (headline,"	pmra  	pmdec ");
+	    if (refcat == GSC2)
+		strcat (headline,"	class");
+	    if (ranges == NULL)
+		strcat (headline,"	arcsec");
+	    if (refcat == TABCAT && keyword != NULL) {
+		strcat (headline,"	");
+		strcat (headline, keyword);
+		}
+	    if (catsort == SORT_MERGE)
+		strcat (headline,"	nmatch");
+	    if (gobj1 != NULL) {
+		if (starcat[icat] == NULL ||
+		    (starcat[icat] != NULL && starcat[icat]->stnum > 0))
+		    strcat (headline,"	object");
+		}
+	    if (printxy)
+		strcat (headline, "	X      	Y      ");
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    else
+		printf ("%s\n", headline);
 
-	if (wfile)
-	    fprintf (fd, "%s\n", headline);
-	else
-	    printf ("%s\n", headline);
-
-	strcpy (headline, "---------------------");
-	headline[nnfld] = (char) 0;
-	strcat (headline,"	------------	------------");
-	if (refcat == TMPSC || refcat == TMIDR2)
-	    strcat (headline,"	-------	-------	-------");
-	else if (refcat == TMXSC)
-	    strcat (headline,"	-------	-------	-------	------");
-	else if (refcat == IRAS)
-	    strcat (headline,"	-----	-----	-----	-----");
-	else if (refcat==HIP || refcat == GSC2)
-	    strcat (headline,"	-----	-----	-----	-----");
-	else if (nmagr > 0) {
-	    for (imag = 0; imag < nmagr; imag++)
+	    strcpy (headline, "---------------------");
+	    headline[nnfld] = (char) 0;
+	    strcat (headline,"	------------	------------");
+	    if (refcat == TMPSC || refcat == TMIDR2)
+		strcat (headline,"	-------	-------	-------");
+	    else if (refcat == TMXSC)
+		strcat (headline,"	-------	-------	-------	------");
+	    else if (refcat == IRAS)
+		strcat (headline,"	-----	-----	-----	-----");
+	    else if (refcat==HIP || refcat == GSC2)
+		strcat (headline,"	-----	-----	-----	-----");
+	    else if (nmagr > 0) {
+		for (imag = 0; imag < nmagr; imag++)
+		    strcat (headline,"	-----");
+		}
+	    if (refcat == GSC || refcat == GSCACT)
+		strcat (headline,"	-----	----	-");
+	    else if (refcat == UB1)
+		strcat (headline,"	--	--");
+	    else if (typecol == 1)
+		strcat (headline,"	----");
+	    else if (typecol == 2)
 		strcat (headline,"	-----");
-	    }
-	if (refcat == GSC || refcat == GSCACT)
-	    strcat (headline,"	-----	----	-");
-	else if (refcat == UB1)
-	    strcat (headline,"	--	--");
-	else if (typecol == 1)
-	    strcat (headline,"	----");
-	else if (typecol == 2)
-	    strcat (headline,"	-----");
-	if (printepoch)
-	    strcat (headline, " ----------");
-	if (mprop == 2)
-	    strcat (headline,"	--------");
-	if (mprop == 1)
-	    strcat (headline,"	------	------");
-	if (refcat == GSC2)
-	    strcat (headline,"	-----");
-	if (ranges == NULL)
-	    strcat (headline, "	------");
-	if (refcat == TABCAT && keyword != NULL)
-	    strcat (headline,"	------");
-	if (catsort == SORT_MERGE)
-	    strcat (headline,"	------");
-	if (gobj1 != NULL) {
-	    if (starcat[icat] == NULL ||
-		starcat[icat]->stnum > 0)
+	    if (printepoch)
+		strcat (headline, " ----------");
+	    if (mprop == 2)
+		strcat (headline,"	--------");
+	    if (mprop == 1)
+		strcat (headline,"	------	------");
+	    if (refcat == GSC2)
+		strcat (headline,"	-----");
+	    if (ranges == NULL)
+		strcat (headline, "	------");
+	    if (refcat == TABCAT && keyword != NULL)
 		strcat (headline,"	------");
+	    if (catsort == SORT_MERGE)
+		strcat (headline,"	------");
+	    if (gobj1 != NULL) {
+		if (starcat[icat] == NULL ||
+		    starcat[icat]->stnum > 0)
+		     strcat (headline,"	------");
+		}
+	    if (printxy)
+		strcat (headline, "	-------	-------");
+	    if (wfile)
+		fprintf (fd, "%s\n", headline);
+	    else
+		printf ("%s\n", headline);
+	    nohead = 0;
 	    }
-	if (printxy)
-	    strcat (headline, "	-------	-------");
 
-	if (wfile)
-	    fprintf (fd, "%s\n", headline);
-	else
-	    printf ("%s\n", headline);
-	nohead = 0;
-	}
-
-    else if (printhead && nohead) {
-	if (ng == 0)
-	    printf ("No %s Stars Found\n", title);
-	else {
+	else if (printhead && nohead) {
 	    if (printxy)
 		strcpy (headline, "  X     Y   ");
 	    else {
@@ -3399,7 +3408,6 @@ double	eqout;		/* Equinox for output coordinates */
 		    printf ("%s\n", headline);
 		}
 	    }
-	}
 
 	/* If searching more than one catalog, separate them with blank line */
 	if (ncat > 0 && icat < ncat-1)
@@ -3447,7 +3455,6 @@ double	*crao;		/* Output search center longitude/right ascension */
 double	*cdeco;		/* Output search center latitude/declination */
 {
     char rstr[32], dstr[32], cstr[32], dstri[32], dstro[32];
-    double cra1, cdec1;
 
     *cra = ra0;
     *cdec = dec0;
@@ -3583,13 +3590,11 @@ double	dradi;		/* Inner edge of annulus in degrees (ignore if 0) */
 int	nnfld;		/* Number of characters in ID field */
 int	degout;		/* Ouput in degrees if 1 */
 {
-    double ra, dec;
     char rastr[32];
     char decstr[32];
     char cstr[16];
     char oform[16];
     int refcat;
-    char title[80];
     char *catname;
 
     if (sys == WCS_XY) {
@@ -4389,4 +4394,7 @@ PrintGSClass ()
  * May 12 2004	Exit with error message if no catalog name is given
  * Aug 30 2004	Fix two subroutine declarations
  * Aug 30 2004	Drop out if RefCat cannot find catalog
+ * Sep 10 2004	Do not print anything if no stars found and not in verbose
+ *		or tab table output mode
+ * Sep 17 2004	Use -h to turn off header if no stars found in tab table mode
  */
