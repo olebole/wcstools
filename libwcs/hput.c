@@ -1,5 +1,5 @@
 /*** File libwcs/hput.c
- *** April 19, 2000
+ *** June 2, 2000
  *** By Doug Mink
 
  * Module:	hput.c (Put FITS Header parameter values)
@@ -230,7 +230,7 @@ char *keyword;	/* Keyword name root (6 characters or less) */
 char *cval;	/* character string containing the value for variable
 		   keyword.  trailing and leading blanks are removed.  */
 {
-    int lroot, lcv, lv, i, ii, nkw, lkw, lval;
+    int lroot, lcv, i, ii, nkw, lkw, lval;
     int comment = 0;
     char keyroot[8], newkey[12], *v, value[80];
     char squot = 39;
@@ -1151,4 +1151,5 @@ int	ndec;		/* Number of decimal places in degree string */
  * Mar 27 2000	Add hputm() for muti-line keywords
  * Mar 27 2000	Fix bug testing for space to fit comment in hputcom()
  * Apr 19 2000	Fix bug in hadd() which overwrote line
+ * Jun  2 2000	Dropped unused variable lv in hputm() after lint
  */

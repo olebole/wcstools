@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** March 15, 2000
+ *** June 2, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -75,8 +75,10 @@ int	nlog;		/* 1 for diagnostics */
     double rra1, rra2, rra2a, rdec1, rdec2;
     char *str;
     char cstr[32];
+    int nbytes;
 
     ntot = 0;
+    gdist = NULL;
     if (nlog == 1)
 	verbose = 1;
     else
@@ -105,7 +107,11 @@ int	nlog;		/* 1 for diagnostics */
 	}
 
     /* Allocate table for distances of stars from search center */
-    gdist = (double *) malloc (nstarmax * sizeof (double));
+    if (nstarmax > 10)
+	nbytes = nstarmax * sizeof (double);
+    else
+	nbytes = 10 * sizeof (double);
+    gdist = (double *) malloc (nbytes);
 
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
@@ -134,6 +140,8 @@ int	nlog;		/* 1 for diagnostics */
 	nreg = actreg (rra1,rra2,rdec1,rdec2,nrmax,rlist,verbose);
 	if (nreg <= 0) {
 	    fprintf (stderr,"ACTREAD:  no ACT regions found\n");
+	    free ((void *)gdist);
+	    free ((void *)star);
 	    return (0);
 	    }
 
@@ -146,8 +154,8 @@ int	nlog;		/* 1 for diagnostics */
 	    rnum = rlist[ireg];
 
 	    /* Set first and last stars to check */
-	    istar1 = actsra (starcat, star, rra1, 0);
-	    istar2 = actsra (starcat, star, rra2, 1);
+	    istar1 = actsra (starcat, star, rra1);
+	    istar2 = actsra (starcat, star, rra2);
 	    if (verbose)
 		printf ("ACTREAD: Searching stars %d.%d through %d.%d\n",
 			rnum,istar1,rnum,istar2);
@@ -297,7 +305,8 @@ int	nlog;		/* 1 for diagnostics */
 	    fprintf (stderr,"ACTREAD: %d stars found; only %d returned\n",
 		     nstar,nstarmax);
 	}
-    free ((char *)gdist);
+    free ((void *)star);
+    free ((void *)gdist);
     return (nstar);
 }
 
@@ -354,6 +363,7 @@ int	nlog;		/* 1 for diagnostics */
 	starcat = actopen (inpath);
 	if (starcat == NULL) {
 	    fprintf (stderr,"ACTRNUM: File %s not found\n",inpath);
+	    free ((void*) star);
 	    return (0);
 	    }
 
@@ -414,6 +424,7 @@ int	nlog;		/* 1 for diagnostics */
 	fprintf (stderr,"ACTRNUM: %d / %d found\n",nstar,starcat->nstars);
 
     actclose (starcat);
+    free ((void*) star);
     return (nstar);
 }
 
@@ -596,7 +607,7 @@ actclose (sc)
 struct StarCat *sc;	/* Star catalog descriptor */
 {
     fclose (sc->ifcat);
-    free (sc);
+    free ((void *)sc);
     return;
 }
 
@@ -604,12 +615,11 @@ struct StarCat *sc;	/* Star catalog descriptor */
 /* ACTSRA -- Find star closest to given RA in ACT catalog file */
 
 static int
-actsra (sc, st, dra, end)
+actsra (sc, st, dra)
 
 struct StarCat *sc;	/* Star catalog descriptor */
 struct Star *st;	/* Current star entry */
 double	dra;		/* Right ascension in degrees */
-int	end;		/* 0: start of range, 1: end of range */
 
 {
     char rastr[16], raxstr[16], ramins[16], ramaxs[16];
@@ -690,8 +700,6 @@ int	end;		/* 0: start of range, 1: end of range */
 	return (istarx);
 }
 
-char isp[468]={"O5O8B0B0B0B1B1B1B2B2B2B3B3B3B4B5B5B6B6B6B7B7B8B8B8B9B9B9B9A0A0A0A0A0A0A0A0A0A2A2A2A2A2A2A2A2A5A5A5A5A6A7A7A7A7A7A7A7A7A7A7F0F0F0F0F0F0F0F2F2F2F2F2F2F2F5F5F5F5F5F5F5F5F5F8F8F8F8F8F8G0G5G5G2G2G2G3G3G4G4G5G5G5G6G6G6G6G6K6K6K6K6K7K7K7K7K7K7K7K7K7K7K7K7K7K7K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K5K5K5K5K5K6K6K6K6K6K6K6K7K7K7K7K7K7K7K8K8K8K8K9K9K9M0M0M0M0M0M0M1M1M1M1M1M2M2M2M2M3M3M4M4M5M5M5M2M2M2M3M3M4M4M5M5M5M6M6M6M6M6M6M6M6M6M7M7M7M7M7M7M7M7M7M7M7M7M7M7M8M8M8M8M8M8M8"};
-
 
 /* ACTSTAR -- Get ACT catalog entry for one star;
               return 0 if successful */
@@ -707,8 +715,8 @@ int istar;	/* Star sequence number in ACT catalog region file */
     long offset;
     char dsgn;
     char line[256];
-    int irh,irm,idd,idm, im;
-    double rs, ds;
+    int irh,irm,idd,idm;
+    double rs, ds, bvmag;
 
     /* Drop out if catalog pointer is not set */
     if (sc == NULL)
@@ -764,24 +772,9 @@ int istar;	/* Star sequence number in ACT catalog region file */
     st->xmag[1] = atof (line+68);
     st->xmag[2] = atof (line+82);
 
-    if (st->xmag[2] < -0.32) {
-	st->isp[0] = 'O';
-	st->isp[1] = '5';
-	}
-    else if (st->xmag[2] > 2.00) {
-	st->isp[0] = 'M';
-	st->isp[1] = '8';
-	}
-    else if (st->xmag[2] < 0) {
-	im = 2 * (32 + (int)(st->xmag[2] * 100.0 - 0.5));
-	st->isp[0] = isp[im];
-	st->isp[1] = isp[im+1];
-	}
-    else {
-	im = 2 * (32 + (int)(st->xmag[2] * 100.0 + 0.5));
-	st->isp[0] = isp[im];
-	st->isp[1] = isp[im+1];
-	}
+    /* Set main sequence spectral type */
+    bvmag = st->xmag[2];
+    bv2sp (&bvmag, 0.0, 0.0, st->isp);
 
     return (0);
 }
@@ -828,4 +821,6 @@ char	*filename;	/* Name of file for which to find size */
  *
  * Jan  5 2000	Add 2 to spectral type string so there can be proper termination
  * Mar 15 2000	Add proper motions to returns from actread() and actrnum()
+ * May 31 2000	Get spectral type from bv2sp()
+ * Jun  2 2000	Free all allocated data structures
  */

@@ -192,6 +192,7 @@
 *   $Id: proj.c,v 2.15 1999/12/13 07:27:05 mcalabre Exp $
 *===========================================================================*/
 
+#include <stdlib.h>
 #include <math.h>
 #include "wcslib.h"
 
@@ -3554,4 +3555,6 @@ double *phi, *theta;
  * Dec 20 1999	Doug Mink - Include wcslib.h, which includes proj.h, wcsmath.h
  * Dec 20 1999	Doug Mink - Define copysign only if it is not defined
  * Dec 20 1999	Doug Mink - tanfwd() returns error if s<=0.0, not only if s==0.0
+ *
+ * Jun  2 2000	Doug Mink - include stdlib.h to get abs()
  */

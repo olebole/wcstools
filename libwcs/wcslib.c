@@ -379,6 +379,7 @@
 *===========================================================================*/
 
 #include <math.h>
+#include <string.h>
 #include "wcslib.h"
 
 /* Map error number to error message for each function. */

@@ -1,5 +1,5 @@
 /* File libwcs/catutil.c
- * March 28, 2000
+ * June 2, 2000
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -16,7 +16,9 @@
  * void SearchLim (cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, verbose)
  *	Comput limiting RA and Dec from center and half-widths
  * int CatNumLen (refcat, nndec)
- *	Return length of source numbers
+ *	Return length of source number
+ * int CatMaxField (refcat, maxnum, nndec)
+ *	Return Maximum field size for source numbers
  * void SearchLim (cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, verbose)
  *	Compute limiting RA and Dec from center and half-widths
  * void RefLim (cra,cdec,dra,ddec,sysc,sysr,eqc,eqr,epc,ramin,ramax,decmin,decmax,verbose)
@@ -43,8 +45,6 @@
  *	Return 1 if file is a readable file, else 0
  * int agets (string, keyword, lval, value)
  *	Read value from a file where keyword=value, anywhere on a line
- * int moveb (source, destination, nbytes, offs, offd)
- *	Move bytes between two variables
  */
 
 #include <unistd.h>
@@ -77,6 +77,7 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
+	catprop = 0;
 	return (GSC);
 	}
     else if (strncmp(refcatname,"us",2)==0 ||
@@ -84,6 +85,7 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
+	catprop = 0;
 	if (strchr (refcatname, '1') != NULL) {
 	    strcpy (title, "USNO SA-1.0 Catalog Stars");
 	    return (USA1);
@@ -102,6 +104,7 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
+	catprop = 0;
 	if (strchr (refcatname, '1') != NULL) {
 	    strcpy (title, "USNO A-1.0 Catalog Stars");
 	    return (UA1);
@@ -121,6 +124,7 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
+	catprop = 0;
 	return (UJC);
 	}
     else if (strncmp(refcatname,"sao",3)==0 ||
@@ -131,8 +135,8 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = starcat->coorsys;
 	*eqcat = starcat->equinox;
 	*epcat = starcat->epoch;
+	catprop = starcat->mprop;
 	binclose (starcat);
-	catprop = 1;
 	return (SAO);
 	}
     else if (strncmp(refcatname,"ppm",3)==0 ||
@@ -143,8 +147,8 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = starcat->coorsys;
 	*eqcat = starcat->equinox;
 	*epcat = starcat->epoch;
+	catprop = starcat->mprop;
 	binclose (starcat);
-	catprop = 1;
 	return (PPM);
 	}
     else if (strncmp(refcatname,"iras",4)==0 ||
@@ -155,19 +159,31 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = starcat->coorsys;
 	*eqcat = starcat->equinox;
 	*epcat = starcat->epoch;
+	catprop = starcat->mprop;
 	binclose (starcat);
 	return (IRAS);
 	}
-    else if (strncmp(refcatname,"tyc",3)==0 ||
-	strncmp(refcatname,"TYC",3)==0) {
-	strcpy (title, "Tycho Catalog Stars");
-	if ((starcat = binopen ("tycho")) == NULL)
-	    return (0);
-	*syscat = starcat->coorsys;
-	*eqcat = starcat->equinox;
-	*epcat = starcat->epoch;
-	binclose (starcat);
-	return (TYCHO);
+    else if (strncmp(refcatname,"ty",2)==0 ||
+	strncmp(refcatname,"TY",2)==0) {
+	if (strsrch (refcatname, "2") != NULL) {
+	    strcpy (title, "Tycho 2 Catalog Stars");
+	    *syscat = WCS_J2000;
+	    *eqcat = 2000.0;
+	    *epcat = 2000.0;
+	    catprop = 1;
+	    return (TYCHO2);
+	    }
+	else {
+	    strcpy (title, "Tycho Catalog Stars");
+	    if ((starcat = binopen ("tycho")) == NULL)
+		return (0);
+	    *syscat = starcat->coorsys;
+	    *eqcat = starcat->equinox;
+	    *epcat = starcat->epoch;
+	    catprop = 1;
+	    binclose (starcat);
+	    return (TYCHO);
+	    }
 	}
     else if (strncmp(refcatname,"hip",3)==0 ||
 	strncmp(refcatname,"HIP",3)==0) {
@@ -177,6 +193,7 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = starcat->coorsys;
 	*eqcat = starcat->equinox;
 	*epcat = starcat->epoch;
+	catprop = starcat->mprop;
 	binclose (starcat);
 	return (HIP);
 	}
@@ -197,6 +214,7 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = starcat->coorsys;
 	*eqcat = starcat->equinox;
 	*epcat = starcat->epoch;
+	catprop = starcat->mprop;
 	binclose (starcat);
 	return (BSC);
 	}
@@ -208,6 +226,7 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = starcat->coorsys;
 	*eqcat = starcat->equinox;
 	*epcat = starcat->epoch;
+	catprop = starcat->mprop;
 	binclose (starcat);
 	return (BINCAT);
 	}
@@ -231,6 +250,7 @@ double	*epcat;		/* Epoch of catalog (returned) */
 	*syscat = starcat->coorsys;
 	*eqcat = starcat->equinox;
 	*epcat = starcat->epoch;
+	catprop = starcat->mprop;
 	ctgclose (starcat, TXTCAT);
 	return (TXTCAT);
 	}
@@ -314,9 +334,12 @@ char *progname;	/* Program name which might contain catalog code */
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "iras");
 	}
-    else if (strsrch (progname,"tyc") != NULL) {
+    else if (strsrch (progname,"ty") != NULL) {
 	refcatname = (char *) calloc (1,8);
-	strcpy (refcatname, "tycho");
+	if (strsrch (progname, "2") != NULL)
+	    strcpy (refcatname, "tycho2");
+	else
+	    strcpy (refcatname, "tycho");
 	}
     else if (strsrch (progname,"hip") != NULL) {
 	refcatname = (char *) calloc (1,16);
@@ -349,9 +372,10 @@ char	*refcatname;	/* Catalog name */
 
 
 void
-CatNum (refcat, nndec, dnum, numstr)
+CatNum (refcat, nnfld, nndec, dnum, numstr)
 
 int	refcat;		/* Catalog code */
+int	nnfld;		/* Number of characters in number (from CatNumLen) */
 int	nndec;		/* Number of decimal places ( >= 0) */
 double	dnum;		/* Catalog number of source */
 char	*numstr;	/* Formatted number (returned) */
@@ -377,13 +401,20 @@ char	*numstr;	/* Formatted number (returned) */
 	sprintf (numstr, "%6d", (int)(dnum+0.5));
 
     /* Tycho, Hipparcos, or ACT catalogs */
-    else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
+    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT)
 	sprintf (numstr, "%10.5f", dnum);
 
     /* Starbase tab-separated, TDC binary, or TDC ASCII catalogs */
     else if (nndec > 0) {
-	sprintf (nform,"%%%d.%df", nndec+5, nndec);
+	if (nnfld > 0)
+	    sprintf (nform,"%%%d.%df", nnfld, nndec);
+	else
+	    sprintf (nform,"%%%d.%df", nndec+5, nndec);
 	sprintf (numstr, nform, dnum);
+	}
+    else if (nnfld > 0) {
+	sprintf (nform,"%%%dd", nnfld);
+	sprintf (numstr, nform, (int)(dnum+0.5));
 	}
     else
 	sprintf (numstr, "%6d", (int)(dnum+0.5));
@@ -393,12 +424,15 @@ char	*numstr;	/* Formatted number (returned) */
 
 
 int
-CatNumLen (refcat, nndec)
+CatNumLen (refcat, maxnum, nndec)
 
 int	refcat;		/* Catalog code */
+double	maxnum;		/* Maximum ID number */
+			/* (Ignored for standard catalogs) */
 int	nndec;		/* Number of decimal places ( >= 0) */
 
 {
+    int ndp;		/* Number of characters for decimal point */
 
     /* USNO A1.0, A2.0, SA1.0, or SA2.0 Catalogs */
     if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
@@ -417,16 +451,35 @@ int	nndec;		/* Number of decimal places ( >= 0) */
     else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC)
 	return (6);
 
-    /* Tycho, Hipparcos, or ACT catalogs */
-    else if (refcat == TYCHO || refcat == HIP || refcat == ACT)
+    /* Tycho, Tycho2, Hipparcos, or ACT catalogs */
+    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT)
 	return (10);
 
     /* Starbase tab-separated, TDC binary, or TDC ASCII catalogs */
-    else if (nndec > 0) {
-	return (nndec + 5);
+    else {
+	if (nndec > 0)
+	    ndp = 1;
+	else
+	    ndp = 0;
+	if (maxnum < 10.0)
+	    return (1 + nndec + ndp);
+	else if (maxnum < 100.0)
+	    return (2 + nndec + ndp);
+	else if (maxnum < 1000.0)
+	    return (3 + nndec + ndp);
+	else if (maxnum < 10000.0)
+	    return (4 + nndec + ndp);
+	else if (maxnum < 100000.0)
+	    return (5 + nndec + ndp);
+	else if (maxnum < 1000000.0)
+	    return (6 + nndec + ndp);
+	else if (maxnum < 10000000.0)
+	    return (7 + nndec + ndp);
+	else if (maxnum < 100000000.0)
+	    return (8 + nndec + ndp);
+	else
+	    return (9 + nndec + ndp);
 	}
-    else
-	return (6);
 }
 
 
@@ -1143,24 +1196,43 @@ char *value;      /* String (returned) */
     return (1);
 }
 
+char spt[468]={"O5O8B0B0B0B1B1B1B2B2B2B3B3B3B4B5B5B6B6B6B7B7B8B8B8B9B9B9B9A0A0A0A0A0A0A0A0A0A2A2A2A2A2A2A2A2A5A5A5A5A6A7A7A7A7A7A7A7A7A7A7F0F0F0F0F0F0F0F2F2F2F2F2F2F2F5F5F5F5F5F5F5F5F5F8F8F8F8F8F8G0G5G5G2G2G2G3G3G4G4G5G5G5G6G6G6G6G6K6K6K6K6K7K7K7K7K7K7K7K7K7K7K7K7K7K7K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K5K5K5K5K5K6K6K6K6K6K6K6K7K7K7K7K7K7K7K8K8K8K8K9K9K9M0M0M0M0M0M0M1M1M1M1M1M2M2M2M2M3M3M4M4M5M5M5M2M2M2M3M3M4M4M5M5M5M6M6M6M6M6M6M6M6M6M7M7M7M7M7M7M7M7M7M7M7M7M7M7M8M8M8M8M8M8M8"};
 
-/* Move bytes from one place to another (any data type) */
+void
+bv2sp (bv, b, v, isp)
 
-int
-moveb (source, dest, nbytes, offs, offd)
-
-char	*source;	/* Address of variable from which to move first byte */
-char	*dest;		/* Address of variable to which to move first byte */
-int	nbytes;		/* Number of bytes to move */
-int	offs;		/* Offset from start of source for first byte */
-int	offd;		/* Offset from start of destination for first byte */
+double	*bv;	/* B-V Magnitude */
+double	b;	/* B Magnitude used if bv is NULL */
+double	v;	/* V Magnitude used if bv is NULL */
+char	*isp;	/* Spectral type */
 {
-char *from, *last, *to;
-    from = source + offs;
-    to = dest + offd;
-    last = from + nbytes;
-    while (from < last) *(to++) = *(from++);
-    return (from - source - offs);
+    double bmv;	/* B - V magnitude */
+    int im;
+
+    if (bv == NULL)
+	bmv = b - v;
+    else
+	bmv = *bv;
+
+    if (bmv < -0.32) {
+	isp[0] = 'O';
+	isp[1] = '5';
+	}
+    else if (bmv > 2.00) {
+	isp[0] = 'M';
+	isp[1] = '8';
+	}
+    else if (bmv < 0) {
+	im = 2 * (32 + (int)(bmv * 100.0 - 0.5));
+	isp[0] = spt[im];
+	isp[1] = spt[im+1];
+	}
+    else {
+	im = 2 * (32 + (int)(bmv * 100.0 + 0.5));
+	isp[0] = spt[im];
+	isp[1] = spt[im+1];
+	}
+    return;
 }
 
 /*
@@ -1208,5 +1280,8 @@ char *from, *last, *to;
  * Mar  8 2000	Add ProgCat() to return catalog flag from program name
  * Mar 13 2000	Add PropCat() to return whether catalog has proper motions
  * Mar 27 2000	Clean up code after lint
- * Mar 28 2000	Add moveb() to transfer bytes regardless of alignment
+ * May 22 2000	Add bv2sp() to approximate main sequence spectral type from B-V
+ * May 25 2000	Add Tycho 2 catalog
+ * May 26 2000	Add field size argument to CatNum() and CatNumLen()
+ * Jun  2 2000	Set proper motion for all catalog types in RefCat()
  */

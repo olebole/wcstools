@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** April 3, 2000
+ *** May 20, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -110,6 +110,10 @@ int	nlog;
             nstar = actread (cra,cdec,dra,ddec,drad,distsort,
 			     sysout,eqout,epout,mag1, mag2,nsmax,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,nlog);
+        else if (refcat == TYCHO2)
+            nstar = ty2read (cra,cdec,dra,ddec,drad,distsort,
+			     sysout,eqout,epout,mag1,mag2,nsmax,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,NULL,nlog);
         else if (refcat == SAO)
             nstar = binread ("SAOra", distsort,cra,cdec,dra,ddec,drad,
 			     sysout,eqout,epout,mag1,mag2,nsmax,
@@ -422,6 +426,9 @@ int	nlog;
 	else if (refcat == ACT)
 	    nstar = actrnum (nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,nlog);
+	else if (refcat == TYCHO2)
+	    nstar = ty2rnum (nnum,sysout,eqout,epout,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,nlog);
 	else if (refcat == TABCAT)
 	    nstar = tabrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tmagb,tc,tobj,nlog);
@@ -573,13 +580,14 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
 /* Find length of ASCII catalog */
     lfile = ctgsize (catfile);
 
-    /* Check for existence of catalog */
+    /* If catalog is not in current directory, look elsewhere */
     if (lfile < 2) {
 
 	/* Prepend directory name file not in working directory */
 	if ((str = getenv("WCS_CATDIR")) != NULL )
-	    strcpy (catdir, str);
-	strcpy (catpath, catdir);
+	    strcpy (catpath, str);
+	else
+	    strcpy (catpath, catdir);
 	strcat (catpath, "/");
 	strcat (catpath, catfile);
 	lfile = ctgsize (catpath);
@@ -1184,4 +1192,5 @@ char	*in;	/* Character string */
  * Apr  3 2000	Implement fractional degrees (/d) for positions
  * Apr  3 2000	Add /i option to ignore stuff at end of line
  * Apr  3 2000	Ignore leading # on first two lines of ASCII catalog file
+ * May 20 2000	Add Tycho 2 catalog support
  */

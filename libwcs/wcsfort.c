@@ -1,5 +1,5 @@
 /*** File saoimage/wcslib/wcsf77.c
- *** December 9, 1999
+ *** June 2, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcsfort.c (World Coordinate Systems)
@@ -32,7 +32,7 @@
  * Subroutine:	wcs2pix_ (wcs,xpos,ypos,xpix,ypix)
  *		    sky coordinates -> pixel coordinates
 
- * Copyright:   1999 Smithsonian Astrophysical Observatory
+ * Copyright:   2000 Smithsonian Astrophysical Observatory
  *              You may do anything you like with this file except remove
  *              this copyright.  The Smithsonian Astrophysical Observatory
  *              makes no representations about the suitability of this
@@ -48,7 +48,7 @@
 #include <stdlib.h>
 #endif
 
-static struct WorldCoor *pwcs[];
+static struct WorldCoor **pwcs;
 static int nwcs = 0;
 
 /* set up a WCS structure from a FITS or IRAF image header */
@@ -76,7 +76,7 @@ int	nc;		/* Number of characters in hstring (supplied by Fortran */
 
     /* Otherwise, use first available index into vector of pointers */
     else if (nwcs == 0) {
-	pwcs = (struct WorldCoor *) calloc (10, sizeof (void *));
+	pwcs = (struct WorldCoor **) calloc (10, sizeof (void *));
 	nwcs = 10;
 	}
     else {
@@ -185,7 +185,7 @@ int	*iwcs;		/* Index to WCS pointer array */
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    if (iwcs >= 0 && iwcs < nwcs)
+    if (*iwcs >= 0 && *iwcs < nwcs)
 	wcs = pwcs[*iwcs];
     else
 	wcs = pwcs[0];
@@ -213,7 +213,7 @@ char	*radecsys;	/* Equinox (returned) */
     struct WorldCoor *wcs;	/* World coordinate system structure */
     double width, height;
 
-    if (iwcs >= 0 && iwcs < nwcs)
+    if (*iwcs >= 0 && *iwcs < nwcs)
 	wcs = pwcs[*iwcs];
     else
 	wcs = pwcs[0];
@@ -294,7 +294,7 @@ int	nc;		/* Length of coorsys (set by Fortran) */
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    if (iwcs >= 0 && iwcs < nwcs)
+    if (*iwcs >= 0 && *iwcs < nwcs)
 	wcs = pwcs[*iwcs];
     else
 	wcs = pwcs[0];
@@ -318,7 +318,7 @@ int	nc;		/* Length of coorsys (set by Fortran) */
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    if (iwcs >= 0 && iwcs < nwcs)
+    if (*iwcs >= 0 && *iwcs < nwcs)
 	wcs = pwcs[*iwcs];
     else
 	wcs = pwcs[0];
@@ -342,7 +342,7 @@ int	nc;		/* Length of coorsys (Set by Fortran) */
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    if (iwcs >= 0 && iwcs < nwcs)
+    if (*iwcs >= 0 && *iwcs < nwcs)
 	wcs = pwcs[*iwcs];
     else
 	wcs = pwcs[0];
@@ -366,7 +366,7 @@ int	nc;		/* Length of coorsys (Set by Fortran) */
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    if (iwcs >= 0 && iwcs < nwcs)
+    if (*iwcs >= 0 && *iwcs < nwcs)
 	wcs = pwcs[*iwcs];
     else
 	wcs = pwcs[0];
@@ -390,7 +390,7 @@ int	nc;		/* Length of coorsys (Set by Fortran) */
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    if (iwcs >= 0 && iwcs < nwcs)
+    if (*iwcs >= 0 && *iwcs < nwcs)
 	wcs = pwcs[*iwcs];
     else
 	wcs = pwcs[0];
@@ -413,7 +413,7 @@ int	*mode;		/* mode = 0: h:m:s d:m:s
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    if (iwcs >= 0 && iwcs < nwcs)
+    if (*iwcs >= 0 && *iwcs < nwcs)
 	wcs = pwcs[*iwcs];
     else
 	wcs = pwcs[0];
@@ -437,7 +437,7 @@ int	*mode;		/* mode = 0: x y linear
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    if (iwcs >= 0 && iwcs < nwcs)
+    if (*iwcs >= 0 && *iwcs < nwcs)
 	wcs = pwcs[*iwcs];
     else
 	wcs = pwcs[0];
@@ -462,7 +462,7 @@ int	lstr;		/* Length of world coordinate string (set by Fortran) */
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    if (iwcs >= 0 && iwcs < nwcs)
+    if (*iwcs >= 0 && *iwcs < nwcs)
 	wcs = pwcs[*iwcs];
     else
 	wcs = pwcs[0];
@@ -485,7 +485,7 @@ double	*xpos, *ypos;	/* RA and Dec in radians (returned) */
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    if (iwcs >= 0 && iwcs < nwcs)
+    if (*iwcs >= 0 && *iwcs < nwcs)
 	wcs = pwcs[*iwcs];
     else
 	wcs = pwcs[0];
@@ -509,7 +509,7 @@ int	*offscl;
 {
     struct WorldCoor *wcs;	/* World coordinate system structure */
 
-    if (iwcs >= 0 && iwcs < nwcs)
+    if (*iwcs >= 0 && *iwcs < nwcs)
 	wcs = pwcs[*iwcs];
     else
 	wcs = pwcs[0];
@@ -529,4 +529,6 @@ int	*offscl;
  * Oct 15 1999	Free wcs using wcsfree()
  * Oct 21 1999	Add pix2wcst_(); drop unused variables after lint
  * Dec 10 1999	Add error handling for iwcs; document all subroutines
+ *
+ * Jun  2 2000	Fix WCS structure pointers
  */

@@ -1,3 +1,11 @@
+Version 2.8.0 (June 2, 2000)
+scat, imcat, immatch, imwcs: Implement Tycho 2 astrometric catalog
+tabread.c: Read from any table in a multiple-table Starbase file
+wcs.c: If CTYPEn is not found, default to LINEAR, no error
+imgetwcs.c: Print debugging coordinates in degrees if wcs->degout is set
+ty2read.c: New subroutines to deal with the Tycho 2 catalog
+and a variety of other bugs fixed.
+
 Version 2.7.3 (May 1, 2000)
 imhfile: Fix bug and clean up code dealing with pixel subdirectories
 dateutil: Years from old FITS format or system less than 1000 get 1900 added

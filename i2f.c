@@ -1,5 +1,5 @@
 /* File i2f.c
- * March 23, 2000
+ * May 30, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -18,6 +18,8 @@ static void IRAFtoFITS ();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;		/* If 1, print only program name and version */
+static int delirafkey = 0;	/* If 1, delete IRAF .imh keywords */
+static int deliraffile = 0;	/* If 1, delete IRAF .imh files */
 char outname[128];              /* Name for output image */
 
 main (ac, av)
@@ -43,6 +45,12 @@ char **av;
 	    switch (c) {
 		case 'v':	/* more verbosity */
 		    verbose++;
+		    break;
+		case 'd':	/* delete IRAF imh files */
+		    deliraffile = 1;
+		    break;
+		case 'i':	/* delete IRAF imh keywords */
+		    delirafkey = 1;
 		    break;
 		case 'o':	/* output file name */
 		    if (ac < 2)
@@ -86,6 +94,7 @@ usage ()
     fprintf (stderr,"Write FITS files from IRAF image files\n");
     fprintf(stderr,"usage: i2f [-vs] [-o name] file.imh ...\n");
     fprintf(stderr,"  -o: output name for one file\n");
+    fprintf(stderr,"  -i: delete unnecessary IRAF keywords\n");
     fprintf(stderr,"  -s: write output to standard output\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
@@ -104,10 +113,16 @@ char *name;
     char history[128];	/* for HISTORY line */
     char *filename;	/* Pointer to start of file name */
     char irafname[256];	/* Name of IRAF file */
+    char hdrfile[256];	/* Name of IRAF header file */
+    char hdrback[256];	/* Name of backup IRAF header file */
+    char pixfile[256];	/* Name of IRAF pixel file */
     char fitsname[256];	/* Name of FITS file */
+    char *hdrfile1;
+    char command[256];
     char *ext;		/* Pointer to start of extension */
     char *endchar;
     char *ltime;
+    int nc, ier;
 
     /* Open IRAF image if .imh extension is present */
     if (strsrch (name,".imh") != NULL) {
@@ -196,9 +211,63 @@ char *name;
     if (outname[0] != (char) 0)
 	strcpy (fitsname, outname);
 
+    /* Save name of header file and pixel file */
+    hgetm (header, "IMHFIL", 256, hdrfile);
+    hgetm (header, "PIXFIL", 256, pixfile);
+
+    /* Delete IRAF header information */
+    if (delirafkey) {
+	hdel (header, "IMHFIL_1");
+	hdel (header, "PIXFIL_1");
+	hdel (header, "IMHVER");
+	hdel (header, "PIXOFF");
+	hdel (header, "PIXSWAP");
+	hdel (header, "HEADSWAP");
+	hdel (header, "DATE-MOD");
+	hdel (header, "PIXSWAP");
+	hdel (header, "DATE-MOD");
+	hdel (header, "IRAFMIN");
+	hdel (header, "IRAFMAX");
+	hdel (header, "IRAFTYPE");
+	hdel (header, "IRAF-BPX");
+	}
+
     /* Write FITS image */
-    if (fitswimage (fitsname, header, image) > 0 && verbose)
-	fprintf (stderr, "%s: rewritten successfully.\n", fitsname);
+    if (fitswimage (fitsname, header, image) > 0) {
+	if (verbose)
+	    fprintf (stderr, "%s: rewritten successfully.\n", fitsname);
+	if (deliraffile) {
+	    hdrfile1 = strrchr (hdrfile, '/');
+	    if (hdrfile == NULL) {
+		strcpy (hdrback, "..");
+		strcat (hdrback, hdrfile);
+		}
+	    else {
+		nc = hdrfile1 - hdrfile;
+		strncpy (hdrback, hdrfile, nc+1);
+		strcat (hdrback, "..");
+		strcat (hdrback, hdrfile1+1);
+		}
+	    if (verbose)
+		fprintf (stderr, "deleting %s, %s, and %s\n",
+			 hdrfile, pixfile, hdrback);
+	    strcpy (command, "rm ");
+	    strcat (command, hdrfile);
+	    ier = system (command);
+	    if (ier)
+		(void)fprintf(stderr,"Command %s failed %d\n",command,ier);
+	    strcpy (command, "rm ");
+	    strcat (command, pixfile);
+	    ier = system (command);
+	    if (ier)
+		(void)fprintf(stderr,"Command %s failed %d\n",command,ier);
+	    strcpy (command, "rm ");
+	    strcat (command, hdrback);
+	    ier = system (command);
+	    if (ier)
+		(void)fprintf(stderr,"Command %s failed %d\n",command,ier);
+	    }
+	}
 
     else if (verbose)
 	fprintf (stderr, "%s: not written.\n", fitsname);
@@ -230,4 +299,5 @@ char *name;
  *
  * Mar 22 2000	Use lt2fd() instead of getltime()
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
+ * May 30 2000	Adds option to delete IRAF keywords and IRAF files
  */

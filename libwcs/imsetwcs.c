@@ -1,5 +1,5 @@
 /* File libwcs/imsetwcs.c
- * March 28, 2000
+ * May 26, 2000
  * By Doug Mink, based on UIowa code
  */
 
@@ -113,6 +113,8 @@ int	verbose;
     int is, ig, igs;
     char rstr[32], dstr[32];
     double refeq, refep;
+    double maxnum;
+    int nnfld;
     int refsys;
     char refcoor[8];
     char title[80];
@@ -300,9 +302,16 @@ getfield:
     if (verbose) {
 	printf ("%s:\n",refcatname);
 	for (ig = 0; ig < nrg; ig++) {
+	    if (ig == 0)
+		maxnum = gnum[ig];
+	    else if (gnum[ig] > maxnum)
+		maxnum = gnum[ig];
+	    }
+	nnfld = CatNumLen (refcat, maxnum, 0);
+	for (ig = 0; ig < nrg; ig++) {
 	    ra2str (rstr, 32, gra[ig], 3);
 	    dec2str (dstr, 32, gdec[ig], 2);
-	    CatNum (refcat, wcs->ndec, gnum[ig], numstr);
+	    CatNum (refcat, nnfld, 0, gnum[ig], numstr);
 	    printf ("%s %s %s %5.2f %6.1f %6.1f\r",
 		    numstr,rstr,dstr,gm[ig],gx[ig],gy[ig]);
 	    }
@@ -684,7 +693,17 @@ int	verbose;	/* True for more information */
     double dx2sum = 0.0;
     double dy2sum = 0.0;
     double dxysum = 0.0;
+    double maxnum;
+    int nnfld;
     char rstr[32], dstr[32], numstr[32];
+
+    for (i = 0; i < nmatch; i++) {
+	if (i == 0)
+	    maxnum = gnum1[i];
+	else if (gnum1[i] > maxnum)
+	    maxnum = gnum1[i];
+	}
+    nnfld = CatNumLen (refcat, maxnum, 0);
 
     for (i = 0; i < nmatch; i++) {
 	wcs2pix (wcs, gra1[i], gdec1[i], &gx, &gy, &goff);
@@ -964,4 +983,5 @@ int recenter;
  * Mar 13 2000	Use PropCat() to dind out whether catalog has proper motion
  * Mar 15 2000	Add proper motion arguments to RASortStars() and ctgread()
  * Mar 28 2000	Separate tolerance reducing iterations and other iterations
+ * May 26 2000	Set catalog number field size using CatNumLen()
  */

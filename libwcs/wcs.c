@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** February 24, 2000
+ *** May 10, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcs.c (World Coordinate Systems)
@@ -441,10 +441,10 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	    }
 	}
 
-    /* If not linear or sky coordinates, drop out with error message */
+    /* If not sky coordinates, assume linear */
     else {
-	setwcserr ("WCSTYPE: CTYPE1 not sky coordinates or LINEAR -> no WCS");
-	return (1);
+	wcs->prjcode = WCS_LIN;
+	return (0);
 	}
 
     /* Second coordinate type */
@@ -522,10 +522,9 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	    if (wcs->ctype[1][i] == ' ') wcs->ctype[1][i] = '-';
 	}
 
-    /* If not linear or sky coordinates, drop out with error message */
+    /* If not sky coordinates, assume linear */
     else {
-	setwcserr ("WCSTYPE: CTYPE2 not sky coordinates or LINEAR -> no WCS");
-	return (1);
+	wcs->prjcode = WCS_LIN;
 	}
 
     return (0);
@@ -2580,4 +2579,5 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  *
  * Jan 24 2000	Default to AIPS for NCP, CAR, and COE proj.; if -z use WCSLIB
  * Feb 24 2000	If coorsys is null in wcsc2pix, wcs->radecin is assumed
+ * May 10 2000	In wcstype(), default to WCS_LIN, not error (after Bill Joye)
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** February 29, 2000
+ *** May 9, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcsinit.c (World Coordinate Systems)
@@ -188,6 +188,8 @@ char *hstring;	/* character string containing FITS header information
 	wcs->lin.pc = wcs->pc;
 
 	/* Projection constants */
+	wcs->prj.r0 = 0.0;
+	hgetr8 (hstring, "PROJR0", &wcs->prj.r0);
 	for (i = 1; i < 10; i++) {
 	    wcs->prj.p[i] = 0.0;
 	    sprintf (keyword,"PROJP%d",i);
@@ -807,4 +809,5 @@ struct WorldCoor *wcs;
  * Jan 28 2000	Set CD matrix for DSS projection, too
  * Jan 28 2000	Use wcsproj instead of oldwcs
  * Feb 29 2000	Compute inverse CD matrix even if polynomial solution
+ * May  9 2000	Add PROJR0 keyword for WCSLIB projections
  */

@@ -567,6 +567,8 @@ char	*filename;	/* FITS or IRAF file filename */
             wfile = 0;
             }
 	}
+    else
+	fd = NULL;
 
     /* Write file of positions for SAOimage regions */
     if (wfile && region_char) {
@@ -723,7 +725,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	}
 	}
 
-    fclose (fd);
+    if (fd) fclose (fd);
     if (sx) free ((char *)sx);
     if (sy) free ((char *)sy);
     if (sb) free ((char *)sb);

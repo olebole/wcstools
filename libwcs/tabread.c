@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** March 27, 2000
+ *** May 26, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -1041,21 +1041,34 @@ tabopen (tabfile)
 char *tabfile;	/* Tab table catalog file name */
 {
     FILE *fcat;
-    int nr, lfile, lfname, lfa;
+    int nr, lfile, lfname, lfa, lname;
     char *tabnew, *tabline, *lastline;
-    char headend[4];
+    char *tabcomma;
+    char *thisname, *tabname;
+    int thistab, itab, nchar;
+    int formfeed = (char) 12;
     struct TabTable *tabtable;
 
+    tabcomma = NULL;
     if (taberr != NULL) {
 	free (taberr);
 	taberr = NULL;
 	}
 
+    tabname = NULL;
     if (!strcmp (tabfile, "stdin")) {
 	lfile = 100000;
 	fcat = stdin;
 	}
     else {
+
+	/* Separate table name from file name, if necessary */
+	if ((tabcomma = strchr (tabfile, ',')) != NULL) {
+	    tabname = (char *) calloc (1,64);
+	    strcpy (tabname, tabcomma+1);
+	    *tabcomma = (char) 0;
+	    lname = strlen (tabname);
+	    }
 
 	/* Find length of tab table catalog */
 	lfile = tabsize (tabfile);
@@ -1063,6 +1076,7 @@ char *tabfile;	/* Tab table catalog file name */
 	    taberr = (char *) calloc (64 + strlen (tabfile), 1);
 	    sprintf (taberr,"TABOPEN: Tab table file %s has no entries",
 		     tabfile);
+	    if (tabcomma != NULL) *tabcomma = ',';
 	    return (NULL);
 	    }
 
@@ -1071,6 +1085,7 @@ char *tabfile;	/* Tab table catalog file name */
 	    taberr = (char *) calloc (64 + strlen (tabfile), 1);
 	    sprintf (taberr,"TABOPEN: Tab table file %s cannot be read",
 		     tabfile);
+	    if (tabcomma != NULL) *tabcomma = ',';
 	    return (NULL);
 	    }
 	}
@@ -1080,8 +1095,11 @@ char *tabfile;	/* Tab table catalog file name */
 	taberr = (char *) calloc (64 + strlen (tabfile), 1);
 	sprintf (taberr,"TABOPEN: cannot allocate Tab Table structure for %s",
 		 tabfile);
+	if (tabcomma != NULL) *tabcomma = ',';
 	return (NULL);
 	}
+
+    tabtable->tabname = tabname;
 
     /* Allocate space in structure for filename and save it */
     lfname = strlen (tabfile) + 1;
@@ -1096,6 +1114,7 @@ char *tabfile;	/* Tab table catalog file name */
 		 tabfile);
 	(void) fclose (fcat);
 	tabclose (tabtable);
+	if (tabcomma != NULL) *tabcomma = ',';
 	return (NULL);
 	}
     strncpy (tabtable->filename, tabfile, lfname);
@@ -1107,6 +1126,7 @@ char *tabfile;	/* Tab table catalog file name */
 		 tabfile);
 	(void) fclose (fcat);
 	tabclose (tabtable);
+	if (tabcomma != NULL) *tabcomma = ',';
 	return (NULL);
 	}
     else {
@@ -1116,22 +1136,74 @@ char *tabfile;	/* Tab table catalog file name */
 		     nr, lfile, tabfile);
 	    (void) fclose (fcat);
 	    tabclose (tabtable);
+	    if (tabcomma != NULL) *tabcomma = ',';
 	    return (NULL);
 	    }
-	tabtable->tabhead = tabtable->tabbuff;
-	headend[0] = '-';
-	headend[1] = '-';
-	headend[2] = 0;
-	tabline = tabtable->tabbuff;
-	while (strncmp (tabline,headend, 2) && tabline < tabtable->tabbuff+lfile) {
+
+	/* Check for named table within a file */
+	if (tabname != NULL) {
+	    if (isnum (tabname)) {
+		itab = atoi (tabname);
+		thisname = tabtable->tabbuff;
+		thistab = 1;
+		if (itab > 1) {
+		    while (thistab < itab && thisname != NULL) {
+			thisname = strchr (thisname, formfeed);
+			if (thisname != NULL)
+			    thisname++;
+			thistab++;
+			}
+		    }
+		if (thisname == NULL) {
+		    fprintf (stderr, "GETTAB:  There are < %d tables in %s\n",
+			itab, tabfile);
+		    return (NULL);
+		    }
+		while (*thisname==' ' || *thisname==newline ||
+		       *thisname==formfeed || *thisname==(char)13)
+		    thisname++;
+		tabline = strchr (thisname, newline);
+		if (tabline != NULL) {
+		    nchar = tabline - thisname;
+		    if (strchr (thisname, tab) > tabline)
+			strncpy (tabtable->tabname, thisname, nchar);
+		    }
+		}
+	    else {
+		thisname = tabtable->tabbuff;
+		while (*thisname != NULL) {
+		    while (*thisname==' ' || *thisname==newline ||
+		   	   *thisname==formfeed || *thisname==(char)13)
+			thisname++;
+		    if (!strncmp (tabname, thisname, lname))
+			break;
+		    else
+			thisname = strchr (thisname, formfeed);
+		    }
+		}
+	    if (thisname == NULL) {
+		fprintf (stderr, "TABOPEN: table %s in file %s not found\n",
+			 tabname, tabfile);
+		if (tabcomma != NULL) *tabcomma = ',';
+		return (NULL);
+		}
+	    else
+		tabtable->tabheader = strchr (thisname, newline) + 1;
+	    }
+	else
+	    tabtable->tabheader = tabtable->tabbuff;
+
+	tabline = tabtable->tabheader;
+	while (*tabline != '-' && tabline < tabtable->tabbuff+lfile) {
 	    lastline = tabline;
 	    tabline = strchr (tabline,newline) + 1;
 	    }
-	if (strncmp (tabline,headend, 2)) {
+	if (*tabline != '-') {
 	    taberr = (char *) calloc (64 + strlen (tabfile), 1);
-	    sprintf (taberr,"TABOPEN: No ---- line in tab table %s",tabfile);
+	    sprintf (taberr,"TABOPEN: No - line in tab table %s",tabfile);
 	    (void) fclose (fcat);
 	    tabclose (tabtable);
+	    if (tabcomma != NULL) *tabcomma = ',';
 	    return (NULL);
 	    }
 	tabtable->tabhead = lastline;
@@ -1142,6 +1214,7 @@ char *tabfile;	/* Tab table catalog file name */
 	    fprintf (stderr,"TABOPEN: No columns in tab table %s\n",tabfile);
 	    (void) fclose (fcat);
 	    tabclose (tabtable);
+	    if (tabcomma != NULL) *tabcomma = ',';
 	    return (NULL);
 	    }
 
@@ -1152,12 +1225,15 @@ char *tabfile;	/* Tab table catalog file name */
 	while ((tabnew = strchr (tabnew, newline)) != NULL) {
 	    tabnew = tabnew + 1;
 	    tabtable->nlines = tabtable->nlines + 1;
+	    if (*tabnew == formfeed)
+		break;
 	    }
 	}
 
     (void) fclose (fcat);
     tabtable->tabline = tabtable->tabdata;
     tabtable->iline = 1;
+    if (tabcomma != NULL) *tabcomma = ',';
     return (tabtable);
 }
 
@@ -1169,6 +1245,7 @@ tabclose (tabtable)
 {
     if (tabtable != NULL) {
 	if (tabtable->filename != NULL) free (tabtable->filename);
+	if (tabtable->tabname != NULL) free (tabtable->tabname);
 	if (tabtable->tabbuff != NULL) free (tabtable->tabbuff);
 	if (tabtable->colname != NULL) free (tabtable->colname);
 	if (tabtable->lcol != NULL) free (tabtable->lcol);
@@ -1726,4 +1803,5 @@ char    *filename;      /* Name of file to check */
  * Mar 10 2000	Return proper motions from tabread() and tabrnum()
  * Mar 13 2000	Do not free tabtable structure if it is null
  * Mar 27 2000	Clean up code after lint
+ * May 26 2000	Add ability to read named tables in a multi-table file
  */

@@ -1,5 +1,5 @@
 /* File imhfile.c
- * May 1, 2000
+ * June 2, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:      imh2io.c (IRAF 2.11 image file reading and writing)
@@ -983,9 +983,9 @@ int	nbhead;		/* Length of IRAF header */
 int	*nbiraf;	/* Length of returned IRAF header */
 
 {
-    int i, n, pixoff, samedir, lhdrdir, lpixdir;
+    int i, n, pixoff, lhdrdir;
     short *irafp, *irafs, *irafu;
-    char *iraf2u, *iraf2p, *filename, *hdrdir, *pixf;
+    char *iraf2u, *iraf2p, *filename, *hdrdir;
     char *fitsend, *fitsp, pixfile[SZ_IM2PIXFILE], hdrfile[SZ_IM2HDRFILE];
     char title[SZ_IM2TITLE], temp[80];
     int	nax, nlfits, imhver, nbits, pixtype, hdrlength, mtime;
@@ -1791,4 +1791,5 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * Mar 29 2000	Add space after last linefeed of header in fits2iraf()
  * Apr 28 2000	Dimension pixname in irafwimage()
  * May  1 2000	Fix code for updating pixel file name with HDR$ in fits2iraf()
+ * Jun  2 2000	Drop unused variables in fits2iraf() after lint
  */

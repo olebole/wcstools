@@ -1,5 +1,5 @@
 /* File libwcs/imgetwcs.c
- * March 27, 2000
+ * May 24, 2000
  * By Doug Mink, remotely based on UIowa code
  */
 
@@ -235,8 +235,14 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 
     /* Print reference pixel position and value */
     if (verbose && (eq1 != *eqout || wcs->syswcs != *sysout)) {
-	ra2str (rstr, 32, ra1, 3);
-        dec2str (dstr, 32, dec1, 2);
+	if (wcs->degout) {
+	    deg2str (rstr, 32, ra1, 6);
+            deg2str (dstr, 32, dec1, 6);
+	    }
+	else {
+	    ra2str (rstr, 32, ra1, 3);
+            dec2str (dstr, 32, dec1, 2);
+	    }
 	wcscstr (cstr, wcs->syswcs, wcs->equinox, wcs->epoch);
 	printf ("Reference pixel (%.2f,%.2f) %s %s %s\n",
 		 wcs->xrefpix, wcs->yrefpix, rstr, dstr, cstr);
@@ -321,8 +327,14 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 
     /* Print reference pixel position and value */
     if (verbose) {
-	ra2str (rstr, 32, ra1, 3);
-        dec2str (dstr, 32, dec1, 2);
+	if (wcs->degout) {
+	    deg2str (rstr, 32, ra1, 6);
+            deg2str (dstr, 32, dec1, 6);
+	    }
+	else {
+	    ra2str (rstr, 32, ra1, 3);
+            dec2str (dstr, 32, dec1, 2);
+	    }
 	wcscstr (cstr,*sysout,*eqout,wcs->epoch);
 	printf ("Reference pixel (%.2f,%.2f) %s %s %s\n",
 		wcs->xrefpix, wcs->yrefpix, rstr, dstr, cstr);
@@ -330,8 +342,14 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 
     /* Image size for catalog search */
     if (verbose) {
-	ra2str (rstr, 32, *cra, 3);
-	dec2str (dstr, 32, *cdec, 2);
+	if (wcs->degout) {
+	    deg2str (rstr, 32, *cra, 6);
+            deg2str (dstr, 32, *cdec, 6);
+	    }
+	else {
+	    ra2str (rstr, 32, *cra, 3);
+	    dec2str (dstr, 32, *cdec, 2);
+	    }
 	wcscstr (cstr, *sysout, *eqout, wcs->epoch);
 	printf ("Search at %s %s %s", rstr, dstr, cstr);
 	printf (" +- %s %s\n", rstr, dstr);
@@ -511,4 +529,5 @@ char*	ptype;
  * Feb 15 2000	Add option to override the header CD matrix (like CDELTs)
  * Feb 29 2000	Fix bug, converting reference pixel WCS coordinates everywhere
  * Mar 27 2000	Drop unused subroutine setradius()
+ * May 24 2000	Print degrees in debugging messages if output format
  */

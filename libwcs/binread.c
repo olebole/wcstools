@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** March 28, 2000
+ *** June 2, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -12,7 +12,7 @@
 
 /* default pathname for catalog,  used if catalog file not found in current
    working directory, but overridden by WCS_BINDIR environment variable */
-char bindir[64]="c:/stars";
+char bindir[64]="/data/stars";
 
 #include <unistd.h>
 #include <stdlib.h>
@@ -20,15 +20,18 @@ char bindir[64]="c:/stars";
 #include <string.h>
 #include <strings.h>
 #include <sys/types.h>
+#include <fcntl.h>
 #include "fitshead.h"
 #include "wcs.h"
 #include "wcscat.h"
 
 static int binsra();
+static int binsize();
 void binclose();
 static void binswap8();
 static void binswap4();
 static void binswap2();
+static void moveb();
 
 
 /* BINREAD -- Read binary catalog sources + names in specified region */
@@ -107,18 +110,21 @@ int	nlog;
 
     /* Logging interval */
     nstar = 0;
-    tdist = (double *) malloc (nstarmax * sizeof (double));
 
     /* Open catalog file */
     starcat = binopen (bincat);
     if (starcat == NULL)
 	return (0);
     if (starcat->nstars <= 0) {
-	free (starcat);
-	if (star != NULL)
-	    free (star);
+	binclose (starcat);
 	return (0);
 	}
+
+    /* Allocate space for distances from search center */
+    if (nstarmax > 10)
+	tdist = (double *) calloc (nstarmax, sizeof(double));
+    else
+	tdist = (double *) calloc (10, sizeof(double));
 
     SearchLim (cra, cdec, dra, ddec, &ra1, &ra2, &dec1, &dec2, verbose);
   
@@ -186,8 +192,8 @@ int	nlog;
 
 	/* Set first and last stars to check */
 	if (starcat->rasorted) {
-	    istar1 = binsra (starcat, star, rra1, 0);
-	    istar2 = binsra (starcat, star, rra2, 1);
+	    istar1 = binsra (starcat, star, rra1);
+	    istar2 = binsra (starcat, star, rra2);
 	    }
 	else {
 	    istar1 = starcat->star1;
@@ -244,8 +250,10 @@ int	nlog;
 		    tnum[nstar] = num;
 		    tra[nstar] = ra;
 		    tdec[nstar] = dec;
-		    tpra[nstar] = rapm;
-		    tpdec[nstar] = decpm;
+		    if (starcat->mprop) {
+			tpra[nstar] = rapm;
+			tpdec[nstar] = decpm;
+			}
 		    tmag[nstar] = mag;
 		    tmagb[nstar] = magb;
 		    tpeak[nstar] = isp;
@@ -273,14 +281,16 @@ int	nlog;
 			tnum[farstar] = num;
 			tra[farstar] = ra;
 			tdec[farstar] = dec;
-			tpra[nstar] = rapm;
-			tpdec[nstar] = decpm;
+			if (starcat->mprop) {
+			    tpra[nstar] = rapm;
+			    tpdec[nstar] = decpm;
+			    }
 			tmag[farstar] = mag;
 			tmagb[farstar] = magb;
 			tpeak[farstar] = isp;
 			tdist[farstar] = dist;
 			if (tobj != NULL) {
-			    free (tobj[farstar]);
+			    free ((void *)tobj[farstar]);
 			    lname = strlen (star->objname) + 1;
 			    objname = (char *)calloc (lname, 1);
 			    strcpy (objname, star->objname);
@@ -303,14 +313,16 @@ int	nlog;
 		    tnum[faintstar] = num;
 		    tra[faintstar] = ra;
 		    tdec[faintstar] = dec;
-		    tpra[nstar] = rapm;
-		    tpdec[nstar] = decpm;
+		    if (starcat->mprop) {
+			tpra[nstar] = rapm;
+			tpdec[nstar] = decpm;
+			}
 		    tmag[faintstar] = mag;
 		    tmagb[faintstar] = magb;
 		    tpeak[faintstar] = isp;
 		    tdist[faintstar] = dist;
 		    if (tobj != NULL) {
-			free (tobj[faintstar]);
+			free ((void *)tobj[faintstar]);
 			lname = strlen (star->objname) + 1;
 			objname = (char *)calloc (lname, 1);
 			strcpy (objname, star->objname);
@@ -358,9 +370,9 @@ int	nlog;
 		     nstar,nstarmax);
 	}
 
-    binclose(starcat);
-    free (star);
-    free ((char *)tdist);
+    binclose (starcat);
+    free ((void *)star);
+    free ((void *)tdist);
     return (nstar);
 }
 
@@ -408,9 +420,7 @@ int	nlog;
     if (starcat == NULL)
 	return (0);
     if (starcat->nstars <= 0) {
-	free (starcat);
-	if (star != NULL)
-	    free (star);
+	free ((void *)starcat);
 	fprintf (stderr,"BINRNUM: Cannot read catalog %s\n", bincat);
 	return (0);
 	}
@@ -497,8 +507,10 @@ int	nlog;
 	tnum[jnum] = num;
 	tra[jnum] = ra;
 	tdec[jnum] = dec;
-	tpra[jnum] = rapm;
-	tpdec[jnum] = decpm;
+	if (starcat->mprop) {
+	    tpra[jnum] = rapm;
+	    tpdec[jnum] = decpm;
+	    }
 	tmag[jnum] = mag;
 	tpeak[jnum] = isp;
 	if (tobj != NULL) {
@@ -521,6 +533,7 @@ int	nlog;
 		 bincat,nstar,starcat->nstars);
 
     binclose (starcat);
+    free ((void *) star);
     return (nstar);
 }
 
@@ -532,14 +545,13 @@ binopen (bincat)
 
 char *bincat;	/* Binary catalog file name */
 {
-    FILE *fcat;
+    int fcat;
     struct StarCat *sc;
     int nr, lfile;
     char *binfile;
     char binpath[128];	/* Full pathname for catalog file */
     char *str;
     int lf, nb;
-    static int binsize();
 
     /* Find length of binary catalog */
     lfile = binsize (bincat);
@@ -563,18 +575,18 @@ char *bincat;	/* Binary catalog file name */
 	strcpy (binpath, bincat);
 
     /* Open binary catalog */
-    if (!(fcat = fopen (binpath, "r"))) {
+    if ((fcat = open (binpath, O_RDONLY)) < 3) {
 	fprintf (stderr,"BINOPEN: Binary catalog %s cannot be read\n",binpath);
 	return (0);
 	}
 
     /* Read binary catalog header information */
     sc = (struct StarCat *) calloc (1, sizeof (struct StarCat));
-    nr = fread (sc, 1, 28, fcat);
+    nr = (int) read (fcat, sc, 28);
     if (nr < 28) {
 	fprintf (stderr,"BINOPEN: read only %d / %d bytes of file %s\n",
 		 nr, lfile, binpath);
-	(void) fclose (fcat);
+	(void) close (fcat);
 	return (0);
 	}
 
@@ -658,7 +670,7 @@ char *bincat;	/* Binary catalog file name */
 	sc->epoch = 1950.0;
 	sc->equinox = 1950.0;
 	}
-    sc->ifcat = fcat;
+    sc->entadd = fcat;
 
     /* Check name to see if file is RA-sorted */
     lf = strlen (binfile);
@@ -675,9 +687,9 @@ void
 binclose (sc)
 struct StarCat *sc;	/* Star catalog descriptor */
 {
-    fclose (sc->ifcat);
-    free (sc->catline);
-    free (sc);
+    close (sc->entadd);
+    free ((void *)sc->catline);
+    free ((void *)sc);
     return;
 }
 
@@ -685,12 +697,11 @@ struct StarCat *sc;	/* Star catalog descriptor */
 /* BINSRA -- Find star closest to given RA in RA-sorted catalog */
 
 static int
-binsra (sc, st, dra, end)
+binsra (sc, st, dra)
 
 struct StarCat *sc;	/* Star catalog descriptor */
 struct Star *st;	/* Current star entry */
 double	dra;		/* Right ascension in degrees */
-int	end;		/* 0: start of range, 1: end of range */
 
 {
     char rastr[16], raxstr[16], ramins[16], ramaxs[16];
@@ -782,7 +793,7 @@ struct StarCat *sc;	/* Star catalog descriptor */
 struct Star *st;	/* Current star entry */
 int istar;	/* Star sequence number in binary catalog */
 {
-    int ino, nbent, i;
+    int ino, i;
     long offset;
     float pm[2];
 
@@ -791,7 +802,7 @@ int istar;	/* Star sequence number in binary catalog */
 	return (1);
 
     /* Drop out if catalog is not open */
-    if (sc->ifcat == NULL)
+    if (sc->entadd < 3)
 	return (2);
 
     /* Drop out if star number is too large */
@@ -804,12 +815,12 @@ int istar;	/* Star sequence number in binary catalog */
     /* Move file pointer to start of correct star entry */
     if (istar > 0) {
 	offset = 28 + (istar - sc->star1) * sc->nbent;
-	if (fseek (sc->ifcat, offset, SEEK_SET))
+	if (lseek (sc->entadd, offset, SEEK_SET) < offset)
 	    return (0);
 	}
 
     /* Read catalog entry */
-    if (fread (sc->catline, sc->nbent, 1, sc->ifcat) < 1)
+    if ((int)read (sc->entadd, sc->catline, sc->nbent) < 1)
 	return (4);
 
     /* Read catalog number or object name */
@@ -1020,6 +1031,21 @@ char    *filename;      /* Name of file to check */
 	}
 }
 
+/* MOVEB -- Move bytes from one place to another (any data type) */
+
+static void
+moveb (source,dest,nbytes,offs,offd)
+char *source,*dest;
+int nbytes,offs,offd;
+{
+char *from, *last, *to;
+        from = source + offs;
+        to = dest + offd;
+        last = from + nbytes;
+        while (from < last) *(to++) = *(from++);
+        return;
+}
+
 /* Sep 10 1998	New subroutines
  * Sep 15 1998	Add byte swapping
  * Sep 16 1998	Use limiting radius correctly; use arbitrary search system
@@ -1050,4 +1076,6 @@ char    *filename;      /* Name of file to check */
  *
  * Mar 15 2000	Add proper motion return to binread() and binrnum()
  * Mar 28 2000	Use moveb() to extract information from entries
+ * Mar 30 2000	Use standard i/O instead of stream I/O
+ * Jun  2 2000	Minor changes after lint
  */

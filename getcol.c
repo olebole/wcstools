@@ -1,5 +1,5 @@
 /* File getcol.c
- * April 4, 2000
+ * May 1, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -271,7 +271,7 @@ char	*lranges;	/* String with range of lines to list */
 char	*lfile;		/* Name of file with lines to list */
 
 {
-    int i, j, il, nbytes;
+    int i, j, il, ir, nbytes;
     char line[1024];
     char fline[1024];
     char *lastchar;
@@ -334,7 +334,7 @@ char	*lfile;		/* Name of file with lines to list */
     if (lfile != NULL) {
 	if (!(lfd = fopen (lfile, "r")))
             return (0);
-	nlmax = 100;
+	nlmax = 99;
 	nline = 0;
 	nbytes = nlmax * sizeof(int);
 	if (!(iline = (int *) calloc (nlmax, sizeof(int))) ) {
@@ -342,9 +342,14 @@ char	*lfile;		/* Name of file with lines to list */
 	    fclose (lfd);
 	    return;
 	    }
-	for (il = 0; il < nread; il++) {
+	il = 0;
+	for (ir = 0; ir < nread; ir++) {
 	    if (fgets (line, 1024, lfd) == NULL)
 		break;
+
+	    /* Skip lines with comments
+	    if (line[0] == '#')
+		continue;
 
 	    /* Drop linefeeds */
 	    lastchar = line + strlen(line) - 1;
@@ -353,10 +358,11 @@ char	*lfile;		/* Name of file with lines to list */
 
 	    ntok = setoken (&tokens, line, cwhite);
 	    nt = 0;
+	    il++;
 	    if (il > nlmax) {
 		nlmax = nlmax + 100;
 		nbytes = nlmax * sizeof(int);
-		if (!(iline = (int *) realloc (iline, nbytes))) {
+		if (!(iline = (int *) realloc ((void *) iline, nbytes))) {
 		    fprintf (stderr, "Could not realloc %d bytes for iline\n",
 			     nbytes);
 		    fclose (lfd);
@@ -395,9 +401,15 @@ char	*lfile;		/* Name of file with lines to list */
     /* Print entire selected lines */
     if (ranges == NULL) {
 	iln = 0;
-	for (il = 0; il < nread; il++) {
+	il = 0;
+	for (ir = 0; ir < nread; ir++) {
 	    if (fgets (line, 1024, fd) == NULL)
 		break;
+
+	    /* Skip lines with comments
+	    if (line[0] == '#')
+		continue;
+	    il++;
 
 	    /* Skip if line is not on list, if there is one */
 	    if (iline != NULL) {

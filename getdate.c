@@ -1,5 +1,5 @@
 /* File getdate.c
- * March 24, 2000
+ * May 31, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -113,12 +113,12 @@ char **av;
 	/* Set output date format */
 	if (strsrch (*av, "2dt"))
 	    outtype = DTVIG;
-	else if (strsrch (*av, "2ep"))
-	    outtype = DTEP;
 	else if (strsrch (*av, "2epb"))
 	    outtype = DTEPB;
 	else if (strsrch (*av, "2epj"))
 	    outtype = DTEPJ;
+	else if (strsrch (*av, "2ep"))
+	    outtype = DTEP;
 	else if (strsrch (*av, "2fd"))
 	    outtype = DTFITS;
 	else if (strsrch (*av, "2jd"))
@@ -933,4 +933,5 @@ char	*timestring;	/* Input time string */
  * Mar  3 2000	Add -d option to print only date
  * Mar 14 2000	Allow multiple conversions on one command line
  * Mar 24 2000	Add current local time, current UT, and IRAF and Unix seconds
+ * May 31 2000	Fix bug which failed to convert to Julian or Bessellian epochs
  */

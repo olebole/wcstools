@@ -1,5 +1,5 @@
 /* File gettab.c
- * February 16, 2000
+ * May 31, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -56,6 +56,7 @@ char **av;
     char *lastchar;
     char filename[128];
     char *name;
+    char ctemp;
     FILE *flist;
     char *listfile;
     int ikwd, lkwd, i;
@@ -280,11 +281,17 @@ char **av;
 		return (1);
 		}
 
+	    /* Print the name of the table, if it has one */
+	    if (tabtable->tabname != NULL)
+		printf ("%s\n", tabtable->tabname);
+
 	    /* For tab table output, keep input header information */
 	    if (tabout) {
-		if (tabtable->tabbuff != tabtable->tabhead) {
+		if (tabtable->tabheader != tabtable->tabhead) {
+		    ctemp = *(tabtable->tabhead-1);
 		    *(tabtable->tabhead-1) = (char) 0;
-		    printf ("%s\n", tabtable->tabbuff);
+		    printf ("%s\n", tabtable->tabheader);
+		    *(tabtable->tabhead-1) = ctemp;
 		    }
 		}
 
@@ -304,9 +311,9 @@ char **av;
 		    }
 		}
 
-	    /* If multiple files, add filname at start of output line */
+	    /* If multiple files, add filename at start of output line */
 	    if (nfile > 1) {
-		printf ("FILENAME");
+		printf ("filename");
 		if (maxlfn > 8) {
 		    for (i = 8; i < maxlfn; i++)
 			printf (" ");
@@ -368,7 +375,7 @@ char **av;
 	/* Read through tables in listfile */
 	if (readlist) {
 	    if ((flist = fopen (listfile, "r")) == NULL) {
-		fprintf (stderr,"GETHEAD: List file %s cannot be read\n",
+		fprintf (stderr,"GETTAB: List file %s cannot be read\n",
 		     listfile);
 		usage ();
 		}
@@ -390,6 +397,63 @@ char **av;
 	}
 
     else {
+	if (printhead || tabout) {
+
+	    /* Open the input tab table */
+	    if ((tabtable = tabopen (name)) == NULL) {
+		fprintf (stderr,"%s\n", gettaberr());
+		return (1);
+		}
+
+	    /* Print the name of the table, if it has one */
+	    if (tabtable->tabname != NULL)
+		printf ("%s\n", tabtable->tabname);
+
+	    /* For tab table output, keep input header information */
+	    if (tabout) {
+		if (tabtable->tabheader != tabtable->tabhead) {
+		    ctemp = *(tabtable->tabhead-1);
+		    *(tabtable->tabhead-1) = (char) 0;
+		    printf ("%s\n", tabtable->tabheader);
+		    *(tabtable->tabhead-1) = ctemp;
+		    }
+		}
+
+	    /* Print conditions in header */
+	    for (icond = 0; icond < ncond; icond++) {
+		if (verbose) {
+		    if (condand || icond == 0)
+			printf ("%s\n",cond[icond]);
+		    else
+			printf (" or %s\n",cond[icond]);
+		    }
+		else if (tabout) {
+		    if (condand || icond == 0)
+			printf ("condition	%s\n", cond[icond]);
+		    else
+			printf ("condition	or %s\n", cond[icond]);
+		    }
+		}
+
+	    /* If multiple files, add filename at start of output line */
+	    if (nfile > 1) {
+		printf ("filename");
+		if (maxlfn > 8) {
+		    for (i = 8; i < maxlfn; i++)
+			printf (" ");
+		    }
+		if (tabout)
+	    	    printf ("	");
+		else
+		    printf (" ");
+		}
+
+	    /* Print column headers */
+	    ctemp = *(tabtable->tabdata-1);
+	    *(tabtable->tabdata-1) = (char) 0;
+	    printf ("%s\n", tabtable->tabhead);
+	    *(tabtable->tabdata-1) = ctemp;
+	    }
 	for (ifile = 0; ifile < nfile; ifile++)
 	    PrintValues (fn[ifile],nkwd,kwd,alias);
 	}
@@ -500,27 +564,30 @@ char	*alias[]; /* Output names of keywords if different from input */
 
     iline = 0;
     while (line != NULL && line < last) {
-	outline[0] = (char) 0;
+	if (*line == (char)12)
+	    break;
+	if (*line != newline) {
+	    outline[0] = (char) 0;
 
-	/* Check line number if extracting specific lines */
-	iline++;
-	drop = 0;
-	if (nlines > 0) {
-	    keep = 0;
-	    for (i = 0; i < nlines; i++) {
-		if (iline == keeplines[i])
-		    keep = 1;
-		}
-	    if (!keep)
+	    /* Check line number if extracting specific lines */
+	    iline++;
+	    drop = 0;
+	    if (nlines > 0) {
+		keep = 0;
+		for (i = 0; i < nlines; i++) {
+		    if (iline == keeplines[i])
+			keep = 1;
+		    }
+		if (!keep)
 		continue;
-	    }
+		}
 
-	/* Check conditions */
-	pass = 0;
-	if (ncond > 0) {
-	    for (icond = 0; icond < ncond; icond++) {
-		if (condand)
-		    pass = 0;
+	    /* Check conditions */
+	    pass = 0;
+	    if (ncond > 0) {
+		for (icond = 0; icond < ncond; icond++) {
+		    if (condand)
+			pass = 0;
 
 		/* Extract test value from comparison string */
 		tcond = *ccond[icond];
@@ -592,9 +659,13 @@ char	*alias[]; /* Output names of keywords if different from input */
 	/* Extract desired columns */
 	if (nkwd == 0) {
 	    endline = strchr (line+1, newline);
-	    *endline = 0;
-	    printf ("%s\n", line);
-	    *endline = newline;
+	    if (endline == NULL)
+		break;
+	    else {
+		*endline = 0;
+		printf ("%s\n", line);
+		*endline = newline;
+		}
 	    }
 	else {
 	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
@@ -637,6 +708,7 @@ char	*alias[]; /* Output names of keywords if different from input */
 
 	    if (!verbose && (nfile < 2 || nfound > 0 || listall))
 		printf ("%s\n", outline);
+	    }
 	    }
 
 	line = strchr (line+1, newline);
@@ -728,4 +800,6 @@ char *string;
  * Jan  3 2000	Use isrange() to check for ranges
  * Jan  4 2000	If no keywords are specified, print entire line if tests met
  * Feb 16 2000	Always open tab table if printing headers OR putting out tab
+ * May 26 2000	Handle multiple tables in a single file
+ * May 26 2000	Print full header if all columns asked for
  */

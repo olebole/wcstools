@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * April 3, 2000
+ * May 26, 2000
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -37,6 +37,7 @@ void SearchLim();	/* Compute limiting RA and Dec */
 void RefLim();		/* Compute limiting RA and Dec in new system */
 int isfile();		/* Return 1 if string is name of readable file */
 int agets();		/* Extract value from keyword= value in string */
+void bv2sp();		/* Approximate main sequence spectral type from B - V */
 
 /* Subroutines for extracting sources from catalogs by sky region */
 int gscread();		/* Read sources from HST Guide Star Catalog */
@@ -46,6 +47,7 @@ int tabread();		/* Read sources from tab table catalog */
 int binread();		/* Read sources from SAO TDC binary format catalog */
 int ctgread();		/* Read sources from SAO TDC ASCII format catalog */
 int actread();		/* Read sources from USNO ACT Catalog */
+int ty2read();		/* Read sources from Tycho 2 Catalog */
 
 /* Subroutines for extracting sources from catalogs by ID number */
 int gscrnum();		/* Read sources from HST Guide Star Catalog */
@@ -55,6 +57,7 @@ int tabrnum();		/* Read sources from tab table catalog */
 int binrnum();		/* Read sources from SAO TDC binary format catalog */
 int ctgrnum();		/* Read sources from SAO TDC ASCII format catalog */
 int actrnum();		/* Read sources from USNO ACT Catalog */
+int ty2rnum();		/* Read sources from Tycho 2 Catalog */
 void setgsclass();	/* Set GSC object class */
 void setuplate();	/* Set USNO catalog plate number to search */
 int getuplate();	/* Get USNO catalog plate number to search */
@@ -169,8 +172,10 @@ void ctgclose();
 struct TabTable {
     char *filename;	/* Name of tab table file */
     int nlines;		/* Number of entries in table */
+    char *tabname;	/* Name of this table or NULL */
     char *tabbuff;	/* Pointer to start of saved tab table in memory */
-    char *tabhead;	/* Pointer to start of line containing table header */
+    char *tabheader;	/* Pointer to start of line containing table header */
+    char *tabhead;	/* Pointer to start of line containing column heading */
     char *tabdata;	/* Pointer to start of first line of table data */
     int iline;		/* Number of current line (1=first) */
     char *tabline;	/* Pointer to start of current line */
@@ -290,4 +295,7 @@ int getoken();		/* Get specified token from tokenized string */
  * Mar 10 2000	Add PropCat() to tell whether a catalog has proper motions
  * Mar 27 2000	Add tabxyread()
  * Apr  3 2000	Add option in catalog structure to ignore extra info
+ * May 22 2000	Add Tycho 2 support, bv2sp()
+ * May 26 2000	Add separate pointer to header in tab table structure
+ * May 26 2000	Add separate pointer to table name in tab table structure
  */
