@@ -1,5 +1,5 @@
 /* File keyhead.c
- * March 22, 2000
+ * June 8, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -149,8 +149,16 @@ char **av;
 	    }
 	}
 
-    if (nkwd <= 0 || nfile < 0 )
+    if (nkwd <= 0 && nfile <= 0 )
 	usage ();
+    else if (nkwd <= 0) {
+	fprintf (stderr, "KEYHEAD: no keywords specified\n");
+	exit (1);
+	}
+    else if (nfile <= 0 ) {
+	fprintf (stderr, "KEYHEAD: no files specified\n");
+	exit (1);
+	}
 
     /* Open file containing a list of images, if there is one */
     if (ilistfile != NULL) {
@@ -495,4 +503,5 @@ char	*kwd[];		/* Names and values of those keywords */
  * Nov 30 1999	Cast realloc's
  *
  * Mar 22 2000	Use lt2fd() instead of getltime()
+ * Jun  8 2000	If no files or keywords specified, say so
  */

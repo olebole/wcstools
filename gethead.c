@@ -1,5 +1,5 @@
 /* File gethead.c
- * March 21, 2000
+ * June 8, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -274,8 +274,16 @@ char **av;
 	    }
 	}
 
-    if (nkwd <= 0 || nfile <= 0 )
+    if (nkwd <= 0 && nfile <= 0 )
 	usage ();
+    else if (nkwd <= 0) {
+	fprintf (stderr, "GETHEAD: no keywords specified\n");
+	exit (1);
+	}
+    else if (nfile <= 0 ) {
+	fprintf (stderr, "GETHEAD: no files specified\n");
+	exit (1);
+	}
 
     if (nkwd > 1)
 	printfill = 1;
@@ -771,4 +779,5 @@ char *string;
  * Mar 17 2000	Add conditions
  * Mar 20 2000	Drop leading # from numbers
  * Mar 21 2000	Add -b option to replace blanks with underscores
+ * Jun  8 2000	If no keywords or files specified, say so
  */

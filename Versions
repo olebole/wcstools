@@ -1,3 +1,9 @@
+Version 2.8.1 (June 9, 2000)
+scat, imcat, immatch, imwcs: Fix reading of USNO-A2.0 on PCs and Alphas
+gethead, sethead, delhead, cphead, keyhead: Improve error reporting
+uacread.c: Fix bug detecting byte-swapping on some files on PCs and Alphas
+hget.c: Get keyword values even if equal sign is not present
+
 Version 2.8.0 (June 2, 2000)
 scat, imcat, immatch, imwcs: Implement Tycho 2 astrometric catalog
 tabread.c: Read from any table in a multiple-table Starbase file

@@ -1,5 +1,5 @@
 /* File delhead.c
- * November 30, 1999
+ * June 8, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -131,8 +131,16 @@ char **av;
 	    }
 	}
 
-    if (nkwd <= 0 || nfile < 0 )
+    if (nkwd <= 0 && nfile <= 0 )
 	usage ();
+    else if (nkwd <= 0) {
+	fprintf (stderr, "DELHEAD: no keywords specified\n");
+	exit (1);
+	}
+    else if (nfile <= 0 ) {
+	fprintf (stderr, "DELHEAD: no files specified\n");
+	exit (1);
+	}
 
     /* Delete keyword values one file at a time */
 
@@ -371,4 +379,6 @@ char	*kwd[];		/* Names of those keywords */
  * Oct 21 1999	Drop unused variables after lint
  * Nov 29 1999	Fix usage command list
  * Nov 30 1999	Cast realloc's
+ *
+ * Jun  8 2000	If no files or keywords specified, say so
  */

@@ -1,19 +1,16 @@
-.TH imusac(1) WCS "14 April 1998"
+.TH imua2(1) WCS "14 April 1998"
 .SH Name
-imusac \- Find USNO A-1.0 stars in FITS or IRAF image files
+imua2 \- Find USNO-A2.0 stars in FITS or IRAF image files
 .SH Synopsis
-imuac [options] FITS or IRAF file(s)
+imua2 [options] FITS or IRAF file(s)
 .SH Description
-Search USNO SA 1.0 Catalog within the area described by the world coordinate
+Search USNO-A2.0 Catalog within the area described by the world coordinate
 system in an image header.  This is a link to imcat rather than
 a separate executable.
 .SH Options
 .TP
 .B \-b [<RA> <Dec>]
 Output in B1950, optional new image center in B1950 (FK4) RA and Dec
-.TP
-.B \-c <name>
-Reference catalog (gsc, ujc, or tab table file
 .TP
 .B \-h
 Print heading, else do not 
@@ -57,7 +54,7 @@ Doug Mink, SAO (dmink@cfa.harvard.edu)
 Output B1950 (FK4) coordinates (optional center)
 .TP
 .B \-u <plate>
-Accept only stars from thsi plate (default all)
+Accept only stars from this plate (default all)
 .TP
 .B \-h
 Print heading, else do not 
@@ -89,6 +86,8 @@ Verbose listing of processing intermediate results
 .B \-w
 Write tab table output file imagename.uac
 .SH See Also
-imcat(),imuac(),imgsc(),scat()
+imcat(),imgsc(),imusa2(),scat()
+.SH Web Page
+http://tdc-www.harvard.edu/software/wcstools/imcat/imua2.html
 .SH Author
 Doug Mink, SAO (dmink@cfa.harvard.edu)

@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** October 21, 1999
+ *** June 9, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Subroutines to read from the USNO A and SA catalogs
@@ -31,7 +31,7 @@ static char *usapath;
 /* USNO A-1.0 directory pathname; replaced by UA1_PATH environment variable */
 /* Use this if CDROMs have been transferred to a single hard disk */
 /* Otherwise set to null string ("") and use cdroot */
-static char ua1path[64]="/data/ua";
+static char ua1path[64]="/data/ua1";
 
 /* USNO A-2.0 directory pathname; replaced by UA2_PATH environment variable */
 /* Use this if CDROMs have been transferred to a single hard disk */
@@ -875,7 +875,12 @@ int znum;	/* UA Catalog zone */
 	return (0);
 	}
     else {
-	if (star.rasec > 100000 || star.rasec < 0) {
+	if (star.rasec > 360 * 360000 || star.rasec < 0) {
+	    cswap = 1;
+	    /* fprintf (stderr,"UACOPEN: swapping bytes in UA zone catalog %s\n",
+		     zonepath); */
+	    }
+	else if (star.decsec > 180 * 360000 || star.decsec < 0) {
 	    cswap = 1;
 	    /* fprintf (stderr,"UACOPEN: swapping bytes in UA zone catalog %s\n",
 		     zonepath); */
@@ -1019,4 +1024,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Sep 16 1999	Add distsort argument so brightest stars in circle works, too
  * Oct 20 1999	Include wcscat.h
  * Oct 21 1999	Clean up code after lint
+ *
+ * Jun  9 2000	Fix bug detecting swapped files on Alphas and PCs if RA=0
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** April 5, 2000
+ *** June 9, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -780,7 +780,11 @@ char *keyword0;	/* character string containing the name of the keyword
 	    }
 	}
     else {
-	v1 = strsrch (line,"=") + 1;
+	v1 = strsrch (line,"=");
+	if (v1 == NULL)
+	    v1 = line + 9;
+	else
+	    v1 = v1 + 1;
 	c1 = strsrch (line,"/");
 	if (c1 != NULL)
 	    v2 = c1;
@@ -952,7 +956,8 @@ char *keyword;	/* character string containing the name of the variable
 
 /* Find FITS header line containing specified keyword */
 
-char *ksearch (hstring,keyword)
+char *
+ksearch (hstring,keyword)
 
 /* Find entry for keyword keyword in FITS header string hstring.
    (the keyword may have a maximum of eight letters)
@@ -1333,4 +1338,5 @@ int set_saolib(hstring)
  * Mar 17 2000	Ignore leading # for numeric values in header
  * Mar 21 2000	Implement -n to get string value starting with nth token
  * Apr  5 2000	Reject +- in isnum()
+ * Jun  9 2000	Read keyword values even if no equal sign is present
  */

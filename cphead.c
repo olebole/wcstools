@@ -1,5 +1,5 @@
 /* File cphead.c
- * March 22, 2000
+ * June 8, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -184,8 +184,16 @@ char **av;
 	    }
 	}
 
-    if (nkwd <= 0 || nfile <= 0 )
+    if (nkwd <= 0 && nfile <= 0 )
 	usage ();
+    else if (nkwd <= 0) {
+	fprintf (stderr, "CPHEAD: no keywords specified\n");
+	exit (1);
+	}
+    else if (nfile <= 0 ) {
+	fprintf (stderr, "CPHEAD: no files specified\n");
+	exit (1);
+	}
 
     if (nkwd > 1)
 	printfill = 1;
@@ -584,4 +592,5 @@ char *string;
 
 /* Feb 24 2000	New program based on sethead and gethead
  * Mar 22 2000	Use lt2fd() instead of getltime()
+ * Jun  8 2000	If no files or keywords specified, say so
  */

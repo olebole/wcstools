@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** June 2, 2000
+ *** June 9, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -226,8 +226,8 @@ int	nlog;		/* 1 for diagnostics */
 			    gnum[farstar] = num;
 			    gra[farstar] = ra;
 			    gdec[farstar] = dec;
-			    gpra[nstar] = rapm;
-			    gpdec[nstar] = decpm;
+			    gpra[farstar] = rapm;
+			    gpdec[farstar] = decpm;
 			    gmag[farstar] = mag;
 			    gmagb[farstar] = magb;
 			    gtype[farstar] = isp;
@@ -249,8 +249,8 @@ int	nlog;		/* 1 for diagnostics */
 			gnum[faintstar] = num;
 			gra[faintstar] = ra;
 			gdec[faintstar] = dec;
-			gpra[nstar] = rapm;
-			gpdec[nstar] = decpm;
+			gpra[farstar] = rapm;
+			gpdec[farstar] = decpm;
 			gmag[faintstar] = mag;
 			gmagb[faintstar] = magb;
 			gtype[faintstar] = isp;
@@ -823,4 +823,5 @@ char	*filename;	/* Name of file for which to find size */
  * Mar 15 2000	Add proper motions to returns from actread() and actrnum()
  * May 31 2000	Get spectral type from bv2sp()
  * Jun  2 2000	Free all allocated data structures
+ * Jun  9 2000	Fix bug which caused memory overflow if limiting number
  */

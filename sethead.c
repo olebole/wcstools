@@ -1,5 +1,5 @@
 /* File sethead.c
- * May 1, 2000
+ * June 8, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -28,6 +28,7 @@ static int histset = 0;
 static int krename = 0;
 static char prefix[2];
 static int version = 0;		/* If 1, print only program name and version */
+static int first = 1;
 
 
 main (ac, av)
@@ -162,8 +163,16 @@ char **av;
 	    }
 	}
 
-    if (nkwd <= 0 || nfile <= 0 )
+    if (nkwd <= 0 && nfile <= 0 )
 	usage ();
+    else if (nkwd <= 0) {
+	fprintf (stderr, "SETHEAD: no keywords specified\n");
+	exit (1);
+	}
+    else if (nfile <= 0 ) {
+	fprintf (stderr, "SETHEAD: no files specified\n");
+	exit (1);
+	}
 
     /* Open file containing a list of images, if there is one */
     if (ilistfile != NULL) {
@@ -182,9 +191,6 @@ char **av;
 	    }
 	else
 	    SetValues (fn[ifile], nkwd, kwd);
-
-	if (verbose)
-	    printf ("\n");
 	}
     if (ilistfile != NULL)
 	fclose (flist);
@@ -296,12 +302,13 @@ char	*kwd[];		/* Names and values of those keywords */
 	    return;
 	    }
 	}
-    if (verbose) {
+    if (verbose && first) {
 	fprintf (stderr,"Set Header Parameter Values in ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", filename);
 	else
 	    fprintf (stderr,"FITS image file %s\n", filename);
+	first = 0;
 	}
 
     if (nkwd < 1)
@@ -662,4 +669,6 @@ char	*kwd[];		/* Names and values of those keywords */
  * Mar 22 2000	Use lt2fd() instead of getltime()
  * Apr 21 2000	Drop trailing spaces from character strings
  * May  1 2000	Drop -d option; it was unneeded for date-valued keywords
+ * Jun  8 2000	Print revision message on only first of multiple files
+ * Jun  8 2000	If no files or keywords specified, say so
  */

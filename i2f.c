@@ -1,5 +1,5 @@
 /* File i2f.c
- * May 30, 2000
+ * June 6, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -20,7 +20,9 @@ static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;		/* If 1, print only program name and version */
 static int delirafkey = 0;	/* If 1, delete IRAF .imh keywords */
 static int deliraffile = 0;	/* If 1, delete IRAF .imh files */
-char outname[128];              /* Name for output image */
+static char outname[128];	/* Name for output image */
+static char outdir[256];	/* Output directory pathname */
+static int first = 1;
 
 main (ac, av)
 int ac;
@@ -28,6 +30,7 @@ char **av;
 {
     char *str;
     outname[0] = 0;
+    outdir[0] = 0;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -46,7 +49,13 @@ char **av;
 		case 'v':	/* more verbosity */
 		    verbose++;
 		    break;
-		case 'd':	/* delete IRAF imh files */
+		case 'd':	/* output directory */
+		    if (ac < 2)
+			usage ();
+		    strcpy (outdir, *++av);
+		    ac--;
+		    break;
+		case 'x':	/* delete IRAF imh files */
 		    deliraffile = 1;
 		    break;
 		case 'i':	/* delete IRAF imh keywords */
@@ -76,10 +85,8 @@ char **av;
 	while (ac-- > 0) {
 	    char *fn = *av++;
 	    if (verbose)
-		fprintf (stderr,"%s:\n", fn);
+		fprintf (stderr,"%s", fn);
 	    IRAFtoFITS (fn);
-	    if (verbose)
-		fprintf (stderr,"\n");
 	    }
 	}
 
@@ -92,11 +99,13 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Write FITS files from IRAF image files\n");
-    fprintf(stderr,"usage: i2f [-vs] [-o name] file.imh ...\n");
-    fprintf(stderr,"  -o: output name for one file\n");
+    fprintf(stderr,"usage: i2f [-isvx] [-o name] [-d path] file.imh ...\n");
+    fprintf(stderr,"  -d: move .imh file to this directory\n");
     fprintf(stderr,"  -i: delete unnecessary IRAF keywords\n");
+    fprintf(stderr,"  -o: output name for one file\n");
     fprintf(stderr,"  -s: write output to standard output\n");
     fprintf(stderr,"  -v: verbose\n");
+    fprintf(stderr,"  -x: delete IRAF image file\n");
     exit (1);
 }
 
@@ -117,7 +126,9 @@ char *name;
     char hdrback[256];	/* Name of backup IRAF header file */
     char pixfile[256];	/* Name of IRAF pixel file */
     char fitsname[256];	/* Name of FITS file */
+    char fitspath[256];	/* Pathname of FITS file  */
     char *hdrfile1;
+    char *fitsfile;
     char command[256];
     char *ext;		/* Pointer to start of extension */
     char *endchar;
@@ -148,7 +159,7 @@ char *name;
 	strcpy (fitsname, name);
 	ext = strsrch (fitsname,".imh");
 	strcpy (ext,".fits");
-	if (verbose) {
+	if (verbose && first) {
 	    if (outname[0] == (char) 0)
 		fprintf (stderr, "Write FITS file from IRAF image file %s\n",
 			 name);
@@ -183,7 +194,7 @@ char *name;
 	    }
 	strcpy (fitsname, name);
 	strcat (fitsname,".fits");
-	if (verbose) {
+	if (verbose && first) {
 	    fprintf (stderr,"Write FITS files from IRAF image file %s\n", irafname);
 	    }
 	}
@@ -232,13 +243,29 @@ char *name;
 	hdel (header, "IRAF-BPX");
 	}
 
+    /* Write FITS file to a specified directory */
+    if (outdir[0] > 0) {
+	strcpy (fitspath, outdir);
+	strcat (fitspath, "/");
+	fitsfile = strrchr (fitsname,'/');
+	if (fitsfile == NULL)
+	    strcat (fitspath, fitsname);
+	else
+	    strcat (fitspath, fitsfile+1);
+	}
+    else
+	strcpy (fitspath, fitsname);
+    first = 0;
+
     /* Write FITS image */
-    if (fitswimage (fitsname, header, image) > 0) {
+    if (fitswimage (fitspath, header, image) > 0) {
 	if (verbose)
-	    fprintf (stderr, "%s: rewritten successfully.\n", fitsname);
+	    fprintf (stderr, " to %s\n", fitspath);
+
+	/* Delete IRAF .imh, .pix files */
 	if (deliraffile) {
 	    hdrfile1 = strrchr (hdrfile, '/');
-	    if (hdrfile == NULL) {
+	    if (hdrfile1 == NULL) {
 		strcpy (hdrback, "..");
 		strcat (hdrback, hdrfile);
 		}
@@ -270,7 +297,7 @@ char *name;
 	}
 
     else if (verbose)
-	fprintf (stderr, "%s: not written.\n", fitsname);
+	fprintf (stderr, "%s: not written.\n", fitspath);
 
     free (header);
     free (image);
@@ -299,5 +326,6 @@ char *name;
  *
  * Mar 22 2000	Use lt2fd() instead of getltime()
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
- * May 30 2000	Adds option to delete IRAF keywords and IRAF files
+ * May 30 2000	Add option to delete IRAF keywords
+ * Jun  6 2000	Add options to delete IRAF files and to write FITS elsewhere
  */
