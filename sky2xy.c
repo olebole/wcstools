@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * April 7, 2003
+ * April 24, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -46,7 +46,8 @@ char **av;
     char *str1;
     int ic;
     int offscale, n;
-    int nx, ny, lhead, i, bitpix, nf;
+    int nx, ny, lhead, i, nf;
+    int bitpix = 0;
     char *header;
     double cra, cdec, dra, ddec, secpix, eqout, drot;
     int wp, hp, sysout;
@@ -211,6 +212,8 @@ char **av;
 	hputl (header, "SIMPLE", 1);
 	hputi4 (header, "BITPIX", bitpix);
 	hputi4 (header, "NAXIS", 2);
+	hputi4 (header, "NAXIS1", 100);
+	hputi4 (header, "NAXIS2", 100);
 	}
 
     /* Initialize world coordinate system structure */
@@ -429,4 +432,5 @@ char	*command;
  *
  * Apr  4 2003	Add command line WCS setting and number of decimal places
  * Apr  7 2003	Add -o option to print only x or y coordinate
+ * Apr 24 2003	Initialize FITS header completely if needed
  */

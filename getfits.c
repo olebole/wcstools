@@ -1,5 +1,5 @@
 /* File getfits.c
- * January 30, 2003
+ * May 2, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -293,7 +293,7 @@ char **av;
 	    }
 	for (ifile = 0; ifile < nfile; ifile++) {
 	    first_token (flist, 254, filename);
-	    ExtractFITS (filename);
+	    ExtractFITS (filename,kwd,nkwd);
 	    }
 	fclose (flist);
 	}
@@ -301,7 +301,7 @@ char **av;
     /* Process files from command line */
     else if (fn) {
 	for (ifile = 0; ifile < nfile; ifile++) {
-	    (void) ExtractFITS (fn[ifile]);
+	    (void) ExtractFITS (fn[ifile],kwd,nkwd);
 	    }
 	}
 
@@ -901,4 +901,5 @@ char *newname;
  * Dec 16 2002	Add -k option to delete FITS keywords when copying
  *
  * Jan 30 2003	Fix typo in variable name 
+ * May  2 2003	Fix bug if no keywords are deleted
  */

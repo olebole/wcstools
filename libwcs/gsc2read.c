@@ -1,5 +1,5 @@
 /*** File libwcs/gsc2read.c
- *** March 11, 2003
+ *** April 24, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2003
@@ -152,7 +152,7 @@ int	nlog;		/* 1 for diagnostics */
     starcat->coorsys = WCS_J2000;
     starcat->epoch = 2000.0;
     starcat->equinox = 2000.0;
-    starcat->nmag = 4;
+    starcat->nmag = 5;
 
     /* Extract desired sources from catalog  and return them */
     nstar = tabread (gsc2url,distsort,cra,cdec,dra,ddec,drad,
@@ -178,4 +178,5 @@ int	nlog;		/* 1 for diagnostics */
  * Feb  6 2003	Reset nmag to 4 because there is an epoch column
  * Mar 11 2003	Fix URL for search
  * Apr  3 2003	Drop unused variables after lint; drop gsc2rnum()
+ * Apr 24 2003	Set nmag to 5 to include epoch, which is not printed
  */

@@ -1,5 +1,5 @@
 /* File scat.c
- * April 13, 2003
+ * April 24, 2003
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -2555,6 +2555,8 @@ double	eqout;		/* Equinox for output coordinates */
 		    strcpy (headline, "USNO_A2_number ");
 		else if (refcat == UB1)
 		    strcpy (headline, "USNO_B1_number ");
+		else if (refcat == UCAC1)
+		    strcpy (headline, "UCAC1_num    ");
 		else if (refcat == TMPSC)
 		    strcpy (headline, "2MASS_num. ");
 		else if (refcat == UJC)
@@ -2633,7 +2635,7 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, "  Mag ");
 	    else if (refcat == GSC || refcat == GSCACT)
 		strcat (headline, "   Mag ");
-	    else if (refcat == SAO || refcat == PPM || refcat == BSC)
+	    else if (refcat == SAO || refcat == PPM || refcat == BSC || refcat == UCAC1)
 		strcat (headline, "    Mag");
 	    else if (refcat==TMPSC)
 		strcat (headline, "   MagJ    MagH    MagK  ");
@@ -2986,6 +2988,9 @@ double	eqout;		/* Equinox for output coordinates */
 		else if (refcat == UJC)
 		    sprintf (headline,"%s %s %s %6.2f",
 			     numstr, rastr, decstr, gm[0][i]);
+		else if (refcat == UCAC1)
+		    sprintf (headline,"%s  %s %s %6.2f",
+			     numstr,rastr,decstr,gm[0][i]);
 		else if (refcat==SAO || refcat==PPM || refcat == BSC)
 		    sprintf (headline,"  %s  %s %s %6.2f",
 			     numstr,rastr,decstr,gm[0][i]);
@@ -3986,4 +3991,5 @@ PrintGSClass ()
  * Mar 25 2003	Output coordinate system can be different from search system
  * Mar 25 2003	Fix headings print search, catalog, and output coordinates
  * Apr 13 2003	Set revision message for subroutines using setrevmsg()
+ * Apr 24 2003	Add UCAC1 catalog
  */

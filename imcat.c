@@ -1,5 +1,5 @@
 /* File imcat.c
- * April 14, 2003
+ * April 24, 2003
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -740,6 +740,9 @@ int	*region_char;	/* Character for SAOimage region file output */
     gc = NULL;
     gobj = NULL;
     gobj1 = NULL;
+
+    if (tabout)
+	printhead = 0;
 
     isp[2] = 0;
     isp[3] = 0;
@@ -1930,4 +1933,5 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Apr  2 2003	Try rotated images again
  * Apr 13 2003	Set revision message for subroutines using setrevmsg()
  * Apr 14 2003	Pass through nstarmax=-1 option to ctgread()
+ * Apr 24 2003	Add UCAC1 catalog; turn off header if tab on
  */

@@ -1,5 +1,9 @@
 WCSTools subroutine release history
 
+May 8, 2003 - Release 3.3.4 (Doug Mink, SAO)
+Add two missing semicolons in C++ declarations in wcs.h
+Read prj.p[0] from PROJP0 for ZPN projections, instead of ignoring it
+
 April 3, 2003 - Release 3.3.2 (Doug Mink, SAO)
 Add distortion conversion for SIRTF images
 

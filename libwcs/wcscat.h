@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** April 15, 2003
+ *** April 24, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2003
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -88,6 +88,7 @@ int gsc2read();		/* Read sources from GSC II Catalog */
 int tmcread();		/* Read sources from 2MASS Point Source Catalog */
 int uacread();		/* Read sources from USNO A or SA Catalog */
 int ubcread();		/* Read sources from USNO B Catalog */
+int ucacread();		/* Read sources from USNO UCAC 1 Catalog */
 int ujcread();		/* Read sources from USNO J Catalog */
 int tabread();		/* Read sources from tab table catalog */
 int binread();		/* Read sources from SAO TDC binary format catalog */
@@ -102,6 +103,7 @@ int gscrnum();		/* Read sources from HST Guide Star Catalog */
 int tmcrnum();		/* Read sources from 2MASS Point Source Catalog */
 int uacrnum();		/* Read sources from USNO A or SA Catalog */
 int ubcrnum();		/* Read sources from USNO B Catalog */
+int ucacrnum();		/* Read sources from USNO UCAC 1 Catalog */
 int ujcrnum();		/* Read sources from USNO J Catalog */
 int tabrnum();		/* Read sources from tab table catalog */
 int binrnum();		/* Read sources from SAO TDC binary format catalog */
@@ -454,5 +456,5 @@ char *getrevmsg();	/* Return version/date string */
  * Apr  3 2003	Add ubcread(), ubcrnum(), and FluxSortStars()
  * Apr  3 2003	Drop gsc2rnum()
  * Apr 14 2003	Add setrevmsg() and getrevmsg()
- * Apr 15 2003	Add UCAC1 and UCAC2
+ * Apr 24 2003	Add UCAC1 and UCAC2, ucacread() and ucacrnum()
  */

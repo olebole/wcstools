@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** April 14, 2003
+ *** April 24, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -145,10 +145,10 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
 	*catprop = 0;
-	*nmag = 4;
+	*nmag = 5;
 	refcat = GSC2;
 	}
-    else if (refcat == GSC2) {
+    else if (refcat == GSC) {
 	strcpy (title, "HST Guide Stars");
 	*syscat = WCS_J2000;
 	*eqcat = 2000.0;
@@ -198,6 +198,14 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	    strcpy (title, "USNO A-2.0 Catalog Stars");
 	else
 	    strcpy (title, "USNO A Catalog Stars");
+	}
+    else if (refcat == UCAC1) {
+	strcpy (title, "USNO UCAC1 Catalog Stars");
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	*catprop = 1;
+	*nmag = 1;
 	}
     else if (refcat == UJC) {
 	strcpy (title, "USNO J Catalog Stars");
@@ -376,6 +384,10 @@ char	*refcatname;	/* Name of reference catalog */
 	refcat = GSC;
     else if (strncasecmp(refcatname,"ub",2)==0)
 	refcat = UB1;
+    else if (strncasecmp(refcatname,"ucac1",5)==0)
+	refcat = UCAC1;
+    else if (strncasecmp(refcatname,"ucac2",5)==0)
+	refcat = UCAC2;
     else if (strncasecmp(refcatname,"usa",3)==0 &&
 	     strsrch(refcatname, ".tab") == NULL) {
 	if (strchr (refcatname, '1') != NULL)
@@ -526,6 +538,10 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "USNO-A1.0");
     else if (refcat ==  UB1)	/* USNO B-1.0 Star Catalog */
 	strcpy (catname, "USNO-B1.0");
+    else if (refcat ==  UCAC1)	/* USNO UCAC1 Star Catalog */
+	strcpy (catname, "USNO-UCAC1");
+    else if (refcat ==  UCAC2)	/* USNO UCAC2 Star Catalog */
+	strcpy (catname, "USNO-UCAC2");
     else if (refcat ==  UA2)	/* USNO A-2.0 Star Catalog */
 	strcpy (catname, "USNO-A2.0");
     else if (refcat ==  USA1)	/* USNO SA-1.0 Star Catalog */
@@ -574,6 +590,10 @@ int	refcat;		/* Catalog code */
 	strcpy (catid,"usnob1_id    ");
     else if (refcat == UA2)
 	strcpy (catid,"usnoa2_id     ");
+    else if (refcat == UCAC1)
+	strcpy (catid,"ucac1_id  ");
+    else if (refcat == UCAC2)
+	strcpy (catid,"ucac2_id  ");
     else if (refcat == UJC)
 	strcpy (catid,"usnoj_id     ");
     else if (refcat == TMPSC)
@@ -670,6 +690,14 @@ char *progname;	/* Program name which might contain catalog code */
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "usa2");
 	}
+    else if (strsrch (progname,"ucac1") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "ucac1");
+	}
+    else if (strsrch (progname,"ucac2") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "ucac2");
+	}
     else if (strsrch (progname,"ujc") != NULL) {
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "ujc");
@@ -745,6 +773,14 @@ char	*numstr;	/* Formatted number (returned) */
 	    sprintf (numstr, "%012.7f", dnum);
 	else
 	    sprintf (numstr, "%12.7f", dnum);
+	}
+
+    /* USNO-UCAC1 */
+    else if (refcat == UCAC1) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%010.6f", dnum);
+	else
+	    sprintf (numstr, "%10.6f", dnum);
 	}
 
     /* GSC II */
@@ -876,6 +912,10 @@ int	nndec;		/* Number of decimal places ( >= 0) */
     else if (refcat == TMPSC)
 	return (10);
 
+    /* UCAC1 Catalog */
+    else if (refcat == UCAC1)
+	return (10);
+
     /* USNO Plate Catalogs */
     else if (refcat == USNO)
 	return (7);
@@ -966,6 +1006,10 @@ int	refcat;		/* Catalog code */
     /* USNO Plate Catalogs */
     else if (refcat == USNO)
 	return (0);
+
+    /* UCAC1 Catalogs */
+    else if (refcat == UCAC1)
+	return (6);
 
     /* USNO UJ 1.0 Catalog */
     else if (refcat == UJC)
@@ -2391,14 +2435,17 @@ double	drad;		/* Radius to search in degrees */
     else if (refcat == SAO) {
 	printf ("<FIELD name=\"Vmag\" ucd=\"PHOT_MAG_V\" datatype=\"float\" unit=\"mag\">\n");
 	printf ("  <DESCRIPTION> SAO Catalog V magnitude (7)</DESCRIPTION>\n");
+	printf ("</FIELD>\n");
 	} 
     else if (refcat == PPM) {
 	printf ("<FIELD name=\"Vmag\" ucd=\"PHOT_MAG_V\" datatype=\"float\" unit=\"mag\">\n");
 	printf ("  <DESCRIPTION> PPM Catalog V magnitude (7)</DESCRIPTION>\n");
+	printf ("</FIELD>\n");
 	} 
     if (typecol == 1) {
 	printf ("<FIELD ucd=\"SPECT_TYPE_GENERAL\" name=\"Spectral Type\">\n");
 	printf ("  <DESCRIPTION>Spectral Type from catalog</DESCRIPTION>\n");
+	printf ("</FIELD>\n");
 	}
     printf ("<FIELD ucd=\"POS_ANG_DIST_GENERAL\" datatype=\"float\" name=\"Offset\" unit=\"degrees\">\n");
     printf ("  <DESCRIPTION>Radial distance from requested position</DESCRIPTION>\n");
@@ -2510,4 +2557,7 @@ vottail ()
  * Mar 10 2003	Clean up RefLim() to better represent region to be searched
  * Mar 24 2003	Add CatCode() to separate catalog type from catalog parameters
  * Apr 14 2003	Add setrevmsg() and getrevmsg()
+ * Apr 24 2003	Add UCAC1 Catalog
+ * Apr 24 2003	Return 5 magnitudes for GSC II, including epoch
+ * Apr 24 2003	Fix bug dealing with HST GSC
  */

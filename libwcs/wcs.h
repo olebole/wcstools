@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.h
- *** April 1, 2003
+ *** May 1, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2003
@@ -487,14 +487,14 @@ extern "C" {
 	double x,		/* Image pixel horizontal coordinate */
 	double y,		/* Image pixel vertical coordinate */
 	double *u,		/* Focal plane horizontal coordinate(returned) */
-	double *v)		/* Focal plane vertical coordinate (returned) */
+	double *v);		/* Focal plane vertical coordinate (returned) */
 
     void foc2pix (	/* Convert focal plane to pixel coordinates */
 	struct WorldCoor *wcs,	/* World coordinate system structure */
 	double u,		/* Focal plane horizontal coordinate */
 	double v,		/* Focal plane vertical coordinate */
 	double *x,		/* Image pixel horizontal coordinate(returned) */
-	double *y)		/* Image pixel vertical coordinate (returned) */
+	double *y);		/* Image pixel vertical coordinate (returned) */
 
 };
 #else /* __cplusplus */
@@ -657,4 +657,5 @@ void foc2pix();		/*  focal plane coordinates -> pixel coordinates */
  *
  * Apr  1 2003	Add wcs->distort Distort structure for distortion correction
  * Apr  1 2003	Add foc2pix() and pix2foc() subroutines for distortion correction
+ * May  1 2003	Add missing semicolons after C++ declarations of previous two functions
  */

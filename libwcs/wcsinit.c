@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** April 3, 2003
+ *** May 8, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2003
@@ -417,7 +417,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	/* FITS WCS interim proposal projection constants */
 	for (i = 0; i < 10; i++) {
 	    wcs->prj.p[i] = 0.0;
-	    sprintf (keyword,"PROJP%d",i+1);
+	    sprintf (keyword,"PROJP%d",i);
 	    hgetr8c (hstring, keyword, mchar, &wcs->prj.p[i]);
 	    }
 
@@ -1322,4 +1322,5 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Jan  3 2002	For ZPN, read PVi_0 to PVi_9, not PVi_1 to PVi_10
  * Mar 27 2003	Clean up default center computation
  * Apr  3 2003	Add input for SIRTF distortion coefficients
+ * May  8 2003	Change PROJP reading to start with 0 instead of 1
  */
