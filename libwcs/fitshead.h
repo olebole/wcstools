@@ -3,6 +3,8 @@
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
+/* Declarations for subroutine sin hget.c, hput.c, and iget.c */
+
 #ifndef _fitshead_h_
 #define _fitshead_h_
 

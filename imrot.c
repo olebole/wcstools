@@ -1,5 +1,5 @@
 /* File imrot.c
- * July 20, 2000
+ * September 12, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -193,6 +193,7 @@ char *name;
     char *newimage;
     char *imext, *imext1;
     char *fname;
+    char extname[16];
     int lext, lroot;
     int bitpix0;
     char echar;
@@ -228,9 +229,60 @@ char *name;
 		*imext1 = (char) 0;
 		}
 	    }
+	}
+    else
+	strcpy (newname, name);
+
+    /* Open IRAF image */
+    if (isiraf (name)) {
+	iraffile = 1;
+	if ((irafheader = irafrhead (name, &lhead)) != NULL) {
+	    if ((header = iraf2fits (name, irafheader, lhead, &nbhead)) == NULL) {
+		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
+		free (irafheader);
+		return;
+		}
+	    if ((image = irafrimage (header)) == NULL) {
+		hgetm (header,"PIXFIL", 255, pixname);
+		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
+		free (irafheader);
+		free (header);
+		return;
+		}
+	    }
+	else {
+	    fprintf (stderr, "Cannot read IRAF header file %s\n", name);
+	    return;
+	    }
+	}
+
+    /* Open FITS file */
+    else {
+	iraffile = 0;
+	if ((header = fitsrhead (name, &lhead, &nbhead)) != NULL) {
+	    if ((image = fitsrimage (name, nbhead, header)) == NULL) {
+		fprintf (stderr, "Cannot read FITS image %s\n", name);
+		free (header);
+		return;
+		}
+	    }
+	else {
+	    fprintf (stderr, "Cannot read FITS file %s\n", name);
+	    return;
+	    }
+	}
+
+    /* Create new file name */
+    if (!overwrite) {
 	if (imext != NULL) {
-	    strcat (newname, "_");
-	    strcat (newname, imext+1);
+	    if (hgets (header, "EXTNAME",8,extname)) {
+		strcat (newname, ".");
+		strcat (newname, extname);
+		}
+	    else {
+		strcat (newname, "_");
+		strcat (newname, imext+1);
+		}
 	    }
 	if (mirror)
 	    strcat (newname, "m");
@@ -276,44 +328,6 @@ char *name;
     else
 	strcpy (newname, name);
 
-    /* Open IRAF image */
-    if (isiraf (name)) {
-	iraffile = 1;
-	if ((irafheader = irafrhead (name, &lhead)) != NULL) {
-	    if ((header = iraf2fits (name, irafheader, lhead, &nbhead)) == NULL) {
-		fprintf (stderr, "Cannot translate IRAF header %s/n",name);
-		free (irafheader);
-		return;
-		}
-	    if ((image = irafrimage (header)) == NULL) {
-		hgetm (header,"PIXFIL", 255, pixname);
-		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
-		free (irafheader);
-		free (header);
-		return;
-		}
-	    }
-	else {
-	    fprintf (stderr, "Cannot read IRAF header file %s\n", name);
-	    return;
-	    }
-	}
-
-    /* Open FITS file */
-    else {
-	iraffile = 0;
-	if ((header = fitsrhead (name, &lhead, &nbhead)) != NULL) {
-	    if ((image = fitsrimage (name, nbhead, header)) == NULL) {
-		fprintf (stderr, "Cannot read FITS image %s\n", name);
-		free (header);
-		return;
-		}
-	    }
-	else {
-	    fprintf (stderr, "Cannot read FITS file %s\n", name);
-	    return;
-	    }
-	}
     if (verbose) {
 	fprintf (stderr,"Rotate and/or reflect ");
 	if (iraffile)
@@ -343,13 +357,24 @@ char *name;
 	if (bitpix != 0)
 	    hputi4 (header, "BITPIX", bitpix);
 	if (iraffile && !fitsout) {
-	    if (irafwimage (newname,lhead,irafheader,header,newimage) > 0 &&
-		verbose)
-		printf ("%s: written successfully.\n", newname);
+	    if (irafwimage (newname,lhead,irafheader,header,newimage) > 0) {
+		if (verbose)
+		    printf ("%s: written successfully.\n", newname);
+		else
+		    printf ("%s\n", newname);
+		}
+	    else if (verbose)
+		printf ("IMROT: File %s not written.\n", newname);
 	    }
 	else {
-	    if (fitswimage (newname, header, newimage) > 0 && verbose)
-		printf ("%s: written successfully.\n", newname);
+	    if (fitswimage (newname, header, newimage) > 0) {
+		if (verbose)
+		    printf ("%s: written successfully.\n", newname);
+		else
+		    printf ("%s\n", newname);
+		}
+	    else if (verbose)
+		printf ("IMROT: File %s not written.\n", newname);
 	    }
 	free (newimage);
 	}
@@ -389,4 +414,6 @@ char *name;
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  * Jul 20 2000	Use .fits, not .fit, extension on output FITS file names
  * Jul 20 2000	Add -s option to split multi-extension FITS files
+ * Sep 12 2000	Echo new file name to standard output, if not verbose
+ * Sep 12 2000	Use .extname if multi-extension extraction, not _number
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** June 9, 2000
+ *** September 20, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	hget.c (Get FITS Header parameter values)
@@ -1241,6 +1241,8 @@ char *string;	/* Character string */
     /* Numeric strings contain 0123456789-+ and d or e for exponents */
     for (i = 0; i < lstr; i++) {
 	cstr = string[i];
+	if (cstr == '\n')
+	    break;
 	if ((cstr < 48 || cstr > 57) &&
 	    cstr != '+' && cstr != '-' &&
 	    cstr != 'D' && cstr != 'd' &&
@@ -1339,4 +1341,5 @@ int set_saolib(hstring)
  * Mar 21 2000	Implement -n to get string value starting with nth token
  * Apr  5 2000	Reject +- in isnum()
  * Jun  9 2000	Read keyword values even if no equal sign is present
+ * Sep 20 2000	Ignore linefeed at end of number in isnum()
  */

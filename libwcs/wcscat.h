@@ -1,5 +1,5 @@
 /* File libwcs/wcscat.h
- * July 12, 2000
+ * September 25, 2000
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -36,6 +36,7 @@ int CatNumLen();	/* Return length of source numbers */
 void SearchLim();	/* Compute limiting RA and Dec */
 void RefLim();		/* Compute limiting RA and Dec in new system */
 int isfile();		/* Return 1 if string is name of readable file */
+int isacat();		/* Return 1 if string is name of ASCII catalog file */
 int agets();		/* Extract value from keyword= value in string */
 void bv2sp();		/* Approximate main sequence spectral type from B - V */
 
@@ -132,6 +133,7 @@ struct StarCat {
     int ncobj;		/* Length of object name in binary star entry */
     int nndec;		/* Number of decimal places in star number */
     int nepoch;		/* 1 if epoch of coordinates is present */
+    int sptype;		/* 1 if spectral type is present in catalog */
     char *catbuff;	/* Pointer to start of catalog */
     char *catdata;	/* Pointer to first entry in catalog */
     char *catline;	/* Pointer to current entry in catalog */
@@ -300,4 +302,6 @@ int getoken();		/* Get specified token from tokenized string */
  * May 26 2000	Add separate pointer to header in tab table structure
  * May 26 2000	Add separate pointer to table name in tab table structure
  * Jul 12 2000	Add catalog type code to ctalog data structure
+ * Sep 20 2000	Add isacat() to detect ASCII catalog files
+ * Sep 25 2000	Add starcat.sptype to flag spectral type in catalog
  */

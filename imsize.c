@@ -1,5 +1,5 @@
 /* File imsize.c
- * August 14, 2000
+ * September 14, 2000
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -404,7 +404,10 @@ char *name;
     else {
 	printf ("%s %s %s %s", fileroot, rstr, dstr, coorsys);
 	if (secpix > 0.0)
-	    printf (" %.3f\'x%.3f\'", dra, ddec);
+	    if (wcs->sysout != 5)
+		printf (" %.3f\'x%.3f\'", dra*60.0, ddec*60.0);
+	    else
+		printf (" %.3fx%.3f", dra, ddec);
 	else if (dssc)
 	    printf (" 10.000\'x10.000\'");
 	if (!dssc) {
@@ -474,4 +477,5 @@ char *name;
  * Feb 15 2000	Print size of image if no WCS
  * Aug 14 2000	Reformat for LINEAR and other non-angular coordinates
  * Aug 15 2000	Add -n option to set number of decimal places
+ * Sep 14 2000	Print size in arcminutes if WCS is sky
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/uacread.c
- *** June 26, 2000
+ *** September 22, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Subroutines to read from the USNO A and SA catalogs
@@ -90,7 +90,7 @@ int getuplate ()
 
 int
 usaread (cra,cdec,dra,ddec,drad,distsort,sysout,eqout,epout,mag1,mag2,nstarmax,
-	 unum,ura,udec,umag,umagb,uplate,nlog)
+	 unum,ura,udec,umag,umagb,utype,nlog)
 
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
@@ -108,7 +108,7 @@ double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
 double	*umag;		/* Array of red magnitudes (returned) */
 double	*umagb;		/* Array of blue magnitudes (returned) */
-int	*uplate;	/* Array of plate numbers (returned) */
+int	*utype;		/* Array of plate numbers (returned) */
 int	nlog;		/* Logging interval */
 {
     int i;
@@ -117,7 +117,7 @@ int	nlog;		/* Logging interval */
     ucat = USNOSA10;
     i = uacread ("usac",distsort,cra,cdec,dra,ddec,drad,
 		 sysout,eqout,epout,mag1,mag2,nstarmax,
-		 unum,ura,udec,umag,umagb,uplate,nlog);
+		 unum,ura,udec,umag,umagb,utype,nlog);
     ucat = USNOA10;
     return (i);
 }
@@ -126,7 +126,7 @@ int	nlog;		/* Logging interval */
 
 int
 uacread (refcatname,distsort,cra,cdec,dra,ddec,drad,sysout,eqout,epout,
-	 mag1,mag2,nstarmax,unum,ura,udec,umag,umagb,uplate,nlog)
+	 mag1,mag2,nstarmax,unum,ura,udec,umag,umagb,utype,nlog)
 
 char	*refcatname;	/* Name of catalog (UAC, USAC, UAC2, USAC2) */
 int	distsort;	/* 1 to sort stars by distance from center */
@@ -145,7 +145,7 @@ double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
 double	*umag;		/* Array of red magnitudes (returned) */
 double	*umagb;		/* Array of blue magnitudes (returned) */
-int	*uplate;	/* Array of plate numbers (returned) */
+int	*utype;		/* Array of plate numbers (returned) */
 int	nlog;		/* Logging interval */
 {
     double ra1,ra2;	/* Limiting right ascensions of region in degrees */
@@ -174,6 +174,8 @@ int	nlog;		/* Logging interval */
     double mag, magb;
     int istar, istar1, istar2, plate;
     int nzmax = NZONES;	/* Maximum number of declination zones */
+    int isp;
+    char ispc[2];
     char *str;
     char cstr[32];
 
@@ -329,6 +331,8 @@ int	nlog;		/* Logging interval */
 				(xplate == 0 || plate == xplate)) {
 
 				magb = uacmagb (star.magetc);
+				br2sp (NULL, magb, mag, ispc);
+				isp = (1000 * (int)ispc[0]) + (int)ispc[1];
 				num = (double) znum +
 				      (0.00000001 * (double)istar);
 
@@ -339,7 +343,7 @@ int	nlog;		/* Logging interval */
 				    udec[nstar] = dec;
 				    umag[nstar] = mag;
 				    umagb[nstar] = magb;
-				    uplate[nstar] = plate;
+				    utype[nstar] = isp;
 				    udist[nstar] = dist;
 				    if (dist > maxdist) {
 					maxdist = dist;
@@ -360,7 +364,7 @@ int	nlog;		/* Logging interval */
 					udec[farstar] = dec;
 					umag[farstar] = mag;
 					umagb[farstar] = magb;
-					uplate[farstar] = plate;
+					utype[farstar] = isp;
 					udist[farstar] = dist;
 
 				    /* Find new farthest star */
@@ -381,7 +385,7 @@ int	nlog;		/* Logging interval */
 				    udec[faintstar] = dec;
 				    umag[faintstar] = mag;
 				    umagb[faintstar] = magb;
-				    uplate[faintstar] = plate;
+				    utype[faintstar] = isp;
 				    udist[faintstar] = dist;
 
 			    /* Find new faintest star */
@@ -446,7 +450,7 @@ int	nlog;		/* Logging interval */
 
 
 int
-usarnum (nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,uplate,nlog)
+usarnum (nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,utype,nlog)
 
 int	nnum;		/* Number of stars to find */
 int	sysout;		/* Search coordinate system */
@@ -457,14 +461,14 @@ double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
 double	*umag;		/* Array of red magnitudes (returned) */
 double	*umagb;		/* Array of blue magnitudes (returned) */
-int	*uplate;	/* Array of plate numbers (returned) */
+int	*utype;		/* Array of spectral types (returned) */
 int	nlog;		/* Logging interval */
 {
     int i;
     int uacrnum();
 
     ucat = USNOSA10;
-    i = uacrnum ("USAC",nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,uplate,
+    i = uacrnum ("USAC",nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,utype,
 		 nlog);
     ucat = USNOA10;
     return (i);
@@ -472,7 +476,7 @@ int	nlog;		/* Logging interval */
 
 
 int
-uacrnum (refcatname,nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,uplate,
+uacrnum (refcatname,nnum,sysout,eqout,epout,unum,ura,udec,umag,umagb,utype,
 	 nlog)
 
 char	*refcatname;	/* Name of catalog (UAC, USAC, UAC2, USAC2) */
@@ -485,12 +489,14 @@ double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
 double	*umag;		/* Array of red magnitudes (returned) */
 double	*umagb;		/* Array of blue magnitudes (returned) */
-int	*uplate;	/* Array of plate numbers (returned) */
+int	*utype;		/* Array of spectral types (returned) */
 int	nlog;		/* Logging interval */
 {
     UACstar star;	/* UA catalog entry for one star */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
+    int isp;
+    char ispc[2];
 
     int znum;
     int jnum;
@@ -579,7 +585,9 @@ int	nlog;		/* Logging interval */
 		udec[nfound] = dec;
 		umag[nfound] = mag;
 		umagb[nfound] = magb;
-		uplate[nfound] = plate;
+		br2sp (NULL, magb, mag, ispc);
+		isp = (1000 * (int)ispc[0]) + (int)ispc[1];
+		utype[nfound] = isp;
 
 		nfound++;
 		if (nlog == 1)
@@ -1027,4 +1035,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  *
  * Jun  9 2000	Fix bug detecting swapped files on Alphas and PCs if RA=0
  * Jun 26 2000	Add coordinate system to SearchLim() arguments
+ * Sep 22 2000	Return approximate spectral type instead of plate number
  */

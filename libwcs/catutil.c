@@ -1,5 +1,5 @@
 /* File libwcs/catutil.c
- * September 1, 2000
+ * September 22, 2000
  * By Doug Mink, dmink@cfa.harvard.edu
  */
 
@@ -43,6 +43,10 @@
  *	Return 1 if file is a readable file, else 0
  * int agets (string, keyword, lval, value)
  *	Read value from a file where keyword=value, anywhere on a line
+ * void bv2sp (bv, b, v, isp)
+ *	approximate spectral type given B - V or B and V magnitudes
+ * void br2sp (br, b, r, isp)
+ *	approximate spectral type given B - R or B and R magnitudes
  */
 
 #include <unistd.h>
@@ -1249,7 +1253,7 @@ char *value;      /* String (returned) */
     return (1);
 }
 
-char spt[468]={"O5O8B0B0B0B1B1B1B2B2B2B3B3B3B4B5B5B6B6B6B7B7B8B8B8B9B9B9B9A0A0A0A0A0A0A0A0A0A2A2A2A2A2A2A2A2A5A5A5A5A6A7A7A7A7A7A7A7A7A7A7F0F0F0F0F0F0F0F2F2F2F2F2F2F2F5F5F5F5F5F5F5F5F5F8F8F8F8F8F8G0G5G5G2G2G2G3G3G4G4G5G5G5G6G6G6G6G6K6K6K6K6K7K7K7K7K7K7K7K7K7K7K7K7K7K7K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K5K5K5K5K5K6K6K6K6K6K6K6K7K7K7K7K7K7K7K8K8K8K8K9K9K9M0M0M0M0M0M0M1M1M1M1M1M2M2M2M2M3M3M4M4M5M5M5M2M2M2M3M3M4M4M5M5M5M6M6M6M6M6M6M6M6M6M7M7M7M7M7M7M7M7M7M7M7M7M7M7M8M8M8M8M8M8M8"};
+char sptbv[468]={"O5O8B0B0B0B1B1B1B2B2B2B3B3B3B4B5B5B6B6B6B7B7B8B8B8B9B9B9B9A0A0A0A0A0A0A0A0A0A2A2A2A2A2A2A2A2A5A5A5A5A6A7A7A7A7A7A7A7A7A7A7F0F0F0F0F0F0F0F2F2F2F2F2F2F2F5F5F5F5F5F5F5F5F5F8F8F8F8F8F8G0G5G5G2G2G2G3G3G4G4G5G5G5G6G6G6G6G6K6K6K6K6K7K7K7K7K7K7K7K7K7K7K7K7K7K7K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K8K5K5K5K5K5K6K6K6K6K6K6K6K7K7K7K7K7K7K7K8K8K8K8K9K9K9M0M0M0M0M0M0M1M1M1M1M1M2M2M2M2M3M3M4M4M5M5M5M2M2M2M3M3M4M4M5M5M5M6M6M6M6M6M6M6M6M6M7M7M7M7M7M7M7M7M7M7M7M7M7M7M8M8M8M8M8M8M8"};
 
 void
 bv2sp (bv, b, v, isp)
@@ -1268,36 +1272,70 @@ char	*isp;	/* Spectral type */
 	bmv = *bv;
 
     if (bmv < -0.32) {
-	isp[0] = 'O';
-	isp[1] = '5';
+	isp[0] = '_';
+	isp[1] = '_';
 	}
     else if (bmv > 2.00) {
-	isp[0] = 'M';
-	isp[1] = '8';
+	isp[0] = '_';
+	isp[1] = '_';
 	}
     else if (bmv < 0) {
 	im = 2 * (32 + (int)(bmv * 100.0 - 0.5));
-	isp[0] = spt[im];
-	isp[1] = spt[im+1];
+	isp[0] = sptbv[im];
+	isp[1] = sptbv[im+1];
 	}
     else {
 	im = 2 * (32 + (int)(bmv * 100.0 + 0.5));
-	isp[0] = spt[im];
-	isp[1] = spt[im+1];
+	isp[0] = sptbv[im];
+	isp[1] = sptbv[im+1];
 	}
     return;
 }
 
-/*
- * Jul 14 1999	New subroutines
- * Jul 15 1999	Add getfilebuff()
- * Oct 15 1999	Fix format eror in error message
- * Oct 21 1999	Fix declarations after lint
- * Dec  9 1999	Add next_token(); set pointer to next token in first_token
- *
- * Mar  1 2000	Add isfile() to tell if a string is the name of a readable file
- * Mar  1 2000	Add agets() to read a parameter from a comment line of a file
- */
+char sptbr1[96]={"O5O8O9O9B0B0B0B0B0B1B1B1B2B2B2B2B2B3B3B3B3B3B3B5B5B5B5B6B6B6B7B7B7B7B8B8B8B8B8B9B9B9B9B9A0A0A0"};
+
+char sptbr2[904]={"A0A0A0A0A0A0A0A0A2A2A2A2A2A2A2A2A2A2A2A2A2A2A2A5A5A5A5A5A5A5A5A5A5A5A7A7A7A7A7A7A7A7A7A7A7A7A7A7A7A7F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F2F2F2F2F2F2F2F2F2F2F2F5F5F5F5F5F5F5F5F5F5F5F5F5F5F8F8F8F8F8F8F8F8F8F8F8F8F8F8G0G0G0G0G0G0G0G0G2G2G2G2G2G5G5G5G5G5G5G5G5G8G8G8G8G8G8G8G8G8G8G8G8G8G8K0K0K0K0K0K0K0K0K0K0K0K0K0K0K0K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K2K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K5K7K7K7K7K7K7K7K7K7K7K7K7K7K7K7K7K7K7K7K7K7K7K7K7K7M0M0M0M0M0M0M0M0M0M0M0M0M0M0M0M0M0M0M0M0M0M0M0M0M1M1M1M1M1M1M1M1M1M1M1M1M1M1M1M2M2M2M2M2M2M2M2M2M2M2M2M2M2M2M3M3M3M3M3M3M3M3M3M3M3M4M4M4M4M4M4M4M4M4M4M4M4M4M4M5M5M5M5M5M5M5M5M5M5M5M5M5M5M5M5M5M5M5M5M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M6M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M7M8M8M8M8M8M8M8M8M8M8M8M8M8M8M8M8M8M8M8M8M8M8M8M8"};
+
+void
+br2sp (br, b, r, isp)
+
+double	*br;	/* B-R Magnitude */
+double	b;	/* B Magnitude used if br is NULL */
+double	r;	/* R Magnitude used if br is NULL */
+char	*isp;	/* Spectral type */
+{
+    double bmr;	/* B - R magnitude */
+    int im;
+
+    if (br == NULL)
+	bmr = b - r;
+    else
+	bmr = *br;
+
+    if (b == 0.0 && r > 2.0) {
+	isp[0] = '_';
+	isp[1] = '_';
+	}
+    else if (bmr < -0.47) {
+	isp[0] = '_';
+	isp[1] = '_';
+	}
+    else if (bmr > 4.50) {
+	isp[0] = '_';
+	isp[1] = '_';
+	}
+    else if (bmr < 0) {
+	im = 2 * (47 + (int)(bmr * 100.0 - 0.5));
+	isp[0] = sptbr1[im];
+	isp[1] = sptbr1[im+1];
+	}
+    else {
+	im = 2 * ((int)(bmr * 100.0 + 0.49));
+	isp[0] = sptbr2[im];
+	isp[1] = sptbr2[im+1];
+	}
+    return;
+}
 
 /* Mar  2 1998	Make number and second magnitude optional
  * Oct 21 1998	Add RefCat() to set reference catalog code
@@ -1318,18 +1356,24 @@ char	*isp;	/* Spectral type */
  * Jun 16 1999	Add SearchLim(), used by all catalog search subroutines
  * Jun 30 1999	Add isrange() to check to see whether a string is a range
  * Jul  1 1999	Move date and time utilities to dateutil.c
+ * Jul 15 1999	Add getfilebuff()
  * Jul 23 1999	Add Bright Star Catalog
  * Aug 16 1999	Add RefLim() to set catalog search limits
  * Sep 21 1999	In isrange(), check for x
  * Oct  5 1999	Add setoken(), nextoken(), and getoken()
+ * Oct 15 1999	Fix format eror in error message
  * Oct 20 1999	Use strchr() in range decoding
+ * Oct 21 1999	Fix declarations after lint
  * Oct 21 1999	Fix arguments to catopen() and catclose() after lint
  * Nov  3 1999	Fix bug which lost last character on a line in getoken
+ * Dec  9 1999	Add next_token(); set pointer to next token in first_token
  *
  * Jan 11 2000	Use nndec for Starbase files, too
  * Feb 10 2000	Read coordinate system, epoch, and equinox from Starbase files
  * Mar  1 2000	Add isfile() to tell whether string is name of readable file
  * Mar  1 2000	Add agets() to return value from keyword = value in string
+ * Mar  1 2000	Add isfile() to tell if a string is the name of a readable file
+ * Mar  1 2000	Add agets() to read a parameter from a comment line of a file
  * Mar  8 2000	Add ProgCat() to return catalog flag from program name
  * Mar 13 2000	Add PropCat() to return whether catalog has proper motions
  * Mar 27 2000	Clean up code after lint
@@ -1341,4 +1385,5 @@ char	*isp;	/* Spectral type */
  * Jul 26 2000	Include math.h to get strtod() on SunOS machines
  * Aug  2 2000	Allow up to 14 digits in catalog IDs
  * Sep  1 2000	Add option in CatNum to print leading zeroes if nnfld > 0
+ * Sep 22 2000	Add br2sp() to approximate main sequence spectral type from B-R
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** May 9, 2000
+ *** September 29, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
 
  * Module:	wcsinit.c (World Coordinate Systems)
@@ -60,7 +60,7 @@ char *hstring;	/* character string containing FITS header information
     double dec_deg,ra_hours, secpix, ra0, ra1, dec0, dec1;
     double cdelt1, cdelt2, cd[4], pc[16];
     char keyword[16];
-    int ieq, i, naxes;
+    int ieq, i, naxes, cd11p, cd12p, cd21p, cd22p;
     /* int ix1, ix2, iy1, iy2, idx1, idx2, idy1, idy2;
     double dxrefpix, dyrefpix;
     char temp[48];
@@ -85,6 +85,9 @@ char *hstring;	/* character string containing FITS header information
     cdelt1 = 0.0;
     cdelt2 = 0.0;
     cd[0] = 0.0;
+    cd[1] = 0.0;
+    cd[2] = 0.0;
+    cd[3] = 0.0;
     pc[0] = 0.0;
     wcs->rotmat = 0;
     wcs->rot = 0.0;
@@ -199,6 +202,10 @@ char *hstring;	/* character string containing FITS header information
 	/* Use polynomial fit instead of projection, if present */
 	wcs->ncoeff1 = 0;
 	wcs->ncoeff2 = 0;
+	cd11p = hgetr8 (hstring,"CD1_1",&cd[0]);
+	cd12p = hgetr8 (hstring,"CD1_2",&cd[0]);
+	cd21p = hgetr8 (hstring,"CD2_1",&cd[0]);
+	cd22p = hgetr8 (hstring,"CD2_2",&cd[0]);
 	if (wcs->wcsproj != WCS_OLD && (hcoeff = ksearch (hstring,"CO1_1")) != NULL) {
 	    wcs->prjcode = WCS_PLT;
 	    (void)strcpy (wcs->ptype, "PLATE");
@@ -245,20 +252,14 @@ char *hstring;	/* character string containing FITS header information
 	    hgetr8 (hstring,"CD1_2",&wcs->cd[1]);
 	    wcs->cd[2] = 0.;
 	    hgetr8 (hstring,"CD2_1",&wcs->cd[2]);
-	    wcs->cd[3] = wcs->cd[0];
+	    wcs->cd[3] = 0.;
 	    hgetr8 (hstring,"CD2_2",&wcs->cd[3]);
 	    (void) matinv (2, wcs->cd, wcs->dc);
 	    }
 
-	/* Else use CD matrix, if present */
-	else if (hgetr8 (hstring,"CD1_1",&cd[0]) != 0) {
+	/* Else use CD matrix, if and elements are present */
+	else if (cd11p || cd12p || cd21p || cd22p) {
 	    wcs->rotmat = 1;
-	    cd[1] = 0.;
-	    hgetr8 (hstring,"CD1_2",&cd[1]);
-	    cd[2] = 0.;
-	    hgetr8 (hstring,"CD2_1",&cd[2]);
-	    cd[3] = wcs->cd[0];
-	    hgetr8 (hstring,"CD2_2",&cd[3]);
 	    wcscdset (wcs, cd);
 	    }
 
@@ -810,4 +811,5 @@ struct WorldCoor *wcs;
  * Jan 28 2000	Use wcsproj instead of oldwcs
  * Feb 29 2000	Compute inverse CD matrix even if polynomial solution
  * May  9 2000	Add PROJR0 keyword for WCSLIB projections
+ * Sep 29 2000	Use CDi_j matrix if any elements are present
  */

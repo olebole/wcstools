@@ -1,7 +1,7 @@
 /*** File wcscon.c
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Based on Starlink subroutines by Patrick Wallace
- *** June 26, 2000
+ *** September 14, 2000
 
  * Module:	wcscon.c (World Coordinate System conversion)
  * Purpose:	Convert between various sky coordinate systems
@@ -425,8 +425,10 @@ char *wcstring;		/* Name of coordinate system */
 	equinox = atof (wcstring);
 	if (equinox > 1980.0)
 	    return WCS_J2000;
-	else
+	else if (equinox > 1900.0)
 	    return WCS_B1950;
+	else
+	    return -1;
 	}
     else
 	return -1;
@@ -1756,4 +1758,5 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
  * Mar 14 2000	Clean up code in fk524m() and fk425m()
  * May 31 2000	Add proper motion correctly if proper motion precessed
  * Jun 26 2000	Add some support for WCS_XY image coordinates
+ * Sep 14 2000	Return -1 from wcscsys if equinox is less than 1900.0
  */

@@ -1,11 +1,14 @@
 /* fitsfile.h  FITS and IRAF file access subroutines
- * March 24, 2000
+ * September 8, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
 #ifndef fitsfile_h_
 #define fitsfile_h_
 #include "fitshead.h"
+
+/* Declarations for subroutines in fitsfile.c, imhfile.c, imio.c,
+ * fileutil.c, and dateutil.c */
 
 /* FITS table keyword structure */
 struct Keyword {
@@ -16,8 +19,6 @@ struct Keyword {
 };
 
 #define FITSBLOCK 2880
-
-/* Subroutines in fitsfile.c */
 
 /* FITS file access subroutines in fitsfile.c */
 extern int fitsropen();
@@ -72,7 +73,7 @@ extern int getfilesize();
 extern int isimlist();
 extern int first_token();
 
-/* Subroutines for translating dates and times */
+/* Subroutines for translating dates and times in dateutil.c */
 double dt2ep();	/* yyyy.ddmm and hh.mmsss to fractional year (epoch) */
 double dt2epb(); /* yyyy.ddmm and hh.mmsss to Besselian epoch */
 double dt2epj(); /* yyyy.ddmm and hh.mmsss to Julian epoch */
@@ -197,4 +198,5 @@ double ut2ts(); /* Current UT to IRAF seconds since 1950-01-01T00:00 */
  * Jan 26 2000	Add conversion to modified Julian date (JD - 2400000.5
  * Mar 22 2000  Add lt2* and ut2* to get current time as local and UT
  * Mar 24 2000	Add tsi2* and tsu2* to convert IRAF and Unix seconds
+ * Sep  8 2000	Improve comments
  */

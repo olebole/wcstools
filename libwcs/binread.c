@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** July 25, 2000
+ *** September 25, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -674,6 +674,7 @@ char *bincat;	/* Binary catalog file name */
 	sc->equinox = 1950.0;
 	}
     sc->entadd = fcat;
+    sc->sptype = 1;
 
     /* Check name to see if file is RA-sorted */
     lf = strlen (binfile);
@@ -1086,4 +1087,5 @@ char *from, *last, *to;
  * Jun 26 2000	Add coordinate system to SearchLim() arguments
  * Jul 12 2000	Add star catalog structure to binread() argument list
  * Jul 25 2000	Pass star catalog address of data structure address
+ * Sep 25 2000	Set sc->sptype to 1 to indicate presence of spectral type
  */

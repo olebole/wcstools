@@ -324,7 +324,7 @@ char **av;
 			rastr1, decstr1, coorout);
 		if (epset)
 		    printf (" at %s", ep2fd (epin));
-		printf ("/n");
+		printf ("\n");
 		}
 	    else if (mprop) {
 		rapm = rapm * 3600000.0;

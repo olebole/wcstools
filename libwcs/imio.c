@@ -1,6 +1,6 @@
 /*** File wcslib/imio.c
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- *** December 14, 1999
+ *** September 20, 2000
 
  * Module:      imio.c (image pixel manipulation)
  * Purpose:     Read and write pixels from arbitrary data type 2D arrays
@@ -614,40 +614,50 @@ double	*dpix;		/* Vector of pixels (returned) */
 
 	case 8:
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*dpix++ = bzero + (bscale * (double) *(image + ipix));
+		*dpix++ = (double) *(image + ipix);
 	    break;
 
 	case 16:
 	    im2 = (short *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*dpix++ = bzero + (bscale * (double) *(im2 + ipix));
+		*dpix++ = (double) *(im2 + ipix);
 	    break;
 
 	case 32:
 	    im4 = (int *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*dpix++ = bzero + (bscale * (double) *(im4 + ipix));
+		*dpix++ = bscale * (double) *(im4 + ipix);
 	    break;
 
 	case -16:
 	    imu = (unsigned short *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*dpix++ = bzero + (bscale * (double) *(imu + ipix));
+		*dpix++ = (double) *(imu + ipix);
 	    break;
 
 	case -32:
 	    imr = (float *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*dpix++ = bzero + (bscale * (double) *(imr + ipix));
+		*dpix++ = (double) *(imr + ipix);
 	    break;
 
 	case -64:
 	    imd = (double *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*dpix++ = bzero + (bscale * (double) *(imd + ipix));
+		*dpix++ = (double) *(imd + ipix);
 	    break;
 
 	}
+
+    /* Scale data if either BZERO or BSCALE keyword has been set */
+    if (bzero != 0.0 || bscale != 1.0) {
+	double *dp = dpix;
+	for (ipix = pix1; ipix < pix2; ipix++) {
+	    *dp = (*dp * bscale) + bzero;
+	    dp++;
+	    }
+	}
+
     return;
 }
 
@@ -678,6 +688,7 @@ double	*dpix;		/* Vector of pixels to copy */
 
     pix2 = pix1 + npix;
 
+    /* Scale data if either BZERO or BSCALE keyword has been set */
     if (bzero != 0.0 || bscale != 1.0) {
 	for (ipix = pix1; ipix < pix2; ipix++) {
 	    *dp = (*dp - bzero) / bscale;
@@ -910,4 +921,6 @@ imswapped ()
  * Sep 27 1999	Add interface for 1-based (FITS) image access
  * Sep 27 1999	Add addpix() and addpix1()
  * Dec 14 1999	In putpix(), addpix(), putvec(), round when output is integer
+ *
+ * Sep 20 2000	In getvec(), scale only if necessary
  */

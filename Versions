@@ -1,3 +1,12 @@
+Version 2.8.5 (September 29, 2000)
+scat, imcat: Print approximate spectral type instead of plate number for A2.0
+scat: Print spectral type and 2nd mag in one-line closest star output format
+imrot: Echo only new file name if not -v output, use _EXTNAME if extraction
+catutil.c: Add br2sp() to approximate USNO-A2.0 spectral types
+ctgread.c: Implement multiple maginitudes and spectral types in ASCII catalogs
+uacread.c: Approximate spectral types from "B" and "R"
+wcsinit.c: Use CD matrix if any of CDi_j are present
+
 Version 2.8.4 (September 6, 2000)
 imstack: Add -o option to set output filename
 scat: Print leading zeroes in ID numbers for -f option search centers

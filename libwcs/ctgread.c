@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** July 25, 2000
+ *** September 25, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -8,6 +8,7 @@
  * int ctgopen()	Open ASCII catalog, returning number of entries
  * int ctgstar()	Get ASCII catalog entry for one star
  * int ctgsize()	Return length of file in bytes
+ * int isacat()		Return 1 if file is ASCII catalog, else 0
  */
 
 #include <unistd.h>
@@ -84,11 +85,12 @@ int	nlog;
     int jstar;
     int nstar;
     double ra,dec,rapm,decpm;
-    double mag;
+    double mag, magb;
     double num;
     int peak, i;
     int istar;
     int verbose;
+    int isp;
 
     nstar = 0;
 
@@ -230,6 +232,8 @@ int	nlog;
 		wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 	    }
 	mag = star->xmag[0];
+	if (sc->nmag > 1)
+	    magb = star->xmag[1];
 	peak = 0;
 	if (drad > 0 || distsort) {
 	    if (sc->inform == 'X')
@@ -251,12 +255,20 @@ int	nlog;
 	    ((drad > 0.0 && dist < drad) ||
      	    (drad == 0.0 && dec >= dec1 && dec <= dec2))) {
 
+	    /* Spectral type */
+	    if (sc->sptype)
+		isp = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+
 	    /* Save star position and magnitude in table */
 	    if (nstar < nsmax) {
 		tnum[nstar] = num;
 		tra[nstar] = ra;
 		tdec[nstar] = dec;
 		tmag[nstar] = mag;
+		if (sc->nmag > 1)
+		    tmagb[nstar] = magb;
+		if (sc->sptype)
+		    tc[nstar] = isp;
 		tdist[nstar] = dist;
 		if (nameobj) {
 		    lname = strlen (star->objname) + 1;
@@ -281,6 +293,10 @@ int	nlog;
 		    tra[farstar] = ra;
 		    tdec[farstar] = dec;
 		    tmag[farstar] = mag;
+		    if (sc->nmag > 1)
+			tmagb[farstar] = magb;
+		    if (sc->sptype)
+			tc[farstar] = isp;
 		    tdist[farstar] = dist;
 		    if (nameobj) {
 			free (tobj[farstar]);
@@ -307,6 +323,10 @@ int	nlog;
 		tra[faintstar] = ra;
 		tdec[faintstar] = dec;
 		tmag[faintstar] = mag;
+		if (sc->nmag > 1)
+		    tmagb[faintstar] = magb;
+		if (sc->sptype)
+		    tc[faintstar] = isp;
 		tdist[faintstar] = dist;
 		if (nameobj) {
 		    free (tobj[faintstar]);
@@ -386,7 +406,6 @@ int	nlog;
     int nstar;
     double ra,dec;
     double rapm, decpm;
-    double mag;
     double num;
     int peak;
     int istar;
@@ -518,14 +537,20 @@ int	nlog;
 		else
 		    wcscon (sysref, sysout, eqref, eqout, &ra, &dec, epout);
 		}
-	    mag = star->xmag[0];
 	    peak = 0;
 
 	    /* Save star position and magnitude in table */
 	    tnum[jnum] = star->num;
 	    tra[jnum] = ra;
 	    tdec[jnum] = dec;
-	    tmag[jnum] = mag;
+	    tmag[jnum] = star->xmag[0];
+	    if (starcat->nmag > 1)
+		tmagb[jnum] = star->xmag[1];
+
+	    /* Spectral type */
+	    if (starcat->sptype)
+		tc[jnum] = (1000 * (int) star->isp[0]) + (int)star->isp[1];
+
 	    if (nameobj) {
 		lname = strlen (star->objname) + 1;
 		objname = (char *)calloc (lname, 1);
@@ -535,7 +560,7 @@ int	nlog;
 	    nstar++;
 	    if (nlog == 1)
 		fprintf (stderr,"CTGRNUM: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
-			 num,ra,dec,cstr,mag,peak);
+			 star->num,ra,dec,cstr,star->xmag[0],peak);
 
 	    /* End of accepted star processing */
 	    }
@@ -662,6 +687,7 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     sc->nmag = 1;
     sc->mprop = 0;
     sc->rasorted = 0;
+    sc->sptype = 0;
     sc->stnum = 1;
     sc->entepoch = 0;
 
@@ -742,6 +768,12 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     /* No magnitude */
     if (strsrch (header, "/m") || strsrch (header, "/M"))
 	sc->nmag = 0;
+    else if (strsrch (header, "/2"))
+	sc->nmag = 2;
+    else if (strsrch (header, "/3"))
+	sc->nmag = 3;
+    else if (strsrch (header, "/4"))
+	sc->nmag = 4;
     else
 	sc->nmag = 1;
 
@@ -752,6 +784,10 @@ int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
     /* RA-sorted catalog */
     if (strsrch (header, "/r") || strsrch (header, "/R"))
 	sc->rasorted = 1;
+
+    /* Spectral type present */
+    if (strsrch (header, "/s") || strsrch (header, "/S"))
+	sc->sptype = 1;
 
     /* Table format (hh mm ss dd mm ss) */
     if (strsrch (header, "/t") || strsrch (header, "/T"))
@@ -1062,6 +1098,21 @@ struct Star *st; /* Star data structure, updated on return */
 	    }
 	}
 
+    /* Spectral type, if present */
+    if (sc->sptype > 0) {
+	ltok = nextoken (&tokens, token);
+	if (ltok > 0) {
+	    if (token[0] == ' ' && token[1] == ' ') {
+		st->isp[0] = '_';
+		st->isp[1] = '_';
+		}
+	    else {
+		st->isp[0] = token[0];
+		st->isp[1] = token[1];
+		}
+	    }
+	}
+
     /* Proper motion, if present */
     if (sc->mprop) {
 	ltok = nextoken (&tokens, token);
@@ -1123,6 +1174,31 @@ char	*filename;	/* Name of file for which to find size */
     fclose (diskfile);
 
     return (filesize);
+}
+
+
+/* ISACAT -- Return 1 if file is likely to be an ASCII catalog */
+
+int
+isacat (catpath)
+
+char *catpath;
+
+{
+    char buf[100];
+    char *errc;
+    FILE *fcat;
+
+    /* Open ASCII catalog */
+    if (!(fcat = fopen (catpath, "r"))) {
+	return (0);
+	}
+    errc = fgets (buf, 100, fcat);
+    fclose (fcat);
+    if (isnum (buf))
+	return (0);
+    else
+	return (1);
 }
 
 
@@ -1257,4 +1333,7 @@ char	*in;	/* Character string */
  * Jun 26 2000	Ignore lines starting with # when counting stars in catalog
  * Jul 12 2000	Add star catalog data structure to ctgread() argument list
  * Jul 25 2000	Pass star catalog address of data structure address
+ * Sep 20 2000	Implement multiple catalog magnitudes; return only first 2
+ * Sep 20 2000	Add isacat() subroutine to detect ASCII catalogs
+ * Sep 25 2000	Add spectral type with flag /s
  */

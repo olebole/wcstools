@@ -1,5 +1,5 @@
 /* File scat.c
- * September 1, 2000
+ * September 25, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -81,9 +81,11 @@ main (ac, av)
 int ac;
 char **av;
 {
+    FILE *fd;
     char *str;
     char rastr[16];
     char decstr[16];
+    char line[200];
     int i, lcat;
     char *refcatname[5];	/* reference catalog names */
     char *refcatn;
@@ -92,6 +94,7 @@ char **av;
     int systemp = 0;		/* Input search coordinate system */
     char *ranges;
     int istar;
+    char *blank;
     double epoch;
     char title[80];
     double eqout = 0.0;		/* Equinox for output coordinates */
@@ -407,10 +410,10 @@ char **av;
 	}
 
     if (readlist) {
-	ranges = NULL;
 
 	/* Read search center list from starbase tab table catalog */
 	if (istab (listfile)) {
+	    ranges = NULL;
 	    srchcat = tabcatopen (listfile);
 	    if (srchcat != NULL) {
 		srch = (struct Star *) calloc (1, sizeof (struct Star));
@@ -442,7 +445,10 @@ char **av;
 		tabcatclose (srchcat);
 		}
 	    }
-	else {
+
+	/* Read search center list from SAOTDC ASCII table catalog */
+	else if (isacat (listfile)) {
+	    ranges = NULL;
 	    if (!(srchtype = RefCat (listfile, title, &syscoor, &eqcoor, &epoch))) {
 		fprintf (stderr,"List catalog '%s' is missing\n", listfile);
 		return (0);
@@ -476,6 +482,26 @@ char **av;
 		    ListCat (ncat, refcatname, ranges, eqout);
 		    }
 		ctgclose (srchcat, srchtype);
+		}
+	    }
+	else {
+	    if (strcmp (listfile,"STDIN")==0 || strcmp (listfile,"stdin")==0)
+                fd = stdin;
+            else
+                fd = fopen (listfile, "r");
+            if (fd != NULL) {
+                while (fgets (line, 200, fd)) {
+		    blank = strchr (line, ' ');
+		    if (blank)
+			*blank = (char) 0;
+		    blank = strchr (line, '\n');
+		    if (blank)
+			*blank = (char) 0;
+		    ranges = (char *) calloc (strlen(line) + 1, 1);
+		    strcpy (ranges, line);
+		    ListCat (ncat, refcatname, ranges, eqout);
+		    }
+		fclose (fd);
 		}
 	    }
 	}
@@ -917,13 +943,14 @@ double	eqout;		/* Equinox for output coordinates */
 		}
 
 	    /* Set flag for plate, class, or type column */
-	    if (refcat == GSC  || refcat == UJC    || refcat == BINCAT ||
-		refcat == SAO  || refcat == PPM    || refcat == IRAS ||
-		refcat == BSC  ||
+	    if (refcat == BINCAT || refcat == SAO  || refcat == PPM ||
 		refcat == USAC || refcat == USA1   || refcat == USA2 ||
 		refcat == UAC  || refcat == UA1    || refcat == UA2 ||
-		refcat == ACT  || refcat == TYCHO2 || (refcat == TABCAT&&gcset))
+		refcat == ACT  || refcat == TYCHO2 || refcat == BSC)
 		typecol = 1;
+	    else if (refcat == GSC  || refcat == UJC || refcat == IRAS ||
+		refcat == BSC  || (refcat == TABCAT&&gcset))
+		typecol = 2;
 	    else
 		typecol = 0;
 
@@ -1054,13 +1081,14 @@ double	eqout;		/* Equinox for output coordinates */
 		}
 
 	    /* Set flag for plate, class, or type column */
-	    if (refcat == GSC  || refcat == UJC    || refcat == BINCAT ||
-		refcat == SAO  || refcat == PPM    || refcat == IRAS ||
-		refcat == BSC  ||
+	    if (refcat == BINCAT || refcat == SAO  || refcat == PPM ||
 		refcat == USAC || refcat == USA1   || refcat == USA2 ||
 		refcat == UAC  || refcat == UA1    || refcat == UA2 ||
-		refcat == ACT  || refcat == TYCHO2 || (refcat == TABCAT&&gcset))
+		refcat == ACT  || refcat == TYCHO2 || refcat == BSC)
 		typecol = 1;
+	    else if (refcat == GSC  || refcat == UJC || refcat == IRAS ||
+		refcat == BSC  || (refcat == TABCAT&&gcset))
+		typecol = 2;
 	    else
 		typecol = 0;
 
@@ -1162,7 +1190,13 @@ double	eqout;		/* Equinox for output coordinates */
 			headline[nnfld] = (char) 0;
 			printf ("%s", headline);
 			printf ("	ra          	dec        	");
-			printf ("mag    	n  	");
+			if (srchcat->nmag > 0)
+			    printf ("mag    	");
+			if (srchcat->nmag > 1)
+			    printf ("mag2 	");
+			if (srchcat->sptype != 0)
+			    printf ("SpT 	");
+			printf ("n    	");
 			printf ("dra");
 			for (i = 3; i < LenNum(das,2); i++)
 			    printf (" ");
@@ -1176,8 +1210,12 @@ double	eqout;		/* Equinox for output coordinates */
 			if (srch != NULL)
 			    printf ("-------	");
 			printf ("------------	------------	");
-			if (srchcat->nmag != 0)
+			if (srchcat->nmag > 0)
 			    printf ("-----	");
+			if (srchcat->nmag > 1)
+			    printf ("-----	");
+			if (srchcat->sptype != 0)
+			    printf ("----	");
 			if (srchcat->nepoch)
 			    printf ("---------	");
 			strcpy (headline,"--------------------");
@@ -1222,11 +1260,23 @@ double	eqout;		/* Equinox for output coordinates */
 		    else
 			printf ("%s %s", rastr, decstr);
 		    if (srch != NULL) {
-			if (srchcat->nmag != 0) {
+			if (srchcat->nmag > 0) {
 			    if (tabout)
 				printf ("	%5.2f", srch->xmag[0]);
 			    else
 				printf (" %5.2f", srch->xmag[0]);
+			    }
+			if (srchcat->nmag > 1) {
+			    if (tabout)
+				printf ("	%5.2f", srch->xmag[1]);
+			    else
+				printf (" %5.2f", srch->xmag[1]);
+			    }
+			if (srchcat->sptype != 0) {
+			    if (tabout)
+				printf ("	%2s", srch->isp);
+			    else
+				printf ("  %2s ", srch->isp);
 			    }
 			if (srchcat->nepoch) {
 			    ep2dt (srch->epoch, &date, &time);
@@ -1253,11 +1303,33 @@ double	eqout;		/* Equinox for output coordinates */
 			dec2str (decstr, 32, gdec[0], 2);
 			}
 		    if (tabout)
-			printf ("	%s	%s	%s	%5.2f	%d",
-			        numstr, rastr, decstr, gm[0], ng);
+			printf ("	%s	%s	%s	%5.2f",
+			        numstr, rastr, decstr, gm[0]);
 		    else
-			printf (" %s %s %s %5.2f %d",
-			        numstr, rastr, decstr, gm[0], ng);
+			printf (" %s %s %s %5.2f",
+			        numstr, rastr, decstr, gm[0]);
+		    if (nmag > 1) {
+			if (tabout)
+			    printf ("	%5.2f", gmb[0]);
+			else
+			    printf (" %5.2f", gmb[0]);
+			}
+		    if (typecol == 1) {
+			isp[0] = gc[i] / 1000;
+			isp[1] = gc[i] % 1000;
+			if (isp[0] == ' ' && isp[1] == ' ') {
+			    isp[0] = '_';
+			    isp[1] = '_';
+			    }
+			if (tabout)
+			    printf ("	%2s ", isp);
+			else
+			    printf (" %2s ", isp);
+			}
+		    if (tabout)
+			printf ("	%d", ng);
+		    else
+			printf (" %d", ng);
 		    dec = (gdec[0] + cdec) * 0.5;
 		    if (degout) {
 			da = gra[0] - cra;
@@ -1504,7 +1576,7 @@ double	eqout;		/* Equinox for output coordinates */
 	strcat (headline,"	ra      	dec      ");
     if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 	refcat == UAC  || refcat == UA1  || refcat == UA2)
-	strcat (headline,"	magb	magr	plate");
+	strcat (headline,"	magb	magr	type");
     else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT)
 	strcat (headline,"	magb	magv	type");
     else if (refcat == GSC)
@@ -1633,14 +1705,14 @@ double	eqout;		/* Equinox for output coordinates */
 		}
 	    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		refcat == UAC  || refcat == UA1  || refcat == UA2)
-		printf ("  MagB  MagR Plate");
+		printf ("  MagB  MagR Type");
 	    else if (refcat == UJC)
 		printf ("  Mag  Plate");
 	    else if (refcat == GSC)
 		printf ("   Mag Class");
 	    else if (refcat == SAO || refcat == PPM ||
 		     refcat == IRAS || refcat == BSC)
-		printf ("  Mag  Type");
+		printf ("   Mag  Type");
 	    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT)
 		printf ("  MagB   MagV Type");
 	    else if (refcat == TABCAT && gcset)
@@ -1665,9 +1737,7 @@ double	eqout;		/* Equinox for output coordinates */
 
     string[0] = (char) 0;
     for (i = 0; i < ns; i++) {
-	if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT ||
-	    refcat==SAO || refcat==PPM || refcat==IRAS || refcat == BSC ||
-	    refcat == BINCAT) {
+	if (typecol == 1) {
 	    isp[0] = gc[i] / 1000;
 	    isp[1] = gc[i] % 1000;
 	    if (isp[0] == ' ' && isp[1] == ' ') {
@@ -1697,8 +1767,8 @@ double	eqout;		/* Equinox for output coordinates */
 	    CatNum (refcat, nnfld, nndec, gnum[i], numstr);
 	    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		refcat == UAC  || refcat == UA1  || refcat == UA2)
-		sprintf (headline, "%s	%s	%s	%.1f	%.1f	%d",
-		 numstr, rastr, decstr, gmb[i], gm[i], gc[i]);
+		sprintf (headline, "%s	%s	%s	%.1f	%.1f	%2s",
+		 numstr, rastr, decstr, gmb[i], gm[i], isp);
 	    else if (refcat == UJC || refcat == GSC)
 	        sprintf (headline, "%s	%s	%s	%.2f	%d",
 		 numstr, rastr, decstr, gm[i], gc[i]);
@@ -1761,8 +1831,8 @@ double	eqout;		/* Equinox for output coordinates */
 		    }
 		if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		    refcat == UAC  || refcat == UA1  || refcat == UA2)
-		    sprintf (headline,"%s %s %s %5.1f %5.1f %4d ",
-			numstr,rastr,decstr,gmb[i],gm[i],gc[i]);
+		    sprintf (headline,"%s %s %s %5.1f %5.1f  %2s ",
+			numstr,rastr,decstr,gmb[i],gm[i],isp);
 		else if (refcat == UJC || refcat == GSC)
 		    sprintf (headline,"%s %s %s %6.2f %4d",
 			numstr, rastr, decstr, gm[i],gc[i]);
@@ -2218,4 +2288,6 @@ int	ndec;	/* Number of decimal places in output */
  * Jul 13 2000	Precess search catalog sources to specified system and epoch
  * Jul 25 2000	Pass address of star catalog data structure address
  * Sep  1 2000	Call CatNum with -nnfld to print leading zeroes on search ctrs
+ * Sep 21 2000	Print spectral type instead of plate number of USNO A catalogs
+ * Sep 25 2000	Print spectral type and second magnitude if present in one-line
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** June 26, 2000
+ *** September 25, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -594,6 +594,7 @@ char *actcat;	/* ACT catalog region file name */
     sc->epoch = 2000.0;
     sc->equinox = 2000.0;
     sc->ifcat = fcat;
+    sc->sptype = 2;
 
     /* ACT region files are all RA-sorted */
     sc->rasorted = 1;
@@ -825,4 +826,5 @@ char	*filename;	/* Name of file for which to find size */
  * Jun  2 2000	Free all allocated data structures
  * Jun  9 2000	Fix bug which caused memory overflow if limiting number
  * Jun 26 2000	Add coordinate system to SearchLim() arguments
+ * Sep 25 2000	Set sc->sptype to 2 to indicate presence of spectral type
  */

@@ -1,5 +1,5 @@
 /* File imcat.c
- * July 25, 2000
+ * September 21, 2000
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -507,6 +507,7 @@ int	*region_char;	/* Character for SAOimage region file output */
     int lfn;
     int gcset;
     int mprop;
+    int sptype;
     double pra, pdec;
     double maxnum;
 
@@ -542,6 +543,13 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (title, " stars");
     else if (classd == 3)
 	strcat (title, " nonstars");
+    if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==TYCHO ||
+	refcat== TYCHO2 || refcat==HIP || refcat==ACT || refcat==BSC ||
+	refcat == UAC  || refcat == UA1  || refcat == UA2 ||
+	refcat == USAC || refcat == USA1 || refcat == USA2)
+	sptype = 1;
+    else
+	sptype = 0;
 
     /* Find out whether catalog has proper motions */
     mprop = PropCat ();
@@ -1036,12 +1044,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"magb  	magv  	");
     else
 	strcat (headline,"mag   	");
-    if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
-	    refcat == USAC || refcat == USA1 || refcat == USA2 || refcat == UJC)
-	strcat (headline,"plate	");
-    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==TYCHO ||
-	     refcat== TYCHO2 || refcat==HIP || refcat==ACT || refcat==BSC)
+    if (sptype)
 	strcat (headline,"type 	");
+    else if (refcat == UJC)
+	strcat (headline,"plate	");
     else if (refcat == GSC)
 	strcat (headline,"class 	");
     else if (gcset)
@@ -1148,7 +1154,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 		}
 	    if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
 		refcat == USAC || refcat == USA1 || refcat == USA2)
-		printf ("MagB  MagR  Plate    X      Y    Arcsec\n");
+		printf ("MagB  MagR  Type    X      Y    Arcsec\n");
 	    else if (refcat == UJC)
 		printf ("  Mag  Plate    X      Y   Arcsec\n");
 	    else if (refcat == GSC)
@@ -1188,9 +1194,7 @@ int	*region_char;	/* Character for SAOimage region file output */
     /* Print positions from reference catalog */
     for (i = 0; i < nbg; i++) {
 	if (gx[i] > 0.0 && gy[i] > 0.0) {
-	    if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT ||
-		refcat==SAO || refcat==PPM || refcat==IRAS || refcat== BSC ||
-		refcat == BINCAT) {
+	    if (sptype) {
 	    	isp[0] = gc[i] / 1000;
 		isp[1] = gc[i] % 1000;
 		}
@@ -1210,7 +1214,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 		     numstr, rastr, decstr, gm[i], gc[i]);
 		else if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
 			 refcat == USAC || refcat == USA1 || refcat == USA2)
-		    sprintf (headline, "%s	%s	%s	%5.1f	%.1f	%d",
+		    sprintf (headline, "%s	%s	%s	%5.1f	%5.1f	%2s",
 		     numstr,rastr,decstr,gmb[i],gm[i],gc[i]);
 		else if (refcat == UJC)
 		    sprintf (headline, "%s	%s	%s	%5.2f	%d",
@@ -1251,8 +1255,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	    else if (!tabout) {
 		if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		    refcat == UAC  || refcat == UA1  || refcat == UA2)
-		    sprintf (headline,"%s %s %s %5.1f %5.1f %4d",
-			numstr,rastr,decstr,gmb[i],gm[i],gc[i]);
+		    sprintf (headline,"%s %s %s %5.1f %5.1f %2s",
+			numstr,rastr,decstr,gmb[i],gm[i],isp);
 		else if (refcat == UJC)
 		    sprintf (headline,"%s %s %s %6.2f %4d",
 			numstr, rastr, decstr, gm[i], gc[i]);
@@ -1451,4 +1455,5 @@ int	*region_char;	/* Character for SAOimage region file output */
  * Jul 25 2000	Add coordinate system to SearchLim() call
  * Jul 25 2000	Fix star catalog structure initialization bug
  * Jul 25 2000	Pass address of star catalog data structure address
+ * Sep 21 2000	Print spectral type instead of plate number of USNO-A catalogs
  */

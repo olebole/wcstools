@@ -1,5 +1,5 @@
 /* File libwcs/imgetwcs.c
- * May 24, 2000
+ * September 14, 2000
  * By Doug Mink, remotely based on UIowa code
  */
 
@@ -268,8 +268,8 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	    wcs->xrefpix = (double) wcs->nxpix * 0.5;
 	    wcs->yrefpix = (double) wcs->nypix * 0.5;
 	    }
-	wcs->xinc = *dra / wcs->xrefpix;
-	wcs->yinc = *ddec / wcs->yrefpix;
+	wcs->xinc = *dra * 2.0 / (double) wcs->nxpix;
+	wcs->yinc = *ddec * 2.0 / (double) wcs->nypix;
 	/* hchange (header,"PLTRAH","PLT0RAH");
 	wcs->plate_fit = 0; */
 	}
@@ -530,4 +530,5 @@ char*	ptype;
  * Feb 29 2000	Fix bug, converting reference pixel WCS coordinates everywhere
  * Mar 27 2000	Drop unused subroutine setradius()
  * May 24 2000	Print degrees in debugging messages if output format
+ * Sep 14 2000	Set xinc and yinc correctly if center pixel in header
  */

@@ -1,5 +1,5 @@
 /* File imextract.c
- * March 23, 2000
+ * September 28, 2000
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -45,6 +45,7 @@ char **av;
     char *temp;
     FILE *flist;
     int ifile;
+    char *cspace;
     char *ranges = NULL;
 
     /* Check for help or version command first */
@@ -192,6 +193,9 @@ char **av;
 	if (readlist) {
 	    if (fgets (filename, 128, flist) != NULL) {
 		filename[strlen (filename) - 1] = 0;
+		cspace = strchr (filename,' ');
+		if (cspace != NULL)
+		    *cspace = NULL;
 		ExtractImage (filename, ranges, ifile, nkwd, kwd);
 		}
 	    }
@@ -571,4 +575,5 @@ char	*kwd[];		/* Names and values of those keywords */
  * Oct 22 1999	Drop unused variables after lint
  *
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
+ * Sep 28 2000	Read only first token of listfile
  */

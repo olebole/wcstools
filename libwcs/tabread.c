@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** August 3, 2000
+ *** September 27, 2000
  *** By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -744,6 +744,10 @@ char *tabpath;		/* Tab table catalog file pathname */
 	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
 	}
     else if ((sc->entid = tabcont (startab, "ID"))) {
+	i = sc->entid - 1;
+	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
+	}
+    else if ((sc->entid = tabcont (startab, "name"))) {
 	i = sc->entid - 1;
 	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
 	}
@@ -1895,4 +1899,5 @@ char    *filename;      /* Name of file to check */
  * Jul 25 2000	Pass star catalog address of data structure address
  * Aug  3 2000	Skip first character of ID if rest is number
  * Aug  3 2000	If no decimal point in numeric ID, set ndec to zero
+ * Sep 27 2000	Use first column with name if no id column is found
  */
