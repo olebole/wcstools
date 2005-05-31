@@ -1,9 +1,9 @@
 #!/bin/sh
-echo "WCSTools 3.5.8 Programs
+echo "WCSTools 3.6.1 Programs
 http://tdc-www.harvard.edu/software/wcstools/
 
 addpix:    Add a constant value(s) to specified pixel(s)
-ch2sp:     Replace this character with spaces in output (default=_)
+char2sp:   Replace this character with spaces in output (default=_)
 conpix:    Operate on all of the pixels of an image
 cphead:    Copy keyword values between FITS or IRAF images
 crlf:      Change CR's to newlines in text file (for imwcs, imstar logs)
@@ -29,6 +29,8 @@ imsize:    Print center and size of image using WCS keywords in header
 imstack    Stack 1-dimensional images into a 2-dimensional image
 imstar:    Find and list stars in an IRAF or FITS image
 imwcs:     Match FITS or IRAF image stars to catalog stars and fit a WCS
+isnum:     Return 1 if argument is an integer, 2 if it is floating point, else 0
+isrange:   Return 1 if argument is a range of the format n1[-n2[xs]],...
 keyhead:   Change keyword names in headers of FITS or IRAF images
 newfits:   Create blank FITS files (dataless by default with BITPIX=0)
 remap      Rebin an image from its current WCS to a new one

@@ -2,7 +2,7 @@ CFLAGS= -g
 CC= cc
 
 OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \
-	slasubs.o fitswcs.o wcsinit.o wcs.o ty2read.o webread.o tmcread.o \
+	fitswcs.o wcsinit.o wcs.o ty2read.o webread.o tmcread.o \
 	gscread.o gsc2read.o ujcread.o uacread.o ubcread.o ucacread.o \
 	sdssread.o tabread.o binread.o ctgread.o actread.o catutil.o \
 	imrotate.o fitsfile.o imhfile.o \

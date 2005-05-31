@@ -1,5 +1,5 @@
 /* File immatch.c
- * September 15, 2004
+ * April 4, 2005
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -336,11 +336,9 @@ char **av;
 	    }
 	}
 
-    /* If reference catalog is not set, use HST GSC */
+    /* If reference catalog is not set, exit with an error message */
     if (refcatname == NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "gsc");
-	refcatname = refcatn;
+	PrintUsage ("* Must specifiy a reference catalog using -c or alias.");
 	}
 
     /* Process image files from list file */
@@ -613,4 +611,6 @@ char	*name;			/* Name of FITS or IRAF image file */
  * Jul  1 2004	Drop unused declaration of DelWCSFITS()
  * Aug 30 2004	Fix declarations
  * Sep 15 2004	Add missing 0 shift arguments to RotFITS() call (Rob Creager)
+ *
+ * Apr  4 2005	Exit with an error message if no catalog is specified
  */

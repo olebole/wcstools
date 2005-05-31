@@ -1,3 +1,15 @@
+Version 3.6.1 (April 22, 2005)
+imwcs, imcat, immatch: Exit with error message if no catalog is specified
+isrange, isnum: Improve self-documentation of these existing programs and
+  add them to the official "wcstools" command list of programs
+skycoor: Fix bug which infinitely looped on header in verbose mode and
+fix bug found by Daniela Doneve which failed to convert correctly from
+non-1950 B  and non 200 J coordinates in files.  Also add -f argument
+to avoid @ in windows command lines.
+imextract: Fix bug which prevented 2D extraction from data cubes.
+All programs: Add "WCSTools" to version/help heading
+wcscon.c: Replace all sla_lib subroutines with local ones
+
 Version 3.6.0 (March 17, 2005)
 sethead: Fix bug when number of keywords set from file exceeded 50
 sethead: Add -m num command to reset max number of keywords changed

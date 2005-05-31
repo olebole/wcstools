@@ -1,5 +1,5 @@
 /* File imwcs.c
- * September 15, 2004
+ * April 4, 2005
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -447,11 +447,9 @@ char **av;
 	    }
 	}
 
-    /* If reference catalog is not set, use HST GSC */
+    /* If reference catalog is not set, exit with an error message */
     if (refcatname == NULL && matchfile == NULL) {
-	refcatn = (char *) calloc (1,8);
-	strcpy (refcatn, "gsc");
-	refcatname = refcatn;
+	PrintUsage ("* Must specifiy a reference catalog using -c or alias.");
 	}
 
     if (!writeheader && !verbose) {
@@ -946,4 +944,6 @@ char	*name;		/* FITS or IRAF image filename */
  *
  * Jul  1 2004	If working on FITS extension, keep blank lines in header
  * Sep 15 2004	Add missing 0 shift arguments to RotFITS() call (Rob Creager)
+ *
+ * Apr  4 2005	If not catalog is specified, print an error message and quit
  */

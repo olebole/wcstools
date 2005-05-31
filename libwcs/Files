@@ -93,8 +93,6 @@ proj.c
 sdssread.c
   Return Sloan Digital Sky Survey Photometry Catalog sources using an
   HTTP query over the web for a given RA, Dec, and magnitude range.
-slasubs.c
-  Starlink SLA_Lib subroutines used by coordinate conversion subroutines
 sortstars.c
   Subroutines to sort lists of stars by right ascension, magnitude, or flux
 sph.c

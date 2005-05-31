@@ -1,5 +1,5 @@
 /* File imextract.c
- * April 15, 2004
+ * April 22, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -365,7 +365,7 @@ char	*kwd[];		/* Names and values of those keywords */
 
     /* Get correct part of image */
 	if (i == 0 || (naxis0 > 2 && (naxis2 > 1 && naxis3 > 1))) {
-	    if (i > 0) 
+	    if (nimage > 0) 
 		nbheadi = nbhead + ((nimage - 1) * nbimage);
 	    else
 		nbheadi = nbhead;
@@ -624,4 +624,6 @@ char	*kwd[];		/* Names and values of those keywords */
  * Sep 15 2003	Fix bug which misread 2d part of 3d image
  *
  * Apr 15 2004	Add -s command to ease use of spaces in keyword values being set
+ *
+ * Apr 22 2005	Fix bug so 2-D images can be extracted from data cubes
  */

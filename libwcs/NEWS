@@ -1,8 +1,12 @@
 WCSTools subroutine release history
 
-March 17, 2005 - Release 3.6.0 (Doug Mink, SAO
+April 13, 2005 - Release 3.6.1 (Doug Mink, SAO)
+Remove all sla_lib subroutines and calls thereto from wcscon.c, replacing
+them with local code.
+
+March 17, 2005 - Release 3.6.0 (Doug Mink, SAO)
 In wcs.c, fix bug in wcsrotset() so angles > 360 are set to angle - 360, not 360
-int fitsfile.c, use unbuffered read() in isfits()
+Use unbuffered read() in isfits() in fitsfile.c
 
 November 01, 2004 - Release 3.5.8 (Doug Mink, SAO)
 In wcs.c, keep wcs->rot between 0 and 360 degrees (360.0 -> 0.0)

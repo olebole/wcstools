@@ -1,5 +1,5 @@
 /* File skycoor.c
- * July 24, 2003
+ * April 21, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -55,6 +55,7 @@ char **av;
     double offra = 0.0;
     double offdec = 0.0;
     int lstr = 32;
+    int lfn;
     int degout = 0;
     int ndec = 3;		/* Number of decimal places in RA seconds */
     int ndecset = 0;
@@ -143,6 +144,16 @@ char **av;
 	    sys1 = WCS_ECLIPTIC;
 	    if (!ndecset)
 		ndec = 5;
+    	    break;
+
+	case 'f':	/* Name of file with list of positions */
+	    if (ac < 2)
+		usage("Missing name of file with positions after -f");
+	    lfn = strlen (*(++av)) + 2;
+	    listname = (char *) calloc (lfn, sizeof (char));
+	    listname[0] = '@';
+	    strcpy (listname+1, *av);
+	    ac--;
     	    break;
 
 	case 'g':	/* Output in galactic coordinates */
@@ -310,15 +321,18 @@ char **av;
     	}
     }
 
-    while (verbose && ac > 0)
+    if (verbose && ac > 0)
 
-    while (ac-- > 0) {
-	listname = *av;
+    while (ac-- > 0 || listname) {
+	if (!listname)
+	    listname = *av;
 	if (listname[0] == '@') {
 	    ln = listname;
 	    while (*ln++)
 		*(ln-1) = *ln;
 	    if (fd = fopen (listname, "r")) {
+		if (verbose)
+		    printf (" Reading positions from %s\n", listname);
 		while (fgets (line, 80, fd)) {
 		   csys[0] = 0;
 		    sscanf (line,"%s %s %s", rastr0, decstr0, csys);
@@ -328,8 +342,10 @@ char **av;
 			else
 			    sys0 = WCS_J2000;
 			}
-		    else
+		    else {
 			sys0 = wcscsys (csys);
+			eqin = wcsceq (csys);
+			}
 		    if (sys1 < 0) {
 			if (degout)
 			    sys1 = sys0;
@@ -368,6 +384,7 @@ char **av;
 		}
 	    else
 		fprintf (stderr, "Cannot read file %s\n", listname);
+	    listname = NULL;
 	    av++;
 	    }
 	else if (ac > 0) {
@@ -548,6 +565,7 @@ char *errstring;
     fprintf (stderr,"  -b: B1950 (FK4) output\n");
     fprintf (stderr,"  -d: RA and Dec output in degrees\n");
     fprintf (stderr,"  -e: Ecliptic longitude and latitude output\n");
+    fprintf (stderr,"  -f file: File of coordinates (one position per line) to convert\n");
     fprintf (stderr,"  -g: Galactic longitude and latitude output\n");
     fprintf (stderr,"  -i code: Input units (r=radians, d=degrees, ...\n");
     fprintf (stderr,"  -j: J2000 (FK5) output\n");
@@ -602,4 +620,8 @@ char *errstring;
  * Jul 23 2003	Fix bug in verbose mode of -r found by Cees Bassa
  * Jul 24 2003	Fix bug so number of decimal places can be set for degrees out
  * Sep 10 2003	Add -a position angle between two coordinates
+ *
+ * Apr 13 2005	Fix bug which infinitely looped on header in verbose mode
+ * Apr 21 2005	Fix error in convert from non-1950 B in files (Daniela Doneva)
+ * Apr 21 2005	Add -f argument to avoid @ in windows command lines
  */

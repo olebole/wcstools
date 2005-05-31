@@ -1,8 +1,8 @@
 /*** File wcscon.c
- *** February 13, 2002
+ *** April 13, 2005
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Some subroutines are based on Starlink subroutines by Patrick Wallace
- *** Copyright (C) 1995-2002
+ *** Copyright (C) 1995-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -55,6 +55,9 @@
  * Subroutine:	ecl2fk5 (dtheta,dphi,epoch) Convert ecliptic coordinates to J2000<FK5)
  * Subroutine:  fk5prec (ep0, ep1, ra, dec) Precession ep0 to ep1, FK5 system
  * Subroutine:  fk4prec (ep0, ep1, ra, dec) Precession ep0 to ep1, FK4 system
+ * Subroutine:  s2v3 (rra, rdec, r, pos) RA, Dec, Distance to Cartesian
+ * Subroutine:  v2s3 (pos, rra, rdec, r) Cartesion to RA, Dec, Distance
+ * Subroutine:  rotmat (axes, rot1, rot2, rot3, matrix) Rotation angles to matrix
  */
 
 #include <math.h>
@@ -66,12 +69,9 @@
 #include <string.h>
 #include "wcs.h"
 
-extern void slaDcs2c();
-extern void slaDmxv();
-extern void slaDimxv();
-extern void slaDcc2s();
-extern void slaDeuler();
-extern double slaDranrm(), slaDrange();
+/* pi/(180*3600):  arcseconds to radians */
+#define DAS2R 4.8481368110953599358991410235794797595635330237270e-6
+
 void fk524(), fk524e(), fk524m(), fk524pv();
 void fk425(), fk425e(), fk425m(), fk425pv();
 void fk42gal(), fk52gal(), gal2fk4(), gal2fk5();
@@ -882,47 +882,37 @@ double	*ra;		/* Right ascension in degrees (J2000 in, B1950 out) */
 double	*dec;		/* Declination in degrees (J2000 in, B1950 out) */
 double	*rapm;		/* Proper motion in right ascension */
 double	*decpm;		/* Proper motion in declination
-			 * In:  ra/dec degrees/Julian year
+			 * In:  ra/dec degrees/Julian year (not ra*cos(dec))
 			 * Out: ra/dec degrees/tropical year */
 double *parallax;	/* Parallax (arcsec) */
 double *rv;		/* Rradial velocity (km/s, +ve = moving away) */
 
-/*  This routine converts stars from the new, IAU 1976, FK5, Fricke
-    system, to the old, Bessel-Newcomb, FK4 system, using Yallop's
+/*  This routine converts stars from the IAU 1976 FK5 Fricke
+    system, to the old Bessel-Newcomb FK4 system, using Yallop's
     implementation (see ref 2) of a matrix method due to Standish
     (see ref 3).  The numerical values of ref 2 are used canonically.
 
- *  Notes:
-
-      1)  The proper motions in ra are dra / dt rather than
- 	    cos(dec) * dra / dt, and are per year rather than per century.
+ *  Conversion from other than Julian epoch 2000.0 to other than Besselian
+    epoch 1950.0 will require use of the appropriate precession, proper
+    motion, and e-terms routines before and/or after fk524 is called.
  
-      2)  Note that conversion from Julian epoch 2000.0 to Besselian
- 	    epoch 1950.0 only is provided for.  Conversions involving
- 	    other epochs will require use of the appropriate precession,
- 	    proper motion, and e-terms routines before and/or after
- 	    fk524 is called.
- 
-      3)  In the fk4 catalogue the proper motions of stars within
- 	    10 degrees of the poles do not embody the differential
- 	    e - term effect and should, strictly speaking, be handled
- 	    in a different manner from stars outside these regions.
- 	    however, given the general lack of homogeneity of the star
- 	    data available for routine astrometry, the difficulties of
- 	    handling positions that may have been determined from
- 	    astrometric fields spanning the polar and non - polar regions,
- 	    the likelihood that the differential e - terms effect was not
- 	    taken into account when allowing for proper motion in past
- 	    astrometry, and the undesirability of a discontinuity in
- 	    the algorithm, the decision has been made in this routine to
- 	    include the effect of differential e - terms on the proper
- 	    motions for all stars, whether polar or not.  at epoch 2000,
- 	    and measuring on the sky rather than in terms of dra, the
- 	    errors resulting from this simplification are less than
- 	    1 milliarcsecond in position and 1 milliarcsecond per
- 	    century in proper motion.
+ *  In the FK4 catalogue the proper motions of stars within 10 degrees
+    of the poles do not embody the differential e-term effect and should,
+    strictly speaking, be handled in a different manner from stars outside
+    these regions.  however, given the general lack of homogeneity of the
+    star data available for routine astrometry, the difficulties of handling
+    positions that may have been determined from astrometric fields spanning
+    the polar and non-polar regions, the likelihood that the differential
+    e-terms effect was not taken into account when allowing for proper motion
+    in past astrometry, and the undesirability of a discontinuity in the
+    algorithm, the decision has been made in this routine to include the
+    effect of differential e-terms on the proper motions for all stars,
+    whether polar or not, at epoch 2000, and measuring on the sky rather
+    than in terms of dra, the errors resulting from this simplification are
+    less than 1 milliarcsecond in position and 1 milliarcsecond per century
+    in proper motion.
 
-   References:
+    References:
 
       1  "Mean and apparent place computations in the new IAU System.
           I. The transformation of astrometric catalog systems to the
@@ -1186,47 +1176,37 @@ double	*ra;		/* Right ascension in degrees (J2000 in, B1950 out) */
 double	*dec;		/* Declination in degrees (J2000 in, B1950 out) */
 double	*rapm;		/* Proper motion in right ascension */
 double	*decpm;		/* Proper motion in declination
-			 * In:  ra/dec degrees/Julian year
+			 * In:  ra/dec degrees/Julian year (not ra*cos(dec))
 			 * Out: ra/dec degrees/tropical year */
 double *parallax;	/* Parallax (arcsec) */
 double *rv;		/* Rradial velocity (km/s, +ve = moving away) */
 
-/* This routine converts stars from the old, Bessel-Newcomb, FK4
-   system to the new, IAU 1976, FK5, Fricke system, using Yallop's
-   implementation (see ref 2) of a matrix method due to Standish
-   (see ref 3).  The numerical values of ref 2 are used canonically.
+/*  This routine converts stars from the old Bessel-Newcomb FK4 system
+    to the IAU 1976 FK5 Fricke system, using Yallop's implementation
+    (see ref 2) of a matrix method due to Standish (see ref 3).  The
+    numerical values of ref 2 are used canonically.
 
-   Notes:
+ *  Conversion from other than Besselian epoch 1950.0 to other than Julian
+    epoch 2000.0 will require use of the appropriate precession, proper
+    motion, and e-terms routines before and/or after fk425 is called.
+ 
+ *  In the FK4 catalogue the proper motions of stars within 10 degrees
+    of the poles do not embody the differential e-term effect and should,
+    strictly speaking, be handled in a different manner from stars outside
+    these regions.  however, given the general lack of homogeneity of the
+    star data available for routine astrometry, the difficulties of handling
+    positions that may have been determined from astrometric fields spanning
+    the polar and non-polar regions, the likelihood that the differential
+    e-terms effect was not taken into account when allowing for proper motion
+    in past astrometry, and the undesirability of a discontinuity in the
+    algorithm, the decision has been made in this routine to include the
+    effect of differential e-terms on the proper motions for all stars,
+    whether polar or not, at epoch 2000, and measuring on the sky rather
+    than in terms of dra, the errors resulting from this simplification are
+    less than 1 milliarcsecond in position and 1 milliarcsecond per century
+    in proper motion.
 
-      1)  The proper motions in ra are dra/dt rather than
- 	   cos(dec)*dra/dt, and are per year rather than per century.
-
-      2)  Conversion from besselian epoch 1950.0 to Julian epoch
- 	   2000.0 only is provided for.  Conversions involving other
- 	   epochs will require use of the appropriate precession,
- 	   proper motion, and e-terms routines before and/or
- 	   after fk425 is called.
-
-      3)  In the FK4 catalogue the proper motions of stars within
- 	   10 degrees of the poles do not embody the differential
- 	   e-term effect and should, strictly speaking, be handled
- 	   in a different manner from stars outside these regions.
- 	   However, given the general lack of homogeneity of the star
- 	   data available for routine astrometry, the difficulties of
- 	   handling positions that may have been determined from
- 	   astrometric fields spanning the polar and non-polar regions,
- 	   the likelihood that the differential e-terms effect was not
- 	   taken into account when allowing for proper motion in past
- 	   astrometry, and the undesirability of a discontinuity in
- 	   the algorithm, the decision has been made in this routine to
- 	   include the effect of differential e-terms on the proper
- 	   motions for all stars, whether polar or not.  At epoch 2000,
- 	   and measuring on the sky rather than in terms of dra, the
- 	   errors resulting from this simplification are less than
- 	   1 milliarcsecond in position and 1 milliarcsecond per
- 	   century in proper motion.
-
-   References:
+    References:
 
       1  "Mean and apparent place computations in the new IAU System.
           I. The transformation of astrometric catalog systems to the
@@ -1259,7 +1239,7 @@ double *rv;		/* Rradial velocity (km/s, +ve = moving away) */
     int	i,j;
     int	diag = 0;
 
-    double r0[3],rd0[3];		/* star position and velocity vectors */
+    double r0[3],rd0[3];	/* star position and velocity vectors */
     double v1[6],v2[6];		/* combined position and velocity vectors */
 
     /* Constants */
@@ -1393,21 +1373,20 @@ double bgal[3][3] =
 	{0.492728466075,-0.450346958020, 0.744584633283},
 	{-0.867600811151,-0.188374601723, 0.460199784784}};
 
-/*---  Transform b1950.0 'FK4' equatorial coordinates to
+/*---  Transform B1950.0 FK4 equatorial coordinates to
  *     IAU 1958 galactic coordinates */
 
 void
 fk42gal (dtheta,dphi)
 
-double *dtheta;	/* b1950.0 'FK4' ra in degrees
+double *dtheta;	/* B1950.0 FK4 right ascension in degrees
 		   Galactic longitude (l2) in degrees (returned) */
-double *dphi;	/* b1950.0 'FK4' dec in degrees
+double *dphi;	/* B1950.0 FK4 declination in degrees
 		   Galactic latitude (b2) in degrees (returned) */
 
-/*  Note:   The equatorial coordinates are b1950.0 'FK4'.  use the
-	    routine jpgalj if conversion from j2000.0 coordinates
-	    is required.
-	    Reference: blaauw et al, MNRAS,121,123 (1960) */
+/*  Input equatorial coordinates are B1950 FK4.
+    Use fk52gal() to convert from j2000.0 coordinates.
+    Reference: Blaauw et al, MNRAS,121,123 (1960) */
 {
     double pos[3],pos1[3],r,dl,db,rl,rb,rra,rdec,dra,ddec;
     void v2s3(),s2v3();
@@ -1462,10 +1441,8 @@ double *dtheta;	/* Galactic longitude (l2) in degrees
 double *dphi;	/* Galactic latitude (b2) in degrees
 		   B1950 FK4 Dec in degrees (returned) */
 
-/*  Note:
-       The equatorial coordinates are B1950.0 FK4.  Use the
-       routine GAL2FK5 if conversion to J2000 coordinates
-       is required.
+/*  Output equatorial coordinates are B1950.0 FK4.
+    Use gal2fk5() to convert to J2000 coordinates.
     Reference:  Blaauw et al, MNRAS,121,123 (1960) */
 
 {
@@ -1539,9 +1516,9 @@ double *dphi;	/* J2000 declination in degrees
 		   Galactic latitude (b2) in degrees (returned) */
 
 /* Rotation matrices by P.T.Wallace, Starlink eqgal and galeq, March 1986 */
-/*  Note:
-	The equatorial coordinates are J2000 FK5.  Use the routine
-	GAL2FK4 if conversion from B1950 FK4 coordinates is required.
+
+/*  Input equatorial coordinates are J2000 FK5.
+    Use gal2fk4() if converting from B1950 FK4 coordinates.
     Reference: Blaauw et al, MNRAS,121,123 (1960) */
 {
     double pos[3],pos1[3],r,dl,db,rl,rb,rra,rdec,dra,ddec;
@@ -1592,9 +1569,8 @@ double *dtheta;	/* Galactic longitude (l2) in degrees
 double *dphi;	/* Galactic latitude (b2) in degrees
 		   J2000.0 dec in degrees (returned) */
 
-/*  Note:
-       The equatorial coordinates are J2000.  Use the routine FK42GAL
-       if conversion to J2000 coordinates is required.
+/*  Output equatorial coordinates are J2000.
+   Use gal2fk4() to convert to B1950 coordinates.
     Reference: Blaauw et al, MNRAS,121,123 (1960) */
 
 {
@@ -1684,55 +1660,8 @@ double	xpos,ypos,xp,yp,ras,decs;
 /* Convert geocentric equatorial rectangular coordinates to
    right ascension and declination, and distance */
 
-void
-v2s3 (pos,rra,rdec,r)
 
-double pos[3];	/* x,y,z geocentric equatorial position of object */
-double *rra;	/* Right ascension in radians (returned) */
-double *rdec;	/* Declination in radians (returned) */
-double *r;	/* Distance to object in same units as pos (returned) */
-
-{
-    double x,y,z,rxy,rxy2,z2;
-
-    x = pos[0];
-    y = pos[1];
-    z = pos[2];
-
-    *rra = atan2 (y, x);
-    if (*rra < 0.) *rra = *rra + 6.283185307179586;
-
-    rxy2 = x*x + y*y;
-    rxy = sqrt (rxy2);
-    *rdec = atan2 (z, rxy);
-
-    z2 = z * z;
-    *r = sqrt (rxy2 + z2);
-
-    return;
-}
-
-
-/* Convert right ascension, declination, and distance to
-   geocentric equatorial rectangular coordinates */
-
-void
-s2v3 (rra,rdec,r,pos)
-
-double rra;	/* Right ascension in radians */
-double rdec;	/* Declination in radians */
-double r;	/* Distance to object in same units as pos */
-double pos[3];	/* x,y,z geocentric equatorial position of object (returned) */
-{
-    pos[0] = r * cos (rra) * cos (rdec);
-    pos[1] = r * sin (rra) * cos (rdec);
-    pos[2] = r * sin (rdec);
-
-    return;
-}
-
-
-/* These routines are heavily based on Pat Wallace's slalib package */
+/* These routines are based on similar ones in Pat Wallace's slalib package */
 
 /* Convert B1950 right ascension and declination to ecliptic coordinates */
 
@@ -1757,7 +1686,6 @@ double	epoch;	/* Besselian epoch in years */
     return;
 }
 
-
 /* Convert J2000 right ascension and declination to ecliptic coordinates */
 
 void
@@ -1770,13 +1698,12 @@ double *dphi;	/* J2000 declination in degrees
 double	epoch;	/* Besselian epoch in years */
 
 {
+    int i, j;
     double t, eps0, rphi, rtheta;
-    double rmat[3][3];	/* Rotation matrix from slalib slaEcmat() by P.T. Wallace */
-    double das2r=4.8481368110953599358991410235794797595635330237270e-6;
-    void slaDeuler();
+    double v1[3], v2[3], r;
+    double rmat[9], *rmati;	/* Rotation matrix  */
 
-    double v1[3], v2[3];
-    void fk5prec();
+    void rotmat(), v2s3(), s2v3(), fk5prec();
 
     /* Precess coordinates from J2000 to epoch */
     if (epoch != 2000.0)
@@ -1787,29 +1714,33 @@ double	epoch;	/* Besselian epoch in years */
     rphi = degrad (*dphi);
 
     /* Convert RA,Dec to x,y,z */
-    slaDcs2c (rtheta, rphi, v1);
+    r = 1.0;
+    s2v3 (rtheta, rphi, r, v1);
 
     /* Interval between basic epoch J2000.0 and current epoch (JC) in centuries*/
     t = (epoch - 2000.0) * 0.01;
  
     /* Mean obliquity */
-    eps0 = das2r * (84381.448 + (-46.8150 + (-0.00059 + 0.001813 * t) * t) * t);
+    eps0 = DAS2R * (84381.448 + (-46.8150 + (-0.00059 + 0.001813 * t) * t) * t);
  
     /* Form the equatorial to ecliptic rotation matrix (IAU 1980 theory).
      *  References: Murray, C.A., Vectorial Astrometry, section 4.3.
      *    The matrix is in the sense   v[ecl]  =  rmat * v[equ];  the
      *    equator, equinox and ecliptic are mean of date. */
-    slaDeuler ("X", eps0, 0.0, 0.0, rmat);
+    rotmat (1, eps0, 0.0, 0.0, rmat);
 
-    /* Rotate from equatorial to ecliptic coordinates */
-    slaDmxv (rmat, v1, v2);
+    /* Multiply position vector by equatoria to eccliptic rotation matrix */
+    rmati = rmat;
+    for (i = 0; i < 3; i++) {
+	v2[i] = 0;
+	for (j = 0; j < 3; j++)
+	    v2[i] = v2[i] + (*rmati++ * v1[j]);
+	}
 
     /* Convert x,y,z to latitude, longitude */
-    slaDcc2s (v2, &rtheta, &rphi);
+    v2s3 (v2, &rtheta, &rphi, &r);
 
-    /* Express in conventional ranges */
-    rtheta = slaDranrm (rtheta);
-    rphi = slaDrange (rphi);
+    /* Convert from radians to degrees */
     *dtheta = raddeg (rtheta);
     *dphi = raddeg (rphi);
 }
@@ -1852,41 +1783,40 @@ double *dphi;	/* Galactic latitude (b2) in degrees
 double	epoch;	/* Besselian epoch in years */
 
 {
+    int i, j;
     double rtheta, rphi, v1[3], v2[3];
-    double t, eps0;
-    double rmat[3][3];	/* Rotation matrix from slalib slaEcmat() */
-    double das2r=4.8481368110953599358991410235794797595635330237270e-6;
-    void fk5prec();
+    double t, eps0, r;
+    double rmat[9], *rmati;	/* Rotation matrix */
+    void v2s3(),s2v3(), fk5prec(), rotmat();
 
     rtheta = degrad (*dtheta);
     rphi = degrad (*dphi);
 
     /* Convert RA,Dec to x,y,z */
-    slaDcs2c (rtheta, rphi, v1);
+    r = 1.0;
+    s2v3 (rtheta, rphi, r, v1);
 
     /* Interval between basic epoch J2000.0 and current epoch (JC) in centuries*/
     t = (epoch - 2000.0) * 0.01;
  
     /* Mean obliquity */
-    eps0 = das2r * (84381.448 + (-46.8150 + (-0.00059 + 0.001813 * t) * t) * t);
+    eps0 = DAS2R * (84381.448 + (-46.8150 + (-0.00059 + 0.001813 * t) * t) * t);
  
     /* Form the equatorial to ecliptic rotation matrix (IAU 1980 theory).
      *  References: Murray, C.A., Vectorial Astrometry, section 4.3.
      *    The matrix is in the sense   v[ecl]  =  rmat * v[equ];  the
      *    equator, equinox and ecliptic are mean of date. */
-    slaDeuler ("X", eps0, 0.0, 0.0, rmat);
-
-    /* Ecliptic to equatorial */
-    slaDimxv (rmat, v1, v2);
+    rotmat (1, eps0, 0.0, 0.0, rmat);
+ 
+    /* Multiply position vector by ecliptic to equatorial rotation matrix */
+    for (i = 0; i < 3; i++) {
+	v2[i] = 0;
+	for (j = 0; j < 3; j++)
+	    v2[i] = v2[i] + (rmat[3*j + i] * v1[j]);
+	}
 
     /* Cartesian to spherical */
-    slaDcc2s (v2, &rtheta, &rphi);
-
-    /* Keep RA within 0 to 2pi range */
-    if (rtheta < 0.0)
-	rtheta = rtheta + (2.0 * PI);
-    if (rtheta > 2.0 * PI)
-	rtheta = rtheta - (2.0 * PI);
+    v2s3 (v2, &rtheta, &rphi, &r);
 
     /* Convert from radians to degrees */
     *dtheta = raddeg (rtheta);
@@ -1897,7 +1827,7 @@ double	epoch;	/* Besselian epoch in years */
 }
 
 
-/* The following routines are almost verbatim from Patrick Wallace's SLALIB */
+/* The following routines are modified from Patrick Wallace's SLALIB */
 
 /* Precess coordinates between epochs in FK4 */
 void
@@ -1910,35 +1840,40 @@ double *ra;	/* RA in degrees mean equator & equinox of epoch ep0
 double *dec;	/* Dec in degrees mean equator & equinox of epoch ep0
 		       mean equator & equinox of epoch ep1 (returned) */
 /*
-**  slaPreces:
 **  Precession - FK4 (Bessel-Newcomb, pre-IAU1976)
 **
-**  Note:
-**      This routine will not correctly convert between the old and
-**      the new systems - for example conversion from B1950 to J2000.
-**      For these purposes see fk425, fk524, fk45m and fk54m.
+**  This routine will not correctly convert between FK4 and FK5
+**  For output in FK5, precess to 1950.0 and use fk425() on result.
 **
-**  P.T.Wallace   Starlink   22 December 1993
+**  Based on slaPreces(), P.T.Wallace   Starlink   22 December 1993
 */
 {
-    double pm[3][3], v1[3], v2[3], rra, rdec;
-    void mprecfk4();
+    int i, j;
+    double pm[9], *pmi, v1[3], v2[3], rra, rdec, r;
+    void v2s3(),s2v3(), mprecfk4();
 
     rra = degrad (*ra);
     rdec = degrad (*dec);
+    r = 1.0;
  
     /* Generate appropriate precession matrix */
     mprecfk4 ( ep0, ep1, pm );
  
     /* Convert RA,Dec to x,y,z */
-    slaDcs2c ( rra, rdec, v1 );
+    s2v3 (rra, rdec, r, v1);
  
-    /* Precess */
-    slaDmxv ( pm, v1, v2 );
+    /* Multiply position vector by precession matrix */
+    pmi = pm;
+    for (i = 0; i < 3; i++) {
+	v2[i] = 0;
+	for (j = 0; j < 3; j++)
+	    v2[i] = v2[i] + (*pmi++ * v1[j]);
+	}
  
     /* Back to RA,Dec */
-    slaDcc2s ( v2, &rra, &rdec );
-    rra = slaDranrm ( rra );
+    v2s3 (v2, &rra, &rdec, &r);
+
+    /* Convert from radians to degrees */
     *ra = raddeg (rra);
     *dec = raddeg (rdec);
 }
@@ -1953,55 +1888,54 @@ double *ra;	/* RA in degrees mean equator & equinox of epoch ep0
 double *dec;	/* Dec in degrees mean equator & equinox of epoch ep0
 		       mean equator & equinox of epoch ep1 (returned) */
 /*
-**  slaPreces:
 **  Precession -  FK5 (Fricke, post-IAU1976)
 **
-**  Note:
-**      This routine will not correctly convert between the old and
-**      the new systems - for example conversion from B1950 to J2000.
-**      For these purposes see fk425, fk524, fk45m and fk54m.
+**  This routine will not correctly convert between FK5 and FK4.
+**  For output in FK4, precess to 2000.0 and use fk524() on result.
 **
-**  P.T.Wallace   Starlink   22 December 1993
+**  Based on slaPreces(), P.T.Wallace   Starlink   22 December 1993
 */
 {
-    double pm[3][3], v1[3], v2[3], rra, rdec;
-    void mprecfk5(), slaDcs2c(), slaDmxv(), slaDcc2s();
-    double slaDranrm();
+    int i, j;
+    double pm[9], *pmi, v1[3], v2[3], rra, rdec, r;
+    void v2s3(),s2v3(), mprecfk5();
 
     rra = degrad (*ra);
     rdec = degrad (*dec);
+    r = 1.0;
  
     /* Generate appropriate precession matrix */
-    mprecfk5 ( ep0, ep1, pm );
+    mprecfk5 (ep0, ep1, pm);
  
     /* Convert RA,Dec to x,y,z */
-    slaDcs2c ( rra, rdec, v1 );
+    s2v3 (rra, rdec, r, v1);
  
-    /* Precess */
-    slaDmxv ( pm, v1, v2 );
+    /* Multiply position vector by precession matrix */
+    pmi = pm;
+    for (i = 0; i < 3; i++) {
+	v2[i] = 0;
+	for (j = 0; j < 3; j++)
+	    v2[i] = v2[i] + (*pmi++ * v1[j]);
+	}
  
     /* Back to RA,Dec */
-    slaDcc2s ( v2, &rra, &rdec );
-    rra = slaDranrm ( rra );
+    v2s3 (v2, &rra, &rdec, &r);
 
+    /* Convert from radians to degrees */
     *ra = raddeg (rra);
     *dec = raddeg (rdec);
     return;
 }
 
 
-/* pi/(180*3600):  arcseconds to radians */
-#define DAS2R 4.8481368110953599358991410235794797595635330237270e-6
-
 void
 mprecfk4 (bep0, bep1, rmatp)
 
 double bep0;		/* Beginning Besselian epoch */
 double bep1;		/* Ending Besselian epoch */
-double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
+double rmatp[9];	/* 3x3 Precession matrix (returned) */
 
 /*
-**  slaPrebn:
 **  Generate the matrix of precession between two epochs,
 **  using the old, pre-IAU1976, Bessel-Newcomb model, using
 **  Kinoshita's formulation (double precision)
@@ -2013,11 +1947,11 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
 **     Report No. 364, Smithsonian Institution Astrophysical
 **     Observatory, Cambridge, Massachusetts.
 **
-**  P.T.Wallace   Starlink   30 October 1993
+**  Based on slaPrebn() by P.T.Wallace   Starlink   30 October 1993
 */
 {
     double bigt, t, tas2r, w, zeta, z, theta;
-    void slaDeuler();
+    void rotmat();
  
     /* Interval between basic epoch B1850.0 and beginning epoch in TC */
     bigt  = ( bep0 - 1850.0 ) / 100.0;
@@ -2034,7 +1968,7 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
 	    ( - 0.42647 - 0.000365 * bigt - 0.041802 * t ) * t ) * tas2r;
  
     /* Rotation matrix */
-    slaDeuler ( "ZYZ", -zeta, theta, -z, rmatp );
+    rotmat (313, -zeta, theta, -z, rmatp);
 }
 
 
@@ -2043,10 +1977,9 @@ mprecfk5 (ep0, ep1, rmatp)
 
 double ep0;		/* Beginning epoch */
 double ep1;		/* Ending epoch */
-double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
+double rmatp[9];	/* 3x3 Precession matrix (returned) */
 
 /*
-**  slaPrec:
 **  Form the matrix of precession between two epochs (IAU 1976, FK5).
 **  Notes:
 **  1)  The epochs are TDB (loosely ET) Julian epochs.
@@ -2057,11 +1990,11 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
 **          equations (6) & (7), p283.
 **     Kaplan,G.H., 1981. USNO circular no. 163, pa2.
 **
-**  P.T.Wallace   Starlink   31 October 1993
+**  Based on slaPrec(), P.T.Wallace   Starlink   31 October 1993
 */
 {
     double t0, t, tas2r, w, zeta, z, theta;
-    void slaDeuler();
+    void rotmat();
  
     /* Interval between basic epoch J2000.0 and beginning epoch (JC) */
     t0 = ( ep0 - 2000.0 ) / 100.0;
@@ -2078,8 +2011,167 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
 	  + ( ( -0.42665 - 0.000217 * t0 ) - 0.041833 * t ) * t ) * tas2r;
  
     /* Rotation matrix */
-    slaDeuler ( "ZYZ", -zeta, theta, -z, rmatp );
+    rotmat (313, -zeta, theta, -z, rmatp);
 }
+
+
+/* Make 3-D rotation matrix from up to three rotations */
+
+void
+rotmat (axes, rot1, rot2, rot3, matrix)
+
+int axes;	/* Axes about which coordinates are rotated (1=x, 2=y, 3=z) */
+double rot1;	/* First rotation in degrees */
+double rot2;	/* Second rotation in degrees */
+double rot3;	/* Third rotation in degrees */
+double *matrix;	/* 3x3 rotation matrix (returned) */
+
+{
+    int i, j, k, naxis, idig;
+    double rot, srot, crot, *mati, w, wm[9], *wmi, matn[9];
+    char axis;
+
+    /* Initial final rotation matrix */
+    mati = matrix;
+    for (i = 0; i < 3; i++) {
+	for (j=0; j < 3; j++) {
+	    if (i == j)
+		*mati++ = 1.0;
+	    else
+		*mati++ = 0.0;
+	    }
+	}
+
+    /* For each digit of axis string, set up matrix */
+    idig = 100;
+    while (axes > 0) {
+	naxis = axes / idig;
+	axes = axes - (naxis * 10);
+	idig = idig / 10;
+	if (naxis < 1)
+	    continue;
+
+	/* Initial current rotation matrix */
+	mati = matn;
+	for (i = 0; i < 3; i++) {
+	    for (j=0; j < 3; j++) {
+		if (i == j)
+		    *mati++ = 1.0;
+		else
+		    *mati++ = 0.0;
+		}
+	    }
+
+	/* Select rotation angle from argument list */
+	if (naxis == 1)
+	    rot = rot1;
+	else if (naxis == 2)
+	    rot = rot2;
+	else
+	    rot = rot3;
+	srot = sin (rot);
+	crot = cos (rot);
+	
+	/* Matrix for rotation in X */
+	if (naxis == 1) {
+	    matn[4] = crot;
+	    matn[5] = srot;
+	    matn[7] = -srot;
+	    matn[8] = crot;
+	    }
+	
+	/* Matrix for rotation in Y */
+	else if (naxis == 2) {
+	    matn[0] = crot;
+	    matn[2] = -srot;
+	    matn[6] = srot;
+	    matn[8] = crot;
+	    }
+	
+	/* Matrix for rotation in Z */
+	else {
+	    matn[0] = crot;
+	    matn[1] = srot;
+	    matn[3] = -srot;
+	    matn[4] = crot;
+	    }
+
+	/* Multiply existing rotation matrix by current rotation matrix */
+	for (i = 0; i < 3; i++) {
+	    for (j = 0; j < 3; j++) {
+		w = 0.0;
+		for (k = 0; k < 3; k++)
+		    w+= matn[3*i + k] * matrix[3*k + j];
+		wm[3*i + j] = w;
+		}
+	    }
+
+	/* Update output matrix */
+	mati = matrix;
+	wmi = wm;
+	for (i = 0; i < 9; i++) {
+	    *mati++ = *wmi++;
+	    }
+	}
+}
+
+
+/* The following routines are from Doug Mink's Fortran ephemeris library */
+
+/* Convert right ascension, declination, and distance to
+   geocentric equatorial rectangular coordinates */
+
+void
+s2v3 (rra,rdec,r,pos)
+
+double rra;	/* Right ascension in radians */
+double rdec;	/* Declination in radians */
+double r;	/* Distance to object in same units as pos */
+double pos[3];	/* x,y,z geocentric equatorial position of object (returned) */
+{
+    pos[0] = r * cos (rra) * cos (rdec);
+    pos[1] = r * sin (rra) * cos (rdec);
+    pos[2] = r * sin (rdec);
+
+    return;
+}
+
+/* Convert geocentric equatorial rectangular coordinates to
+   right ascension, declination, and distance */
+
+void
+v2s3 (pos,rra,rdec,r)
+
+double pos[3];	/* x,y,z geocentric equatorial position of object */
+double *rra;	/* Right ascension in radians (returned) */
+double *rdec;	/* Declination in radians (returned) */
+double *r;	/* Distance to object in same units as pos (returned) */
+
+{
+    double x,y,z,rxy,rxy2,z2;
+
+    x = pos[0];
+    y = pos[1];
+    z = pos[2];
+
+    *rra = atan2 (y, x);
+
+    /* Keep RA within 0 to 2pi range */
+    if (*rra < 0.0)
+	*rra = *rra + (2.0 * PI);
+    if (*rra > 2.0 * PI)
+	*rra = *rra - (2.0 * PI);
+
+    rxy2 = x*x + y*y;
+    rxy = sqrt (rxy2);
+    *rdec = atan2 (z, rxy);
+
+    z2 = z * z;
+    *r = sqrt (rxy2 + z2);
+
+    return;
+}
+
 /*
  * Nov  6 1995	Include stdlib.h instead of malloc.h
  * Apr  1 1996	Add arbitrary epoch precession
@@ -2121,4 +2213,6 @@ double (*rmatp)[3];	/* 3x3 Precession matrix (returned) */
  * Mar 21 2001	Move braces around bgal[] and jgal[] matrix initialization
  *
  * Feb 13 2002	Fix precession units problem in ecl2fk5() and fk52ecl()
+ *
+ * Apr 13 2005	Replace all sla_lib calls with local code
  */

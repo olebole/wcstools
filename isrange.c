@@ -1,14 +1,15 @@
 /* File isrange.c
- * December 14, 2001
+ * April 11, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  *
- * Return 1 if argument is an integer, 2 if it is floating point, else 0
+ * Return 1 if argument is a range
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
 
 static int isrange();
 
@@ -22,7 +23,12 @@ char **av;
     /* Check for help or version command first */
     str = *(av+1);
     if (!str || !strcmp (str, "help") || !strcmp (str, "-help")) {
-	fprintf (stderr,"ISRANGE: Return 1 if argument is a range of the format n[-n[xn]],n[-n]xn]],...");
+	fprintf (stderr,"Usage:  Return 1 if argument is a range of numbers: n1[-n2[xs]],...\n");
+	fprintf (stderr,"        where n1=first number, n2=last number, and s=step size.\n");
+	exit (1);
+	}
+
+    else if (!strcmp (str, "version") || !strcmp (str, "-version")) {
 	exit (1);
 	}
 
@@ -56,3 +62,7 @@ char *string;		/* String which might be a range of numbers */
     else
 	return (0);
 }
+/* Dec 14 2001	New program
+ *
+ * Apr 11 2005	Print version; improve online documentation
+ */

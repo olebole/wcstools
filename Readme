@@ -14,12 +14,13 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.6.0 of the WCSTools package developed by Doug Mink
+This is version 3.6.1 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
-with significant code from
+with significant code or algorithms from
 
 Bill Cotton of NRAO (projection),
 Mark Calabretta of CSIRO (projection),
+Jesse Doggett and Rick White of StScI (DSS projection)
 Pat Wallace of Rutherford Appleton Laboratory, UK (coordinate conversion),
 Elwood Downey of the University of Iowa (WCS fitting procedure),
 John Roll of SAO for (network access), and

@@ -1,5 +1,5 @@
 /* File scat.c
- * November 19, 2004
+ * April 19, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -2728,7 +2728,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    if (typecol == 1)
 		strcat (headline,"	type");
 	    if (printepoch)
-		strcat (headline, " epoch     ");
+		strcat (headline, "	epoch     ");
 	    if (mprop == 2)
 		strcat (headline," 	velocity");
 	    if (mprop == 1)
@@ -2779,7 +2779,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    else if (typecol == 2)
 		strcat (headline,"	-----");
 	    if (printepoch)
-		strcat (headline, " ----------");
+		strcat (headline, "	----------");
 	    if (mprop == 2)
 		strcat (headline,"	--------");
 	    if (mprop == 1)
@@ -4409,4 +4409,6 @@ PrintGSClass ()
  * Oct 20 2004	Fix -rr and -r two argument definitions to match reality
  * Nov 17 2004	Fix main output loop bug and print type name in one line output
  * Nov 19 2004	Add star/galaxy code to USNO-B1.0 output
+ *
+ * Apr 19 2005	Fix minor format bug when printing tabbed epoch
  */

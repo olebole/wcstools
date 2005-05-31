@@ -1,5 +1,5 @@
 /* File imcat.c
- * November 19, 2004
+ * April 4, 2005
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -505,6 +505,11 @@ char **av;
 
     /* if (!verbose && !wfile)
 	verbose = 1; */
+
+    /* If reference catalog is not set, exit with error message */
+    if (refcatname == NULL) {
+	PrintUsage ("* Must specifiy a reference catalog using -c or alias.");
+	}
 
     /* Process image files from list file */
     if (readlist) {
@@ -2031,4 +2036,6 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Sep 16 2004	Fix RA limits in ImageLim() to deal with wrap through 0:00
  * Nov  5 2004	Print epoch if in ASCII catalog
  * Nov 19 2004	Print star/galaxy type for USNO-B1.0
+ *
+ * Apr  4 2005	Exit with error message if no catalog is specified
  */

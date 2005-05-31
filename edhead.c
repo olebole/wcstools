@@ -1,5 +1,5 @@
 /* File edhead.c
- * July 1, 2004
+ * April 14, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -114,6 +114,7 @@ char	*filename;	/* FITS or IRAF file filename */
     int fdr, ipos, nbr, nbw;
     int fdw;
     int naxis = 0;
+    int nblock, nlines;
     int bitpix = 0;
     int imageread = 0;
     char *head, *headend, *hlast;
@@ -230,20 +231,29 @@ char	*filename;	/* FITS or IRAF file filename */
 	}
 
     /* Read the new header from the temporary file */
-    if ((fd = fopen (temphead, "r")) != NULL) {
-	struct stat buff;
-	if (stat (temphead, &buff))
-            nbytes = -errno;
-	else
-            nbytes = ((((int) buff.st_size * 4) / 2880) + 1) * 2880;
+    if ((nlines = getfilelines (temphead)) > 0) {
+        nbytes = nlines * 80;
+	nblock = nbytes / 2880;
+	if (nblock * 2880 < nbytes)
+	    nblock = nblock + 1;
+        nbytes = nblock * 2880;
 	header = (char *) calloc (nbytes, 1);
 	head = header;
 	hlast = header + nbytes - 1;
 	for (i = 0; i< 81; i++)
 	    headline[i] = 0;
+	if ((fd = fopen (temphead, "r")) == NULL) {
+	    fprintf (stderr, "Cannot read edited header file %s\n", temphead);
+	    free (header);
+	    if (iraffile)
+		free (irafheader);
+	    free (image);
+	    free (editcom);
+	    return;
+	    }
 	while (fgets (headline,82,fd)) {
 	    int i = 79;
-	    while (headline[i] == 0 || headline[i] == 10)
+	    while (headline[i] == (char) 0 || headline[i] == (char) 10)
 		headline[i--] = ' ';
 	    strncpy (head,headline,80);
 	    head = head + 80;
@@ -255,7 +265,7 @@ char	*filename;	/* FITS or IRAF file filename */
 		hlast = hlast + 28800;
 		}
 	    for (i = 0; i< 80; i++)
-		headline[i] = 0;
+		headline[i] = (char) 0;
 	    }
 	fclose (fd);
 	}
@@ -429,4 +439,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Aug 21 2003	Use fitsrfull() to handle any simple FITS image
  * Jul  1 2004	Change first extension if no extension specified
  * Jul  1 2004	Overwrite edited header, if new header fits
+ *
+ * Apr 14 2005	Set new header size by number of lines in temporary file
  */
