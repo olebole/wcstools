@@ -1,5 +1,9 @@
 WCSTools subroutine release history
 
+July 21, 2005 - Release 3.6.2 (Doug Mink, SAO
+wcs.c: Fix wcsrange() to return correct range around RA=0
+Clean up accumulated unused and misdeclared variables using lint
+
 April 13, 2005 - Release 3.6.1 (Doug Mink, SAO)
 Remove all sla_lib subroutines and calls thereto from wcscon.c, replacing
 them with local code.

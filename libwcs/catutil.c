@@ -1,8 +1,8 @@
 /*** File libwcs/catutil.c
- *** January 22, 2004
+ *** May 18, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2004
+ *** Copyright (C) 1998-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -93,6 +93,8 @@
  *	Set version/date message for nstarmax=-1 returns from *read subroutines
  * char	*getrevmsg ()
  *	Return version/date message for nstarmax=-1 returns from *read subroutines
+ * int	*is2massid (string)
+ *	Return 1 if string is 2MASS ID, else 0
  */
 
 #include <unistd.h>
@@ -300,7 +302,7 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	*eqcat = 2000.0;
 	*epcat = 2000.0;
 	*catprop = 1;
-	*nmag = 2;
+	*nmag = 4;
 	}
     else if (refcat == TYCHO) {
 	strcpy (title, "Tycho Catalog Stars");
@@ -2725,6 +2727,51 @@ FILE	*fd;		/* Output file descriptor; none if NULL */
 }
 
 
+/* TMCID -- Return 1 if string is 2MASS ID, else 0 */
+
+int
+tmcid (string, ra, dec)
+
+char	*string;	/* Character string to check */
+double	*ra;		/* Right ascension (returned) */
+double	*dec;		/* Declination (returned) */
+{
+    char *sdec;
+    char csign;
+    int idec, idm, ids, ira, irm, irs;
+
+    /* Check first character */
+    if (string[0] != 'J' && string[0] != 'j')
+	return (0);
+
+    /* Find declination sign */
+    sdec = strsrch (string, "-");
+    if (sdec == NULL)
+	sdec = strsrch (string,"+");
+    if (sdec == NULL)
+	return (0);
+
+    /* Parse right ascension */
+    csign = *sdec;
+    *sdec = (char) 0;
+    ira = atoi (string+1);
+    irs = ira % 10000;
+    ira = ira / 10000;
+    irm = ira % 100;
+    ira = ira / 100;
+    *ra = (double) ira + ((double) irm) / 60.0 + ((double) irs) / 360000.0;
+    *ra = *ra * 15.0;
+
+    /* Parse declination */
+    idec = atoi (sdec+1);
+    ids = idec % 1000;
+    idec = idec / 1000;
+    idm = idec % 100;
+    idec = idec / 100;
+    *dec = (double) idec + ((double) idm) / 60.0 + ((double) ids) / 36000.0;
+    return (1);
+}
+
 void
 vothead (refcat, refcatname, mprop, typecol, ns, cra, cdec, drad)
 
@@ -2961,4 +3008,7 @@ vottail ()
  * Jan 12 2004	Add 2MASS Extended Source Catalog
  * Jan 14 2004	Add CatSource()
  * Jan 22 2004	Add global flag degout to print limits in degrees
+ *
+ * May 12 2005	Add tmcid() to decode 2MASS ID strings
+ * May 18 2005	Change Tycho-2 magnitudes to include B and V errors
  */

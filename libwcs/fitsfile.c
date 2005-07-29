@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** March 17, 2005
+ *** June 27, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2005
@@ -1678,7 +1678,7 @@ char	*header;	/* FITS image header */
 
 {
     int fd, ipos;
-    int nbhead, nblocks, lhead;
+    int nbhead, lhead;
     int nbw, nbnew, nbold;
     char *endhead, *lasthead, *oldheader, *head;
     char *ext, cext;
@@ -1919,4 +1919,5 @@ fitserr ()
  * Aug 31 2004	If SIMPLE=F, put whatever is in file after header in image
  *
  * Mar 17 2005	Use unbuffered I/O in isfits() for robustness
+ * Jun 27 2005	Drop unused variable nblocks in fitswexhead()
  */

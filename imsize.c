@@ -1,5 +1,5 @@
 /* File imsize.c
- * January 12, 2005
+ * July 20, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -34,7 +34,7 @@ static int dssc = 0;		/* Flag to drop extra stuff for DSS */
 static int degout = 0;		/* Flag to print center in degrees */
 static double eqout = 0.0;
 static double eqim = 0.0;
-static int sysout = 0;
+static int sysout0 = 0;
 static int sysim = 0;
 static int printepoch = 0;
 static int printrange = 0;	/* Flag to print range rather than center */
@@ -89,7 +89,7 @@ char **av;
 
 	case 'b':	/* ouput B1950 (B1950) coordinates */
 	    eqout = 1950.0;
-	    sysout = WCS_B1950;
+	    sysout0 = WCS_B1950;
 	    str1 = *(av+1);
 	    if (*(str+1) || !strchr (str1,':'))
 		strcpy (coorsys, "B1950");
@@ -109,7 +109,7 @@ char **av;
 	case 'c':	/* Change output for DSS */
 	    strcpy (coorsys, "J2000");
 	    eqout = 2000.0;
-	    sysout = WCS_J2000;
+	    sysout0 = WCS_J2000;
 	    dssc++;
 	    str1 = *(av+1);
 	    if (!*(str+1) && (strchr (str1,'-') || strchr (str1,'+')) ) {
@@ -125,7 +125,7 @@ char **av;
 	case 's':	/* Change output for DSS getimage */
 	    strcpy (coorsys, "J2000");
 	    eqout = 2000.0;
-	    sysout = WCS_J2000;
+	    sysout0 = WCS_J2000;
 	    dss++;
 	    str1 = *(av+1);
 	    if (!*(str+1) && (strchr (str1,'-') || strchr (str1,'+')) ) {
@@ -149,7 +149,7 @@ char **av;
 	case 'j':	/* ouput J2000 (J2000) coordinates */
 	    str1 = *(av+1);
 	    eqout = 2000.0;
-	    sysout = WCS_J2000;
+	    sysout0 = WCS_J2000;
 	    if (*(str+1) || !strchr (str1,':'))
 		strcpy (coorsys, "J2000");
 	    else if (ac < 3)
@@ -306,6 +306,7 @@ char *name;
     char *filename, *ext, *extn;
     int nax, nch;
     int bp, hp, wp, i, lfroot;
+    int sysout;
     double cra, cdec, dra, ddec, secpix;
     double xmin, xmax, ymin, ymax, dx, dy;
     struct WorldCoor *wcs;
@@ -378,6 +379,7 @@ char *name;
 	}
     sysim = 0;
     eqim = 0;
+    sysout = sysout0;
 
     /* Read world coordinate system information from the image header */
     wcs = GetFITSWCS (namext, header, verbose, &cra, &cdec, &dra, &ddec,
@@ -393,14 +395,15 @@ char *name;
 	}
 
     /* Convert to desired output coordinates */
-    if ((sysout == 0 && sysim < 3) || (sysout > 0 && sysout < 3)) {
+    if (sysout == 0)
+	sysout = sysim;
+    if (sysim != sysout)
 	wcscon (sysim, sysout, eqim, eqout, &cra, &cdec, wcs->epoch);
+    if (sysout < 3 && degout == 0) {
 	ra2str (rstr, 16, cra, ndec);
 	dec2str (dstr, 16, cdec, ndec-1);
 	}
     else {
-	if (sysout != 0 && sysim != sysout)
-	    wcscon (sysim, sysout, eqim, eqout, &cra, &cdec, wcs->epoch);
 	num2str (rstr, cra, 0, ndec);
 	num2str (dstr, cdec, 0, ndec);
 	}
@@ -421,12 +424,13 @@ char *name;
 	ddec = 2.0 * ddec;
 	}
 
+    /* Set output coordinate system string */
     if (coorsys[0] == 0)
 	wcscstr (coorsys, wcs->syswcs, wcs->equinox, 0.0);
     else
 	wcsoutinit (wcs, coorsys);
 
-    /* Print information */
+    /* Convert output width to appropriate units */
     if (sysim > 5) {
 	dra = dra;
 	ddec = ddec;
@@ -447,7 +451,7 @@ char *name;
     /* Print coverage of image in right ascension and declination */
     if (printrange) {
 	wcsrange (wcs, &xmin, &xmax, &ymin, &ymax);
-	if (sysim < 3) {
+	if (sysim < 3 && degout == 0) {
 	    ra2str (ramin, 32, xmin, ndec);
 	    ra2str (ramax, 32, xmax, ndec);
 	    dec2str (decmin, 32, ymin, ndec-1);
@@ -499,10 +503,13 @@ char *name;
     else {
 	printf ("%s%s %s %s %s", fileroot, ext, rstr, dstr, coorsys);
 	if (secpix > 0.0)
-	    if (wcs->sysout != 5)
+	    if (wcs->sysout < 3 && degout == 0)
 		printf (" %.3f\'x%.3f\'", dra*60.0, ddec*60.0);
-	    else
-		printf (" %.3fx%.3f", dra, ddec);
+	    else {
+		num2str (rstr, dra, 0, ndec);
+		num2str (dstr, ddec, 0, ndec);
+		printf (" %sx%s", rstr, dstr);
+		}
 	else if (dssc)
 	    printf (" 10.000\'x10.000\'");
 	if (!dssc) {
@@ -587,4 +594,5 @@ char *name;
  * Dec 18 2003	Print decimal degrees for longitude/latitude output
  *
  * Jan 12 2005	Check for uppercase filename extensions
+ * Jul 20 2005	Make -d and -n options work for both center and dimensions
  */

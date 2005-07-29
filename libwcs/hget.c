@@ -1,8 +1,8 @@
 /*** File libwcs/hget.c
- *** August 30, 2004
+ *** June 27m 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2004
+ *** Copyright (C) 1994-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -153,7 +153,7 @@ int *ival;
     char *value;
     double dval;
     int minint;
-    int lval, id;
+    int lval;
     char *dchar;
 
     /* Get value and comment from header string */
@@ -1347,8 +1347,6 @@ char *s2;	/* String to look for */
     return (strnsrch (s1, s2, ls1));
 }
 
-static char *scase;
-static int lscase = 0;
 
 /* Find string s2 within string s1 */
 
@@ -1361,7 +1359,7 @@ int	ls1;	/* Length of string being searched */
 
 {
     char *s,*s1e;
-    char cfirst,clast, s2i;
+    char cfirst,clast;
     int i,ls2;
 
     /* Return null string if either pointer is NULL */
@@ -1738,4 +1736,6 @@ int set_saolib(hstring)
  * Apr 28 2004	Free os2 in strncsrch() only if it is allocated
  * Jul 13 2004	Accept D, d, E, or e as exponent delimiter in floating points
  * Aug 30 2004	Change numdec() to accept sexigesimal numbers (:'s)
+ *
+ * Jun 27 2005	Drop unused variables
  */

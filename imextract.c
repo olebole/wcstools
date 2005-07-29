@@ -1,5 +1,5 @@
 /* File imextract.c
- * April 22, 2005
+ * July 18, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -262,6 +262,7 @@ char	*kwd[];		/* Names and values of those keywords */
     int dquote = 34;
     int nimages, nimage, nbheadi, nbimage;
     int nidef = 1;
+    int ndim;
 
     /* Open IRAF header */
     if (isiraf (filename)) {
@@ -283,7 +284,8 @@ char	*kwd[];		/* Names and values of those keywords */
     /* Read FITS image header */
     else {
 	iraffile = 0;
-	if ((header = fitsrhead (filename, &lhead, &nbhead)) == NULL) {
+	header = fitsrhead (filename, &lhead, &nbhead);
+	if (header == NULL) {
 	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
 	    return (1);
 	    }
@@ -309,7 +311,14 @@ char	*kwd[];		/* Names and values of those keywords */
     hgeti4 (header,"BITPIX",&bitpix);
     bytepix = bitpix / 8;
     if (bytepix < 0) bytepix = -bytepix;
-    nbimage = naxis1 * naxis2 * bytepix;
+    if (naxis3 > 1 && naxis2 > 1) {
+	nbimage = naxis1 * naxis2 * bytepix;
+	ndim = 3;
+	}
+    else {
+	nbimage = naxis1 * bytepix;
+	ndim = 2;
+	}
 
     /* Remove directory path and extension from file name */
     fname = strrchr (filename, '/');
@@ -365,7 +374,7 @@ char	*kwd[];		/* Names and values of those keywords */
 
     /* Get correct part of image */
 	if (i == 0 || (naxis0 > 2 && (naxis2 > 1 && naxis3 > 1))) {
-	    if (nimage > 0) 
+	    if (ndim > 2 && nimage > 0) 
 		nbheadi = nbhead + ((nimage - 1) * nbimage);
 	    else
 		nbheadi = nbhead;
@@ -380,7 +389,8 @@ char	*kwd[];		/* Names and values of those keywords */
 		}
 	    else {
 		if ((image = fitsrimage (filename, nbheadi, header)) == NULL) {
-		    fprintf (stderr, "Cannot read FITS image %s\n", filename);
+		    fprintf (stderr, "Cannot read FITS image %s + %d\n",
+			     filename, nbheadi);
 		    free (header);
 		    return (1);
 		    }
@@ -626,4 +636,5 @@ char	*kwd[];		/* Names and values of those keywords */
  * Apr 15 2004	Add -s command to ease use of spaces in keyword values being set
  *
  * Apr 22 2005	Fix bug so 2-D images can be extracted from data cubes
+ * Jul 18 2005	Fix bug so 1-D images can be extracted from spectrum stacks
  */

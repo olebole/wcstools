@@ -1,5 +1,5 @@
 /* File getcol.c
- * November 10, 2004
+ * July 15, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -478,7 +478,6 @@ char	*lfile;		/* Name of file with lines to list */
     char *lastchar;
     FILE *fd;
     FILE *lfd;
-    int nlog;
     struct Tokens tokens;  /* Token structure */
     struct Range *range;
     struct Range *lrange;
@@ -506,7 +505,6 @@ char	*lfile;		/* Name of file with lines to list */
     int nchar, k;
     int iapp;
     int jcond, jval;
-    int unset;
     char token[MAX_LTOK];
     int lform;
     char *iform;
@@ -530,12 +528,6 @@ char	*lfile;		/* Name of file with lines to list */
     if (listpath)
 	printf ("%s ", filename);
 
-    if (debug)
-	nlog = 1;
-    else if (verbose)
-	nlog = 100;
-    else
-	nlog = 0;
     if (nread < 1)
 	nread = MAXLINES;
 
@@ -611,7 +603,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    }
 		}
 	    for (i = 0; i < ntok; i++) {
-		if (getoken (tokens, i+1, token, MAX_LTOK)) {
+		if (getoken (&tokens, i+1, token, MAX_LTOK)) {
 		    iline[il] = atoi (token);
 		    if (iline[il] > 0) {
 			nline++;
@@ -735,7 +727,7 @@ char	*lfile;		/* Name of file with lines to list */
 	
 		    /* Read comparison value from header */
 		    itok = atoi (cond[icond]);
-		    getoken (tokens, itok, token, MAX_LTOK);
+		    getoken (&tokens, itok, token, MAX_LTOK);
 		    cval = token;
 		    if (strchr (cval, ':')) {
 			dnum = str2dec (cval);
@@ -974,7 +966,7 @@ char	*lfile;		/* Name of file with lines to list */
 	
 		    /* Read comparison value from header */
 		    itok = atoi (cond[icond]);
-		    getoken (tokens, itok, token, MAX_LTOK);
+		    getoken (&tokens, itok, token, MAX_LTOK);
 		    cval = token;
 		    if (strchr (cval, ':')) {
 			dnum = str2dec (cval);
@@ -1048,7 +1040,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    }
 
 		for (i = 0; i < nfind; i++) {
-		    if (getoken (tokens, inum[i], token, MAX_LTOK)) {
+		    if (getoken (&tokens, inum[i], token, MAX_LTOK)) {
 			ltok = strlen (token);
 			printf ("%03d", inum[i]);
 			for (j = 3; j < ltok; j++)
@@ -1060,7 +1052,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    }
 		printf ("\n");
 		for (i = 0; i < nfind; i++) {
-		    if (getoken (tokens, inum[i], token, MAX_LTOK)) {
+		    if (getoken (&tokens, inum[i], token, MAX_LTOK)) {
 			ltok = strlen (token);
 			for (j = 0; j < ltok; j++)
 			    printf ("-");
@@ -1076,7 +1068,7 @@ char	*lfile;		/* Name of file with lines to list */
 	    qsum1 = 0;
 	    nq = 0;
 	    for (i = 0; i < nfind; i++) {
-		if (getoken (tokens, inum[i], token, MAX_LTOK)) {
+		if (getoken (&tokens, inum[i], token, MAX_LTOK)) {
 
 		    /* Get substring of column, if requested */
 		    if (frstchar[i] > 0) {
@@ -1182,7 +1174,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    }
 		else {
 		    itok = atoi (cstr);
-		    if (getoken (tokens, itok, token, MAX_LTOK)) {
+		    if (getoken (&tokens, itok, token, MAX_LTOK)) {
 			dnum = atof (token);
 			ndnum = numdec (token);
 			}
@@ -1195,7 +1187,7 @@ char	*lfile;		/* Name of file with lines to list */
 
 		/* Extract token from input line */
 		itok = atoi (op[iop]);
-		if (getoken (tokens, itok, token, MAX_LTOK)) {
+		if (getoken (&tokens, itok, token, MAX_LTOK)) {
 		    dtok = atof (token);
 		    ndtok = numdec (token);
 		    nd = ndtok;
@@ -1555,8 +1547,7 @@ iscol (string)
 char *string;   /* Character string */
 {
     int lstr, i, nd;
-    char cstr, cstr1;
-    int fpcode;
+    char cstr;
 
     /* Return 0 if string is NULL */
     if (string == NULL)
@@ -1564,7 +1555,6 @@ char *string;   /* Character string */
 
     lstr = strlen (string);
     nd = 0;
-    fpcode = 1;
 
     /* Remove trailing spaces */
     while (string[lstr-1] == ' ')
@@ -1661,4 +1651,7 @@ void *pd1, *pd2;
  * Jul 14 2004	Fix bug in online help message
  * Aug 30 2004
  * Nov 10 2004	Add -column to include rest of line to newline
+ *
+ * Jul 15 2005	Drop unused variables
+ * Jul 15 2005	Use pointer to tokens in calls to getoken()
  */

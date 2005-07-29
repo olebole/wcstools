@@ -1,5 +1,5 @@
 /*** File libwcs/imgetwcs.c
- *** January 20, 2005
+ *** July 21, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2005
@@ -281,8 +281,8 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	}
 
     /* Get coordinates of corners for size for catalog searching */
-    dx = (double) *hp;
-    dy = (double) *wp;
+    dx = (double) *wp;
+    dy = (double) *hp;
     xmin = 0.5;
     ymin = 0.5;
     xmax = 0.5 + dx;
@@ -321,19 +321,35 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	dra1 = -(dra1 - 360.0);
 	dra2 = -(dra2 - 360.0);
 	}
-    if (dra1 < 0.0)
+    if (dra1 > 180.0)
+	dra1 = dra1 - 360.0;
+    else if (dra1 < -180.0)
+	dra1 = dra1 + 360.0;
+    else if (dra1 < 0.0)
 	dra1 = -dra1;
-    if (dra2 < 0.0)
+    if (dra2 > 180.0)
+	dra2 = dra2 - 360.0;
+    else if (dra2 < -180.0)
+	dra2 = dra2 + 360.0;
+    else if (dra2 < 0.0)
 	dra2 = -dra2;
     dra3 = *cra - ra3;
     dra4 = *cra - ra4;
     if (*cra > 0 && *cra - dra0 < 0.0) {
-	dra3 = -(dra3 - 360.0);
-	dra4 = -(dra4 - 360.0);
+	dra3 = dra3 + 360.0;
+	dra4 = dra4 + 360.0;
 	}
-    if (dra3 < 0.0)
+    if (dra3 > 180.0)
+	dra3 = dra3 - 360.0;
+    else if (dra3 < -180.0)
+	dra3 = dra3 + 360.0;
+    else if (dra3 < 0.0)
 	dra3 = -dra3;
-    if (dra4 < 0.0)
+    if (dra4 > 180.0)
+	dra4 = dra4 - 360.0;
+    else if (dra4 < -180.0)
+	dra4 = dra4 + 360.0;
+    else if (dra4 < 0.0)
 	dra4 = -dra4;
     *dra = dra1;
     if (dra2 > *dra)
@@ -696,4 +712,6 @@ char *dateobs;
  * Oct 29 2004	Fix problem setting RA size from limits
  *
  * Jan 20 2005	Fix cel.ref assignment if axis are switched
+ * Jul 20 2005	Fix bug which reversed dimensions when setting image size
+ * Jul 21 2005	Fix bug which caused bad results at RA ~= 0.0
  */

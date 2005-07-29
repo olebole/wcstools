@@ -1,8 +1,8 @@
 /*** File imhfile.c
- *** November 3, 2003
+ *** June 13, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2003
+ *** Copyright (C) 1996-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -263,15 +263,22 @@ char	*fitsheader;	/* FITS image header (filled) */
     char *bang;
     int naxis, naxis1, naxis2, naxis3, npaxis1, npaxis2,bitpix, bytepix, pixswap, i;
     char *image;
-    int nbr, nbimage, nbaxis, nbl, nbx, nbdiff;
+    int nbr, nbimage, nbaxis, nbl, nbx, nbdiff, lpname;
     char *pixheader;
-    char *linebuff;
+    char *linebuff, *pixchar;
     int imhver, lpixhead, len;
     char pixname[SZ_IM2PIXFILE+1];
     char newpixname[SZ_IM2HDRFILE+1];
 
     /* Convert pixel file name to character string */
     hgetm (fitsheader, "PIXFIL", SZ_IM2PIXFILE, pixname);
+
+    /* Drop trailing spaces */
+    lpname = strlen (pixname);
+    pixchar = pixname + lpname - 1;
+    while (*pixchar == ' ')
+	*pixchar = (char) 0;
+
     hgeti4 (fitsheader, "PIXOFF", &lpixhead);
 
     /* Open pixel file, ignoring machine name if present */
@@ -1907,4 +1914,6 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * Feb  4 2003	Open catalog file rb instead of r (Martin Ploner, Bern)
  * Oct 31 2003	Read image only in irafrimage() if physical dimension > image dim.
  * Nov  3 2003	Set NAXISi to image, not physical dimensions in iraf2fits()
+ *
+ * Jun 13 2005	Drop trailing spaces on pixel file name
  */

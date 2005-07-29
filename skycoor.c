@@ -1,5 +1,5 @@
 /* File skycoor.c
- * April 21, 2005
+ * May 31, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -388,6 +388,7 @@ char **av;
 	    av++;
 	    }
 	else if (ac > 0) {
+	    listname = NULL;
 	    strcpy (rastr0, *av);
 	    ac--;
 	    av++;
@@ -624,4 +625,5 @@ char *errstring;
  * Apr 13 2005	Fix bug which infinitely looped on header in verbose mode
  * Apr 21 2005	Fix error in convert from non-1950 B in files (Daniela Doneva)
  * Apr 21 2005	Add -f argument to avoid @ in windows command lines
+ * May 31 2005	Fix bug which caused infinite loop due to setting of listname
  */

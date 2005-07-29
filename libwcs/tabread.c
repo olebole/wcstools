@@ -1,8 +1,8 @@
 /*** File libwcs/tabread.c
- *** November 17, 2004
+ *** May 12, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -1146,6 +1146,10 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
 	}
     else if ((sc->entid = tabcont (startab, "ID"))) {
+	i = sc->entid - 1;
+	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
+	}
+    else if ((sc->entid = tabcont (startab, "num"))) {
 	i = sc->entid - 1;
 	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
 	}
@@ -2682,4 +2686,6 @@ char    *filename;      /* Name of file to check */
  * Mar 16 2004	Be more clever about reading by number
  * Mar 19 2004	Make verbose flag global
  * Nov 17 2004	Accept SpT and spt before type for spectral type
+ *
+ * May 12 2005	Add "num" as a possible substring to identify an ID column
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/ty2read.c
- *** April 30, 2004
+ *** May 18, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2000-2004
+ *** Copyright (C) 2000-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -206,9 +206,9 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("epoch	%.3f\n", epout);
 	printf ("program	scat %s\n", revmessage);
 	printf ("tycho2_id	ra          	dec         	");
-	printf ("magb 	magv 	ura   	udec  	arcmin\n");
+	printf ("magb 	magv 	magbe	magve	ura   	udec  	arcmin\n");
 	printf ("----------	------------	------------	");
-	printf ("-----	-----	------	------	------\n");
+	printf ("-----	-----	-----	-----	------	------	------\n");
 	}
 
     /* If searching through RA = 0:00, split search in two */
@@ -252,8 +252,8 @@ int	nlog;		/* 1 for diagnostics */
 		num = star->num;
 
 		/* Magnitude */
-		magv = star->xmag[0];
-		magb = star->xmag[1];
+		magb = star->xmag[0];
+		magv = star->xmag[1];
 		mag = star->xmag[magsort];
 
 		/* Check magnitude limits */
@@ -322,6 +322,8 @@ int	nlog;		/* 1 for diagnostics */
 			gpdec[nstar] = decpm;
 			gmag[0][nstar] = magb;
 			gmag[1][nstar] = magv;
+			gmag[2][nstar] = star->xmag[2];
+			gmag[3][nstar] = star->xmag[3];
 			gdist[nstar] = dist;
 			if (dist > maxdist) {
 			    maxdist = dist;
@@ -344,6 +346,8 @@ int	nlog;		/* 1 for diagnostics */
 			    gpdec[farstar] = decpm;
 			    gmag[0][farstar] = magb;
 			    gmag[1][farstar] = magv;
+			    gmag[2][nstar] = star->xmag[2];
+			    gmag[3][nstar] = star->xmag[3];
 			    gdist[farstar] = dist;
 
 			    /* Find new farthest star */
@@ -366,6 +370,8 @@ int	nlog;		/* 1 for diagnostics */
 			gpdec[faintstar] = decpm;
 			gmag[0][faintstar] = magb;
 			gmag[1][faintstar] = magv;
+			gmag[2][nstar] = star->xmag[2];
+			gmag[3][nstar] = star->xmag[3];
 			gdist[faintstar] = dist;
 			faintmag = 0.0;
 
@@ -496,6 +502,8 @@ int	nlog;		/* 1 for diagnostics */
 		    gdec[jstar] = 0.0;
 		    gmag[0][jstar] = 0.0;
 		    gmag[1][jstar] = 0.0;
+		    gmag[2][jstar] = 0.0;
+		    gmag[3][jstar] = 0.0;
 		    gtype[jstar] = 0;
 		    }
 		else {
@@ -519,6 +527,8 @@ int	nlog;		/* 1 for diagnostics */
 		gdec[jstar] = 0.0;
 		gmag[0][jstar] = 0.0;
 		gmag[1][jstar] = 0.0;
+		gmag[2][jstar] = 0.0;
+		gmag[3][jstar] = 0.0;
 		gtype[jstar] = 0;
 		continue;
 		}
@@ -539,8 +549,8 @@ int	nlog;		/* 1 for diagnostics */
 		     &ra, &dec, &rapm, &decpm);
 
 	/* Magnitude */
-	magv = star->xmag[0];
-	magb = star->xmag[1];
+	magb = star->xmag[0];
+	magv = star->xmag[1];
 
 	/* Spectral Type
 	isp = (1000 * (int) star->isp[0]) + (int)star->isp[1]; */
@@ -553,6 +563,8 @@ int	nlog;		/* 1 for diagnostics */
 	gpdec[jstar] = decpm;
 	gmag[0][jstar] = magb;
 	gmag[1][jstar] = magv;
+	gmag[2][jstar] = star->xmag[2];
+	gmag[3][jstar] = star->xmag[3];
 	/* gtype[jstar] = isp; */
 	if (nlog == 1)
 	    fprintf (stderr,"TY2RNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %s  \n",
@@ -723,8 +735,8 @@ int	nlog;		/* 1 for diagnostics */
 		dec = star->dec;
 
 		/* Magnitude */
-		magv = star->xmag[0];
-		magb = star->xmag[1];
+		magb = star->xmag[0];
+		magv = star->xmag[1];
 		mag = star->xmag[magsort];
 
 		/* Check magnitude limits */
@@ -1285,15 +1297,17 @@ int istar;	/* Star sequence number in Tycho 2 catalog region file */
     st->rapm = (atof (line+41) / 3600000.0) / cosdeg (st->dec);
     st->decpm = atof (line+49) / 3600000.0;
 
-    /* Set B magnitude */
+    /* Set B magnitude and error */
     st->xmag[1] = atof (line+110);
+    st->xmag[3] = atof (line+117);
 
-    /* Set V magnitude */
+    /* Set V magnitude and error */
     st->xmag[0] = atof (line+123);
-    st->isp[0] = (char)0;
-    st->isp[1] = (char)0;
+    st->xmag[2] = atof (line+130);
 
     /* Set main sequence spectral type
+    st->isp[0] = (char)0;
+    st->isp[1] = (char)0;
     bv2sp (NULL, st->xmag[1], st->xmag[0], st->isp); */
 
     return (0);
@@ -1366,4 +1380,6 @@ char	*filename;	/* Name of file for which to find size */
  * Dec  1 2003	Add missing tab to n=-1 header
  *
  * Apr 30 2004	Allow either LF or CRLF at end of lines in index and catalog
+ *
+ * May 18 2005	Add magnitude errors
  */

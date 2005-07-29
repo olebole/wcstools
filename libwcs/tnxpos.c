@@ -1,9 +1,9 @@
 /*** File wcslib/tnxpos.c
- *** JUne 26, 2002
+ *** June 27, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** After IRAF mwcs/wftnx.x and mwcs/wfgsurfit.x
- *** Copyright (C) 1998-2002
+ *** Copyright (C) 1998-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -640,8 +640,8 @@ double  y;		/* y value */
             wf_gsb1leg (y, sf->yorder, sf->ymaxmin, sf->yrange, sf->ybasis);
 	    break;
         case TNX_POLYNOMIAL:
-            wf_gsb1pol (x, sf->xorder, sf->xmaxmin, sf->xrange, sf->xbasis);
-            wf_gsb1pol (y, sf->yorder, sf->ymaxmin, sf->yrange, sf->ybasis);
+            wf_gsb1pol (x, sf->xorder, sf->xbasis);
+            wf_gsb1pol (y, sf->yorder, sf->ybasis);
 	    break;
         default:
             fprintf (stderr,"TNX_GSEVAL: unknown surface type\n");
@@ -1017,11 +1017,10 @@ double	*fit;			/* array containing the surface parameters
    for a single point and given order. */
 
 static void
-wf_gsb1pol (x, order, k1, k2, basis)
+wf_gsb1pol (x, order, basis)
 
 double  x;		/*i data point */
 int     order;		/*i order of polynomial, order = 1, constant */
-double  k1, k2;		/*i nomalizing constants, dummy in this case */
 double  *basis;		/*o basis functions */
 {
     int     i;
@@ -1215,4 +1214,6 @@ double	*coeff;
  * Apr 11 2002	Fix bug when .-terminated substring in wf_gsopen()
  * Apr 29 2002	Clean up code
  * Jun 26 2002	Increase size of WAT strings from 500 to 2000
+ *
+ * Jun 27 2005	Drop unused arguments k1 and k2 from wf_gsb1pol()
  */

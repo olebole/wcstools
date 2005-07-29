@@ -1,4 +1,15 @@
-Version 3.6.1 (April 22, 2005)
+Version 3.6.2 (July 21, 2005)
+gethead, delhead: Deal correctly with large numbers of keywords
+gethead: format one-per-line output to be read as input by sethead
+getcol: Fix calls to gethead() so they work in Linux
+imextract: Fix bug to extract 1 dimension from 2D files
+imsize: Fix recent bug which reversed size in height and width
+imsize: Make -d option give center and size in degrees
+imgetwcs.c: Set limits correctly around RA=0
+wcs.c: In wcsrange(), compute limits correctly around RA=0
+Clean up unused variables everywhere using lint
+
+Version 3.6.1 (May 31, 2005)
 imwcs, imcat, immatch: Exit with error message if no catalog is specified
 isrange, isnum: Improve self-documentation of these existing programs and
   add them to the official "wcstools" command list of programs

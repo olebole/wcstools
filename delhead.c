@@ -1,5 +1,5 @@
 /* File delhead.c
- * March 1, 2005
+ * June 10, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -480,4 +480,5 @@ char	*kwd[];		/* Names of those keywords */
  *
  * Jan 12 2005	Write over unread image only if number of header blocks same
  * Mar  1 2005	Print program version only on first file if looping
+ * Jun 10 2005	Fix bug dealing with large numbers of keywords
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** March 9, 2005
+ *** July 21, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2005
@@ -1350,7 +1350,7 @@ double	*dec1;		/* Minimum declination of image (deg) (returned) */
 double	*dec2;		/* Maximum declination of image (deg) (returned) */
 
 {
-    double xpos1, xpos2, xpos3, xpos4, ypos1, ypos2, ypos3, ypos4;
+    double xpos1, xpos2, xpos3, xpos4, ypos1, ypos2, ypos3, ypos4, temp;
 
     if (iswcs(wcs)) {
 
@@ -1371,6 +1371,14 @@ double	*dec2;		/* Maximum declination of image (deg) (returned) */
 	if (xpos2 > *ra2) *ra2 = xpos2;
 	if (xpos3 > *ra2) *ra2 = xpos3;
 	if (xpos4 > *ra2) *ra2 = xpos4;
+
+	if (wcs->syswcs != WCS_LINEAR && wcs->syswcs != WCS_XY) {
+	    if (*ra2 - *ra1 > 180.0) {
+		temp = *ra1;
+		*ra1 = *ra2;
+		*ra2 = temp;
+		}
+	    }
 
 	/* Find minimum declination or latitude */
 	*dec1 = ypos1;
@@ -1920,11 +1928,12 @@ int	lstr;		/* Length of world coordinate string (returned) */
 
 	/* Label galactic coordinates */
 	if (wcs->sysout == WCS_GALACTIC) {
-	    if (lstr > 9 && wcs->printsys)
+	    if (lstr > 9 && wcs->printsys) {
 		if (wcs->tabsys)
 		    strcat (wcstring,"	galactic");
 		else
 		    strcat (wcstring," galactic");
+		}
 	    }
 
 	/* Label ecliptic coordinates */
@@ -1979,7 +1988,7 @@ int	lstr;		/* Length of world coordinate string (returned) */
 
 	/* Label equatorial coordinates */
 	else if (wcs->sysout==WCS_B1950 || wcs->sysout==WCS_J2000) {
-	    if (lstr > strlen(wcs->radecout)+1 && wcs->printsys) {
+	    if (lstr > (int) strlen(wcs->radecout)+1 && wcs->printsys) {
 		if (wcs->tabsys)
 		    strcat (wcstring,"	");
 		else
@@ -2298,7 +2307,7 @@ double  *ypos;           /* y (dec) coordinate (deg) */
     pixcrd[3] = 1.0;
     for (i = 0; i < 4; i++)
 	imgcrd[i] = 0.0;
-    offscl = wcsrev (wcs->ctype, &wcs->wcsl, pixcrd, &wcs->lin, imgcrd,
+    offscl = wcsrev (&wcs->ctype, &wcs->wcsl, pixcrd, &wcs->lin, imgcrd,
 		    &wcs->prj, &phi, &theta, wcs->crval, &wcs->cel, wcscrd);
     if (offscl == 0) {
 	*xpos = wcscrd[wcs->wcsl.lng];
@@ -2328,7 +2337,7 @@ double  *ypix;          /* y pixel number  (dec or lat without rotation) */
     *xpix = 0.0;
     *ypix = 0.0;
     if (wcs->wcsl.flag != WCSSET) {
-	if (wcsset (wcs->lin.naxis, wcs->ctype, &wcs->wcsl) )
+	if (wcsset (wcs->lin.naxis, &wcs->ctype, &wcs->wcsl) )
 	    return (1);
 	}
 
@@ -2351,7 +2360,7 @@ double  *ypix;          /* y pixel number  (dec or lat without rotation) */
     imgcrd[3] = 1.0;
 
     /* Invoke WCSLIB subroutines for coordinate conversion */
-    offscl = wcsfwd (wcs->ctype, &wcs->wcsl, wcscrd, wcs->crval, &wcs->cel,
+    offscl = wcsfwd (&wcs->ctype, &wcs->wcsl, wcscrd, wcs->crval, &wcs->cel,
 		     &phi, &theta, &wcs->prj, imgcrd, &wcs->lin, pixcrd);
 
     if (!offscl) {
@@ -2751,4 +2760,6 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Nov  1 2004	Keep wcs->rot between 0 and 360
  *
  * Mar  9 2005	Fix bug in wcsrotset() which set rot > 360 to 360
+ * Jun 27 2005	Fix ctype in calls to wcs subroutines
+ * Jul 21 2005	Fix bug in wcsrange() at RA ~= 0.0
  */

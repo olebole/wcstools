@@ -1,5 +1,5 @@
 /* File scat.c
- * April 19, 2005
+ * May 12, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -109,6 +109,7 @@ static int votab = 0;		/* If 1, print output as VOTable XML */
 static int minid = 0;		/* Minimum number of plate IDs for USNO-B1.0 */
 static int minpmqual = 0;	/* Minimum USNO-B1.0 proper motion quality */
 static int rdra = 0;		/* If 1, dra is in ra units, not sky units */
+static int idrun = 0;		/* If 1, 2MASS ID run from inside loop */
 extern void setminpmqual();
 extern void setminid();
 extern void setrevmsg();
@@ -227,6 +228,21 @@ char **av;
 	    if (nmag > nmagmax)
 		nmagmax = nmag;
 	    ndcat = CatNdec (refcat);
+	    }
+
+	/* Set search RA, Dec, and equinox if 2MASS ID */
+	else if (tmcid (*av, &ra0, &dec0)) {
+	    syscoor = WCS_J2000;
+	    eqcoor = 2000.0;
+	    if (epoch0 == 0.0)
+		epoch0 = 2000.0;
+	    if (eqout == 0.0)
+		eqout = 2000.0;
+	    idrun = 0;
+	    ListCat (ranges, eqout);
+	    idrun = 1;
+	    ra0 = 0.0;
+	    dec0 = 0.0;
 	    }
 
 	/* Set search RA, Dec, and equinox if colon in argument */
@@ -715,6 +731,11 @@ char **av;
 	    }
 	}
 
+    /* If 2MASS ID run from inside loop, quit now */
+    if (idrun)
+	exit (0);
+
+    /* If no catalog has been specified, quit now */
     if (ncat < 1) {
 	sprintf (errmsg, "* No catalog name given");
 	PrintUsage (errmsg);
@@ -4411,4 +4432,5 @@ PrintGSClass ()
  * Nov 19 2004	Add star/galaxy code to USNO-B1.0 output
  *
  * Apr 19 2005	Fix minor format bug when printing tabbed epoch
+ * May 12 2005	Add 2MASS ID decoding
  */

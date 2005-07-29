@@ -1,5 +1,5 @@
 /* File gethead.c
- * January 14, 2005
+ * July 18, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -68,8 +68,8 @@ char **av;
     char **kwdnew;		/* Keywords to read */
     int nkwd = 0;
     int nkwd1 = 0;
-    char **fn;
-    int *ft;
+    char **fn, **newfn;
+    int *ft, *newft;
     int ifile;
     int lfn;
     char filename[256];
@@ -189,7 +189,6 @@ char **av;
 	
 		case 'v': /* More verbosity */
 		    verbose++;
-		    keyeqvaln++;
 		    break;
 	
 		case 'x': /* FITS extension to read */
@@ -228,7 +227,7 @@ char **av;
 		if (nkwd1 > 0) {
 		    if (nkwd+nkwd1 > maxnkwd) {
 			maxnkwd = nkwd + nkwd1 + 32;
-			kwdnew = (char **) realloc ((void *)kwd, maxnkwd);
+			kwdnew = (char **) calloc (maxnkwd, sizeof (char **));
 		 	for (ikwd = 0; ikwd < nkwd; ikwd++)
 			    kwdnew[ikwd] = kwd[ikwd];
 			free (kwd);
@@ -255,9 +254,17 @@ char **av;
 	    if (nfile >= maxnfile) {
 		maxnfile = maxnfile * 2;
 		nbytes = maxnfile * sizeof (char *);
-		fn = (char **) realloc ((void *)fn, nbytes);
-		nbytes = maxnfile * sizeof (int);
-		ft = (int *) realloc ((void *)ft, nbytes);
+		newfn = (char **) calloc (maxnfile, sizeof (char *));
+		for (i = 0; i < nfile; i++)
+		    newfn[i] = fn[i];
+		free (fn);
+		fn = newfn;
+		newft = (int *) calloc (maxnfile*2, sizeof (int));
+		for (i = 0; i < nfile; i++)
+		    newft[i] = ft[i];
+		free (ft);
+		ft = newft;
+		maxnfile = maxnfile * 2;
 		}
 	    fn[nfile] = *av;
 	    if (forceascii)
@@ -764,6 +771,10 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		sprintf (temp, " %s=%s", keyword, str);
 		strcat (outline, temp);
 		}
+	    else if (verbose) {
+		sprintf (temp, " %s = %s", keyword, str);
+		strcat (outline, temp);
+		}
 	    else
 		strcat (outline, str);
 	    nfound++;
@@ -788,8 +799,18 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		    strclean (str);
 		    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 			num2str (string, atof(str), 0, ndec);
-		    if (keyeqvaln)
-			printf ("%s = %s\n", keyword, str);
+		    if (verbose) {
+			if (strchr (str,' '))
+			    printf ("%s = \"%s\"\n", keyword, str);
+			else
+			    printf ("%s = %s\n", keyword, str);
+			}
+		    else if (keyeqvaln) {
+			if (strchr (str,' '))
+			    printf ("%s=\"%s\"\n", keyword, str);
+			else
+			    printf ("%s=%s\n", keyword, str);
+			}
 		    else if (keyeqval) {
 			sprintf (temp, " %s=%s", keyword, str);
 			strcat (outline, temp);
@@ -820,8 +841,18 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	    strclean (str);
 	    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 		num2str (string, atof(str), 0, ndec);
-	    if (keyeqvaln)
-		printf ("%s = %s\n", keyword, str);
+	    if (verbose) {
+		if (strchr (str,' '))
+		    printf ("%s = \"%s\"\n", keyword, str);
+		else
+		    printf ("%s = %s\n", keyword, str);
+		}
+	    else if (keyeqvaln) {
+		if (strchr (str,' '))
+		    printf ("%s=\"%s\"\n", keyword, str);
+		else
+		    printf ("%s=%s\n", keyword, str);
+		}
 	    else if (keyeqval) {
 		sprintf (temp, " %s=%s", keyword, str);
 		strcat (outline, temp);
@@ -835,8 +866,18 @@ char	*kwd[];		/* Names of keywords for which to print values */
 
 	/* Read IRAF-style multiple-line keyword value */
 	else if (hgetm (header, keyword, 600, mstring)) {
-	    if (keyeqvaln)
-		printf ("%s = %s\n", keyword, mstring);
+	    if (verbose) {
+		if (strchr (mstring,' '))
+		    printf ("%s = \"%s\"\n", keyword, mstring);
+		else
+		    printf ("%s = %s\n", keyword, mstring);
+		}
+	    else if (keyeqvaln) {
+		if (strchr (mstring,' '))
+		    printf ("%s=\"%s\"\n", keyword, mstring);
+		else
+		    printf ("%s=%s\n", keyword, mstring);
+		}
 	    else if (keyeqval) {
 		sprintf (temp, " %s=%s", keyword, mstring);
 		strcat (outline, temp);
@@ -862,7 +903,8 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	}
 
     /* Print line of keywords */
-    if (!keyeqvaln && (nfound > 0 || printfill) && (nfile < 2 || nfound > 0 || listall)) {
+    if (!verbose && !keyeqvaln && (nfound > 0 || printfill) && 
+	(nfile < 2 || nfound > 0 || listall)) {
 
 	/* Remove spaces used to pad tab-separated tables for readability */
 	if (tabout && !tabpad) {
@@ -1063,4 +1105,7 @@ char *string;
  * Dec 20 2004	If printing filename for tab-separated file, head with PathName
  *
  * Jan 14 2005	Change PathName back to filename
+ * Jun  9 2005	Fix bugs dealing with large numbers of files or keywords
+ * Jun 15 2005	Write one-per-line output in SETHEAD input file format
+ * Jul 18 2005	Do not write one-per-line verbose output in SETHEAD input file format
  */

@@ -1,8 +1,8 @@
 /*** File wcslib/imio.c
- *** February 27, 2004
+ *** June 27, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -805,7 +805,7 @@ double  bzero;		/* Zero point for pixel scaling */
 double  bscale;		/* Scale factor for pixel scaling */
 int	pix1;		/* First pixel to fill */
 int	npix;		/* Number of pixels to fill */
-double	*dpix;		/* Value with which to fill pixels */
+double	dpix;		/* Value with which to fill pixels */
 {
     fillvec (image, bitpix, bzero, bscale, pix1-1, npix, dpix);
     return;
@@ -825,20 +825,21 @@ double  bzero;		/* Zero point for pixel scaling */
 double  bscale;		/* Scale factor for pixel scaling */
 int	pix1;		/* First pixel to fill */
 int	npix;		/* Number of pixels to fill */
-double	*dpix;		/* Value with which to fill pixels */
+double	dpix;		/* Value with which to fill pixels */
 {
     char ipc;
     short *im2, ip2;
     int *im4, ip4;
     unsigned short *imu, ipu;
     float *imr, ipr;
-    double *imd, ipd;
+    double *imd;
     int ipix, pix2;
     double dp;
 
     pix2 = pix1 + npix;
 
     /* Scale data if either BZERO or BSCALE keyword has been set */
+    dp = dpix;
     if (scale && (bzero != 0.0 || bscale != 1.0))
 	dp = (dp - bzero) / bscale;
 
@@ -1084,5 +1085,7 @@ imswapped ()
  * May 20 2003	Declare scale0 in setscale()
  *
  * Jan 28 2004	Add image limit check to movepix()
- * Feb 27 29094	Add fillvec() and fillvec1() to set vector to a constant
+ * Feb 27 2004	Add fillvec() and fillvec1() to set vector to a constant
+ *
+ * Jun 27 2005	Fix major bug in fillvec(); pass value dpix in fillvec1(), too
  */

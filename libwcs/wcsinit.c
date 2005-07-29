@@ -1,8 +1,8 @@
 /*** File libwcs/wcsinit.c
- *** February 26, 2004
+ *** June 22, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2004
+ *** Copyright (C) 1998-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -51,7 +51,6 @@ static void wcseq();
 static void wcseqm();
 static void wcsioset();
 void wcsrotset();
-char wcserrmsg[80];
 char wcschar();
 struct WorldCoor *wcsinitn();
 struct WorldCoor *wcsinitc();
@@ -1292,4 +1291,6 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Dec 12 2003	Fix call to setwcserr() with format in it
  *
  * Feb 26 2004	Add parameters for ZPX projection
+ *
+ * Jun 22 2005	Drop declaration of variable wcserrmsg which is not used
  */
