@@ -1,5 +1,5 @@
 /* File gettab.c
- * April 15, 2004
+ * September 28, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,10 +14,10 @@
 #include "libwcs/wcs.h"
 #include "libwcs/wcscat.h"
 
-#define MAXCOL 200
+#define MAXCOL 500
 #define MAXCOND 10
 #define MAXFILES 1000
-#define MAXLINES 1000
+#define MAXLINES 5000
 
 static void usage();
 static void PrintValues();
@@ -872,4 +872,6 @@ char *string;
  *
  * Jan 22 2004	Increase maximum number of columns from 100 to 200
  * Apr 15 2004	Avoid removing trailing zeroes from exponents
+ *
+ * Sep 28 2005	Increase columns from 200 to 500, lines from 1000 t0 5000
  */

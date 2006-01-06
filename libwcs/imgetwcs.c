@@ -1,5 +1,5 @@
 /*** File libwcs/imgetwcs.c
- *** July 21, 2005
+ *** November 1, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2005
@@ -25,8 +25,6 @@
 	                   Smithsonian Astrophysical Observatory
 	                   60 Garden St.
 	                   Cambridge, MA 02138 USA
-
-
  */
 
 #include <stdio.h>
@@ -91,6 +89,12 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     double dra0, dra1, dra2, dra3, dra4;
     struct WorldCoor *wcs;
     char rstr[64], dstr[64], temp[16], cstr[16];
+    char *cwcs;
+
+    /* Set the world coordinate system from the image header */
+    cwcs = strchr (filename, '%');
+    if (cwcs != NULL)
+	cwcs++;
 
     /* Set image dimensions */
     nax = 0;
@@ -134,6 +138,8 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 		hputs (header, "RADECSYS", "GALACTIC");
 	    else if (comsys == WCS_ECLIPTIC)
 		hputs (header, "RADECSYS", "ECLIPTIC");
+	    else if (comsys == WCS_ICRS)
+		hputs (header, "RADECSYS", "ICRS");
 	    else
 		hputs (header, "RADECSYS", "FK5");
 	    }
@@ -239,7 +245,7 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	hputs (header, "DATE-OBS", dateobs0);
 
     /* Initialize WCS structure from FITS header */
-    wcs = wcsinit (header);
+    wcs = wcsinitn (header, cwcs);
 
     /* If incomplete WCS in header, drop out */
     if (nowcs (wcs)) {
@@ -714,4 +720,6 @@ char *dateobs;
  * Jan 20 2005	Fix cel.ref assignment if axis are switched
  * Jul 20 2005	Fix bug which reversed dimensions when setting image size
  * Jul 21 2005	Fix bug which caused bad results at RA ~= 0.0
+ * Aug 30 2005	Implement multiple WCS's, though not modification thereof, yet
+ * Nov  1 2005	Set RADECSYS to ICRS if appropriate
  */

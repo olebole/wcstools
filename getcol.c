@@ -1,5 +1,5 @@
 /* File getcol.c
- * July 15, 2005
+ * December 15, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -343,7 +343,7 @@ char **av;
 		    lfile = *++av + 1;
 		    ac--;
 		    }
-		else if (isrange (*(av+1))) {
+		else if (isrange (*(av+1)) || isnum (*(av+1))) {
 		    lranges = (char *) calloc (strlen(*av) + 1, 1);
 		    strcpy (lranges, *++av);
 		    ac--;
@@ -536,7 +536,7 @@ char	*lfile;		/* Name of file with lines to list */
 	lrange = RangeInit (lranges, nfdef);
 	nline = rgetn (lrange);
 	nbytes = nline * sizeof (int);
-	if (!(iline = (int *) calloc (nline, sizeof(int))) ) {
+	if (!(iline = (int *) calloc (nline+1, sizeof(int))) ) {
 	    fprintf (stderr, "Could not calloc %d bytes for iline\n", nbytes);
 	    return (-1);
 	    }
@@ -925,8 +925,11 @@ char	*lfile;		/* Name of file with lines to list */
 		    continue;
 		else if (il > iline[nline-1])
 		    break;
-		else
+		else {
 		    iln++;
+		    if (iln > nline)
+			break;
+		    }
 		}
 
 	    /* Echo line if it is a comment */
@@ -1158,10 +1161,12 @@ char	*lfile;		/* Name of file with lines to list */
 	    /* Print columns being operated on */
 	    for (iop = 0; iop < nop; iop++) {
 		if (i > 0 || nfind > 0) {
-		    if (tabout)
-			printf ("	");
-		    else
-			printf (" ");
+		    if (printcol) {
+			if (tabout)
+			    printf ("	");
+			else
+			    printf (" ");
+			}
 		    }
 
 		/* Extract test value from comparison string */
@@ -1271,11 +1276,18 @@ char	*lfile;		/* Name of file with lines to list */
 	for (i = 0; i < ncol; i++) {
 	    if (nsum[i] > 0) {
 		dval = asum[i] / (double)nsum[i];
-		if (hms[i])
-		    dec2str (numstr, 32, dval, 3);
-		else
+		if (hms[i]) {
+		    if (ndec > -1)
+			dec2str (numstr, 32, dval, ndec);
+		    else
+			dec2str (numstr, 32, dval, 3);
+		    }
+		else if (ndec > -1)
+		    num2str (numstr, dval, 0, ndec);
+		else {
 		    sprintf (numstr, "%f", dval);
-		strclean (numstr);
+		    strclean (numstr);
+		    }
 		if (i < ncol-1)
 		    printf ("%s ", numstr);
 		else
@@ -1286,6 +1298,14 @@ char	*lfile;		/* Name of file with lines to list */
 	    else
 		printf ("___");
 	    }
+	if (countcol) {
+	    for (i = 0; i < ncol; i++) {
+		if (nent[i] > 0)
+		    printf (" %d", nent[i]);
+		}
+	    }
+	if (lranges != NULL)
+	    printf (" %s", lranges);
 	if (ncol > 0)
 	    printf ("\n");
 	}
@@ -1295,21 +1315,36 @@ char	*lfile;		/* Name of file with lines to list */
 	for (i = 0; i < ncol; i++) {
 	    if (nsum[i] > 0) {
 		dval = sum[i] / (double)nsum[i];
-		if (hms[i])
-		    dec2str (numstr, 32, dval, 3);
-		else
+		if (hms[i]) {
+		    if (ndec > -1)
+			dec2str (numstr, 32, dval, ndec);
+		    else
+			dec2str (numstr, 32, dval, 3);
+		    }
+		else if (ndec > -1)
+		    num2str (numstr, dval, 0, ndec);
+		else {
 		    sprintf (numstr, "%f", dval);
-		strclean (numstr);
+		    strclean (numstr);
+		    }
 		if (i < ncol-1)
 		    printf ("%s ", numstr);
 		else
-		    printf ("%s", numstr);
+		    printf ("%s ", numstr);
 		}
 	    else if (i < ncol-1)
 		printf ("___ ");
 	    else
 		printf ("___");
 	    }
+	if (countcol) {
+	    for (i = 0; i < ncol; i++) {
+		if (nent[i] > 0)
+		    printf (" %d", nent[i]);
+		}
+	    }
+	if (lranges != NULL)
+	    printf (" %s", lranges);
 	if (ncol > 0)
 	    printf ("\n");
 	}
@@ -1319,11 +1354,18 @@ char	*lfile;		/* Name of file with lines to list */
 	for (i = 0; i < ncol; i++) {
 	    if (nsum[i] > 0) {
 		dval = median (amed[i], nsum[i]);
-		if (hms[i])
-		    dec2str (numstr, 32, dval, 3);
-		else
+		if (hms[i]) {
+		    if (ndec > -1)
+			dec2str (numstr, 32, dval, ndec);
+		    else
+			dec2str (numstr, 32, dval, 3);
+		    }
+		else if (ndec > -1)
+		    num2str (numstr, dval, 0, ndec);
+		else {
 		    sprintf (numstr, "%f", dval);
-		strclean (numstr);
+		    strclean (numstr);
+		    }
 		if (i < ncol-1)
 		    printf ("%s ", numstr);
 		else
@@ -1334,6 +1376,14 @@ char	*lfile;		/* Name of file with lines to list */
 	    else
 		printf ("___");
 	    }
+	if (countcol) {
+	    for (i = 0; i < ncol; i++) {
+		if (nent[i] > 0)
+		    printf (" %d", nent[i]);
+		}
+	    }
+	if (lranges != NULL)
+	    printf (" %s", lranges);
 	if (ncol > 0)
 	    printf ("\n");
 	}
@@ -1343,11 +1393,18 @@ char	*lfile;		/* Name of file with lines to list */
 	for (i = 0; i < ncol; i++) {
 	    if (nsum[i] > 0) {
 		dval = median (med[i], nsum[i]);
-		if (hms[i])
-		    dec2str (numstr, 32, dval, 3);
-		else
+		if (hms[i]) {
+		    if (ndec > -1)
+			dec2str (numstr, 32, dval, ndec);
+		    else
+			dec2str (numstr, 32, dval, 3);
+		    }
+		else if (ndec > -1)
+		    num2str (numstr, dval, 0, ndec);
+		else {
 		    sprintf (numstr, "%f", dval);
-		strclean (numstr);
+		    strclean (numstr);
+		    }
 		if (i < ncol-1)
 		    printf ("%s ", numstr);
 		else
@@ -1358,6 +1415,14 @@ char	*lfile;		/* Name of file with lines to list */
 	    else
 		printf ("___");
 	    }
+	if (countcol) {
+	    for (i = 0; i < ncol; i++) {
+		if (nent[i] > 0)
+		    printf (" %d", nent[i]);
+		}
+	    }
+	if (lranges != NULL)
+	    printf (" %s", lranges);
 	if (ncol > 0)
 	    printf ("\n");
 	}
@@ -1365,14 +1430,26 @@ char	*lfile;		/* Name of file with lines to list */
     /* Print ranges of values in numeric columns */
     if (rangecol) {
 	for (i = 0; i < ncol; i++) {
-	    if (hms[i])
-		dec2str (numstr, 32, colmin[i], 3);
+	    if (hms[i]) {
+		if (ndec > -1)
+		    dec2str (numstr, 32, colmin[i], ndec);
+		else
+		    dec2str (numstr, 32, colmin[i], 3);
+		}
+	    else if (ndec > -1)
+		num2str (numstr, colmin[i], 0, ndec);
 	    else
 		sprintf (numstr, "%f", colmin[i]);
 	    strclean (numstr);
 	    printf ("%s-", numstr);
-	    if (hms[i])
-		dec2str (numstr, 32, colmax[i], 6);
+	    if (hms[i]) {
+		if (ndec > -1)
+		    dec2str (numstr, 32, colmax[i], ndec);
+		else
+		    dec2str (numstr, 32, colmax[i], 3);
+		}
+	    else if (ndec > -1)
+		num2str (numstr, colmax[i], 0, ndec);
 	    else
 		sprintf (numstr, "%f", colmax[i]);
 	    strclean (numstr);
@@ -1381,12 +1458,14 @@ char	*lfile;		/* Name of file with lines to list */
 	    else
 		printf ("%s", numstr);
 	    }
+	if (lranges != NULL)
+	    printf (" %s", lranges);
 	if (ncol > 0)
 	    printf ("\n");
 	}
 
     /* Print count for each column */
-    if (countcol) {
+    if (countcol && !meancol && !qmeancol && !ameancol && !medcol) {
 	for (i = 0; i < ncol; i++) {
 	    if (nent[i] > 0) {
 		if (i < ncol-1)
@@ -1410,6 +1489,12 @@ char	*lfile;		/* Name of file with lines to list */
 	    sprintf (numstr, "%f", dval);
 	    strclean (numstr);
 	    printf (" %s\n", numstr);
+	    }
+	if (countcol) {
+	    for (i = 0; i < ncol; i++) {
+		if (nent[i] > 0)
+		    printf (" %d", nent[i]);
+		}
 	    }
 	}
 
@@ -1654,4 +1739,8 @@ void *pd1, *pd2;
  *
  * Jul 15 2005	Drop unused variables
  * Jul 15 2005	Use pointer to tokens in calls to getoken()
+ * Dec  9 2005	Add line count to same line as mean or median
+ * Dec  9 2005	Use decimal place setting for means, medians, and ranges, too
+ * Dec 13 2005	If only scanning a range of lines, print the range
+ * Dec 15 2005	Clean up line range code
  */

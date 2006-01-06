@@ -1,8 +1,8 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** August 27, 2004
+ *** October 14, 2004
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -85,12 +85,15 @@ extern char *fits2iraf();
 /* Image pixel access subroutines in imio.c */
 extern double getpix();	/* Read one pixel from any data type 2-D array (0,0)*/
 extern double getpix1(); /* Read one pixel from any data type 2-D array (1,1)*/
+extern double maxvec(); /* Get maximum value in vector from a image */
 extern void putpix();	/* Write one pixel to any data type 2-D array (0,0)*/
 extern void putpix1();	/* Write one pixel to any data type 2-D array (1,1) */
 extern void addpix();	/* Add to one pixel in any data type 2-D array (0,0)*/
 extern void addpix1();	/* Add to one pixel in any data type 2-D array (1,1)*/
 extern void movepix();	/* Move one pixel value between two 2-D arrays (0,0) */
 extern void movepix1();	/* Move one pixel value between two 2-D arrays (1,1) */
+extern void addvec();	/* Add constant to vector from 2-D array */
+extern void multvec();	/* Multiply vector from 2-D array by a constant */
 extern void getvec();	/* Read vector from 2-D array */
 extern void putvec();	/* Write vector into 2-D array */
 extern void fillvec();   /* Write constant into a vector */
@@ -152,6 +155,8 @@ double ep2epb(); /* Fractional year to Besselian epoch */
 double ep2epj(); /* Fractional year to Julian epoch */
 double epb2epj(); /* Besselian epoch to Julian epoch */
 double epj2epb(); /* Julian epoch to Besselian epoch */
+double epb2ep(); /* Besselian epoch to fractional year */
+double epj2ep(); /* Julian epoch to fractional year */
 double ep2ts();	/* Fractional year to seconds since 1950.0 */
 double epb2ts(); /* Besselian epoch to seconds since 1950.0 */
 double epj2ts(); /* Julian epoch to seconds since 1950.0 */
@@ -179,10 +184,12 @@ char *jd2fd();	/* Julian date to FITS date string yyyy-mm-ddThh:mm:ss.ss */
 void jd2i();	/* Julian date to year, month, day, hours, min., sec. */
 double jd2mjd(); /* Julian date to modified Julian date */
 double jd2ts();	/* Julian date to seconds since 1950.0 */
+time_t jd2tsu(); /* Julian date to Unix seconds since 1970-01-01T00:00 */
+int jd2tsi(); /* Julian date to IRAF seconds since 1980-01-01T00:00 */
 void lt2dt();	/* Current local time to date (yyyy.mmdd), time (hh.mmsss) */
 char *lt2fd();	/* Current local time to FITS ISO date string */
 int lt2tsi();	/* Current local time to IRAF seconds since 1980-01-01T00:00 */
-time_t lt2tsu();	/* Current local time to Unix seconds since 1970-01-01T00:00 */
+time_t lt2tsu(); /* Current local time to Unix seconds since 1970-01-01T00:00 */
 double lt2ts(); /* Current local time to IRAF seconds since 1950-01-01T00:00 */
 void mjd2dt();	/* Modified Julian date to yyyy.mmdd hh.mmssss */
 double mjd2ep(); /* Modified Julian date to fractional year */
@@ -203,8 +210,11 @@ double ts2mjd(); /* Seconds since 1950.0 to modified Julian date */
 char *tsi2fd();	/* Seconds since 1980-01-01 to FITS standard date string */
 double tsi2ts(); /* Seconds since 1980-01-01 to seconds since 1950-01-01 */
 double tsi2ts(); /* Seconds since 1980-01-01 to seconds since 1950-01-01 */
+void tsi2dt(); /* Seconds since 1980-01-01 to date yyyy.mmdd, time hh.mmssss */
 void tsu2dt();	/* Seconds since 1970-01-01 to date yyyy.ddmm, time hh.mmsss */
 char *tsu2fd();	/* Seconds since 1970-01-01 to FITS standard date string */
+char *tsd2fd();	/* Seconds since start of day to FITS standard time string */
+double tsd2dt(); /* Seconds since start of day to hh.mmsssss */
 double tsu2ts(); /* Seconds since 1970-01-01 to seconds since 1950-01-01 */
 int tsu2tsi();	/* Seconds since 1970-01-01 to local seconds since 1980-01-01 */
 int isdate();	/* Return 1 if string is FITS old or ISO date */
@@ -288,4 +298,6 @@ void compnut();	/* Compute nutation in longitude and obliquity and mean obliquit
  * May  3 2004	Add setfitsinherit()
  * May  6 2004	Add fitswexhead()
  * Aug 27 2004	Add fitsheadsize()
+ *
+ * Oct 14 2005	Add tsd2fd(), tsd2dt(), epj2ep(), epb2ep(), tsi2dt()
  */

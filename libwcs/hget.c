@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** June 27m 2005
+ *** August 30, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2005
@@ -86,8 +86,9 @@ char	*header; /* FITS header */
 int	lhead;	/* Maximum length of FITS header */
 {
     char *hend;
-    lhead0 = lhead;
-    if (lhead < 1) {
+    if (lhead > 0)
+	lhead0 = lhead;
+    else {
 	hend = ksearch (header,"END");
 	lhead0 = hend + 80 - header;
 	}
@@ -1738,4 +1739,5 @@ int set_saolib(hstring)
  * Aug 30 2004	Change numdec() to accept sexigesimal numbers (:'s)
  *
  * Jun 27 2005	Drop unused variables
+ * Aug 30 2005	Adjust code in hlength()
  */

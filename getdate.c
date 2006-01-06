@@ -1,5 +1,5 @@
 /* File getdate.c
- * March 7, 2005
+ * October 14, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -34,6 +34,7 @@
 #define DTHJD	17	/* Heliocentric Julian Date */
 #define DTMHJD	18	/* Modified Heliocentric Julian Date */
 #define DTNOW	19	/* Current time (for input only) */
+#define DTDSEC	20	/* Seconds of day (for input only) */
 
 #define UT	0
 #define ET	1
@@ -43,24 +44,15 @@
 
 static void usage();
 static void ConvertDate();
-extern double epb2ep();
-extern double epj2ep();
 extern double mjd2mhjd();
 extern double mjd2hjd();
 extern double mhjd2mjd();
-extern double mhjd2jd();
-extern double mhjd2hjd();
 extern double mjd2doy();
 extern double jd2hjd();
 extern double jd2mhjd();
 extern double hjd2jd();
 extern double hjd2mjd();
 extern double hjd2mhjd();
-extern int jd2tsi();
-extern double jd2tsu();
-extern int jd2tsi();
-extern double jd2tsu();
-extern void tsi2dt();
 extern void setdatedec();
 
 static int verbose = 0;		/* Verbose/debugging flag */
@@ -155,6 +147,8 @@ char **av;
 		intype = DT1950;
 	    else if (!strncmp (*av, "tsi2", 4))
 		intype = DTIRAF;
+	    else if (!strncmp (*av, "tsd2", 4))
+		intype = DTDSEC;
 	    else if (!strncmp (*av, "tsu2", 4))
 		intype = DTUNIX;
 	    else if (!strncmp (*av, "lt2", 3))
@@ -309,7 +303,12 @@ char **av;
 		    timestring = NULL;
 		    }
 		}
-	    if ((intype != DTVIG && intype != DTDOY) || ac == 1) {
+	    if (intype == DTDSEC) {
+		ConvertDate (intype, outtype, datestring, datestring);
+		datestring = NULL;
+		timestring = NULL;
+		}
+	    else if ((intype != DTVIG && intype != DTDOY) || ac == 1) {
 		ConvertDate (intype, outtype, datestring, timestring);
 		datestring = NULL;
 		timestring = NULL;
@@ -1137,6 +1136,19 @@ char	*timestring;	/* Input time string */
 		    }
 		}
 	    break;
+	case DTDSEC:
+	    ts = atof (datestring);
+	    switch (outtype) {
+		case DTFITS:
+		    fitsdate = tsd2fd (ts);
+		    printf ("%s\n", fitsdate);
+		    break;
+		case DTVIG:
+		    vtime = tsd2dt (ts);
+		    printf ("%10.7f\n", vtime);
+		    break;
+		}
+	    break;
 	case DTIRAF:
 	    if (datestring != NULL) {
     		if (strcmp (datestring, "now"))
@@ -1584,4 +1596,5 @@ char	*timestring;	/* Input time string */
  * Apr 28 2004	Add more Heliocentric Julian Date conversions
  *
  * Mar  7 2005	Add "now" as input type
+ * Oct 14 2005	Add tsd2fd and tsd2dt
  */

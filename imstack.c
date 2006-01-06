@@ -1,5 +1,5 @@
 /* File imstack.c
- * September 17, 2003
+ * January 5, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -435,10 +435,12 @@ char	*filename;	/* FITS or IRAF file filename */
 			    }
 			}
 		    }
-		if (itime == 0 || itime == ntimes-1)
-		    printf ("\n");
-		else
-		    printf ("\r");
+		if (verbose) {
+		   if (itime == 0 || itime == ntimes-1)
+			printf ("\n");
+		    else
+			printf ("\r");
+		    }
 		}
 	    else {
 		if (iraffile)
@@ -483,4 +485,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Aug  8 2003	Drop header from ROOTHEAD to ROOTEND when make multi-ext. FITS
  * Aug 21 2003	Fix bug when stacking 2-D files
  * Sep 17 2003	Change variable inline to iline for Redhat Linux
+ *
+ * Jan  5 2006	Print CR or LF after stacking only in verbose mode
  */

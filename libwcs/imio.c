@@ -1,5 +1,5 @@
 /*** File wcslib/imio.c
- *** June 27, 2005
+ *** August 18, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2005
@@ -40,12 +40,18 @@
  *		Copy pixel into 2D image of any numeric type (0,0 lower left)
  * Subroutine:	addpix1 (image, bitpix, w, h, bz, bs, x, y, dpix)
  *		Add pixel into 2D image of any numeric type (1,1 lower left)
+ * Subroutine:	maxvec (image, bitpix, bz, bs, pix1, npix, dmax)
+ *		Get maximum of vector from 2D image of any numeric type
  * Subroutine:	getvec (image, bitpix, bz, bs, pix1, npix, dvec)
  *		Get vector from 2D image of any numeric type
  * Subroutine:	putvec (image, bitpix, bz, bs, pix1, npix, dvec)
- *		Copy pixel vector into 2D image of any numeric type
+ *		Copy pixel vector into a vector of any numeric type
+ * Subroutine:	addvec (image, bitpix, bz, bs, pix1, npix, dpix)
+ *		Add constant to pixel values in a vector
+ * Subroutine:	multvec (image, bitpix, bz, bs, pix1, npix, dpix)
+ *		Multiply pixel values in a vector by a constant
  * Subroutine:	fillvec (image, bitpix, bz, bs, pix1, npix, dpix)
- *		Copy pixel value int a vector of any numeric type
+ *		Copy pixel value in a vector of any numeric type
  * Subroutine:	fillvec1 (image, bitpix, bz, bs, pix1, npix, dpix)
  *		Copy pixel value int a vector of any numeric type
  * Subroutine:	movepix (image1, bitpix, w1, x1, y1, image2, w2, x2, y2)
@@ -292,7 +298,7 @@ double	dpix;		/* Value to add to pixel */
 }
 
 
-/* ADDPIX -- Add pixel value into 2D image of any numeric type */
+/* ADDPIX -- Add constant to pixel values in 2D image of any numeric type */
 
 void
 addpix (image, bitpix, w, h, bzero, bscale, x, y, dpix)
@@ -620,6 +626,326 @@ int	x2, y2;		/* Row and column for output pixel */
 		    break;
 		}
 	    break;
+	}
+    return;
+}
+
+
+/* MAXVEC -- Get maximum value in vector from 2D image of any numeric type */
+
+double
+maxvec (image, bitpix, bzero, bscale, pix1, npix)
+
+char	*image;		/* Image array from which to extract vector */
+int	bitpix;		/* Number of bits per pixel in image */
+			/*  16 = short, -16 = unsigned short, 32 = int */
+			/* -32 = float, -64 = double */
+double  bzero;		/* Zero point for pixel scaling */
+double  bscale;		/* Scale factor for pixel scaling */
+int	pix1;		/* Offset of first pixel to extract */
+int	npix;		/* Number of pixels to extract */
+
+{
+    short *im2;
+    int *im4;
+    unsigned short *imu;
+    float *imr;
+    double *imd;
+    double dmax, dpix;
+    int ipix, pix2;
+
+    pix2 = pix1 + npix;
+
+    switch (bitpix) {
+
+	case 8:
+	    dmax = (double) *(image + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		dpix = (double) *(image + ipix);
+		if (dpix > dmax)
+		    dmax = dpix;
+		}
+	    break;
+
+	case 16:
+	    im2 = (short *)image;
+	    dmax = (double) *(im2 + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		dpix = (double) *(im2 + ipix);
+		if (dpix > dmax)
+		    dmax = dpix;
+		}
+	    break;
+
+	case 32:
+	    im4 = (int *)image;
+	    dmax = (double) *(im4 + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		dpix = (double) *(im4 + ipix);
+		if (dpix > dmax)
+		    dmax = dpix;
+		}
+	    break;
+
+	case -16:
+	    imu = (unsigned short *)image;
+	    dmax = (double) *(imu + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		dpix = (double) *(imu + ipix);
+		if (dpix > dmax)
+		    dmax = dpix;
+		}
+	    break;
+
+	case -32:
+	    imr = (float *)image;
+	    dmax = (double) *(imr + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		dpix = (double) *(imr + ipix);
+		if (dpix > dmax)
+		    dmax = dpix;
+		}
+	    break;
+
+	case -64:
+	    imd = (double *)image;
+	    dmax = *(imd + ipix);
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		dpix = *(imd + ipix);
+		if (dpix > dmax)
+		    dmax = dpix;
+		}
+	    break;
+
+	}
+
+    /* Scale data if either BZERO or BSCALE keyword has been set */
+    if (scale && (bzero != 0.0 || bscale != 1.0))
+	dmax = (dmax * bscale) + bzero;
+
+    return (dmax);
+}
+
+
+/* ADDVEC -- Add constant to pixel values in 2D image of any numeric type */
+
+void
+addvec (image, bitpix, bzero, bscale, pix1, npix, dpix)
+
+char	*image;		/* Image array from which to extract vector */
+int	bitpix;		/* Number of bits per pixel in image */
+			/*  16 = short, -16 = unsigned short, 32 = int */
+			/* -32 = float, -64 = double */
+double  bzero;		/* Zero point for pixel scaling */
+double  bscale;		/* Scale factor for pixel scaling */
+int	pix1;		/* Offset of first pixel to extract */
+int	npix;		/* Number of pixels to extract */
+double	dpix;		/* Value by which to multiply pixels */
+
+{
+    char *imc, ccon;
+    short *im2, jcon;
+    int *im4, icon;
+    unsigned short *imu, ucon;
+    float *imr, rcon;
+    double *imd;
+    int ipix, pix2;
+
+    pix2 = pix1 + npix;
+
+    if (scale)
+	dpix = (dpix - bzero) / bscale;
+
+    switch (bitpix) {
+
+	case 8:
+	    imc = image + pix1;
+	    if (dpix < 0)
+		ccon = (char) (dpix - 0.5);
+	    else
+		ccon = (char) (dpix + 0.5);
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		*imc++ = *imc + ccon;
+	    break;
+
+	case 16:
+	    im2 = (short *) (image + pix1);
+	    im2 = (short *)image;
+	    if (dpix < 0)
+		jcon = (short) (dpix - 0.5);
+	    else
+		jcon = (short) (dpix + 0.5);
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		*im2++ = *im2 + jcon;
+	    break;
+
+	case 32:
+	    im4 = (int *) (image + pix1);
+	    if (dpix < 0)
+		icon = (int) (dpix - 0.5);
+	    else
+		icon = (int) (dpix + 0.5);
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		*im2++ = *im2 + jcon;
+	    break;
+
+	case -16:
+	    imu = (unsigned short *) (image + pix1);
+	    if (dpix > 0) {
+		ucon = (unsigned short) (dpix + 0.5);
+		imu = (unsigned short *) (image + pix1);
+		for (ipix = pix1; ipix < pix2; ipix++)
+		    *imu++ = *imu + ucon;
+		}
+	    else {
+		icon = (int) (dpix - 0.5);
+		imu = (unsigned short *) (image + pix1);
+		for (ipix = pix1; ipix < pix2; ipix++)
+		    *imu++ = (unsigned short) (icon + (int *) imu);
+		}
+	    break;
+
+	case -32:
+	    rcon = (float) dpix;
+	    imr = (float *) (image + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		*imr++ = *imr + rcon;
+	    break;
+
+	case -64:
+	    imd = (double *) (image + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		*imd++ = *imd + dpix;
+	    break;
+	}
+    return;
+}
+
+
+/* MULTVEC -- Multiply pixel values in place in 2D image of any numeric type */
+
+void
+multvec (image, bitpix, bzero, bscale, pix1, npix, dpix)
+
+char	*image;		/* Image array from which to extract vector */
+int	bitpix;		/* Number of bits per pixel in image */
+			/*  16 = short, -16 = unsigned short, 32 = int */
+			/* -32 = float, -64 = double */
+double  bzero;		/* Zero point for pixel scaling */
+double  bscale;		/* Scale factor for pixel scaling */
+int	pix1;		/* Offset of first pixel to extract */
+int	npix;		/* Number of pixels to extract */
+double	dpix;		/* Value by which to multiply pixels */
+
+{
+    char *imc, ccon;
+    short *im2, jcon;
+    int *im4, icon, isint;
+    unsigned short *imu, ucon;
+    float *imr, rcon;
+    double *imd, dcon, dval;
+    int ipix, pix2;
+
+    pix2 = pix1 + npix;
+
+    if (scale)
+	dpix = (dpix - bzero) / bscale;
+    ipix = (int) dpix;
+    dcon = (double) ipix;
+    if (dcon == dpix)
+	isint = 1;
+    else
+	isint = 0;
+
+    switch (bitpix) {
+
+	case 8:
+	    imc = image + pix1;
+	    if (isint) {
+		if (dpix < 0)
+		    ccon = (char) (dpix - 0.5);
+		else
+		    ccon = (char) (dpix + 0.5);
+		for (ipix = pix1; ipix < pix2; ipix++)
+		    *imc++ = *imc * ccon;
+		}
+	    else {
+		for (ipix = pix1; ipix < pix2; ipix++) {
+		    dval = ((double) *imc) * dpix;
+		    if (dval < 256.0)
+			*imc++ = (char) dval;
+		    else
+			*imc++ = (char) 255;
+		    }
+		}
+	    break;
+
+	case 16:
+	    im2 = (short *) (image + pix1);
+	    if (isint) {
+		im2 = (short *)image;
+		if (dpix < 0)
+		    jcon = (short) (dpix - 0.5);
+		else
+		    jcon = (short) (dpix + 0.5);
+		for (ipix = pix1; ipix < pix2; ipix++)
+		    *im2++ = *im2 * jcon;
+		}
+	    else {
+		for (ipix = pix1; ipix < pix2; ipix++) {
+		    dval = ((double) *im2) * dpix;
+		    if (dval < 32768.0)
+			*im2++ = (short) dval;
+		    else
+			*im2++ = (short) 32767;
+		    }
+		}
+	    break;
+
+	case 32:
+	    im4 = (int *) (image + pix1);
+	    if (isint) {
+		if (dpix < 0)
+		    icon = (int) (dpix - 0.5);
+		else
+		    icon = (int) (dpix + 0.5);
+		for (ipix = pix1; ipix < pix2; ipix++)
+		    *im2++ = *im2 * jcon;
+		}
+	    else {
+		for (ipix = pix1; ipix < pix2; ipix++) {
+		    dval = ((double) *im4) * dpix;
+		    if (dval < 32768.0)
+			*im4++ = (int) dval;
+		    else
+			*im4++ = (int) 32767;
+		    }
+		}
+	    break;
+
+	case -16:
+	    imu = (unsigned short *) (image + pix1);
+	    if (dpix > 0) {
+		ucon = (unsigned short) (dpix + 0.5);
+		imu = (unsigned short *) (image + pix1);
+		for (ipix = pix1; ipix < pix2; ipix++)
+		    *imu++ = *imu * ucon;
+		}
+	    break;
+
+	case -32:
+	    rcon = (float) dpix;
+	    imr = (float *) (image + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		*imr++ = *imr * rcon;
+	    break;
+
+	case -64:
+	    imd = (double *) (image + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++)
+		*imd++ = *imd * dpix;
+	    break;
+
 	}
     return;
 }
@@ -1088,4 +1414,5 @@ imswapped ()
  * Feb 27 2004	Add fillvec() and fillvec1() to set vector to a constant
  *
  * Jun 27 2005	Fix major bug in fillvec(); pass value dpix in fillvec1(), too
+ * Aug 18 2005	Add maxvec(), addvec(), and multvec()
  */

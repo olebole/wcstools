@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** June 27, 2005
+ *** October 28, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2005
@@ -130,6 +130,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     char *endnext;
     char *pheadend;
     int inherit = 1;	/* Value of INHERIT keyword in FITS extension header */
+    int extfound = 0;	/* Set to one if desired FITS extension is found */
 
     pheader = NULL;
     lprim = 0;
@@ -188,7 +189,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	*mwcs = '%';
 
     if (fd < 0) {
-	snprintf (fitserrmsg,79, "FITSRHEAD:  cannot read file %s\n", filename);
+	fprintf (stderr,"FITSRHEAD:  cannot read file %s\n", filename);
 	return (NULL);
 	}
 
@@ -231,6 +232,14 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 			free (header);
 			if (pheader != NULL)
 			    return (pheader);
+    			if (extnum != -1 && !extfound) {
+			    if (extnum < 0)
+	    			fprintf (stderr, "FITSRHEAD: Extension %s not found\n",extnam);
+			    else
+	    			fprintf (stderr, "FITSRHEAD: Extension %d not found\n",extnum);
+			    }
+			else
+	    		    fprintf (stderr, "FITSRHEAD: No header found\n");
 			return (NULL);
 			}
 		    }
@@ -292,14 +301,18 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		}
 
 	    /* If this is the desired header data unit, keep it */
-	    else if (ext != NULL) {
-		if (extnum > -1 && hdu == extnum)
+	    else if (extnum != -1) {
+		if (extnum > -1 && hdu == extnum) {
+		    extfound = 1;
 		    break;
+		    }
 		else if (extnum < 0) {
 		    extname[0] = 0;
 		    hgets (header, "EXTNAME", 32, extname);
-		    if (!strcmp (extnam,extname))
+		    if (!strcmp (extnam,extname)) {
+			extfound = 1;
 			break;
+			}
 		    }
 
 		/* If this is not desired header data unit, skip over data */
@@ -377,6 +390,17 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	(void)close (fd);
 #endif
 
+/* Print error message and return null if extension not found */
+    if (extnum != -1 && !extfound) {
+	if (extnum < 0)
+	    fprintf (stderr, "FITSRHEAD: Extension %s not found\n",extnam);
+	else
+	    fprintf (stderr, "FITSRHEAD: Extension %d not found\n",extnum);
+	if (pheader != NULL)
+	    free (pheader);
+	return (NULL);
+	}
+
     /* Allocate an extra block for good measure */
     *lhead = (nrec + 1) * FITSBLOCK;
     if (*lhead > nbh) {
@@ -424,6 +448,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		nrec = nrec + 1;
 	    *lhead = (nrec+1) * FITSBLOCK;
 	    header = (char *) realloc (header,(unsigned int) *lhead);
+	    headend = header + lext;
 	    (void) hlength (header, *lhead);
 	    }
 	pheader[lprim] = 0;
@@ -540,15 +565,15 @@ int	nlog;		/* Note progress mod this rows */
 
     /* Computer pointer to first byte of input image to read */
     nblin = naxis1 * bytepix;
-    impos = nbhead + ((y0 - 1) * nblin) + ((x0 - 1) * bytepix);
+    impos = ((y0 - 1) * nblin) + ((x0 - 1) * bytepix);
     row = y0 - 1;
 
     /* Read image section one line at a time */
     while (nyleft-- > 0) {
-	if (lseek (fd, impos, SEEK_SET) >= 0) {
+	if (lseek (fd, impos, SEEK_CUR) >= 0) {
 	    nbread = read (fd, imline, nbline);
 	    nbr = nbr + nbread;
-	    impos = impos + nblin;
+	    impos = nblin - nbread;
 	    imline = imline + nbline;
 	    row++;
 	    if (++ilog == nlog) {
@@ -1704,7 +1729,7 @@ char	*header;	/* FITS image header */
     /* Add blank lines if new header is smaller than the old header */
     else if (nbnew < nbold) {
 	strcpy (oldheader, header);
-	head = ksearch (oldheader,"END");
+	endhead = ksearch (oldheader,"END");
 	lasthead = oldheader + nbold;
 	while (endhead < lasthead)
 	    *(endhead++) = ' ';
@@ -1920,4 +1945,8 @@ fitserr ()
  *
  * Mar 17 2005	Use unbuffered I/O in isfits() for robustness
  * Jun 27 2005	Drop unused variable nblocks in fitswexhead()
+ * Aug  8 2005	Fix space-padding bug in fitswexhead() found by Armin Rest
+ * Sep 30 2005	Fix fitsrsect() to position relatively, not absolutely
+ * Oct 28 2005	Add error message if desired FITS extension is not found
+ * Oct 28 2005	Fix initialization problem found by Sergey Koposov
  */

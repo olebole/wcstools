@@ -1,7 +1,7 @@
 /*** File libwcs/wcscat.h
- *** September 2, 2004
+ *** January 6, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
- *** Copyright (C) 1998-2004
+ *** Copyright (C) 1998-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -56,11 +56,13 @@
 #define YB6		25	/* USNO YB6 Catalog */
 #define SDSS		26	/* Sloan Digital Sky Survey Catalog */
 #define TMXSC		27	/* 2MASS Extended Source Catalog */
+#define TMPSCE		28	/* 2MASS Point Source Catalog with mag errors */
+#define TYCHO2E		29	/* Tycho-2 Star Catalog with magnitude errors */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */
 #define WEBCAT		-4	/* Tab catalog via the web */
-#define NUMCAT		27	/* Number of predefined catalogs */
+#define NUMCAT		29	/* Number of predefined catalogs */
 
 /* Subroutines for dealing with catalogs */
 int CatCode();		/* Return catalog type code */
@@ -76,6 +78,7 @@ int CatNumLen();	/* Return length of source numbers */
 int CatNdec();		/* Return number of decimal places in source numbers */
 void CatMagName();	/* Return name of specified magnitude */
 int CatMagNum();	/* Returns number of magnitude specified by letter as int */
+double CatRad();	/* Return default search radius for given catalog */
 
 int NumNdec();		/* Return number of decimal places in a number */
 int StrNdec();		/* Return number of decimal places in numeric string */
@@ -165,6 +168,13 @@ void DecSortStars();
 void MagSortStars();
 void FluxSortStars();
 int MergeStars();
+
+#define EP_EP   1		/* Output epoch as fractional year */
+#define EP_JD   2		/* Output epoch as Julian Date */
+#define EP_MJD  3		/* Ouput epoch as Modified Julian Date */
+#define EP_FD   4		/* Output epoch in FITS format (yyyy-mm-dd) */
+#define EP_ISO  5		/* Output epoch in ISO format (yyyy-mm-ddThh:mm:ss) */
+char *DateString();		/* Convert epoch to output format */
 
 /* Data structure for SAO TDC ASCII and binary star catalog entries */
 struct Star {
@@ -501,4 +511,9 @@ char *getrevmsg();	/* Return version/date string */
  * Apr 23 2004	Add ctgrdate()
  * Aug 31 2004	Increase MAXTOKENS from 100 to 200
  * Sep  2 2004	Increase MAXTOKENS from 200 to 1000
+ *
+ * Jul 27 2005	Add date format codes and DateString()
+ * Aug  5 2005	Add Tycho-2 and 2MASS PSC with magnitude errors
+ *
+ * Jan  6 2006	Add CatRad() subroutine
  */

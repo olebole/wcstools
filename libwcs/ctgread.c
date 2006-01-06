@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** January 18, 2005
+ *** August 5, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2005
@@ -157,16 +157,17 @@ int	nlog;
             nstar = ucacread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
-        else if (refcat == TMPSC || refcat == TMIDR2 || refcat == TMXSC)
-            nstar = tmcread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
+        else if (refcat == TMPSC || refcat == TMIDR2 || refcat == TMXSC ||
+		 refcat == TMPSCE)
+            nstar = tmcread (refcat,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == ACT)
             nstar = actread (cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1, mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
-        else if (refcat == TYCHO2)
-            nstar = ty2read (cra,cdec,dra,ddec,drad,dradi,distsort,
+        else if (refcat == TYCHO2 || refcat == TYCHO2E)
+            nstar = ty2read (refcat, cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == SAO)
@@ -570,8 +571,9 @@ int	nlog;
         else if (refcat == UCAC1 || refcat == UCAC2)
 	    nstar = ucacrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
-        else if (refcat == TMPSC || refcat == TMIDR2 || refcat == TMXSC)
-	    nstar = tmcrnum (catfile,nnum,sysout,eqout,epout,
+        else if (refcat == TMPSC || refcat == TMPSCE ||
+		 refcat == TMIDR2 || refcat == TMXSC)
+	    nstar = tmcrnum (refcat,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
 	else if (refcat == SAO)
 	    nstar = binrnum ("SAO",nnum,sysout,eqout,epout,match,
@@ -594,8 +596,8 @@ int	nlog;
 	else if (refcat == ACT)
 	    nstar = actrnum (nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
-	else if (refcat == TYCHO2)
-	    nstar = ty2rnum (nnum,sysout,eqout,epout,
+	else if (refcat == TYCHO2 || refcat == TYCHO2E)
+	    nstar = ty2rnum (refcat,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
 	else if (refcat == TABCAT || refcat == WEBCAT)
 	    nstar = tabrnum (catfile,nnum,sysout,eqout,epout,starcat,
@@ -987,11 +989,11 @@ int	nlog;
         else if (refcat == UCAC1 || refcat == UCAC2)
             nstar = ucacbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == TMPSC || refcat == TMIDR2 || refcat == TMXSC)
-            nstar = tmcbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+            nstar = tmcbin (refcat,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == ACT)
             nstar = actbin (wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
-        else if (refcat == TYCHO2)
-            nstar = ty2bin (wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == TYCHO2 || refcat == TYCHO2E)
+            nstar = ty2bin (refcat,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == SAO)
             nstar = binbin ("SAOra",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == PPM)
@@ -2068,4 +2070,5 @@ char	*in;	/* Character string */
  * Nov  5 2004	Finish implementing proper motion in ASCII catalogs
  *
  * Jan 18 2005	Fix bug dealing with negative declinations in ASCII table format
+ * Aug  5 2005	Add additional catalog codes for Tycho-2 and 2MASS w/mag errs
  */

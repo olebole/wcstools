@@ -1,5 +1,5 @@
 /* File imrot.c
- * June 14, 2004
+ * August 18, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -22,6 +22,7 @@ static int maxnfile = MAXFILES;
 
 static int verbose = 0;	/* verbose/debugging flag */
 static int mirror = 0;	/* reflect image across vertical axis */
+static int flip = 0;	/* reflect image across horizontal axis */
 static int automirror = 0;	/* reflect image if IRAF header says to */
 static int rotate = 0;	/* rotation in degrees, degrees counter-clockwise */
 char outname[128];		/* Name for output image */
@@ -33,6 +34,7 @@ static int version = 0;		/* If 1, print only program name and version */
 static int xshift = 0;
 static int yshift = 0;
 static int shifted = 0;
+static int inverted = 0;	/* If 1, invert intensity (-1 * (z-zmax)) */
 
 int
 main (ac, av)
@@ -109,12 +111,16 @@ char **av;
 		    automirror = 1;
 		    break;
 
-		case 'i':	/* Turn off inheritance from Primary header */
-		    setfitsinherit (0);
+		case 'l':	/* image flipped around horizontal axis */
+		    mirror = 2;
 		    break;
 
-		case 'l':	/* image flipped around N-S axis */
+		case 'm':	/* image flipped around vertical axis */
 		    mirror = 1;
+		    break;
+
+		case 'i':	/* Turn off inheritance from Primary header */
+		    setfitsinherit (0);
 		    break;
 
 		case 'o':	/* Specifiy output image filename */
@@ -130,10 +136,16 @@ char **av;
 			}
 		    break;
 
+		case 'p':	/* Make positive image from negative */
+		    inverted++;
+		    break;
+
 		case 'r':	/* Rotation angle in degrees */
 		    if (ac < 2)
 			usage ();
 		    rotate = (int) atof (*++av);
+		    if (rotate < 0)
+			rotate = rotate + 360.0;
 		    ac--;
 		    break;
 
@@ -241,15 +253,17 @@ usage ()
     fprintf(stderr,"Usage: [-vm][-r rot][-s num] [xshift yshift] file.fits ...\n");
     fprintf(stderr,"  xshift: integer horizontal pixel shift, applied first\n");
     fprintf(stderr,"  yshift: integer vertical pixel shift, applied first\n");
-    fprintf(stderr,"  -a: mirror if IRAF image WCS says to\n");
-    fprintf(stderr,"  -f: write FITS image from IRAF input\n");
+    fprintf(stderr,"  -a: Mirror if IRAF image WCS says to\n");
+    fprintf(stderr,"  -f: Write FITS image from IRAF input\n");
     fprintf(stderr,"  -i: Do not append primary header to extension header\n");
-    fprintf(stderr,"  -l: reflect image across vertical axis\n");
-    fprintf(stderr,"  -o: allow overwriting of input image, else write new one\n");
-    fprintf(stderr,"  -r: image rotation angle in degrees (default 0)\n");
-    fprintf(stderr,"  -s: split n-extension FITS file\n");
-    fprintf(stderr,"  -v: verbose\n");
-    fprintf(stderr,"  -x: output pixel size in bits (FITS code, default=input)\n");
+    fprintf(stderr,"  -l: Reflect image across horizontal axis\n");
+    fprintf(stderr,"  -m: Reflect image across vertical axis\n");
+    fprintf(stderr,"  -o: Allow overwriting of input image, else write new one\n");
+    fprintf(stderr,"  -p: Make positive from negative image\n");
+    fprintf(stderr,"  -r: Image rotation angle in degrees (default 0)\n");
+    fprintf(stderr,"  -s: Split n-extension FITS file\n");
+    fprintf(stderr,"  -v: Verbose\n");
+    fprintf(stderr,"  -x: Output pixel size in bits (FITS code, default=input)\n");
     exit (1);
 }
 
@@ -271,11 +285,14 @@ char *name;
     char extname[16];
     int lext, lroot;
     int bitpix0;
+    int nx, ny, npix;
     char echar;
     char temp[8];
     char history[64];
     char pixname[256];
     double ctemp;
+    double dmax, dpix;
+    double bs, bz;
 
     /* If not overwriting input file, make up a name for the output file */
     if (!overwrite) {
@@ -371,10 +388,14 @@ char *name;
 		strcat (newname, imext+1);
 		}
 	    }
+	if (inverted)
+	    strcat (newname, "p");
 	if (shifted)
 	    strcat (newname, "s");
-	if (mirror)
+	if (mirror == 1)
 	    strcat (newname, "m");
+	else if (mirror == 2)
+	    strcat (newname, "f");
 	if (rotate != 0) {
 	    strcat (newname, "r");
 	    if (rotate < 10 && rotate > -1)
@@ -434,6 +455,25 @@ char *name;
 	sprintf (history, "New copy of %s BITPIX %d -> %d",
 		 name, bitpix0, bitpix);
 	hputc (header,"HISTORY",history);
+	}
+
+    /* Make positive image from negative if requested */
+    if (inverted) {
+	bitpix = 16;
+	hgeti4 (header, "BITPIX", &bitpix0);
+	bs = 1.0;
+	hgeti4 (header, "BSCALE", &bs);
+	bz = 0.0;
+	hgeti4 (header, "BZERO", &bz);
+	nx = 1;
+	hgeti4 (header, "NAXIS1", &nx);
+	ny = 1;
+	hgeti4 (header, "NAXIS2", &ny);
+	npix = nx * ny;
+	dmax = -maxvec (image, bitpix0, bz, bs, 0, npix);
+	addvec (image, bitpix0, bz, bs, 0, npix, dmax);
+	dpix = -1.0;
+	multvec (image, bitpix0, bz, bs, 0, npix, dpix);
 	}
 
     if ((newimage = RotFITS (name,header,image,xshift,yshift,rotate,mirror,
@@ -510,4 +550,8 @@ char *name;
  * Jan 28 2004	Add option to shift file data within file (before rotating)
  * May  6 2004	Add -i to avoid appending primary header to extension header
  * Jun 14 2004	Write HISTORY only if BITPIX is changed
+ *
+ * Aug 17 2005	If rotation angle < 360, add 360
+ * Aug 17 2005	-m replaces -l for mirror reflection, -l flips
+ * Aug 18 2005	Add -p to make positive image from negative
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/imrotate.c
- *** September 15, 2004
+ *** August 17, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -34,10 +34,11 @@
 #include "fitshead.h"
 #include "imio.h"
 
-static void RotWCSFITS();
+
+static void RotWCSFITS();	/* rotate all the C* fields */
 
 /* Rotate an image by 90, 180, or 270 degrees, with an optional
- * reflection across the vertical axis.
+ * reflection across the vertical or horizontal axis.
  * verbose generates extra info on stdout.
  * return NULL if successful or rotated image.
  */
@@ -51,7 +52,7 @@ char	*image0;		/* Image pixels */
 int	xshift;		/* Number of pixels to shift image horizontally, +=right */
 int	yshift;		/* Number of pixels to shift image vertically, +=right */
 int	rotate;		/* Angle to by which to rotate image (90, 180, 270) */
-int	mirror;		/* 1 to reflect image around vertical axis */
+int	mirror;		/* Reflect image around 1=vertical, 2=horizontal axis */
 int	bitpix2;	/* Number of bits per pixel in output image */
 int	verbose;
 
@@ -194,23 +195,30 @@ int	verbose;
 
     /* Mirror image without rotation */
     if (rotate < 45 && rotate > -45) {
-	if (mirror) {
-	    for (y1 = 0; y1 < ny; y1++) {
-		for (x1 = 0; x1 < nx; x1++) {
-		    x2 = nx - x1 - 1;
-		    y2 = y1;
-		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,nx,x2,y2);
+	if (mirror == 1) {
+	    for (x1 = 0; x1 < nx; x1++) {
+		x2 = nx - x1 - 1;
+		for (y1 = 0; y1 < ny; y1++) {
+		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,nx,x2,y1);
 		    }
 		}
 	    sprintf (history,"Copy of image %s reflected",filename);
 	    hputc (header,"HISTORY",history);
 	    }
+	else if (mirror == 2) {
+	    for (y1 = 0; y1 < ny; y1++) {
+		y2 = ny - y1 - 1;
+		for (x1 = 0; x1 < nx; x1++) {
+		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,nx,x1,y2);
+		    }
+		}
+	    sprintf (history,"Copy of image %s flipped",filename);
+	    hputc (header,"HISTORY",history);
+	    }
 	else {
 	    for (y1 = 0; y1 < ny; y1++) {
 		for (x1 = 0; x1 < nx; x1++) {
-		    x2 = x1;
-		    y2 = y1;
-		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,nx,x2,y2);
+		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,nx,x1,y1);
 		    }
 		}
 	    }
@@ -218,15 +226,25 @@ int	verbose;
 
     /* Rotate by 90 degrees */
     else if (rotate >= 45 && rotate < 135) {
-	if (mirror) {
+	if (mirror == 1) {
 	    for (y1 = 0; y1 < ny; y1++) {
+		y2 = nx - x1 - 1;
 		for (x1 = 0; x1 < nx; x1++) {
 		    x2 = ny - y1 - 1;
-		    y2 = nx - x1 - 1;
 		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,ny,x2,y2);
 		    }
 		}
 	    sprintf (history,"Copy of image %s reflected, rotated 90 degrees",
+		     filename);
+            hputc (header,"HISTORY",history);
+	    }
+	else if (mirror == 2) {
+	    for (y1 = 0; y1 < ny; y1++) {
+		for (x1 = 0; x1 < nx; x1++) {
+		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,ny,y1,x1);
+		    }
+		}
+	    sprintf (history,"Copy of image %s flipped, rotated 90 degrees",
 		     filename);
             hputc (header,"HISTORY",history);
 	    }
@@ -247,23 +265,33 @@ int	verbose;
 
     /* Rotate by 180 degrees */
     else if (rotate >= 135 && rotate < 225) {
-	if (mirror) {
+	if (mirror == 1) {
 	    for (y1 = 0; y1 < ny; y1++) {
+		y2 = ny - y1 - 1;
 		for (x1 = 0; x1 < nx; x1++) {
-		    x2 = x1;
-		    y2 = ny - y1 - 1;
-		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,nx,x2,y2);
+		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,nx,x1,y2);
 		    }
 		}
 	    sprintf (history,"Copy of image %s reflected, rotated 180 degrees",
 		     filename);
             hputc (header,"HISTORY",history);
 	    }
+	else if (mirror == 2) {
+	    for (x1 = 0; x1 < nx; x1++) {
+		x2 = nx - x1 - 1;
+		for (y1 = 0; y1 < ny; y1++) {
+		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,nx,x2,y1);
+		    }
+		}
+	    sprintf (history,"Copy of image %s flipped, rotated 180 degrees",
+		     filename);
+            hputc (header,"HISTORY",history);
+	    }
 	else {
 	    for (y1 = 0; y1 < ny; y1++) {
+		y2 = ny - y1 - 1;
 		for (x1 = 0; x1 < nx; x1++) {
 		    x2 = nx - x1 - 1;
-		    y2 = ny - y1 - 1;
 		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,nx,x2,y2);
 		    }
 		}
@@ -274,15 +302,25 @@ int	verbose;
 
     /* Rotate by 270 degrees */
     else if (rotate >= 225 && rotate < 315) {
-	if (mirror) {
+	if (mirror == 1) {
 	    for (y1 = 0; y1 < ny; y1++) {
 		for (x1 = 0; x1 < nx; x1++) {
-		    x2 = y1;
-		    y2 = x1;
-		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,ny,x2,y2);
+		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,ny,y1,x1);
 		    }
 		}
 	    sprintf (history,"Copy of image %s reflected, rotated 270 degrees",
+		     filename);
+            hputc (header,"HISTORY",history);
+	    }
+	else if (mirror == 2) {
+	    for (y1 = 0; y1 < ny; y1++) {
+		for (x1 = 0; x1 < nx; x1++) {
+		    x2 = ny - y1 - 1;
+		    y2 = nx - x1 - 1;
+		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,ny,x2,y2);
+		    }
+		}
+	    sprintf (history,"Copy of image %s flipped, rotated 270 degrees",
 		     filename);
             hputc (header,"HISTORY",history);
 	    }
@@ -625,4 +663,6 @@ int	verbose;	/* Print progress if 1 */
  *
  * Jan 28 2004	Add xshift and yshift arguments to shift image
  * Sep 15 2004	Fix bugs in calls to hgetr8 for crpix (found by Rob Creager)
+ *
+ * Aug 17 2005	Add mirror = 2 flag indicating a flip across x axis
  */

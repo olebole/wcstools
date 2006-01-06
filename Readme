@@ -14,7 +14,7 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.6.2 of the WCSTools package developed by Doug Mink
+This is version 3.6.3 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code or algorithms from
 
@@ -33,7 +33,7 @@ Tokarz, Dan Koranyi, Guillermo Torres, and others of SAO and Andreas Jaunsen
 helped debug the astrometry programs.
 Steve Willner of SAO helped debug the FITS utilities.
 
-Details of updates are in the Versions file.
+Details of updates are in the NEWS file.
 
 Documentation, with examples and installation directions, is on the
 World Wide Web at
@@ -73,6 +73,17 @@ ways to use the SCAT program:
      "Federating Catalogs and Interfacing Them with Archives: A VO Prototype",
      Douglas J. Mink and Michael J. Kurtz, 2002, to be published in
      Astronomical Data Analysis Software and Systems XII, whenever it comes out.
+
+To assist users in selecting the best catalog to use, we tested the accuracy of
+the various catalogs one is likely to use with imwcs, showing how well it works
+in a pipeline mode on 1728 images. This ADASS paper is an improved version of
+our AAS/DDA paper, adding the UCAC2 catalog and emphasizing usefulness more than
+astrometry:
+     "A Comparison of Large All-Sky Catalogs" Douglas J. Mink, Warren R. Brown,
+and Michael J. Kurtz in Astronomical Data Analysis Software and Systems XIII,
+ASP Conference Proceedings, Vol. 314. Edited by Francois Oschenbein, Mark Allen,
+and Daniel Egret. San Francisco: Astronomical Society of the Pacific,
+ISSN: 1080-7926, 2004., p. 141. 
 
 Program Descriptions
 
@@ -160,4 +171,4 @@ wcshead	Print basic world coordinate system information on one line per image
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
 
--Doug Mink, SAO, 2004-07-01
+-Doug Mink, SAO, 2006-01-06

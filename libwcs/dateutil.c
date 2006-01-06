@@ -48,6 +48,7 @@
    ts = UT seconds since 1950-01-01T00:00 (used for ephemeris computations)
   tsi = local seconds since 1980-01-01T00:00 (used by IRAF as a time tag)
   tsu = UT seconds since 1970-01-01T00:00 (used as Unix system time)
+  tsd = UT seconds of current day
    ut = Universal Time (UTC)
    et = Ephemeris Time (or TDB or TT)
   mst = Mean Sidereal Time
@@ -204,6 +205,11 @@
  *	Convert UT seconds since 1970-01-01 to local seconds since 1980-01-01
  * tsu2dt (tsec,date,time)
  *	Convert seconds since 1970-01-01 to date as yyyy.ddmm, time as hh.mmsss
+ *
+ * tsd2fd (tsec)
+ *	Convert seconds since start of day to FITS time, hh:mm:ss.ss
+ * tsd2dt (tsec)
+ *	Convert seconds since start of day to hh.mmssss
  *
  * fd2gst (string)
  *      convert from FITS date Greenwich Sidereal Time
@@ -1277,7 +1283,7 @@ double	dj;	/* Julian date */
 
 /* JD2TSI-- convert Julian date to IRAF seconds since 1980-01-01T0:00 */
 
-double
+int
 jd2tsi (dj)
 
 double	dj;	/* Julian date */
@@ -1288,12 +1294,12 @@ double	dj;	/* Julian date */
 
 /* JD2TSU-- convert Julian date to Unix seconds since 1970-01-01T0:00 */
 
-double
+time_t
 jd2tsu (dj)
 
 double	dj;	/* Julian date */
 {
-    return ((dj - 2440587.5) * 86400.0);
+    return ((time_t)((dj - 2440587.5) * 86400.0));
 }
 
 
@@ -2525,6 +2531,43 @@ double	tsec;	/* Seconds past 1950.0 */
     ts2dt (tsec, &date, &time);
     return (dt2fd (date, time));
 }
+
+
+/* TSD2FD-- convert seconds since start of day to FITS time, hh:mm:ss.ss */
+
+char *
+tsd2fd (tsec)
+
+double	tsec;	/* Seconds since start of day */
+{
+    double date, time;
+    char *thms, *fdate;
+    int lfd, nbc;
+
+    ts2dt (tsec, &date, &time);
+    fdate = dt2fd (date, time);
+    thms = (char *) calloc (16, 1);
+    lfd = strlen (fdate);
+    nbc = lfd - 11;
+    strncpy (thms, fdate+11, nbc);
+    return (thms);
+}
+
+
+/* TSD2DT-- convert seconds since start of day to hh.mmssss */
+
+double
+tsd2dt (tsec)
+
+double	tsec;	/* Seconds since start of day */
+{
+    double date, time;
+    char *thms, *fdate;
+
+    ts2dt (tsec, &date, &time);
+    return (time);
+}
+
 
 
 /* DT2I-- convert vigesimal date and time to year month day hours min sec */
@@ -4000,4 +4043,6 @@ double	dnum, dm;
  * Jul 18 2003	Add code to parse Las Campanas dates
  *
  * Mar 24 2004	If ndec > 0, add UT to FITS date even if it is 0:00:00
+ *
+ * Oct 14 2005	Add tsd2fd() and tsd2dt()
  */

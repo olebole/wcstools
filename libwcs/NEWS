@@ -1,6 +1,12 @@
 WCSTools subroutine release history
 
-July 21, 2005 - Release 3.6.2 (Doug Mink, SAO
+January 5, 2006 - Release 3.6.3 (Doug Mink, SAO)
+wcs.h: Add WCS_ICRS to list of coordinate systems
+wcsinit.c: Initialize sys to WCS_ICRS if appropriate
+wcscon.c: Avoid precesssing ICRS coordinates
+wcscon.c: Fix precession which broke in 3.6.1
+
+July 21, 2005 - Release 3.6.2 (Doug Mink, SAO)
 wcs.c: Fix wcsrange() to return correct range around RA=0
 Clean up accumulated unused and misdeclared variables using lint
 

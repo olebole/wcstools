@@ -1,5 +1,5 @@
 /* File getfits.c
- * December 6, 2004
+ * September 30, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -374,6 +374,7 @@ int	nkwd;
     double secpix;      /* Arcseconds per pixel (returned) */
     double crpix1, crpix2;
     double cxpix, cypix;
+    double ra, dec;
     int offscl;
     int wp;             /* Image width in pixels (returned) */
     int hp;             /* Image height in pixels (returned) */
@@ -441,7 +442,10 @@ int	nkwd;
     if (ra0 > -99.0 && dec0 > -99.0) {
 	wcs = GetWCSFITS (name, header, verbose);
 	if (iswcs (wcs)) {
-	    wcs2pix (wcs, ra0, dec0, &cxpix, &cypix, &offscl);
+	    ra = ra0;
+	    dec = dec0;
+	    wcscon (syscoor, wcs->syswcs, eqcoor, eqout, &ra, &dec, wcs->epoch);
+	    wcs2pix (wcs, ra, dec, &cxpix, &cypix, &offscl);
 	    xcpix = (int) (cxpix + 0.5);
 	    ycpix = (int) (cypix + 0.5);
 	    wcsfree (wcs);
@@ -923,4 +927,6 @@ char *newname;
  * Sep 15 2004	Fix bug dealing with center specified as sky coordinates
  * Sep 17 2004	Add option to set extraction center as decimal degrees
  * Dec  6 2004	Don't print gratuitous newline at end of process
+ *
+ * Sep 30 2005	Convert input center coordinates to image system
  */

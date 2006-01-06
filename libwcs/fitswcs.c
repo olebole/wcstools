@@ -1,8 +1,8 @@
 /*** File libwcs/fitswcs.c
- *** September 16, 2004
+ *** November 1, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -470,6 +470,8 @@ struct WorldCoor *wcs;	/* WCS structure */
 
     if (wcs->radecsys[0] == 'B' || wcs->radecsys[0] == 'b')
 	hputs (header, "RADECSYS", "FK4");
+    else if (wcs->radecsys[0] == 'I' || wcs->radecsys[0] == 'i')
+	hputs (header, "RADECSYS", "IRCS");
     else if (wcs->radecsys[0] == 'J' || wcs->radecsys[0] == 'j')
 	hputs (header, "RADECSYS", "FK5");
     else
@@ -616,4 +618,5 @@ struct WorldCoor *wcs;	/* WCS structure */
  *
  * Jul 19 2004	Print error message in verbose mode only
  * Sep 16 2004	Add 360.0 to negative right ascensions in SetFITSWCS()
+ * Nov  1 2005	Set RADECSYS to ICRS if appropriate
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.h
- *** August 30, 2004
+ *** January 5, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2004
+ *** Copyright (C) 1994-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -128,7 +128,7 @@ struct WorldCoor {
   int		sysin;		/* Input coordinate system code */
   int		syswcs;		/* WCS coordinate system code */
   int		sysout;		/* Output coordinate system code */
-				/* WCS_B1950, WCS_J2000, WCS_GALACTIC,
+				/* WCS_B1950, WCS_J2000, WCS_ICRS, WCS_GALACTIC,
 				 * WCS_ECLIPTIC, WCS_LINEAR, WCS_ALTAZ  */
   char		center[32];	/* Center coordinates (with frame) */
   struct wcsprm wcsl;		/* WCSLIB main projection parameters */
@@ -199,6 +199,7 @@ struct WorldCoor {
 #define WCS_SPA		8	/* Longitude and south polar angle */
 #define WCS_PLANET	9	/* Longitude and latitude on planet */
 #define WCS_XY		10	/* X-Y Cartesian coordinates */
+#define WCS_ICRS	11	/* ICRS right ascension and declination */
 
 /* Method to use */
 #define WCS_BEST	0	/* Use best WCS projections */
@@ -214,6 +215,9 @@ struct WorldCoor {
 #define PI	3.141592653589793238462643
 #endif
 
+/* pi/(180*3600):  arcseconds to radians */
+#define AS2R		4.8481368110953e-6
+
 /* Conversions among hours of RA, degrees and radians. */
 #define degrad(x)	((x)*PI/180.)
 #define raddeg(x)	((x)*180./PI)
@@ -221,6 +225,7 @@ struct WorldCoor {
 #define deghr(x)	((x)/15.)
 #define hrrad(x)	degrad(hrdeg(x))
 #define radhr(x)	deghr(raddeg(x))
+#define secrad(x)	((x)*AS2R)
 
 /* TNX surface fitting structure and flags */
 struct IRAFsurface {
@@ -684,4 +689,8 @@ void foc2pix();		/*  focal plane coordinates -> pixel coordinates */
  * Dec  3 2003	Add back wcs->naxes for backward compatibility
  *
  * Aug 30 2004	Add DelDistort()
+ *
+ * Nov  1 2005	Add WCS_ICRS
+ *
+ * Jan  5 2006	Add secrad()
  */

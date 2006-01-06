@@ -1,5 +1,5 @@
 /* File imcat.c
- * April 4, 2005
+ * August 5, 2005
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -1292,6 +1292,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"magb  	magr  	");
     else if (refcat==TYCHO || refcat==TYCHO2 || refcat==HIP || refcat==ACT)
 	strcat (headline,"magb  	magv  	");
+    else if (refcat==TYCHO2E)
+	strcat (headline,"magb  	magv  	magbe	magve	");
     else if (refcat ==IRAS)
 	strcat (headline,"f10m  	f25m  	f60m  	f100m 	");
     else if (refcat == GSC2)
@@ -1304,6 +1306,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 	strcat (headline,"magb  	magr 	magj 	magh 	magk 	");
     else if (refcat == TMPSC || refcat == TMIDR2)
 	strcat (headline,"magj   	magh   	magk   	");
+    else if (refcat == TMPSCE)
+	strcat (headline,"magj   	magh   	magk   	magje	maghe	magke	");
     else if (refcat == TMXSC)
 	strcat (headline,"magj   	magh   	magk  	");
     else if (refcat == SDSS)
@@ -1361,8 +1365,12 @@ int	*region_char;	/* Character for SAOimage region file output */
 	refcat == USAC || refcat == USA1 || refcat == USA2 || refcat == TYCHO ||
 	refcat == TYCHO2 || refcat == ACT)
 	strcat (headline,"	-----");		/* Second magnitude */
-    else if (refcat == TMPSC || refcat == TMIDR2)
-	strcat (headline,"--	-------	-------"); /* JHK Magnitudes */
+    else if (refcat == TYCHO2E)		/* Second magnitude + errors */
+	strcat (headline,"	-----	-----	-----");
+    else if (refcat == TMPSC || refcat == TMIDR2) /* JHK Magnitudes */
+	strcat (headline,"--	-------	-------");
+    else if (refcat == TMPSCE) /* JHK Magnitudes + errors */
+	strcat (headline,"--	-------	-------	-----	-----	-----");
     else if (refcat == TMXSC)
 	strcat (headline,"--	-------	-------"); /* JHK Magnitudes + size */
     else if (refcat == IRAS)
@@ -1468,12 +1476,16 @@ int	*region_char;	/* Character for SAOimage region file output */
 		printf ("MagB  MagV  parlx parer   X       Y   \n");
 	    else if (refcat == TMPSC || refcat == TMIDR2)
 		printf ("MagJ    MagH    MagK      X       Y   \n");
+	    else if (refcat == TMPSCE)
+		printf ("MagJ    MagH    MagK   MagJe MagHe MagKe   X       Y   \n");
 	    else if (refcat == TMXSC)
 		printf ("MagJ    MagH    MagK     Size     X       Y   \n");
 	    else if (refcat == SAO || refcat == PPM || refcat == BSC)
 		printf ("  Mag  Type   X       Y     \n");
 	    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
-		printf ("MagR   MagV    X       Y     \n");
+		printf ("MagB   MagV    X       Y     \n");
+	    else if (refcat==TYCHO2E)
+		printf ("MagB   MagV   MagBe MagVe  X       Y     \n");
 	    else if (refcat == TABCAT) {
 		for (imag = 0; imag < nmag; imag++) {
 		    if (printepoch && imag == nmag-1)
@@ -1544,7 +1556,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%5.2f",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],
 		     gm[4][i]);
-		else if (refcat == TMPSC || refcat == TMIDR2 || refcat == TMXSC) {
+		else if (refcat == TMPSC || refcat == TMIDR2 ||
+			 refcat == TMPSCE || refcat == TMXSC) {
 		    sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
 		    for (imag = 0; imag < 3; imag++) {
 			if (gm[imag][i] > 100.0)
@@ -1552,6 +1565,12 @@ int	*region_char;	/* Character for SAOimage region file output */
 			else
 			    sprintf (temp, "	%6.3f ", gm[imag][i]);
 			strcat (headline, temp);
+			}
+		    if (refcat == TMPSCE) {
+			for (imag = 3; imag < 6; imag++) {
+			    sprintf (temp, "	%6.3f ", gm[imag][i]);
+			    strcat (headline, temp);
+			    }
 			}
 		    if (refcat == TMXSC) {
 			sprintf (temp,"	%6.1f", ((double)gc[i])* 0.1);
@@ -1579,14 +1598,15 @@ int	*region_char;	/* Character for SAOimage region file output */
 		else if (refcat == UJC)
 		    sprintf (headline, "%s	%s	%s	%5.2f	%d",
 		     numstr, rastr, decstr, gm[0][i], gc[i]);
-		else if (refcat==SAO || refcat==PPM || refcat== BSC ) {
+		else if (refcat==SAO || refcat==PPM || refcat== BSC )
 		    sprintf (headline, "%s	%s	%s	%5.2f	%2s",
 		     numstr,rastr,decstr,gm[0][i],isp);
-		    }
-		else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT) {
+		else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
 		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],isp);
-		    }
+		else if (refcat==TYCHO2E)
+		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%s",
+		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],isp);
 		else {
 		    sprintf (headline, "%s	%s	%s",
 			     numstr, rastr, decstr);
@@ -1638,7 +1658,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 		else if (refcat == GSC || refcat == GSCACT)
 		    sprintf (headline,"%s %s %s %6.2f %4d %4d %2d",
 			numstr, rastr, decstr, gm[0][i], gc[i], band, ngsc);
-		else if (refcat == TMPSC || refcat == TMIDR2 || refcat == TMXSC) {
+		else if (refcat == TMPSC || refcat == TMIDR2 ||
+			 refcat == TMPSCE || refcat == TMXSC) {
 		    sprintf (headline, "%s %s %s", numstr, rastr, decstr);
 		    for (imag = 0; imag < 3; imag++) {
 			if (gm[imag][i] > 100.0)
@@ -1646,6 +1667,12 @@ int	*region_char;	/* Character for SAOimage region file output */
 			else
 			    sprintf (temp, " %6.3f ", gm[imag][i]);
 			strcat (headline, temp);
+			}
+		    if (refcat == TMPSCE) {
+			for (imag = 3; imag < 6; imag++) {
+			    sprintf (temp, " %6.3f ", gm[imag][i]);
+			    strcat (headline, temp);
+			    }
 			}
 		    if (refcat == TMXSC) {
 			sprintf (temp," %6.1f", ((double)gc[i])* 0.1);
@@ -1690,6 +1717,9 @@ int	*region_char;	/* Character for SAOimage region file output */
 		else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
 		    sprintf (headline,"%s %s %s %6.2f %6.2f",
 			     numstr,rastr,decstr,gm[0][i],gm[1][i],isp);
+		else if (refcat==TYCHO2E)
+		    sprintf (headline,"%s %s %s %6.2f %6.2f %5.2f %5.2f",
+			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],isp);
 		else {
 		    sprintf (headline,"%s %s %s",
 			     numstr,rastr,decstr);
@@ -2038,4 +2068,5 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Nov 19 2004	Print star/galaxy type for USNO-B1.0
  *
  * Apr  4 2005	Exit with error message if no catalog is specified
+ * Aug  5 2005	Add magnitude error option to 2MASS PSC and Tycho2
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** June 22, 2005
+ *** November 9, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2005
@@ -718,10 +718,10 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	    /* Otherwise, use CROTAn */
 	    else {
 		rot = 0.0;
-		hgetr8c (hstring, "CROTA2", mchar, &rot);
-		if (rot == 0.) {
+		if (ilat == 2)
+		    hgetr8c (hstring, "CROTA2", mchar, &rot);
+		else
 		    hgetr8c (hstring,"CROTA1", mchar, &rot);
-		    }
 		wcsdeltset (wcs, cdelt1, cdelt2, rot);
 		}
 	    }
@@ -1293,4 +1293,5 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Feb 26 2004	Add parameters for ZPX projection
  *
  * Jun 22 2005	Drop declaration of variable wcserrmsg which is not used
+ * Nov  9 2005	Use CROTA1 if CTYPE1 is LAT/DEC, CROTA2 if CTYPE2 is LAT/DEC
  */

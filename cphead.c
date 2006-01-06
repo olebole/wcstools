@@ -1,5 +1,5 @@
 /* File cphead.c
- * January 13, 2005
+ * August 30, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -309,7 +309,7 @@ usage ()
 {
     if (version)
 	exit (-1);
-    fprintf (stderr,"Copy FITS or IRAF header keyword values\n");
+    fprintf (stderr,"Copy FITS or IRAF header keyword values from first file to others\n");
     fprintf(stderr,"Usage: cphead [-v][-d dir][-p num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
     fprintf(stderr,"  or : cphead [-v][-d dir][-p num] file1.fit @filelist kw1 kw2 ... kwn\n");
     fprintf(stderr,"  or : cphead [-v][-d dir][-p num] file1.fit @filelist @kwlist\n");
@@ -333,15 +333,16 @@ int	nkwd;		/* Number of keywords for which to print values */
 char	*kwd[];		/* Names of keywords for which to print values */
 
 {
-    char *header;	/* FITS image header */
-    char *headout;	/* FITS image header */
+    char *header;	/* FITS image header from which to copy */
+    char *headin;	/* FITS image header to which to add */
+    char *headout;	/* FITS image header to output */
     int newimage;
     char *irafheader;	/* IRAF image header */
     char *image;	/* Input and output image buffer */
     double dval;
     int ival, nch;
     int iraffile;
-    int ndec;
+    int ndec, nbheadout, nbheadin, nbheader;
     char fnform[8];
     char newname[128];
     char string[80];
@@ -379,7 +380,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
     if (isiraf (filename)) {
 	iraffile = 1;
 	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
-	    if ((headout = iraf2fits (filename, irafheader, lhead, &nbhead)) == NULL) {
+	    if ((headin = iraf2fits (filename, irafheader, lhead, &nbhead)) == NULL) {
 		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
 		free (irafheader);
 		return;
@@ -394,10 +395,10 @@ char	*kwd[];		/* Names of keywords for which to print values */
     /* Open FITS file if .imh extension is not present */
     else {
 	iraffile = 0;
-	if ((headout = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
-	    hgeti4 (headout,"NAXIS",&naxis);
+	if ((headin = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
+	    hgeti4 (headin,"NAXIS",&naxis);
 	    if (naxis > 0) {
-		if ((image = fitsrfull (filename, nbhead, headout)) == NULL) {
+		if ((image = fitsrfull (filename, nbhead, headin)) == NULL) {
 		    if (verbose)
 			fprintf (stderr, "No FITS image in %s\n", filename);
 		    imageread = 0;
@@ -417,22 +418,28 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	    }
 	}
 
+    /* Allocate output FITS header and copy original header into it */
+    nbheader = strlen (header);
+    nbheadin = nbhead;
+    nbheadout = nbheadin + (nkwd * 80);
+    headout = (char *) calloc (nbheadout, 1);
+    strncpy (headout, headin, nbheadin);
+
     if (verbose) {
-	fprintf (stderr,"Copy Header Parameter Values from ");
+	fprintf (stderr,"Read %d Header Parameter Values from ", nkwd);
 	hgeti4 (header, "IMHVER", &iraffile );
 	if (iraffile)
-	    fprintf (stderr,"IRAF image file %s to ", infile);
+	    fprintf (stderr,"IRAF image file %s\n", infile);
 	else
-	    fprintf (stderr,"FITS image file %s to ", infile);
+	    fprintf (stderr,"FITS image file %s\n", infile);
 	hgeti4 (headout, "IMHVER", &iraffile );
 	if (iraffile)
-	    fprintf (stderr,"IRAF image file %s\n", filename);
+	    fprintf (stderr,"and write to IRAF image file %s\n", filename);
 	else
-	    fprintf (stderr,"FITS image file %s\n", filename);
+	    fprintf (stderr,"and write to FITS image file %s\n", filename);
 	}
 
     nfound = 0;
-
     notfound = 0;
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
 	lkwd = strlen (kwd[ikwd]);
@@ -441,6 +448,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	    if (*kw > 96 && *kw < 123)
 		*kw = *kw - 32;
 	    }
+	(void) hlength (header, nbheader);
 	if (hgets (header, kwd[ikwd], 80, string)) {
 	    strclean (string);
 	    if (isnum (string)) {
@@ -450,18 +458,21 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		    else
 			ndec = numdec (string);
 		    hgetr8 (header, kwd[ikwd], &dval);
+		    (void) hlength (headout, nbheadout);
 		    hputnr8 (headout, kwd[ikwd], ndec, dval);
 		    }
 		else {
 		    hgeti4 (header, kwd[ikwd], &ival);
+		    (void) hlength (headout, nbheadout);
 		    hputi4 (headout, kwd[ikwd], ival);
 		    }
 		}
 	    else
+		(void) hlength (headout, nbheadout);
 		hputs (headout, kwd[ikwd], string);
 
 	    if (verbose)
-		printf ("%s = %s\n", kwd[ikwd], string);
+		printf ("%03d: %s = %s\n", ikwd, kwd[ikwd], string);
 	    nfound++;
 	    }
 	else if (verbose)
@@ -689,4 +700,6 @@ char *string;
  * Apr 15 2004	Avoid removing trailing zeroes from exponents
  *
  * Jan 13 2005	Print linefeed after verbose confirmation, not after missing kw
+ * Aug 26 2005	Improve one-line description
+ * Aug 30 2005	Write output header into new, adequately long array
  */

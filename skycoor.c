@@ -1,5 +1,5 @@
 /* File skycoor.c
- * May 31, 2005
+ * January 5, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -412,6 +412,8 @@ char **av;
 		nosys = 1;
 		sys0 = WCS_J2000;
 		}
+	    if (strlen (coorout) > 0)
+		sys1 = wcscsys (coorout);
 	    if (sys1 < 0) {
 		if (degout || nosys)
 		    sys1 = sys0;
@@ -626,4 +628,6 @@ char *errstring;
  * Apr 21 2005	Fix error in convert from non-1950 B in files (Daniela Doneva)
  * Apr 21 2005	Add -f argument to avoid @ in windows command lines
  * May 31 2005	Fix bug which caused infinite loop due to setting of listname
+ *
+ * Jan  5 2006	Fix bug to use command line equinox for output
  */

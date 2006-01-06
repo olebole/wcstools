@@ -1,5 +1,5 @@
 /* File imsize.c
- * July 20, 2005
+ * September 13, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -122,22 +122,6 @@ char **av;
 		}
 	    break;
 
-	case 's':	/* Change output for DSS getimage */
-	    strcpy (coorsys, "J2000");
-	    eqout = 2000.0;
-	    sysout0 = WCS_J2000;
-	    dss++;
-	    str1 = *(av+1);
-	    if (!*(str+1) && (strchr (str1,'-') || strchr (str1,'+')) ) {
-		size = atof (*++av);
-		ac--;
-		}
-	    else if (!*(str+1) && strchr (str1,'x') ) {
-		frac = atof (*++av+1);
-		ac--;
-		}
-	    break;
-
 	case 'd':	/* ouput center in degrees */
 	    degout++;
 	    break;
@@ -183,7 +167,23 @@ char **av;
 	    printrange++;
 	    break;
 
-	case 'x': /* FITS extension to read */
+	case 's':	/* Change output for DSS getimage */
+	    strcpy (coorsys, "J2000");
+	    eqout = 2000.0;
+	    sysout0 = WCS_J2000;
+	    dss++;
+	    str1 = *(av+1);
+	    if (!*(str+1) && (strchr (str1,'-') || strchr (str1,'+')) ) {
+		size = atof (*++av);
+		ac--;
+		}
+	    else if (!*(str+1) && strchr (str1,'x') ) {
+		frac = atof (*++av+1);
+		ac--;
+		}
+	    break;
+
+	case 'x': /* FITS extensions to read */
 	    if (ac < 2)
 		usage();
 	    extensions = *++av;
@@ -282,11 +282,11 @@ usage ()
     fprintf (stderr,"  -c: Format output without pixel dimensions (optional size change)\n");
     fprintf (stderr,"  -d: Output center in degrees\n");
     fprintf (stderr,"  -e: Add epoch of image to output line\n");
-    fprintf (stderr,"  -g: Format output as input to DSS getimage (optional size change)\n");
     fprintf (stderr,"  -j: Output J2000 (J2000) coordinates (optional center)\n");
     fprintf (stderr,"  -n: Number of decimal places in output (default 3)\n");
     fprintf (stderr,"  -p: Initial plate scale in arcsec per pixel (default 0)\n");
     fprintf (stderr,"  -r: Print range in RA and Dec\n");
+    fprintf (stderr,"  -s: Format output as input to DSS getimage (optional size change)\n");
     fprintf (stderr,"  -v: Verbose\n");
     fprintf (stderr,"  -x range: Print size for these extensions\n");
     fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
@@ -595,4 +595,5 @@ char *name;
  *
  * Jan 12 2005	Check for uppercase filename extensions
  * Jul 20 2005	Make -d and -n options work for both center and dimensions
+ * Sep 13 2005	Fix inline documentation to match reality
  */

@@ -1,5 +1,5 @@
 /* File getpix.c
- * September 21, 2004
+ * July 29, 2005
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -17,6 +17,7 @@
 
 static void usage();
 static void PrintPix();
+static void procpix();
 
 
 static int verbose = 0;		/* verbose/debugging flag */
@@ -27,6 +28,8 @@ static int pixlabel = 0;	/* If 1, label pixels in output */
 static int gtcheck = 0;		/* If 1, list pixels greater than gtval */
 static int ltcheck = 0;		/* If 1, list pixels less than ltval */
 static int nopunct=0;		/* If 1, print output with no punctuation */
+static int printrange = 0;	/* If 1, print range of values, not values */
+static int printmean = 0;	/* If 1, print mean of values, not values*/
 static double gtval = 0.0;
 static double ltval = 0.0;
 static double ra0 = -99.0;	/* Initial center RA in degrees */
@@ -91,6 +94,10 @@ char **av;
 		    verbose++;
 		    break;
 
+		case 'd':	/* Print range of values */
+		    printrange=1;
+		    break;
+
 		case 'g':	/* Keep pixels greater than this */
 		    if (ac < 2)
 			usage();
@@ -105,6 +112,10 @@ char **av;
 		    ltval = atof (*++av);
 		    ltcheck++;
 		    ac--;
+		    break;
+
+		case 'm':	/* Print mean, sigma of values */
+		    printmean = 1;
 		    break;
 
 		case 'n':	/* Number of pixels per line */
@@ -256,9 +267,11 @@ usage ()
     fprintf(stderr,"Usage: getpix [-vp][-n num][-g val][-l val][format] file.fit x_range y_range\n");
     fprintf(stderr,"  or   getpix [-vp][-n num][-g val][-l val][format] file.fit x1 y1 x2 y2 ... xn yn\n");
     fprintf(stderr,"  format: C-style (%%f, %%d, ...) format for pixel values\n");
+    fprintf(stderr,"  -d: Print range of pixel values in specified image region\n");
     fprintf(stderr,"  -f name: Write specified region to a FITS file\n");
     fprintf(stderr,"  -g num: keep pixels with values greater than this\n");
     fprintf(stderr,"  -l num: keep pixels with values less than this\n");
+    fprintf(stderr,"  -m: Print mean of pixel values in specified image region\n");
     fprintf(stderr,"  -n num: number of pixel values printed per line\n");
     fprintf(stderr,"  -p: label pixels\n");
     fprintf(stderr,"  -r num: radius (<0=box) to extract in degrees/arcsec\n");
@@ -287,7 +300,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
     double bzero;	/* Zero point for pixel scaling */
     double bscale;	/* Scale factor for pixel scaling */
     int iraffile;
-    double dpix;
+    double dpix, dsum, dmean, dmin, dmax, dnpix;
     char *c;
     int *yi;
     int bitpix,xdim,ydim, ipix, i, nx, ny, ix, iy, x, y;
@@ -369,6 +382,12 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
     bscale = 1.0;
     hgetr8 (header,"BSCALE",&bscale);
 
+    /* Set initial values */
+    dsum = 0.0;
+    dnpix = 0.0;
+    dmin = 0.0;
+    dmax = 0.0;
+
     /* Set format if not already set */
     if (pform == NULL) {
 	pform = (char *) calloc (8,1);
@@ -387,6 +406,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 	    if (gtcheck || ltcheck) {
 		if (gtcheck && dpix > gtval ||
 		    ltcheck && dpix < ltval) {
+		    procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
 		    if (nopunct)
 			printf ("%d %d %f\n", xpix[i], ypix[i], dpix);
 		    else
@@ -394,6 +414,10 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 		    }
 		continue;
 		}
+	    else
+		procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
+	    if (printrange || printmean)
+		continue;
 	    if (bitpix > 0) {
 		if ((c = strchr (pform,'f')) != NULL)
 		    *c = 'd';
@@ -435,7 +459,25 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 
 /* Print entire image */
     else if (!strcmp (rrange, "0") && !strcmp (crange, "0")) {
-	if (gtcheck || ltcheck) {
+	if (printmean || printrange) {
+	    nx = xdim;
+	    ny = ydim;
+	    for (y = 0; y < ny; y++) {
+		for (x = 0; x < nx; x++) {
+        	    dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
+		    if (!gtcheck && !ltcheck)
+			procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
+		    else if (gtcheck && ltcheck) {
+			if (dpix > gtval && dpix < ltval)
+			    procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
+			}
+		    else if (gtcheck && dpix > gtval ||
+			ltcheck && dpix < ltval)
+			procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
+		    }
+		}
+	    }
+	else if (gtcheck || ltcheck) {
 	    nx = xdim;
 	    ny = ydim;
 	    for (y = 0; y < ny; y++) {
@@ -477,6 +519,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 		if (gtcheck || ltcheck) {
 		    if (gtcheck && dpix > gtval ||
 			ltcheck && dpix < ltval) {
+			procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
 			if (nopunct)
 			    printf ("%d %d %f\n", x+1, y+1, dpix);
 			else
@@ -484,6 +527,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 			}
 		    continue;
 		    }
+		else
+		    procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
 	        if (bitpix > 0) {
 		    if (dpix > 0)
 	 		ipix = (int) (dpix + 0.5);
@@ -531,6 +576,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 		if (gtcheck || ltcheck) {
 		    if (gtcheck && dpix > gtval ||
 			ltcheck && dpix < ltval) {
+			procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
 			if (nopunct)
 			    printf ("%d %d %f\n", x+1, y+1, dpix);
 			else
@@ -538,6 +584,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 			}
 		    continue;
 		    }
+		else
+		    procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
 	        if (bitpix > 0) {
 		    if (dpix > 0)
 	 		ipix = (int) (dpix + 0.5);
@@ -627,6 +675,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 		if (gtcheck || ltcheck) {
 		    if (gtcheck && dpix > gtval ||
 			ltcheck && dpix < ltval) {
+			procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
 			if (nopunct)
 			    printf ("%d %d %f\n", x+1, yi[iy]+1, dpix);
 			else
@@ -634,6 +683,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 			}
 		    continue;
 		    }
+		else
+		    procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
 	        if (bitpix > 0) {
 		    if ((c = strchr (pform,'f')) != NULL)
 			*c = 'd';
@@ -674,9 +725,38 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 	free (yrange);
 	}
 
+    if (printmean) {
+	dmean = dsum / dnpix;
+	printf ("Mean= %.4f ", dmean);
+	}
+    if (printrange)
+	printf ("Range = %.4f - %.4f ", dmin, dmax);
+    if (printmean || printrange)
+	printf ("for %d pixels\n", dnpix);
+
     free (header);
     free (image);
     return;
+}
+
+
+static void
+procpix (dsum, dmin, dmax, dpix)
+
+double	*dsum;	/* Sum of pixel values */
+double	*dmin;	/* Minimum pixel value */
+double	*dmax;	/* Maximum pixel value */
+double	dpix;	/* Current pixel value */
+{
+	*dsum = *dsum + dpix;
+	if (*dmin == 0.0 && *dmax == 0.0) {
+	    *dmin = dpix;
+	    *dmax = dpix;
+	    }
+	else if (dpix < *dmin)
+	    *dmin = dpix;
+	else if (dpix > *dmax)
+	    *dmax = dpix;
 }
 /* Dec  6 1996	New program
  *
@@ -712,4 +792,6 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
  * Apr 26 2004	Fix handling of 0 0 for entire image
  * Aug 30 2004	Fix declarations
  * Sep 21 2004	Fix bug which used x instead of ix for number of elements printed
+ *
+ * Jul 29 2005	Add mean and range computation
  */

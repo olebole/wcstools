@@ -1,5 +1,5 @@
 /* File scat.c
- * May 12, 2005
+ * January 6, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -16,11 +16,6 @@
 #include "libwcs/wcscat.h"
 #include "libwcs/fitsfile.h"
 
-#define EP_JD	1
-#define EP_MJD	2
-#define EP_FD	3
-#define EP_EP	4
-
 
 static void PrintUsage();
 static int scatparm();
@@ -34,7 +29,6 @@ static void PrintGSClass();
 static void PrintGSCBand();
 static void PrintWebHelp();
 
-static int dateform = 0;	/* Format for catalogued dates */
 static int verbose = 0;		/* Verbose/debugging flag */
 static int afile = 0;		/* True to append output file */
 static int wfile = 0;		/* True to print output file */
@@ -42,7 +36,7 @@ static int classd = -1;		/* Guide Star Catalog object classes */
 static double maglim1 = MAGLIM1; /* Catalog bright magnitude limit */
 static double maglim2 = MAGLIM2; /* Catalog faint magnitude limit */
 static int sysout0 = 0;		/* Output coordinate system */
-static double eqcoor = 2000.0;	/* Equinox of search center */
+static double eqcoor = 0.0;	/* Equinox of search center */
 static int degout0 = 0;		/* 1 if degrees output instead of hms */
 static double ra0 = -99.0;	/* Initial center RA in degrees */
 static double dec0 = -99.0;	/* Initial center Dec in degrees */
@@ -70,6 +64,7 @@ static int debug = 0;		/* True for extra information */
 static char *objname;		/* Object name for output */
 static char *keyword;		/* Column to add to tab table output */
 static char *progname;		/* Name of program as executed */
+static char *coorsys;		/* Coordinate system of search center */
 static int match = 0;		/* If 1, match num exactly in BIN or ASC cats*/
 static int printobj = 0;	/* If 1, print object name instead of number */
 static char cpname[16];		/* Name of program for error messages */
@@ -136,6 +131,7 @@ char **av;
     int imag;
     double epoch;
     int nmag, mprop;
+    char coorout[32];
     char title[80];
     char *query;
     int ndcat;
@@ -164,6 +160,7 @@ char **av;
     gc = NULL;
     gobj = NULL;
     gobj1 = NULL;
+    coorout[0] = (char) 0;
 
     /* Check name used to execute program and set catalog name accordingly */
     progname = ProgName (av[0]);
@@ -260,8 +257,10 @@ char **av;
 		    syscoor = WCS_J2000;
 		    eqcoor = 2000.0;
 		    }
-		else if ((syscoor = wcscsys (*(av+1))) >= 0)
-		    eqcoor = wcsceq (*++av);
+		else if ((syscoor = wcscsys (*(av+1))) >= 0) {
+		    coorsys = *++av;
+		    eqcoor = wcsceq (coorsys);
+		    }
 		else {
 		    syscoor = WCS_J2000;
 		    eqcoor = 2000.0;
@@ -310,6 +309,7 @@ char **av;
 		    dstr = *av++;
 		    ac--;
 		    cstr = *av;
+		    eqcoor = wcsceq (cstr);
 		    }
 
 		/* Check for two numbers which aren't catalog numbers */
@@ -518,10 +518,12 @@ char **av;
     	    case 'q':	/* Output equinox in years */
     		if (ac < 2)
     		    PrintUsage (str);
-		if (strchr (*++av, '.') != NULL)
-		    eqout = atof (*av);
-		else
-    		    eqout = fd2ep (*av);
+		strcpy (coorout, *++av);
+		if (coorout[0] == 'J' || coorout[0] == 'j')
+		    sysout0 = WCS_J2000;
+		else if (coorout[0] == 'B' || coorout[0] == 'b')
+		    sysout0 = WCS_B1950;
+		eqout = wcsceq (coorout);
     		ac--;
     		break;
 
@@ -676,13 +678,15 @@ char **av;
 
 	    case 'y':	/* Set output coordinate epoch */
 		if (str[1] == 'j')
-		    dateform = EP_JD;
+		    setdateform (EP_JD);
 		else if (str[1] == 'm')
-		    dateform = EP_MJD;
+		    setdateform (EP_MJD);
 		else if (str[1] == 'f')
-		    dateform = EP_FD;
+		    setdateform (EP_FD);
+		else if (str[1] == 'i')
+		    setdateform (EP_ISO);
 		else
-		    dateform = EP_EP;
+		    setdateform (EP_EP);
 		if (ac < 2)
 		    PrintUsage (str);
 		if ((cep2 = strchr (*(av+1), ','))) {
@@ -741,23 +745,43 @@ char **av;
 	PrintUsage (errmsg);
 	}
 
+    /* Set output equinox appropriately if output system is specified */
+    if (eqout == 0.0) {
+	if (eqcoor != 0.0)
+	    eqout = eqcoor;
+	if (sysout0 != 0) {
+	    if (sysout0 == WCS_J2000)
+		eqout = 2000.0;
+	    if (sysout0 == WCS_B1950)
+		eqout = 1950.0;
+	    }
+	}
+
     /* Set output epoch appropriately if output system is specified */
-    if (sysout0 == 0 && syscoor != 0)
-	sysout0 = syscoor;
-    if (epoch0 == 0.0 && sysout0 != 0) {
-	if (sysout0 == WCS_J2000)
-	    epoch0 = 2000.0;
-	if (sysout0 == WCS_B1950)
-	    epoch0 = 1950.0;
+    if (sysout0 == 0) {
+	if (strlen (coorout) > 0) {
+	    sysout0 = wcscsys (coorout);
+	    eqout = wcsceq (coorout);
+	    }
+	else if (syscoor != 0)
+	    sysout0 = syscoor;
 	}
 
     /* Set output equinox appropriately if output system is specified */
-    if (eqout == 0.0 && sysout0 != 0) {
-	if (sysout0 == WCS_J2000)
-	    eqout = 2000.0;
-	if (sysout0 == WCS_B1950)
-	    eqout = 1950.0;
+    if (eqout == 0.0) {
+	if (eqcoor != 0.0)
+	    eqout = eqcoor;
+	if (sysout0 != 0) {
+	    if (sysout0 == WCS_J2000)
+		eqout = 2000.0;
+	    if (sysout0 == WCS_B1950)
+		eqout = 1950.0;
+	    }
 	}
+
+    /* Set output epoch from output equinox if not otherwise set */
+    if (epoch0 == 0.0)
+	epoch0 = eqout;
 
     /* If http output, send header */
     if (votab) {
@@ -875,18 +899,16 @@ char **av;
 	if (sysout0 && !syscoor)
 	    syscoor = sysout0;
 	if (syscoor) {
-	    if (epoch0 == 0.0) {
-		if (syscoor == WCS_B1950)
-		    epoch0 = 1950.0;
-		else
-		    epoch0 = 2000.0;
-		}
 	    if (eqout == 0.0) {
-		if (syscoor == WCS_B1950)
+		if (eqcoor != 0.0)
+		    eqout = eqcoor;
+		else if (syscoor == WCS_B1950)
 		    eqout = 1950.0;
 		else
 		    eqout = 2000.0;
 		}
+	    if (epoch0 == 0.0)
+		epoch0 = eqout;
 	    }
 	ListCat (ranges, eqout);
 	}
@@ -995,7 +1017,7 @@ char	*command;	/* Command where error occurred or NULL */
     fprintf(dev,"  -k kwd: Add this keyword to output from tab table search\n");
     fprintf(dev,"  -l: Print center and closest star on one line\n");
     fprintf(dev,"  -mx mag1[,mag2]: Magnitude #x limit(s) (only one set allowed, default none) \n");
-    fprintf(dev,"  -n num: Number of brightest stars to print \n");
+    fprintf(dev,"  -n num: Number of brightest stars to print (-1=all as found)\n");
     fprintf(dev,"  -o name: Object name \n");
     fprintf(dev,"  -q year: Equinox of output positions in FITS date format or years\n");
     fprintf(dev,"  -r rad: Search radius (<0=-half-width) in arcsec\n");
@@ -1066,6 +1088,7 @@ double	eqout;		/* Equinox for output coordinates */
     char title[80];
     char string[TABMAX];
     char temp[80];
+    char *dtemp;
     char isp[4];
     int ngsc;
     int smag;
@@ -1256,8 +1279,8 @@ double	eqout;		/* Equinox for output coordinates */
 	else if (verbose) {
 	    if (refcat==UAC || refcat==UA1 || refcat==UA2 || refcat==UB1 ||
 		refcat==USAC || refcat==USA1 || refcat==USA2 || refcat==GSC ||
-		refcat==GSCACT || refcat==TMPSC || refcat==TMIDR2 ||
-		refcat==TMXSC || refcat == YB6)
+		refcat==GSCACT || refcat==TMPSC || refcat==TMPSCE ||
+		refcat==TMIDR2 || refcat==TMXSC || refcat == YB6)
 		nlog = 1000;
 	    else
 		nlog = 100;
@@ -1296,6 +1319,22 @@ double	eqout;		/* Equinox for output coordinates */
 	if (!sysout)
 	    sysout = WCS_J2000;
 
+	/* Set equinox from command line, search catalog, or searched catalog */
+	if (eqout == 0.0) {
+	    if (srch!= NULL && srch->equinox != 0.0)
+		eqout = srch->equinox;
+	    else if (sysout0 == WCS_J2000)
+		eqout = 2000.0;
+	    else if (sysout0 == WCS_B1950)
+		eqout = 1950.0;
+	    else if (eqcoor != 0.0)
+		eqout = eqcoor;
+	    else
+		eqout = epref;
+	    if (eqout == 0.0)
+		eqout = 2000.0;
+	    }
+
 	/* Set epoch from command line, search catalog, or searched catalog */
 	epout = epoch0;
 	if (epout == 0.0) {
@@ -1307,6 +1346,8 @@ double	eqout;		/* Equinox for output coordinates */
 		epout = 1950.0;
 	    else if (mprop != 1)
 		epout = epref;
+	    else if (eqout != 0.0)
+		epout = eqout;
 	    else {
 		if (sysout == WCS_B1950)
 		    epout = 1950.0;
@@ -1314,22 +1355,6 @@ double	eqout;		/* Equinox for output coordinates */
 		    epout = 2000.0;
 		}
 	    }
-
-	/* Set equinox from command line, search catalog, or searched catalog */
-	if (eqout == 0.0) {
-	    if (srch!= NULL && srch->equinox != 0.0)
-		eqout = srch->equinox;
-	    else if (sysout0 == WCS_J2000)
-		eqout = 2000.0;
-	    else if (sysout0 == WCS_B1950)
-		eqout = 1950.0;
-	    else
-		eqout = epref;
-	    if (eqout == 0.0)
-		eqout = 2000.0;
-	    }
-	if (epout == 0.0)
-	    epout = eqout;
 
 	/* Set degree flag for output */
 	if (sysout == WCS_ECLIPTIC || sysout == WCS_GALACTIC)
@@ -1351,9 +1376,13 @@ double	eqout;		/* Equinox for output coordinates */
 	    wfile = 0;
 
 	    /* Find the specified catalog stars */
+	    if (nstars < 0)
+		nlog = -1;
 	    ng = ctgrnum (refcatname[icat], refcat,
 		      nfind, sysout, eqout, epout, match, &starcat[icat],
 		      gnum, gra, gdec, gpra, gpdec, gm, gc, gobj, nlog);
+	    if (nlog < 0)
+		return (ng);
 
 	    if (gobj == NULL)
 		gobj1 = NULL;
@@ -1642,34 +1671,14 @@ double	eqout;		/* Equinox for output coordinates */
 
 	    /* Set search radius if finding closest star */
 	    if (rad0 == 0.0 && dra0 == 0.0) {
-		if (closest) {
-		    if (refcat==GSC || refcat==GSCACT || refcat==UJC ||
-			refcat==USAC || refcat==USA1 || refcat==USA2 ||
-			refcat == UCAC1 || refcat == UCAC2)
-			rad0 = 900.0;
-		    else if (refcat==UAC  || refcat==UA1  || refcat==UA2)
-			rad0 = 120.0;
-		    else if (refcat == UB1 || refcat==SDSS)
-			rad0 = 120.0;
-		    else if (refcat==GSC2)
-			rad0 = 120.0;
-		    else if (refcat==TMPSC || refcat==TMIDR2)
-			rad0 = 120.0;
-		    else if (refcat==TMXSC)
-			rad0 = 900.0;
-		    else if (refcat==GSC2 || refcat==TMPSC || refcat==TMIDR2)
-			rad0 = 120.0;
-		    else if (refcat==SAO || refcat==PPM || refcat==IRAS)
-			rad0 = 5000.0;
-		    else
-			rad0 = 1800.0;
-		    }
+		if (closest)
+		    rad0 = CatRad (refcat);
 		else
 		    rad0 = 10.0;
 		}
 
 	    /* Set limits from defaults and command line information */
-	    if (GetArea (verbose,syscoor,sysout,eqout,epout,
+	    if (GetArea (verbose,syscoor,eqcoor,sysout,eqout,epout,
 		     &cra,&cdec,&dra,&ddec,&drad,&dradi,&crao,&cdeco))
 		return (0);
 
@@ -1690,12 +1699,12 @@ double	eqout;		/* Equinox for output coordinates */
 
 	    /* Print search center and size in input and output coordinates */
 	    if (verbose || (printhead && !oneline)) {
+		if (sysout != syscoor || eqcoor != eqout)
+		    SearchHead (icat,syscoor,eqcoor,epout,
+				cra,cdec,dra,ddec,drad,dradi,nnfld,degout);
 		SearchHead (icat,sysout,eqout,epout,
 			crao,cdeco,dra,ddec,drad,dradi,nnfld,degout);
 		if (!closest) {
-		    if (sysout != syscoor)
-			SearchHead (icat,syscoor,eqcoor,epout,
-				    cra,cdec,dra,ddec,drad,dradi,nnfld,degout);
 		    if (sysref != syscoor && sysref != sysout) {
 			double cra2 = cra;
 			double cdec2 = cdec;
@@ -1729,8 +1738,8 @@ double	eqout;		/* Equinox for output coordinates */
 		sortletter = (char) (48 + sortmag);
 	    else
 		sortletter = ' ';
-	    ng = ctgread (refcatname[icat], refcat, distsort, cra, cdec,
-		      dra,ddec,drad,dradi,syscoor,eqout,epout,mag1,mag2,
+	    ng = ctgread (refcatname[icat], refcat, distsort, crao, cdeco,
+		      dra,ddec,drad,dradi,sysout,eqout,epout,mag1,mag2,
 		      sortmag,ngmax,&starcat[icat],
 		      gnum,gra,gdec,gpra,gpdec,gm,gc,gobj,nlog);
 	    if (ngmax < 1)
@@ -1902,7 +1911,8 @@ double	eqout;		/* Equinox for output coordinates */
 			else
 			    printf ("radecsys	fk5\n");
 			printf ("equinox	%.4f\n", eqout);
-			printf ("epoch	%.4f\n", epout);
+			if (!printepoch)
+			    printf ("epoch	%.4f\n", epout);
 			if (minid != 0)		/* Min number of plate IDs for USNO-B1.0 */
 			    printf ("minid	%d\n", minid);
 			if (minpmqual > 0)	/* Min proper motion quality for USNO-B1.0 */
@@ -2008,7 +2018,9 @@ double	eqout;		/* Equinox for output coordinates */
 			else if (refcat == IRAS)
 			    printf ("f10m 	f25m 	f60m 	f100m	");
 			else if (refcat == TMPSC || refcat == TMIDR2)
-			    printf ("magj  	magh   	magk   	");
+			    printf ("magj   	magh    	magk   		");
+			else if (refcat == TMPSCE)
+			    printf ("magje 	maghe  	magke  	");
 			else if (refcat == TMXSC)
 			    printf ("magj  	magh   	magk   	size  	");
 			else if (refcat == UB1)
@@ -2086,6 +2098,8 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("-----	-----	-----	-----	");
 			else if (refcat == TMPSC || refcat == TMIDR2)
 			    printf ("-------	-------	-------	");
+			else if (refcat == TMPSCE)
+			    printf ("-------	-------	-------	-------	-------	-------	");
 			else if (refcat == TMXSC)
 			    printf ("-------	-------	-------	------	");
 			else if (nmagr > 0) {
@@ -2128,12 +2142,12 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("%s ", numstr);
 			}
 		    if (degout) {
-			num2str (rastr, cra, 12, nddeg);
-			num2str (decstr, cdec, 12, nddeg);
+			num2str (rastr, crao, 12, nddeg);
+			num2str (decstr, cdeco, 12, nddeg);
 			}
 		    else {
-			ra2str (rastr, 32, cra, ndra);
-			dec2str (decstr, 32, cdec, nddec);
+			ra2str (rastr, 32, crao, ndra);
+			dec2str (decstr, 32, cdeco, nddec);
 			}
 		    if (tabout)
 			printf ("%s	%s", rastr, decstr);
@@ -2248,7 +2262,8 @@ double	eqout;		/* Equinox for output coordinates */
 				}
 			    }
 			}
-		    else if (refcat==TMPSC || refcat==TMIDR2 || refcat==TMXSC) {
+		    else if (refcat == TMPSC || refcat == TMIDR2 ||
+			     refcat == TMPSCE || refcat == TMXSC) {
 			for (imag = 0; imag < 3; imag++) {
 			    if (gm[imag][0] > 100.0) {
 				if (tabout)
@@ -2257,6 +2272,14 @@ double	eqout;		/* Equinox for output coordinates */
 				    printf (" %6.3fL", gm[imag][0]-100.0);
 				}
 			    else {
+				if (tabout)
+				    printf ("	%6.3f ", gm[imag][0]);
+				else
+				    printf (" %6.3f ", gm[imag][0]);
+				}
+			    }
+			if (refcat == TMPSCE) {
+			    for (imag = 3; imag < 6; imag++) {
 				if (tabout)
 				    printf ("	%6.3f ", gm[imag][0]);
 				else
@@ -2298,16 +2321,11 @@ double	eqout;		/* Equinox for output coordinates */
 			}
 		    if (starcat[icat] != NULL && starcat[icat]->nepoch>0) {
 			if (starcat[icat]->entrv>0)
-			    temp1 = ep2fd (gm[nmagr+1][0]);
+			    dtemp = DateString (gm[nmagr+1][0], tabout);
 			else
-			    temp1 = ep2fd (gm[nmagr][0]);
-			if (strlen (temp1) > 10)
-			    temp1[10] = (char) 0;
-			if (tabout)
-			    printf ("	%10s", temp1);
-			else
-			    printf (" %10s", temp1);
-			free (temp1);
+			    dtemp = DateString (gm[nmagr][0], tabout);
+			printf ("%s", dtemp);
+			free (dtemp);
 			}
 		    if (mprop == 1) {
 			if (tabout)
@@ -2584,7 +2602,8 @@ double	eqout;		/* Equinox for output coordinates */
 		else
 		    fprintf (fd,"radecsys	fk5\n");
 		fprintf (fd, "equinox	%.4f\n", eqout);
-		fprintf (fd, "epoch	%.4f\n", epout);
+		if (!printepoch)
+		    fprintf (fd, "epoch	%.4f\n", epout);
 		}
 	    else {
 		if (sysout == WCS_GALACTIC)
@@ -2596,7 +2615,8 @@ double	eqout;		/* Equinox for output coordinates */
 		else
 		    printf ("radecsys	fk5\n");
 		printf ("equinox	%.4f\n", eqout);
-		printf ("epoch	%.4f\n", epout);
+		if (!printepoch)
+		    printf ("epoch	%.4f\n", epout);
 		}
 
 	    if (mprop == 1) {
@@ -2710,6 +2730,8 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline,"	magb	magr	plate");
 	    else if (refcat == TMPSC || refcat == TMIDR2)
 		strcat (headline,"	magj  	magh  	magk  ");
+	    else if (refcat == TMPSCE)
+		strcat (headline,"	magj  	magh  	magk 	magje 	maghe 	magke ");
 	    else if (refcat == TMXSC)
 		strcat (headline,"	magj  	magh  	magk  	size  ");
 	    else if (refcat == UB1)
@@ -2728,6 +2750,8 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline,"	magb	magv	parlx 	parer");
 	    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
 		strcat (headline,"	magb	magv");
+	    else if (refcat==TYCHO2E)
+		strcat (headline,"	magb 	magv 	magbe	magve");
 	    else if (refcat==HIP)
 		strcat (headline,"	magb 	magv 	prllx	parer");
 	    else if (refcat == GSC || refcat == GSCACT)
@@ -2781,6 +2805,8 @@ double	eqout;		/* Equinox for output coordinates */
 	    strcat (headline,"	------------	------------");
 	    if (refcat == TMPSC || refcat == TMIDR2)
 		strcat (headline,"	-------	-------	-------");
+	    else if (refcat == TMPSCE)
+		strcat (headline,"	-------	-------	-------	------	------	------");
 	    else if (refcat == TMXSC)
 		strcat (headline,"	-------	-------	-------	------");
 	    else if (refcat == IRAS)
@@ -2857,7 +2883,7 @@ double	eqout;		/* Equinox for output coordinates */
 		    strcpy (headline, "UCAC1_num    ");
 		else if (refcat == UCAC2)
 		    strcpy (headline, "UCAC2_num    ");
-		else if (refcat == TMPSC)
+		else if (refcat == TMPSC || refcat == TMPSCE)
 		    strcpy (headline, "2MASS_num.  ");
 		else if (refcat == TMXSC)
 		    strcpy (headline, "2MASS_XSC   ");
@@ -2875,7 +2901,7 @@ double	eqout;		/* Equinox for output coordinates */
 		    strcpy (headline, "IRASnum  ");
 		else if (refcat == TYCHO)
 		    strcpy (headline, "Tycho_number ");
-		else if (refcat == TYCHO2)
+		else if (refcat == TYCHO2 || refcat == TYCHO2E)
 		    strcpy (headline, "Tycho2_num  ");
 		else if (refcat == HIP)
 		    strcpy (headline, "Hip_num ");
@@ -2949,6 +2975,8 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, "   MagJ   MagH   MagK   MagC");
 	    else if (refcat==TMPSC || refcat == TMIDR2)
 		strcat (headline, "   MagJ    MagH    MagK  ");
+	    else if (refcat==TMPSCE)
+		strcat (headline, "   MagJ    MagH    MagK   MagJe  MagHe  MagKe");
 	    else if (refcat==TMXSC)
 		strcat (headline, "   MagJ    MagH    MagK  ");
 	    else if (refcat==IRAS)
@@ -2959,6 +2987,8 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, "  MagB  MagV  Parlx Parer");
 	    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
 		strcat (headline, "   MagB   MagV  ");
+	    else if (refcat==TYCHO2E) 
+		strcat (headline, "   MagB   MagV MagBe MagVe");
 	    else if (nmagr > 0) {
 		for (imag = 0; imag < nmagr; imag++) {
 		    if (starcat != NULL &&
@@ -2992,7 +3022,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    else if (gcset)
 		strcat (headline, "     Peak");
 	    if (printepoch)
-		strcat (headline, "    Epoch      ");
+		strcat (headline, "   Epoch   ");
 	    if (mprop == 2)
 		strcat (headline, " Velocity");
 	    if (ranges == NULL)
@@ -3024,15 +3054,24 @@ double	eqout;		/* Equinox for output coordinates */
     if (closest) ns = 1;
     for (i = 0; i < ns; i++) {
 
-	/* Check entry epoch to see if it is within specified range */
-	if (printepoch && epoch1 > 0.0 && epoch2 > 0.0) {
+	/* Set source position epoch passed as a magnitude */
+	if (printepoch) {
 	    if (mprop == 2)
 		epoch = gm[nmagr+1][i];
 	    else
 		epoch = gm[nmagr][i];
-	    if (epoch < epoch1 || epoch > epoch2)
-		continue;
+	    if (epoch == 99.0)
+		epoch = 0.0;
 	    }
+
+	/* Check entry epoch to see if it is within specified range */
+	if ((epoch1 > 0.0 && epoch2 > 0.0) &&
+	    (epoch < epoch1 || epoch > epoch2))
+	    continue;
+	else if (epoch1 > 0.0 && epoch < epoch1)
+	    continue;
+	else if (epoch2 > 0.0 && epoch > epoch2)
+	    continue;
 
 	/* Set spectra type (or other 2-character code) */
 	if (typecol == 1) {
@@ -3133,7 +3172,8 @@ double	eqout;		/* Equinox for output coordinates */
 	            sprintf (headline,
 			 "%s	%s	%s	%.2f	%d	%d	%d",
 			 numstr, rastr, decstr, gm[0][i], gc[i], band, ngsc);
-		else if (refcat==TMPSC || refcat==TMIDR2 || refcat==TMXSC) {
+		else if (refcat==TMPSC || refcat==TMIDR2 ||
+			 refcat == TMPSCE || refcat==TMXSC) {
 		    sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
 		    for (imag = 0; imag < 3; imag++) {
 			if (gm[imag][i] > 100.0)
@@ -3141,6 +3181,12 @@ double	eqout;		/* Equinox for output coordinates */
 			else
 			    sprintf (temp, "	%6.3f ", gm[imag][i]);
 			strcat (headline, temp);
+			}
+		    if (refcat == TMPSCE) {
+			for (imag = 3; imag < 6; imag++) {
+			    sprintf (temp, "	%5.3f ", gm[imag][i]);
+			    strcat (headline, temp);
+			    }
 			}
 		    }
 		else if (refcat == GSC2)
@@ -3182,6 +3228,9 @@ double	eqout;		/* Equinox for output coordinates */
 		else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
 	            sprintf (headline, "%s	%s	%s	%.2f	%.2f",
 		     numstr, rastr, decstr, gm[0][i], gm[1][i]);
+		else if (refcat==TYCHO2E)
+	            sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f",
+		     numstr, rastr, decstr, gm[0][i], gm[1][i], gm[2][i], gm[3][i]);
 		else {
 	            sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
 		    for (imag = 0; imag < nmagr; imag++) {
@@ -3199,33 +3248,17 @@ double	eqout;		/* Equinox for output coordinates */
 		    }
 		if (mprop == 2) {
 		    if (printepoch) {
-			if (dateform == EP_JD) {
-			    year = ep2jd (gm[nmagr+1][i]);
-			    sprintf (temp, "	%13.5f", year);
-			    }
-			else if (dateform == EP_MJD) {
-			    year = ep2mjd (gm[nmagr+1][i]);
-			    sprintf (temp, "	%11.5f", year);
-			    }
-			else {
-			    temp1 = ep2fd (gm[nmagr+1][i]);
-			    if (strlen (temp1) > 10)
-				temp1[10] = (char) 0;
-			    sprintf (temp, "	%10s", temp1);
-	        	    strcat (headline, temp);
-			    free (temp1);
-			    }
+			dtemp = DateString (epoch, tabout);
+        		strcat (headline, dtemp);
+			free (dtemp);
 			}
 		    sprintf (temp, "	%8.2f", gm[nmagr][i]);
 	            strcat (headline, temp);
 		    }
 		else if (printepoch) {
-		    temp1 = ep2fd (gm[nmagr][i]);
-		    if (strlen (temp1) > 10)
-			temp1[10] = (char) 0;
-		    sprintf (temp, "	%10s", temp1);
-	            strcat (headline, temp);
-		    free (temp1);
+		    dtemp = DateString (epoch, tabout);
+		    strcat (headline, dtemp);
+		    free (dtemp);
 		    }
 		if (mprop == 1) {
 	            sprintf (temp, "	%6.1f	%6.1f", pra, pdec);
@@ -3250,7 +3283,8 @@ double	eqout;		/* Equinox for output coordinates */
 		    }
 		if (refcat == TABCAT && keyword != NULL) {
 		    strcat (headline, "	");
-		    strcat (headline, gobj[i]);
+		    if (gobj[i] != NULL)
+			strcat (headline, gobj[i]);
 		    }
 		if (catsort == SORT_MERGE) {
 	            sprintf (temp, "	%d", (int)gx[i]);
@@ -3286,7 +3320,8 @@ double	eqout;		/* Equinox for output coordinates */
 		    refcat == UAC  || refcat == UA1  || refcat == UA2)
 		    sprintf (headline,"%s %s %s %5.1f %5.1f ",
 			     numstr,rastr,decstr,gm[0][i],gm[1][i]);
-		else if (refcat==TMPSC || refcat==TMIDR2 || refcat==TMXSC) {
+		else if (refcat == TMPSC || refcat == TMIDR2 ||
+			 refcat == TMPSCE || refcat == TMXSC) {
 		    sprintf (headline, "%s %s %s", numstr, rastr, decstr);
 		    for (imag = 0; imag < 3; imag++) {
 			if (gm[imag][i] > 100.0)
@@ -3294,6 +3329,12 @@ double	eqout;		/* Equinox for output coordinates */
 			else
 			    sprintf (temp, " %6.3f ", gm[imag][i]);
 			strcat (headline, temp);
+			}
+		    if (refcat == TMPSCE) {
+			for (imag = 3; imag < 6; imag++) {
+			    sprintf (temp, " %5.3f ", gm[imag][i]);
+			    strcat (headline, temp);
+			    }
 			}
 		    }
 		else if (refcat == IRAS) {
@@ -3333,6 +3374,9 @@ double	eqout;		/* Equinox for output coordinates */
 		else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
 		    sprintf (headline,"%s %s %s %6.2f %6.2f ",
 			     numstr,rastr,decstr,gm[0][i],gm[1][i]);
+		else if (refcat==TYCHO2E)
+		    sprintf (headline,"%s %s %s %6.2f %6.2f %5.2f %5.2f",
+			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
 		else {
 		    sprintf (headline,"%s %s %s ", numstr, rastr, decstr);
 		    for (imag = 0; imag < nmagr; imag++) {
@@ -3373,23 +3417,17 @@ double	eqout;		/* Equinox for output coordinates */
 		    }
 		if (mprop == 2) {
 		    if (printepoch) {
-			temp1 = ep2fd (gm[nmagr+1][i]);
-			if (strlen (temp1) > 10)
-			    temp1[10] = (char) 0;
-			sprintf (temp, "	%10s", temp1);
-	        	strcat (headline, temp);
-			free (temp1);
+			dtemp = DateString (epoch, tabout);
+			strcat (headline, dtemp);
+			free (dtemp);
 			}
 		    sprintf (temp, " %9.2f", gm[nmagr][i]);
 		    strcat (headline, temp);
 		    }
 		else if (printepoch) {
-		    temp1 = ep2fd (gm[nmagr][i]);
-		    if (strlen (temp1) > 10)
-			temp1[10] = (char) 0;
-		    sprintf (temp, "	%10s", temp1);
-	            strcat (headline, temp);
-		    free (temp1);
+		    dtemp = DateString (epoch, tabout);
+		    strcat (headline, dtemp);
+		    free (dtemp);
 		    }
 	    	/* if (mprop == 1) {
 	    	    sprintf (temp, " %6.1f %6.1f", pra, pdec);
@@ -3467,11 +3505,12 @@ double	eqout;		/* Equinox for output coordinates */
  */
 
 static int
-GetArea (verbose,syscoor,sysout,eqout,epout,cra,cdec,dra,ddec,drad,dradi,
+GetArea (verbose,syscoor,eqcoor,sysout,eqout,epout,cra,cdec,dra,ddec,drad,dradi,
 	 crao,cdeco)
 
 int	verbose;	/* Extra printing if =1 */
 int	syscoor;	/* Coordinate system of input search coordinates */
+double	eqcoor;		/* Equinox in years of input coordinates */
 int	sysout;		/* Coordinate system of output coordinates */
 double	eqout;		/* Equinox in years of output coordinates */
 double	epout;		/* Epoch in years of output coordinates (0=eqcoor */
@@ -3507,8 +3546,8 @@ double	*cdeco;		/* Output search center latitude/declination */
 
     *crao = *cra;
     *cdeco = *cdec;
-    if (syscoor != sysout) {
-	wcscon (syscoor, sysout, 0.0, 0.0, crao, cdeco, epout);
+    if (syscoor != sysout || eqcoor != eqout) {
+	wcscon (syscoor, sysout, eqcoor, eqout, crao, cdeco, epout);
 	if (verbose) {
 	    if (syscoor == WCS_ECLIPTIC || syscoor == WCS_GALACTIC || degout0) {
 		deg2str (rstr, 32, *crao, nddeg);
@@ -3948,6 +3987,20 @@ char *parstring;
 	    minid = atoi (parvalue);
 	    setminpmqual (minid);
 	    }
+	}
+
+    /* Format for epoch of catalog source position */
+    else if (!strcasecmp (parname, "dateform")) {
+	if (parvalue[0] == 'j')
+	    setdateform (EP_JD);
+	else if (parvalue[0] == 'm')
+	    setdateform (EP_MJD);
+	else if (parvalue[0] == 'f')
+	    setdateform (EP_FD);
+	else if (parvalue[0] == 'i')
+	    setdateform (EP_ISO);
+	else
+	    setdateform (EP_EP);
 	}
 
     /* Minimum number of plate ID's for USNO-B1.0 catalog */
@@ -4433,4 +4486,12 @@ PrintGSClass ()
  *
  * Apr 19 2005	Fix minor format bug when printing tabbed epoch
  * May 12 2005	Add 2MASS ID decoding
+ * Jul 27 2005	Add dateform=[j,f,m,e] to format output dates using DateString()
+ * Aug  1 2005	Always set epoch; test only if a limit is present
+ * Aug  3 2005	If nstars<0, print catalog information as found, unsorted
+ * Aug  5 2005	Add 2MASS and Tycho-2 catalogs with errors
+ *
+ * Jan  5 2006	Set output equinox correctly; match epoch to set equinox
+ * Jan  6 2006	Print search center in input system as well as output system
+ * Jan  6 2006	Precess search center if input and output equinox different
  */

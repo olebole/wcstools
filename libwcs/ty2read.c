@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** May 18, 2005
+ *** August 5, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2000-2005
@@ -58,9 +58,10 @@ static int ty2size();
 /* TY2READ -- Read Tycho 2 Star Catalog stars from CDROM */
 
 int
-ty2read (cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,mag1,mag2,
-	 sortmag,nstarmax,gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
+ty2read (refcat,cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
+	 mag1,mag2,sortmag,nstarmax,gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
+int	refcat;		/* Catalog code from wcscat.h */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
@@ -111,7 +112,7 @@ int	nlog;		/* 1 for diagnostics */
     int istar, istar1, istar2;
 /*    int isp; */
     int pass;
-    double num, ra, dec, rapm, decpm, mag, magb, magv;
+    double num, ra, dec, rapm, decpm, mag, magb, magv, magve, magbe;
     double rra1, rra2, rra2a, rdec1, rdec2;
     double rdist, ddist;
     char cstr[32], rastr[32], decstr[32];
@@ -205,10 +206,16 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("equinox	%.3f\n", eqout);
 	printf ("epoch	%.3f\n", epout);
 	printf ("program	scat %s\n", revmessage);
-	printf ("tycho2_id	ra          	dec         	");
-	printf ("magb 	magv 	magbe	magve	ura   	udec  	arcmin\n");
-	printf ("----------	------------	------------	");
-	printf ("-----	-----	-----	-----	------	------	------\n");
+	printf ("tycho2_id	ra          	dec         ");
+	printf ("	magb 	magv");
+	if (refcat == TYCHO2E)
+	    printf (" 	magbe	magve");
+	printf ("	ura   	udec  	arcmin\n");
+	printf ("----------	------------	------------");
+	printf ("	-----	-----");
+	if (refcat == TYCHO2E)
+	    printf ("	-----	-----");
+	printf ("	------	------	------\n");
 	}
 
     /* If searching through RA = 0:00, split search in two */
@@ -254,6 +261,8 @@ int	nlog;		/* 1 for diagnostics */
 		/* Magnitude */
 		magb = star->xmag[0];
 		magv = star->xmag[1];
+		magbe = star->xmag[2];
+		magve = star->xmag[3];
 		mag = star->xmag[magsort];
 
 		/* Check magnitude limits */
@@ -308,8 +317,11 @@ int	nlog;		/* 1 for diagnostics */
 			dec2str (decstr, 31, dec, 2);
 			dist = wcsdist (cra,cdec,ra,dec) * 60.0;
 			printf ("%010.5f	%s	%s", num,rastr,decstr);
-			printf ("	%5.2f	%5.2f	%6.1f	%6.1f	%.2f\n",
-				magb, magv, rapm * 3600000.0 * cosdeg(dec),
+			printf ("	%5.2f	%5.2f", magb, magv);
+			if (refcat == TYCHO2E)
+			    printf ("	%5.2f	%5.2f", magbe, magve);
+			printf ("	%6.1f	%6.1f	%.2f\n",
+				rapm * 3600000.0 * cosdeg(dec),
 				decpm * 3600000.0, dist / 60.0);
 			}
 
@@ -322,8 +334,10 @@ int	nlog;		/* 1 for diagnostics */
 			gpdec[nstar] = decpm;
 			gmag[0][nstar] = magb;
 			gmag[1][nstar] = magv;
-			gmag[2][nstar] = star->xmag[2];
-			gmag[3][nstar] = star->xmag[3];
+			if (refcat == TYCHO2E) {
+			    gmag[2][nstar] = star->xmag[2];
+			    gmag[3][nstar] = star->xmag[3];
+			    }
 			gdist[nstar] = dist;
 			if (dist > maxdist) {
 			    maxdist = dist;
@@ -346,8 +360,10 @@ int	nlog;		/* 1 for diagnostics */
 			    gpdec[farstar] = decpm;
 			    gmag[0][farstar] = magb;
 			    gmag[1][farstar] = magv;
-			    gmag[2][nstar] = star->xmag[2];
-			    gmag[3][nstar] = star->xmag[3];
+			    if (refcat == TYCHO2E) {
+				gmag[2][farstar] = star->xmag[2];
+				gmag[3][farstar] = star->xmag[3];
+				}
 			    gdist[farstar] = dist;
 
 			    /* Find new farthest star */
@@ -370,8 +386,10 @@ int	nlog;		/* 1 for diagnostics */
 			gpdec[faintstar] = decpm;
 			gmag[0][faintstar] = magb;
 			gmag[1][faintstar] = magv;
-			gmag[2][nstar] = star->xmag[2];
-			gmag[3][nstar] = star->xmag[3];
+			if (refcat == TYCHO2E) {
+			    gmag[2][faintstar] = star->xmag[2];
+			    gmag[3][faintstar] = star->xmag[3];
+			    }
 			gdist[faintstar] = dist;
 			faintmag = 0.0;
 
@@ -429,7 +447,7 @@ int	nlog;		/* 1 for diagnostics */
 /* TY2RNUM -- Read HST Guide Star Catalog stars from CDROM */
 
 int
-ty2rnum (nstars,sysout,eqout,epout,
+ty2rnum (refcat, nstars,sysout,eqout,epout,
 	 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
 int	nstars;		/* Number of stars to find */
@@ -527,8 +545,10 @@ int	nlog;		/* 1 for diagnostics */
 		gdec[jstar] = 0.0;
 		gmag[0][jstar] = 0.0;
 		gmag[1][jstar] = 0.0;
-		gmag[2][jstar] = 0.0;
-		gmag[3][jstar] = 0.0;
+		if (refcat == TYCHO2E) {
+		    gmag[2][jstar] = 0.0;
+		    gmag[3][jstar] = 0.0;
+		    }
 		gtype[jstar] = 0;
 		continue;
 		}
@@ -563,8 +583,10 @@ int	nlog;		/* 1 for diagnostics */
 	gpdec[jstar] = decpm;
 	gmag[0][jstar] = magb;
 	gmag[1][jstar] = magv;
-	gmag[2][jstar] = star->xmag[2];
-	gmag[3][jstar] = star->xmag[3];
+	if (refcat == TYCHO2E) {
+	    gmag[2][jstar] = star->xmag[2];
+	    gmag[3][jstar] = star->xmag[3];
+	    }
 	/* gtype[jstar] = isp; */
 	if (nlog == 1)
 	    fprintf (stderr,"TY2RNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %s  \n",
@@ -1382,4 +1404,5 @@ char	*filename;	/* Name of file for which to find size */
  * Apr 30 2004	Allow either LF or CRLF at end of lines in index and catalog
  *
  * May 18 2005	Add magnitude errors
+ * Aug  5 2005	Make magnitude errors an option if refcat is TYCHO2E
  */

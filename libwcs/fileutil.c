@@ -1,8 +1,8 @@
 /*** File libwcs/fileutil.c
- *** September 29, 2004
+ *** September 26, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1999-2004
+ *** Copyright (C) 1999-2005
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -338,6 +338,12 @@ char	*token;			/* First token on next line (returned) */
 	if (token[0] == '#') {
 	    fgets (token, ncmax, diskfile);
 	    }
+
+	/* If only character is a control character, return a NULL */
+	if ((strlen(token)==1) && (token[0]<32)){
+	    token[0]=0;
+	    return (1);
+	    }
 	lastchar = token + strlen (token) - 1;
 
 	/* Remove trailing spaces or control characters */
@@ -419,4 +425,6 @@ char	*string;
  * Jul 17 2003	Add root directory argument to isfilelist()
  *
  * Sep 29 2004	Drop next_token() to avoid conflict with subroutine in catutil.c
+ *
+ * Sep 26 2005	In first_token, return NULL if token is only control character
  */

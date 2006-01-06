@@ -1,10 +1,23 @@
-Version 3.6.2 (July 21, 2005)
+Version 3.6.3 (January 6, 2006)
+scat: Fix bug reading sequence from catalog.  Clean up alignment of epoch
+and velocity columns.  Search correctly with precessed center
+scat, imcat: add 2MASS and Tycho-2 with magnitude errors.
+imrot: Add option to flip image around horizontal axis
+imrot: Add -p option to turn a negative image into a positive one
+imstack: Fix bug which caused extra linefeeds
+delhead: Fix bug which incorrectly padded with spaces when head is shrunk
+getcol: Put line count on same line as mean or median values; add range of lines
+wcscon.c: Fix bugs in rotation matrix computation for precession
+
+Version 3.6.2 (July 29, 2005)
 gethead, delhead: Deal correctly with large numbers of keywords
 gethead: format one-per-line output to be read as input by sethead
-getcol: Fix calls to gethead() so they work in Linux
+getcol: Fix calls to gettoken() so they work in Linux
 imextract: Fix bug to extract 1 dimension from 2D files
 imsize: Fix recent bug which reversed size in height and width
 imsize: Make -d option give center and size in degrees
+getpix: Add -d for range and -m for mean value of pixels
+scat: Add dateform command line parameter to set output epoch format
 imgetwcs.c: Set limits correctly around RA=0
 wcs.c: In wcsrange(), compute limits correctly around RA=0
 Clean up unused variables everywhere using lint

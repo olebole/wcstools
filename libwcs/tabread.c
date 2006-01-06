@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** May 12, 2005
+ *** September 29, 2005
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2005
@@ -20,11 +20,11 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
-                           Smithsonian Astrophysical Observatory
-                           60 Garden St.
-                           Cambridge, MA 02138 USA
+	   Internet email: dmink@cfa.harvard.edu
+	   Postal address: Doug Mink
+	                   Smithsonian Astrophysical Observatory
+	                   60 Garden St.
+	                   Cambridge, MA 02138 USA
  */
 
 /* int tabread()	Read tab table stars in specified region
@@ -112,7 +112,7 @@ double	*tpra;		/* Array of right ascension proper motions (returned) */
 double	*tpdec;		/* Array of declination proper motions (returned) */
 double	**tmag;		/* 2-D Array of magnitudes (returned) */
 int	*tpeak;		/* Array of peak counts (returned) */
-char	**tkey;		/* Array of additional keyword values */
+char	**tkey;		/* Array of values of additional keyword */
 int	nlog;
 {
     double ra1,ra2;	/* Limiting right ascensions of region in degrees */
@@ -471,19 +471,23 @@ int	nlog;
     int istar, istar0, nstars;
     int imag;
     char *line;
+    char numstr[32];	/* Catalog number */
     int sysref;		/* Catalog coordinate system */
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
+    double mjd;		/* Object epoch */
     char cstr[32];
     char str[32];
     char *objname;
+    char *datestring;
     int lname, lstar;
-    int ireg, inum;
+    int ireg, inum, nnfld, i;
+    char rastr[32], decstr[32];
     struct TabTable *startab;
     struct StarCat *sc;
     struct Star *star;
 
-    line = 0;
+    line = NULL;
 
     nstar = 0;
     nndec = 0;
@@ -522,8 +526,43 @@ int	nlog;
 	sysref = sysout;
     wcscstr (cstr, sysout, eqout, epout);
 
+    /* Write header if printing star entries as found */
+    if (nlog < 0) {
+	char *revmessage;
+	revmessage = getrevmsg();
+	printf ("catalog	%s\n", tabcatname);
+	printf ("radecsys	%s\n", cstr);
+	printf ("equinox	%.3f\n", eqout);
+	printf ("epoch  	%.3f\n", epout);
+	printf ("program	scat %s\n", revmessage);
+	nnfld = CatNumLen (TABCAT, tnum[nnum-1], sc->nndec);
+	printf ("id   	ra          	dec        ");
+	for (i = 1; i < sc->nmag+1; i++) {
+	    if (i == sc->nmag && sc->entepoch)
+		printf ("	epoch  	");
+	    else
+		printf ("	%s", sc->keymag[i-1]);
+	    }
+	if (kwo != NULL)
+	    printf ("	%s\n", kwo);
+	else
+	    printf ("\n");
+	printf ("-----	------------	------------");
+	for (i = 1; i < sc->nmag+1; i++) {
+	    if (i == sc->nmag && sc->entepoch)
+		printf ("	--------");
+	    else
+		printf ("	-----");
+	    }
+	if (kwo != NULL)
+	    printf ("	---------\n");
+	else
+	    printf ("\n");
+	}
+
     star->num = 0.0;
     istar0 = 0;
+    num = 0.0;
 
     /* Loop through star list */
     line = startab->tabdata;
@@ -537,10 +576,12 @@ int	nlog;
 
 	/* Loop through catalog to star */
 	for (istar = istar0; istar <= nstars; istar++) {
-	    if ((line = gettabline (startab, istar)) == NULL) {
-		if (nlog)
-		    fprintf (stderr,"TABRNUM: Cannot read star %d\n", istar);
-		break;
+	    if (num < tnum[jnum]) {
+		if ((line = gettabline (startab, istar)) == NULL) {
+		    if (nlog)
+			fprintf (stderr,"TABRNUM: Cannot read star %d\n", istar);
+		    break;
+		    }
 		}
 
 	    /* Check ID number first */
@@ -559,6 +600,9 @@ int	nlog;
 		num = tabgetr8 (&startok,sc->entid);
 	    if (num == 0.0)
 		num = (double) istar;
+	    if (num > tnum[jnum]) {
+		break;
+		}
 	    if (num == tnum[jnum])
 		break;
 	    }
@@ -604,6 +648,25 @@ int	nlog;
 		    peak = (1000 * (int) star->isp[0]) + (int)star->isp[1];
 		else
 		    peak = star->peak;
+		if (nlog < 0) {
+		    CatNum (TABCAT, -nnfld, sc->nndec, num, numstr);
+		    ra2str (rastr, 31, ra, 3);
+		    dec2str (decstr, 31, dec, 2);
+		    printf ("%s	%s	%s", numstr,rastr,decstr);
+		    for (imag = 0; imag < sc->nmag; imag++)
+			if (imag == sc->nmag-1 && sc->entepoch) {
+			    datestring = DateString (star->xmag[imag], 1);
+			    printf ("%s", datestring);
+			    free (datestring);
+			    }
+			else
+			    printf ("	%.2f", star->xmag[imag]);
+		    if (kwo != NULL)
+			printf ("	%s\n", star->objname);
+		    else
+			printf ("\n");
+		    continue;
+		    }
 
 		/* Save star position and magnitude in table */
 		tnum[jnum] = num;
@@ -615,20 +678,35 @@ int	nlog;
 		    }
 		for (imag = 0; imag < sc->nmag; imag++) {
 		    if (tmag[imag] != NULL)
-			tmag[imag][nstar] = star->xmag[imag];
+			tmag[imag][jnum] = star->xmag[imag];
 		    }
 		tpeak[jnum] = peak;
 		lname = strlen (star->objname);
 		if (lname > 0) {
 		    objname = (char *)calloc (lname+1, 1);
 		    strcpy (objname, star->objname);
-		    tkey[nstar] = objname;
+		    tkey[jnum] = objname;
 		    }
 		nstar++;
 		if (nlog == 1)
 		    fprintf (stderr,"TABRNUM: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
 			     num,ra,dec,cstr,mag,peak);
 		/* End of accepted star processing */
+		}
+	    }
+	else {
+	    nstar++;
+	    istar0 = istar;
+	    if (nlog < 0) {
+		CatNum (TABCAT, -nnfld, sc->nndec, tnum[jnum], numstr);
+		ra = 0.0;
+		ra2str (rastr, 31, ra, 3);
+		dec = 0.0;
+		dec2str (decstr, 31, dec, 2);
+		printf ("%s	%s	%s", numstr,rastr,decstr);
+		for (imag = 0; imag < sc->nmag; imag++)
+		    printf ("	99.0");
+		printf ("\n");
 		}
 	    }
 
@@ -690,13 +768,11 @@ int	nlog;
     int jstar;
     int magsort;
     int nstar;
-    char *objname;
-    int lname;
     int imag;
     double ra,dec, rapm, decpm;
     double mag, parallax, rv;
     double num;
-    int peak, i;
+    int peak;
     int istar, nstars, lstar;
     double xpix, ypix, flux;
     int offscl;
@@ -780,7 +856,7 @@ int	nlog;
 
     /* If RA range includes zero, split it in two */
     if (rra1 > rra2)
-        wrap = 1;
+	wrap = 1;
     else
 	wrap = 0;
 
@@ -920,9 +996,9 @@ int	nlog;
 
     /* Find columns for X and Y */
     if (!(entx = tabcol (startab, "X")))
-        entx = tabcol (startab, "x");
+	entx = tabcol (startab, "x");
     if (!(enty = tabcol (startab, "Y")))
-        enty = tabcol (startab, "y");
+	enty = tabcol (startab, "y");
 
     /* Find column for magnitude */
     if (!(entmag = tabcol (startab, "MAG"))) {
@@ -1061,7 +1137,7 @@ char	**tval;		/* Returned values for specified keyword */
 
 	    /* Check ID number */
 	    (void) setoken (&startok, line, "tab");
-	    if ((num = tabgetr8 (&startok,line,sc->entid)) == 0.0)
+	    if ((num = tabgetr8 (&startok,sc->entid)) == 0.0)
 		num = (double) istar;
 	    if (num == tnum[jnum])
 		break;
@@ -1263,6 +1339,11 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	    sc->entmag[sc->nmag] = icol;
 	    sc->nmag++;
 	    }
+	else if (strcsrch (keyword, "exp")) {
+	    strcpy (sc->keymag[sc->nmag], keyword);
+	    sc->entmag[sc->nmag] = icol;
+	    sc->nmag++;
+	    }
 	else if ((keyword[0] == 'M' || keyword[0] == 'm') &&
 		 !strcsrch (keyword, "err")) {
 	    strcpy (sc->keymag[sc->nmag], keyword);
@@ -1416,8 +1497,8 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	strcpy (sc->keypeak, "class");
 	sc->plate = 1;
 	}
-    else if ((entpmq = tabcol (startab, "pm")) &&
-	     (entnid = tabcol (startab, "ni"))) {
+    else if ((entpmq = tabcol (startab, "pm")) > 0 &&
+	     (entnid = tabcol (startab, "ni")) > 0) {
 	sc->entpeak = (entpmq * 100) + entnid;
 	}
 
@@ -1441,8 +1522,10 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 
     sc->entadd = -1;
     sc->keyadd[0] = (char) 0;
-    if (kwo != NULL)
+    if (kwo != NULL) {
 	sc->entadd = tabcol (startab, kwo);
+	strcpy (sc->keyadd, kwo);
+	}
 
     /* Set catalog coordinate system */
     sc->coorsys = 0;
@@ -1493,8 +1576,13 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	    sc->coorsys = WCS_J2000;
 	}
 
+    /* Check whether catalog is sorted by right ascension */
+    if (tabhgetc (startab, "rasort", cstr))
+	sc->rasorted = 1;
+    else
+	sc->rasorted = 0;
+
     /* Set other stuff */
-    sc->rasorted = 0;
     sc->nstars = startab->nlines;
     if (sc->entid)
 	sc->stnum = 1;
@@ -1678,7 +1766,7 @@ int	verbose;	/* 1 to print error messages */
     for (imag = 0; imag < sc->nmag; imag++) {
 	if (sc->entmag[imag]) {
 	    if (tabgetc (&startok, sc->entmag[imag], str, 24))
-		return (0.0);
+		return (0);
 	    ltok = strlen (str);
 	    if (str[ltok-1] == 'L') {
 		str[ltok-1] = (char) 0;
@@ -1759,6 +1847,8 @@ int	verbose;	/* 1 to print error messages */
 		st->epoch = mjd2ep (ydate);
 	    else
 		st->epoch = jd2ep (ydate);
+	    if (st->epoch > 2005.000)
+		printf ("TABSTAR: %s = %.5f -> %.5f\n", temp, ydate, st->epoch);
 	    }
 	st->xmag[sc->nmag-1] = st->epoch;
 	}
@@ -2207,7 +2297,7 @@ int	ientry;		/* sequence of entry on line */
     if (tabgetc (tabtok, ientry, str, 24))
 	return (0.0);
     else if (isnum (str))
-        return (atof (str));
+	return (atof (str));
     else
 	return (0.0);
 }
@@ -2227,7 +2317,7 @@ int	ientry;		/* sequence of entry on line */
     if (tabgetc (tabtok, ientry, str, 24))
 	return (0);
     else if (isnum (str))
-        return ((int) atof (str));
+	return ((int) atof (str));
     else
 	return (0);
 }
@@ -2534,7 +2624,7 @@ char    *filename;      /* Name of file to check */
 
     /* If no .tab file extension, try opening the file */
     else {
-	if ((tabtable = tabopen (filename, 1000)) != NULL) {
+	if ((tabtable = tabopen (filename, 10000)) != NULL) {
 	    tabclose (tabtable);
 	    return (1);
 	    }
@@ -2688,4 +2778,11 @@ char    *filename;      /* Name of file to check */
  * Nov 17 2004	Accept SpT and spt before type for spectral type
  *
  * May 12 2005	Add "num" as a possible substring to identify an ID column
+ * Jul 26 2005	Fix bug to set magnitudes and keywords correctly in tabrnum()
+ * Aug  3 2005	If nlog < 0 in tabrnum(), print objects as found
+ * Aug 10 2005	Add "exp" as possible "magnitude" column heading
+ * Aug 11 2005	Do not re-read lines if missing object numbers in tabrnum()
+ * Aug 17 2005	If nmax is -1, print magnitude keywords from file
+ * Sep 29 2005	Read first 10000 characters for istab() to capture long heads
+ * Sep 29 2005	Add rasort header flag if catalog is sorted by RA
  */

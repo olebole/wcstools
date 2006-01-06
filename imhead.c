@@ -1,5 +1,5 @@
 /* File imhead.c
- * March 17, 2005
+ * October 28, 2005
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -184,9 +184,10 @@ PrintFITSHead (header)
 
 char	*header;	/* Image FITS header */
 {
-    char line[80], *iline, *endhead;
+    char line[81], *iline, *endhead;
     int i, nblank;
 
+    line[80] = (char) 0;
     endhead = ksearch (header, "END") + 80;
     if (endhead == NULL)
 	return (1);
@@ -245,4 +246,5 @@ char	*header;	/* Image FITS header */
  * May  6 2004	Add -i argument to read extension header without primary
  *
  * Mar 17 2005	Check to make sure that input images are FITS or IRAF format
+ * Oct 28 2005	Set 81st char of output buffer NULL, suggested by Sergey Koposov
  */
