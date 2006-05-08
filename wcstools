@@ -1,5 +1,5 @@
 #!/bin/sh
-echo "WCSTools 3.6.2 Programs
+echo "WCSTools 3.6.4 Programs
 http://tdc-www.harvard.edu/software/wcstools/
 
 addpix:    Add a constant value(s) to specified pixel(s)
@@ -22,10 +22,13 @@ httpget:   Send contents returned from URL to standard output
 i2f:       Read two-dimensional IRAF image file and write FITS image file
 imcat:     List catalog sources in the area of the sky covered by an image.
 imextract: Extract 1D file from 2D file or 2D file from 3D file
+imfill:    Replace bad pixels in image files with 2-D Gaussian, mean, or median
 imhead:    Print FITS or IRAF header
 immatch:   Match catalog and image stars using the WCS in the image file.
 imrot:     Rotate and/or reflect FITS or IRAF image files
+imresize:  Block sum or average a file by integral numbers of columns and rows
 imsize:    Print center and size of image using WCS keywords in header
+imsmooth:  Filter FITS and IRAF image files with 2-D Gaussian, mean, or median
 imstack    Stack 1-dimensional images into a 2-dimensional image
 imstar:    Find and list stars in an IRAF or FITS image
 imwcs:     Match FITS or IRAF image stars to catalog stars and fit a WCS

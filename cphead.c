@@ -1,5 +1,5 @@
 /* File cphead.c
- * August 30, 2005
+ * February 22, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -70,6 +70,8 @@ char **av;
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
     kwd = (char **)calloc (maxnkwd, sizeof(char *));
+    for (i = 0; i < maxnkwd; i++)
+	kwd[i] = (char *) calloc (9, sizeof(char));
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -122,6 +124,8 @@ char **av;
 		    if (nkwd + nkwd1 > maxnkwd) {
 			maxnkwd = nkwd + nkwd1 + 32;
 			kwdnew = (char **) calloc (maxnkwd, sizeof (void *));
+			for (i = 0; i < maxnkwd; i++)
+			    kwd[i] = (char *) calloc (9, sizeof(char));
 			for (ikwd = 0; ikwd < nkwd; ikwd++)
 			    kwdnew[ikwd] = kwd[ikwd];
 			free (kwd);
@@ -702,4 +706,6 @@ char *string;
  * Jan 13 2005	Print linefeed after verbose confirmation, not after missing kw
  * Aug 26 2005	Improve one-line description
  * Aug 30 2005	Write output header into new, adequately long array
+ *
+ * Feb 22 2006	Allocate keyword name buffer correctly
  */

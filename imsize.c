@@ -336,17 +336,7 @@ char *name;
 	filename = strrchr (namext,'/') + 1;
     else
 	filename = namext;
-    ext = strsrch (filename, ".imh");
-    if (ext == NULL)
-	ext = strsrch (filename,".IMH");
-    if (ext == NULL)
-	ext = strsrch (filename,".fit");
-    if (ext == NULL)
-	ext = strsrch (filename,".FIT");
-    if (ext == NULL)
-	ext = strsrch (filename,".fts");
-    if (ext == NULL)
-	ext = strsrch (filename,".FTS");
+    ext = strrchr (filename, '.');
     if (ext != NULL)
 	nc = ext - filename;
     else

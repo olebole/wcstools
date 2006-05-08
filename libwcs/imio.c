@@ -1,8 +1,8 @@
 /*** File wcslib/imio.c
- *** August 18, 2005
+ *** May 3, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2005
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -765,7 +765,7 @@ double	dpix;		/* Value by which to multiply pixels */
 	    else
 		ccon = (char) (dpix + 0.5);
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*imc++ = *imc + ccon;
+		*imc++ += ccon;
 	    break;
 
 	case 16:
@@ -776,7 +776,7 @@ double	dpix;		/* Value by which to multiply pixels */
 	    else
 		jcon = (short) (dpix + 0.5);
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*im2++ = *im2 + jcon;
+		*im2++ += jcon;
 	    break;
 
 	case 32:
@@ -786,7 +786,7 @@ double	dpix;		/* Value by which to multiply pixels */
 	    else
 		icon = (int) (dpix + 0.5);
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*im2++ = *im2 + jcon;
+		*im2++ += jcon;
 	    break;
 
 	case -16:
@@ -795,13 +795,15 @@ double	dpix;		/* Value by which to multiply pixels */
 		ucon = (unsigned short) (dpix + 0.5);
 		imu = (unsigned short *) (image + pix1);
 		for (ipix = pix1; ipix < pix2; ipix++)
-		    *imu++ = *imu + ucon;
+		    *imu++ += ucon;
 		}
 	    else {
 		icon = (int) (dpix - 0.5);
 		imu = (unsigned short *) (image + pix1);
-		for (ipix = pix1; ipix < pix2; ipix++)
-		    *imu++ = (unsigned short) (icon + (int *) imu);
+		for (ipix = pix1; ipix < pix2; ipix++) {
+		    unsigned short tmp = (icon + (int) *imu);
+		    *imu++ += tmp;
+		    }
 		}
 	    break;
 
@@ -809,13 +811,13 @@ double	dpix;		/* Value by which to multiply pixels */
 	    rcon = (float) dpix;
 	    imr = (float *) (image + pix1);
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*imr++ = *imr + rcon;
+		*imr++ += rcon;
 	    break;
 
 	case -64:
 	    imd = (double *) (image + pix1);
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*imd++ = *imd + dpix;
+		*imd++ += dpix;
 	    break;
 	}
     return;
@@ -867,7 +869,7 @@ double	dpix;		/* Value by which to multiply pixels */
 		else
 		    ccon = (char) (dpix + 0.5);
 		for (ipix = pix1; ipix < pix2; ipix++)
-		    *imc++ = *imc * ccon;
+		    *imc++ *= ccon;
 		}
 	    else {
 		for (ipix = pix1; ipix < pix2; ipix++) {
@@ -889,7 +891,7 @@ double	dpix;		/* Value by which to multiply pixels */
 		else
 		    jcon = (short) (dpix + 0.5);
 		for (ipix = pix1; ipix < pix2; ipix++)
-		    *im2++ = *im2 * jcon;
+		    *im2++ *= jcon;
 		}
 	    else {
 		for (ipix = pix1; ipix < pix2; ipix++) {
@@ -910,7 +912,7 @@ double	dpix;		/* Value by which to multiply pixels */
 		else
 		    icon = (int) (dpix + 0.5);
 		for (ipix = pix1; ipix < pix2; ipix++)
-		    *im2++ = *im2 * jcon;
+		    *im2++ *= jcon;
 		}
 	    else {
 		for (ipix = pix1; ipix < pix2; ipix++) {
@@ -929,7 +931,7 @@ double	dpix;		/* Value by which to multiply pixels */
 		ucon = (unsigned short) (dpix + 0.5);
 		imu = (unsigned short *) (image + pix1);
 		for (ipix = pix1; ipix < pix2; ipix++)
-		    *imu++ = *imu * ucon;
+		    *imu++ *= ucon;
 		}
 	    break;
 
@@ -937,13 +939,13 @@ double	dpix;		/* Value by which to multiply pixels */
 	    rcon = (float) dpix;
 	    imr = (float *) (image + pix1);
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*imr++ = *imr * rcon;
+		*imr++ *= rcon;
 	    break;
 
 	case -64:
 	    imd = (double *) (image + pix1);
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*imd++ = *imd * dpix;
+		*imd++ *= dpix;
 	    break;
 
 	}
@@ -994,7 +996,7 @@ double	*dvec0;		/* Vector of pixels (returned) */
 	case 32:
 	    im4 = (int *)image;
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*dvec++ = bscale * (double) *(im4 + ipix);
+		*dvec++ = (double) *(im4 + ipix);
 	    break;
 
 	case -16:
@@ -1415,4 +1417,8 @@ imswapped ()
  *
  * Jun 27 2005	Fix major bug in fillvec(); pass value dpix in fillvec1(), too
  * Aug 18 2005	Add maxvec(), addvec(), and multvec()
+ *
+ * Mar  1 2006	Fix bug of occasional double application of bscale in getvec()
+ * Apr  3 2006	Fix bad cast in unisigned int section of addvec()
+ * May  3 2006	Code fixes in addpix and multpix suggested by Robert Lupton
  */

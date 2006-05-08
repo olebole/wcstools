@@ -134,7 +134,7 @@ char **av;
 		case 'r':	/* Rename keywords with replaced values */
 		    krename++;
 		    if (ac > 1) {
-			strncpy (prefix, *++av, 1);
+			strncpy (prefix, *(++av), 1);
 			ac--;
 			}
 		    else
@@ -144,7 +144,7 @@ char **av;
 
 		case 's':	/* Replace this character with spaces in string arguments */
 		    if (ac > 1) {
-			spchar= *++av[0];
+			strncpy (&spchar, *(++av), 1);
 			ac--;
 			}
 		    break;
@@ -461,8 +461,11 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	lkwd = strlen (kwd[ikwd]);
 	if (!strncmp (kwd[ikwd], "COMMENT", 7) || !strncmp (kwd[ikwd], "HISTORY", 7) ||
 	    !strncmp (kwd[ikwd], "comment", 7) || !strncmp (kwd[ikwd], "history", 7)) {
-	    if (lkwd > 8)
+	    if (lkwd > 8) {
 		kwv0 = kwd[ikwd] + 7;
+		if (spchar)
+		    stc2s (spchar, kwv0);
+		}
 	    else
 		kwv0 = NULL;
 	    }

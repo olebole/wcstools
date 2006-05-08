@@ -48,30 +48,30 @@ int diag;
     if (wbox .le. 0.d0) wbox = 1.d0
 
 /* Image header information */
-    call hgeti4 (header,'naxis1',ncb)
-    call hgeti4 (header,'bitpix',nbpix)
+    hgeti4 (header,'NAXIS1',ncb);
+    hgeti4 (header,'BITPIX',nbpix);
 
-    skipval = -9999.0
+    skipval = -9999.0;
     call pgetr8 (parms,'skipval',skipval)
 
 /* Logging interval */
     lbox = 0
     call pgeti4 (parms,'lbox',lbox)
 
-    allpix = .false.
+    allpix = 0
     call pgetl (parms,'allpix',allpix)
     if (allpix) {
-	fprintf (stderr, "Image smoothed with %d x %d %6.2f-pixel gaussian box\n", nside,nside,wbox,mpbox);
-	fixpix = .false.
+	fprintf (stderr, "Image smoothed with %d x %d %6.2f-pixel gaussian box\n",
+		 nside,nside,wbox,mpbox);
+	fixpix = 0;
 	}
     else {
-	write(string,12) nside,nside,wbox,mpbox
-12	format('image filled using ',i2,'x',i2,f6.2,'-pixel box,',i2,'adj$')
-	fixpix = .true.
+	fprintf (stderr,'image filled using %d x %d %6.2f-pixel box, %d adj\n",
+		 nside,nside,wbox,mpbox);
+	fixpix = 1;
 	}
-    call padnull (string)
     if (diag) call pstring (string)
-    call hputs (header,'history',string)
+    hputs (header,"HISTORY", string);
 
 /* Compute Gaussian weighting and offset tables (row, column, buffer) */
     if (filter == GAUSSIAN) {
@@ -150,9 +150,9 @@ int diag;
     		    go to 590
     		elseif (diag) {
     		    write(*,*) 'imbox: ',irow,icol,' dropped'
-    		endif
-    	    endif
-    	    endif
+    		}
+    	    }
+    	    }
 
     	twt = 0.d0
     	tpix = 0.d0

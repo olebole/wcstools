@@ -1,8 +1,8 @@
 /*** File libwcs/sdssread.c
- *** January 5, 2004
+ *** April 6, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2004
+ *** Copyright (C) 2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -40,9 +40,13 @@
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 #define LINE    1024
 
-/* SDSS search engine URL */
+/* SDSS DR1 search engine URL
 char sdssrurl[64]="http://skyserver.sdss.org/cas/en/tools/search/x_radial.asp";
-char sdssburl[64]="http://skyserver.sdss.org/cas/en/tools/search/x_rect.asp";
+char sdssburl[64]="http://skyserver.sdss.org/cas/en/tools/search/x_rect.asp"; */
+
+/* SDSS DR4 search engine URL */
+char sdssrurl[64]="http://cas.sdss.org/dr4/en/tools/search/x_radial.asp";
+char sdssburl[64]="http://cas.sdss.org/dr4/en/tools/search/x_rect.asp";
 
 /* SDSS magnitudes */
 char sdssmag[6]="ugriz";
@@ -220,4 +224,6 @@ sdssc2t (csvbuff)
 }
 
 /* Jan  5 2004	New program
+ *
+ * Apr  6 2006	Use different server to get DR4 data
  */

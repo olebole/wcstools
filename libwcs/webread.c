@@ -1,9 +1,9 @@
 /*** File webread.c
- *** September 10, 2004
+ *** April 6, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
- *** Copyright (C) 2000-2004
+ *** Copyright (C) 2000-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -102,6 +102,7 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
     struct TabTable *tabtable;
     double dtemp;
     int lurl;
+    int nsmax;
     struct StarCat *starcat;
     char cstr[32];
     double ra, dec;
@@ -223,7 +224,8 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 	else
 	    sprintf (temp, "format=8&sort=m&");
 	strcat (srchurl, temp);
-	sprintf (temp, "n=%d", nstarmax);
+	nsmax = nstarmax * 4;
+	sprintf (temp, "n=%d", nsmax);
 	strcat (srchurl, temp);
 	if (nlog > 0)
 	    fprintf (stderr,"%s%s\n", caturl, srchurl);
@@ -431,7 +433,7 @@ int	nlog;		/* 1 to print diagnostic messages */
 	}
 
     /* Transform SDSS return into tab table */
-    if (!strncmp (srchurl+7, "skyserver", 9)) {
+    if (strsrch (srchurl, "sdss")) {
 	tempbuff = tabbuff;
 	tabbuff = sdssc2t (tempbuff);
 	free (tempbuff);
@@ -831,4 +833,7 @@ FileINetParse(file, port, adrinet)
  * Jan 14 2004	Return error if data but no objects returned in webopen()
  * Aug 30 2004	Send CR-LF termination to HTTP GET, not just LF
  * Sep 10 2004	Print server messages only if verbose flag is on
+ *
+ * Jan  9 2006	Multiply max number of stars for ESO search to get all
+ * Apr  6 2006	Check for sdss in URL for Sloan parsing
  */

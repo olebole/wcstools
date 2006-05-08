@@ -1,5 +1,5 @@
 /* File imrot.c
- * August 18, 2005
+ * January 19, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -100,6 +100,10 @@ char **av;
 	    }
 
 	/* Parameters */
+	else if (str[0] == '+') {
+	    if (str[1] == 'i')
+		setfitsinherit (1);
+	    }
 	else if (str[0] == '-') {
 	    while ((c = *++str) != 0) {
 		switch (c) {
@@ -554,4 +558,6 @@ char *name;
  * Aug 17 2005	If rotation angle < 360, add 360
  * Aug 17 2005	-m replaces -l for mirror reflection, -l flips
  * Aug 18 2005	Add -p to make positive image from negative
+ *
+ * Jan 19 2006	Add +i to force inheritance of keywords from primary header
  */

@@ -1,5 +1,5 @@
 /* File imhead.c
- * October 28, 2005
+ * February 23, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -31,6 +31,7 @@ char **av;
 {
     char *str;
     int readlist = 0;
+    int add = 0;
     char *lastchar;
     char filename[128];
     FILE *flist;
@@ -46,10 +47,14 @@ char **av;
 	}
 
     /* crack arguments */
-    for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
+    for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@' || *str == '+'); av++) {
 	char c;
 	if (*str == '@')
 	    str = str - 1;
+	if (*str == '+')
+	    add = 1;
+	else
+	    add = 0;
 	while (c = *++str)
 	switch (c) {
 
@@ -58,7 +63,10 @@ char **av;
 	    break;
 
 	case 'i':	/* Turn off inheritance from Primary header */
-	    setfitsinherit (0);
+	    if (add)
+		setfitsinherit (0);
+	    else
+		setfitsinherit (1);
 	    break;
 
 	case 'v':	/* more verbosity */
@@ -123,6 +131,7 @@ usage ()
     fprintf(stderr,"usage: imhead [-fvz] file.fit ...\n");
     fprintf(stderr,"  -f: Write exact FITS header\n");
     fprintf(stderr,"  -i: Drop primary header even if inherited\n");
+    fprintf(stderr,"  +i: Append primary header even if not inherited\n");
     fprintf(stderr,"  -v: verbose\n");
     fprintf(stderr,"  -z: Set BITPIX to 0 for dataless header\n");
     exit (1);
@@ -149,13 +158,20 @@ char *name;
 	    printf ("%s IRAF file header:\n", name);
 	else if (isfits (name))
 	    printf ("%s FITS file header:\n", name);
+	else if (istiff (name))
+	    printf ("%s FITS file header from TIFF file:\n", name);
+	else if (isjpeg (name))
+	    printf ("%s FITS file header from JPEG file:\n", name);
+	else if (isgif (name))
+	    printf ("%s FITS file header from GIF file:\n", name);
 	else {
-	    printf ("*** %s is not a FITS or IRAF file\n", name);
+	    printf ("*** %s is not a FITS or IRAF or known image file\n", name);
 	    return;
 	    }
 	}
-    else if (!isiraf (name) && !isfits (name)) {
-	printf ("*** %s is not a FITS or IRAF file\n", name);
+    else if (!isiraf (name) && !isfits (name) && !istiff (name) &&
+	     !isjpeg (name) && !isgif(name)) {
+	printf ("*** %s is not a FITS or IRAF or known image file\n", name);
 	return;
 	}
 
@@ -247,4 +263,7 @@ char	*header;	/* Image FITS header */
  *
  * Mar 17 2005	Check to make sure that input images are FITS or IRAF format
  * Oct 28 2005	Set 81st char of output buffer NULL, suggested by Sergey Koposov
+ *
+ * Jan 17 2006	Add +i to append primary header even if INHERIT is not set
+ * Feb 23 2006	Read headers appended to TIFF, JPEG, or GIF image files
  */

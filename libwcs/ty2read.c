@@ -450,6 +450,7 @@ int
 ty2rnum (refcat, nstars,sysout,eqout,epout,
 	 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
+int	refcat;		/* Catalog code from wcscat.h */
 int	nstars;		/* Number of stars to find */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
@@ -1405,4 +1406,6 @@ char	*filename;	/* Name of file for which to find size */
  *
  * May 18 2005	Add magnitude errors
  * Aug  5 2005	Make magnitude errors an option if refcat is TYCHO2E
+ *
+ * Apr  3 2006	Add refcat definition to ty2rnum()
  */

@@ -1828,7 +1828,7 @@ double	epoch;	/* Besselian epoch in years */
     int i, j;
     double rtheta, rphi, v1[3], v2[3];
     double t, eps0, r;
-    double rmat[9], *rmati;	/* Rotation matrix */
+    double rmat[9];	/* Rotation matrix */
     void v2s3(),s2v3(), fk5prec(), rotmat();
 
     rtheta = degrad (*dtheta);
@@ -2071,7 +2071,7 @@ double rot3;	/* Third rotation in degrees */
 double *matrix;	/* 3x3 rotation matrix (returned) */
 
 {
-    int i, j, k, naxis, idig, iaxes, iaxis;
+    int i, j, k, naxis, iaxes, iaxis;
     double rot, srot, crot, *mati, w, wm[9], *wmi, matn[9];
     int axis[3];
 
@@ -2274,4 +2274,5 @@ double *r;	/* Distance to object in same units as pos (returned) */
  * Nov  1 2005	Add WCS_ICRS, and unprecessable system
  *
  * Jan  5 2006	Fix bugs in precession subroutines mprecxxx()
+ * May  3 2006	Drop declarations of unused variables suggested by Robert Lupton
  */

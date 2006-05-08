@@ -1,8 +1,8 @@
 /*** File libwcs/fileutil.c
- *** September 26, 2005
+ *** February 23, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1999-2005
+ *** Copyright (C) 1999-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -48,6 +48,10 @@
  *		Replace character in string with space
  * Subroutine:  sts2c (spchar, string)
  *		Replace spaces in string with character
+ * Subroutine:	istiff (filename)
+ *		Return 1 if file is a readable TIFF graphics file, else 0
+ * Subroutine:	isjpeg (filename)
+ *		Return 1 if file is a readable JPEG graphics file, else 0
  */
 
 #include <stdlib.h>
@@ -405,6 +409,127 @@ char	*string;
 }
 
 
+/* ISTIFF -- Return 1 if TIFF file, else 0 */
+int
+istiff (filename)
+
+char    *filename;      /* Name of file to check */
+{
+    int diskfile;
+    char keyword[16];
+    int nbr;
+
+    /* First check to see if this is an assignment */
+    if (strchr (filename, '='))
+        return (0);
+
+    /* Check file extension */
+    if (strsrch (filename, ".tif") ||
+        strsrch (filename, ".tiff") ||
+        strsrch (filename, ".TIFF") ||
+        strsrch (filename, ".TIF"))
+        return (1);
+
+ /* If no TIFF file suffix, try opening the file */
+    else {
+        if ((diskfile = open (filename, O_RDONLY)) < 0)
+            return (0);
+        else {
+            nbr = read (diskfile, keyword, 4);
+            close (diskfile);
+            if (nbr < 4)
+                return (0);
+            else if (!strncmp (keyword, "II", 2))
+                return (1);
+            else if (!strncmp (keyword, "MM", 2))
+                return (1);
+            else
+                return (0);
+            }
+        }
+}
+
+
+/* ISJPEG -- Return 1 if JPEG file, else 0 */
+int
+isjpeg (filename)
+
+char    *filename;      /* Name of file to check */
+{
+    int diskfile;
+    char keyword[16];
+    int nbr;
+
+    /* First check to see if this is an assignment */
+    if (strchr (filename, '='))
+        return (0);
+
+    /* Check file extension */
+    if (strsrch (filename, ".jpg") ||
+        strsrch (filename, ".jpeg") ||
+        strsrch (filename, ".JPEG") ||
+        strsrch (filename, ".jfif") ||
+        strsrch (filename, ".jfi") ||
+        strsrch (filename, ".JFIF") ||
+        strsrch (filename, ".JFI") ||
+        strsrch (filename, ".JPG"))
+        return (1);
+
+ /* If no JPEG file suffix, try opening the file */
+    else {
+        if ((diskfile = open (filename, O_RDONLY)) < 0)
+            return (0);
+        else {
+            nbr = read (diskfile, keyword, 2);
+            close (diskfile);
+            if (nbr < 4)
+                return (0);
+            else if (keyword[0] == (char) 0xFF &&
+		     keyword[1] == (char) 0xD8)
+                return (1);
+            else
+                return (0);
+            }
+        }
+}
+
+
+/* ISGIF -- Return 1 if GIF file, else 0 */
+int
+isgif (filename)
+
+char    *filename;      /* Name of file to check */
+{
+    int diskfile;
+    char keyword[16];
+    int nbr;
+
+    /* First check to see if this is an assignment */
+    if (strchr (filename, '='))
+        return (0);
+
+    /* Check file extension */
+    if (strsrch (filename, ".gif") ||
+        strsrch (filename, ".GIF"))
+        return (1);
+
+ /* If no GIF file suffix, try opening the file */
+    else {
+        if ((diskfile = open (filename, O_RDONLY)) < 0)
+            return (0);
+        else {
+            nbr = read (diskfile, keyword, 6);
+            close (diskfile);
+            if (nbr < 4)
+                return (0);
+            else if (!strncmp (keyword, "GIF", 3))
+                return (1);
+            else
+                return (0);
+            }
+        }
+}
+
 /*
  * Jul 14 1999	New subroutines
  * Jul 15 1999	Add getfilebuff()
@@ -427,4 +552,6 @@ char	*string;
  * Sep 29 2004	Drop next_token() to avoid conflict with subroutine in catutil.c
  *
  * Sep 26 2005	In first_token, return NULL if token is only control character
+ *
+ * Feb 23 2006	Add istiff(), isjpeg(), isgif() to check TIFF, JPEG, GIF files
  */

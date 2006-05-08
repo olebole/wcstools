@@ -1,5 +1,5 @@
 /* File remap.c
- * October 12, 2004
+ * April 19, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -467,12 +467,11 @@ char	*filename;	/* FITS or IRAF file filename */
 	/* Read output image if one is specified */
 	imout = NULL;
 	if (outname != NULL) {
-	    if ((headout = fitsrhead (outname, &lhead, &nbhead)) != NULL) {
+	    if (!access (outname, F_OK) && verbose)
+		fprintf (stderr, "REMAP: Writing file %s\n", outname);
+	    else if ((headout = fitsrhead (outname, &lhead, &nbhead)) != NULL) {
 		if ((imout = fitsrimage (outname, nbhead, headout)) == NULL)
 		    fprintf (stderr, "REMAP: Overwriting file %s\n", outname);
-		}
-	    else if (verbose) {
-		fprintf (stderr, "REMAP: Writing file %s\n", outname);
 		}
 	    }
 	else
@@ -697,24 +696,32 @@ char	*filename;	/* FITS or IRAF file filename */
 	yin2 = (double) hpin;
 	}
     pix2wcs (wcsin, xin1, yin1, &xpos, &ypos);
+    wcscon (wcsin->syswcs,wcsout->syswcs,wcsin->equinox,wcsout->equinox,
+	    &xpos,&ypos,wcsin->epoch);
     wcs2pix (wcsout, xpos, ypos, &xout, &yout, &offscl);
     xmin = xout;
     xmax = xout;
     ymin = yout;
     ymax = yout;
     pix2wcs (wcsin, xin1, yin2, &xpos, &ypos);
+    wcscon (wcsin->syswcs,wcsout->syswcs,wcsin->equinox,wcsout->equinox,
+	    &xpos,&ypos,wcsin->epoch);
     wcs2pix (wcsout, xpos, ypos, &xout, &yout, &offscl);
     if (xout < xmin) xmin = xout;
     if (xout > xmax) xmax = xout;
     if (yout < ymin) ymin = yout;
     if (yout > ymax) ymax = yout;
     pix2wcs (wcsin, xin2, yin1, &xpos, &ypos);
+    wcscon (wcsin->syswcs,wcsout->syswcs,wcsin->equinox,wcsout->equinox,
+	    &xpos,&ypos,wcsin->epoch);
     wcs2pix (wcsout, xpos, ypos, &xout, &yout, &offscl);
     if (xout < xmin) xmin = xout;
     if (xout > xmax) xmax = xout;
     if (yout < ymin) ymin = yout;
     if (yout > ymax) ymax = yout;
     pix2wcs (wcsin, xin2, yin2, &xpos, &ypos);
+    wcscon (wcsin->syswcs,wcsout->syswcs,wcsin->equinox,wcsout->equinox,
+	    &xpos,&ypos,wcsin->epoch);
     wcs2pix (wcsout, xpos, ypos, &xout, &yout, &offscl);
     if (xout < xmin) xmin = xout;
     if (xout > xmax) xmax = xout;
@@ -780,6 +787,10 @@ char	*filename;	/* FITS or IRAF file filename */
 
 		    /* Get WCS coordinates of this pixel in output image */
 		    pix2wcs (wcsout, xout, yout, &xpos, &ypos);
+
+		    /* Convert to output coordinate system */
+		    wcscon (wcsin->syswcs,wcsout->syswcs,wcsin->equinox,wcsout->equinox,
+				   &xpos,&ypos,wcsin->epoch);
 
 		    /* Get image coordinates of this subpixel in input image */
 		    wcs2pix (wcsin, xpos, ypos, &xin, &yin, &offscl);
@@ -891,4 +902,7 @@ double	*y2;		/* Upper right y coordinate (returned) */
  * Apr 28 2004	Return error on failure of any memory allocation
  * Aug 30 2004	Add multiple samples from output to input images
  * Oct 12 2004	Fix message if writing to named file and print only if verbose
+ *
+ * Apr  6 2006	Convert between coordinate systems if requested
+ * Apr 19 2006	Check to see whether the output file exists before reading its header
  */

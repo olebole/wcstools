@@ -1,8 +1,8 @@
 /*** File libwcs/binread.c
- *** August 27, 2004
+ *** January 19, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2004
+ *** Copyright (C) 1998-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -1039,6 +1039,29 @@ char *bincat;	/* Binary catalog file name */
     sc->entra = nb;
     sc->entdec = nb + 8;
     sc->entpeak = nb + 16;
+
+    /* Set other catalog information in structure */
+    if (sc->nmag < 0) {
+	sc->inform = 'J';
+	sc->coorsys = WCS_J2000;
+	sc->epoch = 2000.0;
+	sc->equinox = 2000.0;
+	sc->nmag = -sc->nmag;
+	}
+    else if (sc->nstars < 0) {
+	sc->inform = 'J';
+	sc->coorsys = WCS_J2000;
+	sc->epoch = 2000.0;
+	sc->equinox = 2000.0;
+	sc->nstars = -sc->nstars;
+	}
+    else {
+	sc->inform = 'B';
+	sc->coorsys = WCS_B1950;
+	sc->epoch = 1950.0;
+	sc->equinox = 1950.0;
+	}
+
     if (sc->nmag > 0)
 	sc->entmag[0] = nb + 18;
     else
@@ -1080,27 +1103,6 @@ char *bincat;	/* Binary catalog file name */
     else
 	strncpy (sc->isfil, binfile, 23);
 
-    /* Set other catalog information in structure */
-    if (sc->nmag < 0) {
-	sc->inform = 'J';
-	sc->coorsys = WCS_J2000;
-	sc->epoch = 2000.0;
-	sc->equinox = 2000.0;
-	sc->nmag = -sc->nmag;
-	}
-    else if (sc->nstars < 0) {
-	sc->inform = 'J';
-	sc->coorsys = WCS_J2000;
-	sc->epoch = 2000.0;
-	sc->equinox = 2000.0;
-	sc->nstars = -sc->nstars;
-	}
-    else {
-	sc->inform = 'B';
-	sc->coorsys = WCS_B1950;
-	sc->epoch = 1950.0;
-	sc->equinox = 1950.0;
-	}
     sc->entadd = fcat;
     sc->sptype = 1;
     if (sc->mprop == 2)
@@ -1565,4 +1567,6 @@ char *from, *last, *to;
  * Dec 12 2003	Fix bug in wcs2pix() call in binbin()
  *
  * Aug 27 2004	Include math.h
+ *
+ * Jan 19 2006	Fix bug when J2000 system set by negative number of magnitudes
  */

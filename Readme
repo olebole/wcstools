@@ -14,7 +14,7 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.6.3 of the WCSTools package developed by Doug Mink
+This is version 3.6.4 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code or algorithms from
 
@@ -125,13 +125,19 @@ imcat	List catalog sources which should be found in the area of the sky
 
 imextract Extract 1- or 2-dimensional images from 2- or 3-dimensional images
 
+imfill	 Replace bad pixels using a box median, mean, or Gaussian filter
+
 imhead	Print FITS or IRAF header
 
 immatch	Match catalog and image stars using the WCS in the image file.
 
+imresize Shrink an image by an integral factor keeping WCS intact
+
 imrot	Rotate and/or reflect FITS or IRAF image files
 
 imsize	Print center and size of image using WCS keywords in header
+
+imsmooth Run a box median, mean, or Gaussian filter over an image
 
 imstack	Stack 1-dimensional images into a 2-dimensional image
 
@@ -171,4 +177,4 @@ wcshead	Print basic world coordinate system information on one line per image
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
 
--Doug Mink, SAO, 2006-01-06
+-Doug Mink, SAO, 2006-04-25

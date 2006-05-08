@@ -1,5 +1,5 @@
 /* File isrange.c
- * April 11, 2005
+ * April 3, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  *
@@ -13,6 +13,7 @@
 
 static int isrange();
 
+int
 main (ac, av)
 int ac;
 char **av;
@@ -65,4 +66,6 @@ char *string;		/* String which might be a range of numbers */
 /* Dec 14 2001	New program
  *
  * Apr 11 2005	Print version; improve online documentation
+ *
+ * Mar  3 2006	Declare main to be int
  */

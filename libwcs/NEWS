@@ -1,5 +1,19 @@
 WCSTools subroutine release history
 
+May 3, 2006 - Release 3.6.4 (Doug Mink, SAO)
+fileutil.c: Add istiff(), isjpeg(), isgif() to check TIFF, JPEG, GIF files
+fitsfile.c: Add fitsrtail() to read appended FITS headers
+fitsfile.c: Add file name to header-reading error messages
+fitswcs.c:  Add code to read FITS header appended to TIFF file
+imio.c:     Fix bug of occasional double application of bscale in getvec()
+            Clean up arithmetic and increment in addpix() and multpix()
+imsetwcs.c: Allow number of decimal places in image coordinates to be set
+wcsinit.c:  Get Epoch of observation from MJD-OBS or DATE-OBS/UT unless DSS
+wcsinit.c:  Set wcs->naxes to actual number of image WCS axes, usually 2
+wcscon.c,dateutil.c,fitsfile.c: Drop declarations of unused variables
+wcs.c:      Fix calls to avoid type conflicts in Linux
+
+
 January 5, 2006 - Release 3.6.3 (Doug Mink, SAO)
 wcs.h: Add WCS_ICRS to list of coordinate systems
 wcsinit.c: Initialize sys to WCS_ICRS if appropriate
@@ -17,6 +31,8 @@ them with local code.
 March 17, 2005 - Release 3.6.0 (Doug Mink, SAO)
 In wcs.c, fix bug in wcsrotset() so angles > 360 are set to angle - 360, not 360
 Use unbuffered read() in isfits() in fitsfile.c
+
+------------------------
 
 November 01, 2004 - Release 3.5.8 (Doug Mink, SAO)
 In wcs.c, keep wcs->rot between 0 and 360 degrees (360.0 -> 0.0)
@@ -66,6 +82,8 @@ Fix bugs in wcsfull() in wcs.c
 Move all distortion-related code to distort.c; include unistd.h
 Include stdlib.h instead of malloc.h in lin.c and drop malloc.h from matchstar.c
 
+------------------------
+
 August 22, 2003 - Release 3.4.2 (Doug Mink, SAO)
 Add fitsrfull() subroutine to read FITS files with more than 2 dimensions
 Modify fitswimage() to write FITS files with more than 2 dimensions
@@ -77,6 +95,8 @@ May 30, 2003 - Release 3.4.0 (Doug Mink, SAO)
 Add partial support for ZPX projection
 Fix bug reading COE and other projections when PROJPn coefficients
 were accidently reinitialized
+
+------------------------
 
 May 8, 2003 - Release 3.3.4 (Doug Mink, SAO)
 Add two missing semicolons in C++ declarations in wcs.h
@@ -94,6 +114,8 @@ Fix default center pixel computation in GetFITSWCS(); it was off by half a pixel
 January 30, 2003 - Release 3.3.0 (Doug Mink, SAO)
 Fix bug in dateutil.c ts2gst() sidereal time conversion.
 
+------------------------
+
 January 3, 2003 - Release 3.2.1 (Doug Mink, SAO)
 Fix bug in wcsinit() which failed to read PVi_0, and now initialize
 PVi_j in only once place.
@@ -103,6 +125,8 @@ Add ET/TDT/TT and sidereal time conversion to dateutil.c
 Fix subroutine calls for radvel and latpole and correctly compute pixel
 at center of image for default CRPIX in wcsinit.c
 Add fitsrsect() to fitsfile.c to read a section of an image
+
+------------------------
 
 August 30, 2002 - Release 3.1.3 (Doug Mink, SAO)
 Fix bug in imio.c getvec() dealing with scaled images
@@ -128,6 +152,8 @@ Support inversion (WCS->pix) of multiple dependent WCSs
 Add hgetri4c(), hgetr8c(), and hgetsc() for multiple WCS handling
 Fix bug in TNX projection software which caused an infinite loop during
 coefficient parsing.
+
+------------------------
 
 February 13, 2002 - Release 3.0.7 (Doug Mink, SAO)
 Fix bug in ecliptic coordinate conversion in wcscon.c

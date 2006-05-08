@@ -1,5 +1,5 @@
 /* File xy2sky.c
- * October 14, 2003
+ * February 23, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -197,7 +197,7 @@ char **av;
 	PrintUsage ();
 
     fn = *av++;
-    if (isfits (fn) || isiraf (fn)) {
+    if (isfits(fn) || isiraf(fn) || istiff(fn) || isjpeg(fn) || isgif(fn)) {
 	wcs = GetWCSFITS (fn, verbose);
 	if (nowcs (wcs)) {
 	    printf ("%s: No WCS for file, cannot compute image size\n", fn);
@@ -668,5 +668,7 @@ char *listfile;		/* Name of file with list of input coordinates */
  * Jan  7 2003	Fix bug which dropped declination for tab output from file
  * Jan  7 2003	Fix bug which failed to ignore #-commented-out input file lines
  * Apr  7 2003	Add -o to output only RA, Dec, or system
- & Oct 14 2003	Change naxes to naxes in wcs structure
+ * Oct 14 2003	Change naxes to naxes in wcs structure
+ *
+ * Feb 23 2006	Allow appended headers in TIFF, JPEG, and GIF files
  */

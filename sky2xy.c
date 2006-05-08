@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * January 20, 2005
+ * April 19, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -278,13 +278,15 @@ char **av;
 			strcpy (csys, wcs->radecin);
 			}
 		    wcsc2pix (wcs, ra, dec, csys, &x, &y, &offscale);
+		    num2str (xstr, x, nf, ndec);
+		    num2str (ystr, y, nf, ndec);
 
 		    if (verbose)
-			printf ("%s %s %s -> %.5f %.5f -> %.3f %.3f",
-				 rastr, decstr, csys, ra, dec, x, y);
+			printf ("%s %s %s -> %.5f %.5f -> %s %s",
+				 rastr, decstr, csys, ra, dec, xstr, ystr);
 		    else
-			printf ("%s %s %s -> %.3f %.3f",
-				rastr, decstr, csys, x, y);
+			printf ("%s %s %s -> %s %s",
+				rastr, decstr, csys, xstr, ystr);
 		    if (offscale == 2)
 			printf (" (off image)\n");
 		    else if (offscale)
@@ -450,4 +452,6 @@ char	*command;
  * Aug 30 2004	Declare undeclared void subroutines
  *
  * Jan 20 2005	Set WCS directly from header if no command line changes
+ *
+ * Apr 19 2006	Use -n number of decimal places when reading from file, too
  */

@@ -1,5 +1,5 @@
 /* File sp2char.c
- * January 8, 2002
+ * April 3, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -25,6 +25,7 @@ static int version = 0;		/* If 1, print only program name and version */
 static char spchar = '_';
 
 
+int
 main (ac, av)
 int ac;
 char **av;
@@ -117,4 +118,6 @@ usage ()
 }
 
 /* Jan  8 2002	New program
+ *
+ * Apr  3 2006	Declare main to be int
  */

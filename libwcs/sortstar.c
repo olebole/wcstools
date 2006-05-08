@@ -1,8 +1,8 @@
 /*** File libwcs/sortstar.c
- *** August 30, 2004
+ *** April 13, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -35,6 +35,8 @@
  * int StarRASort()		Return star with lowest right ascension
  * void DecSortStars()		Sort stars based on declination
  * int StarDecSort()		Return star with lowest declination
+ * void IDSortStars()		Sort stars based on ID number
+ * int StarIDSort()		Return star with lowest ID number
  * void XSortStars()		Sort stars based on X coordinate in image
  * int StarXSort()		Return star with lowest X coordinate
  * void YSortStars()		Sort stars based on Y coordinate in image
@@ -263,6 +265,121 @@ void *ssp1, *ssp2;
     if (b2 < b1)
 	return (1);
     else if (b2 > b1)
+	return (-1);
+    else
+	return (0);
+}
+
+
+/* IDSortStars -- Sort image stars by increasing ID Number value */
+
+void
+IDSortStars (sn, sra, sdec, spra, spdec, sx, sy, sm, sc, sobj, ns, nm)
+
+double *sn;		/* Identifying number */
+double *sra;		/* Right Ascension */
+double *sdec;		/* Declination */
+double *spra;		/* Right Ascension proper motion */
+double *spdec;		/* Declination proper motion */
+double *sx;		/* Image X coordinate */
+double *sy;		/* Image Y coordinate */
+double **sm;		/* Magnitudes */
+int    *sc;		/* Other 4-byte information */
+char   **sobj;		/* Object name */
+int	ns;		/* Number of stars to sort */
+int	nm;		/* Number of magnitudes per star */
+{
+    StarInfo *stars;
+    int i, j, hasnum, hasobj, haspos, haspm, hasxy;
+    int StarIDSort ();
+
+    stars = (StarInfo *) calloc ((unsigned int)ns, sizeof(StarInfo));
+    if (sn == NULL)
+	return;
+    else
+	hasnum = 1;
+    if (sra != NULL && sdec != NULL)
+	haspos = 1;
+    else
+	haspos = 0;
+    if (spra != NULL && spdec != NULL)
+	haspm = 1;
+    else
+	haspm = 0;
+    if (sobj == NULL)
+	hasobj = 0;
+    else
+	hasobj = 1;
+    if (sx != NULL && sy != NULL)
+	hasxy = 1;
+    else
+	hasxy = 0;
+
+    for (i = 0; i < ns; i++) {
+	if (hasnum)
+	    stars[i].n = sn[i];
+	if (haspos) {
+	    stars[i].ra = sra[i];
+	    stars[i].dec = sdec[i];
+	    }
+	if (haspm) {
+	    stars[i].pra = spra[i];
+	    stars[i].pdec = spdec[i];
+	    }
+	if (hasxy) {
+	    stars[i].x = sx[i];
+	    stars[i].y = sy[i];
+	    }
+	for (j = 0; j < nm; j++)
+	    stars[i].m[j] = sm[j][i];
+	stars[i].c = sc[i];
+	if (hasobj)
+	    stars[i].obj = sobj[i];
+	}
+
+    qsort ((char *)stars, ns, sizeof(StarInfo), StarIDSort);
+
+    for (i = 0; i < ns; i++) {
+	if (hasnum)
+	    sn[i] = stars[i].n;
+	if (haspos) {
+	    sra[i] = stars[i].ra;
+	    sdec[i] = stars[i].dec;
+	    }
+	if (haspm) {
+	    spra[i] = stars[i].pra;
+	    spdec[i] = stars[i].pdec;
+	    }
+	if (hasxy) {
+	    sx[i] = stars[i].x;
+	    sy[i] = stars[i].y;
+	    }
+	for (j = 0; j < nm; j++)
+	    sm[j][i] = stars[i].m[j];
+	sc[i] = stars[i].c;
+	if (hasobj)
+	    sobj[i] = stars[i].obj;
+	}
+
+    free ((char *)stars);
+    return;
+}
+
+
+/* StarIDSort -- Order stars in increasing ID value called by qsort */
+
+int
+StarIDSort (ssp1, ssp2)
+
+void *ssp1, *ssp2;
+
+{
+    double n1 = ((StarInfo *)ssp1)->n;
+    double n2 = ((StarInfo *)ssp2)->n;
+
+    if (n2 < n1)
+	return (1);
+    else if (n2 > n1)
 	return (-1);
     else
 	return (0);
@@ -1009,4 +1126,6 @@ double	rad;		/* Maximum separation in arcseconds to merge */
  * Mar 17 2004	Rewrite StarMerge() to merge RA-sorted catalog quickly
  * Mar 18 2004	Add logging to StarMerge()
  * Aug 30 2004	Fix bad declaration
+ *
+ * Apr 13 2006	Add sort by ID number
  */

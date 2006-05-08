@@ -110,6 +110,14 @@ int verbose;	/* Print error messages if nonzero */
 	    return (NULL);
 	    }
 	}
+    else if (istiff (filename) || isgif (filename) || isjpeg (filename)) {
+	if ((header = fitsrtail (filename, &lhead, &nbfits)) == NULL) {
+	    if (verbose)
+		fprintf (stderr, "TIFF file %s has no appended header\n", filename);
+	    return (NULL);
+	    }
+	}
+
 
     /* Open FITS file if .imh extension is not present */
     else {
@@ -559,6 +567,8 @@ struct WorldCoor *wcs;	/* WCS structure */
 
     return;
 }
+
+
 /* May 29 1996	Change name from delWCSFITS to DelWCSFITS
  * May 31 1996	Print single message if no WCS is found in header
  * May 31 1996	Use stream I/O instead of standard I/O
@@ -619,4 +629,6 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Jul 19 2004	Print error message in verbose mode only
  * Sep 16 2004	Add 360.0 to negative right ascensions in SetFITSWCS()
  * Nov  1 2005	Set RADECSYS to ICRS if appropriate
+ *
+ * Feb 23 2006	Add code to read FITS header appended to TIFF file
  */

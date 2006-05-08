@@ -1,5 +1,5 @@
-/* File imfilt.c
- * October 25, 2005
+/* File imsmooth.c
+ * April 19, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -18,14 +18,17 @@
 #define GAUSSIAN 3
 
 static void usage();
-static void imFilt();
+static void imSmooth();
 extern char *FiltFITS();
+extern char *ShrinkFITSHeader();
+extern char *ShrinkFITSImage();
+extern void setghwidth();
 
 #define MAXFILES 1000
 static int maxnfile = MAXFILES;
 
 static int verbose = 0;		/* verbose/debugging flag */
-char outname[128];		/* Name for output image */
+static char outname[128];	/* Name for output image */
 static int fitsout = 0;		/* Output FITS file from IRAF input if 1 */
 static int overwrite = 0;	/* allow overwriting of input image file */
 static int version = 0;		/* If 1, print only program name and version */
@@ -33,6 +36,7 @@ static int xsize = 3;
 static int ysize = 3;
 static int filter = 0;		/* Filter code */
 static int nlog = 100;		/* Number of lines between log messages */
+static int factor = 0;		/* Reduction factor */
 
 
 int
@@ -48,9 +52,7 @@ char **av;
     FILE *flist;
     char **fn, *fname;
     char *listfile;
-    char *fni;
-    int lfn, i, ifile, nfile;
-    double dx, dy;
+    int lfn, ifile, nfile;
 
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
@@ -86,7 +88,7 @@ char **av;
 
 		case 'a':	/* Mean filter (average) */
 		    if (ac < 3)
-			usage (str);
+			usage();
 		    filter = MEAN;
 		    xsize = (int) atof (*++av);
 		    ac--;
@@ -95,30 +97,49 @@ char **av;
 		    break;
 
 		case 'g':	/* Gaussian filter */
-		    if (ac < 3)
-			usage (str);
+		    if (ac < 2)
+			usage();
 		    filter = GAUSSIAN;
 		    xsize = (int) atof (*++av);
+		    ysize = xsize;
 		    ac--;
-		    ysize = (int) atof (*++av);
+		    break;
+
+		case 'h':	/* Gaussian filter half-width at half-height */
+		    if (ac < 2)
+			usage();
+		    setghwidth (atof (*++av));
 		    ac--;
 		    break;
 
 		case 'l': /* Number of lines to log */
 		    if (ac < 2)
-			usage (str);
+			usage();
 		    nlog = (int) atof (*++av);
 		    ac--;
 		    break;
 
 		case 'm': /* Median filter */
 		    if (ac < 3)
-			usage (str);
+			usage();
 		    filter = MEDIAN;
 		    xsize = (int) atof (*++av);
 		    ac--;
 		    ysize = (int) atof (*++av);
 		    ac--;
+		    break;
+
+		case 'o':	/* Specifiy output image filename */
+		    if (ac < 2)
+			usage ();
+		    if (*(av+1)[0] == '-' || *(str+1) != (char)0)
+			overwrite++;
+		    else {
+			strcpy (outname, *(av+1));
+			overwrite = 0;
+			av++;
+			ac--;
+			}
 		    break;
 
 		case 'v':	/* more verbosity */
@@ -143,7 +164,7 @@ char **av;
             }
 
         else {
-	    fprintf (stderr,"IMFILT: %s is not a FITS or IRAF file \n",str);
+	    fprintf (stderr,"IMSMOOTH: %s is not a FITS or IRAF file \n",str);
             usage();
             }
 
@@ -152,14 +173,14 @@ char **av;
     /* Process files in file of filenames */
     if (readlist) {
 	if ((flist = fopen (listfile, "r")) == NULL) {
-	    fprintf (stderr,"IMFILT: List file %s cannot be read\n",
+	    fprintf (stderr,"IMSMOOTH: List file %s cannot be read\n",
 		     listfile);
 	    usage ();
 	    }
 	while (fgets (filename, 128, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
 	    if (*lastchar < 32) *lastchar = 0;
-	    imFilt (filename);
+	    imSmooth (filename);
 	    if (verbose)
 		printf ("\n");
 	    }
@@ -176,7 +197,7 @@ char **av;
 	    else {
 		if (verbose)
 		    printf ("%s:\n", fname);
-		imFilt (fname);
+		imSmooth (fname);
 		if (verbose)
   		    printf ("\n");
 		}
@@ -198,15 +219,18 @@ usage ()
     fprintf (stderr,"Filter FITS and IRAF image files\n");
     fprintf(stderr,"Usage: [-v][-a dx[,dy]][-g dx[,dy]][-m dx[,dy]] file.fits ...\n");
     fprintf(stderr,"  -a dx dy: Mean filter dx x dy pixels\n");
-    fprintf(stderr,"  -g dx dy: Gaussian filter dx x dy pixels\n");
+    fprintf(stderr,"  -f factor: Reduce each image dimension by factor\n");
+    fprintf(stderr,"  -g dx: Gaussian filter dx pixels square\n");
+    fprintf(stderr,"  -h halfwidth: Gaussian half-width at half-height\n");
     fprintf(stderr,"  -l num: Logging interval in lines\n");
     fprintf(stderr,"  -m dx dy: Median filter dx x dy pixels\n");
+    fprintf(stderr,"  -o: Allow overwriting of input image, else write new one\n");
     fprintf(stderr,"  -v: Verbose\n");
     exit (1);
 }
 
 static void
-imFilt (name)
+imSmooth (name)
 char *name;
 {
     char *image;		/* FITS image */
@@ -222,14 +246,10 @@ char *name;
     char *fname;
     char extname[16];
     int lext, lroot;
-    int nx, ny, npix;
     char echar;
     char temp[8];
     char history[64];
     char pixname[256];
-    double ctemp;
-    double dmax, dpix;
-    double bs, bz;
 
     /* If not overwriting input file, make up a name for the output file */
     if (!overwrite) {
@@ -325,24 +345,34 @@ char *name;
 	else
 	    strcat (newname, "a");
 
-	if (xsize < 10 && xsize > -1)
-	    sprintf (temp,"%1d",xsize);
-	else if (xsize < 100 && xsize > -10)
-	    sprintf (temp,"%2d",xsize);
-	else if (xsize < 1000 && xsize > -100)
-	    sprintf (temp,"%3d",xsize);
-	else
-	    sprintf (temp,"%4d",xsize);
-	strcat (newname, temp);
-	strcat (newname, "x");
-	if (ysize < 10 && ysize > -1)
-	    sprintf (temp,"%1d",ysize);
-	else if (ysize < 100 && ysize > -10)
-	    sprintf (temp,"%2d",ysize);
-	else if (ysize < 1000 && ysize > -100)
-	    sprintf (temp,"%3d",ysize);
-	else
-	    sprintf (temp,"%4d",ysize);
+	if (factor) {
+	    if (factor < 10)
+		sprintf (temp,"%1d",factor);
+	    else if (factor < 100)
+		sprintf (temp,"%2d",factor);
+	    else
+		sprintf (temp,"%d",factor);
+	    }
+	else {
+	    if (xsize < 10 && xsize > -1)
+		sprintf (temp,"%1d",xsize);
+	    else if (xsize < 100 && xsize > -10)
+		sprintf (temp,"%2d",xsize);
+	    else if (xsize < 1000 && xsize > -100)
+		sprintf (temp,"%3d",xsize);
+	    else
+		sprintf (temp,"%4d",xsize);
+	    strcat (newname, temp);
+	    strcat (newname, "x");
+	    if (ysize < 10 && ysize > -1)
+		sprintf (temp,"%1d",ysize);
+	    else if (ysize < 100 && ysize > -10)
+		sprintf (temp,"%2d",ysize);
+	    else if (ysize < 1000 && ysize > -100)
+		sprintf (temp,"%3d",ysize);
+	    else
+		sprintf (temp,"%4d",ysize);
+	    }
 	strcat (newname, temp);
 	if (fitsout)
 	    strcat (newname, ".fits");
@@ -376,30 +406,26 @@ char *name;
 	fprintf (stderr, " -> %s\n", newname);
 	}
 
-    if ((newimage = FiltFITS (header,image,filter,xsize,ysize,nlog)) == NULL) {
+    if ((newimage = FiltFITS (header,image,filter,xsize,ysize,nlog)) == NULL)
 	fprintf (stderr,"Cannot filter image %s; file is unchanged.\n",name);
+    else if (iraffile && !fitsout) {
+	if (irafwimage (newname,lhead,irafheader,header,newimage) > 0) {
+	    if (verbose)
+		printf ("%s: written successfully.\n", newname);
+	    else
+		printf ("%s\n", newname);
+	    }
+	else if (verbose)
+	    printf ("IMSMOOTH: File %s not written.\n", newname);
 	}
-    else {
-	if (iraffile && !fitsout) {
-	    if (irafwimage (newname,lhead,irafheader,header,newimage) > 0) {
-		if (verbose)
-		    printf ("%s: written successfully.\n", newname);
-		else
-		    printf ("%s\n", newname);
-		}
-	    else if (verbose)
-		printf ("IMFILT: File %s not written.\n", newname);
-	    }
-	else {
-	    if (fitswimage (newname, header, newimage) > 0) {
-		if (verbose)
-		    printf ("%s: written successfully.\n", newname);
-		else
-		    printf ("%s\n", newname);
-		}
-	    else if (verbose)
-		printf ("IMFILT: File %s not written.\n", newname);
-	    }
+    else if (fitswimage (newname, header, newimage) > 0) {
+	if (verbose)
+	    printf ("%s: written successfully.\n", newname);
+	else
+	    printf ("%s\n", newname);
+	}
+    else if (verbose) {
+	printf ("IMSMOOTH: File %s not written.\n", newname);
 	free (newimage);
 	}
 
@@ -410,4 +436,10 @@ char *name;
     return;
 }
 /* Oct 25 2005	New program
+ *
+ * Jan 25 2006	Add dimension size reduction factor
+ * Feb 28 2006	Add -h for Gaussian half-width
+ * Apr 11 2006	Add -o to overwrite or specify output filename
+ * Apr 19 2006	Rename program imsmooth from imfilt
+ * Apr 19 2006	Move image size change to imresize program
  */

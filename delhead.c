@@ -1,5 +1,5 @@
 /* File delhead.c
- * June 10, 2005
+ * April 24, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -228,6 +228,7 @@ char	*kwd[];		/* Names of those keywords */
     int nbold, nbnew;
 
     image = NULL;
+    header = NULL;
 
     /* Open IRAF image if .imh extension is present */
     if (isiraf (filename)) {
@@ -416,7 +417,6 @@ char	*kwd[];		/* Names of those keywords */
 	    printf ("%s: rewritten successfully.\n", newname);
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
-	free (image);
 	}
 
     else {
@@ -433,7 +433,6 @@ char	*kwd[];		/* Names of those keywords */
 	    close (fdw);
 	    if (verbose)
 		printf ("%s: rewritten successfully.\n", newname);
-	    free (image);
 	    }
 	}
 
@@ -443,7 +442,8 @@ char	*kwd[];		/* Names of those keywords */
 	fprintf (stderr, "%d: %s processed.\r", nproc, newname);
 	}
 
-    free (header);
+    if (header != NULL)
+	free (header);
     if (image != NULL)
 	free (image);
     return;
@@ -481,4 +481,6 @@ char	*kwd[];		/* Names of those keywords */
  * Jan 12 2005	Write over unread image only if number of header blocks same
  * Mar  1 2005	Print program version only on first file if looping
  * Jun 10 2005	Fix bug dealing with large numbers of keywords
+ *
+ * Apr 26 2006	Avoid freeing alread-freed image buffers
  */

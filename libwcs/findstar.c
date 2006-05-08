@@ -1,7 +1,7 @@
 /*** File libwcs/findstar.c
- *** September 24, 2004
+ *** April 25, 2006
  *** By Doug Mink, after Elwood Downey
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -50,6 +50,7 @@ extern void setnitmax();
 extern void setminstars();
 extern void setminpmqual();
 extern void setminid();
+extern void setnxydec();
 
 /* Set input catalog for image stars */
 static char imcatname[256] = "";
@@ -96,6 +97,11 @@ static int fsborder = BORDER;	/* Ignore this much of the edge */
 void setborder (brd)
 int brd;
 { fsborder = brd; return; }
+
+static int rnoise = RNOISE;	/* Mean noise is from center +- this many pixels */
+void setrnoise (rn)
+int rn;
+{ rnoise = rn; return; }
 
 static int maxrad = MAXRAD;	/* Maximum radius for a star */
 void setmaxrad (rmax)
@@ -228,16 +234,16 @@ int	zap;		/* If 1, set star to background after reading */
     svec = (double *) malloc (w * sizeof (double));
 
     /* Compute image noise from a central swath */
-    x1 = (w / 2) - 50;
+    x1 = (w / 2) - rnoise;
     if (x1 < 1)
 	x1 = 1;
-    x2 = (w / 2) + 50;
+    x2 = (w / 2) + rnoise;
     if (x2 > w)
 	x2 = w;
-    y1 = (h / 2) - 50;
+    y1 = (h / 2) - rnoise;
     if (y1 < 1)
 	y1 = 1;
-    y2 = (h / 2) + 50;
+    y2 = (h / 2) + rnoise;
     if (y2 > h)
 	y2 = h;
     mean2d (image,bitpix,w,h,bz,bs, x1, x2, y1, y2, &noise, &nsigma);
@@ -259,7 +265,7 @@ int	zap;		/* If 1, set star to background after reading */
 		 yborder1, h-yborder2+1, h);
 	}
     if (bmin > 0)
-	minll = bmin;
+	minll = noise + bmin;
     else
 	minll = noise + (starsig * nsigma);
     sigma = sqrt (minll);
@@ -894,6 +900,10 @@ char *parstring;
 	setminpmqual ((int) atof (parvalue));
     else if (!strcmp (parname, "minid"))
 	setminid ((int) atof (parvalue));
+    else if (!strcmp (parname, "nxydec"))
+	setnxydec ((int) atof (parvalue));
+    else if (!strcmp (parname, "rnoise"))
+	setrnoise ((int) atof (parvalue));
     return;
 }
 
@@ -1052,4 +1062,8 @@ int	reflect; /* 1 if image is reflected, else 0 */
  * Aug  3 2004	Move single star image position rotation into rotstar()
  * Aug  3 2004	Move daoread() declaration to wcscat.h
  * Sep 24 2004	Fix rotstar() to separate output values from input values
+ *
+ * Mar 30 2006	Add nxydec=num. decimal places in image coordinates to setparm()
+ * Apr 25 2006	Change MINPEAK to mean counts above noise background
+ *              Suggested by Hill & Biddick for high background situations
  */

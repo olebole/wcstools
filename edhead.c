@@ -1,5 +1,5 @@
 /* File edhead.c
- * April 14, 2005
+ * February 1, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -380,7 +380,6 @@ char	*filename;	/* FITS or IRAF file filename */
 	    printf ("%s: rewritten successfully.\n", newname);
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
-	free (image);
 	}
 
     else {
@@ -441,4 +440,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jul  1 2004	Overwrite edited header, if new header fits
  *
  * Apr 14 2005	Set new header size by number of lines in temporary file
+ *
+ * Feb  1 2006	Drop redundant free(image) found by Sergey Koposov
  */

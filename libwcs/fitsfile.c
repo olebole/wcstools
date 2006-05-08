@@ -1,8 +1,8 @@
 /*** File libwcs/fitsfile.c
- *** October 28, 2005
+ *** May 3, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2005
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -32,6 +32,8 @@
  *		Open a FITS file for reading, returning a FILE pointer
  * fitsrhead (filename, lhead, nbhead)
  *		Read FITS header and return it
+ * fitsrtail (filename, lhead, nbhead)
+ *		Read appended FITS header and return it
  * fitsrsect (filename, nbhead, header, fd, x0, y0, nx, ny)
  *		Read section of a FITS image, having already read the header
  * fitsrimage (filename, nbhead, header)
@@ -234,12 +236,12 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 			    return (pheader);
     			if (extnum != -1 && !extfound) {
 			    if (extnum < 0)
-	    			fprintf (stderr, "FITSRHEAD: Extension %s not found\n",extnam);
+	    			fprintf (stderr, "FITSRHEAD: Extension %s not found in file %s\n",extnam, filename);
 			    else
-	    			fprintf (stderr, "FITSRHEAD: Extension %d not found\n",extnum);
+	    			fprintf (stderr, "FITSRHEAD: Extension %d not found in file %s\n",extnum, filename);
 			    }
 			else
-	    		    fprintf (stderr, "FITSRHEAD: No header found\n");
+	    		    fprintf (stderr, "FITSRHEAD: No header found in file %s\n", filename);
 			return (NULL);
 			}
 		    }
@@ -393,9 +395,9 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 /* Print error message and return null if extension not found */
     if (extnum != -1 && !extfound) {
 	if (extnum < 0)
-	    fprintf (stderr, "FITSRHEAD: Extension %s not found\n",extnam);
+	    fprintf (stderr, "FITSRHEAD: Extension %s not found in file %s\n",extnam, filename);
 	else
-	    fprintf (stderr, "FITSRHEAD: Extension %d not found\n",extnum);
+	    fprintf (stderr, "FITSRHEAD: Extension %d not found in file %s\n",extnum, filename);
 	if (pheader != NULL)
 	    free (pheader);
 	return (NULL);
@@ -457,6 +459,99 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	}
 
     ibhead = *nbhead - ibhead;
+
+    return (header);
+}
+
+
+/* FITSRTAIL -- Read FITS header appended to graphics file */
+
+char *
+fitsrtail (filename, lhead, nbhead)
+
+char	*filename;	/* Name of image file */
+int	*lhead;		/* Allocated length of FITS header in bytes (returned) */
+int	*nbhead;	/* Number of bytes before start of data (returned) */
+			/* This includes all skipped image extensions */
+
+{
+    int fd;
+    char *header;	/* FITS image header (filled) */
+    int nbytes, i, ndiff;
+    int nbr, irec, offset;
+    char *mwcs;		/* Pointer to WCS name separated by % */
+    char *headstart;
+    char *newhead;
+
+    header = NULL;
+
+    /* Check for FITS WCS specification and ignore for file opening */
+    mwcs = strchr (filename, '%');
+    if (mwcs != NULL)
+	*mwcs = (char) 0;
+
+    /* Open the image file and read the header */
+    if (strncasecmp (filename,"stdin",5)) {
+	fd = -1;
+	fd = fitsropen (filename);
+	}
+#ifndef VMS
+    else {
+	fd = STDIN_FILENO;
+	}
+#endif
+
+    /* Repair the damage done to the file-name string during parsing */
+    if (mwcs != NULL)
+	*mwcs = '%';
+
+    if (fd < 0) {
+	fprintf (stderr,"FITSRTAIL:  cannot read file %s\n", filename);
+	return (NULL);
+	}
+
+    nbytes = FITSBLOCK;
+    *nbhead = 0;
+    *lhead = 0;
+
+    /* Read FITS header from end of input file one FITS block at a time */
+    irec = 0;
+    while (irec < 100) {
+	nbytes = FITSBLOCK * (irec + 2);
+	header = (char *) calloc ((unsigned int) nbytes, 1);
+	offset = lseek (fd, -nbytes, SEEK_END);
+	if (offset < 0) {
+	    free (header);
+	    header = NULL;
+	    nbytes = 0;
+	    break;
+	    }
+	for (i = 0; i < nbytes; i++) header[i] = 0;
+	nbr = read (fd, header, nbytes);
+
+	/* Check for SIMPLE at start of header */
+	for (i = 0; i < 2880; i++)
+	    if (header[i] < 32) header[i] = 32;
+	if ((headstart = ksearch (header,"SIMPLE"))) {
+	    if (headstart != header) {
+		ndiff = headstart - header;
+		newhead = (char *) calloc ((unsigned int) nbytes, 1);
+		strncpy (newhead, headstart, nbytes - ndiff);
+		free (header);
+		header = newhead;
+		}
+	    *lhead = nbytes;
+	    *nbhead = nbytes;
+	    break;
+	    }
+	free (header);
+	}
+    (void) hlength (header, nbytes);
+
+#ifndef VMS
+    if (fd != STDIN_FILENO)
+	(void)close (fd);
+#endif
 
     return (header);
 }
@@ -1949,4 +2044,8 @@ fitserr ()
  * Sep 30 2005	Fix fitsrsect() to position relatively, not absolutely
  * Oct 28 2005	Add error message if desired FITS extension is not found
  * Oct 28 2005	Fix initialization problem found by Sergey Koposov
+ *
+ * Feb 23 2006	Add fitsrtail() to read appended FITS headers
+ * Feb 27 2006	Add file name to header-reading error messages
+ * May  3 2006	Remove declarations of unused variables
  */

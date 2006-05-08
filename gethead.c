@@ -1,5 +1,5 @@
 /* File gethead.c
- * July 18, 2005
+ * January 17, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -38,7 +38,7 @@ static int maxlfn = 0;
 static int listall = 0;
 static int listpath = 0;
 static int tabout = 0;
-static int tabpad = 1;
+static int tabpad = 0;
 static int logfile = 0;
 static int printhead = 0;
 static int forceascii = 0;
@@ -614,6 +614,9 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	strcpy (filepath, namext);
 	}
 
+    if (!tabout && listall)
+	printfill = 1;
+
     /* Read ASCII file into buffer */
     if (filetype == FILE_ASCII) {
 	if ((header = getfilebuff (filepath)) == NULL)
@@ -903,7 +906,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	}
 
     /* Print line of keywords */
-    if (!verbose && !keyeqvaln && (nfound > 0 || printfill) && 
+    if (!verbose && !keyeqvaln && (nfound > 0 || printfill || listall) && 
 	(nfile < 2 || nfound > 0 || listall)) {
 
 	/* Remove spaces used to pad tab-separated tables for readability */
@@ -1108,4 +1111,6 @@ char *string;
  * Jun  9 2005	Fix bugs dealing with large numbers of files or keywords
  * Jun 15 2005	Write one-per-line output in SETHEAD input file format
  * Jul 18 2005	Do not write one-per-line verbose output in SETHEAD input file format
+ *
+ * Jan 17 2006	ALWAYS print line if -a
  */

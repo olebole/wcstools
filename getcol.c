@@ -1,5 +1,5 @@
 /* File getcol.c
- * December 15, 2005
+ * January 18, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -708,6 +708,14 @@ char	*lfile;		/* Name of file with lines to list */
 
 	    /* Check conditions */
 	    ntok = setoken (&tokens, line, cwhite);
+	    if (counttok) {
+		printf ("%d", ntok);
+		if (verbose)
+		    printf (" columns in %s", filename);
+		else
+		    printf ("\n");
+		return (0);
+		}
 	    pass = 0;
 	    if (ncond > 0) {
 		for (icond = 0; icond < ncond; icond++) {
@@ -1743,4 +1751,6 @@ void *pd1, *pd2;
  * Dec  9 2005	Use decimal place setting for means, medians, and ranges, too
  * Dec 13 2005	If only scanning a range of lines, print the range
  * Dec 15 2005	Clean up line range code
+ *
+ * Jan 18 2006	Count tokens if no columns specified, too
  */

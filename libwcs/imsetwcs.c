@@ -1,8 +1,8 @@
 /*** File libwcs/imsetwcs.c
- *** September 17, 2004
+ *** March 30, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu (based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -65,27 +65,28 @@ extern int getnfit();
 static double tolerance = PIXDIFF;	/* +/- this many pixels is a hit */
 static double refmag1 = MAGLIM1;	/* reference catalog magnitude limit */
 static double refmag2 = MAGLIM2;	/* reference catalog magnitude limit */
-static char defcatname[8];		/* default catalog name */
-static double frac = 1.0;		/* Additional catalog/image stars */
-static int nofit = 0;			/* if =1, do not fit WCS */
-static int maxcat = MAXSTARS;		/* Maximum number of catalog stars to use */
-static int fitwcs = 1;			/* If 1, fit WCS, else use current WCS */
-static int fitplate = 0;		/* If 1, fit polynomial, else do not */
-static double imfrac0 = 0.0;		/* If > 0.0, multiply image dimensions
+static char defcatname[8];	/* default catalog name */
+static double frac = 1.0;	/* Additional catalog/image stars */
+static int nofit = 0;		/* if =1, do not fit WCS */
+static int maxcat = MAXSTARS;	/* Maximum number of catalog stars to use */
+static int fitwcs = 1;		/* If 1, fit WCS, else use current WCS */
+static int fitplate = 0;	/* If 1, fit polynomial, else do not */
+static double imfrac0 = 0.0;	/* If > 0.0, multiply image dimensions
 					   by this for search */
-static int classd = -1;                 /* Guide Star Catalog object classes */
-static int uplate = 0;                  /* UJ Catalog plate number to use */
-static int iterate0 = 0;		/* If 1, search field again */
-static int toliterate0 = 0;		/* if 1, halve tolerances when iter */
-static int nfiterate0 = 0;		/* if 1, add two parameters to fit */
-static int recenter0 = 0;		/* If 1, search again with new center*/
-static char matchcat[32]="";		/* Match catalog name */
-static int irafout = 0;			/* if 1, write X Y RA Dec out */
+static int classd = -1;		/* Guide Star Catalog object classes */
+static int uplate = 0;		/* UJ Catalog plate number to use */
+static int iterate0 = 0;	/* If 1, search field again */
+static int toliterate0 = 0;	/* if 1, halve tolerances when iter */
+static int nfiterate0 = 0;	/* if 1, add two parameters to fit */
+static int recenter0 = 0;	/* If 1, search again with new center*/
+static char matchcat[32]="";	/* Match catalog name */
+static int irafout = 0;		/* if 1, write X Y RA Dec out */
+static int magfit = 0;		/* If 1, write magnitude polynomial(s) */
+static int sortmag = 1;		/* Magnitude by which to sort stars */
+static int minstars0 = MINSTARS;	/* Number of star matches for fit */
+static int nxydec = NXYDEC;	/* Number of decimal places in image coordinates */
 static void PrintRes();
 extern void SetFITSPlate();
-static int magfit = 0;		/* If 1, write magnitude polynomial(s) */
-static int sortmag = 1;			/* Magnitude by which to sort stars */
-static int minstars0 = MINSTARS;	/* Number of star matches for fit */
 
 /* Set the C* WCS fields in the input image header based on the given limiting
  * reference mag.
@@ -847,8 +848,10 @@ int	verbose;	/* True for more information */
     double coeff[5];
     double msig;
     double maxnum;
+    double cmax;
     int nnfld;
-    char rstr[32], dstr[32], numstr[32];
+    int nxyfld;
+    char rstr[32], dstr[32], numstr[32], xstr[32], ystr[32];
 
     for (i = 0; i < nmatch; i++) {
 	if (i == 0)
@@ -865,6 +868,19 @@ int	verbose;	/* True for more information */
 	printf ("# %s ra2000       dec2000    magc    X      Y     magi",
 		numstr);
     printf ("    dra   ddec   sep\n");
+
+    /* Find maximum image coordinates and set field size accordingly */
+    cmax = 0.0;
+    for (i = 0; i < nmatch; i++) {
+	if (sx1[i] > cmax) cmax = sx1[i];
+	if (sy1[i] > cmax) cmax = sy1[i];
+	}
+    if (cmax > 9999.0)
+	nxyfld = 6 + nxydec;
+    else if (cmax > 999.0)
+	nxyfld = 5 + nxydec;
+    else
+	nxyfld = 4 + nxydec;
 
     for (i = 0; i < nmatch; i++) {
 	wcs2pix (wcs, gra1[i], gdec1[i], &gx, &gy, &goff);
@@ -894,13 +910,15 @@ int	verbose;	/* True for more information */
 	sep2sum = sep2sum + (sep*sep);
 	ra2str (rstr, 32, gra1[i], 3);
 	dec2str (dstr, 32, gdec1[i], 2);
+	num2str (xstr, sx1[i], nxyfld, nxydec);
+	num2str (ystr, sy1[i], nxyfld, nxydec);
 	CatNum (refcat, -nnfld, 0, gnum1[i], numstr);
 	if (irafout)
-	    printf (" %6.1f %6.1f %s %s %5.2f %s",
-		    sx1[i],sy1[i],rstr,dstr,gm1[i],numstr);
+	    printf (" %s %s %s %s %5.2f %s",
+		    xstr, ystr, rstr, dstr, gm1[i], numstr);
 	else
-	    printf ("%s %s %s %5.2f %6.1f %6.1f %6.2f ",
-		    numstr,rstr,dstr,gm1[i],sx1[i],sy1[i],sm1[i]);
+	    printf ("%s %s %s %5.2f %s %s %6.2f ",
+		    numstr, rstr, dstr, gm1[i], xstr, ystr, sm1[i]);
 	printf ("%6.2f %6.2f %6.2f\n", rsep, dsep, sep);
 	}
     dmatch = (double) nmatch;
@@ -947,6 +965,13 @@ void
 settolerance (tol)
 double tol;
 { tolerance = tol; return; }
+
+
+/* Number of decimal places in X and Y image coordinates of sources */
+void
+setnxydec (ndec)
+int ndec;
+{ nxydec = ndec; return; }
 
 void
 setirafout ()
@@ -1217,4 +1242,6 @@ setmagfit ()
  * Dec 12 2003	Add second argument to CatName()
  *
  * Aug 30 2004	Declare void undeclared set*() subroutines
+ *
+ * Mar 30 2006	Allow number of decimal places in image coordinates to be set
  */

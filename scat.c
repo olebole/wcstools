@@ -1,5 +1,5 @@
 /* File scat.c
- * January 6, 2006
+ * April 13, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -18,7 +18,7 @@
 
 
 static void PrintUsage();
-static int scatparm();
+	static int scatparm();
 static void scatcgi();
 
 static int ListCat ();
@@ -105,6 +105,7 @@ static int minid = 0;		/* Minimum number of plate IDs for USNO-B1.0 */
 static int minpmqual = 0;	/* Minimum USNO-B1.0 proper motion quality */
 static int rdra = 0;		/* If 1, dra is in ra units, not sky units */
 static int idrun = 0;		/* If 1, 2MASS ID run from inside loop */
+static char voerror[80];	/* Error for Virtual Observatory */
 extern void setminpmqual();
 extern void setminid();
 extern void setrevmsg();
@@ -145,6 +146,7 @@ char **av;
     ranges = NULL;
     keyword = NULL;
     objname = NULL;
+    voerror[0] = (char) 0;
     for (i = 0; i < 5; i++)
 	starcat[i] = NULL;
 
@@ -585,7 +587,7 @@ char **av;
 		if (ac > 1) {
 		    str1 = *(av + 1);
 		    cs = str1[0];
-		    if (strchr ("ademnprs",(int)cs)) {
+		    if (strchr ("ademinprs",(int)cs)) {
 			cs1 = str1[1];
 			av++;
 			ac--;
@@ -605,6 +607,11 @@ char **av;
 		    /* Declination */
 		    case 'd':
 			catsort = SORT_DEC;
+			break;
+
+		    /* ID Number */
+		    case 'i':
+			catsort = SORT_ID;
 			break;
 
 		    /* Magnitude (brightest first) */
@@ -1100,6 +1107,7 @@ double	eqout;		/* Equinox for output coordinates */
     int ndist;
     int distsort;
     int lrv;
+    int nf;
     char tstr[32];
     double flux;
     double pra, pdec;
@@ -1517,7 +1525,7 @@ double	eqout;		/* Equinox for output coordinates */
 				    ns,nmagmax);
 			break;
 
-		    /* Sort found catalog objects in image by right ascension */
+		    /* Sort found catalog objects by right ascension */
 		    case SORT_RA:
 			RASortStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
 				     ns,nmagmax);
@@ -1532,6 +1540,12 @@ double	eqout;		/* Equinox for output coordinates */
 		    /* Sort found catalog objects from brightest to faintest */
 		    case SORT_MAG:
 			MagSortStars(gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
+				     ns,nmagmax,sortmag);
+			break;
+
+		    /* Sort found catalog objects by id number */
+		    case SORT_ID:
+			IDSortStars(gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
 				     ns,nmagmax,sortmag);
 			break;
 		    }
@@ -1657,6 +1671,12 @@ double	eqout;		/* Equinox for output coordinates */
 		    case SORT_MAG:
 			MagSortStars(gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
 				     ns,nmagmax,sortmag);
+			break;
+
+		    /* Sort found catalog objects by ID number */
+		    case SORT_ID:
+			IDSortStars(gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
+				    ns,nmagmax,sortmag);
 			break;
 		    }
 		}
@@ -1851,26 +1871,30 @@ double	eqout;		/* Equinox for output coordinates */
 	    /* Sort catalogued objects, if requested */
 	    if (ns > 1) {
 
-		/* Sort reference stars from closest to furthest */
+		/* Sort found catalog objects from closest to furthest */
 		if (catsort == SORT_DIST)
 		    XSortStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,ns,
 				nmagmax);
 
-		/* Sort star-like objects in image by right ascension */
+		/* Sort found catalog objects by right ascension */
 		else if (catsort == SORT_RA)
 		    RASortStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,ns,
 				 nmagmax);
 
-		/* Sort star-like objects in image by declination */
+		/* Sort found catalog objects by declination */
 		else if (catsort == SORT_DEC)
 		    DecSortStars(gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,ns,
 				 nmagmax);
 
-		/* Sort reference stars from brightest to faintest */
-		else if (catsort == SORT_MAG) {
+		/* Sort found catalog objects from brightest to faintest */
+		else if (catsort == SORT_MAG)
 		    MagSortStars(gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,ns,
 				 nmagmax,sortmag);
-		    }
+
+		/* Sort found catalog objects by ID number */
+		else if (catsort == SORT_ID)
+		    IDSortStars(gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
+				ns,nmagmax,sortmag);
 		}
 
 	    /* Print one line with search center and found star */
@@ -2483,8 +2507,17 @@ double	eqout;		/* Equinox for output coordinates */
             }
 
 	/* Write heading */
-	if (votab)
-	    vothead (refcat,refcatname[icat],mprop,typecol,ns,cra,cdec,drad);
+	if (votab) {
+	    nf = vothead(refcat,refcatname[icat],mprop,typecol,ns,cra,cdec,drad);
+	    if (strlen (voerror) > 0) {
+		printf ("<TR>\n<TD>ERROR: %s</TD>", voerror);
+		for (i = 1; i < nf; i++)
+		    printf ("<TD/>");
+		printf ("\n</TR>/n");
+		vottail ();
+		return (ns);
+		}
+	    }
 
 	else if (ng == 0 && (!tabout || (tabout && !printabhead))) {
 	    if (verbose)
@@ -2696,11 +2729,11 @@ double	eqout;		/* Equinox for output coordinates */
 			else
 			    printf ("catsort	ra\n");
 			break;
-		    case SORT_X:
+		    case SORT_ID:
 			if (wfile)
-			    fprintf (fd, "catsort	x\n");
+			    fprintf (fd, "catsort	id\n");
 			else
-			    printf ("catsort	x\n");
+			    printf ("catsort	id\n");
 			break;
 		    default:
 			break;
@@ -3128,7 +3161,7 @@ double	eqout;		/* Equinox for output coordinates */
 		CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
 
 	    if (votab) {
-		sprintf (headline, "<td>%s</td><td>%s</td><td>%s</td>",
+		sprintf (headline, "<tr>\n<td>%s</td><td>%s</td><td>%s</td>",
 			numstr,rastr,decstr);
 		for (imag = 0; imag < nmagr; imag++) {
 		    sprintf (temp, "<td>%.2f</td>", gm[imag][i]);
@@ -3156,7 +3189,7 @@ double	eqout;		/* Equinox for output coordinates */
 	            sprintf (temp, "<td>%6.1f</td><td>%6.1f</td>", pra, pdec);
 	            strcat (headline, temp);
 		    }
-		sprintf (temp, "<td>%.5f</td>", gdist / 3600.0);
+		sprintf (temp, "<td>%.5f</td>\n</tr>", gdist / 3600.0);
 	        strcat (headline, temp);
 
 		printf ("%s\n", headline);
@@ -3496,7 +3529,7 @@ double	eqout;		/* Equinox for output coordinates */
 	fclose (fd);
 
     return (ns);
-}
+    }
 
 
 /* Get a center and radius for a search area.  If the image center is not
@@ -3771,6 +3804,7 @@ int	ndec;	/* Number of decimal places in output */
 }
 
 
+
 /* Set parameter values from cgi query line as kw=val&kw=val... */
 
 static void
@@ -3787,8 +3821,10 @@ char *qstring;
 	    fprintf (stderr, "SCATCGI: %s is not a parameter.\n", pstring);
 	pstring = parend + 1;
 	}
-    if (scatparm (pstring))
-	fprintf (stderr, "SCATCGI: %s is not a parameter.\n", pstring);
+    if (scatparm (pstring)) {
+	if (!votab)
+	    fprintf (stderr, "SCATCGI: %s is not a parameter.\n", pstring);
+	}
     return;
 }
 
@@ -3891,19 +3927,33 @@ char *parstring;
     else if (!strncasecmp (parname,"sr",3)) {
 	if (strchr (parvalue,':'))
 	    rad0 = 3600.0 * str2dec (parvalue);
-	else
+	else if (isnum (parvalue))
 	    rad0 = 3600.0 * atof (parvalue);
+	else {
+	    sprintf (voerror, "Search radius %s is not a number", parvalue);
+	    return (-1);
+	    }
 	votab = 1;
 	degout0 = 1;
 	}
 
     /* Search center right ascension */
-    else if (!strcasecmp (parname,"ra"))
+    else if (!strcasecmp (parname,"ra")) {
+	if (!isnum (parvalue) && !strchr (parvalue,':')) {
+	    sprintf (voerror, "Right ascension %s is not a number", parvalue);
+	    return (-1);
+	    }
 	ra0 = str2ra (parvalue);
+	}
 
     /* Search center declination */
-    else if (!strcasecmp (parname,"dec"))
+    else if (!strcasecmp (parname,"dec")) {
+	if (!isnum (parvalue) && !strchr (parvalue,':')) {
+	    sprintf (voerror, "Declination %s is not a number", parvalue);
+	    return (-1);
+	    }
 	dec0 = str2dec (parvalue);
+	}
 
     /* Search center coordinate system */
     else if (!strncasecmp (parname,"sys",3)) {
@@ -4067,15 +4117,19 @@ char *parstring;
 	    catsort = SORT_DIST;
 
 	/* Sort by RA */
-	if (!strncasecmp (parvalue,"r",1))
+	else if (!strncasecmp (parvalue,"r",1))
 	    catsort = SORT_RA;
 
 	/* Sort by Dec */
-	if (!strncasecmp (parvalue,"de",2))
+	else if (!strncasecmp (parvalue,"de",2))
 		catsort = SORT_DEC;
 
+	/* Sort by ID */
+	else if (!strncasecmp (parvalue,"id",2))
+		catsort = SORT_ID;
+
 	/* Sort by magnitude */
-	if (!strncasecmp (parvalue,"m",1)) {
+	else if (!strncasecmp (parvalue,"m",1)) {
 	    catsort = SORT_MAG;
 	    if (strlen (parvalue) > 1) {
 		if (isnum (parvalue+1))
@@ -4084,7 +4138,9 @@ char *parstring;
 	    }
 
 	/* No sort */
-	if (!strncasecmp (parvalue,"n",1))
+	else if (!strncasecmp (parvalue,"n",1))
+	    catsort = SORT_NONE;
+	else
 	    catsort = SORT_NONE;
 	}
 
@@ -4494,4 +4550,7 @@ PrintGSClass ()
  * Jan  5 2006	Set output equinox correctly; match epoch to set equinox
  * Jan  6 2006	Print search center in input system as well as output system
  * Jan  6 2006	Precess search center if input and output equinox different
+ * Mar 15 2006	Clean up VOTable code
+ * Mar 17 2006	Add VOTable error reporting
+ * Apr 13 2006	Add sort by ID number
  */

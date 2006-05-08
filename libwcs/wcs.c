@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.c
- *** July 21, 2005
+ *** May 3, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2005
+ *** Copyright (C) 1994-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -918,25 +918,19 @@ double *pc;		/* Rotation matrix, ignored if NULL */
 	}
 
     /* Set CD matrix */
-    if (naxes < 3) {
+    if (naxes > 1) {
 	wcs->cd[0] = pc[0] * wcs->cdelt[0];
 	wcs->cd[1] = pc[1] * wcs->cdelt[1];
-	wcs->cd[2] = pc[2] * wcs->cdelt[0];
-	wcs->cd[3] = pc[3] * wcs->cdelt[1];
+	wcs->cd[2] = pc[naxes] * wcs->cdelt[0];
+	wcs->cd[3] = pc[naxes+1] * wcs->cdelt[1];
 	}
-    else if (naxes == 3) {
+    else {
 	wcs->cd[0] = pc[0] * wcs->cdelt[0];
-	wcs->cd[1] = pc[1] * wcs->cdelt[1];
-	wcs->cd[2] = pc[3] * wcs->cdelt[0];
-	wcs->cd[3] = pc[4] * wcs->cdelt[1];
+	wcs->cd[1] = 0.0;
+	wcs->cd[2] = 0.0;
+	wcs->cd[3] = 1.0;
 	}
-    else if (naxes == 4) {
-	wcs->cd[0] = pc[0] * wcs->cdelt[0];
-	wcs->cd[1] = pc[1] * wcs->cdelt[1];
-	wcs->cd[2] = pc[4] * wcs->cdelt[0];
-	wcs->cd[3] = pc[5] * wcs->cdelt[1];
-	}
-    (void) matinv (naxes, wcs->cd, wcs->dc);
+    (void) matinv (2, wcs->cd, wcs->dc);
     wcs->rotmat = 1;
 
     (void)linset (&wcs->lin);
@@ -2307,7 +2301,7 @@ double  *ypos;           /* y (dec) coordinate (deg) */
     pixcrd[3] = 1.0;
     for (i = 0; i < 4; i++)
 	imgcrd[i] = 0.0;
-    offscl = wcsrev (&wcs->ctype, &wcs->wcsl, pixcrd, &wcs->lin, imgcrd,
+    offscl = wcsrev ((void *)&wcs->ctype, &wcs->wcsl, pixcrd, &wcs->lin, imgcrd,
 		    &wcs->prj, &phi, &theta, wcs->crval, &wcs->cel, wcscrd);
     if (offscl == 0) {
 	*xpos = wcscrd[wcs->wcsl.lng];
@@ -2337,7 +2331,7 @@ double  *ypix;          /* y pixel number  (dec or lat without rotation) */
     *xpix = 0.0;
     *ypix = 0.0;
     if (wcs->wcsl.flag != WCSSET) {
-	if (wcsset (wcs->lin.naxis, &wcs->ctype, &wcs->wcsl) )
+	if (wcsset (wcs->lin.naxis, (void *)&wcs->ctype, &wcs->wcsl) )
 	    return (1);
 	}
 
@@ -2360,7 +2354,7 @@ double  *ypix;          /* y pixel number  (dec or lat without rotation) */
     imgcrd[3] = 1.0;
 
     /* Invoke WCSLIB subroutines for coordinate conversion */
-    offscl = wcsfwd (&wcs->ctype, &wcs->wcsl, wcscrd, wcs->crval, &wcs->cel,
+    offscl = wcsfwd ((void *)&wcs->ctype, &wcs->wcsl, wcscrd, wcs->crval, &wcs->cel,
 		     &phi, &theta, &wcs->prj, imgcrd, &wcs->lin, pixcrd);
 
     if (!offscl) {
@@ -2762,4 +2756,7 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Mar  9 2005	Fix bug in wcsrotset() which set rot > 360 to 360
  * Jun 27 2005	Fix ctype in calls to wcs subroutines
  * Jul 21 2005	Fix bug in wcsrange() at RA ~= 0.0
+ *
+ * Apr 24 2006	Always set inverse CD matrix to 2 dimensions in wcspcset()
+ * May  3 2006	(void *) pointers so arguments match type, from Robert Lupton
  */

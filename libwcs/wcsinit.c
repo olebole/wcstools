@@ -1,8 +1,8 @@
 /*** File libwcs/wcsinit.c
- *** November 9, 2005
+ *** April 25, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2005
+ *** Copyright (C) 1998-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -219,13 +219,13 @@ char	*hstring;	/* character string containing FITS header information
 char	mchar;		/* Suffix character for one of multiple WCS */
 {
     struct WorldCoor *wcs, *depwcs;
-    char ctype1[32], ctype2[32];
+    char ctype1[32], ctype2[32], tstring[32];
     char pvkey1[8],pvkey2[8],pvkey3[8];
     char *hcoeff;		/* pointer to first coeff's in header */
     char decsign;
     double rah,ram,ras, dsign,decd,decm,decs;
     double dec_deg,ra_hours, secpix, ra0, ra1, dec0, dec1, cvel;
-    double cdelt1, cdelt2, cd[4], pc[16];
+    double cdelt1, cdelt2, cd[4], pc[81];
     char keyword[16];
     int ieq, i, naxes, cd11p, cd12p, cd21p, cd22p;
     int ilat;	/* coordinate for latitude or declination */
@@ -237,6 +237,8 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     char wcsname[64];	/* Name of WCS depended on by current WCS */
     double mjd;
     double rot;
+    double ut;
+    int j, nax;
     int twod;
     int iszpx = 0;
     extern int tnxinit();
@@ -301,11 +303,30 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	}
     wcs->nypix = 0;
     hgetr8 (hstring, "NAXIS2", &wcs->nypix);
+
+    /* Reset number of axes to only those with dimension greater than one */
+    nax = 0;
+    for (i = 0; i < naxes; i++) {
+	strcpy (keyword, "NAXIS");
+	sprintf (temp, "%d", i+1);
+	strcat (keyword, temp);
+	if (!hgeti4 (hstring, keyword, &j))
+	    fprintf (stderr,"WCSINIT: Missing keyword %s assumed 1\n",keyword);
+	if (j > 1) nax = nax + 1;
+	}
+    naxes = nax;
+    wcs->naxes = nax;
+    wcs->naxis = nax;
+
     hgets (hstring, "INSTRUME", 16, wcs->instrument);
     hgeti4 (hstring, "DETECTOR", &wcs->detector);
     wcs->wcsproj = getdefwcs();
+
+    /* Initialize rotation matrices */
     for (i = 0; i < 16; i++) wcs->pc[i] = 0.0;
+    for (i = 0; i < 16; i++) pc[i] = 0.0;
     for (i = 0; i < naxes; i++) wcs->pc[(i*naxes)+i] = 1.0;
+    for (i = 0; i < naxes; i++) pc[(i*naxes)+i] = 1.0;
 
     /* If the current world coordinate system depends on another, set it now */
     if (hgetsc (hstring, "WCSDEP",mchar, 63, wcsname)) {
@@ -755,6 +776,27 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	    wcs->ndec = 5;
 	    }
 
+	/* Epoch of image (from observation date, if possible) */
+	if (hgetr8 (hstring, "MJD-OBS", &mjd))
+	    wcs->epoch = 1900.0 + (mjd - 15019.81352) / 365.242198781;
+	else if (!hgetdate (hstring,"DATE-OBS",&wcs->epoch)) {
+	    if (!hgetdate (hstring,"DATE",&wcs->epoch)) {
+		if (!hgetr8 (hstring,"EPOCH",&wcs->epoch))
+		    wcs->epoch = wcs->equinox;
+		}
+	    }
+
+	/* Add time of day if not part of DATE-OBS string */
+	else {
+	    hgets (hstring,"DATE-OBS",32,tstring);
+	    if (!strchr (tstring,'T')) {
+		if (hgetr8 (hstring, "UT",&ut))
+		    wcs->epoch = wcs->epoch + (ut / (24.0 * 365.242198781));
+		else if (hgetr8 (hstring, "UTMID",&ut))
+		    wcs->epoch = wcs->epoch + (ut / (24.0 * 365.242198781));
+		}
+	    }
+
 	wcs->wcson = 1;
 	}
 
@@ -981,14 +1023,6 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	wcs->cel.ref[3] = 999.0;
 	hgetr8 (hstring,"LATPOLE",&wcs->cel.ref[3]);
 
-	/* Coordinate reference frame and equinox */
-	(void) wcstype (wcs, "RA---TAN", "DEC--TAN");
-	wcs->coorflip = 0;
-	wcseq (hstring,wcs);
-	wcsioset (wcs);
-	wcs->degout = 0;
-	wcs->ndec = 3;
-
 	/* Epoch of image (from observation date, if possible) */
 	if (hgetr8 (hstring, "MJD-OBS", &mjd))
 	    wcs->epoch = 1900.0 + (mjd - 15019.81352) / 365.242198781;
@@ -998,6 +1032,25 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 		    wcs->epoch = wcs->equinox;
 		}
 	    }
+
+	/* Add time of day if not part of DATE-OBS string */
+	else {
+	    hgets (hstring,"DATE-OBS",32,tstring);
+	    if (!strchr (tstring,'T')) {
+		if (hgetr8 (hstring, "UT",&ut))
+		    wcs->epoch = wcs->epoch + (ut / (24.0 * 365.242198781));
+		else if (hgetr8 (hstring, "UTMID",&ut))
+		    wcs->epoch = wcs->epoch + (ut / (24.0 * 365.242198781));
+		}
+	    }
+
+	/* Coordinate reference frame and equinox */
+	(void) wcstype (wcs, "RA---TAN", "DEC--TAN");
+	wcs->coorflip = 0;
+	wcseq (hstring,wcs);
+	wcsioset (wcs);
+	wcs->degout = 0;
+	wcs->ndec = 3;
 	wcs->wcson = 1;
 	}
 
@@ -1074,6 +1127,8 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     int eqhead = 0;
     char systring[32], eqstring[32];
     char radeckey[16], eqkey[16];
+    char tstring[32];
+    double ut;
 
     /* Set equinox from EQUINOX, EPOCH, or RADECSYS; default to 2000 */
     systring[0] = 0;
@@ -1156,6 +1211,17 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	if (!hgetdate (hstring,"DATE",&wcs->epoch)) {
 	    if (!hgetr8 (hstring,"EPOCH",&wcs->epoch))
 		wcs->epoch = wcs->equinox;
+	    }
+	}
+
+	/* Add time of day if not part of DATE-OBS string */
+    else {
+	hgets (hstring,"DATE-OBS",32,tstring);
+	if (!strchr (tstring,'T')) {
+	    if (hgetr8 (hstring, "UT",&ut))
+		wcs->epoch = wcs->epoch + (ut / (24.0 * 365.242198781));
+	    else if (hgetr8 (hstring, "UTMID",&ut))
+		wcs->epoch = wcs->epoch + (ut / (24.0 * 365.242198781));
 	    }
 	}
     if (wcs->epoch == 0.0)
@@ -1294,4 +1360,8 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  *
  * Jun 22 2005	Drop declaration of variable wcserrmsg which is not used
  * Nov  9 2005	Use CROTA1 if CTYPE1 is LAT/DEC, CROTA2 if CTYPE2 is LAT/DEC
+ *
+ * Mar  9 2006	Get Epoch of observation from MJD-OBS or DATE-OBS/UT unless DSS
+ * Apr 24 2006	Initialize rotation matrices
+ * Apr 25 2006	Ignore axes with dimension of one
  */

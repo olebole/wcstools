@@ -1,8 +1,8 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** October 14, 2004
+ *** February 23, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2005
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -48,6 +48,7 @@ struct Keyword {
 /* FITS file access subroutines in fitsfile.c */
 extern int fitsropen();
 extern char *fitsrhead();
+extern char *fitsrtail();
 extern char *fitsrimage();
 extern char *fitsrfull();
 extern char *fitsrsect();
@@ -112,6 +113,9 @@ extern int isimlist();
 extern int isimlistd();
 extern int isfilelist();
 extern int isfile();
+extern int istiff();
+extern int isjpeg();
+extern int isgif();
 extern int first_token();
 
 /* Subroutines for translating dates and times in dateutil.c */
@@ -300,4 +304,7 @@ void compnut();	/* Compute nutation in longitude and obliquity and mean obliquit
  * Aug 27 2004	Add fitsheadsize()
  *
  * Oct 14 2005	Add tsd2fd(), tsd2dt(), epj2ep(), epb2ep(), tsi2dt()
+ *
+ * Feb 23 2006	Add fitsrtail() to read appended FITS header
+ * Feb 23 2006	Add istiff(), isjpeg(), isgif() to check TIFF, JPEG, GIF files
  */

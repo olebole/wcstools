@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** January 6, 2006
+ *** April 12, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -122,6 +122,7 @@ int ctgrnum();		/* Read sources from SAO TDC ASCII format catalog */
 int actrnum();		/* Read sources from USNO ACT Catalog */
 int ty2rnum();		/* Read sources from Tycho 2 Catalog */
 int webrnum();		/* Read sources from catalog on the World Wide Web */
+int tmcid();		/* Return 1 if string is 2MASS ID, else 0 */
 
 /* Subroutines for extracting sources from catalogs by date range */
 int ctgrdate();		/* Read sources from SAO TDC ASCII format catalog */
@@ -142,6 +143,7 @@ int ty2bin();		/* Read sources from Tycho 2 Catalog */
 char *sdssc2t();	/* Convert SDSS buffer from comma- to tab-separated */
 void setgsclass();	/* Set GSC object class */
 void setuplate();	/* Set USNO catalog plate number to search */
+void setdateform();	/* Set output date format */
 int getuplate();	/* Get USNO catalog plate number to search */
 void settabkey();	/* Set tab table keyword to read for object */
 int ctgstar();		/* Read one star entry from ASCII catalog, 0 if OK */
@@ -160,7 +162,8 @@ void setlimdeg();	/* Limit output in degrees (1) or hh:mm:ss dd:mm:ss (0) */
 #define SORT_DEC	4	/* Sort output by declination */
 #define SORT_X		5	/* Sort output by image X coordinate */
 #define SORT_Y		6	/* Sort output by image Y coordinate */
-#define SORT_MERGE	7	/* Merge close catalog objects */
+#define SORT_ID		7	/* Merge close catalog objects */
+#define SORT_MERGE	8	/* Merge close catalog objects */
 void XSortStars();
 void YSortStars();
 void RASortStars();
@@ -396,7 +399,7 @@ void polfit();		/* Fit polynomial coefficients */
 double polcomp();	/* Evaluate polynomial from polfit coefficients */
 
 /* Subroutines for VOTable output */
-void vothead();		/* Print heading for VOTable SCAT output */
+int vothead();		/* Print heading for VOTable SCAT output */
 void vottail();		/* Terminate VOTable SCAT output */
 
 /* Subroutines for version/date string */
@@ -516,4 +519,8 @@ char *getrevmsg();	/* Return version/date string */
  * Aug  5 2005	Add Tycho-2 and 2MASS PSC with magnitude errors
  *
  * Jan  6 2006	Add CatRad() subroutine
+ * Mar 17 2006	Make vothead() int as it now returns the number of fields
+ * Apr  3 2006	Add tmcid() to check for 2MASS identifiers
+ * Apr  3 2006	Add setdateform() to set output date format
+ * Apr 12 2006	Add SORT_ID for scat to sort catalog entries by ID number
  */

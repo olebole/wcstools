@@ -1,5 +1,5 @@
 /* File crlf.c
- * February 10, 1998
+ * April 3, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -14,6 +14,7 @@ static int verbose = 0;         /* verbose/debugging flag */
 static void usage();
 static void CRFix();
 
+int
 main (ac, av)
 int ac;
 char **av;
@@ -86,3 +87,7 @@ char *name;
 	}
    return;
 }
+/* Feb 10 1998	New program
+ *
+ * Apr  3 2005	Declare main to be int
+ */

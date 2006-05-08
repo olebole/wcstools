@@ -1,8 +1,8 @@
 /*** File libwcs/catutil.c
- *** August 16, 2005
+ *** April 7, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2005
+ *** Copyright (C) 1998-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -2549,7 +2549,7 @@ char *value;      /* String (returned) */
     char keyword[81];
     char *pval, *str, *pkey, *pv;
     char squot[2], dquot[2], lbracket[2], rbracket[2], comma[2];
-    char *lastval, *rval, *brack1, *brack2, *lastring;
+    char *lastval, *rval, *brack1, *brack2, *lastring, *iquot, *ival;
     int ipar, i, lkey;
 
     squot[0] = (char) 39;
@@ -2622,6 +2622,24 @@ char *value;      /* String (returned) */
 
     /* Drop leading spaces */
     while (*pval == ' ') pval++;
+
+    /* Pad quoted material with _; drop leading and trailing quotes */
+    iquot = NULL;
+    if (*pval == squot[0]) {
+	pval++;
+	iquot = strsrch (pval, squot);
+	}
+    if (*pval == dquot[0]) {
+	pval++;
+	iquot = strsrch (pval, dquot);
+	}
+    if (iquot != NULL) {
+	*iquot = (char) 0;
+	for (ival = pval; ival < iquot; ival++) {
+	    if (*ival == ' ')
+		*ival = '_';
+	    }
+	}
 
     /* If keyword has brackets, figure out which token to extract */
     if (brack1 != NULL) {
@@ -2951,7 +2969,7 @@ double	*dec;		/* Declination (returned) */
     return (1);
 }
 
-void
+int
 vothead (refcat, refcatname, mprop, typecol, ns, cra, cdec, drad)
 
 int	refcat;		/* Catalog code */
@@ -2965,16 +2983,18 @@ double	drad;		/* Radius to search in degrees */
 
 {
     char *catalog = CatName (refcat, refcatname);
+    int nf = 0;
 
     printf ("<!DOCTYPE VOTABLE SYSTEM \"http://us-vo.org/xml/VOTable.dtd\">\n");
-    printf ("<VOTABLE version=\"v1.0\">\n");
+    printf ("<VOTABLE version=\"v1.1\" xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\"\n");
+    printf ("xsi:noNamespaceSchemaLocation=\"http://www.ivoa.net/xml/VOTable/VOTable/v1.1\">\n");
     printf (" <DESCRIPTION>SAO/TDC %s Cone Search Response</DESCRIPTION>\n", catalog);
     printf ("  <DEFINITIONS>\n");
     printf ("   <COOSYS  ID=\"J2000\" equinox=\"2000.0\" epoch=\"2000.0\" system=\"ICRS\" >\n");
     printf ("  </COOSYS>\n");
     printf ("  </DEFINITIONS>\n");
     printf ("  <RESOURCE>\n");
-    printf ("   <TABLE>\n");
+    printf ("   <TABLE name=\"results\">\n");
     printf ("    <DESCRIPTION>\n");
     printf ("     %d objects within %.6f degrees of ra=%010.6f dec=%09.6f\n",
 	    ns, drad, cra, cdec);
@@ -3018,18 +3038,21 @@ double	drad;		/* Radius to search in degrees */
 	printf ("<FIELD ucd=\"INST_PLATE_NUMBER\" datatype=\"int\" name=\"PlateID\">\n");
 	printf ("  <DESCRIPTION>USNO Plate ID of star</DESCRIPTION>\n");
 	printf ("</FIELD>\n");
-	}
+ nf = 7;
+ }
     else if (refcat == TYCHO2) {
 	printf ("<FIELD name=\"BTmag\" ucd=\"PHOT_TYCHO_B\" datatype=\"float\" unit=\"mag\">\n");
 	printf ("  <DESCRIPTION> Tycho-2 BT magnitude </DESCRIPTION>\n");
 	printf ("</FIELD>\n");
 	printf ("<FIELD name=\"VTmag\" ucd=\"PHOT_TYCHO_V\" datatype=\"float\" unit=\"mag\">\n");
 	printf ("  <DESCRIPTION> Tycho-2 VT magnitude </DESCRIPTION>\n");
+ nf = 8;
 	}
     else if (refcat == GSC || refcat == GSCACT) {
 	printf ("<FIELD name=\"Vmag\" ucd=\"PHOT_GSC_V\" datatype=\"float\" unit=\"mag\">\n");
 	printf ("  <DESCRIPTION> GSC V magnitude </DESCRIPTION>\n");
 	printf ("</FIELD>\n");
+ nf = 8;
 	}
     else if (refcat == GSC2) {
 	}
@@ -3043,16 +3066,19 @@ double	drad;		/* Radius to search in degrees */
 	printf ("<FIELD name=\"Kmag\" ucd=\"PHOT_MAG_K\" datatype=\"float\" unit=\"mag\">\n");
 	printf ("  <DESCRIPTION> Johnson K magnitude </DESCRIPTION>\n");
 	printf ("</FIELD>\n");
+ nf = 7;
 	}
     else if (refcat == SAO) {
 	printf ("<FIELD name=\"Vmag\" ucd=\"PHOT_MAG_V\" datatype=\"float\" unit=\"mag\">\n");
 	printf ("  <DESCRIPTION> SAO Catalog V magnitude (7)</DESCRIPTION>\n");
 	printf ("</FIELD>\n");
+ nf = 8;
 	} 
     else if (refcat == PPM) {
 	printf ("<FIELD name=\"Vmag\" ucd=\"PHOT_MAG_V\" datatype=\"float\" unit=\"mag\">\n");
 	printf ("  <DESCRIPTION> PPM Catalog V magnitude (7)</DESCRIPTION>\n");
 	printf ("</FIELD>\n");
+ nf = 8;
 	} 
     if (typecol == 1) {
 	printf ("<FIELD ucd=\"SPECT_TYPE_GENERAL\" name=\"Spectral Type\">\n");
@@ -3063,6 +3089,8 @@ double	drad;		/* Radius to search in degrees */
     printf ("  <DESCRIPTION>Radial distance from requested position</DESCRIPTION>\n");
     printf ("</FIELD>\n");
     printf ("<DATA> <TABLEDATA>\n");
+
+    return (nf);
 }
 
 
@@ -3073,6 +3101,7 @@ vottail ()
     printf ("      </TABLE>\n");
     printf ("    </RESOURCE>\n");
     printf ("</VOTABLE>\n");
+    return;
 }
 
 /* Mar  2 1998	Make number and second magnitude optional
@@ -3197,4 +3226,8 @@ vottail ()
  * Aug 11 2005	Add setdateform() so date can be formatted anywhere
  * Aug 11 2005	Add full FITS ISO date as EP_ISO
  * Aug 16 2005	Make all string matches case-independent
+ *
+ * Mar 15 2006	Clean up VOTable code
+ * Mar 17 2006	Return number of fields from vothead()
+ * Apr  7 2006	Keep quoted character strings together as a single token
  */

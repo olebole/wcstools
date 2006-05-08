@@ -1,8 +1,8 @@
 /*** File libwcs/tmcread.c
- *** August 5, 2005
+ *** April 3, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2005
+ *** Copyright (C) 2001-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -912,6 +912,7 @@ double zmax[50]={00.000, 01.000, 02.000, 03.000, 04.000, 05.000, 05.500,
 static int
 tmcreg (refcat, ra1, ra2, dec1, dec2, nrmax, regions, verbose)
 
+int	refcat;		/* Code for catalog file from wcscat.h */
 double	ra1, ra2;	/* Right ascension limits in degrees */
 double	dec1, dec2; 	/* Declination limits in degrees */
 int	nrmax;		/* Maximum number of regions to find */

@@ -1,8 +1,8 @@
 /*** File lwcs.h
- *** October 16, 2001
+ *** April 25, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1999-2002
+ *** Copyright (C) 1999-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -33,6 +33,8 @@
 #define	MAXWALK		20	/* Farthest distance to walk from seed */
 #define	BURNEDOUT	0	/* Clamp pixels brighter than this, if > 0 */
 #define NITERATE	5	/* Number of iterations for sigma clipping */
+#define RNOISE	 	50	/* Mean noise is from center +- this many pixels */
+
 #define STARSIGMA	5.0	/* Stars must be this many sigmas above mean */
 #define BORDER		10	/* Ignore this much of the edge */
 #define MAXRAD		20	/* Maximum radius for a star */
@@ -54,11 +56,16 @@
 #define PIXDIFF		10	/* +- this many pixels is a match */
 #define PSCALE		0	/* Plate scale in arcsec/pixel */
 				/* (if nonzero, this overrides image header) */
+#define NXYDEC		2	/* Number of decimal places in image coords */
 
 #define MAXCAT		100	/* Max reference stars to keep in scat or imcat */
 
 /* Jun 11 1999	Set BURNEDOUT to 0 so it is ignored
  *
  * Feb 15 2000	Drop MAXREF; add MAXCAT for imcat and scat; MAXSTARS from 25 to 50
+ *
  * Oct 31 2001	Add MINMATCH and set default value to 50
+ *
+ * Mar 30 2006	Add NXYDEC and set default to 2 (constant value was 1)
+ * Apr 25 2006	Add RNOISE and set default to previous constant value of 50
  */

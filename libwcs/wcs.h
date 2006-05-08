@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.h
- *** January 5, 2006
+ *** April 21, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2006
@@ -75,10 +75,10 @@ struct WorldCoor {
   double	zpix;		/* Z (face) coordinate (pixels) */
   double	xpos;		/* X (RA) coordinate (deg) */
   double	ypos;		/* Y (dec) coordinate (deg) */
-  double	crpix[4];	/* Values of CRPIXn keywords */
-  double	crval[4];	/* Values of CRVALn keywords */
-  double	cdelt[4];	/* Values of CDELTn keywords */
-  double	pc[16];		/* Values of PCiiijjj keywords */
+  double	crpix[9];	/* Values of CRPIXn keywords */
+  double	crval[9];	/* Values of CRVALn keywords */
+  double	cdelt[9];	/* Values of CDELTn keywords */
+  double	pc[81];		/* Values of PCiiijjj keywords */
   double	projp[10];	/* Constants for various projections */
   double	longpole;	/* Longitude of North Pole in degrees */
   double	latpole;	/* Latitude of North Pole in degrees */
@@ -112,14 +112,14 @@ struct WorldCoor {
   int		linmode;	/* 0=system only, 1=units, 2=system+units */
   int		detector;	/* Instrument detector number */
   char		instrument[32];	/* Instrument name */
-  char		ctype[4][9];	/* Values of CTYPEn keywords */
-  char		c1type[8];	/*  1st coordinate type code:
+  char		ctype[9][9];	/* Values of CTYPEn keywords */
+  char		c1type[9];	/*  1st coordinate type code:
 					RA--, GLON, ELON */
-  char		c2type[8];	/*  2nd coordinate type code:
+  char		c2type[9];	/*  2nd coordinate type code:
 					DEC-, GLAT, ELAT */
-  char		ptype[8];	/*  projection type code:
+  char		ptype[9];	/*  projection type code:
 				    SIN, TAN, ARC, NCP, GLS, MER, AIT, etc */
-  char		units[4][32];	/* Units if LINEAR */
+  char		units[9][32];	/* Units if LINEAR */
   char		radecsys[32];	/* Reference frame: FK4, FK4-NO-E, FK5, GAPPT*/
   char		radecout[32];	/* Output reference frame: FK4,FK5,GAL,ECL */
   char		radecin[32];	/* Input reference frame: FK4,FK5,GAL,ECL */
@@ -693,4 +693,6 @@ void foc2pix();		/*  focal plane coordinates -> pixel coordinates */
  * Nov  1 2005	Add WCS_ICRS
  *
  * Jan  5 2006	Add secrad()
+ * Apr 21 2006	Increase maximum number of axes from 4 to 8
+ * Apr 24 2006	Increase maximum number of axes to 9
  */

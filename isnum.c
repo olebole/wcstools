@@ -1,5 +1,5 @@
 /* File isnum.c
- * April 11, 2005
+ * April 3, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  *
@@ -12,6 +12,7 @@
 #include "libwcs/fitshead.h"
 
 
+int
 main (ac, av)
 int ac;
 char **av;
@@ -39,4 +40,6 @@ char **av;
 /* Nov  7 2001	New program
  *
  * Apr 11 2005	Print version
+ *
+ * Apr  3 2006	Declare main to be int
  */

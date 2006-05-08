@@ -1,5 +1,5 @@
 /* File imcat.c
- * August 5, 2005
+ * April 12, 2006
  * By Doug Mink
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -61,6 +61,9 @@ static char *progname;		/* Name of program as executed */
 static int minid = 0;		/* Minimum number of plate IDs for USNO-B1.0 */
 static int minpmqual = 0;	/* Minimum USNO-B1.0 proper motion quality */
 static int printepoch = 0;	/* 1 to print epoch of entry */
+static int region_radius[5];	/* Min Radius for SAOimage region file output */
+static int region_radius1[5];	/* Max Radius for SAOimage region file output */
+static int region_char[5];	/* Character for SAOimage region file output */
 
 extern int getminpmqual();
 extern int getminid();
@@ -90,9 +93,7 @@ char **av;
     double x, y;
     char *refcatname[5];	/* reference catalog name */
     int ncat = 0;
-    int region_radius[5];	/* Flag for SAOimage region file output */
     int rcat = 0;
-    int region_char[5];		/* Character for SAOimage region file output */
     int region_pixel;
     char *refcatn;
     int ifile, nfile;
@@ -109,6 +110,7 @@ char **av;
 
     for (i = 0; i < 5; i++) {
 	region_radius[i] = 0;
+	region_radius1[i] = 0;
 	region_char[i] = 0;
 	obname[i] = 0;
 	}
@@ -358,8 +360,10 @@ char **av;
 			    region_char[scat] = WCS_CIRCLE;
 			}
 		    region_char[scat] = region_char[scat] + region_pixel;
-		    if (region_radius[scat] == 0)
+		    if (region_radius[scat] == 0) {
 			region_radius[scat] = -1;
+			region_radius1[scat] = -1;
+			}
 		    scat++;
 		    wfile++;
 		    ac--;
@@ -368,9 +372,19 @@ char **av;
 		case 'r':	/* Output region file with shape radius for SAOimage */
 		    if (ac < 2)
 			PrintUsage (str);
-		    region_radius[rcat] = atoi (*++av);
-		    if (region_radius[rcat] == 0)
+		    if ((ccom = strchr (*++av, ',')) != NULL) {
+			*ccom = (char) 0;
+			region_radius[rcat] = atoi (*av);
+			region_radius1[rcat] = atoi (ccom+1);
+			}
+		    else {
+			region_radius[rcat] = atoi (*av);
+			region_radius1[rcat] = region_radius[rcat];
+			}
+		    if (region_radius[rcat] == 0) {
 			region_radius[rcat] = -1;
+			region_radius1[rcat] = -1;
+			}
 		    rcat++;
 		    wfile++;
 		    ac--;
@@ -381,7 +395,7 @@ char **av;
 		    if (ac > 1) {
 			str1 = *(av + 1);
 			cs = str1[0];
-			if (strchr ("dmnrxy",(int)cs)) {
+			if (strchr ("dimnrxy",(int)cs)) {
 			    cs1 = str1[1];
 			    av++;
 			    ac--;
@@ -411,6 +425,10 @@ char **av;
 			/* No sorting */
 			else if (cs == 'n')
 			    catsort = SORT_NONE;
+
+			/* ID number */
+			else if (cs == 'i')
+			    catsort = SORT_ID;
 
 			/* X coordinate */
 			else if (cs == 'x')
@@ -522,7 +540,7 @@ char **av;
 	    if (*lastchar < 32) *lastchar = 0;
 	    if (debug)
 		printf ("%s:\n", filename);
-	    ListCat (progname,filename,ncat,refcatname,region_radius,region_char);
+	    ListCat (progname,filename,ncat,refcatname);
 	    }
 	fclose (flist);
 	}
@@ -532,7 +550,7 @@ char **av;
 	for (ifile = 0; ifile < nfile; ifile++) {
 	    if ( verbose)
 		printf ("%s:\n", fn[ifile]);
-	    ListCat (progname,fn[ifile], ncat, refcatname, region_radius, region_char);
+	    ListCat (progname,fn[ifile], ncat, refcatname);
 	    if (verbose)
 		printf ("\n");
 	    }
@@ -598,8 +616,8 @@ char	*command;
     fprintf (stderr,"  -n num: Number of brightest stars to print \n");
     fprintf (stderr,"  -o name: Set HST Guide Star object class to print \n");
     fprintf (stderr,"  -p num: Initial plate scale in arcsec per pixel (default 0)\n");
-    fprintf (stderr,"  -q code: Write SAOimage region file of this shape (filename.cat)\n");
-    fprintf (stderr,"  -r num: Write SAOimage region file of this radius (filename.cat)\n");
+    fprintf (stderr,"  -q osdv+x[p]: Write SAOimage region file of this shape (filename.cat)\n");
+    fprintf (stderr,"  -r num[,num]: Write SAOimage region file of this radius [range] (filename.cat)\n");
     fprintf (stderr,"  -s d|mx|n|r|x|y: Sort by r=RA d=Dec mx=Mag#x n=none x=X y=Y\n");
     fprintf (stderr,"  -t: Tab table to standard output as well as file\n");
     fprintf (stderr,"  -u num: USNO catalog single plate number to accept\n");
@@ -615,14 +633,12 @@ char	*command;
 
 
 static void
-ListCat (progname, filename, ncat, refcatname, region_radius, region_char)
+ListCat (progname, filename, ncat, refcatname)
 
 char	*progname;	/* Name of program being executed */
 char	*filename;	/* FITS or IRAF file filename */
 int	ncat;		/* Number oc catalogs to search */
 char	**refcatname;	/* reference catalog name */
-int	*region_radius;	/* Flag for SAOimage region file output */
-int	*region_char;	/* Character for SAOimage region file output */
 
 {
     char *header;	/* FITS image header */
@@ -929,6 +945,13 @@ int	*region_char;	/* Character for SAOimage region file output */
 	    gx[i] = 0.0;
 	    gy[i] = 0.0;
 	    }
+	if (debug) {
+	    CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
+	    ra2str (rastr, 32, gra[i], 3);
+	    dec2str (decstr, 32, gdec[i], 2);
+	    fprintf (stderr, "%s	%s	%s	%5.2f	%5.2f	%8.2f	%8.2f\n",
+		     numstr,rastr,decstr,gm[0][i],gm[1][i],gx[i],gy[i]);
+	    }
 	}
 
     /* Check to see whether gc is set at all */
@@ -997,6 +1020,11 @@ int	*region_char;	/* Character for SAOimage region file output */
 	    YSortStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,nbg,
 			 nmagmax);
 
+	/* Sort star-like objects in image by ID number */
+	else if (catsort == SORT_ID)
+	    IDSortStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,nbg,
+			 nmagmax);
+
 	/* Sort star-like objects in image by right ascenbgion */
 	else if (catsort == SORT_RA)
 	    RASortStars (gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,nbg,
@@ -1051,7 +1079,7 @@ int	*region_char;	/* Character for SAOimage region file output */
 
     /* Write region file for SAOimage overplotting */
     if (region_radius[0]) {
-	double x, y, ddec, rmax, min_mag, max_mag, magscale;
+	double x, y, ddec, rmax, min_mag, max_mag, min_rad, max_rad, rscale;
 	int radius, ix, iy;
 	char snum[32], rstr[16];
 	if (region_radius[icat] == 0) {
@@ -1074,24 +1102,27 @@ int	*region_char;	/* Character for SAOimage region file output */
 	    }
 	fprintf (fd, "# %s\n", title);
 	ddec = (double)region_radius[icat] / 3600.0;
-	if (region_radius[icat] < 0) {
+	if (region_radius1[icat] != region_radius[icat]) {
 	    max_mag = gm[magsort][0];
 	    min_mag = gm[magsort][0];
 	    for (i = 0; i < nbg; i++) {
 		if (gm[magsort][i] > max_mag) max_mag = gm[magsort][i];
 		if (gm[magsort][i] < min_mag) min_mag = gm[magsort][i];
 		}
-	    if (max_mag == min_mag)
-		rmax = 0;
+	    if (max_mag == min_mag) {
+		min_rad = region_radius[icat];
+		rscale = 0;
+		}
 	    else {
-		rmax = (wcs->nxpix + wcs->nypix) / 50;
-		if (rmax < 10)
-		    rmax = 5;
-		else
-		    rmax = rmax - 5;
-		magscale = max_mag - min_mag;
+		min_rad = region_radius[icat];
+		max_rad = region_radius1[icat];
+		rscale = (max_rad - min_rad) / (max_mag - min_mag);
+		if (rscale < 0)
+		    rscale = -rscale;
 		}
 	    }
+	else
+	    rscale = 0;
 	if (region_char[icat] == 0) {
 	    if (icat > 0)
 		region_char[icat] = region_char[icat - 1] + 1;
@@ -1123,7 +1154,9 @@ int	*region_char;	/* Character for SAOimage region file output */
 
 	for (i = 0; i < nbg; i++) {
 	    if (gx[i] > 0.0 && gy[i] > 0.0) {
-		if (region_radius[icat] > 0) {
+		if (rscale > 0)
+		    radius = (int) ((max_mag - gm[magsort][i]) * rscale);
+		else if (region_radius[icat] > 0) {
 		    if (region_char[icat] > 10)
 			radius = region_radius[icat];
 		    else {
@@ -1132,10 +1165,8 @@ int	*region_char;	/* Character for SAOimage region file output */
 					      (y-gy[i])*(y-gy[i])) + 0.5);
 			}
 		    }
-		else if (rmax == 0)
-		    radius = 20;
 		else
-		    radius = 5 + (int) (rmax * (max_mag - gm[magsort][i]) / magscale);
+		    radius = 20;
 		ix = (int)(gx[i] + 0.5);
 		iy = (int)(gy[i] + 0.5);
 		printobj = 0;
@@ -1716,10 +1747,10 @@ int	*region_char;	/* Character for SAOimage region file output */
 			numstr,rastr,decstr,gm[0][i],isp);
 		else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
 		    sprintf (headline,"%s %s %s %6.2f %6.2f",
-			     numstr,rastr,decstr,gm[0][i],gm[1][i],isp);
+			     numstr,rastr,decstr,gm[0][i],gm[1][i]);
 		else if (refcat==TYCHO2E)
 		    sprintf (headline,"%s %s %s %6.2f %6.2f %5.2f %5.2f",
-			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],isp);
+			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
 		else {
 		    sprintf (headline,"%s %s %s",
 			     numstr,rastr,decstr);
@@ -2069,4 +2100,7 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  *
  * Apr  4 2005	Exit with error message if no catalog is specified
  * Aug  5 2005	Add magnitude error option to 2MASS PSC and Tycho2
+ *
+ * Feb 23 2006	Add second radius for magnitude-scaled star plots
+ * Apr 12 2006	Add sort by ID number
  */

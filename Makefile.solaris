@@ -12,8 +12,8 @@ BIN = bin
 all:	cphead delwcs delhead edhead fixpix gethead i2f imcat imhead immatch \
 	imrot imsize imstar imwcs scat sethead addpix getpix setpix sky2xy \
 	keyhead skycoor subpix xy2sky wcshead conpix gettab newfits getfits \
-	imstack imextract sumpix remap getcol getdate fileroot filename filext \
-	char2sp sp2char crlf isnum isrange simpos
+	imstack imextract sumpix remap getcol getdate imfill imsmooth imresize \
+	fileroot filename filext char2sp sp2char crlf isnum isrange simpos
 
 addpix: addpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/addpix addpix.c $(LIBS)
@@ -81,6 +81,15 @@ i2f: i2f.c $(LIBWCS) libwcs/fitsfile.h
 imcat: imcat.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/imcat imcat.c $(CATLIBS)
 
+imfill: imfill.c $(LIBWCS) libwcs/fitsfile.h
+	$(CC) $(CFLAGS) -o $(BIN)/imfill imfill.c $(LIBS)
+
+imresize: imresize.c $(LIBWCS) libwcs/fitsfile.h
+	$(CC) $(CFLAGS) -o $(BIN)/imresize imresize.c $(LIBS)
+
+imsmooth: imsmooth.c $(LIBWCS) libwcs/fitsfile.h
+	$(CC) $(CFLAGS) -o $(BIN)/imsmooth imsmooth.c $(LIBS)
+
 imhead: imhead.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/imhead imhead.c $(LIBS)
 
@@ -135,9 +144,6 @@ sethead: sethead.c $(LIBWCS) libwcs/fitsfile.h
 setpix: setpix.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/setpix setpix.c $(CATLIBS)
 
-simpos: simpos.c libwcs/libwcs.a
-	$(CC) $(CFLAGS) -o $(BIN)/simpos simpos.c $(CATLIBS)
-
 sky2xy: sky2xy.c $(LIBWCS) libwcs/wcs.h libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/sky2xy sky2xy.c $(LIBS)
 
@@ -158,6 +164,9 @@ wcshead: wcshead.c $(LIBWCS) libwcs/fitsfile.h
 
 xy2sky: xy2sky.c $(LIBWCS) libwcs/wcs.h libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/xy2sky xy2sky.c $(CATLIBS)
+
+simpos: simpos.c libwcs/libwcs.a
+	$(CC) $(CFLAGS) -o $(BIN)/simpos simpos.c $(CATLIBS)
 
 $(LIBWCS): libwcs/*.c libwcs/*.h
 	cd libwcs; make

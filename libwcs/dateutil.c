@@ -1,8 +1,8 @@
 /*** File libwcs/dateutil.c
- *** March 24, 2004
+ *** May 3, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1999-2004
+ *** Copyright (C) 1999-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -2562,7 +2562,6 @@ tsd2dt (tsec)
 double	tsec;	/* Seconds since start of day */
 {
     double date, time;
-    char *thms, *fdate;
 
     ts2dt (tsec, &date, &time);
     return (time);
@@ -4045,4 +4044,6 @@ double	dnum, dm;
  * Mar 24 2004	If ndec > 0, add UT to FITS date even if it is 0:00:00
  *
  * Oct 14 2005	Add tsd2fd() and tsd2dt()
+ *
+ * May  3 2006	Drop declaration of unused variables
  */
