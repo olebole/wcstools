@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** April 25, 2006
+ *** June 19, 2006
  *** By Doug Mink, after Elwood Downey
  *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -609,7 +609,8 @@ double	*bp;
 
     /* walk towards any brighter pixel */
     for (;;) {
-	int newx, newy;
+	int newx = 0;
+	int newy = 0;
 
 	/* Find brightest pixel in 3x3 region */
 	newb = b;
@@ -665,8 +666,9 @@ double	*mean;
 double	*sigma;
 
 {
-    double p, pmin, pmax, pmean;
-    double sd;
+    double p, pmin, pmax;
+    double pmean = 0.0;
+    double sd = 0.0;
     int x, y;
     int i;
     double sum;
@@ -717,6 +719,7 @@ double	*sigma;
 		}
 	    }
 
+	dnpix = (double) npix;
 	if (npix > 0)
 	    sd = sum / dnpix;
 	else
@@ -739,8 +742,9 @@ double *mean;		/* Mean value of pixels (returned) */
 double *sigma;		/* Average deviation of pixels (returned) */
 {
     double *sv;
-    double p, pmin, pmax, pmean;
-    double sd;
+    double p, pmin, pmax;
+    double pmean = 0.0;
+    double sd = 0.0;
     int i;
     int npix;
     double dnpix;
@@ -938,7 +942,6 @@ double	rot;	/* Rotation angle in degrees */
 int	reflect; /* 1 if image is reflected, else 0 */
 
 {
-    int istar;
     double x2, y2;
     double xn = (double) w;
     double yn = (double) h;
@@ -1066,4 +1069,5 @@ int	reflect; /* 1 if image is reflected, else 0 */
  * Mar 30 2006	Add nxydec=num. decimal places in image coordinates to setparm()
  * Apr 25 2006	Change MINPEAK to mean counts above noise background
  *              Suggested by Hill & Biddick for high background situations
+ * Jun 19 2006	Initialized uninitialized variables
  */

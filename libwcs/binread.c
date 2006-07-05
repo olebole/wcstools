@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** January 19, 2006
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2006
@@ -126,11 +126,11 @@ int	nlog;
     int nmag;		/* Real number of magnitudes per entry (- rv) */
     int jstar;
     int nstar;
-    double mag;
+    double mag = 0.0;
     double num;
     int i;
     int magsort;
-    int istar;
+    int istar = 0;
     int isp;
     int verbose;
     int mrv;
@@ -234,13 +234,18 @@ int	nlog;
 	rra2a = rra2;
 	rra2 = 360.0;
 	}
+    else {
+	rra2a = 0;
+	}
 
     if (sc->entrv > 0) {
 	nmag = sc->nmag - 1;
 	mrv = nmag;
 	}
-    else
+    else {
 	nmag = sc->nmag;
+	mrv = 0;
+	}
 
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
@@ -499,7 +504,8 @@ int	nlog;
     struct StarCat *starcat;
     struct Star *star;
     char str[128];
-    int mrv, nmag;
+    int nmag;
+    int mrv;
 
     nstar = 0;
     starcat = binopen (bincat);
@@ -694,12 +700,10 @@ int	nlog;
     double num;
     int i;
     int magsort;
-    int istar;
-    int isp;
+    int istar = 0;
     int verbose;
     int mrv;
     char cstr[16];
-    char str[128];
     double xpix, ypix, flux;
     int offscl;
     int bitpix, w, h;   /* Image bits/pixel and pixel width and height */
@@ -782,6 +786,9 @@ int	nlog;
 	rra1a = 0.0;
 	rra2a = rra2;
 	rra2 = 360.0;
+	}
+    else {
+	rra2a = 0.0;
 	}
 
     if (sc->entrv > 0) {
@@ -937,6 +944,17 @@ char *bincat;	/* Binary catalog file name */
 		}
             }
 	}
+    else if (!strncasecmp (bincat,"SKY2K",3)) {
+	if ((str = getenv("SKY2K_PATH")) != NULL ) {
+	    if (!strncmp (str, "http:",5)) {
+		sc->caturl = str;
+		}
+	    else if (strlen (str) < 64) {
+		strcpy (bindir, str);
+		binset = 1;
+		}
+            }
+	}
     else if (!strncasecmp (bincat,"HIP",3)) {
 	if ((str = getenv("HIP_PATH")) != NULL ) {
 	    if (!strncmp (str, "http:",5)) {
@@ -974,6 +992,7 @@ char *bincat;	/* Binary catalog file name */
 	sc->equinox = 0.0;
 	if (!strncasecmp (bincat, "sao", 3) ||
 	    !strncasecmp (bincat, "ppm", 3) ||
+	    !strncasecmp (bincat, "sky2k", 3) ||
 	    !strncasecmp (bincat, "hip", 3))
 	   sc->mprop = 1;
 	else
@@ -1569,4 +1588,5 @@ char *from, *last, *to;
  * Aug 27 2004	Include math.h
  *
  * Jan 19 2006	Fix bug when J2000 system set by negative number of magnitudes
+ * Jun 20 2006	Initialize uninitialized variables
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/ty2read.c
- *** August 5, 2005
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2000-2005
+ *** Copyright (C) 2000-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -91,7 +91,7 @@ int	nlog;		/* 1 for diagnostics */
     double maxdist=0.0; /* Largest distance */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
-    int nreg;		/* Number of Tycho 2 regions in search */
+    int nreg = 0;	/* Number of Tycho 2 regions in search */
     int regnum[MAXREG];	/* List of region numbers */
     int rlist[MAXREG];	/* List of first stars in regions */
     int nlist[MAXREG];	/* List of number of stars per region */
@@ -180,6 +180,9 @@ int	nlog;		/* 1 for diagnostics */
     if (wrap) {
 	rra2a = rra2;
 	rra2 = 360.0;
+	}
+    else {
+	rra2a = 0;
 	}
 
     /* Write header if printing star entries as found */
@@ -598,7 +601,7 @@ int	nlog;		/* 1 for diagnostics */
 
 /* Summarize search */
     if (nlog > 0)
-	fprintf (stderr,"TY2RNUM: %d / %d found\n",nstar,starcat->nstars);
+	fprintf (stderr,"TY2RNUM: %d / %d found\n", nstar, nstars);
 
     return (nstars);
 }
@@ -627,7 +630,7 @@ int	nlog;		/* 1 for diagnostics */
     double epout;	/* Proper motion epoch (0.0 for no proper motion) */
     double ra1,ra2;	/* Limiting right ascensions of region in degrees */
     double dec1,dec2;	/* Limiting declinations of region in degrees */
-    int nreg;		/* Number of Tycho 2 regions in search */
+    int nreg = 0;	/* Number of Tycho 2 regions in search */
     int regnum[MAXREG];	/* List of region numbers */
     int rlist[MAXREG];	/* List of first stars in regions */
     int nlist[MAXREG];	/* List of number of stars per region */
@@ -647,9 +650,8 @@ int	nlog;		/* 1 for diagnostics */
     int nstar, ntot;
     int istar, istar1, istar2;
     int pass;
-    double num, ra, dec, rapm, decpm, mag, magb, magv;
+    double num, ra, dec, mag, magb, magv;
     double rra1, rra2, rra2a, rdec1, rdec2;
-    double rdist, ddist;
     char cstr[32];
     char *str;
     double xpix, ypix, flux;
@@ -713,6 +715,9 @@ int	nlog;		/* 1 for diagnostics */
     if (wrap) {
 	rra2a = rra2;
 	rra2 = 360.0;
+	}
+    else {
+	rra2a = 0.0;
 	}
 
     /* If searching through RA = 0:00, split search in two */
@@ -785,8 +790,11 @@ int	nlog;		/* 1 for diagnostics */
 			nstar++;
 			jstar++;
 			}
-		    else
+		    else {
 			flux = 0.0;
+			ix = -1;
+			iy = -1;
+			}
 		    if (nlog == 1)
 			fprintf (stderr,"TY2 %11.5f: %9.5f %9.5f %5.2f %5.2f (%.2f,%.2f) -> (%d,%d) %7g\n",
 				 num,ra,dec,magb,magv,xpix,ypix,ix,iy,flux);
@@ -935,7 +943,9 @@ int	verbose;	/* 1 for diagnostics */
     int nwrap;		/* 1 if 0h included in RA span*/
     int iwrap;
     int num1, num2;
-    int irow,iz1,iz2,ir1,ir2,jr1,jr2,i;
+    int irow,iz1,iz2,jr1,jr2,i;
+    int ir1 = 0;
+    int ir2 = 0;
     int nsrch,nsrch1;
     double ralow, rahi;
     double declow, dechi, decmin, decmax;
@@ -1299,6 +1309,9 @@ int istar;	/* Star sequence number in Tycho 2 catalog region file */
 	    return (4);
 	    }
 	}
+    else {
+	line = sc->catdata;
+	}
 
     /* Read catalog entry */
     if (sc->nbent > sc->catlast-line) {
@@ -1408,4 +1421,5 @@ char	*filename;	/* Name of file for which to find size */
  * Aug  5 2005	Make magnitude errors an option if refcat is TYCHO2E
  *
  * Apr  3 2006	Add refcat definition to ty2rnum()
+ * Jun 20 2006	Initialize uninitialized variables
  */

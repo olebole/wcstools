@@ -1,4 +1,15 @@
-Version 3.6.4 (May 3, 2006)
+Version 3.6.5 (June 20, 2006)
+edhead: Use mkstemp() instead of compiler-maligned tempnam()
+scat: Print catalog object name if no number in single line search responses
+imcat,immatch,imwcs,scat: Add support for SKYMAP 2000 catalog for wide fields
+imcat,immatch,imwcs: Print catalog object name if no number
+imsmooth,imresize: Write summary of operation to header
+wcsinit: initialize 9x9 PC matrices; handle up to 9 axes for PC matrix
+delwcs,delhead: Add -b option to leave blank lines in place of deleted keywords
+hput.c: Fix alignment of comments in hputc() and hputcom()
+Initialize uninitialized variables throughout package
+
+Version 3.6.4 (May 8, 2006)
 cphead: Fix bug so WCS headers copy correctly
 gethead: Always underscore-pad not-tab null returns; make -a work correctly
 gethead: Keep quoted strings as single value when reading free-format files
@@ -10,7 +21,7 @@ scat,imcat: Add option to sort by ID number
 scat: Fix bug so Hipparcos Catalog search returns magnitudes and parallax
 scat: Clean up VOTable reporting
 sethead: Fix _ substitution in COMMENT and HISTORY setting
-imfill: New program to fill in bad pixels in an image
+imfill: New program to fill in bad pixels in an image; add IMFILL keyword
 imsmooth: New program to smooth an image
 imhead,imrot: Add +i to force appending of primary header keywords to FITS
 extension headers.

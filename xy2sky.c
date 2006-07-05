@@ -1,7 +1,24 @@
 /* File xy2sky.c
- * February 23, 2006
+ * June 21, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -43,10 +60,13 @@ char **av;
     int ndecset = 0;
     int degout = 0;
     int ndec = 3;
-    int nlines, iline, entx, enty, entmag;
+    int nlines, iline;
+    int entx = 0;
+    int enty = 0;
+    int entmag = 0;
     int i;
     double x, y, mag;
-    FILE *fd;
+    FILE *fd = NULL;
     char *ln, *listname;
     char linebuff[1024];
     char *line;
@@ -58,9 +78,8 @@ char **av;
     int ncx = 0;
     char *cofile;
     char *cobuff;
-    char *ctab;
     char *space, *cstr, *dstr;
-    int nterms;
+    int nterms = 0;
     double mag0, magx;
     double coeff[5];
     struct Tokens tokens;
@@ -81,7 +100,7 @@ char **av;
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
 	char c;
-	while (c = *++str)
+	while ((c = *++str))
     	switch (c) {
 
     	case 'v':	/* more verbosity */
@@ -606,7 +625,7 @@ char *listfile;		/* Name of file with list of input coordinates */
 	else
 	    printf ("    RA           Dec       Sys  ");
 	if (wcs->sysout == WCS_ECLIPTIC)
-	    printf("  Epoch    ",wcs->epoch);
+	    printf("  Epoch    ");
 	if (verbose) printf ("    ");
 	printf ("    X        Y\n");
 	}
@@ -671,4 +690,5 @@ char *listfile;		/* Name of file with list of input coordinates */
  * Oct 14 2003	Change naxes to naxes in wcs structure
  *
  * Feb 23 2006	Allow appended headers in TIFF, JPEG, and GIF files
+ * Jun 21 2006	Initialize uninitialized variables
  */

@@ -1,7 +1,24 @@
 /* File imhead.c
- * February 23, 2006
+ * June 20, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -35,7 +52,7 @@ char **av;
     char *lastchar;
     char filename[128];
     FILE *flist;
-    char *listfile;
+    char *listfile = NULL;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -55,7 +72,7 @@ char **av;
 	    add = 1;
 	else
 	    add = 0;
-	while (c = *++str)
+	while ((c = *++str))
 	switch (c) {
 
 	case 'f':	/* Write FITS header only */
@@ -266,4 +283,5 @@ char	*header;	/* Image FITS header */
  *
  * Jan 17 2006	Add +i to append primary header even if INHERIT is not set
  * Feb 23 2006	Read headers appended to TIFF, JPEG, or GIF image files
+ * Jun 20 2006	Clean up code
  */

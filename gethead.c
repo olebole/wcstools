@@ -1,7 +1,24 @@
 /* File gethead.c
- * January 17, 2006
+ * June 20, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -74,7 +91,8 @@ char **av;
     int lfn;
     char filename[256];
     char *name;
-    FILE *flist, *fdk;
+    FILE *flist = NULL;
+    FILE *fdk;
     char *listfile;
     char *ilistfile;
     char *klistfile;
@@ -86,7 +104,7 @@ char **av;
     int icond;
     int nfext;
     int nrmax=10;
-    struct Range *erange;
+    struct Range *erange = NULL;
 
     ilistfile = NULL;
     klistfile = NULL;
@@ -462,6 +480,8 @@ char **av;
 	    extension = extensions;
 	    if (extension)
 		nfext = 1;
+	    else
+		nfext = 0;
 	    }
 	}
     else {
@@ -577,7 +597,8 @@ char	*kwd[];		/* Names of keywords for which to print values */
     char pchar;
     char *kw, *kwe, *filepath;
     char *ext, *namext, cext;
-    int ikwd, lkwd, nfound, notfound, nch;
+    int ikwd, nfound, notfound, nch;
+    int lkwd = 0;
     int jval, jcond, icond, i, j, lout, lstr;
     double dval, dcond, dnum;
     char tcond;
@@ -944,7 +965,6 @@ nextnsp (string)
 char *string;
 
 {
-    int lstring;
     char *schar;
 
     schar = string;
@@ -1113,4 +1133,5 @@ char *string;
  * Jul 18 2005	Do not write one-per-line verbose output in SETHEAD input file format
  *
  * Jan 17 2006	ALWAYS print line if -a
+ * Jun 20 2006	Clean up code
  */

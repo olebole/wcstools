@@ -1,8 +1,8 @@
 /*** File libwcs/fitswcs.c
- *** November 1, 2005
+ *** June 1, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2005
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -142,7 +142,7 @@ char *header;
 int verbose;
 
 {
-    static char flds[15][8];
+    static char flds[19][8];
     char keyword[8];
     int i;
     int n, nfields;
@@ -152,7 +152,7 @@ int verbose;
     n = 0;
 
     /* Delete standard WCS fields */
-    nfields = 15;
+    nfields = 19;
     strcpy (flds[0], "CTYPE1");
     strcpy (flds[1], "CTYPE2");
     strcpy (flds[2], "CRVAL1");
@@ -168,10 +168,10 @@ int verbose;
     strcpy (flds[12], "CD1_2");
     strcpy (flds[13], "CD2_1");
     strcpy (flds[14], "CD2_2");
-    strcpy (flds[11], "PC1_1");
-    strcpy (flds[12], "PC1_2");
-    strcpy (flds[13], "PC2_1");
-    strcpy (flds[14], "PC2_2");
+    strcpy (flds[15], "PC1_1");
+    strcpy (flds[16], "PC1_2");
+    strcpy (flds[17], "PC2_1");
+    strcpy (flds[18], "PC2_2");
     for (i = 0; i < nfields; i++) {
 	if (hdel (header, flds[i])) {
 	    n++;
@@ -631,4 +631,5 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Nov  1 2005	Set RADECSYS to ICRS if appropriate
  *
  * Feb 23 2006	Add code to read FITS header appended to TIFF file
+ * Jun  1 2006	Fix bug so CD matrix is deleted by DelWCSFITS()
  */

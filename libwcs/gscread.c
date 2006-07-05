@@ -1,8 +1,8 @@
 /*** File libwcs/gscread.c
- *** August 27, 2004
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -55,7 +55,7 @@ char cdsa[64]="/data/astrocat/gscact2";
 static void gscpath();
 static int gscreg();
 
-static char *table;		/* FITS table buffer */
+static char *table = NULL;	/* FITS table buffer */
 static int ltab = 0;		/* Length of FITS table buffer */
 static double *gdist = NULL;	/* Array of distances to stars */
 static int ndist = 0;
@@ -110,7 +110,7 @@ int	nlog;		/* 1 for diagnostics */
     int rlist[100];	/* List of input FITS tables files */
     char inpath[64];	/* Pathname for input FITS table file */
     char entry[100];	/* Buffer for FITS table row */
-    int class, class0;	/* Object class (0>star, 3>other) */
+    int class;		/* Object class (0>star, 3>other) */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
@@ -123,10 +123,18 @@ int	nlog;		/* 1 for diagnostics */
     int ik,nk,itable,ntable,jstar;
     int nbline,npos,nbhead;
     int nbr,nrmax,nstar,i;
-    int ift, band0, band;
+    int ift;
     int wrap;
-    double ra,ra0,rasum,dec,dec0,decsum,perr,perr0,perr2,perrsum,msum;
-    double mag,mag0,merr,merr0,merr2,merrsum;
+    double ra,rasum,dec,decsum,perr,perr2,perrsum,msum;
+    double mag,merr,merr2,merrsum;
+    int band0 = 0;
+    int band = 0;
+    int class0 = 0;
+    double merr0 = 0.0;
+    double mag0 = 0.0;
+    double perr0 = 0.0;
+    double ra0 = 0.0;
+    double dec0 = 0.0;
     double rra1, rra2, rdec1, rdec2;
     double rdist, ddist;
     char *str;
@@ -545,7 +553,7 @@ int	nlog;		/* 1 for diagnostics */
     char *table;		/* FITS table */
     char inpath[64];		/* Pathname for input FITS table file */
     char entry[100];		/* Buffer for FITS table row */
-    int class, class0;		/* Object class (0>star, 3>other) */
+    int class;			/* Object class (0>star, 3>other) */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
     struct Keyword kw[8];	/* Keyword structure */
@@ -555,10 +563,18 @@ int	nlog;		/* 1 for diagnostics */
     int ik,nk,itable,ntable,jstar;
     int nbline,npos,nbhead;
     int nbr,nstar,i, snum;
-    int ift, band0, band;
+    int ift;
     double dnum;
-    double ra,ra0,rasum,dec,dec0,decsum,perr,perr0,perr2,perrsum,msum;
-    double mag,mag0,merr,merr0,merr2,merrsum;
+    double ra,rasum,dec,decsum,perr,perr2,perrsum,msum;
+    double mag,merr,merr2,merrsum;
+    int band0 = 0;
+    int band = 0;
+    int class0 = 0;
+    double merr0 = 0.0;
+    double mag0 = 0.0;
+    double perr0 = 0.0;
+    double ra0 = 0.0;
+    double dec0 = 0.0;
     char *str;
     char *url;
 
@@ -782,7 +798,6 @@ int	nlog;		/* 1 for diagnostics */
     int class, class0;	/* Object class (0>star, 3>other) */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
-    double epref=2000.0;	/* Catalog epoch */
     struct Keyword kw[8];	/* Keyword structure */
     struct Keyword *kwn;
 
@@ -1195,6 +1210,10 @@ int	verbose;	/* 1 for diagnostics */
 	jr2 = zreg2[iz2];
 	nwrap = 2;
 	}
+    else {
+	ir1 = 1;
+	ir2 = 0;
+	}
 
     nsrch = ir2 - ir1 + 1;
     if (verbose)
@@ -1206,6 +1225,10 @@ int	verbose;	/* 1 for diagnostics */
 	}
     if (verbose)
 	fprintf(stderr,"GSCREG: RA: %.5f - %.5f, Dec: %.5f - %.5f\n",ra1,ra2,dec1,dec2);
+
+    if (nsrch < 1) {
+	return (0);
+	}
 
     nrgn = 0;
 
@@ -1395,7 +1418,7 @@ int	regnum;		/* Guide Star Catalog region number */
 char	*path;		/* Pathname of GSC region FITS file */
 
 {
-    int zone;		/* Name of Guide Star Catalog zone directory */
+    int zone = 0;	/* Name of Guide Star Catalog zone directory */
     int i;
 
     /* Get zone directory name given region number */
@@ -1503,4 +1526,6 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Dec 12 2003	Fix bug in wcs2pix() call in gscbin()
  *
  * Aug 27 2004	Include math.h
+ *
+ * Jun 20 2006	Initialize uninitialized variables
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/sdssread.c
- *** April 6, 2006
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2006
@@ -82,10 +82,10 @@ int	nlog;		/* 1 for diagnostics */
     char temp[64];
     char cmag;
     struct TabTable *tabtable;
-    double dtemp, r2;
+    double dtemp;
     double *gpra, *gpdec;
     struct StarCat *starcat;
-    int nstar, i;
+    int nstar;
     double ra, dec, mag;
     char rastr[32], decstr[32];
     char *sdssurl;
@@ -160,7 +160,7 @@ int	nlog;		/* 1 for diagnostics */
 
     /* Dump returned file and stop */
     if (nlog < 0) {
-	fwrite  (tabtable->tabbuff, tabtable->lbuff, 1, stdout);
+	(void) fwrite  (tabtable->tabbuff, tabtable->lbuff, 1, stdout);
 	exit (0);
 	}
 
@@ -199,7 +199,7 @@ sdssc2t (csvbuff)
     char colsep[180]="------------------	---	-----	------	-----	---	----	----------	---------	------	------	------	------	------	--------	------	--------	--------	-------\n";
     char *tabbuff;	/* Output tab-separated table */
     char *databuff;
-    int lbuff, ltbuff, i;
+    int lbuff, i;
 
     /* Convert commas in table to tabs */
     lbuff = strlen (csvbuff);
@@ -226,4 +226,5 @@ sdssc2t (csvbuff)
 /* Jan  5 2004	New program
  *
  * Apr  6 2006	Use different server to get DR4 data
+ * Jun 20 2006	Drop unused variables
  */

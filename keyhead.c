@@ -1,7 +1,24 @@
 /* File keyhead.c
- * March 1, 2005
+ * June 21, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -48,7 +65,8 @@ char **av;
     int ifile;
     int readlist = 0;
     char filename[128];
-    FILE *flist, *fdk;
+    FILE *flist = NULL;
+    FILE *fdk;
     char *listfile;
     char *ilistfile;
     char *klistfile;
@@ -73,7 +91,7 @@ char **av;
     for (av++; --ac > 0; av++) {
 	if (*(str = *av) == '-') {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 
 		case 'h':	/* set HISTORY */
@@ -230,16 +248,15 @@ int	nkwd;		/* Number of keywords for which to set values */
 char	*kwd[];		/* Names and values of those keywords */
 
 {
-    char *image;	/* FITS image */
+    char *image = NULL;	/* FITS image */
     char *header;	/* FITS image header */
     float rnum;
     double dnum;
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
-    int ibhead;		/* Number of bytes to skip to header */
-    char *irafheader;	/* IRAF image header */
+    char *irafheader = NULL; /* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
-    int lext, lroot, lhist, iext;
+    int lext, lroot, lhist;
     char *imext, *imext1;
     char newname[128];
     char oldvalue[64];
@@ -624,4 +641,6 @@ char	*kwd[];		/* Names and values of those keywords */
  * Jul  1 2004	Change first extension if no extension specified
  *
  * Mar  1 2005	Print program information only on first file if looping
+ *
+ * Jun 21 2006	Clean up code
  */

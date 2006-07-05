@@ -1,8 +1,8 @@
 /*** File libwcs/hput.c
- *** September 16, 2004
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1995-2004
+ *** Copyright (C) 1995-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -58,12 +58,6 @@
 #include "fitshead.h"
 
 static int verbose=0;	/* Set to 1 to print error messages and other info */
-
-static int headshrink=1; /* Set to 1 to drop line after deleting keyword */
-void
-setheadshrink (hsh)
-int hsh;
-{headshrink = hsh; return;}
 
 static void fixnegzero();
 
@@ -327,9 +321,11 @@ char *cval;	/* character string containing the value for variable
     ii = '1';
     nkw = 0;
     lcv = (int) strlen (cval);
-    strcpy (newkey, keyroot);
-    strcat (newkey, "_");
-    newkey[lroot+2] = (char) 0;
+    if (!comment) {
+	strcpy (newkey, keyroot);
+	strcat (newkey, "_");
+	newkey[lroot+2] = (char) 0;
+	}
     v = cval;
     while (lcv > 0) {
 	if (lcv > 67)
@@ -429,7 +425,7 @@ char *value;	/* character string containing the value for variable
     char line[100];
     char newcom[50];
     char *v, *vp, *v1, *v2, *q1, *q2, *c1, *ve;
-    int lkeyword, lcom, lval, lc, lv1, lhead;
+    int lkeyword, lcom, lval, lc, lv1, lhead, lblank, ln, nc, i;
 
     /* Find length of keyword, value, and header */
     lkeyword = (int) strlen (keyword);
@@ -448,6 +444,12 @@ char *value;	/* character string containing the value for variable
 
 	    /* Find end of header */
 	    v1 = ksearch (hstring,"END");
+
+	    /* Align pointer at start of 80-character line */
+	    lc = v1 - hstring;
+	    ln = lc / 80;
+	    nc = ln * 80;
+	    v1 = hstring + nc;
 	    v2 = v1 + 80;
 
 	    /* If header length is exceeded, return error code */
@@ -492,6 +494,12 @@ char *value;	/* character string containing the value for variable
 	if (v1 == NULL) {
 	    ve = ksearch (hstring,"END");
 	    v1 = ve;
+
+	    /* Align pointer at start of 80-character line */
+	    lc = v1 - hstring;
+	    ln = lc / 80;
+	    nc = ln * 80;
+	    v1 = hstring + nc;
 	    v2 = v1 + 80;
 
 	    /* If header length is exceeded, return error code */
@@ -509,6 +517,14 @@ char *value;	/* character string containing the value for variable
 
     /*  Otherwise, extract the entry for this keyword from the header */
     else {
+
+	/* Align pointer at start of 80-character line */
+	lc = v1 - hstring;
+	ln = lc / 80;
+	nc = ln * 80;
+	v1 = hstring + nc;
+	v2 = v1 + 80;
+
 	strncpy (line, v1, 80);
 	line[80] = 0;
 	v2 = v1 + 80;
@@ -520,16 +536,14 @@ char *value;	/* character string containing the value for variable
 	else
 	    q2 = line;
 
-	/*  extract comment and remove trailing spaces */
-
+	/*  extract comment and discount trailing spaces */
 	c1 = strchr (q2,'/');
 	if (c1 != NULL) {
-	    lcom = 80 - (c1 - line);
-	    strncpy (newcom, c1+1, lcom);
+	    lcom = 80 - (c1 + 2 - line);
+	    strncpy (newcom, c1+2, lcom);
 	    vp = newcom + lcom - 1;
 	    while (vp-- > newcom && *vp == ' ')
-		*vp = 0;
-	    lcom = (int) strlen (newcom);
+		lcom--;
 	    }
 	else {
 	    newcom[0] = 0;
@@ -567,12 +581,16 @@ char *value;	/* character string containing the value for variable
 	if (lcom > 0) {
 	    if (lc+2+lcom > 80)
 		lcom = 77 - lc;
-	    vp = v1 + lc + 2;     /* Jul 16 1997: was vp = v1 + lc * 2 */
-	    *vp = '/';
-	    vp = vp + 1;
+	    vp = v1 + lc;     /* Jul 16 1997: was vp = v1 + lc * 2 */
+	    *vp++ = ' ';
+	    *vp++ = '/';
+	    *vp++ = ' ';
+	    lblank = v2 - vp;
+	    for (i = 0; i < lblank; i++)
+		vp[i] = ' ';
+	    if (lcom > lblank)
+		lcom = lblank;
 	    strncpy (vp, newcom, lcom);
-	    for (v = vp + lcom; v < v2; v++)
-		*v = ' ';
 	    }
 
 	if (verbose) {
@@ -597,7 +615,7 @@ hputcom (hstring,keyword,comment)
 {
     char squot;
     char line[100];
-    int lkeyword, lcom, lhead, i, lblank;
+    int lkeyword, lcom, lhead, i, lblank, ln, nc, lc;
     char *vp, *v1, *v2, *c0, *c1, *q1, *q2;
     char *ksearch();
 
@@ -614,6 +632,12 @@ hputcom (hstring,keyword,comment)
 
 	/* Find end of header */
 	v1 = ksearch (hstring,"END");
+
+	/* Align pointer at start of 80-character line */
+	lc = v1 - hstring;
+	ln = lc / 80;
+	nc = ln * 80;
+	v1 = hstring + nc;
 	v2 = v1 + 80;
 
 	/* If header length is exceeded, return error code */
@@ -628,12 +652,12 @@ hputcom (hstring,keyword,comment)
 	for (vp = v1; vp < v2; vp++)
 	    *vp = ' ';
 	strncpy (v1, keyword, lkeyword);
+	c0 = v1 + lkeyword;
 	}
 
     /* Search header string for variable name */
     else {
 	v1 = ksearch (hstring,keyword);
-	v2 = v1 + 80;
 
 	/* If parameter is not found, return without doing anything */
 	if (v1 == NULL) {
@@ -642,7 +666,14 @@ hputcom (hstring,keyword,comment)
 	    return (-1);
 	    }
 
-	/* Otherwise, extract entry for this variable from the header */
+	/* Align pointer at start of 80-character line */
+	lc = v1 - hstring;
+	ln = lc / 80;
+	nc = ln * 80;
+	v1 = hstring + nc;
+	v2 = v1 + 80;
+
+	/* Extract entry for this variable from the header */
 	strncpy (line, v1, 80);
 	line[80] = '\0'; /* Null-terminate line before strchr call */
 
@@ -654,26 +685,25 @@ hputcom (hstring,keyword,comment)
 	    q2 = NULL;
 
 	if (q2 == NULL || q2-line < 31)
-	    c0 = v1 + 31;
+	    c0 = v1 + 30;
 	else
-	    c0 = v1 + (q2 - line) + 2; /* allan: 1997-09-30, was c0=q2+2 */
+	    c0 = v1 + (q2 - line) + 1; /* allan: 1997-09-30, was c0=q2+2 */
 
-	/* If comment will not fit, do not add it */
+	/* If comment will not fit at all, return */
 	if (c0 - v1 > 77)
 	    return (-1);
-	strncpy (c0, "/ ",2);
+	strncpy (c0, " / ",3);
 	}
 
     /* Create new entry */
     if (lcom > 0) {
-	c1 = c0 + 2;
-	if (c1+lcom > v2)
-	    lcom = v2 - c1 - 2;
-	strncpy (c1, comment, lcom);
-	lblank = v2 - c1 - lcom;
-	c1 = c1 + lcom;
+	c1 = c0 + 3;
+	lblank = v2 - c1;
+	if (lcom > lblank)
+	    lcom = lblank;
 	for (i = 0; i < lblank; i++)
-	    *c1++ = ' ';
+	    c1[i] = ' ';
+	strncpy (c1, comment, lcom);
 	}
 
     if (verbose) {
@@ -682,6 +712,17 @@ hputcom (hstring,keyword,comment)
     return (0);
 }
 
+
+static int leaveblank = 0;	/* If 1, leave blank line when deleting */
+void
+setleaveblank (lb)
+int lb; { leaveblank = lb; return; }
+
+static int headshrink=1; /* Set to 1 to drop line after deleting keyword */
+void
+setheadshrink (hsh)
+int hsh;
+{headshrink = hsh; return;}
 
 /*  HDEL - Set character string keyword = value in FITS header string
  *	    returns 1 if entry deleted, else 0
@@ -708,19 +749,28 @@ char *keyword;		/* Keyword of entry to be deleted */
     ve = ksearch (hstring,"END");
 
     /* If headshrink is 0, leave END where it is */
-    if (!headshrink)
+    if (!leaveblank && !headshrink)
 	ve = ve - 80;
 
-    /* Shift rest of header up one line */
-    for (v = v1; v < ve; v = v + 80) {
-	v2 = v + 80;
-	strncpy (v, v2, 80);
+    /* Cover deleted keyword line with spaces */
+    if (leaveblank) {
+	v2 = v1 + 80;
+	for (v = ve; v < v2; v++)
+	    *v = ' ';
 	}
 
-    /* Cover former last line with spaces */
-    v2 = ve + 80;
-    for (v = ve; v < v2; v++)
-	*v = ' ';
+    /* Shift rest of header up one line */
+    else {
+	for (v = v1; v < ve; v = v + 80) {
+	    v2 = v + 80;
+	    strncpy (v, v2, 80);
+	    }
+
+	/* Cover former last line with spaces */
+	v2 = ve + 80;
+	for (v = ve; v < v2; v++)
+	    *v = ' ';
+	}
 
     return (1);
 }
@@ -1239,4 +1289,8 @@ int	ndec;		/* Number of decimal places in degree string */
  * Jul  1 2004	Add headshrink to optionally keep blank lines in header
  * Sep  3 2004	Fix bug so comments are not pushed onto next line if long value
  * Sep 16 2004	Add fixnegzero() to avoid putting signed zero values in header
+ *
+ * May 22 2006	Add option to leave blank line when deleting a keyword
+ * Jun 15 2006	Fix comment alignment in hputc() and hputcom()
+ * Jun 20 2006	Initialized uninitialized variables in hputm() and hputcom()
  */

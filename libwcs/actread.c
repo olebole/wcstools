@@ -1,7 +1,7 @@
 /*** File libwcs/actread.c
- *** August 30, 2004
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
- *** Copyright (C) 1999-2004
+ *** Copyright (C) 1999-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -87,7 +87,7 @@ int	nlog;		/* 1 for diagnostics */
     double maxdist=0.0; /* Largest distance */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
-    int nreg;		/* Number of ACT regions in search */
+    int nreg = 0;	/* Number of ACT regions in search */
     int rlist[MAXREG];	/* List of input region files */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
@@ -182,6 +182,8 @@ int	nlog;		/* 1 for diagnostics */
 	rra2a = rra2;
 	rra2 = 360.0;
 	}
+    else
+	rra2a = 0.0;
     nrmax = MAXREG;
 
     /* Write header if printing star entries as found */
@@ -437,7 +439,7 @@ int	nlog;		/* 1 for diagnostics */
     int sysref;		/* Catalog coordinate system */
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
-    struct StarCat *starcat;
+    struct StarCat *starcat = NULL;
     struct Star *star;
 
     int rnum;
@@ -528,9 +530,10 @@ int	nlog;		/* 1 for diagnostics */
 
 /* Summarize search */
     if (nlog > 0)
-	fprintf (stderr,"ACTRNUM: %d / %d found\n",nstar,starcat->nstars);
+	fprintf (stderr,"ACTRNUM: %d / %d found\n",nstar,nstars);
 
-    actclose (starcat);
+    if (starcat != NULL)
+	actclose (starcat);
     free ((void*) star);
     return (nstar);
 }
@@ -559,7 +562,7 @@ int	nlog;		/* 1 for diagnostics */
     double epout;	/* Proper motion epoch (0.0 for no proper motion) */
     double ra1,ra2;	/* Limiting right ascensions of region in degrees */
     double dec1,dec2;	/* Limiting declinations of region in degrees */
-    int nreg;		/* Number of ACT regions in search */
+    int nreg = 0;	/* Number of ACT regions in search */
     int rlist[MAXREG];	/* List of input region files */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
@@ -573,7 +576,7 @@ int	nlog;		/* 1 for diagnostics */
     int magsort;
     int rnum, ireg;
     int jstar, iw;
-    int nrmax,nstar,i, ntot;
+    int nrmax,nstar, ntot;
     int istar, istar1, istar2;
     double num, ra, dec, rapm, decpm, mag, magb, magv;
     double rra1, rra2, rra2a, rdec1, rdec2;
@@ -646,6 +649,9 @@ int	nlog;		/* 1 for diagnostics */
 	rra2a = rra2;
 	rra2 = 360.0;
 	}
+    else
+	rra2a = 0.0;
+
     nrmax = MAXREG;
 
     /* If searching through RA = 0:00, split search in two */
@@ -791,7 +797,9 @@ int	verbose;	/* 1 for diagnostics */
 {
     int nsrch;		/* Number of regions found (returned) */
 
-    int i, ir, irx, ir1, ir2;
+    int i, ir, irx;
+    int ir1 = 0;
+    int ir2 = 0;
 
     /* Zero out regions to be searched */
     for (i = 0; i < nrmax; i++)
@@ -1176,4 +1184,6 @@ char	*filename;	/* Name of file for which to find size */
  * Dec 12 2003	Fix bug in wcs2pix() call in actbin()
  *
  * Aug 30 2004	Include math.h
+ *
+ * Jun 20 2006	Initialize uninitialized variables
  */

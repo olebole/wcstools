@@ -1,5 +1,5 @@
 /* File gettab.c
- * September 28, 2005
+ * June 21, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -35,7 +35,6 @@ static int tabout = 0;
 static int printhead = 0;
 static int assign = 0;
 static int version = 0;		/* If 1, print only program name and version */
-static int nlines = 0;
 static int nkeep = 0;
 static int *keeplines;		/* List of lines to keep if nkeep > 0 */
 static int ncond=0;		/* Number of keyword conditions to check */
@@ -60,17 +59,17 @@ char **av;
     int lfn;
     char *lastchar;
     char filename[128];
-    char *name;
+    char *name = NULL;
     char ctemp;
     FILE *flist;
-    char *listfile;
+    char *listfile = NULL;
     int ikwd, lkwd, i;
-    int lfield;
+    int lfield = 0;
     char *kw1;
     char *cstr, *nstr;
     char string[80];
     int icond;
-    char *vali, *calias, *valeq, *valgt, *vallt;
+    char *calias;
     char *ranges = NULL;
     char *temp;
     int nldef = 1;
@@ -99,7 +98,7 @@ char **av;
     for (av++; --ac > 0; av++) {
 	if (*(str = *av)=='-') {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 
 		case 'a':	/* list file even if no keywords are found */
@@ -544,10 +543,10 @@ char	*alias[]; /* Output names of keywords if different from input */
 {
     char *str;
     char *cstr, *cval, cvalue[64];
-    char numstr[32], numstr1[32];
-    int pass;
+    char numstr[32];
+    int pass = 0;
     int drop;
-    int jval, jcond, icond, i, lstr;
+    int jval, jcond, icond;
     double dval, dcond, dnum;
     char fnform[8];
     char string[80];
@@ -556,15 +555,15 @@ char	*alias[]; /* Output names of keywords if different from input */
     char *line, *last;
     char *endline;
     char newline = 10;
+    char numstr1[32];
     int ikwd, nfound;
-    int iline, keep;
-    double xnum;
+    int iline;
     struct Tokens tokens;
-    int *col;
-    int *ccol;
+    int *col = NULL;
+    int *ccol = NULL;
     int ntok;
-    int *nextkeep;
-    int lastkeep;
+    int *nextkeep = NULL;
+    int lastkeep = 0;
 
     if (nkeep > 0) {
 	nextkeep = keeplines;
@@ -874,4 +873,6 @@ char *string;
  * Apr 15 2004	Avoid removing trailing zeroes from exponents
  *
  * Sep 28 2005	Increase columns from 200 to 500, lines from 1000 t0 5000
+ *
+ * Jun 21 2006	Drop unused; initialize uninitialized variables
  */

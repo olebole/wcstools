@@ -1,8 +1,25 @@
 /* File immatch.c
- * April 4, 2005
+ * May 30, 2006
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -16,6 +33,7 @@
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcs.h"
 #include "libwcs/wcscat.h"
+#include "libwcs/lwcs.h"
 
 static void PrintUsage();
 static void MatchCat();
@@ -78,13 +96,12 @@ char **av;
     char errmsg[256];
     FILE *flist;
     char **fn;
-    char *listfile;
+    char *listfile = NULL;
+    char cs;
     double x, y;
-    int i, imag;
+    int imag;
     int ifile, nfile;
-    char *refcatn;
-    char c, c1;
-    char progpath[128];
+    char c, c1, *ccom;
 
     setfitwcs (0);
     nfile = 0;
@@ -237,13 +254,35 @@ char **av;
 		case 'm':	/* Limiting reference star magnitude */
 		    if (ac < 2)
 			PrintUsage (str);
-		    maglim1 = -99.0;
-		    maglim2 = atof (*++av);
+
+		    /* Select reference catalog magnitude to use */
+		    c1 = *(str+1);
+		    if (c1 != (char) 0) {
+			++str;
+			if (c1 > '9')
+			    imag = (int) c1;
+			else
+			    imag = (int) c1 - 48;
+			setsortmag (imag);
+			}
 		    ac--;
-		    if (ac > 1 && isnum (*(av+1))) {
-			maglim1 = maglim2;
-			maglim2 = atof (*++av);
-			ac--;
+		    av++;
+
+		    if ((ccom = strchr (*av, ',')) != NULL) {
+			*ccom = (char) 0;
+			maglim1 = atof (*av);
+			maglim2 = atof (ccom+1);
+			}
+		    else {
+			maglim2 = atof (*av);
+			if (ac > 1 && isnum (*(av+1))) {
+			    av++;
+			    ac--;
+			    maglim1 = maglim2;
+			    maglim2 = atof (*av);
+			    }
+			else if (MAGLIM1 == MAGLIM2)
+			    maglim1 = -2.0;
 			}
 		    setreflim (maglim1, maglim2);
 		    break;
@@ -434,28 +473,28 @@ char	*command;		/* Name of program being executed */
     fprintf(stderr,"Usage: [-vl] [-m mag] [-n frac] [-s mode] [-g class] [-h maxref] [-i peak]\n");
     fprintf(stderr,"       [-c catalog] [-p scale] [-b ra dec] [-j ra dec] [-r deg] [-t tol] [-x x y] [-y frac]\n");
     fprintf(stderr,"       FITS or IRAF file(s)\n");
-    fprintf(stderr,"  -a: initial rotation angle in degrees (default 0)\n");
+    fprintf(stderr,"  -a ang: initial rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: initial center in B1950 (FK4) RA and Dec\n");
-    fprintf(stderr,"  -c: reference catalog (gsc, uac, ujc, tab table file\n");
-    fprintf(stderr,"  -d: Use following DAOFIND output catalog instead of search\n");
-    /* fprintf(stderr,"  -e: WCS type (TAN default)\n"); */
+    fprintf(stderr,"  -c cat: reference catalog (gsc, uac, ujc, tab table file\n");
+    fprintf(stderr,"  -d cat: Use following DAOFIND output catalog instead of search\n");
+    /* fprintf(stderr,"  -e type: WCS type (TAN default)\n"); */
     fprintf(stderr,"  -f: Write output X Y RA Dec, instead of N RA Dec X Y\n");
-    fprintf(stderr,"  -g: Guide Star Catalog class (-1=all,0,3 (default -1)\n");
-    fprintf(stderr,"  -h: maximum number of reference stars to use (10-200, default 25\n");
-    fprintf(stderr,"  -i: minimum peak value for star in image (<0=-sigma)\n");
+    fprintf(stderr,"  -g num: Guide Star Catalog class (-1=all,0,3 (default -1)\n");
+    fprintf(stderr,"  -h num: maximum number of reference stars to use (10-200, default 25\n");
+    fprintf(stderr,"  -i num: minimum peak value for star in image (<0=-sigma)\n");
     fprintf(stderr,"  -j: initial center in J2000 (FK5) RA and Dec\n");
     fprintf(stderr,"  -k: magnitude to use (1 to nmag)\n");
     fprintf(stderr,"  -l: reflect left<->right before rotating and fitting\n");
-    fprintf(stderr,"  -m: initial reference catalog magnitude limits\n");
-    fprintf(stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
+    fprintf(stderr,"  -mx m1[,m2]: initial reference catalog magnitude and limits\n");
+    fprintf(stderr,"  -p num: initial plate scale in arcsec per pixel (default 0)\n");
     fprintf(stderr,"  -q: fit image to catalog magnitude polynomial(s)\n");
-    fprintf(stderr,"  -r: rotation angle in degrees before fitting (default 0)\n");
-    fprintf(stderr,"  -s: use this fraction extra stars (default 1.0)\n");
-    fprintf(stderr,"  -t: offset tolerance in pixels (default 20)\n");
-    fprintf(stderr,"  -u: USNO catalog single plate number to accept\n");
+    fprintf(stderr,"  -r ang: rotation angle in degrees before fitting (default 0)\n");
+    fprintf(stderr,"  -s frac: use this fraction extra stars (default 1.0)\n");
+    fprintf(stderr,"  -t tol: offset tolerance in pixels (default 20)\n");
+    fprintf(stderr,"  -u num: USNO catalog single plate number to accept\n");
     fprintf(stderr,"  -v: verbose\n");
-    fprintf(stderr,"  -x: X and Y coordinates of reference pixel (default is center)\n");
-    fprintf(stderr,"  -y: multiply image dimensions by this for search (default is 1)\n");
+    fprintf(stderr,"  -x x y: X and Y coordinates of reference pixel (default is center)\n");
+    fprintf(stderr,"  -y num: multiply image dimensions by this for search (default is 1)\n");
     fprintf(stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     exit (1);
 }
@@ -473,7 +512,7 @@ char	*name;			/* Name of FITS or IRAF image file */
     int iraffile;		/* 1 if IRAF image */
     char *image;		/* Image */
     char *header;		/* FITS header */
-    char *irafheader;		/* IRAF image header */
+    char *irafheader = NULL;	/* IRAF image header */
     char pixname[256];		/* Pixel file name for revised image */
     char *newimage;
 
@@ -613,4 +652,7 @@ char	*name;			/* Name of FITS or IRAF image file */
  * Sep 15 2004	Add missing 0 shift arguments to RotFITS() call (Rob Creager)
  *
  * Apr  4 2005	Exit with an error message if no catalog is specified
+ *
+ * May 30 2006	Use -mx to specify magnitude instead of -k
+ * Jun 21 2006	Clean up code
  */

@@ -1,8 +1,25 @@
 /* File delwcs.c
- * July 1, 2004
+ * June 21, 2006
  * By Doug Mink, after University of Iowa code
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -20,6 +37,7 @@ extern int DelWCSFITS ();
 
 static int verbose = 0;		/* Verbose/debugging flag */
 static int newimage = 0;	/* New image flag */
+static int readimage = 1;	/* Read and write image as well as header */
 static int version = 0;		/* If 1, print only program name and version */
 
 int
@@ -41,13 +59,17 @@ char **av;
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
 	char c;
-	while (c = *++str)
+	while ((c = *++str))
 	switch (c) {
-	case 'v':	/* more verbosity */
-	    verbose++;
+	case 'b':	/* Leave blank lines at end after removing keywords */
+	    setheadshrink (0);
+	    readimage = 0;
 	    break;
 	case 'n':	/* New image for output */
 	    newimage++;
+	    break;
+	case 'v':	/* more verbosity */
+	    verbose++;
 	    break;
 	default:
 	    usage();
@@ -76,6 +98,7 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Delete WCS in FITS and IRAF image files\n");
     fprintf(stderr,"usage: delwcs [-nv] file.fits ...\n");
+    fprintf(stderr,"  -b: When overwriting image header, leave blank lines \n");
     fprintf(stderr,"  -n: write new file, else overwrite \n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
@@ -93,12 +116,21 @@ char *filename;
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
     int iraffile;	/* 1 if IRAF image */
-    char *irafheader;	/* IRAF image header */
+    char *irafheader = NULL;	/* IRAF image header */
     char pixname[256];	/* IRAF pixel file name */
     char newname[256];
     int lext, lroot;
     char *ext, *fname, *imext, *imext1;
     char echar;
+
+    if (strchr (filename, ',') || strchr (filename,'[')) {
+	setheadshrink (0);
+	readimage = 0;
+	}
+    if (isiraf (filename))
+	readimage = 0;
+    if (newimage)
+	readimage = 1;
 
     /* Open image if IRAF .imh image */
     if (isiraf (filename)) {
@@ -109,13 +141,15 @@ char *filename;
 		free (irafheader);
 		return;
 		}
-	    if ((image = irafrimage (header)) == NULL) {
-		hgetm (header,"PIXFIL", 255, pixname);
-		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
-		free (irafheader);
-		free (header);
-		return;
-		}
+	    if (readimage) {
+		if ((image = irafrimage (header)) == NULL) {
+                    hgetm (header,"PIXFIL", 255, pixname);
+                    fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
+                    free (irafheader);
+                    free (header);
+                    return;
+		    }
+                }
 	    }
 	else {
 	    fprintf (stderr, "Cannot read IRAF header file %s\n", filename);
@@ -127,10 +161,12 @@ char *filename;
     else {
 	iraffile = 0;
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
-	    if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
-		fprintf (stderr, "Cannot read FITS image %s\n", filename);
-		free (header);
-		return;
+	    if (readimage) {
+		if ((image = fitsrimage (filename, nbhead, header)) == NULL) {
+		    fprintf (stderr, "Cannot read FITS image %s\n", filename);
+		    free (header);
+		    return;
+		    }
 		}
 	    }
 	else {
@@ -215,15 +251,25 @@ char *filename;
 		fprintf (stderr, "%s: Could not write FITS file\n", newname);
 	    else {
 		if (verbose)
-		    printf ("%s: rewritten successfully without WCS.\n", newname);
+		    printf ("%s: written successfully without WCS.\n", newname);
 		}
 	    }
-	else {
+	else if (readimage) {
 	    if (fitswimage (newname, header, image) < 1)
 		fprintf (stderr, "%s: Could not write FITS file\n", newname);
 	    else {
 		if (verbose)
-		    printf ("%s: rewritten successfully without WCS.\n", newname);
+		    printf ("%s: written successfully without WCS.\n", newname);
+		}
+	    }
+	else {
+	    if (fitswhead (newname, header) < 1)
+		fprintf (stderr, "%s: Could not overwrite FITS header\n",
+			 newname);
+	    else {
+		if (verbose)
+		    printf ("%s: rewritten successfully without WCS.\n",
+			    newname);
 		}
 	    }
 	}
@@ -255,4 +301,7 @@ char *filename;
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
 
  * Jul  1 2004	Call setheadshrink() to keep blank lines if FITS extension
+ *
+ * May 22 2006	Add -b to force setheadshrink
+ * Jun 21 2006	Clean up code
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/tmcread.c
- *** April 3, 2006
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2006
@@ -98,7 +98,7 @@ int	nlog;		/* 1 for diagnostics */
     double maxdist=0.0; /* Largest distance */
     int	faintstar=0;	/* Faintest star */
     int	farstar=0;	/* Most distant star */
-    int nreg;		/* Number of 2MASS point source regions in search */
+    int nreg = 0;	/* Number of 2MASS point source regions in search */
     int rlist[MAXREG];	/* List of regions */
     char inpath[128];	/* Pathname for input region file */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
@@ -150,8 +150,10 @@ int	nlog;		/* 1 for diagnostics */
     ntot = 0;
     if (nlog > 0)
 	verbose = 1;
-    else if (nlog < 0)
+    else if (nlog < 0) {
 	linedump = 0;
+	verbose = 0;
+	}
     else
 	verbose = 0;
 
@@ -227,6 +229,8 @@ int	nlog;		/* 1 for diagnostics */
 	rra2a = rra2;
 	rra2 = 360.0;
 	}
+    else
+	rra2a = 0.0;
 
     /* Write header if printing star entries as found */
     if (nstarmax < 1) {
@@ -525,7 +529,6 @@ int	nlog;		/* 1 for diagnostics */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
-    double size = 0.0;		/* Semi-major axis of extended source */
     struct StarCat *starcat;
     struct Star *star;
     char *str;
@@ -628,7 +631,7 @@ int	nlog;		/* 1 for diagnostics */
 
 /* Summarize search */
     if (nlog > 0)
-	fprintf (stderr,"TMCRNUM: %d / %d found\n",nstar,starcat->nstars);
+	fprintf (stderr,"TMCRNUM: %d / %d found\n",nstar, nstars);
 
     tmcclose (starcat);
     return (nstars);
@@ -659,7 +662,7 @@ int	nlog;		/* 1 for diagnostics */
     double epout;	/* Proper motion epoch (0.0 for no proper motion) */
     double ra1,ra2;	/* Limiting right ascensions of region in degrees */
     double dec1,dec2;	/* Limiting declinations of region in degrees */
-    int nreg;		/* Number of 2MASS point source regions in search */
+    int nreg = 0;	/* Number of 2MASS point source regions in search */
     int rlist[MAXREG];	/* List of regions */
     char inpath[128];	/* Pathname for input region file */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
@@ -671,12 +674,11 @@ int	nlog;		/* 1 for diagnostics */
     int wrap;
     int pass;
     int ireg;
-    int imag;
     int jstar, iw;
     int zone;
     int magsort;
     int nrmax = MAXREG;
-    int nstar,i, ntot;
+    int nstar, ntot;
     int istar, istar1, istar2;
     double num, ra, dec, mag;
     double rra1, rra2, rra2a, rdec1, rdec2;
@@ -710,8 +712,10 @@ int	nlog;		/* 1 for diagnostics */
     ntot = 0;
     if (nlog > 0)
 	verbose = 1;
-    else if (nlog < 0)
+    else if (nlog < 0) {
 	linedump = 0;
+	verbose = 0;
+	}
     else
 	verbose = 0;
 
@@ -771,6 +775,8 @@ int	nlog;		/* 1 for diagnostics */
 	rra2a = rra2;
 	rra2 = 360.0;
 	}
+    else
+	rra2a = 0.0;
 
     /* If searching through RA = 0:00, split search in two */
     for (iw = 0; iw <= wrap; iw++) {
@@ -921,9 +927,10 @@ int	verbose;	/* 1 for diagnostics */
 
 {
     int nrgn;		/* Number of regions found (returned) */
-    char *str;
     int ir;
-    int iz1,iz2,ir1,ir2,jr1,jr2,i;
+    int iz1 = 0;
+    int iz2 = 0;
+    int ir1,ir2,jr1,jr2,i;
     int ispd1, ispd2, ispd;
     int nsrch;
     double rah1,rah2, spd1, spd2;
@@ -1041,7 +1048,6 @@ int	zone;		/* RA zone (hours) to read */
     FILE *fcat;
     struct StarCat *sc;
     int lfile, lpath, izone, ireg;
-    char *str;
     char *zonefile;
     char *zonepath;	/* Full pathname for catalog file */
 
@@ -1250,7 +1256,7 @@ double	rax0;		/* Right ascension in degrees for which to search */
 int	minmax;		/* Flag to say whether this is a min or max RA */
 {
     int istar, istar0, istar1, istar2, nrep, i;
-    double rax, ra0, ra1, ra, rdiff, rdiff1, rdiff2, sdiff;
+    double rax, ra0, ra1, ra, sdiff;
     char rastrx[16];
     char rastr[16];
     int debug = 0;
@@ -1262,8 +1268,9 @@ int	minmax;		/* Flag to say whether this is a min or max RA */
 	ra2str (rastrx, 16, rax, 3);
 	ra2str (rastr, 16, ra1, 3);
 	nrep = -1;
+	istar = (int) star->num;
 	fprintf (stderr,"TMCSRA %d %d: %s (%s)\n",
-		 nrep,istar1,rastr,rastrx);
+		 nrep,istar,rastr,rastrx);
 	}
     istar0 = 1;
     if (tmcstar (starcat, star, zone, istar0))
@@ -1301,11 +1308,12 @@ int	minmax;		/* Flag to say whether this is a min or max RA */
 	    fprintf (stderr," ra1=    %.5f ra=     %.5f rax=    %.5f\n",
 			 ra0,ra,rax);
 	    }
-	if (istar == istar1 || istar == istar2)
+	if (istar == 1 || istar == istar1)
 	    break;
 	if (tmcstar (starcat, star, zone, istar))
 	    break;
 	ra = star->ra;
+	nrep++;
 	}
 
     /* For small catalogs, linear projection of RA's doesn't work */
@@ -1480,4 +1488,6 @@ int	istar;		/* Star sequence in 2MASS zone file */
  *
  * Aug  5 2005	Add JHK errors as additional option
  * Aug  5 2005	Avoid extra work by passing refcat catalog code
+ *
+ * Jun 20 2006	Initialize uninitialized variables
  */

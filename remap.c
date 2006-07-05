@@ -1,7 +1,24 @@
 /* File remap.c
- * April 19, 2006
+ * June 21, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -34,7 +51,6 @@ static char *outname;
 static char *wcsproj;           /* WCS projection name */
 
 static int nfiles = 0;
-static int nbstack = 0;
 static int fitsout = 1;
 static double secpix = 0;
 static double secpix2 = 0;
@@ -52,7 +68,6 @@ static int eqsys = 0;
 static double equinox = 0.0;
 static int outsys = 0;
 static int version = 0;		/* If 1, print only program name and version */
-static int mode = REMAP_CLOSEST;
 static int remappix=0;		/* Number of samples of input pixels */
 static char *wcsfile;		/* Read WCS from this FITS or IRAF file */
 static double xrpix = 0.0;
@@ -74,13 +89,10 @@ char **av;
     char filename[128];
     char *filelist[100];
     char errmsg[100];
-    char *listfile;
+    char *listfile = NULL;
     int readlist = 0;
-    FILE *flist;
-    int ifile, nblocks, nbytes, i;
-    char *blanks;
-    double x = 0.0;
-    double y = 0.0;
+    FILE *flist = NULL;
+    int ifile, i;
     int lwcs;
     char c;
 
@@ -106,7 +118,7 @@ char **av;
     for (av++; --ac > 0 && (*(str = *av)=='-' || *str == '@'); av++) {
 	if (*str == '@')
 	    str = str - 1;
-	while (c = *++str)
+	while ((c = *++str))
 	switch (c) {
     	case 'a':	/* Output rotation angle in degrees */
     	    if (ac < 2)
@@ -390,17 +402,19 @@ char	*filename;	/* FITS or IRAF file filename */
     char *image;		/* FITS input image */
     char *header;		/* FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
-    int bitpix, bitpixout;
+    int bitpix;
+    int bitpixout = -32;
     double cra, cdec, dra, ddec;
-    int i, j, ii, jj, hpin, wpin, hpout, wpout, nbout, ix, iy, npout;
-    int iin, iout, jin, jout;
+    int hpin, wpin, hpout, wpout, nbout, npout;
+    int iin = 0;
+    int iout, jin, jout;
     int iout1, iout2, jout1, jout2;
     int idiff, jdiff;
     int offscl, lblock;
     char pixname[256];
     struct WorldCoor *wcsin;
-    double bzin, bsin, bzout, bsout, bzx, bsx;
-    double dx, dy, dx0, dy0, secpixin1, secpixin2, secpix1, dpix, dnpix;
+    double bzin, bsin, bzout, bsout;
+    double dx, dy, secpixin1, secpixin2, secpix1, dpix, dnpix;
     double xout, yout, xin, yin, xpos, ypos, dpixi, dpixo, xout0, yout0;
     double xmin, xmax, ymin, ymax, xin1, xin2, yin1, yin2;
     double pixratio;
@@ -408,10 +422,8 @@ char	*filename;	/* FITS or IRAF file filename */
     char history[80];
     char wcstemp[16];
     struct WorldCoor *GetWCSFITS();
-    int nbytevec;
-    char *outvec, *lastout;
-    double *imvec, *endvec, *dvec;
-    int y, npix;
+    double *imvec;
+    int npix;
     int addscale = 0;
     double *dxout, *dyout;
 
@@ -904,5 +916,6 @@ double	*y2;		/* Upper right y coordinate (returned) */
  * Oct 12 2004	Fix message if writing to named file and print only if verbose
  *
  * Apr  6 2006	Convert between coordinate systems if requested
- * Apr 19 2006	Check to see whether the output file exists before reading its header
+ * Apr 19 2006	Check to see if output file exists before reading its header
+ * Jun 21 2006	Clean up code
  */

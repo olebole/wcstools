@@ -1,8 +1,8 @@
 /*** File libwcs/tabread.c
- *** September 29, 2005
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2005
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -475,7 +475,6 @@ int	nlog;
     int sysref;		/* Catalog coordinate system */
     double eqref;	/* Catalog equinox */
     double epref;	/* Catalog epoch */
-    double mjd;		/* Object epoch */
     char cstr[32];
     char str[32];
     char *objname;
@@ -488,6 +487,7 @@ int	nlog;
     struct Star *star;
 
     line = NULL;
+    nnfld = 0;
 
     nstar = 0;
     nndec = 0;
@@ -535,7 +535,10 @@ int	nlog;
 	printf ("equinox	%.3f\n", eqout);
 	printf ("epoch  	%.3f\n", epout);
 	printf ("program	scat %s\n", revmessage);
-	nnfld = CatNumLen (TABCAT, tnum[nnum-1], sc->nndec);
+	if (sc->nnfld > 0)
+	    nnfld = sc->nnfld;
+	else
+	    nnfld = CatNumLen (TABCAT, tnum[nnum-1], sc->nndec);
 	printf ("id   	ra          	dec        ");
 	for (i = 1; i < sc->nmag+1; i++) {
 	    if (i == sc->nmag && sc->entepoch)
@@ -936,7 +939,7 @@ int	nlog;
 	    wcs2pix (wcs, ra, dec, &xpix, &ypix, &offscl);
 	    if (!offscl) {
 		if (magscale > 0.0)
-		    flux = magscale * exp (logt * (-mag / 2.5));
+		    flux = magscale * exp (logt * (-magt / 2.5));
 		else
 		    flux = 1.0;
 		addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
@@ -1181,7 +1184,7 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
     char *tabname;
     struct TabTable *startab;
     struct StarCat *sc;
-    int i, lnum, ndec, istar, nbsc, icol, j;
+    int i, lnum, ndec, istar, nbsc, icol, j, nnfld;
     int entpmq, entnid;
     char *line;
     double dnum;
@@ -1606,7 +1609,10 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	tabgetc (&startok, sc->entid, cstr, 32);
 
 	/* Find length of identifier */
-	sc->nnfld = strlen (cstr);
+	if (tabhgeti4 (startab,"nfield", &nnfld))
+	    sc->nnfld = nnfld;
+	else
+	    sc->nnfld = strlen (cstr);
 
 	/* Find number of decimal places in identifier */
 	if (tabhgeti4 (startab, "ndec", &nndec)) {
@@ -1667,8 +1673,8 @@ int	verbose;	/* 1 to print error messages */
     struct TabTable *startab = sc->startab;
     char *line;
     char *uscore;
-    char cnum[32];
-    char temp[32];
+    char cnum[64];
+    char temp[64];
     double ydate;
     char *cn;
     int ndec, i, imag, ltok;
@@ -1692,7 +1698,7 @@ int	verbose;	/* 1 to print error messages */
     /* Extract ID  */
     st->objname[0] = (char) 0;
     if (sc->entid) {
-	tabgetc (&startok, sc->entid, cnum, 32);
+	tabgetc (&startok, sc->entid, cnum, 64);
 	if (!strcmp (sc->isfil,"usnoa-server")) {
 	    if ((uscore = strchr (cnum, '_')) != NULL)
 		*uscore = '.';
@@ -1702,7 +1708,8 @@ int	verbose;	/* 1 to print error messages */
 	    cn = cnum + 3;
 	else
 	    cn = cnum;
-	if (isnum (cn) || isnum (cn+1)) {
+	lcn = strlen (cn);
+	if (lcn < 16 && (isnum (cn) || isnum (cn+1))) {
 	    if (isnum(cnum)) {
 		lcn = strlen (cn);
 		if (lcn > 15)
@@ -2118,7 +2125,7 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	tabtable->lline = (nextline - tabtable->tabdata) * 2;
 	tabtable->tabline = (char *) calloc (tabtable->lline, 1);
 	fseek (tabtable->tcat, (long) tabtable->lhead, SEEK_SET);
-	fgets (tabtable->tabline, tabtable->lline, tabtable->tcat);
+	(void) fgets (tabtable->tabline, tabtable->lline, tabtable->tcat);
 	lline = strlen (tabtable->tabline);
 	if (tabtable->tabline[lline-1] < 32)
 	     tabtable->tabline[lline-1] = (char) 0;
@@ -2200,7 +2207,7 @@ int iline;	/* Line sequence number in tab table */
 	    fseek (tabtable->tcat, (long) tabtable->lhead, SEEK_SET);
 	    tabtable->iline = 0;
 	    for (i = tabtable->iline; i < iline; i++) {
-		fgets (tabtable->tabline, tabtable->lline, tabtable->tcat);
+		(void) fgets (tabtable->tabline, tabtable->lline, tabtable->tcat);
 		tabtable->iline++;
 		}
 	    lline = strlen (tabtable->tabline);
@@ -2785,4 +2792,7 @@ char    *filename;      /* Name of file to check */
  * Aug 17 2005	If nmax is -1, print magnitude keywords from file
  * Sep 29 2005	Read first 10000 characters for istab() to capture long heads
  * Sep 29 2005	Add rasort header flag if catalog is sorted by RA
+ *
+ * Jun 15 2006	Read ID field length from header, if present
+ * Jun 20 2006	Drop unused variables; initialize uninitialized variables
  */

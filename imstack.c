@@ -1,7 +1,24 @@
 /* File imstack.c
- * January 5, 2006
+ * June 21, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -25,7 +42,6 @@ static int nbstack = 0;
 static int extend = 0;		/* If 1, output multi-extension FITS file */
 static FILE *fstack = NULL;
 static int version = 0;		/* If 1, print only program name and version */
-static char *outfile = NULL;	/* If not null, output filename */
 static char *extroot;
 
 int
@@ -35,7 +51,7 @@ char **av;
 {
     char filename[128];
     char *filelist[100];
-    char *listfile;
+    char *listfile = NULL;
     char *str;
     int readlist = 0;
     int ntimes = 1;
@@ -57,7 +73,7 @@ char **av;
 	char c;
 	if (*str == '@')
 	    str = str - 1;
-	while (c = *++str)
+	while ((c = *++str))
 	switch (c) {
 	case 'v':	/* more verbosity */
 	    verbose++;
@@ -212,7 +228,7 @@ int	ntimes;		/* Stack each image this many times */
 char	*filename;	/* FITS or IRAF file filename */
 
 {
-    char *image;		/* FITS image */
+    char *image = NULL;		/* FITS image */
     char *header;		/* FITS header */
     char *hplace;
     int lhead;			/* Maximum number of bytes in FITS header */
@@ -487,4 +503,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Sep 17 2003	Change variable inline to iline for Redhat Linux
  *
  * Jan  5 2006	Print CR or LF after stacking only in verbose mode
+ * Jun 21 2006	Clean up code
  */

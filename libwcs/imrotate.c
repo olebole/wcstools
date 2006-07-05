@@ -169,8 +169,8 @@ int	verbose;
 	    }
 
 	for (x1 = 0; x1 < nx; x1++) {
+	    x2 = x1 + xshift;
 	    for (y1 = 0; y1 < ny; y1++) {
-		x2 = x1 + xshift;
 		y2 = y1 + yshift;
 		if (y2 < ny)
 		    movepix (image0,bitpix1,nx,x1,y1,image,bitpix2,nx,x2,y2);
@@ -228,9 +228,9 @@ int	verbose;
     else if (rotate >= 45 && rotate < 135) {
 	if (mirror == 1) {
 	    for (y1 = 0; y1 < ny; y1++) {
-		y2 = nx - x1 - 1;
+		x2 = ny - y1 - 1;
 		for (x1 = 0; x1 < nx; x1++) {
-		    x2 = ny - y1 - 1;
+		    y2 = nx - x1 - 1;
 		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,ny,x2,y2);
 		    }
 		}
@@ -250,8 +250,8 @@ int	verbose;
 	    }
 	else {
 	    for (y1 = 0; y1 < ny; y1++) {
+		x2 = ny - y1 - 1;
 		for (x1 = 0; x1 < nx; x1++) {
-		    x2 = ny - y1 - 1;
 		    y2 = x1;
 		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,ny,x2,y2);
 		    }
@@ -314,8 +314,8 @@ int	verbose;
 	    }
 	else if (mirror == 2) {
 	    for (y1 = 0; y1 < ny; y1++) {
+		x2 = ny - y1 - 1;
 		for (x1 = 0; x1 < nx; x1++) {
-		    x2 = ny - y1 - 1;
 		    y2 = nx - x1 - 1;
 		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,ny,x2,y2);
 		    }
@@ -326,8 +326,8 @@ int	verbose;
 	    }
 	else {
 	    for (y1 = 0; y1 < ny; y1++) {
+		x2 = y1;
 		for (x1 = 0; x1 < nx; x1++) {
-		    x2 = y1;
 		    y2 = nx - x1 - 1;
 		    movepix (image,bitpix1,nx,x1,y1,rotimage,bitpix2,ny,x2,y2);
 		    }

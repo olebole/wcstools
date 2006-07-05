@@ -1,7 +1,24 @@
 /* File fixpix.c
- * April 9, 2002
+ * June 20, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -58,7 +75,7 @@ char **av;
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
 	char c;
-	while (c = *++str)
+	while ((c = *++str))
 	switch (c) {
 	case 'v':	/* more verbosity */
 	    verbose++;
@@ -169,7 +186,7 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
-    char *irafheader;		/* IRAF image header */
+    char *irafheader = NULL;	/* IRAF image header */
     int i, lext, lroot;
     double bzero;		/* Zero point for pixel scaling */
     double bscale;		/* Scale factor for pixel scaling */
@@ -434,4 +451,6 @@ int	ixr, iyr;	/* Upper right corner of region (1 based) */
  * Mar 23 2000	Use hgetm() to get the IRAF pixel file name, not hgets()
  *
  * Apr  9 2002	Do not free unallocated header
+ *
+ * Jun 20 2006	Clean up code
  */

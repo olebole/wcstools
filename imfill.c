@@ -1,7 +1,24 @@
 /* File imfill.c
- * April 19, 2006
+ * May 8, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -23,6 +40,7 @@ static void imFill();
 extern char *FillFITS();
 extern char *SetBadFITS();
 extern void setghwidth();
+extern int getnfilled();
 
 #define MAXFILES 1000
 static int maxnfile = MAXFILES;
@@ -36,6 +54,7 @@ static int xsize = 3;
 static int ysize = 3;
 static int filter = 0;		/* Filter code */
 static int nlog = 100;		/* Number of lines between log messages */
+static double ghwidth;		/* Gaussian half-width */
 static char badpixfile[128];	/* Bad pixel file (zeroes except bad pixels) */
 static char *badimage;		/* FITS bad pixel image */
 static char *badheader;		/* FITS bad pixel header */
@@ -53,7 +72,7 @@ char **av;
     char filename[128];
     FILE *flist;
     char **fn, *fname;
-    char *listfile;
+    char *listfile = NULL;
     int lfn, ifile, nfile;
 
     nfile = 0;
@@ -126,7 +145,8 @@ char **av;
 		case 'h':	/* Gaussian filter half-width at half-height */
 		    if (ac < 2)
 			usage();
-		    setghwidth (atof (*++av));
+		    ghwidth = atof (*++av);
+		    setghwidth (ghwidth);
 		    ac--;
 		    break;
 
@@ -195,6 +215,11 @@ char **av;
 
     }
 
+    if (filter == FILL_NONE) {
+	fprintf (stderr, "IMFILL: No filling method has been set\n");
+	exit (-1);
+	}
+
     /* Process files in file of filenames */
     if (readlist) {
 	if ((flist = fopen (listfile, "r")) == NULL) {
@@ -250,7 +275,7 @@ usage ()
     fprintf(stderr,"  -l num: Logging interval in lines\n");
     fprintf(stderr,"  -m dx dy: Median filter dx x dy pixels\n");
     fprintf(stderr,"  -o: Allow overwriting of input image, else write new one\n");
-    fprintf(stderr,"  -p num: Bad pixel value (default is BLANK or -9999\n");
+    fprintf(stderr,"  -p num: Bad pixel value (default is BLANK or -9999)\n");
     fprintf(stderr,"  -v: Verbose\n");
     exit (1);
 }
@@ -266,17 +291,24 @@ char *name;
     int lheadb;			/* Maximum number of bytes in bad pixel FITS header */
     int nbheadb;		/* Actual number of bytes in bad pixel FITS header */
     int iraffile;		/* 1 if IRAF image */
+    int nfilled;
+    int nbadpix;
+    int i;
     char *irafheader;		/* IRAF image header */
     char newname[256];		/* Name for revised image */
-    char *ext;
-    char *newimage;
-    char *imext, *imext1;
+    char *ltime;
+    char *endchar;
+    char *ext = NULL;
+    char *newimage = NULL;
+    char *imext = NULL;
+    char *imext1 = NULL;
     char *fname;
     char extname[16];
-    int lext, lroot;
+    int lext = 0;
+    int lroot;
     char echar;
     char temp[8];
-    char history[64];
+    char history[128];
     char pixname[256];
 
     /* If not overwriting input file, make up a name for the output file */
@@ -375,28 +407,26 @@ char *name;
 	else
 	    strcat (newname, "b");
 
-	if (filter != FILL_NONE) {
-	    if (xsize < 10 && xsize > -1)
-		sprintf (temp,"%1d",xsize);
-	    else if (xsize < 100 && xsize > -10)
-		sprintf (temp,"%2d",xsize);
-	    else if (xsize < 1000 && xsize > -100)
-		sprintf (temp,"%3d",xsize);
-	    else
-		sprintf (temp,"%4d",xsize);
-	    strcat (newname, temp);
-	    strcat (newname, "x");
-	    if (ysize < 10 && ysize > -1)
-		sprintf (temp,"%1d",ysize);
-	    else if (ysize < 100 && ysize > -10)
-		sprintf (temp,"%2d",ysize);
-	    else if (ysize < 1000 && ysize > -100)
-	        sprintf (temp,"%3d",ysize);
-	    else
-		sprintf (temp,"%4d",ysize);
-	    strcat (newname, temp);
-	    strcat (newname, "f");
-	    }
+	if (xsize < 10 && xsize > -1)
+	    sprintf (temp,"%1d",xsize);
+	else if (xsize < 100 && xsize > -10)
+	    sprintf (temp,"%2d",xsize);
+	else if (xsize < 1000 && xsize > -100)
+	    sprintf (temp,"%3d",xsize);
+	else
+	    sprintf (temp,"%4d",xsize);
+	strcat (newname, temp);
+	strcat (newname, "x");
+	if (ysize < 10 && ysize > -1)
+	    sprintf (temp,"%1d",ysize);
+	else if (ysize < 100 && ysize > -10)
+	    sprintf (temp,"%2d",ysize);
+	else if (ysize < 1000 && ysize > -100)
+	    sprintf (temp,"%3d",ysize);
+	else
+	    sprintf (temp,"%4d",ysize);
+	strcat (newname, temp);
+	strcat (newname, "f");
 	if (fitsout)
 	    strcat (newname, ".fits");
 	else if (lext > 0) {
@@ -415,18 +445,20 @@ char *name;
     else
 	strcpy (newname, name);
 
+
     if (verbose) {
-	if (filter == FILL_GAUSSIAN)
-	    fprintf (stderr,"%d x %d Gaussian Filter ", xsize, ysize);
-	else if (filter == FILL_MEDIAN)
-	    fprintf (stderr,"%d x %d Median Filter ", xsize, ysize);
-	else
-	    fprintf (stderr,"%d x %d Mean Filter ", xsize, ysize);
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s", name);
 	else
 	    fprintf (stderr,"FITS image file %s", name);
 	fprintf (stderr, " -> %s\n", newname);
+	if (filter == FILL_GAUSSIAN)
+	    fprintf (stderr, "%d x %d x %.2f Gaussian filled\n",
+		 xsize, ysize, ghwidth);
+	else if (filter == FILL_MEDIAN)
+	    fprintf (stderr, "%d x %d Median filled\n", xsize, ysize);
+	else
+	    fprintf (stderr, "%d x %d Mean filled\n", xsize, ysize);
 	}
 
     /* Set bad pixels in input image from FITS format bad pixel file */
@@ -456,12 +488,14 @@ char *name;
 	    return;
 	    }
 	else {
+	    nbadpix = getnfilled();
 	    if (verbose)
-		printf ("%s: bad pixels flagged from %s\n", name, badpixfile);
+		printf ("%s: %d bad pixels flagged from %s\n",
+			name, nbadpix, badpixfile);
 	    free (image);
 	    image = newimage;
-	    sprintf (history,"Bad pixels set from %s", badpixfile);
-	    hputs (header, "HISTORY", history);
+	    sprintf (history,"%d bad pixels set from %s", nbadpix, badpixfile);
+	    hputs (header, "BADPIX", history);
 	    }
 	}
 
@@ -479,6 +513,35 @@ char *name;
 	    image = newimage;
 	    }
 	}
+
+    /* Check header size */
+
+    nfilled = getnfilled ();
+    if (image && nfilled == 0)
+	fprintf (stderr,"IMFILL: No pixel values replaced\n");
+
+    /* Get current date and time to minute */
+    ltime = lt2fd ();
+    endchar = strrchr (ltime,':');
+    *endchar = (char) 0;
+
+    /* Set IMFILL keyword */
+    for (i = 0; i < 128; i++)
+	history[i] = (char) 0;
+    if (hgets (header, "IMFILL", 72, history))
+	hputc (header, "HISTORY", history);
+    for (i = 0; i < 128; i++)
+	history[i] = (char) 0;
+    if (filter == FILL_GAUSSIAN)
+	sprintf (history, "%s: %d pixels %d x %d x %.1f Gaussian-filled",
+		 ltime, nfilled, xsize, ysize, ghwidth);
+    else if (filter == FILL_MEDIAN)
+	sprintf (history, "%s: %d pixels %d x %d median-filled ",
+		 ltime, nfilled, xsize, ysize);
+    else
+	sprintf (history, "%s: %d pixels %d x %d mean-filled ",
+		 ltime, nfilled, xsize, ysize);
+    hputs (header, "IMFILL", history);
 
     /* Write output image file */
     if (iraffile && !fitsout) {
@@ -499,7 +562,8 @@ char *name;
 	}
     else if (verbose) {
 	printf ("IMFILL: File %s not written.\n", newname);
-	free (newimage);
+	if (newimage != NULL)
+	    free (newimage);
 	}
 
     free (header);
@@ -510,4 +574,5 @@ char *name;
 }
 /* Apr 11 2006	New program
  * Apr 19 2006	Fix calls to usage()
+ * Jun 21 2006	Clean up code
  */

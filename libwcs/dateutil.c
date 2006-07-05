@@ -1,5 +1,5 @@
 /*** File libwcs/dateutil.c
- *** May 3, 2006
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1999-2006
@@ -3753,9 +3753,9 @@ char	*string; /* Possible FITS date string, which may be:
 			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
 
 {
-    int iyr;	/* year (returned) */
-    int imon;	/* month (returned) */
-    int iday;	/* day (returned) */
+    int iyr = 0;	/* year (returned) */
+    int imon = 0;	/* month (returned) */
+    int iday = 0;	/* day (returned) */
     int i;
     char *sstr, *dstr, *tstr, *nval;
 
@@ -4046,4 +4046,5 @@ double	dnum, dm;
  * Oct 14 2005	Add tsd2fd() and tsd2dt()
  *
  * May  3 2006	Drop declaration of unused variables
+ * Jun 20 2006	Initialized uninitialized variables
  */

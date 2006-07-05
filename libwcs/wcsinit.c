@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** April 25, 2006
+ *** May 19, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2006
@@ -227,7 +227,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     double dec_deg,ra_hours, secpix, ra0, ra1, dec0, dec1, cvel;
     double cdelt1, cdelt2, cd[4], pc[81];
     char keyword[16];
-    int ieq, i, naxes, cd11p, cd12p, cd21p, cd22p;
+    int ieq, i, j, k, naxes, cd11p, cd12p, cd21p, cd22p;
     int ilat;	/* coordinate for latitude or declination */
     /*
     int ix1, ix2, iy1, iy2, idx1, idx2, idy1, idy2;
@@ -238,7 +238,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     double mjd;
     double rot;
     double ut;
-    int j, nax;
+    int nax;
     int twod;
     int iszpx = 0;
     extern int tnxinit();
@@ -323,10 +323,12 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     wcs->wcsproj = getdefwcs();
 
     /* Initialize rotation matrices */
-    for (i = 0; i < 16; i++) wcs->pc[i] = 0.0;
-    for (i = 0; i < 16; i++) pc[i] = 0.0;
+    for (i = 0; i < 81; i++) wcs->pc[i] = 0.0;
+    for (i = 0; i < 81; i++) pc[i] = 0.0;
     for (i = 0; i < naxes; i++) wcs->pc[(i*naxes)+i] = 1.0;
     for (i = 0; i < naxes; i++) pc[(i*naxes)+i] = 1.0;
+    for (i = 0; i < 9; i++) wcs->cdelt[i] = 0.0;
+    for (i = 0; i < naxes; i++) wcs->cdelt[i] = 1.0;
 
     /* If the current world coordinate system depends on another, set it now */
     if (hgetsc (hstring, "WCSDEP",mchar, 63, wcsname)) {
@@ -650,88 +652,36 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	    wcs->cdelt[2] = 1.0;
 	    wcs->cdelt[3] = 1.0;
 
-	    /* Use rotation matrix, if present */
-	    for (i = 0; i < 16; i++)
+	    /* Initialize rotation matrix */
+	    for (i = 0; i < 81; i++) {
+		pc[i] = 0.0;
 		wcs->pc[i] = 0.0;
+		}
+	    for (i = 0; i < naxes; i++)
+		pc[(i*naxes)+i] = 1.0;
 
-	    /* FITS WCS interim rotation matrix */
+	    /* Read FITS WCS interim rotation matrix */
 	    if (!mchar && hgetr8 (hstring,"PC001001",&pc[0]) != 0) {
-		hgetr8 (hstring,"PC001002",&pc[1]);
-		if (naxes < 3) {
-		    hgetr8 (hstring,"PC002001",&pc[2]);
-		    pc[3] = wcs->pc[0];
-		    hgetr8 (hstring,"PC002002",&pc[3]);
-		    }
-		if (naxes == 3) {
-		    hgetr8 (hstring,"PC001003",&pc[2]);
-		    hgetr8 (hstring,"PC002001",&pc[3]);
-		    pc[4] = wcs->pc[0];
-		    hgetr8 (hstring,"PC002002",&pc[4]);
-		    hgetr8 (hstring,"PC002003",&pc[5]);
-		    hgetr8 (hstring,"PC003001",&pc[6]);
-		    hgetr8 (hstring,"PC003002",&pc[7]);
-		    pc[8] = 1.0;
-		    hgetr8 (hstring,"PC003003",&pc[8]);
-		    }
-		if (naxes > 3) {
-		    hgetr8 (hstring,"PC001003",&pc[2]);
-		    hgetr8 (hstring,"PC001004",&pc[3]);
-		    hgetr8 (hstring,"PC002001",&pc[4]);
-		    pc[5] = wcs->pc[0];
-		    hgetr8 (hstring,"PC002002",&pc[5]);
-		    hgetr8 (hstring,"PC002003",&pc[6]);
-		    hgetr8 (hstring,"PC002004",&pc[7]);
-		    hgetr8 (hstring,"PC003001",&pc[8]);
-		    hgetr8 (hstring,"PC003002",&pc[9]);
-		    pc[10] = 1.0;
-		    hgetr8 (hstring,"PC003003",&pc[10]);
-		    hgetr8 (hstring,"PC003004",&pc[11]);
-		    hgetr8 (hstring,"PC004001",&pc[12]);
-		    hgetr8 (hstring,"PC004002",&pc[13]);
-		    hgetr8 (hstring,"PC004003",&pc[14]);
-		    pc[15] = 1.0;
-		    hgetr8 (hstring,"PC004004",&pc[15]);
+		k = 0;
+		pc[naxes+1] = wcs->pc[0];
+		for (i = 0; i < naxes; i++) {
+		    for (j = 0; j < naxes; j++) {
+			sprintf (keyword, "PC00%1d00%1d", i+1, j+1);
+			hgetr8 (hstring, keyword, &pc[k++]);
+			}
 		    }
 		wcspcset (wcs, cdelt1, cdelt2, pc);
 		}
 
-	    /* FITS WCS standard rotation matrix */
+	    /* Read FITS WCS standard rotation matrix */
 	    else if (hgetr8c (hstring, "PC1_1", mchar, &pc[0]) != 0) {
-		hgetr8c (hstring, "PC1_2", mchar, &pc[1]);
-		if (naxes < 3) {
-		    hgetr8c (hstring, "PC2_1", mchar, &pc[2]);
-		    pc[3] = wcs->pc[0];
-		    hgetr8c (hstring, "PC2_2", mchar, &pc[3]);
-		    }
-		if (naxes == 3) {
-		    hgetr8c (hstring, "PC1_3", mchar, &pc[2]);
-		    hgetr8c (hstring, "PC2_1", mchar, &pc[3]);
-		    pc[4] = wcs->pc[0];
-		    hgetr8c (hstring, "PC2_2", mchar, &pc[4]);
-		    hgetr8c (hstring, "PC2_3", mchar, &pc[5]);
-		    hgetr8c (hstring, "PC3_1", mchar, &pc[6]);
-		    hgetr8c (hstring, "PC3_2", mchar, &pc[7]);
-		    pc[8] = 1.0;
-		    hgetr8c (hstring, "PC3_3", mchar, &pc[8]);
-		    }
-		if (naxes > 3) {
-		    hgetr8c (hstring, "PC1_3", mchar, &pc[2]);
-		    hgetr8c (hstring, "PC1_4", mchar, &pc[3]);
-		    hgetr8c (hstring, "PC2_1", mchar, &pc[4]);
-		    pc[5] = wcs->pc[0];
-		    hgetr8c (hstring, "PC2_2", mchar, &pc[5]);
-		    hgetr8c (hstring, "PC2_3", mchar, &pc[6]);
-		    hgetr8c (hstring, "PC2_4", mchar, &pc[7]);
-		    hgetr8c (hstring, "PC3_1", mchar, &pc[8]);
-		    hgetr8c (hstring, "PC3_2", mchar, &pc[9]);
-		    pc[10] = 1.0;
-		    hgetr8c (hstring, "PC3_3", mchar, &pc[10]);
-		    hgetr8c (hstring, "PC3_4", mchar, &pc[11]);
-		    hgetr8c (hstring, "PC4_1", mchar, &pc[12]);
-		    hgetr8c (hstring, "PC4_2", mchar, &pc[13]);
-		    hgetr8c (hstring, "PC4_3", mchar, &pc[14]);
-		    pc[15] = 1.0;
-		    hgetr8c (hstring, "PC4_4", mchar, &pc[15]);
+		k = 0;
+		pc[naxes+1] = wcs->pc[0];
+		for (i = 0; i < naxes; i++) {
+		    for (j = 0; j < naxes; j++) {
+			sprintf (keyword, "PC%1d_%1d", i+1, j+1);
+			hgetr8c (hstring, keyword, mchar, &pc[k++]);
+			}
 		    }
 		wcspcset (wcs, cdelt1, cdelt2, pc);
 		}
@@ -1364,4 +1314,5 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Mar  9 2006	Get Epoch of observation from MJD-OBS or DATE-OBS/UT unless DSS
  * Apr 24 2006	Initialize rotation matrices
  * Apr 25 2006	Ignore axes with dimension of one
+ * May 19 2006	Initialize all of 9x9 PC matrix; read in loops
  */

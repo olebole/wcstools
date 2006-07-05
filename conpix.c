@@ -1,7 +1,24 @@
 /* File conpix.c
- * April 9, 2002
+ * June 21, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -45,7 +62,7 @@ char **av;
     char *lastchar;
     char filename[128];
     FILE *flist;
-    char *listfile;
+    char *listfile = NULL;
     int nop, op[10];
     double opcon[10];
 
@@ -63,7 +80,7 @@ char **av;
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
 	char c;
-	while (c = *++str)
+	while ((c = *++str))
 	switch (c) {
 
 	case 'a':	/* add constant to all pixels */
@@ -224,7 +241,7 @@ double	*opcon;		/* Constants for operations */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
-    char *irafheader;		/* IRAF image header */
+    char *irafheader = NULL;	/* IRAF image header */
     int lext, lroot;
     char *imext, *imext1;
     char newname[256];
@@ -552,7 +569,6 @@ double	flux;	/* Square root of this is 1/2.35 of Gaussian FWHM */
 
 {
     double fac, rsq, v1, v2, sig;
-    int i = 0;
 
     sig = sqrt (flux);
 
@@ -594,4 +610,6 @@ double	flux;	/* Square root of this is 1/2.35 of Gaussian FWHM */
  * Nov 20 2001	Use random() instead of drand48() for portability
  *
  * Apr  9 2002	Do not free unallocated header
+ *
+ * Jun 21 2006	Clean up code
  */

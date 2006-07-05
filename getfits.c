@@ -1,7 +1,24 @@
 /* File getfits.c
- * September 30, 2005
+ * June 21, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -36,10 +53,7 @@ struct Range {
 /* Subroutines for dealing with ranges */
 static struct Range *RangeInit(); /* Initialize range structure from string */
 static int isrange();	/* Return 1 if string is a range of numbers, else 0 */
-static int rgetn();	/* Return number of values in all ranges */
-static int rgeti4();	/* Return next number in range as integer */
 static double rgetr8();	/* Return next number in range as double */
-static void rstart();	/* Restart range */
 
 static void usage();
 static void nextname();	/* Find next available name (namea, nameb, ...) */
@@ -59,10 +73,6 @@ static char *rrange;	/* Row range string */
 static char *crange;	/* Column range string */
 static double ra0 = -99.0;	/* Initial center RA in degrees */
 static double dec0 = -99.0;	/* Initial center Dec in degrees */
-static double rad0 = 0.0;	/* Search box radius */
-static double dra0 = 0.0;	/* Search box width */
-static double ddec0 = 0.0;	/* Search box height */
-static double epoch0 = 0.0;	/* Epoch for coordinates */
 static int syscoor = 0;		/* Input search coordinate system */
 static double eqcoor = 0.0;	/* Input search coordinate system */
 
@@ -72,7 +82,7 @@ int ac;
 char **av;
 {			
     char *str;
-    char *listfile;
+    char *listfile = NULL;
     char **fn;
     char filename[256];
     char temp[80];
@@ -82,7 +92,7 @@ char **av;
     char rastr[32], decstr[32];
     int nkwd = 0;		/* Number of keywords to delete */
     int nkwd1 = 0;		/* Number of keywords in delete file */
-    char **kwd;			/* List of keywords to be deleted */
+    char **kwd = NULL;		/* List of keywords to be deleted */
     char **kwdnew;
     int ikwd;
     FILE *fdk;
@@ -138,7 +148,7 @@ char **av;
 	/* Read command */
 	else if (*(str = *av) == '-') {
 	    char c;
-	    while (c = *++str) {
+	    while ((c = *++str)) {
 		switch (c) {
 
 		case 'v':	/* more verbosity */
@@ -357,52 +367,33 @@ int	nkwd;
     char *header;	/* FITS header */
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
-    char pixname[256];	/* Pixel file name */
     char history[128];	/* for HISTORY line */
-    char *filename;	/* Pointer to start of file name */
-    char inname[256];	/* Name of TIFF file */
     char fitsname[256];	/* Name of FITS file */
     char fitspath[256];	/* Pathname of FITS file  */
-    char *hdrfile1;
     char *fitsfile;
-    char *image;        /* FITS image */
-    int nbytes;
-    double cra;         /* Center right ascension in degrees (returned) */
-    double cdec;        /* Center declination in degrees (returned) */
-    double dra;         /* Right ascension half-width in degrees (returned) */
-    double ddec;        /* Declination half-width in degrees (returned) */
-    double secpix;      /* Arcseconds per pixel (returned) */
     double crpix1, crpix2;
     double cxpix, cypix;
     double ra, dec;
     int offscl;
     int wp;             /* Image width in pixels (returned) */
     int hp;             /* Image height in pixels (returned) */
-    int sysout=0;       /* Coordinate system to return (0=image, returned) */
     double eqout=0.0;   /* Equinox to return (0=image, returned) */
-    int i, j;
     int ifrow1, ifrow2;	/* First and last rows to extract */
     int ifcol1, ifcol2;	/* First and last columns to extracT */
     int nbimage;        /* Number of bytes in image */
-    int nbfile;         /* Number of bytes in file */
-    int nbread;         /* Number of bytes actually read from file */
-    char *ext;		/* Pointer to start of extension */
     int ikwd;
     char *endchar;
     char *ltime;
     char *newimage;
     char *kw, *kwl;
-    int nc, ier, bitpix;
-    int tpix, bytepix, nprow;
-    int nbrow, nblock, nbleft, sampix, nbout;
+    int bitpix;
+    int bytepix;
+    int nblock, nbleft, nbout;
     int nrows, ncols;
     char rastr[32], decstr[32], cstr[32];
     char temp[80];
-    int vpix;
     int xdim = 1;
     int ydim = 1;
-    int drow = 0;
-    int dcol = 0;
     struct Range *xrange;    /* Column range structure */
     struct Range *yrange;    /* Row range structure */
     struct WorldCoor *wcs, *GetWCSFITS();
@@ -890,7 +881,7 @@ char *name;
 char *newname;
 {
     char *ext, *sufchar;
-    int lext, lname;
+    int lname;
 
     ext = strrchr (name, '.');
     if (ext)
@@ -929,4 +920,6 @@ char *newname;
  * Dec  6 2004	Don't print gratuitous newline at end of process
  *
  * Sep 30 2005	Convert input center coordinates to image system
+ *
+ * Jun 21 2006	Clean up code
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** April 7, 2006
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2006
@@ -301,6 +301,20 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	    binclose (starcat);
 	    }
 	}
+    else if (refcat == SKY2K) {
+	strcpy (title, "SKY2000 Master Catalog Stars");
+	starcat = binopen ("sky2k");
+	if (starcat == NULL)
+	    starcat = binopen ("sky2kra");
+	if (starcat) {
+	    *syscat = starcat->coorsys;
+	    *eqcat = starcat->equinox;
+	    *epcat = starcat->epoch;
+	    *catprop = starcat->mprop;
+	    *nmag = 4;
+	    binclose (starcat);
+	    }
+	}
     else if (refcat == TYCHO2) {
 	strcpy (title, "Tycho 2 Catalog Stars");
 	*syscat = WCS_J2000;
@@ -496,6 +510,9 @@ char	*refcatname;	/* Name of reference catalog */
     else if (strncasecmp(refcatname,"yb6",3)==0 &&
 	     strcsrch(refcatname, ".tab") == NULL)
 	refcat = YB6;
+    else if (strncasecmp(refcatname,"sky2k",5)==0 &&
+	     strcsrch(refcatname, ".tab") == NULL)
+	refcat = SKY2K;
     else if (strncasecmp(refcatname,"sao",3)==0 &&
 	     strcsrch(refcatname, ".tab") == NULL) {
 	starcat = binopen ("SAO");
@@ -685,6 +702,8 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "2MASS XSC");
     else if (refcat ==  TMIDR2)	/* 2MASS Point Source Catalog */
 	strcpy (catname, "2MASS PSC IDR2");
+    else if (refcat ==  SKY2K)	/* SKY2000 Master Catalog */
+	strcpy (catname, "SKY2000");
     return (catname);
 }
 
@@ -712,7 +731,7 @@ char	*refcatname;	/* Catalog file name */
 	}
 
     /* Allocate string in which to return a catalog name */
-    catname = (char *)calloc (32, 1);
+    catname = (char *)calloc (64, 1);
 
     if (refcat ==  GSC)		/* HST Guide Star Catalog */
 	strcpy (catname, "HST Guide Stars");
@@ -776,6 +795,8 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "2MASS Extended Sources");
     else if (refcat ==  TMIDR2)	/* 2MASS Point Source Catalog */
 	strcpy (catname, "2MASS-IDR2 Point Sources");
+    else if (refcat ==  SKY2K)	/* SKY2000 Master Catalog */
+	strcpy (catname, "SKY2000 Catalog Stars");
     return (catname);
 }
 
@@ -834,6 +855,8 @@ int	refcat;		/* Catalog code */
 	strcpy (catid,"tycho2_id ");
     else if (refcat == HIP)
 	strcpy (catid,"hip_id ");
+    else if (refcat == SKY2K)
+	strcpy (catid,"sky_id ");
     else
 	strcpy (catid,"id              ");
 
@@ -860,7 +883,7 @@ int	refcat;		/* Catalog code */
 	return (900.0);
     else if (refcat==GSC2)
 	return (120.0);
-    else if (refcat==SAO || refcat==PPM || refcat==IRAS)
+    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat == SKY2K)
 	return (5000.0);
     else
 	return (1800.0);
@@ -992,6 +1015,10 @@ char *progname;	/* Program name which might contain catalog code */
     else if (strcsrch (progname,"bsc") != NULL) {
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "bsc");
+	}
+    else if (strcsrch (progname,"sky2k") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "sky2k");
 	}
     else if (strcsrch (progname,"2mp") != NULL ||
 	strcsrch (progname,"tmc") != NULL) {
@@ -1144,6 +1171,15 @@ char	*numstr;	/* Formatted number (returned) */
 	    sprintf (numstr, "%6d", (int)(dnum+0.5));
 	}
 
+    /* SKY2000 Catalog (TDC binary format) */
+    else if (refcat==SKY2K) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%07d", (int)(dnum+0.5));
+	else
+	    sprintf (numstr, "%7d", (int)(dnum+0.5));
+	}
+
+
     /* Tycho or ACT catalogs */
     else if (refcat==TYCHO || refcat==TYCHO2 ||
 	     refcat == TYCHO2E || refcat==ACT) {
@@ -1246,6 +1282,10 @@ int	nndec;		/* Number of decimal places ( >= 0) */
     else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC ||
 	     refcat==HIP)
 	return (6);
+
+    /* SKY2000 Catalog (TDC binary format) */
+    else if (refcat==SKY2K)
+	return (7);
 
     /* Tycho, Tycho2, or ACT catalogs */
     else if (refcat == TYCHO || refcat == TYCHO2 ||
@@ -1352,7 +1392,7 @@ int	refcat;		/* Catalog code */
 
     /* SAO, PPM, Hipparcos, or IRAS Point Source Catalogs (TDC binary format) */
     else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC ||
-	     refcat==HIP)
+	     refcat==HIP || refcat == SKY2K)
 	return (0);
 
     /* Tycho, Tycho2, or ACT catalogs */
@@ -1442,6 +1482,16 @@ char	*magname;	/* Name of magnitude, returned */
 	    strcpy (magname, "MagN");
 	else
 	    strcpy (magname, "MagF");
+	}
+    else if (refcat==SKY2K) {
+	if (imag == 1)
+	    strcpy (magname, "MagB");
+	else if (imag == 2)
+	    strcpy (magname, "MagV");
+	else if (imag == 3)
+	    strcpy (magname, "MagP");
+	else
+	    strcpy (magname, "MagPv");
 	}
     else if (refcat==TMPSC || refcat == TMXSC) {
 	if (imag == 1)
@@ -3230,4 +3280,6 @@ vottail ()
  * Mar 15 2006	Clean up VOTable code
  * Mar 17 2006	Return number of fields from vothead()
  * Apr  7 2006	Keep quoted character strings together as a single token
+ * Jun  6 2006	Add SKY2000 catalog for wide fields
+ * Jun 20 2006	In CatSource() increase catalog descriptor from 32 to 64 chars
  */

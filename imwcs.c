@@ -1,8 +1,25 @@
 /* File imwcs.c
- * April 4, 2005
+ * June 21, 2006
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -91,11 +108,10 @@ char **av;
     char errmsg[256];
     FILE *flist;
     char **fn;
-    char *listfile;
+    char *listfile = NULL;
     double x, y;
     int i, imag;
     int ifile, nfile;
-    char *refcatn;		/* Name of reference ctalog used */
 
     outname[0] = 0;
     refcatname = NULL;
@@ -591,14 +607,14 @@ char	*name;		/* FITS or IRAF image filename */
     int bpix = 0;
     char *image;		/* Image */
     char *header;		/* FITS header */
-    char *irafheader;		/* IRAF image header */
+    char *irafheader = NULL;	/* IRAF image header */
     char newname[256];		/* Name for revised image */
     char pixname[256];		/* Pixel file name for revised image */
     char temp[16];
     char *ext;
     char *fname;
     int lext, lname;
-    int rename;
+    int rename = 0;
     char *imext, *imext1;
     char *newimage;
 
@@ -946,4 +962,5 @@ char	*name;		/* FITS or IRAF image filename */
  * Sep 15 2004	Add missing 0 shift arguments to RotFITS() call (Rob Creager)
  *
  * Apr  4 2005	If not catalog is specified, print an error message and quit
+ * Jun 21 2006	Clean up code
  */

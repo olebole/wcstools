@@ -1,8 +1,8 @@
 /*** File fitshead.h  FITS header access subroutines
- *** August 30, 2004
+ *** May 22, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -272,6 +272,8 @@ extern "C" {
         const int ndec);	/* Number of decimal places */
     void setheadshrink(		/* 0 to keep blank line when keyword deleted */
 	const int hsh);		/* 1 to shrink  header by one line */
+    void setleaveblank(		/* 1 to keep blank line where keyword deleted */
+	const int hsh);		/* 0 to shrink  header by one line */
 };
 #else /* __cplusplus */
 
@@ -351,6 +353,7 @@ extern int hdel();	/* Delete a keyword line from a FITS header */
 extern int hadd();	/* Add a keyword line to a FITS header */
 extern int hchange();	/* Change a keyword name in a FITS header */
 extern void setheadshrink(); /* Set flag for deleted keyword space disposition*/
+extern void setleaveblank(); /* Set flag for deleted keyword space disposition*/
 
 /* Subroutines to convert RA and Dec in degrees to strings */
 extern void ra2str();
@@ -412,4 +415,6 @@ extern char *getutime(); /* Return current UT as an ISO-format string */
  * Feb 26 2004	Add igetc(), formerly internal to iget.c
  * Jul  1 2004	Add setheadshrink() for hdel()
  * Aug 30 2004	Add numdec() to non-C++ declarations
+ *
+ * May 22 2006	Add setleaveblank() to leave blank line where keyword is deleted
  */

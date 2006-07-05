@@ -59,6 +59,7 @@ int	nlog;		/* 1 to print each star's position */
     char *line;
 
     line = 0;
+    iline = 0;
     nstars = 0;
 
     if (daoopen (daocat) > 0) {
@@ -201,4 +202,6 @@ char *line;	/* Pointer to iline'th entry (returned updated) */
  *
  * Aug  3 2004	Move daoopen() and daoline() declarations to wcscat.h
  * Aug 30 2004	Include fitsfile.h
+ *
+ * Jun 19 2006	Initialized uninitialized  variable iline
  */

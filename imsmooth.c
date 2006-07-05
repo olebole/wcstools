@@ -1,7 +1,24 @@
 /* File imsmooth.c
- * April 19, 2006
+ * June 21, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -32,11 +49,11 @@ static char outname[128];	/* Name for output image */
 static int fitsout = 0;		/* Output FITS file from IRAF input if 1 */
 static int overwrite = 0;	/* allow overwriting of input image file */
 static int version = 0;		/* If 1, print only program name and version */
-static int xsize = 3;
-static int ysize = 3;
+static int xsize = 3;		/* Width of sliding box in pixels */
+static int ysize = 3;		/* Height of sliding box in pixels */
+static double ghwidth = 1.0;	/* Gaussian half-width */
 static int filter = 0;		/* Filter code */
 static int nlog = 100;		/* Number of lines between log messages */
-static int factor = 0;		/* Reduction factor */
 
 
 int
@@ -51,7 +68,7 @@ char **av;
     char filename[128];
     FILE *flist;
     char **fn, *fname;
-    char *listfile;
+    char *listfile = NULL;
     int lfn, ifile, nfile;
 
     nfile = 0;
@@ -108,7 +125,8 @@ char **av;
 		case 'h':	/* Gaussian filter half-width at half-height */
 		    if (ac < 2)
 			usage();
-		    setghwidth (atof (*++av));
+		    ghwidth = atof (*++av);
+		    setghwidth (ghwidth);
 		    ac--;
 		    break;
 
@@ -219,7 +237,6 @@ usage ()
     fprintf (stderr,"Filter FITS and IRAF image files\n");
     fprintf(stderr,"Usage: [-v][-a dx[,dy]][-g dx[,dy]][-m dx[,dy]] file.fits ...\n");
     fprintf(stderr,"  -a dx dy: Mean filter dx x dy pixels\n");
-    fprintf(stderr,"  -f factor: Reduce each image dimension by factor\n");
     fprintf(stderr,"  -g dx: Gaussian filter dx pixels square\n");
     fprintf(stderr,"  -h halfwidth: Gaussian half-width at half-height\n");
     fprintf(stderr,"  -l num: Logging interval in lines\n");
@@ -238,14 +255,16 @@ char *name;
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
-    char *irafheader;		/* IRAF image header */
+    char *irafheader = NULL;	/* IRAF image header */
     char newname[256];		/* Name for revised image */
-    char *ext;
-    char *newimage;
-    char *imext, *imext1;
+    char *ext = NULL;
+    char *newimage = NULL;
+    char *imext = NULL;
+    char *imext1;
     char *fname;
     char extname[16];
-    int lext, lroot;
+    int lext = 0;
+    int lroot;
     char echar;
     char temp[8];
     char history[64];
@@ -345,34 +364,24 @@ char *name;
 	else
 	    strcat (newname, "a");
 
-	if (factor) {
-	    if (factor < 10)
-		sprintf (temp,"%1d",factor);
-	    else if (factor < 100)
-		sprintf (temp,"%2d",factor);
-	    else
-		sprintf (temp,"%d",factor);
-	    }
-	else {
-	    if (xsize < 10 && xsize > -1)
-		sprintf (temp,"%1d",xsize);
-	    else if (xsize < 100 && xsize > -10)
-		sprintf (temp,"%2d",xsize);
-	    else if (xsize < 1000 && xsize > -100)
-		sprintf (temp,"%3d",xsize);
-	    else
-		sprintf (temp,"%4d",xsize);
-	    strcat (newname, temp);
-	    strcat (newname, "x");
-	    if (ysize < 10 && ysize > -1)
-		sprintf (temp,"%1d",ysize);
-	    else if (ysize < 100 && ysize > -10)
-		sprintf (temp,"%2d",ysize);
-	    else if (ysize < 1000 && ysize > -100)
-		sprintf (temp,"%3d",ysize);
-	    else
-		sprintf (temp,"%4d",ysize);
-	    }
+	if (xsize < 10 && xsize > -1)
+	    sprintf (temp,"%1d",xsize);
+	else if (xsize < 100 && xsize > -10)
+	    sprintf (temp,"%2d",xsize);
+	else if (xsize < 1000 && xsize > -100)
+	    sprintf (temp,"%3d",xsize);
+	else
+	    sprintf (temp,"%4d",xsize);
+	strcat (newname, temp);
+	strcat (newname, "x");
+	if (ysize < 10 && ysize > -1)
+	    sprintf (temp,"%1d",ysize);
+	else if (ysize < 100 && ysize > -10)
+	    sprintf (temp,"%2d",ysize);
+	else if (ysize < 1000 && ysize > -100)
+	    sprintf (temp,"%3d",ysize);
+	else
+	    sprintf (temp,"%4d",ysize);
 	strcat (newname, temp);
 	if (fitsout)
 	    strcat (newname, ".fits");
@@ -405,6 +414,17 @@ char *name;
 	    fprintf (stderr,"FITS image file %s", name);
 	fprintf (stderr, " -> %s\n", newname);
 	}
+
+    /* Add IMSMOOTH keyword to say how image was changed */
+    if (hgets (header, "IMSMOOTH", history))
+	hputs (header, "HISTORY", history);
+    if (filter == MEDIAN)
+	sprintf (history, "Median filtered over %d x %d pixels",xsize,ysize);
+    else if (filter == GAUSSIAN)
+	sprintf (history, "Gaussian halfwidth %.2f pixels filtered over %d x %d pixels",ghwidth,xsize,ysize);
+    else
+	sprintf (history, "Mean filtered over %d x %d pixels",xsize,ysize);
+    hputs (header, "IMSMOOTH", history);
 
     if ((newimage = FiltFITS (header,image,filter,xsize,ysize,nlog)) == NULL)
 	fprintf (stderr,"Cannot filter image %s; file is unchanged.\n",name);
@@ -442,4 +462,6 @@ char *name;
  * Apr 11 2006	Add -o to overwrite or specify output filename
  * Apr 19 2006	Rename program imsmooth from imfilt
  * Apr 19 2006	Move image size change to imresize program
+ * Jun 21 2006	Drop image reduction code; it is in imresize.c
+ * Jun 21 2006	Add IMSMOOTH keyword to output image file
  */

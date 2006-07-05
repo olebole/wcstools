@@ -1,5 +1,5 @@
 /* File imrot.c
- * January 19, 2006
+ * June 21, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -22,7 +22,6 @@ static int maxnfile = MAXFILES;
 
 static int verbose = 0;	/* verbose/debugging flag */
 static int mirror = 0;	/* reflect image across vertical axis */
-static int flip = 0;	/* reflect image across horizontal axis */
 static int automirror = 0;	/* reflect image if IRAF header says to */
 static int rotate = 0;	/* rotation in degrees, degrees counter-clockwise */
 char outname[128];		/* Name for output image */
@@ -48,7 +47,7 @@ char **av;
     char filename[128];
     FILE *flist;
     char **fn, *fname;
-    char *listfile;
+    char *listfile = NULL;
     char *fni;
     int lfn, i, ifile, nfile;
     double dx, dy;
@@ -280,14 +279,16 @@ char *name;
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
-    char *irafheader;		/* IRAF image header */
+    char *irafheader = NULL;	/* IRAF image header */
     char newname[256];		/* Name for revised image */
-    char *ext;
+    char *ext = NULL;
     char *newimage;
-    char *imext, *imext1;
+    char *imext = NULL;
+    char *imext1 = NULL;
     char *fname;
     char extname[16];
-    int lext, lroot;
+    int lext = 0;
+    int lroot;
     int bitpix0;
     int nx, ny, npix;
     char echar;
@@ -560,4 +561,5 @@ char *name;
  * Aug 18 2005	Add -p to make positive image from negative
  *
  * Jan 19 2006	Add +i to force inheritance of keywords from primary header
+ * Jun 21 2006	Clean up code
  */

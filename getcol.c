@@ -1,7 +1,24 @@
 /* File getcol.c
- * January 18, 2006
+ * June 21, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -15,7 +32,7 @@
 #include "libwcs/fitsfile.h"
 
 #define	MAX_LTOK	256
-#define	MAX_NTOK	256
+#define	MAX_NTOK	1024
 #define MAXFILES	2000
 #define MAXLINES	100000
 
@@ -35,7 +52,6 @@ static int maxncond = 100;
 static int maxnop = 100;
 static int listpath = 0;	/* 1 to list pathnames */
 static int verbose = 0;		/* Verbose/debugging flag */
-static int debug = 0;		/* True for extra information */
 static int sumcol = 0;		/* True to sum column values */
 static int ameancol = 0;	/* True for absolute mean of column values */
 static int meancol = 0;		/* True to compute mean of column values */
@@ -254,7 +270,7 @@ char **av;
 	/* Otherwise, read command */
 	else if (*(str = *av) == '-') {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 
 	    case 'a':	/* Sum values in each numeric column */
@@ -473,21 +489,25 @@ char	*lfile;		/* Name of file with lines to list */
 
 {
     int i, j, il, ir, nbytes, ncol;
-    char line[1024];
+    char line[4096];
     char *nextline;
     char *lastchar;
-    FILE *fd;
-    FILE *lfd;
+    FILE *fd = NULL;
+    FILE *lfd = NULL;
     struct Tokens tokens;  /* Token structure */
-    struct Range *range;
+    struct Range *range = NULL;
     struct Range *lrange;
     int *iline;
-    int nline;
+    int nline = 0;
     int idnum;
     int iln;
     int nfdef = 9;
-    double *sum, *asum, *colmin, *colmax, **med, **amed;
-    double *qmed, qsum = 0.0;
+    double *sum;
+    double *asum = NULL;
+    double *colmin, *colmax, **med;
+    double **amed = NULL;
+    double *qmed = NULL;
+    double qsum = 0.0;
     double qsum1;
     int *nsum;
     int *nent;
@@ -495,7 +515,8 @@ char	*lfile;		/* Name of file with lines to list */
     int *limset;	/* Flag for range initialization */
     int nlmax;
     double dtok, dnum;
-    int nfind, ntok, nt, ltok,iop, ndtok, ndnum, nd;
+    int nfind = 0;
+    int ntok, nt, ltok,iop, ndtok, ndnum, nd;
     int *inum;
     int icond, itok;
     char tcond, *cstr, *cval, top;
@@ -1228,7 +1249,7 @@ char	*lfile;		/* Name of file with lines to list */
 			strcpy (numstr,"___");
 		    if (printcol)
 			printf ("%s", numstr);
-		    if (!isbadval || (isbadval && dval != badval) &&
+		    if ((!isbadval || (isbadval && dval != badval)) &&
 			strcmp (numstr,"___")) {
 			qsum1 = qsum1 + dval * dval;
 			nq++;
@@ -1753,4 +1774,7 @@ void *pd1, *pd2;
  * Dec 15 2005	Clean up line range code
  *
  * Jan 18 2006	Count tokens if no columns specified, too
+ * Jun 21 2006	Increase maximum number of tokens from 256 to 1024
+ * Jun 21 2006	Increase maximum line length from 1024 to 4096
+ * Jun 21 2006	Clean up code
  */

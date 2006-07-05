@@ -1,8 +1,8 @@
 /*** File libwcs/ucacread.c
- *** January 4, 2005
+ *** January 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2005
+ *** Copyright (C) 2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -120,8 +120,6 @@ int	nlog;		/* 1 for diagnostics */
     int	farstar=0;		/* Most distant star */
     int nz;			/* Number of UCAC regions in search */
     int zlist[MAXZONE];		/* List of region numbers */
-    int nlist[MAXZONE];		/* List of number of stars per region */
-    char inpath[128];		/* Pathname for input region file */
     int sysref = WCS_J2000;	/* Catalog coordinate system */
     double eqref = 2000.0;	/* Catalog equinox */
     double epref = 2000.0;	/* Catalog epoch */
@@ -132,15 +130,14 @@ int	nlog;		/* 1 for diagnostics */
     int wrap;
     int iz;
     int magsort;
-    int jstar, iw;
+    int jstar;
     int nrmax = MAXZONE;
     int nstar,i, ntot, imag;
     int istar, istar1, istar2;
     int jtable,iwrap, nread;
-    int nstars = 0;		/* Number of stars in zone of catalog */
     int pass;
     int zone;
-    double num, ra, dec, rapm, decpm, mag, magb, magv;
+    double num, ra, dec, rapm, decpm, mag;
     double rra1, rra2, rdec1, rdec2;
     double rdist, ddist;
     char cstr[32], rastr[32], decstr[32];
@@ -514,7 +511,6 @@ double	**gmag;		/* Array of B and V magnitudes (returned) */
 int	*gtype;		/* Array of object types (returned) */
 int	nlog;		/* 1 for diagnostics */
 {
-    char inpath[128];	/* Pathname for input region file */
     int sysref=WCS_J2000;	/* Catalog coordinate system */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
@@ -526,7 +522,7 @@ int	nlog;		/* 1 for diagnostics */
     int verbose;
     int zone, zone0;
     int jstar, imag;
-    int istar, istar1, istar2, nstar;
+    int istar, nstar;
     double num, ra, dec, rapm, decpm, mag;
 
     if (nlog == 1)
@@ -671,8 +667,6 @@ int	nlog;		/* 1 for diagnostics */
     double dec1,dec2;		/* Limiting declinations of region in degrees */
     int nz;			/* Number of UCAC regions in search */
     int zlist[MAXZONE];		/* List of region numbers */
-    int nlist[MAXZONE];		/* List of number of stars per region */
-    char inpath[128];		/* Pathname for input region file */
     int sysref = WCS_J2000;	/* Catalog coordinate system */
     double eqref = 2000.0;	/* Catalog equinox */
     double epref = 2000.0;	/* Catalog epoch */
@@ -685,13 +679,12 @@ int	nlog;		/* 1 for diagnostics */
     int magsort;
     int jstar, iw;
     int nrmax = MAXZONE;
-    int nstar,i, ntot, imag;
+    int nstar, ntot;
     int istar, istar1, istar2;
     int jtable,iwrap, nread;
-    int nstars = 0;		/* Number of stars in zone of catalog */
     int pass;
     int zone;
-    double num, ra, dec, rapm, decpm, mag, magb, magv;
+    double num, ra, dec, rapm, decpm, mag;
     double rra1, rra2, rdec1, rdec2;
     double rdist, ddist;
     char cstr[32];
@@ -917,7 +910,7 @@ int	verbose;	/* 1 for diagnostics */
 {
     int nz;		/* Number of declination zones found (returned) */
     int iz, iz1, iz2;
-    int irow,i;
+    int i;
     double spd1, spd2;
 
     for (i = 0; i < nzmax; i++)
@@ -1030,9 +1023,6 @@ int	zone;	/* Number of catalog zone to read */
     FILE *fcat;
     struct StarCat *sc;
     int lfile, lpath;
-    int lread, lskip, nr;
-    char temp[16];
-    char *str;
     char *zonefile;
     char *zonepath;	/* Full pathname for catalog file */
 
@@ -1157,7 +1147,6 @@ int	zone;		/* Declination zone */
 int	istar;		/* Star sequence number in UCAC catalog region file */
 {
     char line[256];
-    double starnum, multnum;
     int nbr, nbskip;
     UCAC2star ust;	/* UCAC2 catalog entry for one star */
 
@@ -1286,4 +1275,6 @@ char *string;	/* Address of Integer*4 or Real*4 vector */
  * Dec 12 2003	Fix bug in wcs2pix() call in ucacbin()
  *
  * Jan  4 2005	Fix bug in if statement on line 626 found by Dan Katz at JPL
+ *
+ * Jun 20 2006	Drop unused variables
  */

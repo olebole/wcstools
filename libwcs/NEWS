@@ -1,5 +1,9 @@
 WCSTools subroutine release history
 
+June 21, 2006 - Release 3.6.5 (Doug Mink, SAO)
+wcsinit.c: Deal with up to 9x9 PC matrix
+hput.c:    Fix comment placement and replacement
+
 May 3, 2006 - Release 3.6.4 (Doug Mink, SAO)
 fileutil.c: Add istiff(), isjpeg(), isgif() to check TIFF, JPEG, GIF files
 fitsfile.c: Add fitsrtail() to read appended FITS headers

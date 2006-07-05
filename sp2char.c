@@ -2,6 +2,23 @@
  * April 3, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -20,7 +37,6 @@ static int maxnkwd = MAXKWD;
 static void usage();
 
 static int verbose = 0;		/* verbose/debugging flag */
-static int keyset = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static char spchar = '_';
 
@@ -33,8 +49,7 @@ char **av;
     char *str;
     char **kwd;
     int nkwd = 0;
-    int ifile;
-    int ikwd, i, nc;
+    int ikwd;
 
     kwd = (char **)calloc (maxnkwd, sizeof(char *));
     for (ikwd = 0; ikwd < maxnkwd; ikwd++) {
@@ -54,7 +69,7 @@ char **av;
     for (av++; --ac > 0; av++) {
 	if (*(str = *av) == '-') {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 
 		case 's':	/* Replace this character with spaces in string arguments */

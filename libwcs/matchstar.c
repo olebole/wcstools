@@ -1,8 +1,8 @@
 /*** File libwcs/matchstar.c
- *** August 30, 2004
+ *** June 19, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -187,6 +187,8 @@ int	debug;
     bestdy = 0.0;
     dxsum = 0.0;
     dysum = 0.0;
+    dxs = 0.0;
+    dys = 0.0;
 
     /* Loop through image stars */
     for (s = 0; s < ns; s++) {
@@ -197,23 +199,21 @@ int	debug;
 	for (g = 0; g < ng; g++) {
 
 	    /* Try reference catalog star only if it is on the image */
-	    /* if (!goff[g]) { */
-		dx = gx[g] - sx[s];
-		dy = gy[g] - sy[s];
-		dx2 = dx * dx;
-		dy2 = dy * dy;
-		dxy = dx2 + dy2;
+	    dx = gx[g] - sx[s];
+	    dy = gy[g] - sy[s];
+	    dx2 = dx * dx;
+	    dy2 = dy * dy;
+	    dxy = dx2 + dy2;
 
-		/* Check offset less than tolerance or this star's closest match */
-		if (dxy < dxys) {
-		    dxys = dxy;
-		    dxs = dx;
-		    dys = dy;
-		    igs = g;
-		    ibs[nmatch] = s;
-		    ibg[nmatch] = g;
-		    }
-		/* } */
+	    /* Check offset less than tolerance or this star's closest match */
+	    if (dxy < dxys) {
+		dxys = dxy;
+		dxs = dx;
+		dys = dy;
+		igs = g;
+		ibs[nmatch] = s;
+		ibg[nmatch] = g;
+		}
 	    }
 
 	/* If a match was found */
@@ -1895,4 +1895,6 @@ int nitmax;
  * Nov 18 2003	Drop include of malloc.h; it is in stdlib.h
  *
  * Aug 30 2004	Declare void various external set*() calls
+ *
+ * Jun 19 2006	Initialize unitialized variables dxs and dys
  */ 

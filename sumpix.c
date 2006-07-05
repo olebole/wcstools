@@ -1,7 +1,24 @@
 /* File sumpix.c
- * December 6, 2002
+ * June 21, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -55,7 +72,7 @@ char **av;
 	str = *av;
 	if (str[0] == '-') {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 
 		case 'd':	/* Compute standard deviation */
@@ -165,8 +182,8 @@ char *rrange;	/* Row range string */
     char pixname[256];
     char numform[8];
     char numforme[8];
-    struct Range *xrange;    /* X range structure */
-    struct Range *yrange;    /* Y range structure */
+    struct Range *xrange = NULL;    /* X range structure */
+    struct Range *yrange = NULL;    /* Y range structure */
 
     /* Open IRAF image if .imh extension is present */
     if (isiraf (name)) {
@@ -422,7 +439,8 @@ char *rrange;	/* Row range string */
 	    printf (numform, dmax);
 	    }
 	printf ("\n");
-	free (xrange);
+	if (xrange != NULL)
+	    free (xrange);
 	free (yrange);
 	}
 
@@ -441,4 +459,6 @@ char *rrange;	/* Row range string */
  *
  * Dec  6 2002	Add option to sum over entire image if both ranges are 0
  * Dec  6 2002	Add -l option to print range of values
+ *
+ * Jun 21 2006	Clean up code
  */

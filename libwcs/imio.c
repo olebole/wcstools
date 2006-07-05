@@ -1,5 +1,5 @@
 /*** File wcslib/imio.c
- *** May 3, 2006
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2006
@@ -651,7 +651,8 @@ int	npix;		/* Number of pixels to extract */
     unsigned short *imu;
     float *imr;
     double *imd;
-    double dmax, dpix;
+    double dmax = 0.0;
+    double dpix;
     int ipix, pix2;
 
     pix2 = pix1 + npix;
@@ -709,7 +710,7 @@ int	npix;		/* Number of pixels to extract */
 
 	case -64:
 	    imd = (double *)image;
-	    dmax = *(imd + ipix);
+	    dmax = *(imd + pix1);
 	    for (ipix = pix1; ipix < pix2; ipix++) {
 		dpix = *(imd + ipix);
 		if (dpix > dmax)
@@ -770,7 +771,6 @@ double	dpix;		/* Value by which to multiply pixels */
 
 	case 16:
 	    im2 = (short *) (image + pix1);
-	    im2 = (short *)image;
 	    if (dpix < 0)
 		jcon = (short) (dpix - 0.5);
 	    else
@@ -786,7 +786,7 @@ double	dpix;		/* Value by which to multiply pixels */
 	    else
 		icon = (int) (dpix + 0.5);
 	    for (ipix = pix1; ipix < pix2; ipix++)
-		*im2++ += jcon;
+		*im4++ += icon;
 	    break;
 
 	case -16:
@@ -912,7 +912,7 @@ double	dpix;		/* Value by which to multiply pixels */
 		else
 		    icon = (int) (dpix + 0.5);
 		for (ipix = pix1; ipix < pix2; ipix++)
-		    *im2++ *= jcon;
+		    *im4++ *= icon;
 		}
 	    else {
 		for (ipix = pix1; ipix < pix2; ipix++) {
@@ -1421,4 +1421,6 @@ imswapped ()
  * Mar  1 2006	Fix bug of occasional double application of bscale in getvec()
  * Apr  3 2006	Fix bad cast in unisigned int section of addvec()
  * May  3 2006	Code fixes in addpix and multpix suggested by Robert Lupton
+ * Jun  8 2006	Drop erroneous second im2 assignment without offset in addvec()
+ * Jun 20 2006	Fix typos masquerading as unitialized variables
  */

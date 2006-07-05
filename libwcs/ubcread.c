@@ -1,8 +1,8 @@
 /*** File libwcs/ubcread.c
- *** January 12, 2005
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2005
+ *** Copyright (C) 2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -82,8 +82,7 @@ static double ubcpra();
 static double ubcpdec();
 static int ubcpmq();
 static int ubcsg();
-static int ubcmagerr();
-static int ubcgsc();
+int ubcmagerr();
 static int ubcndet();
 
 static int ubczones();
@@ -141,14 +140,14 @@ int	nlog;		/* Logging interval */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
 
-    double rra1, rra2, rdec1, rdec2, rcdec;
+    double rra1, rra2, rdec1, rdec2;
     double num;		/* UB numbers */
     double rapm, decpm, rapm0, decpm0;
-    double dmarg;
     int wrap, iwrap;
     int verbose;
     int znum, itot,iz, i;
-    int itable, jtable,jstar;
+    int jtable,jstar;
+    int itable = 0;
     int nstar, nread, pass;
     int ubra1, ubra2, ubdec1, ubdec2;
     int nsg, qsg;
@@ -763,17 +762,16 @@ int	nlog;		/* Logging interval */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
 
-    double rra1, rra2, rdec1, rdec2, rcdec;
-    double num;		/* UB numbers */
+    double rra1, rra2, rdec1, rdec2;
     double rapm, decpm, rapm0, decpm0;
     double xpix, ypix, flux;
     int offscl;
-    double dmarg;
     int wrap, iwrap;
     int verbose;
     int znum, itot,iz, i;
     int nsg, qsg;
-    int itable, jtable,jstar;
+    int jtable,jstar;
+    int itable = 0;
     int nstar, nread, pass;
     int ubra1, ubra2, ubdec1, ubdec2;
     double ra,dec, ra0, dec0;
@@ -1188,7 +1186,7 @@ int magetc;	/* Quality, plate, and magnitude from UB catalog entry */
 
 /* UBCMAGERR -- returns 1 if magnitude is uncertain from UB star structure */
 
-static int
+int
 ubcmagerr (magetc)
 
 int magetc;	/* Quality, plate, and magnitude from UB catalog entry */
@@ -1473,4 +1471,6 @@ int nbytes = nbent; /* Number of bytes to reverse */
  * Nov 19 2004	Return galaxy/star type code (qsg=0-11) in upmni vector
  *
  * Jan 12 2005	Declare ubcsg()
+ *
+ * Jun 20 2006	Drop unused variables
  */

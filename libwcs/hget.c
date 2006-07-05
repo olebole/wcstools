@@ -1,8 +1,8 @@
 /*** File libwcs/hget.c
- *** August 30, 2005
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2005
+ *** Copyright (C) 1994-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -1438,7 +1438,9 @@ int	ls1;	/* Length of string being searched */
 
 {
     char *s,*s1e, sl, *os2;
-    char cfirst,clast,ocfirst,oclast;
+    char cfirst,ocfirst;
+    char clast = ' ';
+    char oclast = ' ';
     int i,ls2;
 
     /* Return null string if either pointer is NULL */
@@ -1740,4 +1742,6 @@ int set_saolib(hstring)
  *
  * Jun 27 2005	Drop unused variables
  * Aug 30 2005	Adjust code in hlength()
+ *
+ * Jun 20 2006	Initialize uninitialized variables in strnsrch()
  */

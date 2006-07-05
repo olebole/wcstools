@@ -1,5 +1,5 @@
 /* File libwcs/imutil.c
- * April 25, 2006
+ * June 20, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -82,16 +82,21 @@ double medpixr8();
 double meanpixr8();
 double gausspixr8();
 
+static int bpvalset = 0;
 static double bpval = -9999.0;
 static short bpvali2;
 static int bpvali4;
 static float bpvalr4;
 static int nfilled;
 
+int
+getnfilled ()
+{ return (nfilled); }
+
 void
 setbadpix (bpval0)
 double bpval0;
-{ bpval = bpval0; return; }
+{ bpvalset = 1; bpval = bpval0; return; }
 
 
 /* Set all pixels to a value computed from a box around each one */
@@ -169,7 +174,8 @@ char	*buffbad;
     else
 	ny = 1;
     npix = nx * ny;
-    hgetr8 (header, "BLANK", &bpval);
+    if (!bpvalset)
+	hgetr8 (header, "BLANK", &bpval);
 
     hgeti4 (badheader, "BITPIX", &bitpixb);
     hgeti4 (badheader, "NAXIS", &naxes);
@@ -210,8 +216,8 @@ char	*buffbad;
 			*b2++ = *b1++;
 			}
 		    }
-		if ((iy+1)%nlog == 0)
-		    fprintf (stderr,"SetBadFITS: %d lines, %d pixels filled\r",
+		if (nlog > 0 && (iy+1)%nlog == 0)
+		    fprintf (stderr,"SetBadFITS: %d lines, %d bad pixels set\r",
 			     iy+1, nfilled);
 		}
 	    }
@@ -229,12 +235,11 @@ char	*buffbad;
 			*b2++ = *b1++;
 			}
 		    }
-		if ((iy+1)%nlog == 0)
-		    fprintf (stderr,"SetBadFITS: %d lines, %d pixels filled\r",
+		if (nlog > 0 && (iy+1)%nlog == 0)
+		    fprintf (stderr,"SetBadFITS: %d lines, %d bad pixels set\r",
 			     iy+1, nfilled);
 		}
 	    }
-	fprintf (stderr,"\n");
 	}
     else if (bitpix == 32) {
 	int *b1, *b2, *buffout;
@@ -257,8 +262,8 @@ char	*buffbad;
 			*b2++ = *b1++;
 			}
 		    }
-		if ((iy+1)%nlog == 0)
-		    fprintf (stderr,"SetBadFITS: %d lines, %d pixels filled\r",
+		if (nlog > 0 && (iy+1)%nlog == 0)
+		    fprintf (stderr,"SetBadFITS: %d lines, %d bad pixels set\r",
 			     iy+1, nfilled);
 		}
 	    }
@@ -276,8 +281,8 @@ char	*buffbad;
 			*b2++ = *b1++;
 			}
 		    }
-		if ((iy+1)%nlog == 0)
-		    fprintf (stderr,"SetBadFITS: %d lines, %d pixels filled\r",
+		if (nlog > 0 && (iy+1)%nlog == 0)
+		    fprintf (stderr,"SetBadFITS: %d lines, %d bad pixels set\r",
 			     iy+1, nfilled);
 		}
 	    }
@@ -304,8 +309,8 @@ char	*buffbad;
 			*b2++ = *b1++;
 			}
 		    }
-		if ((iy+1)%nlog == 0)
-		    fprintf (stderr,"SetBadFITS: %d lines, %d pixels filled\r",
+		if (nlog > 0 && (iy+1)%nlog == 0)
+		    fprintf (stderr,"SetBadFITS: %d lines, %d bad pixels set\r",
 			     iy+1, nfilled);
 		}
 	    }
@@ -323,12 +328,11 @@ char	*buffbad;
 			*b2++ = *b1++;
 			}
 		    }
-		if ((iy+1)%nlog == 0)
-		    fprintf (stderr,"SetBadFITS: %d lines, %d pixels filled\r",
+		if (nlog > 0 && (iy+1)%nlog == 0)
+		    fprintf (stderr,"SetBadFITS: %d lines, %d bad pixels set\r",
 			     iy+1, nfilled);
 		}
 	    }
-	fprintf (stderr,"\n");
 	}
     else if (bitpix == -64) {
 	double *b1, *b2, *buffout;
@@ -350,8 +354,8 @@ char	*buffbad;
 			*b2++ = *b1++;
 			}
 		    }
-		if ((iy+1)%nlog == 0)
-		    fprintf (stderr,"SetBadFITS: %d lines, %d pixels filled\r",
+		if (nlog > 0 && (iy+1)%nlog == 0)
+		    fprintf (stderr,"SetBadFITS: %d lines, %d bad pixels set\r",
 			     iy+1, nfilled);
 		}
 	    }
@@ -369,13 +373,15 @@ char	*buffbad;
 			*b2++ = *b1++;
 			}
 		    }
-		if ((iy+1)%nlog == 0)
-		    fprintf (stderr,"SetBadFITS: %d lines, %d pixels filled\r",
+		if (nlog > 0 && (iy+1)%nlog == 0)
+		    fprintf (stderr,"SetBadFITS: %d lines, %d bad pixels set\r",
 			     iy+1, nfilled);
 		}
 	    }
-	fprintf (stderr,"\n");
 	}
+    if (nlog > 0)
+	fprintf (stderr,"SetBadFITS: %d lines, %d bad pixels set\n",
+		 iy, nfilled);
     return (buffret);
 }
 
@@ -427,7 +433,7 @@ int	naxes;
 	    for (ix = 0; ix < nx; ix++) {
 		*b2++ = medpixi2 (buff, *b1++, ix, iy, nx, ny, ndx, ndy);
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEDFILT: %d lines filtered\r", iy+1);
 	    }
 	fprintf (stderr,"\n");
@@ -446,7 +452,7 @@ int	naxes;
 	    for (ix = 0; ix < nx; ix++) {
 		*b2++ = medpixi4 (buff, *b1++, ix, iy, nx, ny, ndx, ndy);
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEDFILT: %d lines filtered\r", iy+1);
 	    }
 	fprintf (stderr,"\n");
@@ -464,7 +470,7 @@ int	naxes;
 	    for (ix = 0; ix < nx; ix++) {
 		*b2++ = medpixr4 (buff, *b1++, ix, iy, nx, ny, ndx, ndy);
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEDFILT: %d lines filtered\r", iy+1);
 	    }
 	fprintf (stderr,"\n");
@@ -481,13 +487,15 @@ int	naxes;
 	    for (ix = 0; ix < nx; ix++) {
 		*b2++ = medpixr8 (buff, *b1++, ix, iy, nx, ny, ndx, ndy);
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEDFILT: %d lines filtered\r", iy+1);
 	    }
 	fprintf (stderr,"\n");
 	free (vr8);
 	vr8 = NULL;
 	}
+    if (nlog > 0)
+	fprintf (stderr,"MEDFILT: %d lines filtered\n", iy);
     return (buffret);
 }
 
@@ -541,10 +549,9 @@ int	naxes;
 		    nfilled++;
 		    }
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEDFILL: %d lines, %d pixels filled\r", iy+1, nfilled);
 	    }
-	fprintf (stderr,"\n");
 	free (vi2);
 	vi2 = NULL;
 	}
@@ -565,10 +572,9 @@ int	naxes;
 		    nfilled++;
 		    }
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEDFILL: %d lines, %d pixels filled\r", iy+1, nfilled);
 	    }
-	fprintf (stderr,"\n");
 	free (vi4);
 	vi4 = NULL;
 	}
@@ -588,10 +594,9 @@ int	naxes;
 		    nfilled++;
 		    }
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEDFILL: %d lines, %d pixels filled\r", iy+1, nfilled);
 	    }
-	fprintf (stderr,"\n");
 	free (vr4);
 	vr4 = NULL;
 	}
@@ -610,13 +615,14 @@ int	naxes;
 		    nfilled++;
 		    }
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEDFILL: %d lines, %d pixels filled\r", iy+1, nfilled);
 	    }
-	fprintf (stderr,"\n");
 	free (vr8);
 	vr8 = NULL;
 	}
+    if (nlog > 0)
+	fprintf (stderr,"MEDFILL: %d lines, %d pixels filled\n", iy, nfilled);
     return (buffret);
 }
 
@@ -635,17 +641,16 @@ int	ndy;	/* Number of rows over which to compute the median */
 
 {
     short xx, *vecj, *img;
-    int n, l, ir, i, j, n2;
+    int n, i, j;
     int  nx2, ny2, npix;
     int jx, jx1, jx2, jy, jy1, jy2;
-    int nomed;
 
     /* Allocate working buffer if it hasn't already been allocated */
     npix = ndx * ndy;
     if (vi2 == NULL) {
 	vi2 = (short *) calloc (npix, sizeof (short));
 	if (vi2 == NULL) {
-	    fprintf (stderr, "MEDPIXI2: Could not allocate %d-pixel buffer\n");
+	    fprintf (stderr, "MEDPIXI2: Could not allocate %d-pixel buffer\n",npix);
 	    return (0);
 	    }
 	}
@@ -724,17 +729,16 @@ int	ndy;	/* Number of rows over which to compute the median */
 
 {
     int xx, *vecj, *img;
-    int n, l, ir, i, j, n2;
+    int n, i, j;
     int  nx2, ny2, npix;
     int jx, jx1, jx2, jy, jy1, jy2;
-    int nomed;
 
     /* Allocate working buffer if it hasn't already been allocated */
     npix = ndx * ndy;
     if (vi4 == NULL) {
 	vi4 = (int *) calloc (npix, sizeof (int));
 	if (vi4 == NULL) {
-	    fprintf (stderr, "MEDIANI4: Could not allocate %d-pixel buffer\n");
+	    fprintf (stderr, "MEDIANI4: Could not allocate %d-pixel buffer\n",npix);
 	    return (0);
 	    }
 	}
@@ -811,17 +815,16 @@ int	ndy;	/* Number of rows over which to compute the median */
 
 {
     float xx, *vecj, *img;
-    int n, l, ir, i, j, n2;
+    int n, i, j;
     int  nx2, ny2, npix;
     int jx, jx1, jx2, jy, jy1, jy2;
-    int nomed;
 
     /* Allocate working buffer if it hasn't already been allocated */
     npix = ndx * ndy;
     if (vr4 == NULL) {
 	vr4 = (float *) calloc (npix, sizeof (float));
 	if (vr4 == NULL) {
-	    fprintf (stderr, "MEDIANR4: Could not allocate %d-pixel buffer\n");
+	    fprintf (stderr, "MEDIANR4: Could not allocate %d-pixel buffer\n",npix);
 	    return (0);
 	    }
 	}
@@ -898,17 +901,16 @@ int	ndy;	/* Number of rows over which to compute the median */
 
 {
     double xx, *vecj, *img;
-    int n, l, ir, i, j, n2;
+    int n, i, j;
     int  nx2, ny2, npix;
     int jx, jx1, jx2, jy, jy1, jy2;
-    int nomed;
 
     /* Allocate working buffer if it hasn't already been allocated */
     npix = ndx * ndy;
     if (vr8 == NULL) {
 	vr8 = (double *) calloc (npix, sizeof (double));
 	if (vr8 == NULL) {
-	    fprintf (stderr, "MEDIANR8: Could not allocate %d-pixel buffer\n");
+	    fprintf (stderr, "MEDIANR8: Could not allocate %d-pixel buffer\n",npix);
 	    return (0);
 	    }
 	}
@@ -1015,10 +1017,9 @@ int	naxes;
 	    for (ix = 0; ix < nx; ix++) {
 		*b2++ = meanpixi2 (buff, *b1++, ix, iy, nx, ny, ndx, ndy);
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEANFILT: %d lines filtered\r", iy+1);
 	    }
-	fprintf (stderr,"\n");
 	free (vi2);
 	vi2 = NULL;
 	}
@@ -1034,10 +1035,9 @@ int	naxes;
 	    for (ix = 0; ix < nx; ix++) {
 		*b2++ = meanpixi4 (buff, *b1++, ix, iy, nx, ny, ndx, ndy);
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEANFILT: %d lines filtered\r", iy+1);
 	    }
-	fprintf (stderr,"\n");
 	free (vi4);
 	vi4 = NULL;
 	}
@@ -1052,10 +1052,9 @@ int	naxes;
 	    for (ix = 0; ix < nx; ix++) {
 		*b2++ = meanpixr4 (buff, *b1++, ix, iy, nx, ny, ndx, ndy);
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEANFILT: %d lines filtered\r", iy+1);
 	    }
-	fprintf (stderr,"\n");
 	free (vr4);
 	vr4 = NULL;
 	}
@@ -1069,13 +1068,14 @@ int	naxes;
 	    for (ix = 0; ix < nx; ix++) {
 		*b2++ = meanpixr8 (buff, *b1++, ix, iy, nx, ny, ndx, ndy);
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEANFILT: %d lines filtered\r", iy+1);
 	    }
-	fprintf (stderr,"\n");
 	free (vr8);
 	vr8 = NULL;
 	}
+    if (nlog > 0)
+	fprintf (stderr,"MEANFILT: %d lines filtered\n", iy);
     return (buffret);
 }
 
@@ -1129,10 +1129,9 @@ int	naxes;
 		    nfilled++;
 		    }
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEANFILL: %d lines, %d pixels filled\r", iy+1, nfilled);
 	    }
-	fprintf (stderr,"\n");
 	free (vi2);
 	vi2 = NULL;
 	}
@@ -1153,10 +1152,9 @@ int	naxes;
 		    nfilled++;
 		    }
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEANFILL: %d lines, %d pixels filled\r", iy+1, nfilled);
 	    }
-	fprintf (stderr,"\n");
 	free (vi4);
 	vi4 = NULL;
 	}
@@ -1176,10 +1174,9 @@ int	naxes;
 		    nfilled++;
 		    }
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEANFILL: %d lines, %d pixels filled\r", iy+1, nfilled);
 	    }
-	fprintf (stderr,"\n");
 	free (vr4);
 	vr4 = NULL;
 	}
@@ -1198,13 +1195,14 @@ int	naxes;
 		    nfilled++;
 		    }
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"MEANFILL: %d lines, %d pixels filled\r", iy+1, nfilled);
 	    }
-	fprintf (stderr,"\n");
 	free (vr8);
 	vr8 = NULL;
 	}
+    if (nlog > 0)
+	fprintf (stderr,"MEANFILL: %d lines, %d pixels filled\n", iy, nfilled);
     return (buffret);
 }
 
@@ -1224,7 +1222,7 @@ int	ndy;	/* Number of rows over which to compute the median */
 {
     double sum;
     short *img;
-    int n, n2, nx2, ny2;
+    int n, nx2, ny2;
     int jx, jx1, jx2, jy, jy1, jy2;
 
     n = ndx * ndy;
@@ -1285,7 +1283,7 @@ int	ndy;	/* Number of rows over which to compute the median */
 {
     double sum;
     int *img;
-    int n, n2, nx2, ny2;
+    int n, nx2, ny2;
     int jx, jx1, jx2, jy, jy1, jy2;
 
     n = ndx * ndy;
@@ -1346,7 +1344,7 @@ int	ndy;	/* Number of rows over which to compute the median */
 {
     double sum;
     float *img;
-    int n, n2, nx2, ny2;
+    int n, nx2, ny2;
     int jx, jx1, jx2, jy, jy1, jy2;
 
     n = ndx * ndy;
@@ -1407,7 +1405,7 @@ int	ndy;	/* Number of rows over which to compute the median */
 {
     double *img;
     double sum;
-    int n, n2, nx2, ny2;
+    int n, nx2, ny2;
     int jx, jx1, jx2, jy, jy1, jy2;
 
     n = ndx * ndy;
@@ -1498,7 +1496,7 @@ int	naxes;
 	    for (ix = 0; ix < nx; ix++) {
 		*b2++ = gausspixi2 (buff, *b1++, ix, iy, nx, ny);
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"GAUSSFILT: %d/%d lines filtered\r", iy+1,ny);
 	    }
 	fprintf (stderr,"\n");
@@ -1514,9 +1512,9 @@ int	naxes;
 	    for (ix = 0; ix < nx; ix++) {
 		*b2++ = gausspixi4 (buff, *b1++, ix, iy, nx, ny);
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"GAUSSFILT: %d/%d lines filtered\r", iy+1,ny);
-	    }
+	}
 	fprintf (stderr,"\n");
 	}
     else if (bitpix == -32) {
@@ -1530,7 +1528,7 @@ int	naxes;
 	    for (ix = 0; ix < nx; ix++) {
 		*b2++ = gausspixr4 (buff, *b1++, ix, iy, nx, ny);
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"GAUSSFILT: %d/%d lines filtered\r", iy+1,ny);
 	    }
 	fprintf (stderr,"\n");
@@ -1545,11 +1543,13 @@ int	naxes;
 	    for (ix = 0; ix < nx; ix++) {
 		*b2++ = gausspixr8 (buff, *b1++, ix, iy, nx, ny);
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"GAUSSFILT: %d/%d lines filtered\r", iy+1,ny);
 	    }
 	fprintf (stderr,"\n");
 	}
+    if (nlog > 0 && (iy+1)%nlog == 0)
+	fprintf (stderr,"GAUSSFILT: %d/%d lines filtered\n", iy,ny);
     return (buffret);
 }
 
@@ -1604,10 +1604,9 @@ int	naxes;
 		    nfilled++;
 		    }
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"GAUSSFILL: %d lines, %d pixels filled\r", iy+1, nfilled);
 	    }
-	fprintf (stderr,"\n");
 	}
     else if (bitpix == 32) {
 	int *b1, *b2, *buffout;
@@ -1625,10 +1624,9 @@ int	naxes;
 		    nfilled++;
 		    }
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"GAUSSFILL: %d lines, %d pixels filled\r", iy+1, nfilled);
 	    }
-	fprintf (stderr,"\n");
 	}
     else if (bitpix == -32) {
 	float *b1, *b2, *buffout;
@@ -1646,10 +1644,9 @@ int	naxes;
 		    nfilled++;
 		    }
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"GAUSSFILL: %d lines, %d pixels filled\r", iy+1, nfilled);
 	    }
-	fprintf (stderr,"\n");
 	}
     else if (bitpix == -64) {
 	double *b1, *b2, *buffout;
@@ -1666,11 +1663,12 @@ int	naxes;
 		    nfilled++;
 		    }
 		}
-	    if ((iy+1)%nlog == 0)
+	    if (nlog > 0 && (iy+1)%nlog == 0)
 		fprintf (stderr,"GAUSSFILL: %d lines, %d pixels filled\r", iy+1, nfilled);
 	    }
-	fprintf (stderr,"\n");
 	}
+    if (nlog > 0)
+	fprintf (stderr,"GAUSSFILL: %d lines, %d pixels filled\n", iy, nfilled);
     return (buffret);
 }
 
@@ -1976,10 +1974,10 @@ int	naxes;
 double	pixij;		/* Summed value of rebinned pixel */
 double	bzero, bscale;
 double	pixval, dnp;
-short	*buffi2;
-int	*buffi4;
-float	*buffr4;
-double	*buffr8;
+short	*buffi2 = NULL;
+int	*buffi4 = NULL;
+float	*buffr4 = NULL;
+double	*buffr8 = NULL;
 
     /* Get bits per pixel in input image */
     hgeti4 (header, "BITPIX", &bitsin);
@@ -2225,4 +2223,7 @@ int	bitpix;		/* Number of bits per output pixel (neg=f.p.) */
  * Apr  7 2006	Add filling subroutines medfill(), meanfill(), gaussfill()
  * Apr  7 2006	Add subtroutine to set bad pixels from second image
  * Apr 27 2006	Add and correct comments
+ * May  8 2006	Print final number of pixels filled; add getnfilled()
+ * May 16 2006	Do not use BLANK from bad pixel file if set on command line 
+ * Jun 20 2006	Drop unused variables
  */

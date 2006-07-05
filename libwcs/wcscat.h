@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** April 12, 2006
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -58,11 +58,12 @@
 #define TMXSC		27	/* 2MASS Extended Source Catalog */
 #define TMPSCE		28	/* 2MASS Point Source Catalog with mag errors */
 #define TYCHO2E		29	/* Tycho-2 Star Catalog with magnitude errors */
+#define SKY2K		30	/* SKY2000 Master Catalog */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */
 #define WEBCAT		-4	/* Tab catalog via the web */
-#define NUMCAT		29	/* Number of predefined catalogs */
+#define NUMCAT		30	/* Number of predefined catalogs */
 
 /* Subroutines for dealing with catalogs */
 int CatCode();		/* Return catalog type code */
@@ -166,6 +167,7 @@ void setlimdeg();	/* Limit output in degrees (1) or hh:mm:ss dd:mm:ss (0) */
 #define SORT_MERGE	8	/* Merge close catalog objects */
 void XSortStars();
 void YSortStars();
+void IDSortStars();
 void RASortStars();
 void DecSortStars();
 void MagSortStars();
@@ -523,4 +525,5 @@ char *getrevmsg();	/* Return version/date string */
  * Apr  3 2006	Add tmcid() to check for 2MASS identifiers
  * Apr  3 2006	Add setdateform() to set output date format
  * Apr 12 2006	Add SORT_ID for scat to sort catalog entries by ID number
+ * Jun 20 2006	Add IDSortStars()
  */

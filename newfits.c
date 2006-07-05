@@ -1,7 +1,24 @@
 /* File newfits.c
- * September 29, 2004
+ * May 10, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 /* Write a FITS header without any data or a blank FITS image.
@@ -51,7 +68,7 @@ char **av;
     char *lastchar;
     char filename[128];
     FILE *flist;
-    char *listfile;
+    char *listfile = NULL;
     char rastr[32], decstr[32];
     double x, y;
 
@@ -107,7 +124,7 @@ char **av;
 	/* Otherwise, read command */
 	else if (*(str = *av) == '-') {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 
     		case 'a':	/* Initial rotation angle in degrees */
@@ -291,7 +308,7 @@ static void
 MakeFITS (name)
 char *name;
 {
-    char *image;	/* FITS image */
+    char *image = NULL;	/* FITS image */
     char *header;	/* FITS header */
     int lhead;		/* Maximum number of bytes in FITS header */
     double cra;		/* Center right ascension in degrees (returned) */
@@ -384,8 +401,10 @@ char *name;
 	return;
 	}
 
-    if (wcsfile)
+    if (wcsfile) {
 	header = fitsrhead (wcsfile, &lhead, &nbhead);
+	hputi4 (header, "BITPIX", bitpix);
+	}
     else {
 	lhead = 14400;
 	header = (char *) calloc (1, lhead);
@@ -394,9 +413,9 @@ char *name;
 	    header[i] = ' ';
 	hlength (header, 14400);
 	hputl (header, "SIMPLE", 1);
+	hputi4 (header, "BITPIX", bitpix);
 	hputi4 (header, "NAXIS", 2);
 	}
-    hputi4 (header, "BITPIX", bitpix);
     if (nx > 0)
 	hputi4 (header, "NAXIS1", nx);
     else if (wcsfile)
@@ -513,4 +532,6 @@ char *name;
  *
  * Aug 30 2004	Declare undeclared setproj() subroutine
  * Sep 29 2004	Add option to read WCS from another file
+ *
+ * May 10 2006	Always set BITPIX before NAXIS
  */

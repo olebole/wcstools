@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** May 3, 2006
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2006
@@ -126,7 +126,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     char extnam[32];	/* Desired FITS extension name */
     char *ext;		/* FITS extension name or number in header, if any */
     char *pheader;	/* Primary header (naxis is 0) */
-    char cext;
+    char cext = 0;
     char *rbrac;	/* Pointer to right bracket if present in file name */
     char *mwcs;		/* Pointer to WCS name separated by % */
     char *endnext;
@@ -940,7 +940,7 @@ char	*inpath;	/* Pathname for FITS tables file to read */
     int ntry;
     int fd;		/* file descriptor for FITS tables file (returned) */
     char *ext;		/* extension name or number */
-    char cext;
+    char cext = 0;
     char *rbrac;
     char *mwcs;		/* Pointer to WCS name separated by % */
 
@@ -1201,7 +1201,8 @@ int	nbline;		/* Number of bytes to read for this line */
 char	*line;		/* One line of FITS table (returned) */
 
 {
-    int nbuff,nlbuff,nbr;
+    int nbuff, nlbuff;
+    int nbr = 0;
     int offset, offend, ntry, ioff;
     char *tbuff1;
 
@@ -1800,7 +1801,7 @@ char	*header;	/* FITS image header */
     int fd, ipos;
     int nbhead, lhead;
     int nbw, nbnew, nbold;
-    char *endhead, *lasthead, *oldheader, *head;
+    char *endhead, *lasthead, *oldheader;
     char *ext, cext;
 
     /* Compare size of existing header to size of new header */
@@ -2048,4 +2049,5 @@ fitserr ()
  * Feb 23 2006	Add fitsrtail() to read appended FITS headers
  * Feb 27 2006	Add file name to header-reading error messages
  * May  3 2006	Remove declarations of unused variables
+ * Jun 20 2006	Initialize uninitialized variables
  */

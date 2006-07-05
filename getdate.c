@@ -1,7 +1,24 @@
 /* File getdate.c
- * October 14, 2005
+ * June 21, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -56,20 +73,8 @@ extern double hjd2mhjd();
 extern void setdatedec();
 
 static int verbose = 0;		/* Verbose/debugging flag */
-static int wfile = 0;		/* True to print output file */
-static int debug = 0;		/* True for extra information */
-static int sumcol = 0;		/* True to sum columns */
-static int meancol = 0;		/* True to compute mean of columns */
-static int countcol = 0;	/* True to count entries in columns */
-static char *objname = NULL;	/* Object name for output */
-static char *keyword = NULL;	/* Column to add to tab table output */
-static char progpath[128];
-static int ncat = 0;
-static int et = 0;	/* If 1, convert output to ET */
 static int version = 0;	/* If 1, print only program name and version */
 static int nread = 0;	/* Number of lines to read (0=all) */
-static int nskip = 0;	/* Number of lines to skip */
-static int tabout = 0;	/* If 1, separate output fields with tabs */
 static int ndec = 5;	/* Number of decimal places in output */
 static int dateonly = 0; /* If 1, print date without time */
 static int timeonly = 0; /* If 1, print time without date */
@@ -368,7 +373,7 @@ char	*datestring;	/* Input date string */
 char	*timestring;	/* Input time string */
 
 {
-    double vdate, vtime, epoch, jd, ts, time1, jd1, ts1, epoch1;
+    double vdate, vtime, epoch, jd, ts, jd1, ts1, epoch1;
     double doy, vdoy;
     int year, vyear;
     int lfd, oldfits;
@@ -377,9 +382,6 @@ char	*timestring;	/* Input time string */
     char temp[64];
     char ts0[8];
     char *tchar;
-    time_t ut0, utc;	/* UTC seconds since 1970-01-01T0:00 */
-    struct tm *ltm;	/* Local time structure */
-    int lt;		/* Local time return */
     int its, its1;
     time_t lts;
 
@@ -391,7 +393,7 @@ char	*timestring;	/* Input time string */
 	    sprintf (outform,"%%.%df\n",ndec);
 	}
     else {
-	strncpy (outform,outform0, 16);
+	strncpy (outform,outform0, 15);
 	strcat (outform, "\n");
 	}
     if (outtype < 1)
@@ -499,7 +501,6 @@ char	*timestring;	/* Input time string */
 		    oldfits = 0;
 		if (timestring != NULL) {
 		    if (oldfits) {
-			time1 = str2dec (timestring);
 			lfd = strlen (datestring) + strlen (timestring) + 2;
 			fitsdate = (char *) calloc (1, lfd);
 			strcpy (fitsdate, datestring);
@@ -550,7 +551,7 @@ char	*timestring;	/* Input time string */
 			    if (timestring == NULL)
 				vtime = 0.0;
 			    else
-				vtime = time1;
+				vtime = str2dec (timestring);
 			    }
 			if (dateonly)
 			    printf ("%9.4f\n", vdate);
@@ -1225,9 +1226,9 @@ char	*timestring;	/* Input time string */
 	case DTUNIX:
 	    if (datestring != NULL) {
     		if (strcmp (datestring, "now"))
-		    lts = (time_t) (atof (datestring) + 0.5);
+		    ts = (time_t) (atof (datestring) + 0.5);
 		if (verbose)
-		    printf ("%d -> ", lts);
+		    printf ("%d -> ", ts);
 		switch (outtype) {
 		    case DTEP:
 			ts = tsu2ts (ts);
@@ -1245,7 +1246,7 @@ char	*timestring;	/* Input time string */
 			printf (outform, epoch);
 			break;
 		    case DTVIG:
-			tsu2dt (lts, &vdate, &vtime);
+			tsu2dt (ts, &vdate, &vtime);
 			if (outtime == ET) dt2et (&vdate, &vtime);
 			if (outtime == GST) dt2gst (&vdate, &vtime);
 			if (outtime == MST) dt2mst (&vdate, &vtime);
@@ -1257,7 +1258,7 @@ char	*timestring;	/* Input time string */
 			    printf ("%9.4f %10.7f\n", vdate, vtime);
 			break;
 		    case DTFITS:
-			fitsdate = tsu2fd (lts);
+			fitsdate = tsu2fd (ts);
 			if (outtime == ET) fitsdate = fd2et (fitsdate);
 			if (outtime == GST) fitsdate = fd2gst (fitsdate);
 			if (outtime == MST) fitsdate = fd2mst (fitsdate);
@@ -1286,11 +1287,11 @@ char	*timestring;	/* Input time string */
 			printf (outform, jd);
 			break;
 		    case DTIRAF:
-			its = tsu2tsi (lts);
+			its = tsu2tsi (ts);
 			printf (outform, its);
 			break;
 		    case DT1950:
-			ts = tsu2ts (lts);
+			ts = tsu2ts (ts);
 			if (outtime == ET) ts = ts2ets (ts);
 			printf (outform, ts);
 			break;
@@ -1597,4 +1598,6 @@ char	*timestring;	/* Input time string */
  *
  * Mar  7 2005	Add "now" as input type
  * Oct 14 2005	Add tsd2fd and tsd2dt
+ *
+ * Jun 21 2006	Clean up code
  */

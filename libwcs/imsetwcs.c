@@ -1,5 +1,5 @@
 /*** File libwcs/imsetwcs.c
- *** March 30, 2006
+ *** June 19, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu (based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2006
@@ -65,7 +65,6 @@ extern int getnfit();
 static double tolerance = PIXDIFF;	/* +/- this many pixels is a hit */
 static double refmag1 = MAGLIM1;	/* reference catalog magnitude limit */
 static double refmag2 = MAGLIM2;	/* reference catalog magnitude limit */
-static char defcatname[8];	/* default catalog name */
 static double frac = 1.0;	/* Additional catalog/image stars */
 static int nofit = 0;		/* if =1, do not fit WCS */
 static int maxcat = MAXSTARS;	/* Maximum number of catalog stars to use */
@@ -87,6 +86,12 @@ static int minstars0 = MINSTARS;	/* Number of star matches for fit */
 static int nxydec = NXYDEC;	/* Number of decimal places in image coordinates */
 static void PrintRes();
 extern void SetFITSPlate();
+
+static char *kwt = NULL;        /* Keyword returned by ctgread() */
+void settabkrw (keyword0)
+char *keyword0;
+{ kwt = keyword0; return; }
+
 
 /* Set the C* WCS fields in the input image header based on the given limiting
  * reference mag.
@@ -131,6 +136,7 @@ int	verbose;
     int imw, imh;	/* Image size, pixels */
     int imsearch = 1;	/* Flag set if image should be searched for sources */
     int nmax;		/* Maximum number of matches possible (nrg or nbs) */
+    int lofld = 0;	/* Length of object name field in output */
     double mag1,mag2;
     int refcat;		/* reference catalog switch */
     int nmag, mprop;
@@ -140,12 +146,11 @@ int	verbose;
     int ngmax;
     int nbin, nbytes;
     int iterate, toliterate, nfiterate;
-    int nmagmax = 8;
     int imag, magsort;
     int niter = 0;
     int recenter = recenter0;
     int ret = 0;
-    int is, ig, igs;
+    int is, ig, igs, i, j;
     char rstr[32], dstr[32];
     double refeq, refep;
     double maxnum;
@@ -156,12 +161,14 @@ int	verbose;
     char *imcatname;	/* file name for image star catalog, if used */
     struct WorldCoor *wcs=0;	/* WCS structure */
     double *sx1, *sy1, *sm1, *gra1, *gdec1, *gnum1, *gm1;
+    char **gobj, **gobj1;	/* Catalog star object names */
     double imfrac = imfrac0;
     int nmatch;
     double ra,dec;
     double dx, dy, dx2, dy2, dxy;
     struct StarCat *starcat;
     int npfit;
+    int nndec;
     extern int NParamFit();
     extern void setdcenter(),setsys(),setrefpix(),setsecpix();
     extern void setsecpix2(),setrot();
@@ -178,12 +185,25 @@ int	verbose;
     gx = NULL;
     gy = NULL;
     gc = NULL;
+    gobj = NULL;
+    gobj1 = NULL;
     goff = NULL;
     sm = NULL;
     sx = NULL;
     sy = NULL;
     sp = NULL;
     starcat = NULL;
+    imcatname = NULL;
+    ns = 0;
+
+    if (refmag1 == refmag2) {
+	mag1 = 0.0;
+	mag2 = 0.0;
+	}
+    else {
+	mag1 = refmag1;
+	mag2 = refmag2;
+	}
 
     /* Use already-matched stars first, if they are present */
     if (strlen (matchcat) > 0) {
@@ -236,6 +256,7 @@ int	verbose;
     if (nofit) {
 	refsys = 0;
 	refeq = 0.0;
+	refcat = 0;
 	}
     else {
 	refcat = RefCat (refcatname,title,&refsys,&refeq,&refep,&mprop,&nmag);
@@ -274,15 +295,6 @@ getfield:
 	dra = dra * imfrac;
 	ddec = ddec * imfrac;
 	}
-
-    if (refmag1 == refmag2) {
-	mag1 = 0.0;
-	mag2 = 0.0;
-	}
-    else {
-	mag1 = refmag1;
-	mag2 = refmag2;
-	}
     if (sortmag > 9)
 	sortmag = CatMagNum (sortmag, refcat);
 
@@ -319,16 +331,27 @@ getfield:
     if (!(gc = (int *) calloc (ngmax, sizeof(int))))
 	fprintf (stderr, "Could not calloc %d bytes for gc\n",
 		 ngmax*sizeof(int));
+    if (!(gobj = (char **) calloc (ngmax, sizeof(char *))))
+	fprintf (stderr, "Could not calloc %d bytes for obj\n",
+		 ngmax*sizeof(char *));
+    else {
+	for (i = 0; i < ngmax; i++)
+	    gobj[i] = NULL;
+	}
 
     /* Find the nearby reference stars, in ra/dec */
 getstars:
     ng = ctgread (refcatname,refcat,0,cra,cdec,dra,ddec,0.0,0.0,refsys,refeq,
 		  refep,mag1,mag2,sortmag,ngmax,&starcat,
-		  gnum,gra,gdec,gpra,gpdec,gm,gc,NULL,verbose*100);
+		  gnum,gra,gdec,gpra,gpdec,gm,gc,gobj,verbose*100);
     if (ng > ngmax)
 	nrg = ngmax;
     else
 	nrg = ng;
+    if (gobj[0] == NULL)
+	gobj1 = NULL;
+    else
+	gobj1 = gobj;
 
     minstars = minstars0;
     npfit = NParamFit (100);
@@ -341,7 +364,7 @@ getstars:
 	magsort = 0;
 
     /* Sort reference stars by brightness (magnitude) */
-    MagSortStars (gnum, gra, gdec, gpra, gpdec, NULL, NULL, gm, gc, NULL, nrg, 
+    MagSortStars (gnum, gra, gdec, gpra, gpdec, NULL, NULL, gm, gc, gobj1, nrg, 
 		  nmag, sortmag);
 
     /* Project the reference stars into pixels on a plane at ra0/dec0 */
@@ -394,10 +417,28 @@ getstars:
 		maxnum = gnum[ig];
 	    }
 	nnfld = CatNumLen (refcat, maxnum, 0);
+	nndec = 0;
 	for (ig = 0; ig < nrg; ig++) {
 	    ra2str (rstr, 32, gra[ig], 3);
 	    dec2str (dstr, 32, gdec[ig], 2);
-	    CatNum (refcat, nnfld, 0, gnum[ig], numstr);
+
+	    /* Set up object name or number to print */
+            if (starcat != NULL) {
+		if (starcat->stnum < 0 && gobj1 != NULL) {
+		    strncpy (numstr, gobj1[ig], 32);
+		    if (lofld > 0) {
+			for (j = 0; j < lofld; j++) {
+			    if (!numstr[j])
+				numstr[j] = ' ';
+			    }
+			}
+		    }
+		else
+		    CatNum (refcat,-nnfld,starcat->nndec,gnum[ig],numstr);
+		}
+	    else
+		CatNum (refcat, -nnfld, nndec, gnum[ig], numstr);
+
 	    if (nmag > 0)
 		fprintf (stderr,"%s %s %s %5.2f %6.1f %6.1f\r",
 		    numstr,rstr,dstr,gm[magsort][ig],gx[ig],gy[ig]);
@@ -507,7 +548,12 @@ getstars:
 		ra2str (rastr, 32, ra, 3);
 		dec2str (decstr, 32, dec, 2);
 		xmag = sm[is];
-		if (nmag > 0 && !is) mdiff = gm[magsort][0] - xmag;
+		if (nmag > 0 && !is) {
+		    mdiff = gm[magsort][0] - xmag;
+		    }
+		else {
+		    mdiff = 0.0;
+		    }
 		xmag = xmag + mdiff;
 		fprintf (stderr,"%4d %s %s %6.2f %6.1f %6.1f %d\r",
 			is+1, rastr, decstr, xmag, sx[is], sy[is], sp[is]);
@@ -805,6 +851,14 @@ done:
     if (gy) free ((char *)gy);
     if (gc) free ((char *)gc);
 
+    /* Free memory used for object names in reference catalog */
+    if (gobj1 != NULL) {
+	for (i = 0; i < ns; i++) {
+	    if (gobj[i] != NULL) free (gobj[i]);
+	    gobj[i] = NULL;
+	    }
+	}
+
     /* Free image source arrays */
     if (sx) free ((char *)sx);
     if (sy) free ((char *)sy);
@@ -853,6 +907,7 @@ int	verbose;	/* True for more information */
     int nxyfld;
     char rstr[32], dstr[32], numstr[32], xstr[32], ystr[32];
 
+    maxnum = 0.0;
     for (i = 0; i < nmatch; i++) {
 	if (i == 0)
 	    maxnum = gnum1[i];
@@ -1244,4 +1299,6 @@ setmagfit ()
  * Aug 30 2004	Declare void undeclared set*() subroutines
  *
  * Mar 30 2006	Allow number of decimal places in image coordinates to be set
+ * Jun  8 2006	Print object name instead of number if necessary
+ * Jun 19 2006	Initialize uninitialized variables
  */

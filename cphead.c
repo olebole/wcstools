@@ -1,7 +1,24 @@
 /* File cphead.c
- * February 22, 2006
+ * June 20, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -32,12 +49,7 @@ static int listpath = 0;
 static int newimage0 = 0;
 static int keyset = 0;
 static int histset = 0;
-static int tabout = 0;
-static int printhead = 0;
 static int version = 0;		/* If 1, print only program name and version */
-static int printfill=0;		/* If 1, print ___ for unfound keyword values */
-static int printfile=1;		/* If 1, print filename first if >1 files */
-static int keyeqval=0;		/* If 1, print keyword=value, not just value */
 static char *rootdir=NULL;	/* Root directory for input files */
 
 int
@@ -55,13 +67,12 @@ char **av;
     char filename[256];
     char *infile;
     char *name;
-    FILE *flist, *fdk;
+    FILE *flist = NULL;
+    FILE *fdk;
     char *listfile;
     char *ilistfile;
     char *klistfile;
-    int ikwd, lkwd, i;
-    char *kw, *kwe;
-    char string[80];
+    int ikwd, i;
     char keyword[16];
 
     ilistfile = NULL;
@@ -84,7 +95,7 @@ char **av;
 
     /* crack arguments */
     for (av++; --ac > 0; av++) {
-	if (*(str = *av)=='-') {
+	if ((*(str = *av))=='-') {
 	    char c;
 	    while (c = *++str)
 	    switch (c) {
@@ -273,12 +284,6 @@ char **av;
 	exit (1);
 	}
 
-    if (nkwd > 1)
-	printfill = 1;
-    if (nfile < 2 && !listall)
-	printfile = 0;
-
-
     /* Open file containing a list of images, if there is one */
     if (ilistfile != NULL) {
 	if ((flist = fopen (ilistfile, "r")) == NULL) {
@@ -333,28 +338,24 @@ CopyValues (infile, filename, nkwd, kwd)
 
 char	*infile;	/* FITS or IRAF image file from which to read */
 char	*filename;	/* FITS or IRAF image file to which to write */
-int	nkwd;		/* Number of keywords for which to print values */
-char	*kwd[];		/* Names of keywords for which to print values */
+int	nkwd;		/* Number of keywords for which to copy values */
+char	*kwd[];		/* Names of keywords for which to copy values */
 
 {
     char *header;	/* FITS image header from which to copy */
     char *headin;	/* FITS image header to which to add */
     char *headout;	/* FITS image header to output */
     int newimage;
-    char *irafheader;	/* IRAF image header */
-    char *image;	/* Input and output image buffer */
+    char *irafheader = NULL;	/* IRAF image header */
+    char *image = NULL;	/* Input and output image buffer */
     double dval;
     int ival, nch;
     int iraffile;
     int ndec, nbheadout, nbheadin, nbheader;
-    char fnform[8];
     char newname[128];
     char string[80];
-    char temp[1028];
-    char outline[1000];
-    char mstring[800];
     char *kw, *kwe, *filepath, *fname, *ext, *imext, *imext1;
-    char *kwv, *kwl, *kwv0, *knl;
+    char *kwv0;
     int ikwd, lkwd, nfound, notfound, lext, lroot, lhist, lhead;
     char *ltime;
     int naxis, ipos, nbhead, nbr, nbw;
@@ -482,8 +483,17 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	else if (verbose)
 	    printf ("%s not found\r", kwd[ikwd]);
 	else
-	    notfound = 1;
+	    notfound++;
 	}
+
+    if (nfound < 1) {
+	if (verbose)
+	    fprintf (stderr, "No keywords on list in input file %s\n", infile);
+	return;
+	}
+    if (notfound > 0 && verbose)
+	fprintf (stderr, "%d keywords missing from input file %s\n",
+		 notfound, infile);
 
     /* Make up name for new FITS or IRAF output file */
     if (newimage) {
@@ -708,4 +718,6 @@ char *string;
  * Aug 30 2005	Write output header into new, adequately long array
  *
  * Feb 22 2006	Allocate keyword name buffer correctly
+ * May 31 2006	Add diagnostic messages
+ * Jun 20 2006	Drop unused variables
  */

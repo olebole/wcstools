@@ -97,8 +97,8 @@ static double uacra();
 static double uacdec();
 static double uacmagr();
 static double uacmagb();
-static int uacmagerr();
-static int uacgsc();
+int uacmagerr();
+int uacgsc();
 static int uacplate();
 
 static int uaczones();
@@ -202,7 +202,8 @@ int	nlog;		/* Logging interval */
     int wrap, iwrap;
     int verbose;
     int znum, itot,iz, i;
-    int itable, jtable,jstar;
+    int jtable,jstar;
+    int itable = 0;
     int nstar, nread;
     int uara1, uara2, uadec1, uadec2;
     double ra,dec, rdist, ddist;
@@ -801,11 +802,11 @@ int	nlog;		/* Logging interval */
     double epref=2000.0;	/* Catalog epoch */
 
     double rra1, rra2, rdec1, rdec2;
-    double num;		/* UA numbers */
     int wrap, iwrap;
     int verbose;
-    int znum, itot,iz, i;
-    int itable, jtable,jstar;
+    int znum, itot,iz;
+    int jtable,jstar;
+    int itable = 0;
     int nstar, nread;
     int uara1, uara2, uadec1, uadec2;
     double ra,dec, rdist, ddist;
@@ -1159,7 +1160,7 @@ int magetc;	/* Quality, plate, and magnitude from UA catalog entry */
 
 /* UACMAGERR -- returns 1 if magnitude is uncertain from UA star structure */
 
-static int
+int
 uacmagerr (magetc)
 
 int magetc;	/* Quality, plate, and magnitude from UA catalog entry */
@@ -1173,7 +1174,7 @@ int magetc;	/* Quality, plate, and magnitude from UA catalog entry */
 
 /* UACGSC -- returns 1 if UA star is in the HST Guide Star Catalog */
 
-static int
+int
 uacgsc (magetc)
 
 int magetc;	/* Quality, plate, and magnitude from UA catalog entry */

@@ -1,8 +1,8 @@
 /*** File libwcs/gsc2read.c
- *** October 18, 2004
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2004
+ *** Copyright (C) 2001-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -150,7 +150,7 @@ int	nlog;		/* 1 for diagnostics */
 
     /* Dump returned file and stop */
     if (nlog < 0) {
-	fwrite  (tabtable->tabbuff, tabtable->lbuff, 1, stdout);
+	(void) fwrite  (tabtable->tabbuff, tabtable->lbuff, 1, stdout);
 	exit (0);
 	}
 
@@ -215,4 +215,6 @@ int	nlog;		/* 1 for diagnostics */
  * Dec 12 2003	Fix call to tabcatopen()
  *
  * Oct 18 2004	Divide RA by cos(Dec) when computing radius for rect. input
+ *
+ * Jun 20 2006	Cast fwrite to void
  */

@@ -1,8 +1,8 @@
 /*** File imhfile.c
- *** June 13, 2005
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2005
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -480,7 +480,8 @@ int	*nbfits;	/* Number of bytes in FITS header (returned) */
 
 {
     char *objname;	/* object name from FITS file */
-    int lstr, i, j, k, ib, nax, nbits, nl, lname;
+    int lstr, i, j, k, ib, nax, nbits, nl;
+    int lname = 0;
     char *pixname, *newpixname, *bang, *chead;
     char *fitsheader;
     int nblock, nlines;
@@ -902,7 +903,7 @@ char	*fitsheader;	/* FITS image header */
 
     /* Write IRAF header to disk file */
     nbw = write (fd, irafheader, nbhead);
-    ftruncate (fd, nbhead);
+    (void) ftruncate (fd, nbhead);
     close (fd);
     if (nbw < nbhead) {
 	(void)fprintf(stderr, "IRAF header file %s: %d / %d bytes written.\n",
@@ -1916,4 +1917,6 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  * Nov  3 2003	Set NAXISi to image, not physical dimensions in iraf2fits()
  *
  * Jun 13 2005	Drop trailing spaces on pixel file name
+ *
+ * Jun 20 2006	Initialize uninitialized variables
  */

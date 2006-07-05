@@ -1,7 +1,24 @@
 /* File wcshead.c
- * July 19, 2004
+ * June 21, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -40,7 +57,7 @@ char **av;
     char *lastchar;
     char filename[256];
     FILE *flist;
-    char *listfile;
+    char *listfile = NULL;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -56,7 +73,7 @@ char **av;
 	char c;
 	if (*str == '@')
 	    str = str - 1;
-	while (c = *++str)
+	while ((c = *++str))
 	switch (c) {
 
 	case 'h':	/* hh:mm:ss output for crval, cdelt in arcsec/pix */
@@ -172,7 +189,8 @@ char	*filename;	/* FITS or IRAF image file name */
 {
     double w1, w2, dx, dy;
     int i, nxpix, nypix;
-    char str[256], temp[256], *header;
+    char str[256], temp[256];
+    char *header = NULL;
     char *GetFITShead();
     char rastr[32], decstr[32], fform[8];
     struct WorldCoor *wcs, *GetWCSFITS();
@@ -398,4 +416,6 @@ char	*filename;	/* FITS or IRAF image file name */
  *
  * Jul 19 2004	Print header if flag is set, not if first file
  * Jul 19 2004	Print underscores to fill lines if no WCS
+ *
+ * Jun 21 2006	Clean up code
  */

@@ -1,5 +1,5 @@
 /* File imsize.c
- * September 13, 2005
+ * June 21, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -55,7 +55,7 @@ char **av;
     char *lastchar;
     char filename[128];
     FILE *flist;
-    char *listfile;
+    char *listfile = NULL;
     int nfext=0;
     int i, j;
     int nrmax=10;
@@ -80,7 +80,7 @@ char **av;
 	char c;
 	if (*str == '@')
 	    str = str - 1;
-	while (c = *++str)
+	while ((c = *++str))
 	switch (c) {
 
 	case 'v':	/* more verbosity */
@@ -310,7 +310,7 @@ char *name;
     double cra, cdec, dra, ddec, secpix;
     double xmin, xmax, ymin, ymax, dx, dy;
     struct WorldCoor *wcs;
-    char *namext, cext;
+    char *namext;
     char *colon;
     char rstr[32], dstr[32], blanks[64];
     char ramin[32], ramax[32], decmin[32], decmax[32];
@@ -586,4 +586,6 @@ char *name;
  * Jan 12 2005	Check for uppercase filename extensions
  * Jul 20 2005	Make -d and -n options work for both center and dimensions
  * Sep 13 2005	Fix inline documentation to match reality
+ *
+ * Jun 21 2006	Clean up code
  */

@@ -1,7 +1,24 @@
 /* File edhead.c
- * February 1, 2006
+ * June 20, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -46,7 +63,7 @@ char **av;
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
 	char c;
-	while (c = *++str)
+	while ((c = *++str))
 	switch (c) {
 	case 'v':	/* more verbosity */
 	    verbose++;
@@ -109,7 +126,7 @@ char	*filename;	/* FITS or IRAF file filename */
     int nbhead;			/* Actual number of bytes in FITS header */
     int nbold, nbnew;
     int iraffile;		/* 1 if IRAF image */
-    char *irafheader;		/* IRAF image header */
+    char *irafheader = NULL;		/* IRAF image header */
     int i, nbytes, nhb, nhblk, lext, lroot;
     int fdr, ipos, nbr, nbw;
     int fdw;
@@ -121,7 +138,7 @@ char	*filename;	/* FITS or IRAF file filename */
     char headline[160];
     char newname[128];
     char space;
-    char *temphead;
+    char *temphead = "/tmp/edheadXXXXXX";
     FILE *fd;
     char *ext, *fname, *imext, *imext1;
     char *editcom;
@@ -172,8 +189,8 @@ char	*filename;	/* FITS or IRAF file filename */
     nbold = fitsheadsize (header);
 
     /* Write current header to temporary file */
-    temphead = tempnam ("/tmp","edhead");
-    if ((fd = fopen (temphead, "w"))) {
+    fd = fdopen (mkstemp (temphead), "w");
+    if (fd != NULL) {
 	headend = ksearch (header, "END") + 80;
 	for (head = header; head < headend; head = head + 80) {
 	    for (i = 0; i< 80; i++)
@@ -342,7 +359,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	}
     else {
 	strcpy (newname, filename);
-	if (!imext && ksearch (header,"XTENSION")) {
+	if (ksearch (header,"XTENSION")) {
 	    strcat (newname, ",1");
 	    imext = strchr (newname,',');
 	    }
@@ -442,4 +459,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Apr 14 2005	Set new header size by number of lines in temporary file
  *
  * Feb  1 2006	Drop redundant free(image) found by Sergey Koposov
+ * Jun 12 2006	Use mkstemp() instead of tempnam() suggested by Sergio Pascual
+ * Jun 20 2006	Clean up code
  */

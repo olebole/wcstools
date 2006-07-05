@@ -2,6 +2,23 @@
  * September 15, 2004
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -69,7 +86,7 @@ int ac;
 char **av;
 {
     char *str;
-    double bmin, arot, drot;
+    double bmin, arot, drot, xr, yr;
     char rastr[32], decstr[32];
     int readlist = 0;
     char *lastchar;
@@ -77,7 +94,7 @@ char **av;
     char filename[128];
     char errmsg[256];
     FILE *flist;
-    char *listfile;
+    char *listfile = NULL;
     int maxrad;
     char **fn;
     int ifile, nfile;
@@ -130,7 +147,7 @@ char **av;
 	    }
 
 	else if (*str == '-') {
-	    while (c = *++str) {
+	    while ((c = *++str)) {
 		switch (c) {
 		case 'v':	/* more verbosity */
 		    verbose++;
@@ -297,9 +314,11 @@ char **av;
 		case 'x':	/* X and Y coordinates of reference pixel */
 		    if (ac < 3)
 			PrintUsage (str);
-    		    setrefpix (atof (*++av), atof (*++av));
+    		    xr = atof (*++av);
 		    ac--;
+    		    yr = atof (*++av);
 		    ac--;
+    		    setrefpix (xr, yr);
     		    break;
 
 		case 'z':       /* Use AIPS classic WCS */
@@ -418,14 +437,13 @@ ListStars (filename)
 char	*filename;	/* FITS or IRAF file filename */
 
 {
-    char *image;		/* FITS image */
+    char *image = NULL;		/* FITS image */
     char *newimage;		/* Rotated FITS image */
     char *header;		/* FITS header */
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
-    char *irafheader;		/* IRAF image header */
+    char *irafheader = NULL;	/* IRAF image header */
     double *sx=0, *sy=0;	/* image stars, pixels */
-    double *sb=0;		/* image star brightesses */
     double *sra=0, *sdec=0;	/* image star RA and Dec */
     int ns;			/* n image stars */
     double *smag;		/* image star magnitudes */
@@ -887,4 +905,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jan 23 2002	Add zap=1 to FindStars() call
  *
  * Sep 15 2004	Add missing 0 shift arguments to RotFITS() call (Rob Creager)
+ *
+ * Jun 21 2006	Clean up code
  */

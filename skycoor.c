@@ -1,7 +1,24 @@
 /* File skycoor.c
- * January 5, 2006
+ * June 21, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -84,7 +101,7 @@ char **av;
     /* Decode arguments */
     for (av++; --ac > 0 && (*(str = *av) == '-'); av++) {
 	char c;
-	while (c = *++str)
+	while ((c = *++str))
     	switch (c) {
 
 	case 'a':	/* Position angle (N->E) between two RA Dec pairs */
@@ -330,7 +347,7 @@ char **av;
 	    ln = listname;
 	    while (*ln++)
 		*(ln-1) = *ln;
-	    if (fd = fopen (listname, "r")) {
+	    if ((fd = fopen (listname, "r"))) {
 		if (verbose)
 		    printf (" Reading positions from %s\n", listname);
 		while (fgets (line, 80, fd)) {
@@ -461,7 +478,6 @@ char **av;
 			rastr1, decstr1, eqstr, coorout);
 		}
 	    else if (verbose) {
-		char *epstring;
 		wcscstr (csys0, sys0, 0.0, 0.0);
 		printf ("%s %s %s -> %s %s %s",
 		        rastr0, decstr0, csys0,
@@ -630,4 +646,5 @@ char *errstring;
  * May 31 2005	Fix bug which caused infinite loop due to setting of listname
  *
  * Jan  5 2006	Fix bug to use command line equinox for output
+ * Jun 21 2006	Clean up code
  */

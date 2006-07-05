@@ -1,7 +1,24 @@
 /* File sethead.c
- * March 7, 2005
+ * June 21, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -54,14 +71,13 @@ char **av;
     int nfile = 0;
     int readlist = 0;
     int ifile;
-    int icom, lcom;
     char filename[1024];
     char *keybuff, *kw1, *kw2, *kwdi, *kwdc;
-    FILE *flist;
+    FILE *flist = NULL;
     char *listfile;
     char *ilistfile;
     char *klistfile;
-    int ikwd, i, nc;
+    int ikwd;
     char *dq, *sq, *sl;
     char lf = (char) 10;
     char cr = (char) 13;
@@ -96,7 +112,7 @@ char **av;
     for (av++; --ac > 0; av++) {
 	if (*(str = *av) == '-') {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 
 		case 'h':	/* Set HISTORY */
@@ -115,15 +131,24 @@ char **av;
 		    if (ac > 1) {
 			maxnkwd = atoi (++av[0]);
 			ac--;
+			kwdnew = (char **) calloc (maxnkwd, sizeof (void *));
+			for (ikwd = 0; ikwd < maxnkwd; ikwd++) {
+			    if (ikwd < nkwd)
+				kwdnew[ikwd] = kwd[ikwd];
+			    else
+				kwdnew[ikwd] = NULL;
+			    }
 			free (kwd);
-			kwd = (char **) calloc (maxnkwd, sizeof (void *));
-			for (ikwd = 0; ikwd < maxnkwd; ikwd++)
-			    kwd[ikwd] = NULL;
 			kwd = kwdnew;
+			kwdnew = (char **) calloc (maxnkwd, sizeof (void *));
+			for (ikwd = 0; ikwd < maxnkwd; ikwd++) {
+			    if (ikwd < nkwd)
+				kwdnew[ikwd] = comment[ikwd];
+			    else
+				kwdnew[ikwd] = NULL;
+			    }
 			free (comment);
-			comment = (char **) calloc (maxnkwd, sizeof (void *));
-			for (ikwd = 0; ikwd < maxnkwd; ikwd++)
-			    comment[ikwd] = NULL;
+			comment = kwdnew;
 			}
 		    break;
 
@@ -363,16 +388,19 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     char *header;	/* FITS image header */
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
-    char *irafheader;	/* IRAF image header */
+    char *irafheader = NULL;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
     int newimage;	/* 1 to write new image file, else 0 */
     int i, lext, lroot, ndec, isra;
-    char *image;
+    char *image = NULL;
     char newname[MAXNEW];
     char *newval;
     char string[80];
-    char *ext, *fname, *imext, *imext1;
-    char *kw, *kwv, *kwl, *kwv0, *knl;
+    char *ext, *fname;
+    char *imext = NULL;
+    char *imext1;
+    char *kw, *kwl, *kwv0, *knl;
+    char *kwv = NULL;
     char *v, *vq0, *vq1;
     char echar;
     int ikwd, lkwd, lkwv, lhist;
@@ -565,7 +593,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		    }
 		if (!isnum (string) && !strchr (string,':')) {
 		    if (verbose) 
-			printf ("* %s = %s in header is not a number.\n",
+			printf ("* %s %c = %s in header is not a number.\n",
 			    opkey, ops[keyop], string);
 		    continue;
 		    }
@@ -1069,4 +1097,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Mar  1 2005	Print header if first_file, not first
  * Mar  7 2005	Update comment as well as keyword vector if max exceeded
  * Mar  7 2005	Update comment as well as keyword vector if max exceeded
+ *
+ * Jun 21 2006	Fix bug so keyword settings preceding -m are kept
+ * Jun 21 2006	Initialize uninitialized variables
  */

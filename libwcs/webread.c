@@ -1,5 +1,5 @@
 /*** File webread.c
- *** April 6, 2006
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -247,7 +247,7 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 
     /* Dump returned file and stop */
     if (nlog < 0) {
-	fwrite  (tabtable->tabbuff, tabtable->lbuff, 1, stdout);
+	(void) fwrite  (tabtable->tabbuff, tabtable->lbuff, 1, stdout);
 	exit (0);
 	}
 
@@ -373,7 +373,7 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 
     /* Dump returned file and stop */
     if (nlog < 0) {
-	fwrite  (tabtable->tabbuff, tabtable->lbuff, 1, stdout);
+	(void) fwrite  (tabtable->tabbuff, tabtable->lbuff, 1, stdout);
 	exit (0);
 	}
 
@@ -562,7 +562,7 @@ int	*lbuff;	/* Length of buffer (returned) */
     fflush(sok);
     free (server);
 
-    fscanf(sok, "%*s %d %*s\r\n", &status);
+    (void) fscanf(sok, "%*s %d %*s\r\n", &status);
 
     /* Skip continue lines
     if (status == 100) {
@@ -596,7 +596,7 @@ int	*lbuff;	/* Length of buffer (returned) */
 	lline = 1;
 	*lbuff = 0;
 	while (lline > 0) {
-	    fgets (linebuff, LINE, sok);
+	    (void) fgets (linebuff, LINE, sok);
 	    lline = strlen (linebuff);
 	    if (lline < 1)
 		break;
@@ -632,7 +632,7 @@ int	*lbuff;	/* Length of buffer (returned) */
 		else {
 		    buff = tabbuff + lcbuff;
 		    }
-        	fread (buff, 1, lchunk, sok);
+        	(void) fread (buff, 1, lchunk, sok);
 		buff[lchunk] = (char) 0;
 		if (diag)
 		    fprintf (stderr, "%s\n", buff);
@@ -763,11 +763,11 @@ FileINetParse(file, port, adrinet)
 	return 0;
 #endif
 
-    if ( portstr = strchr(hostname, '/') ) {
+    if ( (portstr = strchr(hostname, '/')) ) {
 	*portstr = '\0';
     }
 
-    if ( portstr = strchr(hostname, ':') ) {
+    if ( (portstr = strchr(hostname, ':')) ) {
 	*portstr++ = '\0';
 
 	if ((port = strtol(portstr, NULL, 0)) == 0) {
@@ -836,4 +836,5 @@ FileINetParse(file, port, adrinet)
  *
  * Jan  9 2006	Multiply max number of stars for ESO search to get all
  * Apr  6 2006	Check for sdss in URL for Sloan parsing
+ * Jun 20 2006	Cast most stream I/O calls to void
  */

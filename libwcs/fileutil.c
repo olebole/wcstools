@@ -1,5 +1,5 @@
 /*** File libwcs/fileutil.c
- *** February 23, 2006
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1999-2006
@@ -340,7 +340,7 @@ char	*token;			/* First token on next line (returned) */
     /* If line can be read, add null at the end of the first token */
     if (fgets (token, ncmax, diskfile) != NULL) {
 	if (token[0] == '#') {
-	    fgets (token, ncmax, diskfile);
+	    (void) fgets (token, ncmax, diskfile);
 	    }
 
 	/* If only character is a control character, return a NULL */
@@ -554,4 +554,5 @@ char    *filename;      /* Name of file to check */
  * Sep 26 2005	In first_token, return NULL if token is only control character
  *
  * Feb 23 2006	Add istiff(), isjpeg(), isgif() to check TIFF, JPEG, GIF files
+ * Jun 20 2006	Cast call to fgets() void
  */

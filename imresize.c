@@ -1,7 +1,24 @@
 /* File imresize.c
- * April 19, 2006
+ * June 21, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -32,13 +49,14 @@ static char outname[128];	/* Name for output image */
 static int fitsout = 0;		/* Output FITS file from IRAF input if 1 */
 static int overwrite = 0;	/* allow overwriting of input image file */
 static int version = 0;		/* If 1, print only program name and version */
-static int xsize = 3;
-static int ysize = 3;
 static int filter = 0;		/* Filter code */
+static int xsize = 3;		/* Filter box width */
+static int ysize = 3;		/* Filter box height */
 static int resize = 0;		/* Resize flag */
 static int nlog = 100;		/* Number of lines between log messages */
 static int xfactor = 0;		/* Horizontal axis reduction factor */
 static int yfactor = 0;		/* Vertical axis reduction factor */
+static double ghwidth = 1.0;	/* Gaussian half width for smoothing */
 static int bitpix = 0;		/* Bits per output pixel */
 static int mean = 0;		/* 1 if mean for regrouped pixels */
 
@@ -55,7 +73,7 @@ char **av;
     char filename[128];
     FILE *flist;
     char **fn, *fname;
-    char *listfile;
+    char *listfile = NULL;
     int lfn, ifile, nfile;
 
     nfile = 0;
@@ -112,7 +130,8 @@ char **av;
 		case 'h':	/* Gaussian filter half-width at half-height */
 		    if (ac < 2)
 			usage ();
-		    setghwidth (atof (*++av));
+		    ghwidth = atof (*++av);
+		    setghwidth (ghwidth);
 		    ac--;
 		    break;
 
@@ -272,15 +291,17 @@ char *name;
     int lhead;			/* Maximum number of bytes in FITS header */
     int nbhead;			/* Actual number of bytes in FITS header */
     int iraffile;		/* 1 if IRAF image */
-    char *irafheader;		/* IRAF image header */
+    char *irafheader = NULL;		/* IRAF image header */
     char newname[256];		/* Name for revised image */
-    char *ext;
-    char *newimage;
-    char *imext, *imext1;
+    char *ext = NULL;
+    char *newimage = NULL;
+    char *imext = NULL;
+    char *imext1 = NULL;
     char *fname;
     char *newhead;
     char extname[16];
-    int lext, lroot;
+    int lext = 0;
+    int lroot;
     char echar;
     char temp[16];
     char history[64];
@@ -469,15 +490,34 @@ char *name;
 	    if (verbose)
 		printf ("IMRESIZE: File %s has been resized %d x %d\n",
 			 newname, xfactor, yfactor);
+	    /* Add IMRESIZE keyword to say how image was changed */
+	    if (hgets (header, "IMRESIZE", history))
+		hputs (header, "HISTORY", history);
+	    sprintf (history, "Image size reduced by %d in x, %d in y",
+		     xfactor, yfactor);
+	    hputs (header, "IMRESIZE", history);
 	    }
 	}
 
     if (filter) {
+
+
 	if ((newimage = FiltFITS (header,image,filter,xsize,ysize,nlog)) == NULL)
 	    fprintf (stderr,"Cannot filter image %s; file is unchanged.\n",name);
 	else {
 	    free (image);
 	    image = newimage;
+
+	    /* Add IMSMOOTH keyword to say how image was changed */
+	    if (hgets (header, "IMSMOOTH", history))
+		hputs (header, "HISTORY", history);
+	    if (filter == MEDIAN)
+		sprintf (history, "Median filtered over %d x %d pixels",xsize,ysize);
+	    else if (filter == GAUSSIAN)
+		sprintf (history, "Gaussian halfwidth %.2f pixels filtered over %d x %d pixels",ghwidth,xsize,ysize);
+	    else
+		sprintf (history, "Mean filtered over %d x %d pixels",xsize,ysize);
+	    hputs (header, "IMSMOOTH", history);
 	    }
 	}
  
@@ -509,4 +549,6 @@ char *name;
     return;
 }
 /* Apr 19 2006	New program from imsmooth.c
+ * Jun 21 2006	Write keywords IMRESIZE and IMSMOOTH to header describing action
+ * Jun 21 2006	Clean up code
  */

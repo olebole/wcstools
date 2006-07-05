@@ -1,8 +1,8 @@
 /*** File libwcs/ctgread.c
- *** August 5, 2005
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2005
+ *** Copyright (C) 1998-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -121,7 +121,7 @@ int	nlog;
     int i;
     int istar;
     int verbose;
-    int isp;
+    int isp = 0;
     int pass;
 
     nstar = 0;
@@ -176,6 +176,10 @@ int	nlog;
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == PPM)
             nstar = binread ("PPMra",distsort,cra,cdec,dra,ddec,drad,dradi,
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
+        else if (refcat == SKY2K)
+            nstar = binread ("sky2kra",distsort,cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
         else if (refcat == IRAS)
@@ -581,6 +585,9 @@ int	nlog;
 	else if (refcat == PPM)
 	    nstar = binrnum ("PPM",nnum,sysout,eqout,epout,match,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
+	else if (refcat == SKY2K)
+	    nstar = binrnum ("sky2k",nnum,sysout,eqout,epout,match,
+			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
 	else if (refcat == IRAS)
 	    nstar = binrnum ("IRAS",nnum,sysout,eqout,epout,match,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,NULL,nlog);
@@ -951,11 +958,7 @@ int	nlog;
     char cstr[32];
     struct Star *star;
     struct StarCat *sc; /* Catalog data structure */
-    char *objname;
-    int nameobj;	/* Save object name if 1, else do not */
-    int lname;
     int wrap;
-    int imag;
     int jstar;
     int nstar;
     int magsort;
@@ -963,10 +966,8 @@ int	nlog;
     double mag;
     double num;
     double rdist, ddist;
-    int i;
     int istar;
     int verbose;
-    int isp;
     int pass;
     double xpix, ypix, flux;
     int offscl;
@@ -998,6 +999,8 @@ int	nlog;
             nstar = binbin ("SAOra",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == PPM)
             nstar = binbin ("PPMra",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == SKY2K)
+            nstar = binbin ("sky2kra",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == IRAS)
             nstar = binbin ("IRAS",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == TYCHO)
@@ -1532,7 +1535,7 @@ struct StarCat *sc; /* Star catalog data structure */
 struct Star *st; /* Star data structure, updated on return */
 {
     struct Tokens tokens;
-    double ydate, dtemp, xhr;
+    double ydate, dtemp;
     char *line;
     char *nextline;
     char token[80];
@@ -2071,4 +2074,6 @@ char	*in;	/* Character string */
  *
  * Jan 18 2005	Fix bug dealing with negative declinations in ASCII table format
  * Aug  5 2005	Add additional catalog codes for Tycho-2 and 2MASS w/mag errs
+ * Jun  6 2006	Add SKY2000 catalog
+ * Jun 20 2006	Drop unused variables
  */

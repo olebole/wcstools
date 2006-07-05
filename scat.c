@@ -1,7 +1,24 @@
 /* File scat.c
- * April 13, 2006
+ * June 21, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -106,6 +123,13 @@ static int minpmqual = 0;	/* Minimum USNO-B1.0 proper motion quality */
 static int rdra = 0;		/* If 1, dra is in ra units, not sky units */
 static int idrun = 0;		/* If 1, 2MASS ID run from inside loop */
 static char voerror[80];	/* Error for Virtual Observatory */
+static int refcat = 0;		/* reference catalog switch */
+static char title[80];	/* Title of reference Catalog */
+static int nmag = 0;	/* Number of magnitudes in reference catalog */
+static int mprop = 0;	/* 1 if proper motion in reference catalog */
+static int sysref = 0;	/* Coordinate system of reference catalog */
+static double eqref;	/* Equinox of catalog to be searched */
+static double epref;	/* Epoch of catalog to be searched */
 extern void setminpmqual();
 extern void setminid();
 extern void setrevmsg();
@@ -130,16 +154,12 @@ char **av;
     int istar;
     char *blank;
     int imag;
+    int lprop, lnmag;
+    char listtitle[80];
     double epoch;
-    int nmag, mprop;
     char coorout[32];
-    char title[80];
     char *query;
     int ndcat;
-    int sysref;		/* Coordinate system of reference catalog */
-    double eqref;	/* Equinox of catalog to be searched */
-    double epref;	/* Epoch of catalog to be searched */
-    int refcat;
     int lrange;
     char *rstr, *dstr, *astr, *cstr, *ccom, *cep2;
 
@@ -369,7 +389,7 @@ char **av;
 	    }
 
 	/* Otherwise, read command */
-	else if (*(str = *av) == '-') {
+	else if ((*(str = *av)) == '-') {
 	    char c;
 	    while (c = *++str)
 	    switch (c) {
@@ -840,10 +860,10 @@ char **av;
 	/* Read search center list from SAOTDC ASCII table catalog */
 	else if (isacat (listfile)) {
 	    ranges = NULL;
-	    if (!(srchtype = RefCat (listfile,title,&syscoor,&eqcoor,
-				     &epoch,&mprop,&nmag))) {
-		if (nmag > nmagmax)
-		    nmagmax = nmag;
+	    if (!(srchtype = RefCat (listfile,listtitle,&syscoor,&eqcoor,
+				     &epoch,&lprop,&lnmag))) {
+		if (lnmag > nmagmax)
+		    nmagmax = lnmag;
 		fprintf (stderr,"List catalog '%s' is missing\n", listfile);
 		return (0);
 		}
@@ -961,6 +981,10 @@ char **av;
 	gc = NULL;
 	}
     if (gobj) {
+	for (i = 0; i < nalloc; i++) {
+	    if (gobj[i] != NULL)
+		free ((char *)gobj[i]);
+	    }
 	free ((char *)gobj);
 	gobj = NULL;
 	}
@@ -1058,48 +1082,44 @@ char	*ranges;	/* String with range of catalog numbers to list */
 double	eqout;		/* Equinox for output coordinates */
 
 {
-    double cra, cdec;	/* Search center long/lat or RA/Dec in degrees */
+    double cra = 0.0;	/* Search center long or RA in degrees */
+    double cdec = 0.0;	/* Search center lat or Dec in degrees */
     double crao, cdeco;	/* Output center long/lat or RA/Dec in degrees */
     double epout = 0.0;
-    int sysref;		/* Coordinate system of reference catalog */
-    double eqref;	/* Equinox of catalog to be searched */
-    double epref;	/* Epoch of catalog to be searched */
     int ng;		/* Number of catalog stars */
     int ns;		/* Number of brightest catalog stars actually used */
-    struct Range *range; /* Range of catalog numbers to list */
+    struct Range *range = NULL; /* Range of catalog numbers to list */
     int nfind;		/* Number of stars to find */
-    int i, is, j, ngmax, mprop, nc;
+    int i, is, j, ngmax, nc;
     double das, dds, drs;
     double gnmax;
-    double year;
     int degout;
     double maxnum;
-    FILE *fd;
+    FILE *fd = NULL;
     char rastr[32], decstr[32];	/* coordinate strings */
     char numstr[32];	/* Catalog number */
     char cstr[32];	/* Coordinate system */
     char *catalog;
-    double drad, dradi, dra, ddec, mag1, mag2;
+    double drad = 0.0;
+    double dradi = 0.0;
+    double dra, ddec, mag1, mag2;
     double gdist, da, dd, dec, gdmax;
-    double epoch;
+    double epoch = 0;
     int nlog;
-    int nmag;
     int magsort;
     int typecol;
     int band;
     int imag, nmagr;
     int sysout = 0;
-    char sortletter;
+    char sortletter = (char) 0;
     char headline[160];
     char filename[80];
-    char title[80];
     char string[TABMAX];
     char temp[80];
     char *dtemp;
     char isp[4];
-    int ngsc;
+    int ngsc = 0;
     int smag;
-    int refcat;		/* reference catalog switch */
     int nns;
     int icat, nndec, nnfld, nsfld;
     double date, time;
@@ -1110,9 +1130,9 @@ double	eqout;		/* Equinox for output coordinates */
     int nf;
     char tstr[32];
     double flux;
-    double pra, pdec;
+    double pra = 0.0;
+    double pdec = 0.0;
     char magname[16];
-    char *temp1;
     char *date1, *date2;
     void ep2dt();
     void PrintNum();
@@ -1154,7 +1174,13 @@ double	eqout;		/* Equinox for output coordinates */
 	    if (gc) free ((char *)gc);
 	    if (gx) free ((char *)gx);
 	    if (gy) free ((char *)gy);
-	    if (gobj) free ((char *)gobj);
+	    if (gobj) {
+		for (is = 1; is < nalloc; is++) {
+		    if (gobj[is] != NULL)
+			free ((char *)gobj[is]);
+		    }
+		free ((char *)gobj);
+		}
 	    }
 	gm = NULL;
 	gra = NULL;
@@ -1232,7 +1258,13 @@ double	eqout;		/* Equinox for output coordinates */
 	    gx = NULL;
 	    if (gy) free ((char *)gy);
 	    gy = NULL;
-	    if (gobj) free ((char *)gobj);
+	    if (gobj) {
+		for (is = 1; is < nalloc; is++) {
+		    if (gobj[is] != NULL)
+			free ((char *)gobj[is]);
+		    }
+		free ((char *)gobj);
+		}
 	    gobj = NULL;
 	    nalloc = 0;
 	    return (0);
@@ -1274,10 +1306,12 @@ double	eqout;		/* Equinox for output coordinates */
 	    }
 
 	/* Figure out which catalog we are searching */
-	if (!(refcat = RefCat (refcatname[icat],title,&sysref,&eqref,
-			       &epref,&mprop,&nmag))) {
-	    fprintf (stderr,"ListCat: Catalog '%s' is missing\n", refcatname[icat]);
-	    return (0);
+	if (ncat > 1 || refcat == 0) {
+	    if (!(refcat = RefCat (refcatname[icat],title,&sysref,&eqref,
+				   &epref,&mprop,&nmag))) {
+		fprintf (stderr,"ListCat: Catalog '%s' is missing\n", refcatname[icat]);
+		return (0);
+		}
 	    }
 
 	if (webdump)
@@ -1450,7 +1484,7 @@ double	eqout;		/* Equinox for output coordinates */
 
 	    /* Set flag for plate, class, or type column */
 	    if (refcat == BINCAT || refcat == SAO  || refcat == PPM ||
-		refcat == BSC || refcat == SDSS)
+		refcat == BSC || refcat == SDSS || refcat == SKY2K)
 		typecol = 1;
 	    else if ((refcat == GSC || refcat == GSCACT) && classd < -1)
 		typecol = 3;
@@ -1628,7 +1662,7 @@ double	eqout;		/* Equinox for output coordinates */
 
 	    /* Set flag for plate, class, or type column */
 	    if (refcat == BINCAT || refcat == SAO  || refcat == PPM ||
-		refcat == BSC || refcat == SDSS)
+		refcat == BSC || refcat == SDSS || refcat == SKY2K)
 		typecol = 1;
 	    else if ((refcat == GSC || refcat == GSCACT) && classd < -1)
 		typecol = 3;
@@ -1839,7 +1873,7 @@ double	eqout;		/* Equinox for output coordinates */
 
 	    /* Set flag for plate, class, or type column */
 	    if (refcat == BINCAT || refcat == SAO  || refcat == PPM ||
-		refcat == BSC || refcat == SDSS)
+		refcat == BSC || refcat == SDSS || refcat == SKY2K)
 		typecol = 1;
 	    else if ((refcat == GSC || refcat == GSCACT) && classd < -1)
 		typecol = 3;
@@ -1919,6 +1953,7 @@ double	eqout;		/* Equinox for output coordinates */
 			}
 		    else
 			smag = 1;
+
 		    if (nohead && tabout) {
 
 			/* Write tab table heading */
@@ -2153,10 +2188,10 @@ double	eqout;		/* Equinox for output coordinates */
 			}
 		    if (srch != NULL) {
 			if (srchcat->keyid[0] > 0 && strlen (srch->objname))
-			    strcat (numstr, srch->objname);
+			    strcpy (numstr, srch->objname);
 			else if (srchcat->stnum <= 0 &&
 			    strlen (srch->objname) > 0)
-			    strcat (numstr, srch->objname);
+			    strcpy (numstr, srch->objname);
 			else
 			    CatNum (TXTCAT,-srchcat->nnfld,srchcat->nndec,
 				    srch->num,numstr);
@@ -2238,14 +2273,30 @@ double	eqout;		/* Equinox for output coordinates */
 			pdec = gpdec[0] * 3600000.0;
 			}
 
-		    if (gobj1 != NULL) {
+		    /* Set up object name or number to print */
+		    if (starcat[icat] != NULL) {
+			if (starcat[icat]->stnum < 0 && gobj1 != NULL) {
+			    strncpy (numstr, gobj1[0], 32);
+			    if (lofld > 0) {
+				for (j = 0; j < lofld; j++) {
+				    if (!numstr[j])
+					numstr[j] = ' ';
+				    }
+				}
+			    }
+			else
+			    CatNum (refcat,-nnfld,starcat[icat]->nndec,gnum[0],numstr);
+			}
+		    else
+			CatNum (refcat, -nnfld, nndec, gnum[0], numstr);
+		    /* if (gobj1 != NULL) {
 			if (strlen (gobj1[0]) > 0)
 			    strcpy (numstr, gobj1[0]);
 			}
 		    if (starcat[icat] != NULL)
 			CatNum (refcat,-nnfld,starcat[icat]->nndec,gnum[0],numstr);
 		    else
-			CatNum (refcat,-nnfld,nndec,gnum[0],numstr);
+			CatNum (refcat,-nnfld,nndec,gnum[0],numstr);  */
 		    if (degout) {
 			num2str (rastr, gra[0], 12, nddeg);
 			num2str (decstr, gdec[0], 12, nddeg);
@@ -2785,6 +2836,8 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline,"	magb	magv");
 	    else if (refcat==TYCHO2E)
 		strcat (headline,"	magb 	magv 	magbe	magve");
+	    else if (refcat==SKY2K)
+		strcat (headline,"	magb 	magv 	magph	magpv");
 	    else if (refcat==HIP)
 		strcat (headline,"	magb 	magv 	prllx	parer");
 	    else if (refcat == GSC || refcat == GSCACT)
@@ -2928,6 +2981,8 @@ double	eqout;		/* Equinox for output coordinates */
 		    strcpy (headline, "SAO_number ");
 		else if (refcat == PPM)
 		    strcpy (headline, "PPM_number ");
+		else if (refcat == SKY2K)
+		    strcpy (headline, "SKY_id    ");
 		else if (refcat == BSC)
 		    strcpy (headline, "BSC_number ");
 		else if (refcat == IRAS)
@@ -3004,6 +3059,8 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, "   Mag ");
 	    else if (refcat==SAO || refcat==PPM || refcat==BSC || refcat==UCAC1)
 		strcat (headline, "    Mag");
+	    else if (refcat==SKY2K)
+		strcat (headline, "   MagB   MagV  MagPh  MagPv");
 	    else if (refcat==UCAC2)
 		strcat (headline, "   MagJ   MagH   MagK   MagC");
 	    else if (refcat==TMPSC || refcat == TMIDR2)
@@ -3031,7 +3088,7 @@ double	eqout;		/* Equinox for output coordinates */
 			strcat (headline, temp);
 			}
 		    else if (nmagr > 1) {
-			sprintf (temp, " Mag%d", imag+1);
+			sprintf (temp, "   Mag%d", imag+1);
 			strcat (headline, temp);
 			}
 		    else
@@ -3774,6 +3831,7 @@ double	num;	/* Number to print */
 int	ndec;	/* Number of decimal places in output */
 {
     char nform[8];
+    int LenNum();
 
     if (ndec > 0)
 	sprintf (nform, "%%%d.%df", LenNum (maxnum,ndec), ndec);
@@ -4542,7 +4600,7 @@ PrintGSClass ()
  *
  * Apr 19 2005	Fix minor format bug when printing tabbed epoch
  * May 12 2005	Add 2MASS ID decoding
- * Jul 27 2005	Add dateform=[j,f,m,e] to format output dates using DateString()
+ * Jul 27 2005	Add dateform=[i,f,m,e] to format output dates using DateString()
  * Aug  1 2005	Always set epoch; test only if a limit is present
  * Aug  3 2005	If nstars<0, print catalog information as found, unsorted
  * Aug  5 2005	Add 2MASS and Tycho-2 catalogs with errors
@@ -4553,4 +4611,7 @@ PrintGSClass ()
  * Mar 15 2006	Clean up VOTable code
  * Mar 17 2006	Add VOTable error reporting
  * Apr 13 2006	Add sort by ID number
+ * Jun  6 2006	Add 2 spaces per magnitude header
+ * Jun  8 2006	Print object name if no number present in one-line output
+ * Jun 21 2006	Initialize uninitialized variables
  */

@@ -1,7 +1,24 @@
 /* File delhead.c
- * April 24, 2006
+ * June 20, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -25,6 +42,7 @@ extern char *fitserrmsg;
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int newimage = 0;
+static readimage = 0;		/* Read and write image as well as header */
 static int version = 0;		/* If 1, print only program name and version */
 static int logfile = 0;
 static int nproc = 0;
@@ -44,7 +62,8 @@ char **av;
     int nfile = 0;
     int ifile;
     char filename[128];
-    FILE *flist, *fdk;
+    FILE *flist = NULL;
+    FILE *fdk;
     char *listfile;
     char *ilistfile;
     char *klistfile;
@@ -67,10 +86,15 @@ char **av;
 
     /* crack arguments */
     for (av++; --ac > 0; av++) {
-	if (*(str = *av) == '-') {
+	if ((*(str = *av)) == '-') {
 	    char c;
 	    while (c = *++str)
 	    switch (c) {
+	
+		case 'b': /* Leave blank lines at end after removing keywords */
+		    setheadshrink (0);
+		    readimage = 0;
+		    break;
 	
 		case 'l':	/* Log files changed */
 		    logfile++;
@@ -196,6 +220,7 @@ usage ()
     fprintf(stderr,"  or : [-nv] @listfile kw1 [... kwn]\n");
     fprintf(stderr,"  or : [-nv] file1.fits [ ... filen.fits] @keylistfile\n");
     fprintf(stderr,"  or : [-nv] @listfile @keylistfile\n");
+    fprintf(stderr,"  -b: leave blank line in header for each deleted line\n");
     fprintf(stderr,"  -n: write new file\n");
     fprintf(stderr,"  -v: verbose\n");
     exit (1);
@@ -215,7 +240,7 @@ char	*kwd[];		/* Names of those keywords */
     int lhead;		/* Maximum number of bytes in FITS header */
     int nbhead;		/* Actual number of bytes in FITS header */
     int nblold, nblnew;	/* Number of FITS blocks (=2880 bytes) in header */
-    char *irafheader;	/* IRAF image header */
+    char *irafheader = NULL;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
     int lext, lroot, naxis;
     char newname[MAXNEW];
@@ -223,8 +248,8 @@ char	*kwd[];		/* Names of those keywords */
     char *kw, *kwl;
     char echar;
     int ikwd;
-    int ibhead;		/* Number of bytes to skip to header */
-    int fdr, fdw, ipos, nbr, nbw, bitpix, imageread;
+    int fdr, fdw, ipos, nbr, nbw, bitpix;
+    int imageread = 0;
     int nbold, nbnew;
 
     image = NULL;
@@ -251,17 +276,6 @@ char	*kwd[];		/* Names of those keywords */
 	iraffile = 0;
 	setfitsinherit (0);
 	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
-	    hgeti4 (header,"NAXIS",&naxis);
-	    hgeti4 (header,"BITPIX",&bitpix);
-	    if (naxis > 0 && bitpix != 0) {
-		if ((image = fitsrfull (filename, nbhead, header)) == NULL) {
-		    if (verbose)
-			fprintf (stderr, "No FITS image in %s\n", filename);
-		    imageread = 0;
-		    }
-		else
-		    imageread = 1;
-		}
 	    }
 	else {
 	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
@@ -291,6 +305,10 @@ char	*kwd[];		/* Names of those keywords */
 
     if (strchr (fname, ',') || strchr (fname,'['))
 	setheadshrink (0);
+    if (isiraf (filename))
+	readimage = 0;
+    if (newimage)
+	readimage = 1;
 
     /* Delete keywords one at a time */
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
@@ -385,6 +403,11 @@ char	*kwd[];		/* Names of those keywords */
 	    }
 	}
 
+    if (nblnew == nblold && !newimage) 
+	readimage = 0;
+
+	hgeti4 (header,"NAXIS",&naxis);
+
     /* Write fixed header to output file */
     if (iraffile) {
 	if (irafwhead (newname, lhead, irafheader, header) > 0 && verbose)
@@ -404,7 +427,7 @@ char	*kwd[];		/* Names of those keywords */
 	}
 
     /* Rewrite only header if it fits into the space from which it was read */
-    else if (nblnew == nblold && !newimage) {
+    else if (!readimage) {
 	if (!fitswexhead (newname, header)) {
 	    if (verbose)
 		printf ("%s: rewritten successfully.\n", newname);
@@ -412,7 +435,17 @@ char	*kwd[];		/* Names of those keywords */
 	}
 
     /* Rewrite header and data to a new image file */
-    else if (naxis > 0 && imageread) {
+    else if (naxis > 0 && readimage) {
+	hgeti4 (header,"BITPIX",&bitpix);
+	if (naxis > 0 && bitpix != 0) {
+	    if ((image = fitsrfull (filename, nbhead, header)) == NULL) {
+		if (verbose)
+		    fprintf (stderr, "No FITS image in %s\n", filename);
+		imageread = 0;
+		}
+	    else
+		imageread = 1;
+	    }
 	if (fitswimage (newname, header, image) > 0 && verbose)
 	    printf ("%s: rewritten successfully.\n", newname);
 	else if (verbose)
@@ -483,4 +516,6 @@ char	*kwd[];		/* Names of those keywords */
  * Jun 10 2005	Fix bug dealing with large numbers of keywords
  *
  * Apr 26 2006	Avoid freeing alread-freed image buffers
+ * May 23 2006	Add -b option to leave blank lines in header
+ * Jun 20 2006	Clean up code
  */

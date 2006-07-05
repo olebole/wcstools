@@ -1,9 +1,25 @@
 /* File imcat.c
- * April 12, 2006
- * By Doug Mink
- * (Harvard-Smithsonian Center for Astrophysics)
+ * June 21, 2006
+ * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
-*/
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
+ */
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -64,6 +80,7 @@ static int printepoch = 0;	/* 1 to print epoch of entry */
 static int region_radius[5];	/* Min Radius for SAOimage region file output */
 static int region_radius1[5];	/* Max Radius for SAOimage region file output */
 static int region_char[5];	/* Character for SAOimage region file output */
+static int lofld = 0;		/* Length of object name field in output */
 
 extern int getminpmqual();
 extern int getminid();
@@ -85,7 +102,7 @@ char **av;
     char filename[128];
     char errmsg[256];
     FILE *flist;
-    char *listfile;
+    char *listfile = NULL;
     char *cstr;
     char cs, cs1;
     char **fn;
@@ -392,6 +409,8 @@ char **av;
 
 		case 's':	/* sort by RA, Dec, magnitude or nothing */
 		    catsort = SORT_RA;
+		    cs = (char) 0;
+		    cs1 = (char) 0;
 		    if (ac > 1) {
 			str1 = *(av + 1);
 			cs = str1[0];
@@ -655,10 +674,10 @@ char	**refcatname;	/* reference catalog name */
     int ng;		/* Number of catalog stars */
     int nbg;		/* Number of brightest catalog stars actually used */
     int imh, imw;	/* Image height and width in pixels */
-    int i, ngmax;
+    int i, j, ngmax;
     int degout;
-    FILE *fd;
-    struct WorldCoor *wcs;	/* World coordinate system structure */
+    FILE *fd = NULL;
+    struct WorldCoor *wcs = NULL; /* World coordinate system structure */
     double eqref;	/* Equinox of catalog to be searched */
     double epref;	/* Epoch of catalog to be searched */
     double epout;	/* Epoch of catalog to be searched */
@@ -678,12 +697,12 @@ char	**refcatname;	/* reference catalog name */
     char isp[4];
     int icat;
     int printobj = 0;
-    int nndec, nnfld;
-    char nform[64];
+    int nndec = 0;
+    int nnfld;
     char blanks[256];
     int lfn;
-    int band;
-    int ngsc;
+    int band = 0;
+    int ngsc = 0;
     int gcset;
     int mprop;
     int nmag;
@@ -692,7 +711,6 @@ char	**refcatname;	/* reference catalog name */
     double gxmax, gymax;
     double pra, pdec;
     double maxnum;
-    double xmag, xmag1;
     char *catalog;
 
     /* Drop out if no catalog is specified */
@@ -1079,7 +1097,7 @@ char	**refcatname;	/* reference catalog name */
 
     /* Write region file for SAOimage overplotting */
     if (region_radius[0]) {
-	double x, y, ddec, rmax, min_mag, max_mag, min_rad, max_rad, rscale;
+	double x, y, ddec, min_mag, max_mag, min_rad, max_rad, rscale;
 	int radius, ix, iy;
 	char snum[32], rstr[16];
 	if (region_radius[icat] == 0) {
@@ -1121,8 +1139,11 @@ char	**refcatname;	/* reference catalog name */
 		    rscale = -rscale;
 		}
 	    }
-	else
+	else {
+	    max_mag = gm[magsort][0];
+	    min_mag = gm[magsort][0];
 	    rscale = 0;
+	    }
 	if (region_char[icat] == 0) {
 	    if (icat > 0)
 		region_char[icat] = region_char[icat - 1] + 1;
@@ -1561,6 +1582,23 @@ char	**refcatname;	/* reference catalog name */
 		gc[i] = gc[i] - (band * 100);
 		}
 	    CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
+
+	    /* Set up object name or number to print */
+	    if (starcat[icat] != NULL) {
+		if (starcat[icat]->stnum < 0 && gobj1 != NULL) {
+		    strncpy (numstr, gobj1[i], 32);
+		    if (lofld > 0) {
+			for (j = 0; j < lofld; j++) {
+			    if (!numstr[j])
+				numstr[j] = ' ';
+			    }
+			}
+		    }
+		else
+		    CatNum (refcat,-nnfld,starcat[icat]->nndec,gnum[i],numstr);
+		}
+	    else
+		CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
 	    if (degout) {
 		deg2str (rastr, 32, gra[i], 5);
 		deg2str (decstr, 32, gdec[i], 5);
@@ -1633,7 +1671,7 @@ char	**refcatname;	/* reference catalog name */
 		    sprintf (headline, "%s	%s	%s	%5.2f	%2s",
 		     numstr,rastr,decstr,gm[0][i],isp);
 		else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
-		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f",
+		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%2s",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],isp);
 		else if (refcat==TYCHO2E)
 		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%s",
@@ -1773,7 +1811,7 @@ char	**refcatname;	/* reference catalog name */
 			strcat (headline, temp);
 			}
 		    if (refcat == TABCAT && gcset) {
-			sprintf(temp,"	%d", gc);
+			sprintf(temp,"	%d", gc[i]);
 			strcat (headline, temp);
 			}
 		    }
@@ -1850,7 +1888,7 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
     double ymax = wcs->nypix + 0.5;
     double ycen = 0.5 + (wcs->nypix * 0.5);
     double ra[8], dec[8];
-    int i, wrap;
+    int i;
 
     /* Find sky coordinates of corners and middles of sides */
     pix2wcs (wcs, xmin, ymin, &ra[0], &dec[0]);
@@ -2103,4 +2141,6 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  *
  * Feb 23 2006	Add second radius for magnitude-scaled star plots
  * Apr 12 2006	Add sort by ID number
+ * Jun  8 2006	Print object name if no number present
+ * Jun 21 2006	Clean up code
  */

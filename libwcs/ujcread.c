@@ -1,8 +1,8 @@
 /*** File libwcs/ujcread.c
- *** August 30, 2004
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -112,7 +112,8 @@ int	verbose;	/* 1 for diagnostics */
     double rra1, rra2, rdec1, rdec2;
     int wrap, iwrap;
     int znum, itot,iz;
-    int nlog,itable,jstar, mprop, nmag;
+    int nlog,jstar, mprop, nmag;
+    int itable = 0;
     int nstar, i;
     int pass;
     double ra,dec;
@@ -512,7 +513,6 @@ int	verbose;	/* 1 for diagnostics */
     double epout;	/* Proper motion epoch (0.0 for no proper motion) */
     double ra1,ra2;	/* Limiting right ascensions of region in degrees */
     double dec1,dec2;	/* Limiting declinations of region in degrees */
-    int magsort=0;
     int nz;		/* Number of input UJ zone files */
     int zlist[NZONES];	/* List of input UJ zones */
     UJCstar star;	/* UJ catalog entry for one star */
@@ -520,14 +520,14 @@ int	verbose;	/* 1 for diagnostics */
     double eqref=2000.0;	/* Catalog equinox */
     double epref=2000.0;	/* Catalog epoch */
     char cstr[32];
-    double num;		/* UJ number */
     int xplate;		/* If nonzero, use objects only from this plate */
 
     double rra1, rra2, rdec1, rdec2;
     int wrap, iwrap;
     int znum, itot,iz;
-    int nlog,itable,jstar, mprop, nmag;
-    int nstar, i;
+    int nlog,jstar, mprop, nmag;
+    int itable = 0;
+    int nstar;
     int pass;
     double ra,dec;
     double mag;
@@ -1082,4 +1082,6 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Dec 12 2003	Fix bug in wcs2pix() call in ujcbin()
  *
  * Aug 30 2004	Include fitsfile.h and math.h
+ *
+ * Jun 20 2006	Initialize uninitialized variables
  */

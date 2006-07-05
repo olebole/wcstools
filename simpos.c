@@ -1,5 +1,5 @@
 /*** simpos.c - search object by its name from command line arguments
- *** July 10, 2003
+ *** June 20, 2006
  *** By Doug Mink, after IPAC byname.c
  */
 
@@ -18,9 +18,8 @@ int  ac;
 char *av[];
 {
    
-    int    st;
-    int    no_obj, lobj;
-    int    i, j;
+    int lobj;
+    int i;
     int verbose = 0;
     int printid = 0;
     int printdeg = 0;
@@ -28,7 +27,7 @@ char *av[];
     int outsys = WCS_J2000;
     int sysj = WCS_J2000;
     double ra, dec;
-    char *str, *objname, *obj1, *posdec, *posra;
+    char *str, *objname, *posdec, *posra;
     char rastr[32], decstr[32];
     char *buff, *idline, *posline, *errline, *id, *errend;
     char url[256];
@@ -37,7 +36,7 @@ char *av[];
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
         char c;
-        while (c = *++str)
+        while ((c = *++str))
         switch (c) {
 
         case 'b':       /* Print coordinates in B1950 */
@@ -68,7 +67,7 @@ char *av[];
             usage();
             break;
         }
-    }
+	}
 
     /* There are ac remaining file names starting at av[0] */
     if (ac == 0)
@@ -187,6 +186,7 @@ char *av[];
 	    }
 	free (buff);
 	}
+    return;
 }
 
 static void
@@ -204,4 +204,6 @@ usage ()
 }
 
 /* Oct 25 2002	New program based on nedpos.c
+ *
+ * Jun 20 2006	Clean up code
  */

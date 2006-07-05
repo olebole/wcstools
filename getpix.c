@@ -1,7 +1,24 @@
 /* File getpix.c
- * July 29, 2005
+ * June 21, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 2006 
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -50,7 +67,9 @@ char **av;
     char *fn;
     char *rrange;       /* Row range string */
     char *crange;       /* Column range string */
-    char *rstr, *dstr, *cstr, *ccom;
+    char *rstr;
+    char *dstr = NULL;
+    char *cstr;
     int systemp;
     int i;
     int npix = 0;
@@ -87,7 +106,7 @@ char **av;
 	/* other command */
 	else if (str[0] == '-') {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 
 		case 'v':	/* more verbosity */
@@ -303,7 +322,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
     double dpix, dsum, dmean, dmin, dmax, dnpix;
     char *c;
     int *yi;
-    int bitpix,xdim,ydim, ipix, i, nx, ny, ix, iy, x, y;
+    int bitpix,xdim,ydim, i, nx, ny, ix, iy, x, y;
+    int ipix = 0;
     char pixname[255];
     char nform[8];
     struct Range *xrange;    /* X range structure */
@@ -404,8 +424,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 	for (i = 0; i < npix; i++) {
             dpix = getpix1(image,bitpix,xdim,ydim,bzero,bscale,xpix[i],ypix[i]);
 	    if (gtcheck || ltcheck) {
-		if (gtcheck && dpix > gtval ||
-		    ltcheck && dpix < ltval) {
+		if ((gtcheck && dpix > gtval) ||
+		    (ltcheck && dpix < ltval)) {
 		    procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
 		    if (nopunct)
 			printf ("%d %d %f\n", xpix[i], ypix[i], dpix);
@@ -471,8 +491,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 			if (dpix > gtval && dpix < ltval)
 			    procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
 			}
-		    else if (gtcheck && dpix > gtval ||
-			ltcheck && dpix < ltval)
+		    else if ((gtcheck && dpix > gtval) ||
+			(ltcheck && dpix < ltval))
 			procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
 		    }
 		}
@@ -491,8 +511,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 				printf ("[%d,%d] = %f\n", x+1, y+1, dpix);
 			    }
 			}
-		    else if (gtcheck && dpix > gtval ||
-			ltcheck && dpix < ltval) {
+		    else if ((gtcheck && dpix > gtval) ||
+			(ltcheck && dpix < ltval)) {
 			if (nopunct)
 			    printf ("%d %d %f\n", x+1, y+1, dpix);
 			else
@@ -517,8 +537,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 	    for (y = 0; y < ny; y++) {
         	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
 		if (gtcheck || ltcheck) {
-		    if (gtcheck && dpix > gtval ||
-			ltcheck && dpix < ltval) {
+		    if ((gtcheck && dpix > gtval) ||
+			(ltcheck && dpix < ltval)) {
 			procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
 			if (nopunct)
 			    printf ("%d %d %f\n", x+1, y+1, dpix);
@@ -574,8 +594,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 	    for (x = 0; x < nx; x++) {
         	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,y);
 		if (gtcheck || ltcheck) {
-		    if (gtcheck && dpix > gtval ||
-			ltcheck && dpix < ltval) {
+		    if ((gtcheck && dpix > gtval) ||
+			(ltcheck && dpix < ltval)) {
 			procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
 			if (nopunct)
 			    printf ("%d %d %f\n", x+1, y+1, dpix);
@@ -673,8 +693,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 		x = rgeti4 (xrange) - 1;
         	dpix = getpix (image,bitpix,xdim,ydim,bzero,bscale,x,yi[iy]);
 		if (gtcheck || ltcheck) {
-		    if (gtcheck && dpix > gtval ||
-			ltcheck && dpix < ltval) {
+		    if ((gtcheck && dpix > gtval) ||
+			(ltcheck && dpix < ltval)) {
 			procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
 			if (nopunct)
 			    printf ("%d %d %f\n", x+1, yi[iy]+1, dpix);
@@ -732,7 +752,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
     if (printrange)
 	printf ("Range = %.4f - %.4f ", dmin, dmax);
     if (printmean || printrange)
-	printf ("for %d pixels\n", dnpix);
+	printf ("for %d pixels\n", (int) dnpix);
 
     free (header);
     free (image);
@@ -794,4 +814,6 @@ double	dpix;	/* Current pixel value */
  * Sep 21 2004	Fix bug which used x instead of ix for number of elements printed
  *
  * Jul 29 2005	Add mean and range computation
+ *
+ * Jun 21 2006	Clean up code
  */
