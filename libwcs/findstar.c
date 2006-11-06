@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** June 19, 2006
+ *** October 24, 2006
  *** By Doug Mink, after Elwood Downey
  *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -924,88 +924,102 @@ int	h;	/* Original height of image */
     int istar;
     void rotstar();
 
+    if (rotate == 1)
+	rotate = 90;
+    else if (rotate == 2)
+	rotate = 180;
+    else if (rotate == 3)
+	rotate = 270;
+    else if (rotate < 0)
+	rotate = rotate + 360;
+    else if (rotate > 360)
+	rotate = rotate - 360;
+
     /* Rotate star postions one at a time */
     for (istar = 0; istar < nstars; istar++)
-	rotstar (&xa[istar], &ya[istar], w, h, rotate, mirror);
+	rotstar (&xa[istar], &ya[istar], w, h);
 
     return;
 }
 
 void
-rotstar (x, y, w, h, rot, reflect)
+rotstar (x, y, w, h)
 
 double	*x;	/* X coordinates of stars */
 double	*y;	/* Y coordinates of stars */
 int	w;	/* Original width of image */
 int	h;	/* Original height of image */
-double	rot;	/* Rotation angle in degrees */
-int	reflect; /* 1 if image is reflected, else 0 */
 
 {
-    double x2, y2;
+    double x1, y1, x2, y2;
     double xn = (double) w;
     double yn = (double) h;
+    double rot = rotate;	/* Rotation angle in degrees */
+    int reflect=mirror;		/* 1 if image is reflected, else 0 */
 
-    if (rot == 1)
-	rot = 90;
-    else if (rot == 2)
-	rot = 180;
-    else if (rot == 3)
-	rot = 270;
-    else if (rot < 0)
-	rot = rot + 360;
-    else if (rot > 360)
-	rot = rot - 360;
-
-    x2 = *x;
-    y2 = *y;
+    x1 = *x;
+    y1 = *y;
+    x2 = x1;
+    y2 = y1;
 
     /* Rotate star postions one at a time */
 
     /* Mirror coordinates without rotation */
     if (rotate < 45.0 && rotate > -45.0) {
-	if (reflect)
-	    x2 = xn - *x - 1.0;
+	if (reflect == 1)
+	    x2 = xn - x1 - 1.0;
+	else if (reflect == 2)
+	    y2 = yn - y1 - 1.0;
 	}
 
     /* Rotate by 90 degrees */
     else if (rotate >= 45 && rotate < 135) {
-	if (reflect) {
-	    x2 = yn - *y - 1.0;
-	    y2 = xn - *x - 1.0;
+	if (reflect == 1) {
+	    x2 = yn - y1 - 1.0;
+	    y2 = xn - x1 - 1.0;
+	    }
+	else if (reflect == 2) {
+	    x2 = y1;
+	    y2 = x1;
 	    }
 	else {
-	    x2 = yn - *y - 1.0;
-	    y2 = *x;
+	    x2 = yn - y1 - 1.0;
+	    y2 = x1;
 	    }
 	}
 
     /* Rotate by 180 degrees */
     else if (rotate >= 135 && rotate < 225) {
-	if (reflect)
-	    y2 = yn - *y - 1.0;
+	if (reflect == 1)
+	    y2 = yn - y1 - 1.0;
+	else if (reflect == 2)
+	    x2 = xn - x1 - 1.0;
 	else {
-	    x2 = xn - *x - 1.0;
-	    y2 = yn - *y - 1.0;
+	    x2 = xn - x1 - 1.0;
+	    y2 = yn - y1 - 1.0;
 	    }
 	}
 
     /* Rotate by 270 degrees */
     else if (rotate >= 225 && rotate < 315) {
-	if (reflect) {
-	    x2 = *y;
-	    y2 = *x;
+	if (reflect == 1) {
+	    x2 = y1;
+	    y2 = x1;
+	    }
+	else if (reflect == 2) {
+	    x2 = yn - y1 - 1.0;
+	    y2 = xn - x1 - 1.0;
 	    }
 	else {
-	    x2 = *y;
-	    y2 = xn - *x - 1.0;
+	    x2 = y1;
+	    y2 = xn - x1 - 1.0;
 	    }
 	}
 
-    /* If rotating by more than 315 degrees, assume top-bottom reflection */
+    /* If rotating by more than 315 degrees, flip across both axes */
     else if (rotate >= 315 && mirror) {
-	x2 = *y;
-	y2 = *x;
+	x2 = y1;
+	y2 = x1;
 	}
 
     *x = x2;
@@ -1070,4 +1084,5 @@ int	reflect; /* 1 if image is reflected, else 0 */
  * Apr 25 2006	Change MINPEAK to mean counts above noise background
  *              Suggested by Hill & Biddick for high background situations
  * Jun 19 2006	Initialized uninitialized variables
+ * Oct 24 2006	Add reflection across horizontal as well as vertical axis
  */

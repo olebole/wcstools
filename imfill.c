@@ -1,5 +1,5 @@
 /* File imfill.c
- * May 8, 2006
+ * July 7, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -39,6 +39,7 @@ static void usage();
 static void imFill();
 extern char *FillFITS();
 extern char *SetBadFITS();
+extern char *SetBadVal();
 extern void setghwidth();
 extern int getnfilled();
 
@@ -58,6 +59,8 @@ static double ghwidth;		/* Gaussian half-width */
 static char badpixfile[128];	/* Bad pixel file (zeroes except bad pixels) */
 static char *badimage;		/* FITS bad pixel image */
 static char *badheader;		/* FITS bad pixel header */
+static double minpixval = -9999.0;	/* Minimum good pixel value */
+static double maxpixval = -9999.0;	/* Maximum good pixel value */
 
 
 int
@@ -121,7 +124,14 @@ char **av;
 		    ac--;
 		    break;
 
-		case 'b':	/* Bad pixel FITS file */
+		case 'b': /* Bad pixel value */
+		    if (ac < 2)
+			usage();
+		    setbadpix (atof (*++av));
+		    ac--;
+		    break;
+
+		case 'f':	/* Bad pixel FITS file */
 		    if (ac < 2)
 			usage();
 		    strcpy (badpixfile, *(av+1));
@@ -134,11 +144,12 @@ char **av;
 		    break;
 
 		case 'g':	/* Gaussian filter */
-		    if (ac < 2)
+		    if (ac < 3)
 			usage();
 		    filter = FILL_GAUSSIAN;
 		    xsize = (int) atof (*++av);
-		    ysize = xsize;
+		    ac--;
+		    ysize = (int) atof (*++av);
 		    ac--;
 		    break;
 
@@ -180,11 +191,15 @@ char **av;
 			}
 		    break;
 
-		case 'p': /* Bad pixel value */
+		case 'p': /* Minimum and maximum good pixel values */
 		    if (ac < 2)
 			usage();
-		    nlog = (int) atof (*++av);
+		    minpixval = atof (*++av);
 		    ac--;
+		    if (isnum (*(av+1))) {
+			maxpixval = atof (*++av);
+			ac--;
+			}
 		    break;
 
 		case 'v':	/* more verbosity */
@@ -269,13 +284,14 @@ usage ()
     fprintf (stderr,"Fill bad pixels in FITS and IRAF image files\n");
     fprintf(stderr,"Usage: [-v][-a dx[,dy]][-g dx[,dy]][-m dx[,dy]] file.fits ...\n");
     fprintf(stderr,"  -a dx dy: Mean filter dx x dy pixels\n");
-    fprintf(stderr,"  -b file: FITS file with zeroes except at bad pixels\n");
-    fprintf(stderr,"  -g dx: Gaussian filter dx pixels square\n");
+    fprintf(stderr,"  -b num: Bad pixel value (default is BLANK or -9999)\n");
+    fprintf(stderr,"  -f file: FITS file with zeroes except at bad pixels\n");
+    fprintf(stderr,"  -g dx x dy: Gaussian filter dx x dy pixels\n");
     fprintf(stderr,"  -h halfwidth: Gaussian half-width at half-height\n");
     fprintf(stderr,"  -l num: Logging interval in lines\n");
     fprintf(stderr,"  -m dx dy: Median filter dx x dy pixels\n");
     fprintf(stderr,"  -o: Allow overwriting of input image, else write new one\n");
-    fprintf(stderr,"  -p num: Bad pixel value (default is BLANK or -9999)\n");
+    fprintf(stderr,"  -p num [num]: Minimum [maximum] good pixel value\n");
     fprintf(stderr,"  -v: Verbose\n");
     exit (1);
 }
@@ -320,6 +336,10 @@ char *name;
 	    fname = name;
 	ext = strrchr (fname, '.');
 	if (ext != NULL) {
+	    if (!strncmp (ext, ".fit", 4)) {
+		if (!strncmp (ext-3, ".ms", 3))
+		    ext = ext - 3;
+		}
 	    lext = (fname + strlen (fname)) - ext;
 	    lroot = ext - fname;
 	    strncpy (newname, fname, lroot);
@@ -499,6 +519,43 @@ char *name;
 	    }
 	}
 
+    /* Set pixels below minimum good pixel value to bad pixel value */
+    if (minpixval > -9999.0 && maxpixval > -9999.0) {
+	if ((newimage = SetBadVal (header,image,minpixval,maxpixval,nlog))==NULL) {
+	    fprintf (stderr,"Bad pixels in %s < %f, > %f not set; file unchanged.\n",
+		     name, minpixval, maxpixval);
+	    return;
+	    }
+	else {
+	    nbadpix = getnfilled();
+	    if (verbose)
+		printf ("%s: %d bad pixels flagged  unless %f < x < %f\n",
+			name, nbadpix, minpixval, maxpixval);
+	    free (image);
+	    image = newimage;
+	    sprintf (history,"%d bad pixels < %f > %f",
+		     nbadpix, minpixval, maxpixval);
+	    hputs (header, "BADPIX", history);
+	    }
+	}
+    else if (minpixval > -9999.0) {
+	if ((newimage = SetBadVal (header,image,minpixval,maxpixval,nlog))==NULL) {
+	    fprintf (stderr,"Bad pixels in %s < %f not set; file unchanged.\n",
+		     name, minpixval);
+	    return;
+	    }
+	else {
+	    nbadpix = getnfilled();
+	    if (verbose)
+		printf ("%s: %d bad pixels flagged if < %f\n",
+			name, nbadpix, minpixval);
+	    free (image);
+	    image = newimage;
+	    sprintf (history,"%d bad pixels < %f", nbadpix, minpixval);
+	    hputs (header, "BADPIX", history);
+	    }
+	}
+
     /* Fill image bad pixels with interpolations */
     if (filter != FILL_NONE) {
         if ((newimage = FillFITS (header,image,filter,xsize,ysize,nlog)) == NULL) {
@@ -575,4 +632,8 @@ char *name;
 /* Apr 11 2006	New program
  * Apr 19 2006	Fix calls to usage()
  * Jun 21 2006	Clean up code
+ * Jul  5 2006	Add option to set bad pixels if less than minimum value
+ * Jul  5 2006	Change argument letters around
+ * Jul  6 2006	Make both dimensions of Gaussian variable
+ * Jul  7 2006	Add option to set bad pixels if greater than maximum value
  */

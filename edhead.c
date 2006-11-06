@@ -1,5 +1,5 @@
 /* File edhead.c
- * June 20, 2006
+ * October 31, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -138,7 +138,7 @@ char	*filename;	/* FITS or IRAF file filename */
     char headline[160];
     char newname[128];
     char space;
-    char *temphead = "/tmp/edheadXXXXXX";
+    char temphead[] = "/tmp/edheadXXXXXX";
     FILE *fd;
     char *ext, *fname, *imext, *imext1;
     char *editcom;
@@ -228,8 +228,18 @@ char	*filename;	/* FITS or IRAF file filename */
 	strcpy (editcom, editcom0);
     else if ((editcom0 = getenv ("EDITOR")))
 	strcpy (editcom, editcom0);
-    else
-	strcpy (editcom,"vi");
+    else if (access ("vi", X_OK))
+	strcpy (editcom, "vi");
+    else if (access ("vim", X_OK))
+	strcpy (editcom, "vim");
+    else {
+	fprintf (stderr, "Cannot find EDITOR or vi or vim\n");
+	free (header);
+	if (iraffile)
+	    free (irafheader);
+	free (image);
+	return;
+	}
     strcat (editcom," ");
     strcat (editcom,temphead);
     if (verbose)
@@ -461,4 +471,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Feb  1 2006	Drop redundant free(image) found by Sergey Koposov
  * Jun 12 2006	Use mkstemp() instead of tempnam() suggested by Sergio Pascual
  * Jun 20 2006	Clean up code
+ * Sep  1 2006	Change temphead declaration to [] from *
+ * Oct 31 2006	Check for vim as well as vi if EDITOR not in environment
  */

@@ -81,9 +81,9 @@ char **av;
 
 	case 'i':	/* Turn off inheritance from Primary header */
 	    if (add)
-		setfitsinherit (0);
-	    else
 		setfitsinherit (1);
+	    else
+		setfitsinherit (0);
 	    break;
 
 	case 'v':	/* more verbosity */

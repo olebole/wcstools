@@ -1,5 +1,5 @@
 /*** File wcscon.c
- *** January 5, 2006
+ *** October 30, 2006
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Some subroutines are based on Starlink subroutines by Patrick Wallace
  *** Copyright (C) 1995-2006
@@ -134,7 +134,7 @@ double	*pphi;	/* Latitude or declination proper motion in degrees/year
 	sys1 = sys2;
 	}
 
-    /* Set systems and equinoxes so that IRCS coordinates are not precessed */
+    /* Set systems and equinoxes so that ICRS coordinates are not precessed */
     if (sys1 == WCS_ICRS && sys2 == WCS_J2000 && eq2 == 2000.0) {
 	eq1 = eq2;
 	sys1 = sys2;
@@ -334,7 +334,7 @@ double	*rv;	/* Radial velocity in km/sec */
 	    ep2 = 2000.0;
 	}
 
-    /* Set systems and equinoxes so that IRCS coordinates are not precessed */
+    /* Set systems and equinoxes so that ICRS coordinates are not precessed */
     if (sys1 == WCS_ICRS && sys2 == WCS_ICRS)
 	eq2 = eq1;
 
@@ -524,7 +524,7 @@ double	epoch;	/* Besselian epoch in years */
 	    eq2 = 2000.0;
 	}
 
-    /* Set systems and equinoxes so that IRCS coordinates are not precessed */
+    /* Set systems and equinoxes so that ICRS coordinates are not precessed */
     if (sys1 == WCS_ICRS && sys2 == WCS_ICRS)
 	eq2 = eq1;
 
@@ -686,6 +686,9 @@ char *wcstring;		/* Name of coordinate system */
     else if (wcstring[0] == 'L' || wcstring[0] == 'l' )
 	return WCS_LINEAR;
 
+    else if (!strncasecmp (wcstring, "pixel", 5))
+	return WCS_XY;
+
     else if (wcstring[0] == 'P' || wcstring[0] == 'p' )
 	return WCS_PLANET;
 
@@ -798,8 +801,14 @@ double	epoch;		/* Epoch of coordinate system */
 	    estr[2] = (char) 0;
 	    }
 	}
+    else if (syswcs == WCS_ICRS) {
+	strcpy (cstr, "ICRS");
+	}
     else if (syswcs == WCS_PLANET) {
 	strcpy (cstr, "PLANET");
+	}
+    else if (syswcs == WCS_LINEAR || syswcs == WCS_XY) {
+	strcpy (cstr, "LINEAR");
 	}
     return;
 }
@@ -2275,4 +2284,6 @@ double *r;	/* Distance to object in same units as pos (returned) */
  *
  * Jan  5 2006	Fix bugs in precession subroutines mprecxxx()
  * May  3 2006	Drop declarations of unused variables suggested by Robert Lupton
+ * Oct  6 2006	If pixel coordinates, set system to WCS_XY in wcscsys()
+ * Oct 30 2006	Add LINEAR and ICRS to wcscstr() returns
  */

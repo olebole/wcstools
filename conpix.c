@@ -1,5 +1,5 @@
 /* File conpix.c
- * June 21, 2006
+ * July 5, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -39,12 +39,13 @@
 #define PIX_SQRT 6
 #define PIX_NOISE 7
 #define PIX_ADDNOISE 8
+#define PIX_LOG10 9
 
 static void usage();
 static void OpPix();
 static double gnoise();
 
-static int nlog = 10;		/* Logging frequency */
+static int nlog = 0;		/* Logging frequency */
 static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
 static int version = 0;		/* If 1, print only program name and version */
@@ -121,11 +122,17 @@ char **av;
 	    setgnoise++;
 	    break;
 
-	case 'l':	/* Logging frequency */
+	case 'i':	/* Logging frequency */
             if (ac < 2)
                 usage ();
             nlog = atoi (*++av);
 	    ac--;
+	    break;
+
+	case 'l':	/* Log base 10 of pixel values */
+	    op[nop] = PIX_LOG10;
+	    nop++;
+	    newimage++;
 	    break;
 
 	case 'm':	/* multiply all pixels by constant */
@@ -217,7 +224,8 @@ usage ()
     fprintf(stderr,"  -a: add constant to all pixels (g=noise)\n");
     fprintf(stderr,"  -d: divide all pixels by constant\n");
     fprintf(stderr,"  -g: Gaussian noise from each pixel\n");
-    fprintf(stderr,"  -l: logging interval (default = 10)\n");
+    fprintf(stderr,"  -i: logging interval (default = 10)\n");
+    fprintf(stderr,"  -l: log10 of each pixel\n");
     fprintf(stderr,"  -m: multiply all pixels by constant\n");
     fprintf(stderr,"  -n: write new file, else overwrite\n");
     fprintf(stderr,"  -r: square root of each pixel\n");
@@ -350,18 +358,24 @@ double	*opcon;		/* Constants for operations */
 		    for (dvec = imvec; dvec < endvec; dvec++)
 			*dvec = *dvec + gnoise (*dvec);
 		    break;
+		case PIX_LOG10:
+		    for (dvec = imvec; dvec < endvec; dvec++) {
+			if (*dvec > 0.0)
+			    *dvec = log10 (*dvec);
+			}
+		    break;
 		default:
 		    break;
 		}
 	    }
 	putvec (image, bitpix, bzero, bscale, pixoff, xdim, imvec);
 	pixoff = pixoff + xdim;
-	if (verbose && y % nlog == 0) {
-	    fprintf (stderr, "Row %4d operations complete", y);
-	    (void) putc (13,stderr);
+	if (nlog > 0 && y % nlog == 0) {
+	    fprintf (stderr, "Row %4d operations complete\r", y);
 	    }
 	}
-    fprintf (stderr,"\n");
+    if (verbose)
+	fprintf (stderr,"\n");
 
     /* Note operation as history line in header */
     for (iop = 0; iop < nop; iop++) {
@@ -400,6 +414,10 @@ double	*opcon;		/* Constants for operations */
 		    sprintf (history,
 			     "CONPIX: Gaussian noise added to all pixels");
 		    break;
+		case PIX_LOG10:
+		    sprintf (history,
+			     "CONPIX: all pixels replaced by log10 of their value");
+		    break;
 		}
 	    }
 	else if (dpix < 1.0 && dpix > -1.0) {
@@ -434,6 +452,10 @@ double	*opcon;		/* Constants for operations */
 		case PIX_ADDNOISE:
 		    sprintf (history,
 			     "CONPIX: Gaussian noise added to all pixels");
+		    break;
+		case PIX_LOG10:
+		    sprintf (history,
+			     "CONPIX: all pixels replaced by log10 of their value");
 		    break;
 		}
 	    }
@@ -470,6 +492,10 @@ double	*opcon;		/* Constants for operations */
 		    sprintf (history,
 			     "CONPIX: Gaussian noise added to all pixels");
 		    break;
+		case PIX_LOG10:
+		    sprintf (history,
+			     "CONPIX: all pixels replaced by log10 of their value");
+		    break;
 		}
 	    }
 	hputc (header,"HISTORY",history);
@@ -488,6 +514,10 @@ double	*opcon;		/* Constants for operations */
 	    fname = filename;
 	ext = strrchr (fname, '.');
 	if (ext != NULL) {
+	    if (!strncmp (ext, ".fit", 4)) {
+		if (!strncmp (ext-3, ".ms", 3))
+		    ext = ext - 3;
+		}
 	    lext = (fname + strlen (fname)) - ext;
 	    lroot = ext - fname;
 	    strncpy (newname, fname, lroot);
@@ -539,15 +569,23 @@ double	*opcon;		/* Constants for operations */
 
     /* Write fixed header to output file */
     if (iraffile) {
-	if (irafwimage (newname,lhead,irafheader,header,image) > 0 && verbose)
-	    printf ("%s rewritten successfully.\n", newname);
+	if (irafwimage (newname,lhead,irafheader,header,image) > 0 && verbose) {
+	    if (verbose)
+		printf ("%s rewritten successfully.\n", newname);
+	    else
+		printf ("%s\n", newname);
+	    }
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
 	free (irafheader);
 	}
     else {
-	if (fitswimage (newname, header, image) > 0 && verbose)
-	    printf ("%s: rewritten successfully.\n", newname);
+	if (fitswimage (newname, header, image) > 0) {
+	    if (verbose)
+		printf ("%s: rewritten successfully.\n", newname);
+	    else
+		printf ("%s\n", newname);
+	    }
 	else if (verbose)
 	    printf ("%s could not be written.\n", newname);
 	}
@@ -612,4 +650,5 @@ double	flux;	/* Square root of this is 1/2.35 of Gaussian FWHM */
  * Apr  9 2002	Do not free unallocated header
  *
  * Jun 21 2006	Clean up code
+ * Jul  5 2006	Add option to take base 10 log of entire image
  */

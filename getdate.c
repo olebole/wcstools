@@ -1,5 +1,5 @@
 /* File getdate.c
- * June 21, 2006
+ * October 2, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -48,28 +48,24 @@
 #define DTIRAF	14	/* IRAF seconds since 1980-01-01 0:00 */
 #define DTUNIX	15	/* Unix seconds since 1970-01-01 0:00 */
 #define DTDOY	16	/* Year and day of year (including fraction) */
-#define DTHJD	17	/* Heliocentric Julian Date */
-#define DTMHJD	18	/* Modified Heliocentric Julian Date */
+#define DTHJD	17	/* Heliocentric Julian Date (requires RA, Dec) */
+#define DTMHJD	18	/* Modified Heliocentric Julian Date (requires RA, Dec) */
 #define DTNOW	19	/* Current time (for input only) */
 #define DTDSEC	20	/* Seconds of day (for input only) */
+#define DTMST	21	/* Mean Sidereal Time */
+#define DTGST	22	/* Greenwich Sidereal Time (with nutation) */
+#define DTLST	23	/* Local Sidereal Time (requires longitude) */
+#define DTET	24	/* Local Sidereal Time (requires longitude) */
 
 #define UT	0
 #define ET	1
 #define GST	2
 #define MST	3
+#define LST	4
 
 
 static void usage();
 static void ConvertDate();
-extern double mjd2mhjd();
-extern double mjd2hjd();
-extern double mhjd2mjd();
-extern double mjd2doy();
-extern double jd2hjd();
-extern double jd2mhjd();
-extern double hjd2jd();
-extern double hjd2mjd();
-extern double hjd2mhjd();
 extern void setdatedec();
 
 static int verbose = 0;		/* Verbose/debugging flag */
@@ -85,6 +81,7 @@ static double ra = 0.0;
 static double dec = 0.0;
 static int coorsys = WCS_J2000;
 extern void sdatedec();
+static double longitude = -1.0;
 
 int
 main (ac, av)
@@ -162,6 +159,12 @@ char **av;
 		intype = DTUT;
 	    else if (!strncmp (*av, "doy2", 4))
 		intype = DTDOY;
+	    else if (!strncmp (*av, "gst2", 4))
+		intype = DTGST;
+	    else if (!strncmp (*av, "mst2", 4))
+		intype = DTMST;
+	    else if (!strncmp (*av, "lst2", 4))
+		intype = DTLST;
 
 	    /* Set output date format */
 	    if (strsrch (*av, "2dt"))
@@ -196,13 +199,23 @@ char **av;
 		outtype = DT1950;
 	    else if (strsrch (*av, "2doy"))
 		outtype = DTDOY;
+	    else if (strsrch (*av, "2mst"))
+		outtype = DTMST;
+	    else if (strsrch (*av, "2gst"))
+		outtype = DTGST;
+	    else if (strsrch (*av, "2lst"))
+		outtype = DTLST;
+	    else if (strsrch (*av, "2et"))
+		outtype = DTET;
 
-	    if (intype > 0 || outtype > 0)
+	    if (intype > 0 || outtype > 0) {
 		typeset = 1;
+		continue;
+		}
 	    }
 
 	/* Set RA, Dec, and equinox if WCS-generated argument */
-	else if (ac > 3 &&
+	if (ac > 3 &&
 		 strsrch (*av,":") != NULL && strsrch (*(av+1),":") != NULL &&
 		 (strcsrch(*(av+2),"j")!=NULL || strcsrch(*(av+2),"b")!=NULL)) {
 	    if (ac < 3)
@@ -241,12 +254,20 @@ char **av;
 		    ac--;
 		    break;
 
-		case 'g':	/* Print Greenwich Sidereal Time */
-		    outtime = GST;
+		case 'h':	/* Longitude in hours */
+		    if (ac < 2)
+			usage();
+		    longitude = str2ra (*++av);
+		    setlongitude (longitude);
+		    ac--;
 		    break;
 
-		case 'm':	/* Print Greenwich Mean Sidereal Time */
-		    outtime = MST;
+		case 'l':	/* Longitude in degrees */
+		    if (ac < 2)
+			usage();
+		    longitude = str2dec (*++av);
+		    setlongitude (longitude);
+		    ac--;
 		    break;
 
 		case 'n':	/* Number of decimal places in output */
@@ -318,6 +339,13 @@ char **av;
 		datestring = NULL;
 		timestring = NULL;
 		}
+	    else if (intype == DTVIG && isnum (timestring)) {
+		ConvertDate (intype, outtype, datestring, timestring);
+		datestring = NULL;
+		timestring = NULL;
+		av++;
+		ac--;
+		}
 	    }
 	else if (timestring == NULL) {
 	    timestring = *av;
@@ -351,15 +379,17 @@ usage ()
     fprintf(stderr,"         jhd=Heliocentric Julian Date, mhjd=Modified HJD\n");
     fprintf(stderr,"         ep=epoch, epj=Julian epoch, epb=Besselian epoch\n");
     fprintf(stderr,"         ts=seconds since 1950-01-01, tsu=Unix sec, tsi=IRAF sec\n");
+    fprintf(stderr,"         gst=Greenwich Sidereal Time, lst=Local Sidereal Time\n");
     fprintf(stderr,"  @file: First one or two columns are in itype format\n");
     fprintf(stderr,"  ra dec sys:  Need for Heliocentric conversions\n");
     fprintf(stderr,"     -a: Append date to input file, if there is one\n");
     fprintf(stderr,"     -d: Print date without time\n");
     fprintf(stderr,"     -e: Print output as ET/TDT/TT converting from UT\n");
     fprintf(stderr,"     -f: Format for output number (C printf)\n");
-    fprintf(stderr,"     -g: Print output as Greenwich Sidereal Time\n");
-    fprintf(stderr,"     -m: Print output as Mean Sidereal Time\n");
+    fprintf(stderr,"     -h hours: Longitude in hours, west positive\n");
+    fprintf(stderr,"     -l degrees: Longitude in degrees, west positive\n");
     fprintf(stderr,"     -n: Number of decimal places in sec, epoch, JD\n");
+    fprintf(stderr,"     -t: Print time without date\n");
     fprintf(stderr,"     -v: Verbose\n");
     exit (1);
 }
@@ -378,8 +408,9 @@ char	*timestring;	/* Input time string */
     int year, vyear;
     int lfd, oldfits;
     char outform[16];
-    char *fitsdate, *newfdate;
+    char *fitsdate, *newfdate, *stdate;
     char temp[64];
+    char fyear[16];
     char ts0[8];
     char *tchar;
     int its, its1;
@@ -408,8 +439,39 @@ char	*timestring;	/* Input time string */
 	    datestring = newfdate;
 	    }
 	}
+    if (outtype == DTLST) {
+	if (longitude < 0.0) {
+	    setlongitude (0.0);
+	    fprintf (stderr, "*** Greenwich longitude used for Local Sidereal Time ***\n");
+	    }
+	outtime = LST;
+	if (intype == DTFITS || intype == DTVIG)
+	    outtype = intype;
+	else
+	    outtype = DTFITS;
+	}
+    else if (outtype == DTGST) {
+	outtime = GST;
+	if (intype == DTFITS || intype == DTVIG)
+	    outtype = intype;
+	else
+	    outtype = DTFITS;
+	}
+    else if (outtype == DTMST) {
+	outtime = MST;
+	if (intype == DTFITS || intype == DTVIG)
+	    outtype = intype;
+	else
+	    outtype = DTFITS;
+	}
+    else if (outtype == DTET) {
+	outtime = ET;
+	outtype = intype;
+	}
 
     switch (intype) {
+
+	/* Vigesimal date and time (yyyy.mmdd hh.mmssss) */
 	case DTVIG:
 	    if (datestring != NULL) {
 		if (strcmp (datestring, "now")) {
@@ -440,8 +502,9 @@ char	*timestring;	/* Input time string */
 		    case DTFITS:
 			fitsdate = dt2fd (vdate, vtime);
 			if (outtime == ET) fitsdate = fd2et (fitsdate);
-			if (outtime == GST) fitsdate = fd2gst (fitsdate);
-			if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			else if (outtime == GST) fitsdate = fd2gst (fitsdate);
+			else if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			else if (outtime == LST) fitsdate = fd2lst (fitsdate);
 			tchar = strchr (fitsdate, 'T');
 			if (dateonly && tchar != NULL) *tchar = (char) 0;
 			printf ("%s\n", fitsdate);
@@ -478,11 +541,25 @@ char	*timestring;	/* Input time string */
 			sprintf (temp, outform, doy);
 			printf ("%04d %s\n", year, temp);
 			break;
+		    case DTVIG:
+			if (outtime == ET) dt2et (&vdate, &vtime);
+			else if (outtime == GST) dt2gst (&vdate, &vtime);
+			else if (outtime == MST) dt2mst (&vdate, &vtime);
+			else if (outtime == LST) dt2lst (&vdate, &vtime);
+			if (dateonly)
+			    printf ("%9.4f\n", vdate);
+			else if (vdate == 0.0 || timeonly)
+			    printf ("%10.7f\n", vtime);
+			else
+			    printf ("%9.4f %10.7f\n", vdate, vtime);
+			break;
 		    default:
 			printf ("*** Unknown output type %d\n", outtype);
 		    }
 		}
 	    break;
+
+	/* FITS format date and time, either old or post-1999 ISO */
 	case DTFITS:
 	case DTNOW:
 	case DTLT:
@@ -504,6 +581,8 @@ char	*timestring;	/* Input time string */
 			lfd = strlen (datestring) + strlen (timestring) + 2;
 			fitsdate = (char *) calloc (1, lfd);
 			strcpy (fitsdate, datestring);
+			strcat (fitsdate, "_");
+			strcat (fitsdate, timestring);
 			}
 		    else {
 			lfd = strlen (datestring) + strlen (timestring) + 2;
@@ -545,8 +624,9 @@ char	*timestring;	/* Input time string */
 		    case DTVIG:
 			fd2dt (fitsdate, &vdate, &vtime);
 			if (outtime == ET) dt2et (&vdate, &vtime);
-			if (outtime == GST) dt2gst (&vdate, &vtime);
-			if (outtime == MST) dt2mst (&vdate, &vtime);
+			else if (outtime == GST) dt2gst (&vdate, &vtime);
+			else if (outtime == MST) dt2mst (&vdate, &vtime);
+			else if (outtime == LST) dt2lst (&vdate, &vtime);
 			if (oldfits) {
 			    if (timestring == NULL)
 				vtime = 0.0;
@@ -566,15 +646,33 @@ char	*timestring;	/* Input time string */
 			    strcat (newfdate, "T");
 			    strcat (newfdate, timestring);
 			    }
+			strncpy (fyear, newfdate, 10);
+			fyear[10] = (char) 0;
 			if (outtime == ET) newfdate = fd2et (newfdate);
-			if (outtime == GST) newfdate = fd2gst (newfdate);
-			if (outtime == MST) newfdate = fd2mst (newfdate);
+			else if (outtime == GST) newfdate = fd2gst (newfdate);
+			else if (outtime == MST) newfdate = fd2mst (newfdate);
+			else if (outtime == LST) newfdate = fd2lst (newfdate);
+			tchar = strchr (newfdate, 'T');
+			if (tchar == NULL)
+			    tchar = strchr (newfdate, 'S');
 			if (dateonly) {
-			    tchar = strchr (newfdate, 'T');
-			    if (tchar != NULL)
-				*tchar = (char) 0;
+			    strncpy (fyear, newfdate, 10);
+			    printf ("%s\n", fyear);
 			    }
-			printf ("%s\n", newfdate);
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", newfdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, newfdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", newfdate);
+			    }
 			break;
 		    case DTJD:
 			jd = fd2jd (fitsdate);
@@ -662,6 +760,8 @@ char	*timestring;	/* Input time string */
 		    }
 		}
 	    break;
+
+	/* Day of year (with time as fraction or separate string) */
 	case DTDOY:
 	    if (datestring != NULL) {
 		if (strcmp (datestring, "now")) {
@@ -692,8 +792,9 @@ char	*timestring;	/* Input time string */
 		    case DTFITS:
 			fitsdate = doy2fd (vyear, vdoy);
 			if (outtime == ET) fitsdate = fd2et (fitsdate);
-			if (outtime == GST) fitsdate = fd2gst (fitsdate);
-			if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			else if (outtime == GST) fitsdate = fd2gst (fitsdate);
+			else if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			else if (outtime == LST) fitsdate = fd2lst (fitsdate);
 			if (dateonly) {
 			    tchar = strchr (fitsdate, 'T');
 			    if (tchar != NULL)
@@ -731,8 +832,9 @@ char	*timestring;	/* Input time string */
 		    case DTVIG:
 			doy2dt (vyear, vdoy, &vdate, &vtime);
 			if (outtime == ET) dt2et (&vdate, &vtime);
-			if (outtime == GST) dt2gst (&vdate, &vtime);
-			if (outtime == MST) dt2mst (&vdate, &vtime);
+			else if (outtime == GST) dt2gst (&vdate, &vtime);
+			else if (outtime == MST) dt2mst (&vdate, &vtime);
+			else if (outtime == LST) dt2lst (&vdate, &vtime);
 			if (dateonly)
 			    printf ("%9.4f\n", vdate);
 			else if (vdate == 0.0)
@@ -745,6 +847,8 @@ char	*timestring;	/* Input time string */
 		    }
 		}
 	    break;
+
+	/* Geocentric Julian Date */
 	case DTJD:
 	    if (datestring != NULL) {
 		jd = atof (datestring);
@@ -783,6 +887,9 @@ char	*timestring;	/* Input time string */
 		    case DTVIG:
 			jd2dt (jd, &vdate, &vtime);
 			if (outtime == ET) dt2et (&vdate, &vtime);
+			else if (outtime == GST) dt2gst (&vdate, &vtime);
+			else if (outtime == MST) dt2mst (&vdate, &vtime);
+			else if (outtime == LST) dt2lst (&vdate, &vtime);
 			if (dateonly)
 			    printf ("%9.4f\n", vdate);
 			else if (vdate == 0.0)
@@ -793,8 +900,9 @@ char	*timestring;	/* Input time string */
 		    case DTFITS:
 			fitsdate = jd2fd (jd);
 			if (outtime == ET) fitsdate = fd2et (fitsdate);
-			if (outtime == GST) fitsdate = fd2gst (fitsdate);
-			if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			else if (outtime == GST) fitsdate = fd2gst (fitsdate);
+			else if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			else if (outtime == LST) fitsdate = fd2lst (fitsdate);
 			if (dateonly) {
 			    tchar = strchr (fitsdate, 'T');
 			    if (tchar != NULL)
@@ -825,6 +933,8 @@ char	*timestring;	/* Input time string */
 		    }
 		}
 	    break;
+
+	/* Modified Geocentric Julian Date */
 	case DTMJD:
 	    if (datestring != NULL) {
 		jd = atof (datestring);
@@ -864,8 +974,9 @@ char	*timestring;	/* Input time string */
 		    case DTVIG:
 			mjd2dt (jd, &vdate, &vtime);
 			if (outtime == ET) dt2et (&vdate, &vtime);
-			if (outtime == GST) dt2gst (&vdate, &vtime);
-			if (outtime == MST) dt2mst (&vdate, &vtime);
+			else if (outtime == GST) dt2gst (&vdate, &vtime);
+			else if (outtime == MST) dt2mst (&vdate, &vtime);
+			else if (outtime == LST) dt2lst (&vdate, &vtime);
 			if (dateonly)
 			    printf ("%9.4f\n", vdate);
 			else if (vdate == 0.0)
@@ -876,8 +987,9 @@ char	*timestring;	/* Input time string */
 		    case DTFITS:
 			fitsdate = mjd2fd (jd);
 			if (outtime == ET) fitsdate = fd2et (fitsdate);
-			if (outtime == GST) fitsdate = fd2gst (fitsdate);
-			if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			else if (outtime == GST) fitsdate = fd2gst (fitsdate);
+			else if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			else if (outtime == LST) fitsdate = fd2lst (fitsdate);
 			if (dateonly) {
 			    tchar = strchr (fitsdate, 'T');
 			    if (tchar != NULL)
@@ -900,6 +1012,8 @@ char	*timestring;	/* Input time string */
 		    }
 		}
 	    break;
+
+	/* Heliocentric Julian Date */
 	case DTHJD:
 	    if (datestring != NULL) {
 		jd = atof (datestring);
@@ -953,8 +1067,9 @@ char	*timestring;	/* Input time string */
 			jd = hjd2jd (jd, ra, dec, coorsys);
 			fitsdate = jd2fd (jd);
 			if (outtime == ET) fitsdate = fd2et (fitsdate);
-			if (outtime == GST) fitsdate = fd2gst (fitsdate);
-			if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			else if (outtime == GST) fitsdate = fd2gst (fitsdate);
+			else if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			else if (outtime == LST) fitsdate = fd2lst (fitsdate);
 			if (dateonly) {
 			    tchar = strchr (fitsdate, 'T');
 			    if (tchar != NULL)
@@ -989,6 +1104,8 @@ char	*timestring;	/* Input time string */
 		    }
 		}
 	    break;
+
+	/* Modified Heliocentric Julian Date */
 	case DTMHJD:
 	    if (datestring != NULL) {
 		jd = atof (datestring);
@@ -1071,6 +1188,215 @@ char	*timestring;	/* Input time string */
 		    }
 		}
 	    break;
+
+	/* Sidereal time */
+	case DTLST:
+	case DTGST:
+	case DTMST:
+	    if (datestring != NULL) {
+		if (strchr (datestring,'/'))
+		    oldfits = 1;
+		else
+		    oldfits = 0;
+		if (timestring != NULL) {
+		    if (oldfits) {
+			lfd = strlen (datestring) + strlen (timestring) + 2;
+			stdate = (char *) calloc (1, lfd);
+			strcpy (stdate, datestring);
+			strcat (stdate, "_");
+			strcat (stdate, timestring);
+			}
+		    else {
+			lfd = strlen (datestring) + strlen (timestring) + 2;
+			stdate = (char *) calloc (1, lfd);
+			strcpy (stdate, datestring);
+			strcat (stdate, "S");
+			strcat (stdate, timestring);
+			}
+		    }
+		else
+		    stdate = datestring;
+
+		if (verbose)
+		    printf ("%s -> ", stdate);
+
+		/* Convert Sidereal Time to UT */
+		if (intype == DTLST)
+		    fitsdate = lst2fd (stdate);
+		else if (intype == DTMST)
+		    fitsdate = mst2fd (stdate);
+		else if (intype == DTGST)
+		    fitsdate = gst2fd (stdate);
+		if (verbose)
+		    printf ("%s -> ", fitsdate);
+
+		/* Convert to desired output format */
+		switch (outtype) {
+		    case DTEP:
+			epoch = fd2ep (fitsdate);
+			if (oldfits && timestring) {
+			    epoch1 = fd2ep (timestring);
+			    epoch = epoch + epoch1;
+			    }
+			printf (outform, epoch);
+			break;
+		    case DTEPB:
+			epoch = fd2epb (fitsdate);
+			if (oldfits && timestring) {
+			    epoch1 = fd2epb (timestring);
+			    epoch = epoch + epoch1;
+			    }
+			printf (outform, epoch);
+			break;
+		    case DTEPJ:
+			epoch = fd2epj (fitsdate);
+			if (oldfits && timestring) {
+			    epoch1 = fd2epj (timestring);
+			    epoch = epoch + epoch1;
+			    }
+			printf (outform, epoch);
+			break;
+		    case DTVIG:
+			fd2dt (fitsdate, &vdate, &vtime);
+			if (outtime == ET) dt2et (&vdate, &vtime);
+			else if (outtime == GST) dt2gst (&vdate, &vtime);
+			else if (outtime == MST) dt2mst (&vdate, &vtime);
+			else if (outtime == LST) dt2lst (&vdate, &vtime);
+			if (oldfits) {
+			    if (timestring == NULL)
+				vtime = 0.0;
+			    else
+				vtime = str2dec (timestring);
+			    }
+			if (dateonly)
+			    printf ("%9.4f\n", vdate);
+			else if (vdate == 0.0 || timeonly)
+			    printf ("%10.7f\n", vtime);
+			else
+			    printf ("%9.4f %10.7f\n", vdate, vtime);
+			break;
+		    case DTFITS:
+			newfdate = fd2fd (fitsdate);
+			if (oldfits && timestring) {
+			    strcat (newfdate, "T");
+			    strcat (newfdate, timestring);
+			    }
+			strncpy (fyear, newfdate, 10);
+			fyear[10] = (char) 0;
+			if (outtime == ET) newfdate = fd2et (newfdate);
+			else if (outtime == GST) newfdate = fd2gst (newfdate);
+			else if (outtime == MST) newfdate = fd2mst (newfdate);
+			else if (outtime == LST) newfdate = fd2lst (newfdate);
+			tchar = strchr (newfdate, 'T');
+			if (tchar == NULL)
+			    tchar = strchr (newfdate, 'S');
+			if (dateonly) {
+			    strncpy (fyear, newfdate, 10);
+			    printf ("%s\n", fyear);
+			    }
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", newfdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, newfdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", newfdate);
+			    }
+			break;
+		    case DTJD:
+			jd = fd2jd (fitsdate);
+			if (oldfits && timestring) {
+			    jd1 = fd2jd (timestring);
+			    jd = jd + jd1;
+			    }
+			if (outtime == ET) jd = jd2jed (jd);
+			printf (outform, jd);
+			break;
+		    case DTMJD:
+			jd = fd2mjd (fitsdate);
+			if (oldfits && timestring) {
+			    jd1 = fd2jd (timestring);
+			    jd = jd + jd1;
+			    }
+			printf (outform, jd);
+			break;
+		    case DTHJD:
+			jd = fd2jd (fitsdate);
+			if (oldfits && timestring) {
+			    jd1 = fd2jd (timestring);
+			    jd = jd + jd1;
+			    }
+			jd = jd2hjd (jd, ra, dec, coorsys);
+			printf (outform, jd);
+			break;
+		    case DTOF:
+			newfdate = fd2of (fitsdate);
+			if (oldfits && timestring) {
+			    free (newfdate);
+			    newfdate = fd2ofd (fitsdate);
+			    strcat (newfdate, " ");
+			    strcat (newfdate, timestring);
+			    }
+			printf ("%s\n", newfdate);
+			break;
+		    case DTOFD:
+			newfdate = fd2ofd (fitsdate);
+			printf ("%s\n", newfdate);
+			break;
+		    case DTOFT:
+			newfdate = fd2oft (fitsdate);
+			if (oldfits && timestring) {
+			    strcpy (newfdate, timestring);
+			    }
+			printf ("%s\n", newfdate);
+			break;
+		    case DT1950:
+			ts = fd2ts (fitsdate);
+			if (oldfits && timestring) {
+			    ts1 = fd2ts (timestring);
+			    ts = ts + ts1;
+			    }
+			if (outtime == ET) ts = ts2ets (ts);
+			printf (outform, ts);
+			break;
+		    case DTIRAF:
+			its = fd2tsi (fitsdate);
+			if (oldfits && timestring) {
+			    its1 = (int) fd2ts (timestring);
+			    its = its + its1;
+			    }
+			printf (outform, its);
+			break;
+		    case DTUNIX:
+			lts = fd2tsu (fitsdate);
+			if (oldfits && timestring) {
+			    its1 = (int) fd2ts (timestring);
+			    lts = lts + (time_t) its1;
+			    }
+			printf (outform, lts);
+			break;
+		    case DTDOY:
+			fd2doy (fitsdate, &year, &doy);
+			if (oldfits && timestring) {
+			    ts1 = (int) fd2ts (timestring);
+			    doy = doy + (ts1 / 86400.0);
+			    }
+			sprintf (temp, outform, doy);
+			printf ("%04d %s\n", year, temp);
+			break;
+		    default:
+			printf ("*** Unknown output type %d\n", outtype);
+		    }
+		}
+	    break;
+
+	/* Seconds since 0:00 on 1950-01-01 */
 	case DT1950:
 	    if (datestring != NULL) {
     		if (strcmp (datestring, "now"))
@@ -1600,4 +1926,7 @@ char	*timestring;	/* Input time string */
  * Oct 14 2005	Add tsd2fd and tsd2dt
  *
  * Jun 21 2006	Clean up code
+ * Sep 15 2006	Add local sidereal time
+ * Oct  2 2006	Add conversions from sidereal time to UT
+ * Oct  2 2006	Add time to old FITS date conversions
  */

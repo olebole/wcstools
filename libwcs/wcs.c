@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** May 3, 2006
+ *** October 30, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2006
@@ -752,8 +752,11 @@ double crota;		/* Rotation counterclockwise in degrees */
     extern int matinv();
     double *pci;
     double crot, srot;
-    int i, j;
+    int i, j, naxes;
 
+    naxes = wcs->naxis;
+    if (naxes > 2)
+	naxes = 2;
     wcs->cdelt[0] = cdelt1;
     if (cdelt2 != 0.0)
 	wcs->cdelt[1] = cdelt2;
@@ -762,8 +765,8 @@ double crota;		/* Rotation counterclockwise in degrees */
     wcs->xinc = wcs->cdelt[0];
     wcs->yinc = wcs->cdelt[1];
     pci = wcs->pc;
-    for (i = 0; i < wcs->lin.naxis; i++) {
-	for (j = 0; j < wcs->lin.naxis; j++) {
+    for (i = 0; i < naxes; i++) {
+	for (j = 0; j < naxes; j++) {
 	    if (i ==j)
 		*pci = 1.0;
 	    else
@@ -894,6 +897,8 @@ double *pc;		/* Rotation matrix, ignored if NULL */
 	return;
 
     naxes = wcs->naxis;
+/*   if (naxes > 2)
+	naxes = 2; */
     if (naxes < 1 || naxes > 9) {
 	naxes = wcs->naxes;
 	wcs->naxis = naxes;
@@ -953,6 +958,8 @@ struct WorldCoor *wcs;	/* World coordinate system structure */
     int i, mem, naxes;
 
     naxes = wcs->naxis;
+    if (naxes > 2)
+	naxes = 2;
     if (naxes < 1 || naxes > 9) {
 	naxes = wcs->naxes;
 	wcs->naxis = naxes;
@@ -2131,8 +2138,9 @@ double	*xpos,*ypos;	/* RA and Dec in degrees (returned) */
 	*ypos = yp;
 	}
 
-    /* Keep RA/longitude within range if spherical coordinate output */
-    if (wcs->sysout > 0 && wcs->sysout < 10) {
+    /* Keep RA/longitude within range if spherical coordinate output
+       (Not LINEAR or XY) */
+    if (wcs->sysout > 0 && wcs->sysout != 6 && wcs->sysout != 10) {
 	if (*xpos < 0.0)
 	    *xpos = *xpos + 360.0;
 	else if (*xpos > 360.0)
@@ -2203,8 +2211,10 @@ int	*offscl;	/* 0 if within bounds, else off scale */
     wcs->zpix = 1.0;
 
     /* Convert coordinates to same system as image */
-    eqout = wcs->equinox;
-    wcscon (sysin, wcs->syswcs, eqin, eqout, &xp, &yp, wcs->epoch);
+    if (sysin > 0 && sysin != 6 && sysin != 10) {
+	eqout = wcs->equinox;
+	wcscon (sysin, wcs->syswcs, eqin, eqout, &xp, &yp, wcs->epoch);
+	}
 
     /* Convert sky coordinates to image coordinates */
 
@@ -2759,4 +2769,7 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  *
  * Apr 24 2006	Always set inverse CD matrix to 2 dimensions in wcspcset()
  * May  3 2006	(void *) pointers so arguments match type, from Robert Lupton
+ * Jun 30 2006	Set only 2-dimensional PC matrix; that is all lin* can deal with
+ * Oct 30 2006	In pix2wcs(), do not limit x to between 0 and 360 if XY or LINEAR
+ * Oct 30 2006	In wcsc2pix(), do not precess LINEAR or XY coordinates
  */

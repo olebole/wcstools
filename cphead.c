@@ -1,5 +1,5 @@
 /* File cphead.c
- * June 20, 2006
+ * June 29, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -37,7 +37,6 @@ static int maxnfile = MAXFILES;
 
 static void usage();
 static void CopyValues();
-static void strclean();
 extern char *GetFITShead();
 
 static int verbose = 0;		/* verbose/debugging flag */
@@ -455,7 +454,7 @@ char	*kwd[];		/* Names of keywords for which to copy values */
 	    }
 	(void) hlength (header, nbheader);
 	if (hgets (header, kwd[ikwd], 80, string)) {
-	    strclean (string);
+	    strfix (string,0,0);
 	    if (isnum (string)) {
 		if (strchr (string,'.')) {
 		    if (ndec0 > -9)
@@ -639,66 +638,6 @@ char	*kwd[];		/* Names of keywords for which to copy values */
     return;
 }
 
-
-/* Remove exponent and trailing zeroes, if reasonable */
-static void
-strclean (string)
-
-char *string;
-
-{
-    char *sdot, *s;
-    int ndek, lstr, i;
-
-    /* Remove positive exponent if there are enough digits given */
-    if (strsrch (string, "E+") != NULL) {
-	lstr = strlen (string);
-	ndek = (int) (string[lstr-1] - 48);
-	ndek = ndek + (10 * ((int) (string[lstr-2] - 48)));
-	if (ndek < lstr - 7) {
-	    lstr = lstr - 4;
-	    string[lstr] = (char) 0;
-	    string[lstr+1] = (char) 0;
-	    string[lstr+2] = (char) 0;
-	    string[lstr+3] = (char) 0;
-	    sdot = strchr (string, '.');
-	    if (ndek > 0 && sdot != NULL) {
-		for (i = 1; i <= ndek; i++) {
-		    *sdot = *(sdot+1);
-		    sdot++;
-		    *sdot = '.';
-		    }
-		}
-	    }
-	}
-
-    /* Remove trailing zeroes if they are not significant */
-    if (strchr (string, '.') != NULL &&
-	strsrch (string, "E-") == NULL &&
-	strsrch (string, "E+") == NULL &&
-	strsrch (string, "e-") == NULL &&
-	strsrch (string, "e+") == NULL) {
-	lstr = strlen (string);
-	s = string + lstr - 1;
-	while (*s == '0' && lstr > 1) {
-	    if (*(s - 1) != '.') {
-		*s = (char) 0;
-		lstr --;
-		}
-	    s--;
-	    }
-	}
-
-    /* Remove trailing decimal point */
-    lstr = strlen (string);
-    s = string + lstr - 1;
-    if (*s == '.')
-	*s = (char) 0;
-
-    return;
-	
-}
-
 /* Feb 24 2000	New program based on sethead and gethead
  * Mar 22 2000	Use lt2fd() instead of getltime()
  * Jun  8 2000	If no files or keywords specified, say so
@@ -720,4 +659,5 @@ char *string;
  * Feb 22 2006	Allocate keyword name buffer correctly
  * May 31 2006	Add diagnostic messages
  * Jun 20 2006	Drop unused variables
+ * Jun 29 2006	Rename strclean() strfix() and move to hget.c
  */

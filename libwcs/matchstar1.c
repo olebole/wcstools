@@ -1,5 +1,5 @@
 /*** File libwcs/matchstar.c
- *** October 23, 2006
+ *** June 19, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2006
@@ -77,7 +77,6 @@ static int	resid_refine = 0;
 static int	minbin=2;	/* Minimum number of coincidence hits needed */
 static int	minmatch0 = MINMATCH;	/* matches to drop out of loop */
 static int	nitmax0 = NMAX;		/* max iterations to stop fit */
-static int	binarray;	/* If =1, bin matched stars */
 static int	vfit[NPAR1]; /* Parameters being fit: index to value vector
 				1= RA,		  2= Dec,
 				3= X plate scale, 4= Y plate scale
@@ -126,7 +125,7 @@ int	debug;
     int maxnbin, i, nmatchd;
     int minmatch;
     int *is, *ig, *ibs, *ibg;
-    char rastr[32], decstr[32], numstr[32];
+    char rastr[16], decstr[16], numstr[16];
     double xref0, yref0, xinc0, yinc0, rot0, xrefpix0, yrefpix0, cd0[4];
     int bestbin;	/* Number of coincidences for refit */
     int pfit;		/* List of parameters to fit, 1 per digit */
@@ -174,6 +173,9 @@ int	debug;
 		 ns, ng, tol, minbin, minmatch);
 
     /* Allocate arrays in which to save match information */
+    mx = (double *) calloc (maxnbin, sizeof(double));
+    my = (double *) calloc (maxnbin, sizeof(double));
+    mxy = (double *) calloc (maxnbin, sizeof(double));
     is = (int *) calloc (maxnbin, sizeof(int));
     ig = (int *) calloc (maxnbin, sizeof(int));
     ibs = (int *) calloc (maxnbin, sizeof(int));
@@ -188,168 +190,55 @@ int	debug;
     dxs = 0.0;
     dys = 0.0;
 
-    /* Build 2-d histogram of offset distribution */
-    if (binarray) {
-	int nbx, nnbx, nbx2, nxpix, nby, nnby, nby2, nypix;
-	int idxmax, idymax, idx, idy, tol2;
-	int *obin, *obini, nset, npos;
+    /* Loop through image stars */
+    nbx = nxpix / (int) tol;
+    nby = nypix / (int) tol;
+    dbin = calloc (4 * nbx * nby, sizeof(double));
+    for (s = 0; s < ns; s++) {
 
-	/* Loop through image stars */
-	tol2 = 2 * (int) tol;
-	nbx = wcs->nxpix / tol2;
-	nnbx = -nbx;
-	nbx2 = 2 * nbx;
-	nby = wcs->nypix / tol2;
-	nby2 = 2 * nby;
-	nnby = -nby;
-	obin = calloc (nbx2 * nby2, sizeof(int));
-	nset = 0;
-	npos = 0;
-	for (s = 0; s < ns; s++) {
+	/* Loop through reference catalog stars */
+	for (g = 0; g < ng; g++) {
+	    dx  = gx[g] - sx[s];
+	    dy = gy[g] - sy[s];
 
-	    /* Loop through reference catalog stars */
-	    for (g = 0; g < ng; g++) {
-		dx  = gx[g] - sx[s];
-		dy = gy[g] - sy[s];
-
-		/* Add to number in this offset bin */
-		idx = (int) (dx / tol2);
-		idy = (int) (dy / tol2);
-		if (idx > nnbx && idx < nbx && idy > nnby && idy < nby) {
-		    obin[((idy+nby) * nbx2) + idx + nbx]++;
-		    nset++;
-		    }
-		npos++;
-		}
-	    }
-
-	/* Find offset bin with maximim number of entries */
-	idxmax = 0;
-	idymax = 0;
-	nmatch = 0;
-	obini = obin;
-	for (idy = nnby; idy < nby; idy++) {
-	    for (idx = nnbx; idx < nbx; idx++) {
-		if (*obini > nmatch) {
-		    idxmax = idx;
-		    idymax = idy;
-		    nmatch = *obini;
-		    if (debug)
-			fprintf (stderr, "%5d at offset %7.3f, %7.3f\n", *obini,
-				 idx*tol2, idy*tol2);
-		    }
-		obini++;
-		}
-	    }
-	/* If we found enough matches, we can proceed with this offset */
-	if (nmatch >= minmatch) {
-	    bestdx = tol2 * (double) (idxmax - nbx);
-	    bestdy = tol2 * (double) (idymax - nby);
-	    if (debug)
-		fprintf (stderr, "%d matches found at mean offset %6.3f %6.3f\n",
-			nmatch, bestdx, bestdy);
-	    }
-	free (obin);
-	}
-
-    /* Vote for closest match */
-    else {
-	mx = (double *) calloc (maxnbin, sizeof(double));
-	my = (double *) calloc (maxnbin, sizeof(double));
-	mxy = (double *) calloc (maxnbin, sizeof(double));
-
-	/* Loop through image stars */
-	for (s = 0; s < ns; s++) {
-	    dxys = tol2;
-	    igs = -1;
-
-	    /* Loop through reference catalog stars */
-	    for (g = 0; g < ng; g++) {
-
-		/* Try reference catalog star only if it is on the image */
-		dx = gx[g] - sx[s];
-		dy = gy[g] - sy[s];
-		dx2 = dx * dx;
-		dy2 = dy * dy;
-		dxy = dx2 + dy2;
-
-		/* Check offset less than tolerance or this star's closest match */
-		if (dxy < dxys) {
-		    dxys = dxy;
-		    dxs = dx;
-		    dys = dy;
-		    igs = g;
-		    ibs[nmatch] = s;
-		    ibg[nmatch] = g;
-		    }
-		}
-
-	    /* If a match was found */
-	    if (igs > -1) {
-
-		/* if new match is closer than old match, replace it */
-		if (mxy[igs] > 0.0) {
-		    if (dxy < mxy[igs]) {
-			dxsum = dxsum - mx[igs];
-			dysum = dysum - my[igs];
-			dxsum = dxsum + dxs;
-			dysum = dysum + dys;
-			if (debug) {
-			    CatNum (refcat, nnfld, 0, gnum[ibg[nmatch]], numstr);
-			    ra2str (rastr, 31, gra[ibg[nmatch]], 3);
-			    dec2str (decstr, 31, gdec[ibg[nmatch]], 2);
-			    fprintf (stderr, "*%3d %s %s %s %7.2f %7.2f %7.2f %7.2f %5.2f %5.2f %5.2f\n",
-				 nmatch, numstr, rastr, decstr, 
-				 gx[ibg[nmatch]], gy[ibg[nmatch]], 
-				 sx[ibs[nmatch]], sy[ibs[nmatch]], 
-				 dxs, dys, sqrt (dxys));
-			    }
-			}
-		    }
-	
-		/* If not matched before, use new match */
-		else {
-		    dxsum = dxsum + dxs;
-		    dysum = dysum + dys;
-		    if (debug) {
-			CatNum (refcat, nnfld, 0, gnum[ibg[nmatch]], numstr);
-			ra2str (rastr, 31, gra[ibg[nmatch]], 3);
-			dec2str (decstr, 31, gdec[ibg[nmatch]], 2);
-			fprintf (stderr, " %3d %s %s %s %7.2f %7.2f %7.2f %7.2f %5.2f %5.2f %5.2f\n",
-			     nmatch, numstr, rastr, decstr, 
-			     gx[ibg[nmatch]], gy[ibg[nmatch]], 
-			     sx[ibs[nmatch]], sy[ibs[nmatch]], 
-			     dxs, dys, sqrt (dxys));
-			}
-		    nmatch++;
-		    mx[igs] = dxs;
-		    my[igs] = dys;
-		    mxy[igs] = dxy;
-		    }
-		}
-	    }
-	free (mxy);
-	free (mx);
-	free (my);
-
-	/* If we found enough matches, we can proceed with this offset */
-	if (nmatch >= minmatch) {
-	    bestdx = dxsum / (double) nmatch;
-	    bestdy = dysum / (double) nmatch;
-	    if (debug)
-		fprintf (stderr, "%d matches found at mean offset %6.3f %6.3f\n",
-			nmatch, bestdx, bestdy);
+	    /* Add to number in this offset bin */
+	    idx = (dx / tol)
+	    idy = (dy / tol)
+	    if ((idx > -nbx && idx < nbx && idy > -nby && idy < nby)
+		dbin[((idy+nby) * nbx) + idx + nbx]++;
 	    }
 	}
 
-    /* Otherwise, we will look for a coarse alignment assuming no additional rotation.
-     * This will allow us to collect a set of stars that correspond and
+    /* Find offset bin with maximim number of entries
+    idxmax = 0;
+    idymax = 0;
+    nmatch = 0;
+    dbini = dbin
+    for (idy = -nby; idy < nby; idy++) {
+	for (idx = -nbx; idx < nbx; idx++) {
+	    if (*dbini > ndmax) {
+		idxmax = idx;
+		idymax - idy;
+		nmatch = *dbini;
+		}
+	    dbini++;
+	    }
+	}
+    bestdx = tol * (double) (idxmax + nbx);
+    bestdy = tol * (double) (idymax + nby);
+
+    /* If we found enough matches, we can proceed with this offset */
+    if (nmatch > minmatch) {
+	if (debug)
+	    fprintf (stderr, "%d matches found at mean offset %6.3f %6.3f\n",
+		nmatch, bestdx, bestdy);
+	}
+
+    /* Otherwise, look for a coarse alignment assuming no additional rotation.
+     * This will collect a set of stars that correspond and
      * establish an initial guess of the solution.
      */
-    if (nmatch < minmatch) {
-	if (debug)
-	    fprintf (stderr, "%d matches found  less than %d minimum\n",
-			nmatch, minmatch);
+    else {
 	npeaks = 0;
 	nmatch = 0;
 	for (i = 0; i < NPEAKS; i++) {
@@ -519,8 +408,8 @@ int	debug;
 
     if (debug) {
 	fprintf (stderr,"\nAmoeba fit:\n");
-	ra2str (rastr, 31, xref0, 3);
-	dec2str (decstr, 31, yref0, 2);
+	ra2str (rastr, 16, xref0, 3);
+	dec2str (decstr, 16, yref0, 2);
 	fprintf (stderr,"   initial guess:\n");
 	if (vfit[6] > -1)
 	    fprintf (stderr," cra= %s cdec= %s cd = %9.7f,%9.7f,%9.7f,%9.7f ",
@@ -530,8 +419,8 @@ int	debug;
 		     rastr, decstr, xinc0*3600.0, yinc0*3600.0, rot0);
 	fprintf (stderr,"(%8.2f,%8.2f\n", xrefpix0, yrefpix0);
 
-	ra2str (rastr, 31, wcs->xref, 3);
-	dec2str (decstr, 31, wcs->yref, 2);
+	ra2str (rastr, 16, wcs->xref, 3);
+	dec2str (decstr, 16, wcs->yref, 2);
 	fprintf (stderr,"\nfirst solution:\n");
 	if (vfit[6] > -1)
 	    fprintf (stderr," cra= %s cdec= %s cd = %9.7f,%9.7f,%9.7f,%9.7f ",
@@ -627,8 +516,8 @@ int	debug;
 	wcs_amoeba (wcs);
 
 	if (debug) {
-	    ra2str (rastr, 31, wcs->xref, 3);
-	    dec2str (decstr, 31, wcs->yref, 2);
+	    ra2str (rastr, 16, wcs->xref, 3);
+	    dec2str (decstr, 16, wcs->yref, 2);
 	    fprintf (stderr,"\nresid solution:\n");
 	    fprintf (stderr,"\n%d points < %.3f arcsec residuals refit\n",
 			    bestbin, siglim);
@@ -927,8 +816,8 @@ int	debug;		/* Printed debugging information if not zero */
 	    tra[nmatch] = ra;
 	    tdec[nmatch] = dec;
 	    if (debug) {
-		ra2str (rastr, 31, tra[nmatch], 3);
-		dec2str (decstr, 31, tdec[nmatch], 2);
+		ra2str (rastr, 32, tra[nmatch], 3);
+		dec2str (decstr, 32, tdec[nmatch], 2);
 		fprintf (stderr, "%d: %8.3f %8.3f %s %s\n", nmatch,
 			 tx[nmatch], ty[nmatch], rastr, decstr);
 		}
@@ -1042,7 +931,7 @@ int	debug;		/* Printed debugging information if not zero */
 
 {
     int i;
-    char rastr[32], decstr[32];
+    char rastr[16], decstr[16];
     double xref0, yref0, xinc0, yinc0, rot0, xrefpix0, yrefpix0, cd0[4];
     int bestbin;	/* Number of coincidences for refit */
     int pfit;		/* List of parameters to fit, 1 per digit */
@@ -1179,8 +1068,8 @@ int	debug;		/* Printed debugging information if not zero */
 
     if (debug) {
 	fprintf (stderr,"\nAmoeba fit:\n");
-	ra2str (rastr, 31, xref0, 3);
-	dec2str (decstr, 31, yref0, 2);
+	ra2str (rastr, 16, xref0, 3);
+	dec2str (decstr, 16, yref0, 2);
 	fprintf (stderr,"   initial guess:\n");
 	if (vfit[6] > -1)
 	    fprintf (stderr," cra= %s cdec= %s cd = %9.7f,%9.7f,%9.7f,%9.7f ",
@@ -1190,8 +1079,8 @@ int	debug;		/* Printed debugging information if not zero */
 		     rastr, decstr, xinc0*3600.0, yinc0*3600.0, rot0);
 	fprintf (stderr,"(%8.2f,%8.2f\n", xrefpix0, yrefpix0);
 
-	ra2str (rastr, 31, wcs->xref, 3);
-	dec2str (decstr, 31, wcs->yref, 2);
+	ra2str (rastr, 16, wcs->xref, 3);
+	dec2str (decstr, 16, wcs->yref, 2);
 	fprintf (stderr,"\nfirst solution:\n");
 	if (vfit[6] > -1)
 	    fprintf (stderr," cra= %s cdec= %s cd = %9.7f,%9.7f,%9.7f,%9.7f ",
@@ -1287,8 +1176,8 @@ int	debug;		/* Printed debugging information if not zero */
 	wcs_amoeba (wcs);
 
 	if (debug) {
-	    ra2str (rastr, 31, wcs->xref, 3);
-	    dec2str (decstr, 31, wcs->yref, 2);
+	    ra2str (rastr, 16, wcs->xref, 3);
+	    dec2str (decstr, 16, wcs->yref, 2);
 	    fprintf (stderr,"\nresid solution:\n");
 	    fprintf (stderr,"\n%d points < %.3f arcsec residuals refit\n",
 			    bestbin, siglim);
@@ -1331,7 +1220,7 @@ struct WorldCoor *wcs0;
     int iter;
     int i, j;
     int nfit1;
-    char rastr[32],decstr[32];
+    char rastr[16],decstr[16];
     int nitmax;
 
     nitmax = nitmax0;
@@ -1424,9 +1313,9 @@ struct WorldCoor *wcs0;
     fprintf (stderr,"Before:\n");
     for (i = 0; i < nfit1; i++) {
 	if (vfit[1] > -1)
-	    ra2str (rastr, 31, p[i][vfit[1]] + xref_p, 3);
+	    ra2str (rastr, 16, p[i][vfit[1]] + xref_p, 3);
 	else
-	    ra2str (rastr, 31, wcsf->xref, 3);
+	    ra2str (rastr, 16, wcsf->xref, 3);
 	if (vfit[2] > -1)
 	    dec2str (decstr, 16, p[i][vfit[2]]+yref_p, 2);
 	else
@@ -1481,13 +1370,13 @@ struct WorldCoor *wcs0;
     fprintf (stderr,"\nAfter:\n");
     for (i = 0; i < nfit1; i++) {
 	if (vfit[1] > -1)
-	    ra2str (rastr, 31, p[i][vfit[1]] + xref_p, 3);
+	    ra2str (rastr, 16, p[i][vfit[1]] + xref_p, 3);
 	else
-	    ra2str (rastr, 31, wcsf->xref, 3);
+	    ra2str (rastr, 16, wcsf->xref, 3);
 	if (vfit[2] > -1)
-	    dec2str (decstr, 31, p[i][vfit[2]]+yref_p, 2);
+	    dec2str (decstr, 16, p[i][vfit[2]]+yref_p, 2);
 	else
-	    dec2str (decstr, 31, wcsf->yref, 2);
+	    dec2str (decstr, 16, wcsf->yref, 2);
 	if (vfit[6] > -1) {
 	    cd[0] = p[i][vfit[3]];
 	    cd[1] = p[i][vfit[4]];
@@ -1572,8 +1461,8 @@ struct WorldCoor *wcs0;
 
 #define RESIDDUMP
 #ifdef RESIDDUMP
-    ra2str (rastr, 31, wcsf->xref, 3);
-    dec2str (decstr, 31, wcsf->yref, 2);
+    ra2str (rastr, 16, wcsf->xref, 3);
+    dec2str (decstr, 16, wcsf->yref, 2);
 
     if (vfit[6] > -1)
 	fprintf (stderr,"iter=%d\n cra= %s cdec= %s CD=%9.7f,%9.7f,%9.7f,%9.7f ", iter,
@@ -1588,7 +1477,7 @@ struct WorldCoor *wcs0;
     sumr = 0.0;
     for (i = 0; i < nbin_p; i++) {
 	double mra, mdec, ex, ey, er;
-	char rastr[32], decstr[32];
+	char rastr[16], decstr[16];
 
 	pix2wcs (wcsf, sx_p[i], sy_p[i], &mra, &mdec);
 	ex = 3600.0 * (mra - gra_p[i]);
@@ -1598,11 +1487,11 @@ struct WorldCoor *wcs0;
 	sumy = sumy + ey;
 	sumr = sumr + er;
 
-	ra2str (rastr, 31, gra_p[i], 3);
-	dec2str (decstr, 31, gdec_p[i], 2);
+	ra2str (rastr, 16, gra_p[i], 3);
+	dec2str (decstr, 16, gdec_p[i], 2);
 	fprintf (stderr,"%2d: c: %s %s ", i+1, rastr, decstr);
-	ra2str (rastr, 31, mra, 3);
-	dec2str (decstr, 31, mdec, 2);
+	ra2str (rastr, 16, mra, 3);
+	dec2str (decstr, 16, mdec, 2);
 	fprintf (stderr, "i: %s %s %6.3f %6.3f %6.3f\n",
 		rastr, decstr, 3600.0*ex, 3600.0*ey,
 		3600.0*sqrt(ex*ex + ey*ey));
@@ -1629,7 +1518,7 @@ int	iter;	/* Number of iterations */
 
 {
     double chsq;
-    char rastr[32],decstr[32];
+    char rastr[16],decstr[16];
     double xmp, ymp, dx, dy, cd[4], *cdx;
     double crval1, crval2, cdelt1, cdelt2, crota, crpix1, crpix2;
     int i, offscale;
@@ -1710,8 +1599,8 @@ int	iter;	/* Number of iterations */
 
 #define TRACE_CHSQR
 #ifdef TRACE_CHSQR
-    ra2str (rastr, 31, wcsf->xref, 3);
-    dec2str (decstr, 31, wcsf->yref, 2);
+    ra2str (rastr, 16, wcsf->xref, 3);
+    dec2str (decstr, 16, wcsf->yref, 2);
     if (vfit[6] > -1)
 	fprintf (stderr,"%4d: %s %s CD: %9.7f,%9.7f,%9.7f,%9.7f ",
 		iter, rastr, decstr, wcsf->cd[0],wcsf->cd[1],wcsf->cd[2],
@@ -1847,11 +1736,6 @@ int	*nfunk;
 }
 
 void
-setbin (binflag)
-int binflag;
-{ binarray = binflag; return;}
-
-void
 setresid_refine (refine)
 int refine;
 { resid_refine = refine; return; }
@@ -1974,6 +1858,4 @@ int nitmax;
  * Aug 30 2004	Declare void various external set*() calls
  *
  * Jun 19 2006	Initialize unitialized variables dxs and dys
- * Sep 26 2006	Increase length of rastr and destr from 16 to 32
- * Oct 23 2006	Add bin array option to see if it works better
  */ 

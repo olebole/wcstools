@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** June 20, 2006
+ *** October 5, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2000-2006
@@ -1334,12 +1334,12 @@ int istar;	/* Star sequence number in Tycho 2 catalog region file */
     st->decpm = atof (line+49) / 3600000.0;
 
     /* Set B magnitude and error */
-    st->xmag[1] = atof (line+110);
-    st->xmag[3] = atof (line+117);
+    st->xmag[0] = atof (line+110);
+    st->xmag[2] = atof (line+117);
 
     /* Set V magnitude and error */
-    st->xmag[0] = atof (line+123);
-    st->xmag[2] = atof (line+130);
+    st->xmag[1] = atof (line+123);
+    st->xmag[3] = atof (line+130);
 
     /* Set main sequence spectral type
     st->isp[0] = (char)0;
@@ -1422,4 +1422,5 @@ char	*filename;	/* Name of file for which to find size */
  *
  * Apr  3 2006	Add refcat definition to ty2rnum()
  * Jun 20 2006	Initialize uninitialized variables
+ * Oct  5 2006	Fix order of magnitudes to Bt-Vt from Vt-Bt
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/platefit.c
- *** January 11, 2001
+ *** September 26, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2002
+ *** Copyright (C) 1998-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -221,7 +221,7 @@ struct WorldCoor *wcs0;
     sumr = 0.0;
     for (i = 0; i < nbin_p; i++) {
 	double mx, my, ex, ey, er;
-	char rastr[16], decstr[16];
+	char rastr[32], decstr[32];
 
 	pix2wcs (wcsp, sx_p[i], sy_p[i], &mx, &my);
 	ex = 3600.0 * (mx - gx_p[i]);
@@ -231,11 +231,11 @@ struct WorldCoor *wcs0;
 	sumy = sumy + ey;
 	sumr = sumr + er;
 
-	ra2str (rastr, 16, gx_p[i], 3);
-	dec2str (decstr, 16, gy_p[i], 2);
+	ra2str (rastr, 31, gx_p[i], 3);
+	dec2str (decstr, 31, gy_p[i], 2);
 	fprintf (stderr,"%2d: c: %s %s ", i+1, rastr, decstr);
-	ra2str (rastr, 16, mx, 3);
-	dec2str (decstr, 16, my, 2);
+	ra2str (rastr, 31, mx, 3);
+	dec2str (decstr, 31, my, 2);
 	fprintf (stderr,"i: %s %s %6.3f %6.3f %6.3f\n",
 		rastr, decstr, 3600.0*ex, 3600.0*ey,
 		3600.0*sqrt(ex*ex + ey*ey));
@@ -303,4 +303,6 @@ int	iter;	/* Number of iterations */
  * Oct 15 1999	Include stdlib.h for malloc() declaration
  *
  * Jan 11 2001	Print all messages to stderr
+ *
+ * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  */

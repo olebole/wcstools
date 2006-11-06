@@ -1,5 +1,5 @@
 /*** simpos.c - search object by its name from command line arguments
- *** July 10, 2003
+ *** July 31, 2006
  *** By Doug Mink, after IPAC byname.c
  */
 
@@ -28,7 +28,7 @@ char *av[];
     int outsys = WCS_J2000;
     int sysj = WCS_J2000;
     double ra, dec;
-    char *str, *objname, *obj1, *posdec, *posra;
+    char *str, *objname, *obj1, *posdec, *posra, *newobj;
     char rastr[32], decstr[32];
     char *buff, *idline, *posline, *errline, *id, *errend;
     char url[256];
@@ -80,17 +80,27 @@ char *av[];
 
 	/* Replace underscores and spaces with plusses */
 	lobj = strlen (objname);
+	newobj = (char *) calloc (lobj+16, 1);
+	j = 0;
 	for (i = 0; i < lobj; i++) {
-	    if (objname[i] == '_')
-		objname[i] = '+';
-	    if (objname[i] == ' ')
-		objname[i] = '+';
+	    if (objname[i] == '+') {
+		newobj[j++] = '%';
+		newobj[j++] = '2';
+		newobj[j++] = 'B';
+		}
+	    else if (objname[i] == ' ' || objname[i] == '_') {
+		newobj[j++] = '%';
+		newobj[j++] = '2';
+		newobj[j++] = '0';
+		}
+	    else
+		newobj[j++] = objname[i];
 	    }
 	if (verbose)
-	    printf ("%s -> ", objname);
+	    printf ("%s -> ", newobj);
 
 	strcpy (url, "http://vizier.u-strasbg.fr/cgi-bin/nph-sesame?");
-	strcat (url, objname);
+	strcat (url, newobj);
 	buff = webbuff (url, verbose, &lbuff);
 
 	if (buff == NULL) {
@@ -112,8 +122,12 @@ char *av[];
 	/* Get position */
 	    if ((posline = strsrch (buff, "%J ")) != NULL) {
 		posra = posline + 3;
+		while (*posra == ' ')
+		    posra++;
 		ra = atof (posra);
 		posdec = strchr (posra, ' ');
+		while (*posdec == ' ')
+		    posdec++;
 		posline = strchr (posdec, ' ');
 		dec = atof (posdec);
 		}
@@ -204,4 +218,9 @@ usage ()
 }
 
 /* Oct 25 2002	New program based on nedpos.c
+ *
+ * Jul 10 2003	Unknown changes
+ *
+ * Jul 27 2006	Deal with multiple spaces in SIMBAD returns
+ * Jul 31 2006	Deal correctly with spaces and + signs in object names
  */

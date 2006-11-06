@@ -1,5 +1,5 @@
 /* File immatch.c
- * May 30, 2006
+ * September 26, 2006
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -88,8 +88,8 @@ char **av;
 {
     char *str;
     double bmin, maglim1, maglim2, arot, drot;
-    char rastr[16];
-    char decstr[16];
+    char rastr[32];
+    char decstr[32];
     int readlist = 0;
     char *lastchar;
     char filename[128];
@@ -655,4 +655,5 @@ char	*name;			/* Name of FITS or IRAF image file */
  *
  * May 30 2006	Use -mx to specify magnitude instead of -k
  * Jun 21 2006	Clean up code
+ * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  */

@@ -1,5 +1,5 @@
 /* File imsize.c
- * June 21, 2006
+ * Septmeber 26, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -49,8 +49,8 @@ int ac;
 char **av;
 {
     char *str, *str1;
-    char rastr[16];
-    char decstr[16];
+    char rastr[32];
+    char decstr[32];
     int readlist = 0;
     char *lastchar;
     char filename[128];
@@ -588,4 +588,5 @@ char *name;
  * Sep 13 2005	Fix inline documentation to match reality
  *
  * Jun 21 2006	Clean up code
+ * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  */

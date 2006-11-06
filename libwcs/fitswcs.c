@@ -1,5 +1,5 @@
 /*** File libwcs/fitswcs.c
- *** June 1, 2006
+ *** Sewptember 26, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2006
@@ -147,7 +147,7 @@ int verbose;
     int i;
     int n, nfields;
     double eq;
-    char rastr[16],decstr[16];
+    char rastr[32],decstr[32];
 
     n = 0;
 
@@ -260,8 +260,8 @@ int verbose;
 	if (verbose)
 	    fprintf (stderr,"SECPIX2 deleted\n");
 	if (verbose) {
-	    hgets (header,"RA", 16, rastr);
-	    hgets (header,"DEC", 16, decstr);
+	    hgets (header,"RA", 31, rastr);
+	    hgets (header,"DEC", 31, decstr);
 	    eq = 0.0;
 	    hgetr8 (header,"EPOCH",&eq);
 	    if (eq == 0.0)
@@ -632,4 +632,5 @@ struct WorldCoor *wcs;	/* WCS structure */
  *
  * Feb 23 2006	Add code to read FITS header appended to TIFF file
  * Jun  1 2006	Fix bug so CD matrix is deleted by DelWCSFITS()
+ * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  */

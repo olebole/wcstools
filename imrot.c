@@ -1,5 +1,5 @@
 /* File imrot.c
- * June 21, 2006
+ * June 22, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -308,6 +308,10 @@ char *name;
 	    fname = name;
 	ext = strrchr (fname, '.');
 	if (ext != NULL) {
+	    if (!strncmp (ext, ".fit", 4)) {
+		if (!strncmp (ext-3, ".ms", 3))
+		    ext = ext - 3;
+		}
 	    lext = (fname + strlen (fname)) - ext;
 	    lroot = ext - fname;
 	    strncpy (newname, fname, lroot);
@@ -562,4 +566,5 @@ char *name;
  *
  * Jan 19 2006	Add +i to force inheritance of keywords from primary header
  * Jun 21 2006	Clean up code
+ * Jun 22 2006	Check for two-token extension .ms.fit(s)
  */

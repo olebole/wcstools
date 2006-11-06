@@ -1,5 +1,5 @@
 /*** File libwcs/gsc2read.c
- *** June 20, 2006
+ *** September 8, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2006
@@ -50,7 +50,7 @@ int
 gsc2read (refcatname,cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
 	  mag1,mag2,sortmag,nstarmax,gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
-char	*refcatname;	/* Name of catalog (UB1 only, for now) */
+char	*refcatname;	/* Name of catalog (GSC2 for 2.2; GSC2.3 for 2.3) */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
@@ -217,4 +217,5 @@ int	nlog;		/* 1 for diagnostics */
  * Oct 18 2004	Divide RA by cos(Dec) when computing radius for rect. input
  *
  * Jun 20 2006	Cast fwrite to void
+ * Sep  8 2006	Fix comment which mentioned wrong catalog
  */

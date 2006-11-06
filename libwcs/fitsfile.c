@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** June 20, 2006
+ *** November 2, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2006
@@ -129,6 +129,8 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     char cext = 0;
     char *rbrac;	/* Pointer to right bracket if present in file name */
     char *mwcs;		/* Pointer to WCS name separated by % */
+    char *newhead;	/* New larger header */
+    int nbh0;		/* Length of old too small header */
     char *endnext;
     char *pheadend;
     int inherit = 1;	/* Value of INHERIT keyword in FITS extension header */
@@ -264,9 +266,16 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	/* Check to see if this is the final record in this header */
 	headend = ksearch (fitsbuf,"END");
 	if (headend == NULL) {
+
+	    /* Increase size of header buffer by 4 blocks if too small */
 	    if (nrec * FITSBLOCK > nbh) {
+		nbh0 = nbh;
 		nbh = (nrec + 4) * FITSBLOCK + 4;
-		header = (char *) realloc (header,(unsigned int) nbh);
+		newhead = (char *) calloc (1,(unsigned int) nbh);
+		for (i = 0; i < nbh0; i++)
+		    newhead[i] = header[i];
+		free (header);
+		header = newhead;
 		(void) hlength (header, nbh);
 		headnext = header + *nbhead - FITSBLOCK;
 		}
@@ -284,6 +293,8 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		endnext = headend;
 		lprim = headend + 80 - header;
 		pheader = (char *) calloc ((unsigned int) nbprim, 1);
+		for (i = 0; i < lprim; i++)
+		    pheader[i] = header[i];
 		strncpy (pheader, header, lprim);
 		}
 
@@ -406,7 +417,11 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     /* Allocate an extra block for good measure */
     *lhead = (nrec + 1) * FITSBLOCK;
     if (*lhead > nbh) {
-	header = (char *) realloc (header,(unsigned int) *lhead);
+	newhead = (char *) calloc (1,(unsigned int) *lhead);
+	for (i = 0; i < nbh; i++)
+	    newhead[i] = header[i];
+	free (header);
+	header = newhead;
 	(void) hlength (header, *lhead);
 	}
     else
@@ -449,7 +464,11 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    if (FITSBLOCK*nrec < lext+lprim)
 		nrec = nrec + 1;
 	    *lhead = (nrec+1) * FITSBLOCK;
-	    header = (char *) realloc (header,(unsigned int) *lhead);
+	    newhead = (char *) calloc (1,(unsigned int) *lhead);
+	    for (i = 0; i < nbh; i++)
+		newhead[i] = header[i];
+	    free (header);
+	    header = newhead;
 	    headend = header + lext;
 	    (void) hlength (header, *lhead);
 	    }
@@ -536,7 +555,8 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    if (headstart != header) {
 		ndiff = headstart - header;
 		newhead = (char *) calloc ((unsigned int) nbytes, 1);
-		strncpy (newhead, headstart, nbytes - ndiff);
+		for (i = 0; i < nbytes-ndiff; i++)
+		    newhead[i] = headstart[i];
 		free (header);
 		header = newhead;
 		}
@@ -2050,4 +2070,5 @@ fitserr ()
  * Feb 27 2006	Add file name to header-reading error messages
  * May  3 2006	Remove declarations of unused variables
  * Jun 20 2006	Initialize uninitialized variables
+ * Nov  2 2006	Change all realloc() calls to calloc()
  */

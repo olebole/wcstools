@@ -1,5 +1,5 @@
 /* File imcat.c
- * June 21, 2006
+ * September 26, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -95,8 +95,8 @@ int ac;
 char **av;
 {
     char *str, *str1;
-    char rastr[16];
-    char decstr[16];
+    char rastr[32];
+    char decstr[32];
     int readlist = 0;
     char *lastchar;
     char filename[128];
@@ -682,7 +682,7 @@ char	**refcatname;	/* reference catalog name */
     double epref;	/* Epoch of catalog to be searched */
     double epout;	/* Epoch of catalog to be searched */
     int sysref;		/* Coordinate system of catalog to be searched */
-    char rastr[16], decstr[16];	/* coordinate strings */
+    char rastr[32], decstr[32];	/* coordinate strings */
     char numstr[32];	/* Catalog number */
     double cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, mag1, mag2,secpix;
     double mag, drad, flux;
@@ -782,7 +782,7 @@ char	**refcatname;	/* reference catalog name */
     ImageLim (wcs,&cra, &cdec, &dra, &ddec, &ra1, &ra2, &dec1, &dec2);
     epout = wcs->epoch;
     if (verbose || printhead) {
-	char rastr1[16],rastr2[16],decstr1[16],decstr2[16], cstr[16];
+	char rastr1[32],rastr2[32],decstr1[32],decstr2[32], cstr[16];
 	wcscstr (cstr, sysout, eqout, epout);
 	ra2str (rastr1, 16, ra1, 3);
 	ra2str (rastr2, 16, ra2, 3);
@@ -1073,6 +1073,8 @@ char	**refcatname;	/* reference catalog name */
 	    strcat (outfile,".");
 	    strcat (outfile,refcatname[i]);
 	    }
+	if (region_radius[0])
+	    strcat (outfile, ".reg");
 	fd = fopen (outfile, "w");
 	if (fd == NULL) {
 	    fprintf (stderr, "IMCAT:  cannot write file %s\n", outfile);
@@ -1827,12 +1829,18 @@ char	**refcatname;	/* reference catalog name */
 
 		/* Add object name to output line */
 		if (refcat == TABCAT && keyword != NULL) {
-		    sprintf (temp, " %s", gobj[i]);
+		    if (gobj[i] != NULL)
+			sprintf (temp, " %s", gobj[i]);
+		    else
+			sprintf (temp, " ___");
 		    strcat (headline, temp);
 		    }
 		else if ((refcat == BINCAT || refcat == TXTCAT) &&
-			 gobj1 != NULL && gobj[i] != NULL) {
-		    sprintf (temp, " %s", gobj[i]);
+			 gobj1 != NULL) {
+		    if (gobj[i] != NULL)
+			sprintf (temp, " %s", gobj[i]);
+		    else
+			sprintf (temp, " ___");
 		    strcat (headline, temp);
 		    }
 		printf ("%s\n", headline);
@@ -2143,4 +2151,7 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Apr 12 2006	Add sort by ID number
  * Jun  8 2006	Print object name if no number present
  * Jun 21 2006	Clean up code
+ * Jun 27 2006	Deal with specified keyword in Starbase files correctly
+ * Sep 11 2006	Add .reg suffix when writing PROS region files
+ * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  */

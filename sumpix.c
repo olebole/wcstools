@@ -1,5 +1,5 @@
 /* File sumpix.c
- * June 21, 2006
+ * September 18, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -42,6 +42,7 @@ static int compsum = 0;	/* If 1, compute sum over range */
 static int compmean = 0;/* If 1, compute mean over range */
 static int compvar = 0;	/* If 1, compute variance over range */
 static int compstd = 0;	/* If 1, compute standard deviation over range */
+static int printfile = 0;/* If 1, print file name at start of line */
 static int ndec = -1;	/* Number of decimal places in outout */
 
 int
@@ -94,6 +95,9 @@ char **av;
 		    ac--;
 		    break;
 
+		case 'p':	/* Print filename at start of line */
+		    printfile++;
+		    break;
 		case 'r':	/* Compute variance */
 		    compvar++;
 		    break;
@@ -118,12 +122,11 @@ char **av;
 	    }
 
 	/* read filename */
-	else
+	else {
 	    fn = *av;
 
-	if (!compmean && !compvar && !compstd)
-	    compsum++;
-	if (fn) {
+	    if (!compmean && !compvar && !compstd)
+		compsum++;
 	    if (crange && rrange)
 		SumPix (fn, crange, rrange);
 	    else if (crange)
@@ -149,6 +152,7 @@ usage ()
     fprintf(stderr,"  -l: compute and print min and max values\n");
     fprintf(stderr,"  -m: compute and print mean\n");
     fprintf(stderr,"  -n: number of decimal places in output\n");
+    fprintf(stderr,"  -p: Print file name at start of line\n");
     fprintf(stderr,"  -r: compute and print variance (sum of squares)\n");
     fprintf(stderr,"  -s: compute and print sum (default)\n");
     fprintf(stderr,"  -v: verbose\n");
@@ -256,6 +260,9 @@ char *rrange;	/* Row range string */
     hgetr8 (header,"BZERO",&bzero);
     bscale = 1.0;
     hgetr8 (header,"BSCALE",&bscale);
+
+    if (printfile)
+	printf ("%s ", name);
 
     /* Sum entire image */
     if (!strcmp (crange, "0") && !strcmp (rrange, "0")) {

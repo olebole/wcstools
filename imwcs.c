@@ -1,5 +1,5 @@
 /* File imwcs.c
- * June 21, 2006
+ * October 12, 2006
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -64,6 +64,7 @@ extern void settolerance();
 extern void setreflim();
 extern void setrot();
 extern void setnfit();
+extern void setbin();
 extern void setnfiterate();
 extern void setsecpix();
 extern void setsecpix2();
@@ -100,8 +101,8 @@ char **av;
 {
     char *str, *str1, c, c1, c2;
     double bmin, maglim1, maglim2, drot, arot;
-    char rastr[16];
-    char decstr[16];
+    char rastr[32];
+    char decstr[32];
     int readlist = 0;
     char *lastchar;
     char filename[128];
@@ -315,6 +316,10 @@ char **av;
 		    while ((c1 = *str1) != 0) {
     		    switch (c1) {
 	
+			case 'b':	/* Bin star matches for speed */
+			    setbin (1);
+			    break;
+
 			case 'i':	/* Iterate fit: new area */
 			    c2 = *(str1+1);
 			    if ((int)c2 > 47 && (int)c2 < 58) {
@@ -963,4 +968,6 @@ char	*name;		/* FITS or IRAF image filename */
  *
  * Apr  4 2005	If not catalog is specified, print an error message and quit
  * Jun 21 2006	Clean up code
+ * Sep 26 2006	Increase length of rastr and destr from 16 to 32
+ * Oct 12 2006	Add b option to q command to bin star matches for speed
  */

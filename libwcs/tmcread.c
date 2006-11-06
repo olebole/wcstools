@@ -1,5 +1,5 @@
 /*** File libwcs/tmcread.c
- *** June 20, 2006
+ *** September 26, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2006
@@ -1186,12 +1186,12 @@ double	decx0;		/* Declination in degrees for which to search */
 {
     int istar, istar1, istar2, nrep;
     double decx, dec1, dec, rdiff, rdiff1, rdiff2, sdiff;
-    char decstrx[16];
+    char decstrx[32];
     int debug = 0;
 
     decx = decx0;
     if (debug)
-	dec2str (decstrx, 16, decx, 3);
+	dec2str (decstrx, 31, decx, 3);
     istar1 = 1;
     if (tmcstar (starcat, star, zone, istar1))
 	return (0);
@@ -1206,8 +1206,8 @@ double	decx0;		/* Declination in degrees for which to search */
 	    if (dec == dec1)
 		break;
 	    if (debug) {
-		char decstr[16];
-		dec2str (decstr, 16, dec, 3);
+		char decstr[32];
+		dec2str (decstr, 31, dec, 3);
 		fprintf (stderr,"TMCSRA %d %d: %s (%s)\n",
 			 nrep,istar,decstr,decstrx);
 		}
@@ -1257,16 +1257,16 @@ int	minmax;		/* Flag to say whether this is a min or max RA */
 {
     int istar, istar0, istar1, istar2, nrep, i;
     double rax, ra0, ra1, ra, sdiff;
-    char rastrx[16];
-    char rastr[16];
+    char rastrx[32];
+    char rastr[32];
     int debug = 0;
 
     rax = rax0;
     ra0 = -1.0;
     ra1 = star->ra;
     if (debug) {
-	ra2str (rastrx, 16, rax, 3);
-	ra2str (rastr, 16, ra1, 3);
+	ra2str (rastrx, 31, rax, 3);
+	ra2str (rastr, 31, ra1, 3);
 	nrep = -1;
 	istar = (int) star->num;
 	fprintf (stderr,"TMCSRA %d %d: %s (%s)\n",
@@ -1490,4 +1490,5 @@ int	istar;		/* Star sequence in 2MASS zone file */
  * Aug  5 2005	Avoid extra work by passing refcat catalog code
  *
  * Jun 20 2006	Initialize uninitialized variables
+ * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  */

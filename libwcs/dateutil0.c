@@ -1,5 +1,5 @@
 /*** File libwcs/dateutil.c
- *** October 6, 2006
+ *** June 20, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1999-2006
@@ -51,9 +51,8 @@
   tsd = UT seconds of current day
    ut = Universal Time (UTC)
    et = Ephemeris Time (or TDB or TT)
-  mst = Mean Greenwich Sidereal Time
+  mst = Mean Sidereal Time
   gst = Greenwich Sidereal Time (includes nutation)
-  lst = Local Sidereal Time (includes nutation) (longitude must be set)
   hjd = Heliocentric Julian Date
  mhjd = modified Heliocentric Julian Date = HJD - 2400000.5
 
@@ -226,27 +225,6 @@
  * ts2mst (tsec)
  *      Calculate Mean Sidereal Time given Universal Time
  *          in seconds since 1951-01-01T0:00:00
- * jd2mst (string)
- *      convert from Julian Date to Mean Sidereal Time
- * mst2fd (string)
- *	convert to current UT in FITS format given Greenwich Mean Sidereal Time
- * mst2jd (dj)
- *	convert to current UT as Julian Date given Greenwich Mean Sidereal Time
- * jd2lst (dj)
- *	Calculate Local Sidereal Time from Julian Date
- * ts2lst (tsec)
- *	Calculate Local Sidereal Time given UT in seconds since 1951-01-01T0:00
- * fd2lst (string)
- *	Calculate Local Sidereal Time given Universal Time as FITS ISO date
- * lst2jd (dj, lst)
- *	Calculate Julian Date given current Julian date and Local Sidereal Time
- * lst2fd (string, lst)
- *	Calculate Julian Date given current UT date and Local Sidereal Time
- * gst2fd (string)
- * 	Calculate current UT given UT date and Greenwich Sidereal Time
- * gst2jd (dj)
- * 	Calculate current UT given UT date and Greenwich Sidereal Time as JD
- *
  * compnut (dj, dpsi, deps, eps0)
  *      Compute the longitude and obliquity components of nutation and
  *      mean obliquity from the IAU 1980 theory
@@ -300,12 +278,6 @@ static void fixdate();
 static int caldays();
 static double dint();
 static double dmod();
-
-static double longitude = 0.0;	/* longitude of observatory in degrees (+=west) */
-void
-setlongitude (longitude0)
-double longitude0;
-{ longitude = longitude0; return; }
 
 static int ndec = 3;
 void
@@ -1316,9 +1288,7 @@ jd2tsi (dj)
 
 double	dj;	/* Julian date */
 {
-    double ts;
-    ts = (dj - 2444239.5) * 86400.0;
-    return ((int) ts);
+    return ((dj - 2444239.5) * 86400.0);
 }
 
 
@@ -1514,7 +1484,7 @@ double	doy;	/* Day of year with fraction */
 {
     double dj;
     dj = doy2jd (year, doy);
-    return (jd2ts (dj));
+    return (jd2tsu (dj));
 }
 
 
@@ -2675,7 +2645,7 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 {
     double tsec, fday, hr, mn;
     int i;
-    char *sstr, *dstr, *tstr, *cstr, *nval, *fstr, *ustr;
+    char *sstr, *dstr, *tstr, *cstr, *nval, *fstr;
 
     /* Initialize all returned data to zero */
     *iyr = 0;
@@ -2698,8 +2668,6 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
     tstr = strchr (string,'T');
     if (tstr == NULL)
 	tstr = strchr (string, 'Z');
-    if (tstr == NULL)
-	tstr = strchr (string, 'S');
     if (fstr != NULL && tstr != NULL && fstr > tstr)
 	fstr = NULL;
     cstr = strchr (string,':');
@@ -2724,6 +2692,8 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 		nval = sstr + 1;
 		*iday = (int) atof (nval);
 		}
+	    else
+		return;
 	    }
 	else {
 	    *sstr = '/';
@@ -2742,10 +2712,9 @@ int	ndsec;	/* Number of decimal places in seconds (0=int) */
 		else if (*iyr < 1000)
 		    *iyr = *iyr + 1900;
 		}
+	    else
+		return;
 	    }
-	tstr = strchr (string,'_');
-	if (tstr == NULL)
-	    return;
 	}
 
     /* New FITS date format: yyyy-mm-ddThh:mm:ss[.sss] */
@@ -3094,10 +3063,10 @@ char	*string;	/* FITS date string, which may be:
 			  yyyy-mm-dd (FITS standard after 1999)
 			  yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
 {
-    double dj, gsec, date, time;
+    double tsec, gsec, date, time;
 
-    dj = fd2jd (string);
-    gsec = jd2gst (dj);
+    tsec = fd2ts (string);
+    gsec = ts2gst (tsec);
     ts2dt (gsec, &date, &time);
     date = 0.0;
     return (dt2fd (date, time));
@@ -3112,335 +3081,19 @@ double  *date;  /* Date as yyyy.mmdd */
 double  *time;  /* Time as hh.mmssxxxx
                  *if time<0, it is time as -(fraction of a day) */
 {
-    double dj, gsec;
+    double tsec, gsec;
 
-    dj = dt2ts (*date, *time);
-    gsec = jd2gst (dj);
+    tsec = dt2ts (*date, *time);
+    gsec = ts2gst (tsec);
     ts2dt (gsec, date, time);
     *date = 0.0;
     return;
 }
 
 
-/* JD2LST - Local Sidereal Time in seconds from Julian Date */
-
-double
-jd2lst (dj)
-
-double dj;	/* Julian Date */
-{
-    double gst, lst;
-
-    /* Compute Greenwich Sidereal Time at this epoch */
-    gst = jd2gst (dj);
-
-    /* Subtract longitude (in seconds of time) */
-    lst = gst - 3600.0 * (longitude / 15.0);
-    if (lst < 0.0)
-	lst = lst + 86400.0;
-    else if (lst > 86400.0)
-	lst = lst - 86400.0;
-    return (lst);
-}
-
-
-/* FD2LST - Local Sidereal Time  as hh:mm:ss.ss
-            from Universal Time as FITS ISO date */
-
-char *
-fd2lst (string)
-
-char	*string;	/* FITS date string, which may be:
-			  fractional year
-			  dd/mm/yy (FITS standard before 2000)
-			  dd-mm-yy (nonstandard use before 2000)
-			  yyyy-mm-dd (FITS standard after 1999) */
-{
-    double dj, date, time, lst;
-
-    dj = fd2jd (string);
-    lst = jd2lst (dj);
-    ts2dt (lst, &date, &time);
-    date = 0.0;
-    return (dt2fd (date, time));
-}
-
-
-/* DT2LST - Local Sidereal Time  as hh.mmssss
-            from Universal Time as yyyy.mmdd hh.mmssss */
-
-void
-dt2lst (date, time)
-
-double  *date;  /* Date as yyyy.mmdd */
-double  *time;  /* Time as hh.mmssxxxx
-                 *if time<0, it is time as -(fraction of a day) */
-{
-    double dj, lst, date0;
-
-    dj = dt2jd (*date, *time);
-    lst = jd2lst (dj);
-    date0 = 0.0;
-    ts2dt (lst, &date0, time);
-    return;
-}
-
-
-/* TS2LST - Local Sidereal Time in seconds of day
- *          from Universal Time in seconds since 1951-01-01T0:00:00
- */
-
-double
-ts2lst (tsec)
-
-double tsec;		/* time since 1950.0 in UT seconds */
-{
-    double gst;	/* Greenwich Sidereal Time in seconds since 0:00 */
-    double lst;	/* Local Sidereal Time in seconds since 0:00 */
-    double gsec, date;
-
-    /* Greenwich Sidereal Time */
-    gsec = ts2gst (tsec);
-    date = 0.0;
-    ts2dt (gsec, &date, &gst);
-
-    lst = gst - (longitude / 15.0);
-    if (lst < 0.0)
-	lst = lst + 86400.0;
-    else if (lst > 86400.0)
-	lst = lst - 86400.0;
-    return (lst);
-}
-
-
-/* LST2FD - calculate current UT given Local Sidereal Time
- *	    plus date in FITS ISO format (yyyy-mm-dd)
- *	    Return UT date and time in FITS ISO format
- */
-
-char *
-lst2fd (string)
-
-char *string;		/* UT Date, LST as yyyy-mm-ddShh:mm:ss.ss */
-{
-    double sdj, dj;
-
-    sdj = fd2jd (string);
-
-    dj = lst2jd (sdj);
-
-    return (jd2fd (dj));
-}
-
-
-/* LST2JD - calculate current Julian Date given Local Sidereal Time
- *	    plus current Julian Date (0.5 at 0:00 UT)
- *	    Return UT date and time as Julian Date
- */
-
-double
-lst2jd (sdj)
-
-double sdj;	/* Julian Date of desired day at 0:00 UT + sidereal time */
-{
-    double gst;	/* Greenwich Sidereal Time in seconds since 0:00 */
-    double lsd;	/* Local Sidereal Time in seconds since 0:00 */
-    double tsec0, gst0, tsd, dj1, dj0, dpsi, deps, obl, eqnx;
-    int idj;
-
-    /* Julian date at 0:00 UT */
-    idj = (int) sdj;
-    dj0 = (double) idj + 0.5;
-    if (dj0 > sdj) dj0 = dj0 - 1.0;
-
-    /* Greenwich Sidereal Time at 0:00 UT in seconds */
-    gst0 = jd2gst (dj0);
-
-    /* Sidereal seconds since 0:00 */
-    lsd = (sdj - dj0) * 86400.0;
-
-    /* Remove longitude for current Greenwich Sidereal Time in seconds */
-    /* (convert longitude from degrees to seconds of time) */
-    gst = lsd + (longitude * 240.0);
-
-    /* Time since 0:00 UT */
-    tsd = (gst - gst0) / 1.0027379093;
-
-    /* Julian Date (UT) */
-    dj1 = dj0 + (tsd / 86400.0);
-
-    /* Equation of the equinoxes converted to UT seconds */
-    eqnx = eqeqnx (dj1) / 1.002739093;
-
-    /* Remove equation of equinoxes */
-    dj1 = dj1 - (eqnx / 86400.0);
-    if (dj1 < dj0)
-	dj1 = dj1 + 1.0;
-
-    return (dj1);
-}
-
-
-/* MST2FD - calculate current UT given Greenwich Mean Sidereal Time
- *	    plus date in FITS ISO format (yyyy-mm-ddShh:mm:ss.ss)
- *	    Return UT date and time in FITS ISO format
- */
-
-char *
-mst2fd (string)
-
-char *string;		/* UT Date, MST as yyyy-mm-ddShh:mm:ss.ss */
-{
-    double sdj, dj;
-
-    sdj = fd2jd (string);
-
-    dj = mst2jd (sdj);
-
-    return (jd2fd (dj));
-}
-
-
-/* MST2JD - calculate current UT given Greenwich Mean Sidereal Time
- *	    plus date in Julian Date (0:00 UT + Mean Sidereal Time)
- *	    Return UT date and time as Julian Date
- */
-
-double
-mst2jd (sdj)
-
-double sdj;		/* UT Date, MST as Julian Date */
-{
-    double gst;	/* Greenwich Mean Sidereal Time in seconds since 0:00 */
-    double tsd, djd, st0, dj0, dj;
-
-    dj0 = (double) ((int) sdj) + 0.5;
-
-    /* Greenwich Mean Sidereal Time at 0:00 UT in seconds */
-    st0 = jd2mst (dj0);
-
-    /* Mean Sidereal Time in seconds */
-    tsd = (sdj - dj0) * 86400.0;
-    if (tsd < 0.0)
-	tsd = tsd + 86400.0;
-
-    /* Convert to fraction of a day since 0:00 UT */
-    djd = ((tsd - st0) / 1.0027379093) / 86400.0;
-
-    /* Julian Date */
-    dj = dj0 + djd;
-    if (dj < dj0)
-	dj = dj + (1.0 / 1.0027379093);
-
-    return (dj);
-}
-
-
-
-/* GST2FD - calculate current UT given Greenwich Sidereal Time
- *	    plus date in FITS ISO format (yyyy-mm-ddShh:mm:ss.ss)
- *	    Return UT date and time in FITS ISO format
- */
-
-char *
-gst2fd (string)
-
-char *string;		/* UT Date, GST as yyyy-mm-ddShh:mm:ss.ss */
-{
-    double gst;	/* Greenwich Mean Sidereal Time in seconds since 0:00 */
-    double sdj, dj;
-
-    sdj = fd2jd (string);
-
-    dj = gst2jd (sdj);
-
-    return (jd2fd (dj));
-}
-
-
-/* GST2JD - calculate current UT given Greenwich Sidereal Time
- *	    plus date as Julian Date (JD at 0:00 UT + sidereal time)
- *	    Return UT date and time as Julian Date
- */
-
-double
-gst2jd (sdj)
-
-double sdj;		/* UT Date, GST as Julian Date */
-{
-    double gst;	/* Greenwich Mean Sidereal Time in seconds since 0:00 */
-    double dj, edj, tsd, djd, st0, dj0, tsec, esec, dpsi, deps, obl, eqnx;
-
-    dj0 = (double) ((int) sdj) + 0.5;
-
-    /* Greenwich Mean Sidereal Time at 0:00 UT in seconds */
-    st0 = jd2mst (dj0);
-
-    /* Mean Sidereal Time in seconds */
-    tsd = (sdj - dj0) * 86400.0;
-    if (tsd < 0.0)
-	tsd = tsd + 86400.0;
-
-    /* Apparent sidereal time at 0:00 ut */
-    gst = gst + eqnx;
-
-    /* Convert to fraction of a day since 0:00 UT */
-    djd = ((tsd - st0) / 1.0027379093) / 86400.0;
-
-    /* Julian Date */
-    dj = dj0 + djd;
-
-    /* Equation of the equinoxes (converted to UT seconds) */
-    eqnx = eqeqnx (dj) / 1.002737909;
-
-    dj = dj - eqnx / 86400.0;
-    if (dj < dj0)
-	dj = dj + 1.0;
-
-    return (dj);
-}
-
-
-/* LST2DT - calculate current UT given Local Sidereal Time as hh.mmsss
- *	    plus date as yyyy.mmdd
- *	    Return UT time as hh.mmssss
- */
-
-double
-lst2dt (date0, time0)
-
-double date0;	/* UT date as yyyy.mmdd */
-double time0;	/* LST as hh.mmssss */
-{
-    double gst;	/* Greenwich Sidereal Time in seconds since 0:00 */
-    double lst;	/* Local Sidereal Time in seconds since 0:00 */
-    double date1; /* UT date as yyyy.mmdd */
-    double time1; /* UT as hh.mmssss */
-    double tsec0, gst0, tsd, tsec;
-
-    /* Greenwich Sidereal Time at 0:00 UT */
-    tsec0 = dt2ts (date0, 0.0);
-    gst0 = ts2gst (tsec0);
-
-    /* Current Greenwich Sidereal Time in seconds */
-    /* (convert longitude from degrees to seconds of time) */
-    lst = dt2ts (0.0, time0);
-    gst = lst + (longitude * 240.0);
-
-    /* Time since 0:00 UT */
-    tsd = (gst - gst0) / 1.0027379093;
-
-    /* UT date and time */
-    tsec = tsec0 + tsd;
-    ts2dt (tsec, &date1, &time1);
-
-    return (time1);
-}
-
-
 /* TS2GST - calculate Greenwich Sidereal Time given Universal Time
  *	    in seconds since 1951-01-01T0:00:00
- *	    Return sidereal time of day in seconds
+ *	    Return UT seconds to start of day plus sidereal time of day
  */
 
 double
@@ -3452,28 +3105,36 @@ double tsec;	/* time since 1950.0 in UT seconds */
     double deps;	/* Nutation in obliquity (radians) */
 
     double gst;	/* Greenwich Sidereal Time in seconds since 0:00 */
-    double tsd, esec, obl, eqnx, dj;
+    double tsd,ts,esec,obl,eqnx, dj;
     int its;
 
     /* Elapsed time as of 0:00 UT */
     if (tsec >= 0.0) {
 	its = (int) (tsec + 0.5);
 	tsd = (double) (its % 86400);
+	ts = tsec - tsd;
 	}
     else {
 	its = (int) (-tsec + 0.5);
 	tsd = (double) (86400 - (its % 86400));
+	ts = tsec - tsd;
 	}
 
     /* Mean sidereal time */
     gst = ts2mst (tsec);
 
+    /* Ephemeris Time (TDB or TT)*/
+    esec = ts2ets (tsec);
+
+    /* Nutation and obliquity */
+    dj = ts2jd (esec);
+    compnut (dj, &dpsi, &deps, &obl);
+
     /* Correct obliquity for nutation */
     obl = obl + deps;
 
     /* Equation of the equinoxes */
-    dj = ts2jd (tsec);
-    eqnx = eqeqnx (dj);
+    eqnx = (dpsi * cos (obl)) * 13750.98708;
 
     /* Apparent sidereal time at 0:00 ut */
     gst = gst + eqnx;
@@ -3482,7 +3143,7 @@ double tsec;	/* time since 1950.0 in UT seconds */
     gst = gst + (tsd * 1.0027379093);
     gst = dmod (gst,86400.0);
 
-    return (gst);
+    return (gst + ts);
 }
 
 
@@ -3498,10 +3159,10 @@ char	*string;	/* FITS date string, which may be:
 			  yyyy-mm-dd (FITS standard after 1999)
 			  yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
 {
-    double tsec, gsec, date, time, dj;
+    double tsec, gsec, date, time;
 
-    dj = fd2jd (string);
-    gsec = jd2mst (dj);
+    tsec = fd2ts (string);
+    gsec = ts2mst (tsec);
     ts2dt (gsec, &date, &time);
     date = 0.0;
     return (dt2fd (date, time));
@@ -3517,12 +3178,11 @@ double  *date;  /* Date as yyyy.mmdd */
 double  *time;  /* Time as hh.mmssxxxx
                  *if time<0, it is time as -(fraction of a day) */
 {
-    double date0, gsec, dj;
-    date0 = *date;
-    dj = dt2jd (*date, *time);
-    gsec = jd2mst (dj);
+    double tsec, gsec;
+    tsec = dt2ts (*date, *time);
+    gsec = ts2mst (tsec);
     ts2dt (gsec, date, time);
-    *date = date0;
+    *date = 0.0;
     return;
 }
 
@@ -3536,172 +3196,27 @@ ts2mst (tsec)
 
 double tsec;	/* time since 1950.0 in UT seconds */
 {
-    double dj;
     double gst;	/* Greenwich Sidereal Time in seconds since 0:00 */
     double t, tsd, ts;
     int its;
 
-    dj = ts2jd (tsec);
-    return (jd2mst (dj));
-}
+    /* Elapsed time as of 0:00 UT */
+    if (tsec >= 0.0) {
+	its = (int) (tsec + 0.5);
+	tsd = (double) (its % 86400);
+	ts = tsec - tsd;
+	}
+    else {
+	its = (int) (-tsec + 0.5);
+	tsd = (double) (86400 - (its % 86400));
+	ts = tsec - tsd;
+	}
 
+    /* Mean sidereal time */
+    t = (18262.5 + (ts / 86400.0)) / 36525.0;
+    gst = 23925.8360 + (8640184.5420 * t) + (0.0929 * t * t);
 
-/* JD2MST - Julian Date to Greenwich Mean Sidereal Time using IAU 2000
- *	    Return sideral time in seconds of time
- *	    (from USNO NOVAS package
- *	     http://aa.usno.navy.mil/software/novas/novas_info.html
- */
-
-double
-jd2mst2 (dj)
-
-double	dj;	/* Julian Date */
-{
-    double dt, t, t2, t3, mst, st;
-    int nrot;
-
-    dt = dj - 2451545.0;
-    t = dt / 36525.0;
-    t2 = t * t;
-    t3 = t2 * t;
-
-    /* Compute Greenwich Mean Sidereal Time in seconds */
-    st = (8640184.812866 * t) +  (3155760000.0 * t) - (0.0000062 * t3)
-	 + (0.093104 * t2) + 67310.54841;
-
-    mst = dmod (st, 86400.0);
-    if (mst < 0.0)
-	mst = mst + 86400.0;
-    return (mst);
-}
-
-
-/* MJD2MST - Modified Julian Date to Greenwich Mean Sidereal Time using IAU 2000
- *	    Return sideral time in seconds of time
- *	    (from USNO NOVAS package
- *	     http://aa.usno.navy.mil/software/novas/novas_info.html
- */
-
-double
-mjd2mst2 (dj)
-
-double	dj;	/* Modified Julian Date */
-{
-    double dt, t, t2, t3, mst, st;
-    int nrot;
-
-    dt = dj - 51544.5;
-    t = dt / 36525.0;
-    t2 = t * t;
-    t3 = t2 * t;
-
-    /* Compute Greenwich Mean Sidereal Time in seconds */
-    st = (8640184.812866 * t) +  (3155760000.0 * t) - (0.0000062 * t3)
-	 + (0.093104 * t2) + 67310.54841;
-
-    mst = dmod (st, 86400.0);
-    if (mst < 0.0)
-	mst = mst + 86400.0;
-    return (mst);
-}
-
-
-/* JD2GST - Julian Date to Greenwich Sideral Time
- *          Return sideral time in seconds of time
- *	    (Jean Meeus, Astronomical Algorithms, Willmann-Bell, 1991, pp 83-84)
- */
-
-double
-jd2gst (dj)
-
-double	dj;	/* Julian Date */
-{
-    double dj0, gmt, gst, obl, dpsi, deps, tsd, eqnx;
-    int ijd;
-
-    /* Julian date at 0:00 UT */
-    ijd = (int) dj;
-    dj0 = (double) ijd + 0.5;
-    if (dj0 > dj) dj0 = dj0 - 1.0;
-
-    /* UT seconds since 0:00 */
-    tsd = (dj - dj0) * 86400.0;
-
-    /* Greenwich mean sidereal time at 0:00 UT in seconds */
-    gmt = jd2mst (dj0);
-
-    /* Equation of the equinoxes */
-    eqnx = eqeqnx (dj);
-
-    /* Apparent sidereal time at 0:00 ut */
-    gst = gmt + eqnx;
-
-    /* Current sidereal time */
-    gst = gst + (tsd * 1.0027379093);
-    gst = dmod (gst,86400.0);
-
-    return (gst);
-}
-
-
-/* EQEQNX - Compute equation of the equinoxes for apparent sidereal time */
-
-double
-eqeqnx (dj)
-
-double	dj;	/* Julian Date */
-
-{
-    double dt, edj, dpsi, deps, obl, eqnx;
-
-    /* Convert UT to Ephemeris Time (TDB or TT)*/
-    dt = utdt (dj);
-    edj = dj + dt / 86400.0;
-
-    /* Nutation and obliquity */
-    compnut (edj, &dpsi, &deps, &obl);
-
-    /* Correct obliquity for nutation */
-    obl = obl + deps;
-
-    /* Equation of the equinoxes in seconds */
-    eqnx = (dpsi * cos (obl)) * 13750.98708;
-
-    return (eqnx);
-}
-
-
-
-/* JD2MST - Julian Date to Mean Sideral Time
- *          Return sideral time in seconds of time
- *	    (Jean Meeus, Astronomical Algorithms, Willmann-Bell, 1991, pp 83-84)
- */
-
-double
-jd2mst (dj)
-
-double	dj;	/* Julian Date */
-{
-    double dt, t, mst;
-    int nrot;
-
-    dt = dj - 2451545.0;
-    t = dt / 36525.0;
-
-    /* Compute Greenwich mean sidereal time in degrees (Meeus, page 84) */
-    mst = 280.46061837 + (360.98564736629 * dt) + (0.000387933 * t * t) -
-	  (t * t * t / 38710000.0);
-
-    /* Keep degrees between 0 and 360 */
-    while (mst > 360.0)
-	mst = mst - 360.0;
-    while (mst < 0.0)
-	mst = mst + 360.0;
-
-    /* Convert to time in seconds  (3600 / 15) */
-    mst = mst * 240.0;
-
-    return (mst);
+    return (gst + ts);
 }
 
 
@@ -3719,9 +3234,9 @@ void
 compnut (dj, dpsi, deps, eps0)
 
 double dj;	/* TDB (loosely ET or TT) as Julian Date */
-double *dpsi;	/* Nutation in longitude in radians (returned) */
-double *deps;	/* Nutation in obliquity in radians (returned) */
-double *eps0;	/* Mean obliquity in radians (returned) */
+double *dpsi;	/* Nutation in longitude (returned) */
+double *deps;	/* Nutation in obliquity (returned) */
+double *eps0;	/* Mean obliquity (returned) */
 {
     double t2as,as2r,u2r;
     double t,el,el2,el3;
@@ -3736,7 +3251,7 @@ double *eps0;	/* Mean obliquity in radians (returned) */
     t2as = 1296000.0;
 
     /* Arc seconds to radians */
-    as2r = 0.000004848136811095359949;
+    as2r = 0.00004848136811095359949;
 
     /* Units of 0.0001 arcsec to radians */
     u2r = as2r / 10000.0;
@@ -4219,7 +3734,7 @@ double *eps0;	/* Mean obliquity in radians (returned) */
     *dpsi = dp * u2r;
     *deps = de * u2r;
 
-    /* Mean Obliquity in radians */
+    /* Mean Obliquity */
     *eps0 = as2r * (84381.448 + (-46.8150 + (-0.00059 + (0.001813*t)*t)*t));
 
     return;
@@ -4532,8 +4047,4 @@ double	dnum, dm;
  *
  * May  3 2006	Drop declaration of unused variables
  * Jun 20 2006	Initialized uninitialized variables
- * Aug  2 2006	Add local sidereal time
- * Sep 13 2006	Add more local sidereal time subroutines
- * Oct  2 2006	Add UT to old FITS date conversions
- * Oct  6 2006	Add eqeqnx() to compute equation of the equinoxes
  */

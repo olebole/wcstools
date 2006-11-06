@@ -1,5 +1,5 @@
 /*** File libwcs/sdssread.c
- *** June 20, 2006
+ *** November 6, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2006
@@ -44,9 +44,13 @@
 char sdssrurl[64]="http://skyserver.sdss.org/cas/en/tools/search/x_radial.asp";
 char sdssburl[64]="http://skyserver.sdss.org/cas/en/tools/search/x_rect.asp"; */
 
-/* SDSS DR4 search engine URL */
+/* SDSS DR4 search engine URL
 char sdssrurl[64]="http://cas.sdss.org/dr4/en/tools/search/x_radial.asp";
-char sdssburl[64]="http://cas.sdss.org/dr4/en/tools/search/x_rect.asp";
+char sdssburl[64]="http://cas.sdss.org/dr4/en/tools/search/x_rect.asp"; */
+
+/* SDSS DR5 search engine URL */
+char sdssrurl[64]="http://cas.sdss.org/dr5/en/tools/search/x_radial.asp";
+char sdssburl[64]="http://cas.sdss.org/dr5/en/tools/search/x_rect.asp";
 
 /* SDSS magnitudes */
 char sdssmag[6]="ugriz";
@@ -55,7 +59,7 @@ char sdssmag[6]="ugriz";
 
 int
 sdssread (refcatname,cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
-	  mag1,mag2,sortmag,nstarmax,gnum,gra,gdec,gmag,gtype,nlog)
+	  mag1,mag2,sortmag,nstarmax,gobj,gnum,gra,gdec,gmag,gtype,nlog)
 
 char	*refcatname;	/* Name of catalog (UB1 only, for now) */
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -71,6 +75,7 @@ double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
 int	nstarmax;	/* Maximum number of stars to be returned */
+double	**gobj;		/* Array of object IDs (too long for integer*4) */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
@@ -85,7 +90,7 @@ int	nlog;		/* 1 for diagnostics */
     double dtemp;
     double *gpra, *gpdec;
     struct StarCat *starcat;
-    int nstar;
+    int nstar, nlog0;
     double ra, dec, mag;
     char rastr[32], decstr[32];
     char *sdssurl;
@@ -93,6 +98,7 @@ int	nlog;		/* 1 for diagnostics */
     gpra = NULL;
     gpdec = NULL;
 
+    nlog0 = nlog;
     if (nstarmax < 1)
 	nlog = -1;
 
@@ -140,7 +146,7 @@ int	nlog;		/* 1 for diagnostics */
     nstar = 50000;
     sprintf (temp, "&entries=top&topnum=%d&format=csv",nstar);
     strcat (srchurl, temp);
-    if (nlog > 0)
+    if (nlog0 > 0)
 	fprintf (stderr,"%s%s\n", sdssurl, srchurl);
 
     /* Run search across the web */
@@ -180,7 +186,7 @@ int	nlog;		/* 1 for diagnostics */
     /* Extract desired sources from catalog  and return them */
     nstar = tabread (sdssurl,distsort,cra,cdec,dra,ddec,drad,dradi,
 	     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,&starcat,
-	     gnum,gra,gdec,gpra,gpdec,gmag,gtype,NULL,nlog);
+	     gnum,gra,gdec,gpra,gpdec,gmag,gtype,gobj,nlog);
 
     tabcatclose (starcat);
 
@@ -199,17 +205,27 @@ sdssc2t (csvbuff)
     char colsep[180]="------------------	---	-----	------	-----	---	----	----------	---------	------	------	------	------	------	--------	------	--------	--------	-------\n";
     char *tabbuff;	/* Output tab-separated table */
     char *databuff;
+    char *lastbuff;
     int lbuff, i;
-
-    /* Convert commas in table to tabs */
-    lbuff = strlen (csvbuff);
-    for (i = 0; i < lbuff; i++) {
-	if (csvbuff[i] == ',')
-	    csvbuff[i] = (char) 9;
-	}
+    char ctab = (char) 9;
+    char ccom = ',';
+    char clf = (char) 10;
 
     /* Skip first line of returned header */
     databuff = strchr (csvbuff, '\n') + 1;
+
+    /* Drop extraneous data after last linefeed */
+    lbuff = strlen (databuff);
+    lastbuff = strrchr (databuff, '\n');
+    if (lastbuff - databuff < lbuff)
+	*(lastbuff+1) = (char) 0;
+
+    /* Convert commas in table to tabs */
+    lbuff = strlen (databuff);
+    for (i = 0; i < lbuff; i++) {
+	if (databuff[i] == ccom)
+	    databuff[i] = ctab;
+	}
 
     /* Allocate buffer for tab-separated table with header */
     lbuff = strlen (databuff) + strlen (colhead) + strlen (colsep);
@@ -227,4 +243,9 @@ sdssc2t (csvbuff)
  *
  * Apr  6 2006	Use different server to get DR4 data
  * Jun 20 2006	Drop unused variables
+ * Jul 11 2006	Change path to Data Release 5
+ * Oct 30 2006	Print URL in verbose mode when printing web-returned sources
+ * Oct 30 2006	Fix bug in buffer length when setting up tab table
+ * Nov  3 2006	Drop extra characters from end of data returned from SDSS
+ * Nov  6 2006	Pass SDSS ID as character string because it is too long integer
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** June 20, 2006
+ *** June 30, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2006
@@ -443,7 +443,7 @@ int	nlog;
 /* TABRNUM -- Read tab table stars with specified numbers */
 
 int
-tabrnum (tabcatname, nnum, sysout, eqout, epout, starcat,
+tabrnum (tabcatname, nnum, sysout, eqout, epout, starcat, match,
 	 tnum,tra,tdec,tpra,tpdec,tmag,tpeak,tkey,nlog)
 
 char	*tabcatname;	/* Name of reference star catalog file */
@@ -452,6 +452,7 @@ int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 struct StarCat **starcat; /* Star catalog data structure */
+int	match;		/* 1 to match star number exactly, else sequence num.*/
 double	*tnum;		/* Array of star numbers to look for */
 double	*tra;		/* Array of right ascensions (returned) */
 double	*tdec;		/* Array of declinations (returned) */
@@ -579,6 +580,8 @@ int	nlog;
 
 	/* Loop through catalog to star */
 	for (istar = istar0; istar <= nstars; istar++) {
+	    if (!match && istar == inum)
+		break;
 	    if (num < tnum[jnum]) {
 		if ((line = gettabline (startab, istar)) == NULL) {
 		    if (nlog)
@@ -611,7 +614,7 @@ int	nlog;
 	    }
 
 	/* If star has been found in table, read rest of entry */
-	if (num == tnum[jnum]) {
+	if ((match && num == tnum[jnum]) || (!match && inum == istar)) {
 	    istar0 = istar;
 	    sc->istar = startab->iline;
 	    if (tabstar (istar, sc, star, nlog))
@@ -2795,4 +2798,5 @@ char    *filename;      /* Name of file to check */
  *
  * Jun 15 2006	Read ID field length from header, if present
  * Jun 20 2006	Drop unused variables; initialize uninitialized variables
+ * Jun 30 2006	Add match argument to tabrnum() to add sequential read option
  */

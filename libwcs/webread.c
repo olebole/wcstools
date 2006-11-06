@@ -1,5 +1,5 @@
 /*** File webread.c
- *** June 20, 2006
+ *** October 30, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -436,6 +436,7 @@ int	nlog;		/* 1 to print diagnostic messages */
     if (strsrch (srchurl, "sdss")) {
 	tempbuff = tabbuff;
 	tabbuff = sdssc2t (tempbuff);
+	lbuff = strlen (tabbuff);
 	free (tempbuff);
 	}
     
@@ -837,4 +838,5 @@ FileINetParse(file, port, adrinet)
  * Jan  9 2006	Multiply max number of stars for ESO search to get all
  * Apr  6 2006	Check for sdss in URL for Sloan parsing
  * Jun 20 2006	Cast most stream I/O calls to void
+ * Oct 30 2006	Reset buffer length for SDSS tables
  */

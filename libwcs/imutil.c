@@ -1,5 +1,5 @@
 /* File libwcs/imutil.c
- * June 20, 2006
+ * September 25, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  */
 
@@ -11,6 +11,8 @@
  *	Return image bufer with bad pixels replaced by filter value
  * SetBadFITS (header, image, badheader, badimage, nlog)
  *	Set bad pixels in image to BLANK using bad pixel file
+ * SetBadVal (header, image, minpixval, maxpixval, nlog)
+ *	Set bad pixels in image to BLANK if value less than minpixval
  *
  * medfilt (buff, header, ndx, ndy, nlog)
  *	Median filter an image
@@ -36,7 +38,7 @@
  *	Gaussian filter an image
  * gaussfill (buff, header, ndx, ndy, nlog)
  *	Set blank pixels to the Gaussian weighted sum of a box around each one
- * gausswt (nside, nx)
+ * gausswt (mx, my, nx)
  *	Compute Gaussian weights for a square region
  * gausspixi2 (image, ival, ix, iy, nx, ny)
  * gausspixi4 (image, ival, ix, iy, nx, ny)
@@ -381,6 +383,186 @@ char	*buffbad;
 	}
     if (nlog > 0)
 	fprintf (stderr,"SetBadFITS: %d lines, %d bad pixels set\n",
+		 iy, nfilled);
+    return (buffret);
+}
+
+
+/* Set bad pixels in image to BLANK if less than minpixval */
+
+char *
+SetBadVal (header, image, minval, maxval, nlog)
+
+char	*header;	/* FITS image header */
+char	*image;		/* Image buffer */
+double	minval;		/* Minimum good pixel value */
+double	maxval;		/* Maximum good pixel value */
+int	nlog;		/* Logging interval in pixels */
+
+{
+char	*buffret;	/* Modified image buffer (returned) */
+int	nx,ny;		/* Number of columns and rows in image */
+int	ix,iy;		/* Pixel around which to compute mean */
+int	npix;		/* Number of pixels in image */
+int	bitpix;		/* Number of bits per pixel (<0=floating point) */
+int	bitpixb;	/* Number of bits per pixel in bad pixel file */
+int	nxb,nyb;	/* Number of columns and rows in bad pixel image */
+int	checkmin = 0;
+int	checkmax = 0;
+int	naxes;
+char	*buff;
+char	*buffbad;
+
+    hgeti4 (header, "BITPIX", &bitpix);
+    hgeti4 (header, "NAXIS", &naxes);
+    hgeti4 (header, "NAXIS1", &nx);
+    if (naxes > 1)
+	hgeti4 (header, "NAXIS2", &ny);
+    else
+	ny = 1;
+    npix = nx * ny;
+    if (!bpvalset)
+	hgetr8 (header, "BLANK", &bpval);
+
+    if (minval != -9999.0)
+	checkmin++;
+    if (maxval != -9999.0)
+	checkmax++;
+
+    nfilled = 0;
+
+    buff = image;
+    buffret = NULL;
+    if (bitpix == 16) {
+	short *bb, *b1, *b2, *buffout, bpvali2, mnvali2,mxvali2;
+	bpvali2 = (short) bpval;
+	mnvali2 = (short) minval;
+	mxvali2 = (short) maxval;
+	buffret = (char *) calloc (npix, sizeof (short));
+	buffout = (short *) buffret;
+	bb = (short *) buff;
+	b1 = (short *) buff;
+	b2 = buffout;
+	for (iy = 0; iy < ny; iy++) {
+	    for (ix = 0; ix < nx; ix++) {
+		if (checkmin && *bb < mnvali2) {
+		    *b2++ = bpvali2;
+		    nfilled++;
+		    *b1++;
+		    }
+		else if (checkmax && *bb > mxvali2) {
+		    *b2++ = bpvali2;
+		    nfilled++;
+		    *b1++;
+		    }
+		else {
+		    *b2++ = *b1++;
+		    }
+		bb++;
+		}
+	    if (nlog > 0 && (iy+1)%nlog == 0)
+		fprintf (stderr,"SetBadVal: %d lines, %d bad pixels set\r",
+			 iy+1, nfilled);
+	    }
+	}
+    else if (bitpix == 32) {
+	int *bb, *b1, *b2, *buffout, mnvali4, mxvali4, bpvali4;
+	bpvali4 = (int) bpval;
+	mnvali4 = (int) minval;
+	mxvali4 = (int) maxval;
+	buffret = (char *) calloc (npix, sizeof (int));
+	buffout = (int *) buffret;
+	bb = (int *) buff;
+	b1 = (int *) buff;
+	b2 = buffout;
+	for (iy = 0; iy < ny; iy++) {
+	    for (ix = 0; ix < nx; ix++) {
+		if (checkmin && *bb < mnvali4) {
+		    *b2++ = bpvali4;
+		    nfilled++;
+		    *b1++;
+		    }
+		else if (checkmax && *bb > mxvali4) {
+		    *b2++ = bpvali4;
+		    nfilled++;
+		    *b1++;
+		    }
+		else {
+		    *b2++ = *b1++;
+		    }
+		bb++;
+		}
+	    if (nlog > 0 && (iy+1)%nlog == 0)
+		fprintf (stderr,"SetBadVal: %d lines, %d bad pixels set\r",
+			 iy+1, nfilled);
+	    }
+	}
+    else if (bitpix == -32) {
+	float *bb, *b1, *b2, *buffout, bpvalr4, mnvalr4, mxvalr4;
+	buffret = (char *) calloc (npix, sizeof (float));
+	buffout = (float *) buffret;
+	bpvalr4 = (float) bpval;
+	mnvalr4 = (float) minval;
+	mxvalr4 = (float) maxval;
+	bb = (float *) buff;
+	b1 = (float *) buff;
+	b2 = buffout;
+	for (iy = 0; iy < ny; iy++) {
+	    for (ix = 0; ix < nx; ix++) {
+		if (checkmin && *bb < mnvalr4) {
+		    *b2++ = bpvalr4;
+		    nfilled++;
+		    *b1++;
+		    }
+		else if (checkmax && *bb > mxvalr4) {
+		    *b2++ = bpvalr4;
+		    nfilled++;
+		    *b1++;
+		    }
+		else {
+		    *b2++ = *b1++;
+		    }
+		bb++;
+		}
+	    if (nlog > 0 && (iy+1)%nlog == 0)
+		fprintf (stderr,"SetBadVal: %d lines, %d bad pixels set\r",
+			 iy+1, nfilled);
+	    }
+	}
+    else if (bitpix == -64) {
+	double *bb, *b1, *b2, *buffout, bpvalr8, mnvalr8, mxvalr8;
+	buffret = (char *) calloc (npix, sizeof (double));
+	buffout = (double *) buffret;
+	bpvalr8 = (double) bpval;
+	mnvalr8 = (double) minval;
+	mxvalr8 = (double) maxval;
+	bb = (double *) buff;
+	b1 = (double *) buff;
+	b2 = buffout;
+	for (iy = 0; iy < ny; iy++) {
+	    for (ix = 0; ix < nx; ix++) {
+		if (checkmin && *bb < mnvalr8) {
+		    *b2++ = bpvalr8;
+		    nfilled++;
+		    *b1++;
+		    }
+		else if (checkmax && *bb > mxvalr8) {
+		    *b2++ = bpvalr8;
+		    nfilled++;
+		    *b1++;
+		    }
+		else {
+		    *b2++ = *b1++;
+		    }
+		bb++;
+		}
+	    if (nlog > 0 && (iy+1)%nlog == 0)
+		fprintf (stderr,"SetBadVal: %d lines, %d bad pixels set\r",
+			 iy+1, nfilled);
+	    }
+	}
+    if (nlog > 0)
+	fprintf (stderr,"SetBadVal: %d lines, %d bad pixels set\n",
 		 iy, nfilled);
     return (buffret);
 }
@@ -1458,19 +1640,19 @@ int	ndy;	/* Number of rows over which to compute the median */
 char *
 gaussfilt (buff, header, ndx, ndy, nlog)
 
-char	*buff;	/* Image buffer */
-char	*header; /* FITS image header */
-int	ndx;	/* Number of columns over which to compute the mean */
-int	ndy;	/* Number of rows over which to compute the mean */
-int	nlog;	/* Logging interval in pixels */
+char	*buff;		/* Image buffer */
+char	*header;	/* FITS image header */
+int	ndx;		/* Number of columns over which to compute the Gaussian */
+int	ndy;		/* Number of rows over which to compute the Gaussian */
+int	nlog;		/* Logging interval in pixels */
 
 {
-char	*buffret;	/* Modified image buffer (returned) */
-int	nx,ny;	/* Number of columns and rows in image */
-int	ix,iy;	/* Pixel around which to compute median */
-int	npix;	/* Number of pixels in image */
-int	bitpix;	/* Number of bits per pixel (<0=floating point) */
-int	naxes;
+    char *buffret;	/* Modified image buffer (returned) */
+    int nx,ny;		/* Number of columns and rows in image */
+    int ix,iy;		/* Pixel around which to compute median */
+    int npix;		/* Number of pixels in image */
+    int bitpix;		/* Number of bits per pixel (<0=floating point) */
+    int naxes;
 
     hgeti4 (header, "BITPIX", &bitpix);
     hgeti4 (header, "NAXIS", &naxes);
@@ -1482,7 +1664,7 @@ int	naxes;
     npix = nx * ny;
     hgetr8 (header, "BLANK", &bpval);
 
-    gausswt (ndx, nx);
+    gausswt (ndx, ndy, nx);
 
     buffret = NULL;
     if (bitpix == 16) {
@@ -1701,9 +1883,10 @@ double nsubpix;
 /* Compute Gaussian weights for a square region */
 
 void 
-gausswt (nside, nx)
+gausswt (mx, my, nx)
 
-int	nside;	/* Width in pixels over which to compute the mean */
+int	mx;	/* Width in pixels over which to compute the Gaussian */
+int	my;	/* Height in pixels over which to compute the Gaussian */
 int	nx;	/* Number of columns (naxis1) in image */
 {
     int	i, idr, idc, jx, jy, jr;
@@ -1711,8 +1894,6 @@ int	nx;	/* Number of columns (naxis1) in image */
     extern void setscale();
 
     setscale (0);
-
-    npbox = nside * nside;
 
     dsub = (double) nsub;
     xd0 = (dsub - 1.0) / (dsub * 2.0);
@@ -1725,16 +1906,17 @@ int	nx;	/* Number of columns (naxis1) in image */
 	free (iybox);
 	free (ipbox);
 	}
+    npbox = mx * my;
     gwt = (double *) calloc (npbox, sizeof(double));
     ixbox = (int *) calloc (npbox, sizeof(int));
     iybox = (int *) calloc (npbox, sizeof(int));
     ipbox = (int *) calloc (npbox, sizeof(int));
-    idr = (-nside / 2) - 1;
+    idr = (-my / 2) - 1;
     i = 0;
-    for (jy = 0; jy < nside; jy++) {
+    for (jy = 0; jy < my; jy++) {
 	idr++;
-	idc = (-nside / 2) - 1;
-	for (jx = 0; jx < nside; jx++) {
+	idc = (-mx / 2) - 1;
+	for (jx = 0; jx < mx; jx++) {
 	    idc++;
 	    gwt[i] = 0.0;
 	    xdr = ((double) idr - xd0) / hwidth;
@@ -2097,7 +2279,7 @@ double	*buffr8 = NULL;
 		}
 	    }
 	if ((jy+1)%nlog == 0)
-	    fprintf (stderr,"SHRINK: %d lines created\r", jy+1);
+	    fprintf (stderr,"IMRESIZE: %d/%d lines created\r", jy+1, ny1);
 	}
     if (nlog > 0)
 	fprintf (stderr,"\n");
@@ -2172,7 +2354,7 @@ int	bitpix;		/* Number of bits per output pixel (neg=f.p.) */
 	hputr8 (newhead, "CRPIX1", crpix1);
 	}
     if (hgetr8 (header, "CDELT1", &cdelt1)) {
-	crpix1 = (crpix1 * dfac);
+	cdelt1 = (cdelt1 * dfac);
 	hputr8 (newhead, "CDELT1", cdelt1);
 	}
     if (hgetr8 (header, "CD1_1", &cdelt1)) {
@@ -2189,7 +2371,7 @@ int	bitpix;		/* Number of bits per output pixel (neg=f.p.) */
 	hputr8 (newhead, "CRPIX2", crpix2);
 	}
     if (hgetr8 (header, "CDELT2", &cdelt2)) {
-	crpix2 = (crpix2 * dfac);
+	cdelt2 = (cdelt2 * dfac);
 	hputr8 (newhead, "CDELT2", cdelt2);
 	}
     if (hgetr8 (header, "CD2_1", &cdelt2)) {
@@ -2226,4 +2408,9 @@ int	bitpix;		/* Number of bits per output pixel (neg=f.p.) */
  * May  8 2006	Print final number of pixels filled; add getnfilled()
  * May 16 2006	Do not use BLANK from bad pixel file if set on command line 
  * Jun 20 2006	Drop unused variables
+ * Jun 30 2006	Add number of lines in output image to log message
+ * Jul  5 2006	Add SetBadVal() to set pixels less than min to bad
+ * Jul  6 2006	Make both dimensions variable for Gaussian
+ * Jul  7 2006	SetBadVal() now checks min and max allowable values
+ * Sep 25 2006	Fix bug so CDELT1 and CDELT2 are scaled correctly
  */

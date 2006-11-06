@@ -1,5 +1,5 @@
 /*** File libwcs/ubcread.c
- *** June 20, 2006
+ *** October 24, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2006
@@ -253,7 +253,7 @@ int	nlog;		/* Logging interval */
 	printf ("program        scat %s\n", revmessage);
 	CatID (catid, ucat);
 	printf ("%s	ra          	dec         	", catid);
-	printf ("magb1 	magr1 	magb1 	magb2 	magn  	ura  	udec  	");
+	printf ("magb1 	magr1 	magb2 	magr2 	magn  	ura  	udec  	");
 	printf ("pm	ni	arcmin\n");
 	printf ("------------	------------	------------	");
 	printf ("-----	-----	-----	-----	-----	-----	-----	");
@@ -1259,12 +1259,12 @@ double	rax0;		/* Right ascension in degrees for which to search */
     int istar, istar1, istar2, nrep;
     double rax, ra1, ra, rdiff, rdiff1, rdiff2, sdiff;
     UBCstar star;	/* UB catalog entry for one star */
-    char rastrx[16];
+    char rastrx[32];
     int debug = 0;
 
     rax = rax0;
     if (debug)
-	ra2str (rastrx, 16, rax, 3);
+	ra2str (rastrx, 31, rax, 3);
     istar1 = 1;
     if (ubcstar (istar1, &star))
 	return (0);
@@ -1279,8 +1279,8 @@ double	rax0;		/* Right ascension in degrees for which to search */
 	    if (ra == ra1)
 		break;
 	    if (debug) {
-		char rastr[16];
-		ra2str (rastr, 16, ra, 3);
+		char rastr[32];
+		ra2str (rastr, 31, ra, 3);
 		fprintf (stderr,"UBCSRA %d %d: %s (%s)\n",
 			 nrep,istar,rastr,rastrx);
 		}
@@ -1473,4 +1473,6 @@ int nbytes = nbent; /* Number of bytes to reverse */
  * Jan 12 2005	Declare ubcsg()
  *
  * Jun 20 2006	Drop unused variables
+ * Sep 26 2006	Increase length of rastr and destr from 16 to 32
+ * Oct 24 2006	Fix header in ubcread() nstarmax<1 tab output
  */

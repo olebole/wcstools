@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** June 20, 2006
+ *** July 13, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2006
@@ -54,6 +54,7 @@
  * Subroutine:  isnum (string) returns 1 if integer, 2 if fp number, else 0
  * Subroutine:  notnum (string) returns 0 if number, else 1
  * Subroutine:  numdec (string) returns number of decimal places in numeric string
+ * Subroutine:	strfix (string,blankfill,zerodrop) removes extraneous characters
  */
 
 #include <string.h>		/* NULL, strlen, strstr, strcpy */
@@ -687,7 +688,7 @@ char *str;	/* String (returned) */
 
     /* Loop through sequentially-named keywords */
     multiline = 1;
-    for (ikey = 1; ikey < 20; ikey++) {
+    for (ikey = 1; ikey < 500; ikey++) {
 	sprintf (keywordi, keyform, keyword, ikey);
 
 	/* Get value for this keyword */
@@ -1650,6 +1651,95 @@ int set_saolib(hstring)
 
 #endif
 
+
+/* Remove exponent, leading #, and/or trailing zeroes, if reasonable */
+void
+strfix (string, fillblank, dropzero)
+
+char	*string;	/* String to modify */
+int	fillblank;	/* If nonzero, fill blanks with underscores */
+int	dropzero;	/* If nonzero, drop trailing zeroes */
+{
+    char *sdot, *s, *strend, *str, ctemp, *slast;
+    int ndek, lstr, i;
+
+    /* If number, ignore leading # and remove trailing non-numeric character */
+    if (string[0] == '#') {
+	strend = string + strlen (string);
+	str = string + 1;
+	strend = str + strlen (str) - 1;
+	ctemp = *strend;
+	if (!isnum (strend))
+	    *strend = (char) 0;
+	if (isnum (str)) {
+	    strend = string + strlen (string);
+	    for (str = string; str < strend; str++)
+		*str = *(str + 1);
+	    }
+	else
+	    *strend = ctemp;
+	}
+
+    /* Remove positive exponent if there are enough digits given */
+    if (isnum (string) > 1 && strsrch (string, "E+") != NULL) {
+	lstr = strlen (string);
+	ndek = (int) (string[lstr-1] - 48);
+	ndek = ndek + (10 * ((int) (string[lstr-2] - 48)));
+	if (ndek < lstr - 7) {
+	    lstr = lstr - 4;
+	    string[lstr] = (char) 0;
+	    string[lstr+1] = (char) 0;
+	    string[lstr+2] = (char) 0;
+	    string[lstr+3] = (char) 0;
+	    sdot = strchr (string, '.');
+	    if (ndek > 0 && sdot != NULL) {
+		for (i = 1; i <= ndek; i++) {
+		    *sdot = *(sdot+1);
+		    sdot++;
+		    *sdot = '.';
+		    }
+		}
+	    }
+	}
+
+    /* Remove trailing zeroes if they are not significant */
+    if (dropzero) {
+	if (isnum (string) > 1 && strchr (string, '.') != NULL &&
+	    strsrch (string, "E-") == NULL &&
+	    strsrch (string, "E+") == NULL &&
+	    strsrch (string, "e-") == NULL &&
+	    strsrch (string, "e+") == NULL) {
+	    lstr = strlen (string);
+	    s = string + lstr - 1;
+	    while (*s == '0' && lstr > 1) {
+		if (*(s - 1) != '.') {
+		    *s = (char) 0;
+		    lstr --;
+		    }
+		s--;
+		}
+	    }
+	}
+
+    /* Remove trailing decimal point */
+    lstr = strlen (string);
+    s = string + lstr - 1;
+    if (*s == '.')
+	*s = (char) 0;
+
+    /* Replace embedded blanks with underscores, if requested to */
+    if (fillblank) {
+	lstr = strlen (string);
+	slast = string + lstr;
+	for (s = string; s < slast; s++) {
+	    if (*s == ' ') *s = '_';
+	    }
+	}
+
+    return;
+
+}
+
 /* Oct 28 1994	New program
  *
  * Mar  1 1995	Search for / after second quote, not first one
@@ -1744,4 +1834,6 @@ int set_saolib(hstring)
  * Aug 30 2005	Adjust code in hlength()
  *
  * Jun 20 2006	Initialize uninitialized variables in strnsrch()
+ * Jun 29 2006	Add new subroutine strfix() to clean strings for other uses
+ * Jul 13 2006	Increase maximum number of multiline keywords from 20 to 500
  */

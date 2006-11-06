@@ -1,8 +1,8 @@
 /*** File libwcs/uacread.c
- *** August 30, 2004
+ *** September 26, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -44,7 +44,7 @@ static int ucat=UA2;
  * Use this if CDROMs have been transferred to a single hard disk
  * Otherwise set to null string ("") and use cdroot
  * This may also be a URL to a catalog search engine */
-static char ua2path[64]="/data/ua2";
+static char ua2path[64]="/data/astrocat/ua2";
 
 /* Uncomment following line to use ESO USNO-A server for UA2
 static char ua2path[64]="http://archive.eso.org/skycat/servers/usnoa-server";
@@ -52,17 +52,17 @@ static char ua2path[64]="http://archive.eso.org/skycat/servers/usnoa-server";
 
 /* USNO SA-2.0 directory pathname; replaced by USA2_PATH environment variable
  * This may also be a URL to a catalog search engine */
-static char usa2path[64]="/data/usnosa20";
+static char usa2path[64]="/data/astrocat/usnosa20";
 
 /* USNO SA-1.0 directory pathname; replaced by USA1_PATH environment variable
  * This may also be a URL to a catalog search engine */
-static char usa1path[64]="/data/usnosa10";
+static char usa1path[64]="/data/astrocat/usnosa10";
 
 /* USNO A-1.0 directory pathname; replaced by UA1_PATH environment variable
  * Use this if CDROMs have been transferred to a single hard disk
  * Otherwise set to null string ("") and use cdroot
  * This may also be a URL to a catalog search engine */
-static char ua1path[64]="/data/ua1";
+static char ua1path[64]="/data/astrocat/ua1";
 
 static char *uapath;
 
@@ -1229,12 +1229,12 @@ double	rax0;		/* Right ascension in degrees for which to search */
     int istar, istar1, istar2, nrep;
     double rax, ra1, ra, rdiff, rdiff1, rdiff2, sdiff;
     UACstar star;	/* UA catalog entry for one star */
-    char rastrx[16];
+    char rastrx[32];
     int debug = 0;
 
     rax = rax0;
     if (debug)
-	ra2str (rastrx, 16, rax, 3);
+	ra2str (rastrx, 31, rax, 3);
     istar1 = 1;
     if (uacstar (istar1, &star))
 	return (0);
@@ -1249,8 +1249,8 @@ double	rax0;		/* Right ascension in degrees for which to search */
 	    if (ra == ra1)
 		break;
 	    if (debug) {
-		char rastr[16];
-		ra2str (rastr, 16, ra, 3);
+		char rastr[32];
+		ra2str (rastr, 31, ra, 3);
 		fprintf (stderr,"UACSRA %d %d: %s (%s)\n",
 			 nrep,istar,rastr,rastrx);
 		}
@@ -1512,4 +1512,7 @@ int nbytes = 12; /* Number of bytes to reverse */
  * Dec 12 2003	Fix bug in wcs2pix() call in uacbin(); fix usacbin() subroutine
  *
  * Aug 30 2004	Include fitsfile.h and math.h
+ *
+ * Sep 13 2006	Change default paths to /data/astrocat
+ * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  */

@@ -1,5 +1,5 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** February 23, 2006
+ *** October 5, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2006
@@ -246,10 +246,40 @@ void edt2dt(); /* yyyy.ddmm and hh.mmsss Ephemeris Time to UT */
 double utdt();	/* Compute difference between UT and dynamical time (ET-UT) */
 char *fd2gst();	/* Convert from FITS UT date to Greenwich Sidereal Time */
 void dt2gst();	/* Convert from UT as yyyy.mmdd hh.mmssss to Greenwich Sidereal Time */
+double jd2gst(); /* Calculate Greenwich Sidereal Time given Julian Date */
 double ts2gst(); /* Calculate Greenwich Sidereal Time given Universal Time */
+char *fd2lst();	/* Convert from FITS UT date to Local Sidereal Time */
+void dt2lst();	/* Convert from UT as yyyy.mmdd hh.mmssss to Local Sidereal Time */
+double ts2lst(); /* Calculate Local Sidereal Time given Universal Time */
+double jd2lst(); /* Calculate Local Sidereal Time given Julian Date */
+double eqeqnx(); /* Compute equation of eqinoxes from Julian Date */
+char *fd2mst();	/* Convert from FITS UT date to Mean Sidereal Time */
+double jd2mst(); /* Convert from Julian Date to Mean Sidereal Time */
+double jd2mst2(); /* Convert from Julian Date to Mean Sidereal Time */
+void dt2mst();	/* Convert from UT as yyyy.mmdd hh.mmssss to Mean Sidereal Time */
+double lst2ts(); /* Calculate Universal Time given Local Sidereal Time */
+double lst2dt(); /* Calculate UT as yyyy.mmdd hh.mmsss given UT date and Local Sidereal Time */
+double lst2jd(); /* Calculate UT as Julian Date given UT date and Local Sidereal Time */
+char *lst2fd(); /* Calculate FITS UT date and time given UT date and Local Sidereal Time */
+char *gst2fd(); /* Calculate FITS UT date and time given Greenwich Sidereal Time */
+double gst2jd(); /* Calculate FITS UT Julian Date given Greenwich Sidereal Time */
+char *mst2fd(); /* Calculate FITS UT date and time given Mean Sidereal Time */
+double mst2jd(); /* Calculate FITS UT Julian Date given Mean Sidereal Time */
 char *fd2mst();	/* Convert from FITS UT date to Mean Sidereal Time */
 void dt2mst();	/* Convert from UT as yyyy.mmdd hh.mmssss to Mean Sidereal Time */
 double ts2mst(); /* Calculate Mean Sidereal Time given Universal Time */
+double mjd2mhjd(); /* Convert from Modified Julian Date to Heliocentric MJD */
+double mjd2hjd(); /* Convert from Modified Julian Date to Heliocentric JD */
+double mhjd2mjd(); /* Convert from Heliocentric Modified Julian Date to MJD */
+void mjd2doy(); /* Convert from Modified Julian Date to Day of Year */
+double jd2hjd(); /* Convert from Julian Date to Heliocentric Julian Date */
+double jd2mhjd(); /* Convert from Julian Date to Modified Heliocentric JD */
+double hjd2jd(); /* Convert from Heliocentric Julian Date to Julian Date */
+double hjd2mjd(); /* Convert from Heliocentric Julian Date to Modified JD */
+double hjd2mhjd(); /* Convert from Heliocentric Julian Date to Modified HJD */
+void setdatedec(); /* Set number of decimal places in FITS dates */
+void setlongitude(); /* Longitude for sidereal time in or out */
+
 void compnut();	/* Compute nutation in longitude and obliquity and mean obliquity*/
 
 #endif /* fitsfile_h_ */
@@ -307,4 +337,6 @@ void compnut();	/* Compute nutation in longitude and obliquity and mean obliquit
  *
  * Feb 23 2006	Add fitsrtail() to read appended FITS header
  * Feb 23 2006	Add istiff(), isjpeg(), isgif() to check TIFF, JPEG, GIF files
+ * Sep  6 2006	Add heliocentric time conversions
+ * Oct  5 2006	Add local sidereal time conversions
  */

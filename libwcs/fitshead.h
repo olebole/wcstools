@@ -1,5 +1,5 @@
 /*** File fitshead.h  FITS header access subroutines
- *** May 22, 2006
+ *** June 29, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2006
@@ -145,6 +145,10 @@ extern "C" {
 	const char* string);	/* Character string which may be a number */
     int numdec(			/* Return number of decimal places in number */
 	const char* string);	/* Character string which may be a number */
+    void strfix(		/* Clean up extraneous characters in string */
+	char* string,		/* Character string which may be a number */
+	int fillblank,		/* If 1, blanks are replaced by underscores */
+	int dropzero);		/* If 1, drop trailing zeroes from string */
 
     char *getltime();		/* Return current local time in ISO format */
     char *getutime();		/* Return current UT as an ISO-format string */
@@ -316,6 +320,7 @@ extern char *strsrch ();	/* s1 null-terminated */
 extern char *strnsrch ();	/* s1 ls1 characters long */
 extern char *strcsrch ();	/* s1 null-terminated (case-insensitive) */
 extern char *strncsrch ();	/* s1 ls1 characters long (case-insensitive) */
+extern void strfix();	/* Drop or change extraneous characters in string */
 
 /* Set length of header which is not null-terminated */
 extern int hlength();
@@ -417,4 +422,5 @@ extern char *getutime(); /* Return current UT as an ISO-format string */
  * Aug 30 2004	Add numdec() to non-C++ declarations
  *
  * May 22 2006	Add setleaveblank() to leave blank line where keyword is deleted
+ * Jun 28 2006	Add strfix() to clean up characters in strings
  */

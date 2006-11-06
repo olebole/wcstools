@@ -1,9 +1,9 @@
 /* File sethead.c
- * June 21, 2006
+ * November 2, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1996-2006 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -30,7 +30,7 @@
 #include <math.h>
 #include "libwcs/fitsfile.h"
 
-#define MAXKWD 100
+#define MAXKWD 500
 #define MAXFILES 1000
 static int maxnkwd = MAXKWD;
 static int maxnfile = MAXFILES;
@@ -402,6 +402,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     char *kw, *kwl, *kwv0, *knl;
     char *kwv = NULL;
     char *v, *vq0, *vq1;
+    char *newhead;
     char echar;
     int ikwd, lkwd, lkwv, lhist;
     int fdr, fdw, ipos, nbr, nbw;
@@ -422,6 +423,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     int ival0, ival1;
     double dval0, dval1;
     int bitpix = 0;
+    int lhead0;
+    int ehead;
     char newline = 10;
     int keyop = 0;
     char *opkey;
@@ -447,24 +450,12 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    }
 	}
 
-    /* Open FITS file if .imh extension is not present */
+    /* Otherwise read FITS image header */
     else {
 	iraffile = 0;
 	setfitsinherit (0);
-	if ((header = fitsrhead (filename, &lhead, &nbhead)) != NULL) {
-	    hgeti4 (header,"NAXIS",&naxis);
-	    hgeti4 (header,"BITPIX",&bitpix);
-	    if (naxis > 0 && bitpix != 0) {
-		if ((image = fitsrfull (filename, nbhead, header)) == NULL) {
-		    if (verbose)
-			fprintf (stderr, "No FITS image in %s\n", filename);
-		    imageread = 0;
-		    }
-		else
-		    imageread = 1;
-		}
-	    }
-	else {
+	imageread = 0;
+	if ((header = fitsrhead (filename, &lhead, &nbhead)) == NULL) {
 	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
 	    return;
 	    }
@@ -482,6 +473,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	return;
 
     nbold = fitsheadsize (header);
+    hgeti4 (header,"NAXIS",&naxis);
+    hgeti4 (header,"BITPIX",&bitpix);
 
     /* Set keywords one at a time */
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
@@ -521,10 +514,12 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		    }
 		}
 	    }
-	if (kwv0 == NULL) {
 
-	    /* Get current length of header buffer */
-	    lhead = gethlength (header);
+	/* Get current length of header buffer */
+	lhead = gethlength (header);
+
+	/* If there is no keyword value */
+	if (kwv0 == NULL) {
 
 	    /* Make keyword all upper case */
 	    kwl = kwd[ikwd] + lkwd;
@@ -548,6 +543,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		    }
 		}
 	    }
+
+	/* Set keyword value */
 	else {
 	    *kwv0 = 0;
 	    lkwd = kwv0 - kwd[ikwd];
@@ -560,9 +557,6 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		lnl = knl - kwv;
 		if (lnl < lkwv) lkwv = lnl;
 		}
-
-	    /* Get current length of header buffer */
-	    lhead = gethlength (header);
 
 	    /* Make keyword all upper case */
 	    kwl = kwd[ikwd] + lkwd;
@@ -675,6 +669,33 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		continue;
 		}
 
+	    /* Englarge header buffer if it is not large enough
+	       and if there is not a spare blank line before END */
+	    if (!strcmp(kwd[ikwd],"COMMENT") || !strcmp(kwd[ikwd],"HISTORY") ||
+		!ksearch (header, kwd[ikwd])) {
+		lhead = gethlength (header);
+		ehead = ksearch (header, "END") - header + 80;
+		if (ehead + 80 > lhead) {
+		    if (blsearch (header, "END") == NULL) {
+			lhead0 = lhead;
+			lhead = lhead + 28800;
+			newhead = (char *)calloc(1, (unsigned int)lhead);
+			if (newhead != NULL) {
+			    for (i = 0; i < lhead0; i++)
+				newhead[i] = header[i];
+			    free (header);
+			    header = newhead;
+			    hlength (header, lhead);
+			    newhead = NULL;
+			    }
+			else {
+			    fprintf (stderr, "SETHEAD: Cannot allocate new %d-byte header\n", lhead);
+			    continue;
+			    }
+			}
+		    }
+		}
+
 	    /* Write comment without quotes, filling spaces first */
 	    if (!strcmp (kwd[ikwd], "COMMENT") || !strcmp (kwd[ikwd], "HISTORY")) {
 		if (spchar)
@@ -689,12 +710,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		    cval[i++] = *v;
 		cval[21] = 0;
 		if (hputc (header, kwd[ikwd], cval)) {
-		    lhead = lhead + 28800;
-		    if ((header =
-			(char *)realloc(header,(unsigned int)lhead)) != NULL) {
-			hlength (header, lhead);
-			hputc (header,kwd[ikwd], cval);
-			}
+		    fprintf (stderr, "SETHEAD: Cannot add %s to header\n", kwd[ikwd]);
+		    continue;
 		    }
 		}
 
@@ -702,23 +719,15 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    else if (!strcmp (kwv,"T") || !strcmp (kwv,"t") ||
 		     !strcmp (kwv,"YES") || !strcmp (kwv,"yes")) {
 		if (hputl (header, kwd[ikwd], 1)) {
-		    lhead = lhead + 28800;
-		    if ((header =
-			(char *)realloc(header,(unsigned int)lhead)) != NULL) {
-			hlength (header, lhead);
-			hputl (header,kwd[ikwd], 1);
-			}
+		    fprintf (stderr, "SETHEAD: Cannot add %s to header\n", kwd[ikwd]);
+		    continue;
 		    }
 		}
 	    else if (!strcmp (kwv,"F") || !strcmp (kwv,"f") ||
 		     !strcmp (kwv,"NO") || !strcmp (kwv,"no")) {
 		if (hputl (header, kwd[ikwd], 0)) {
-		    lhead = lhead + 28800;
-		    if ((header =
-			(char *)realloc(header,(unsigned int)lhead)) != NULL) {
-			hlength (header, lhead);
-			hputl (header,kwd[ikwd], 0);
-			}
+		    fprintf (stderr, "SETHEAD: Cannot add %s to header\n", kwd[ikwd]);
+		    continue;
 		    }
 		}
 
@@ -756,12 +765,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 
 		if (lval < 69) {
 		    if (hputs (header, kwd[ikwd], kwv)) {
-			lhead = lhead + 14400;
-		    	if ((header =
-			(char *)realloc(header,(unsigned int)lhead)) != NULL) {
-			    hlength (header, lhead);
-			    hputs (header, kwd[ikwd], kwv);
-			    }
+			fprintf (stderr, "SETHEAD: Cannot add %s to header\n", kwd[ikwd]);
+			continue;
 			}
 		    }
 
@@ -789,12 +794,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 			newkey[lroot+2] = (char) 0;
 			ii++;
 			if (hputs (header, newkey, value)) {
-			    lhead = lhead + 28800;
-			    if ((header =
-			  (char *)realloc(header,(unsigned int)lhead))!=NULL) {
-				hlength (header, lhead);
-				hputs (header, newkey, value);
-				}
+			    fprintf (stderr, "SETHEAD: Cannot add %s to header\n", newkey);
+			    continue;
 			    }
 			value[lv] = ctemp;
 			kwv = kwv + lv;
@@ -889,10 +890,16 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 
     /* Compare size of output header to size of input header */
     nbnew = fitsheadsize (header);
-    if (nbnew > nbold  && naxis == 0 && bitpix != 0) {
+    if (nbnew != nbold  && naxis == 0 && bitpix != 0) {
 	if (verbose)
-	    fprintf (stderr, "Rewriting primary header, copying rest of file\n");
+	    fprintf (stderr, "Rewriting header, copying rest of file\n");
 	newimage = 1;
+	}
+    else if (verbose) {
+	if (nbnew == nbold)
+	    fprintf (stderr, "Rewriting header only\n");
+	else
+	    fprintf (stderr, "Rewriting header and image\n");
 	}
 
     /* Make up name for new FITS or IRAF output file */
@@ -954,13 +961,16 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	}
     else {
 	strcpy (newname, filename);
+	imext = strchr (filename, ',');
 	if (!imext && ksearch (header,"XTENSION")) {
 	    strcat (newname, ",1");
 	    imext = strchr (newname,',');
 	    }
 	}
 
-    /* Write fixed header to output file */
+    /* Write modified header to output file */
+
+    /* If IRAF, write new header file */
     if (iraffile) {
 	if (irafwhead (newname, lhead, irafheader, header) > 0 && verbose)
 	    printf ("%s rewritten successfully.\n", newname);
@@ -970,7 +980,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	irafheader = NULL;
 	}
 
-    /* If there is no data, write header by itself */
+    /* If there is no data, write only the FITS header */
     else if (bitpix == 0) {
 	if ((fdw = fitswhead (newname, header)) > 0) {
 	    if (verbose)
@@ -979,7 +989,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    }
 	}
 
-    /* Rewrite only header if it fits into the space from which it was read */
+    /* If header size is less than or equal to original, overwrite it */
     else if (nbnew <= nbold && !newimage) {
 	if (!fitswexhead (newname, header)) {
 	    if (verbose)
@@ -988,29 +998,22 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	}
 
     /* Rewrite header and data to a new image file */
-    else if (naxis > 0 && imageread) {
-	if (fitswimage (newname, header, image) > 0 && verbose)
-	    printf ("%s: rewritten successfully.\n", newname);
-	else if (verbose)
-	    printf ("%s could not be written.\n", newname);
-	free (image);
-	image = NULL;
-	}
-
-    else {
-	if ((fdw = fitswhead (newname, header)) > 0) {
-	    fdr = fitsropen (filename);
-	    ipos = lseek (fdr, nbhead, SEEK_SET);
-	    image = (char *) calloc (2880, 1);
-	    while ((nbr = read (fdr, image, 2880)) > 0) {
-		nbw = write (fdw, image, nbr);
-		if (nbw < nbr)
-		    fprintf (stderr,"SETHEAD: %d / %d bytes written\n",nbw,nbr);
+    else if (naxis > 0) {
+	if (!imageread) {
+	    if ((image = fitsrfull (filename, nbhead, header)) == NULL) {
+		if (verbose)
+		    fprintf (stderr, "No FITS image in %s\n", filename);
 		}
-	    close (fdr);
-	    close (fdw);
-	    if (verbose)
+	    else
+		imageread = 1;
+	    }
+	if (imageread) {
+	    if (fitswimage (newname, header, image) > 0 && verbose)
 		printf ("%s: rewritten successfully.\n", newname);
+	    else if (verbose)
+		printf ("%s could not be written.\n", newname);
+	    free (image);
+	    image = NULL;
 	    }
 	}
 
@@ -1100,4 +1103,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  *
  * Jun 21 2006	Fix bug so keyword settings preceding -m are kept
  * Jun 21 2006	Initialize uninitialized variables
+ * Sep 28 2006	Don't overwrite image if header length in blocks is unchanged
+ * Sep 28 2006	Fix bug naming file+extension if not new file
+ * Nov  2 2006	Check header size and reallocate if necessary
  */

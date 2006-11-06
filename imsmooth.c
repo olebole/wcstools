@@ -1,5 +1,5 @@
 /* File imsmooth.c
- * June 21, 2006
+ * July 6, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -114,11 +114,12 @@ char **av;
 		    break;
 
 		case 'g':	/* Gaussian filter */
-		    if (ac < 2)
+		    if (ac < 3)
 			usage();
 		    filter = GAUSSIAN;
 		    xsize = (int) atof (*++av);
-		    ysize = xsize;
+		    ac--;
+		    ysize = (int) atof (*++av);
 		    ac--;
 		    break;
 
@@ -235,9 +236,9 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Filter FITS and IRAF image files\n");
-    fprintf(stderr,"Usage: [-v][-a dx[,dy]][-g dx[,dy]][-m dx[,dy]] file.fits ...\n");
+    fprintf(stderr,"Usage: [-v][-a dx dy]][-g dx dy]][-m dx dy]] file.fits ...\n");
     fprintf(stderr,"  -a dx dy: Mean filter dx x dy pixels\n");
-    fprintf(stderr,"  -g dx: Gaussian filter dx pixels square\n");
+    fprintf(stderr,"  -g dx dy: Gaussian filter dx x dy pixels\n");
     fprintf(stderr,"  -h halfwidth: Gaussian half-width at half-height\n");
     fprintf(stderr,"  -l num: Logging interval in lines\n");
     fprintf(stderr,"  -m dx dy: Median filter dx x dy pixels\n");
@@ -279,6 +280,10 @@ char *name;
 	    fname = name;
 	ext = strrchr (fname, '.');
 	if (ext != NULL) {
+	    if (!strncmp (ext, ".fit", 4)) {
+		if (!strncmp (ext-3, ".ms", 3))
+		    ext = ext - 3;
+		}
 	    lext = (fname + strlen (fname)) - ext;
 	    lroot = ext - fname;
 	    strncpy (newname, fname, lroot);
@@ -464,4 +469,6 @@ char *name;
  * Apr 19 2006	Move image size change to imresize program
  * Jun 21 2006	Drop image reduction code; it is in imresize.c
  * Jun 21 2006	Add IMSMOOTH keyword to output image file
+ * Jun 22 2006	Check for two-token extension .ms.fit(s)
+ * Jul  6 2006	Make both dimensions of Gaussian variable
  */

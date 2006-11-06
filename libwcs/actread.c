@@ -1,5 +1,5 @@
 /*** File libwcs/actread.c
- *** June 20, 2006
+ *** September 26, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1999-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -957,7 +957,7 @@ struct Star *st;	/* Current star entry */
 double	dra;		/* Right ascension in degrees */
 
 {
-    char rastr[16], raxstr[16], ramins[16], ramaxs[16];
+    char rastr[32], raxstr[32], ramins[32], ramaxs[32];
     int istar0, istarx, nrep, ismin, ismax;
     double rax, ramin, ramax;
     int verbose = 0;
@@ -1186,4 +1186,5 @@ char	*filename;	/* Name of file for which to find size */
  * Aug 30 2004	Include math.h
  *
  * Jun 20 2006	Initialize uninitialized variables
+ * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  */

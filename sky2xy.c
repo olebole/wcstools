@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * June 21, 2006
+ * October 30, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -116,9 +116,19 @@ char **av;
 		    setsys(WCS_B1950);
 		    sysout = WCS_B1950;
 		    eqout = 1950.0;
-		    strcpy (rastr, *++av);
+		    if (strlen (*++av) < 32)
+			strcpy (rastr, *av);
+		    else {
+			strncpy (rastr, *av, 31);
+			rastr[31] = (char) 0;
+			}
 		    ac--;
-		    strcpy (decstr, *++av);
+		    if (strlen (*++av) < 32)
+			strcpy (decstr, *av);
+		    else {
+			strncpy (decstr, *av, 31);
+			decstr[31] = (char) 0;
+			}
 		    ac--;
 		    setcenter (rastr, decstr);
 		    modwcs = 1;
@@ -145,9 +155,17 @@ char **av;
 		    setsys(WCS_J2000);
 		    sysout = WCS_J2000;
 		    eqout = 2000.0;
-		    strcpy (rastr, *++av);
+		    if (strlen (*++av) < 32)
+			strcpy (rastr, *av);
+		    else
+			strncpy (rastr, *av, 31);
+		    rastr[31] = (char) 0;
 		    ac--;
-		    strcpy (decstr, *++av);
+		    if (strlen (*++av) < 32)
+			strcpy (decstr, *av);
+		    else
+			strncpy (decstr, *av, 31);
+		    decstr[31] = (char) 0;
 		    ac--;
 		    setcenter (rastr, decstr);
 		    modwcs = 1;
@@ -348,6 +366,8 @@ char **av;
 	    else {
 		if (wcs->prjcode < 0)
 		    strcpy (csys, "PIXEL");
+		else if (wcs->prjcode < 2)
+		    strcpy (csys, "LINEAR");
 		else {
 		    strcpy (csys, wcs->radecsys);
 		    }
@@ -355,7 +375,8 @@ char **av;
 
 	    sysin = wcscsys (csys);
 	    eqin = wcsceq (csys);
-	    wcscon (sysin, wcs->syswcs, eqin, eqout, &ra, &dec, wcs->epoch);
+	    if (wcs->syswcs > 0 && wcs->syswcs != 6 && wcs->syswcs != 10)
+		wcscon (sysin, wcs->syswcs, eqin, eqout, &ra, &dec, wcs->epoch);
 	    if (sysin != wcs->syswcs && verbose) {
 		printf ("%s %s %s -> ", rastr, decstr, csys);
 		ra2str (rastr, 32, ra, ndec);
@@ -472,4 +493,6 @@ char	*command;
  *
  * Apr 19 2006	Use -n number of decimal places when reading from file, too
  * Jun 21 2006	Clean up code
+ * Sep 26 2006	Allow coordinates on command line to be any length
+ * Oct 30 2006	Do not precess LINEAR or XY coordinates
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** June 20, 2006
+ *** November 6, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2006
@@ -139,7 +139,7 @@ int	nlog;
         else if (refcat == SDSS)
             nstar = sdssread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
-			     tnum,tra,tdec,tmag,tc,nlog);
+			     tobj,tnum,tra,tdec,tmag,tc,nlog);
         else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
                  refcat == UAC  || refcat == UA1  || refcat == UA2)
             nstar = uacread (catfile,distsort,cra,cdec,dra,ddec,drad,dradi,
@@ -607,7 +607,7 @@ int	nlog;
 	    nstar = ty2rnum (refcat,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
 	else if (refcat == TABCAT || refcat == WEBCAT)
-	    nstar = tabrnum (catfile,nnum,sysout,eqout,epout,starcat,
+	    nstar = tabrnum (catfile,nnum,sysout,eqout,epout,starcat,match,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,tobj,nlog);
 	else if (refcat == BINCAT)
 	    nstar = binrnum (catfile,nnum,sysout,eqout,epout,match,
@@ -2076,4 +2076,6 @@ char	*in;	/* Character string */
  * Aug  5 2005	Add additional catalog codes for Tycho-2 and 2MASS w/mag errs
  * Jun  6 2006	Add SKY2000 catalog
  * Jun 20 2006	Drop unused variables
+ * Jun 30 2006	Add match argument to tabrnum() to enable sequential reads
+ * Nov  6 2006	Add objet name to sdssread() call to deal with long IDs
  */

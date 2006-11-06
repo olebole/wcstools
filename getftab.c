@@ -1,5 +1,5 @@
 /* File getftab.c
- * August 17, 2004
+ * June 29, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -38,7 +38,6 @@
 
 static void usage();
 static void PrintValues();
-static char *strclean();
 static int maxncond = 100;
 
 
@@ -278,7 +277,7 @@ char **av;
 	    if (tcond[ncond]) {
 		cstr[0] = (char) 0;
 		cstr++;
-		strclean (cstr);
+		strfix (cstr, 0, 1);
 		if (strchr (cstr, ':')) {
 		    dnum = str2dec (cstr);
 		    nstr = (char *) calloc (32, sizeof(char));
@@ -671,7 +670,7 @@ char	*alias[]; /* Output names of keywords if different from input */
 		    num2str (numstr1, dnum, 0, 7);
 		    cval = numstr1;
 		    }
-		strclean (cval);
+		strfix (cval, 0, 1);
 
 		/* Compare floating point numbers */
 		if (isnum (cstr) == 2 && isnum (cval)) {
@@ -738,7 +737,7 @@ char	*alias[]; /* Output names of keywords if different from input */
 	    ntok = setoken (&tokens, line, "tab");
 	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
 		if (!tabgetc (&tokens, col[ikwd], string, 80)) {
-		    str = strclean (string);
+		    str = strfix (string, 0, 0);
 		    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 			num2str (str, atof(str), 0, ndec);
 		    if (verbose) {
@@ -795,78 +794,6 @@ char	*alias[]; /* Output names of keywords if different from input */
     return;
 }
 
-
-/* Remove exponent and trailing zeroes, if reasonable */
-
-static char *
-strclean (string)
-
-char *string;
-
-{
-    char *sdot, *s;
-    int ndek, lstr, i;
-
-    /* Remove positive exponent if there are enough digits given */
-    if (strsrch (string, "E+") != NULL) {
-	lstr = strlen (string);
-	ndek = (int) (string[lstr-1] - 48);
-	ndek = ndek + (10 * ((int) (string[lstr-2] - 48)));
-	if (ndek < lstr - 7) {
-	    lstr = lstr - 4;
-	    string[lstr] = (char) 0;
-	    string[lstr+1] = (char) 0;
-	    string[lstr+2] = (char) 0;
-	    string[lstr+3] = (char) 0;
-	    sdot = strchr (string, '.');
-	    if (ndek > 0 && sdot != NULL) {
-		for (i = 1; i <= ndek; i++) {
-		    *sdot = *(sdot+1);
-		    sdot++;
-		    *sdot = '.';
-		    }
-		}
-	    }
-	}
-
-    /* Remove trailing zeroes if they are not significant */
-    if (strchr (string, '.') != NULL &&
-	strsrch (string, "E-") == NULL &&
-	strsrch (string, "E+") == NULL &&
-	strsrch (string, "e-") == NULL &&
-	strsrch (string, "e+") == NULL) {
-	lstr = strlen (string);
-	s = string + lstr - 1;
-	while (*s == '0' && lstr > 1) {
-	    if (*(s - 1) != '.') {
-		*s = (char) 0;
-		lstr --;
-		}
-	    s--;
-	    }
-	}
-
-    /* Remove trailing decimal point */
-    lstr = strlen (string);
-    s = string + lstr - 1;
-    if (*s == '.')
-	*s = (char) 0;
-
-    /* Remove leading spaces */
-    while (*string == ' ')
-	string++;
-
-    /* Remove trailing spaces */
-    lstr = strlen (string);
-    s = string + lstr - 1;
-    while (*s == ' ') {
-	*s = (char) 0;
-	s--;
-	}
-
-    return (string);
-}
-
 /* Jan 22 1999	New program
  * Jan 25 1999	Keep header information
  * Mar  9 1999	Add range of lines; rework command line decoding logic
@@ -888,4 +815,6 @@ char *string;
  *
  * Jan 22 2004	Increase maximum number of columns from 100 to 200
  * Apr 15 2004	Avoid removing trailing zeroes from exponents
+ *
+ * Jun 29 2006	Rename strclean() strfix() and move to hget.c
  */

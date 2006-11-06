@@ -1,5 +1,5 @@
 /* File remap.c
- * June 21, 2006
+ * September 26, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -84,8 +84,8 @@ int ac;
 char **av;
 {
     char *str;
-    char rastr[16];
-    char decstr[16];
+    char rastr[32];
+    char decstr[32];
     char filename[128];
     char *filelist[100];
     char errmsg[100];
@@ -479,8 +479,10 @@ char	*filename;	/* FITS or IRAF file filename */
 	/* Read output image if one is specified */
 	imout = NULL;
 	if (outname != NULL) {
-	    if (!access (outname, F_OK) && verbose)
-		fprintf (stderr, "REMAP: Writing file %s\n", outname);
+	    if (access (outname, F_OK)) {
+		if (verbose)
+		    fprintf (stderr, "REMAP: Writing file %s\n", outname);
+		}
 	    else if ((headout = fitsrhead (outname, &lhead, &nbhead)) != NULL) {
 		if ((imout = fitsrimage (outname, nbhead, headout)) == NULL)
 		    fprintf (stderr, "REMAP: Overwriting file %s\n", outname);
@@ -516,17 +518,14 @@ char	*filename;	/* FITS or IRAF file filename */
 		secpix2 = secpix;
 
 	    /* Change output dimensions to match output plate scale */
-	    pixratio = secpixin1 / secpix;
+	    if (secpix != 0.0)
+		pixratio = fabs (secpixin1) / fabs (secpix);
+	    else
+		pixratio = 1.0;
 	    if (nx == 0 && ny == 0) {
-		if (secpix > 0) {
-		    nx = wcsin->nxpix * pixratio;
-		    ny = wcsin->nypix * pixratio;
-    		    setnpix (nx, ny);
-		    }
-		else {
-		    nx = wcsin->nxpix;
-		    ny = wcsin->nypix;
-		    }
+		nx = wcsin->nxpix * pixratio;
+		ny = wcsin->nypix * pixratio;
+    		setnpix (nx, ny);
 		}
 
 	    /* Set reference pixel to default of new image center */
@@ -799,22 +798,24 @@ char	*filename;	/* FITS or IRAF file filename */
 
 		    /* Get WCS coordinates of this pixel in output image */
 		    pix2wcs (wcsout, xout, yout, &xpos, &ypos);
+		    if (!wcsout->offscl) {
 
-		    /* Convert to output coordinate system */
-		    wcscon (wcsin->syswcs,wcsout->syswcs,wcsin->equinox,wcsout->equinox,
-				   &xpos,&ypos,wcsin->epoch);
+			/* Convert to output coordinate system */
+			wcscon (wcsin->syswcs,wcsout->syswcs,wcsin->equinox,wcsout->equinox,
+				&xpos,&ypos,wcsin->epoch);
 
-		    /* Get image coordinates of this subpixel in input image */
-		    wcs2pix (wcsin, xpos, ypos, &xin, &yin, &offscl);
-		    if (!offscl) {
-			iin = (int) (yin + 0.5);
-			jin = (int) (xin + 0.5);
+			/* Get image coordinates of this subpixel in input image */
+			wcs2pix (wcsin, xpos, ypos, &xin, &yin, &offscl);
+			if (!offscl) {
+			    iin = (int) (yin + 0.5);
+			    jin = (int) (xin + 0.5);
 
-			/* Read pixel from input file */
-			dpixi = getpix1 (image,bitpix,wpin,hpin,bzin,bsin,jin,iin);
-			if (dpixi != blankpix) {
-			    dpix = dpix + dpixi;
-			    dnpix = dnpix + 1.0;
+			    /* Read pixel from input file */
+			    dpixi = getpix1 (image,bitpix,wpin,hpin,bzin,bsin,jin,iin);
+			    if (dpixi != blankpix) {
+				dpix = dpix + dpixi;
+				dnpix = dnpix + 1.0;
+				}
 			    }
 			}
 		    }
@@ -918,4 +919,8 @@ double	*y2;		/* Upper right y coordinate (returned) */
  * Apr  6 2006	Convert between coordinate systems if requested
  * Apr 19 2006	Check to see if output file exists before reading its header
  * Jun 21 2006	Clean up code
+ * Jun 22 2006	Fix bug checking for pre-existing output file
+ * Aug 16 2006	Check for output image off-scale as well as input image
+ * Sep 11 2006	Cleanup scaling
+ * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  */

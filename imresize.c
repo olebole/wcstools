@@ -1,5 +1,5 @@
 /* File imresize.c
- * June 21, 2006
+ * September 25, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -118,6 +118,22 @@ char **av;
 		    ac--;
 		    break;
 
+		case 'b': /* Number of output bits per pixel */
+		    if (ac < 2)
+			usage ();
+		    bitpix = (int) atof (*++av);
+		    ac--;
+		    break;
+
+		case 'f':	/* Horizontal and vertical reduction factor */
+		    if (ac < 2)
+			usage ();
+		    resize = 1;
+		    xfactor = (int) atof (*++av);
+		    yfactor = xfactor;
+		    ac--;
+		    break;
+
 		case 'g':	/* Gaussian filter */
 		    if (ac < 2)
 			usage ();
@@ -163,13 +179,6 @@ char **av;
 			av++;
 			ac--;
 			}
-		    break;
-
-		case 'b': /* Number of output bits per pixel */
-		    if (ac < 2)
-			usage ();
-		    bitpix = (int) atof (*++av);
-		    ac--;
 		    break;
 
 		case 'v':	/* more verbosity */
@@ -271,6 +280,7 @@ usage ()
     fprintf(stderr,"Usage: [-v][-a dx[,dy]][-g dx[,dy]][-m dx[,dy]] file.fits ...\n");
     fprintf(stderr,"  -a dx dy: Mean filter dx x dy pixels\n");
     fprintf(stderr,"  -b bitpix: FITS bits per pixel in output image\n");
+    fprintf(stderr,"  -f factor: Reduce both image dimensions by factor\n");
     fprintf(stderr,"  -g dx: Gaussian filter dx pixels square\n");
     fprintf(stderr,"  -h halfwidth: Gaussian half-width at half-height\n");
     fprintf(stderr,"  -l num: Logging interval in lines\n");
@@ -551,4 +561,5 @@ char *name;
 /* Apr 19 2006	New program from imsmooth.c
  * Jun 21 2006	Write keywords IMRESIZE and IMSMOOTH to header describing action
  * Jun 21 2006	Clean up code
+ * Sep 25 2006	Add -f to reduce both dimensions by the same factor
  */

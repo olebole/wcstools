@@ -1,5 +1,5 @@
 /* File getcol.c
- * June 21, 2006
+ * June 29, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -71,9 +71,8 @@ static int condand=1;		/* If 1, AND comparisons, else OR */
 static char **cond;		/* Conditions to check */
 static char **ccond;		/* Condition characters */
 static int nop=0;		/* Number of keyword values to operate on */
-static char **op;		/* Operations to check */
-static char **cop;		/* Operation characters */
-static void strclean();
+static char **op;		/* Operator */
+static char *cop;		/* Operation character */
 static int napp=0;		/* Number of lines to append */
 static int ndec=-1;		/* Number of decimal places in f.p. output */
 static int printcol = 1;	/* Flag to print extracted data */
@@ -103,6 +102,10 @@ char **av;
     int icol;
     int match, newbytes;
     int nrbytes = 0;
+    int maxnop0;
+    int i;
+    char **op1;		/* Operator */
+    char *cop1;		/* Operation character */
 
     cwhite = NULL;
     fn = (char **)calloc (maxnfile, sizeof(char *));
@@ -113,7 +116,7 @@ char **av;
     cond = (char **)calloc (maxncond, sizeof(char *));
     ccond = (char **)calloc (maxncond, sizeof(char *));
     op = (char **)calloc (maxnop, sizeof(char *));
-    cop = (char **)calloc (maxnop, sizeof(char *));
+    cop = (char *)calloc (maxnop, sizeof(char));
     frstchar = (int *) calloc (MAX_NTOK, sizeof (int));
     lastchar = (int *) calloc (MAX_NTOK, sizeof (int));
     format = (char **)calloc (MAX_NTOK, sizeof (char *));
@@ -402,28 +405,29 @@ char **av;
 	/* Operation */
 	else if (iscolop (*av)) {
 	    if (nop >= maxnop) {
-		maxnop = maxnop * 2;
-		op = (char **)realloc((void *)op, maxncond*sizeof(void *));
-		cop = (char **)realloc((void *)cop, maxncond*sizeof(void *));
+		maxnop0 = maxnop;
+		maxnop = maxnop0 * 2;
+		op1 = (char **)calloc (maxnop, sizeof (char *));
+		cop1 = (char *)calloc (maxnop, sizeof (char));
+		for (i = 0; i < maxnop0; i++) {
+		    op1[i] = op[i];
+		    cop1[i] = cop[i];
+		    }
+		free (op);
+		free (cop);
+		op = op1;
+		cop = cop1;
+		op1 = NULL;
+		cop1 = NULL;
 		}
-	    op[nop] = *av;
-	    cop[nop] = strchr (*av, '*');
-	    if (cop[nop] == NULL)
-		cop[nop] = strchr (*av, '+');
-	    if (cop[nop] == NULL)
-		cop[nop] = strchr (*av, '-');
-	    if (cop[nop] == NULL)
-		cop[nop] = strchr (*av, '/');
-	    if (cop[nop] == NULL)
-		cop[nop] = strchr (*av, 's');
-	    if (cop[nop] == NULL)
-		cop[nop] = strchr (*av, 'm');
-	    if (cop[nop] == NULL)
-		cop[nop] = strchr (*av, 'a');
-	    if (cop[nop] == NULL)
-		cop[nop] = strchr (*av, 'd');
-	    if (cop[nop] != NULL && isnum (cop[nop]+1))
-		nop++;
+	    op[nop] = *av + 1;
+	    cop[nop] = *av[0];
+	    if (cop[nop] != 0 && isnum (op[nop])) {
+		if (verbose)
+		    printf (" Column %d %c %s\n", icol, cop[nop], op[nop]);
+		}
+	    else
+		printf (" Operation %c or constant %s illegal\n",cop[nop],op[nop]);
 	    }
 
 	/* File to read */
@@ -752,7 +756,7 @@ char	*lfile;		/* Name of file with lines to list */
 			num2str (numstr, dnum, 0, 7);
 			cstr = numstr;
 			}
-		    strclean (cstr);
+		    strfix (cstr, 0, 1);
 	
 		    /* Read comparison value from header */
 		    itok = atoi (cond[icond]);
@@ -763,7 +767,7 @@ char	*lfile;		/* Name of file with lines to list */
 			num2str (numstr1, dnum, 0, 7);
 			cval = numstr1;
 			}
-		    strclean (cval);
+		    strfix (cval, 0, 1);
 	
 		    /* Compare floating point numbers */
 		    if (isnum (cstr) == 2 && isnum (cval)) {
@@ -994,7 +998,7 @@ char	*lfile;		/* Name of file with lines to list */
 			num2str (numstr, dnum, 0, 7);
 			cstr = numstr;
 			}
-		    strclean (cstr);
+		    strfix (cstr, 0, 1);
 	
 		    /* Read comparison value from header */
 		    itok = atoi (cond[icond]);
@@ -1005,7 +1009,7 @@ char	*lfile;		/* Name of file with lines to list */
 			num2str (numstr, dnum, 0, 7);
 			cval = numstr;
 			}
-		    strclean (cval);
+		    strfix (cval, 0, 1);
 	
 		    /* Compare floating point numbers */
 		    if (isnum (cstr) == 2 && isnum (cval)) {
@@ -1199,9 +1203,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    }
 
 		/* Extract test value from comparison string */
-		top = *cop[iop];
-		*cop[iop] = (char) 0;
-		cstr = cop[iop]+1;
+		cstr = op[iop];
 		if (isnum (cstr) > 1) {
 		    dnum = atof (cstr);
 		    ndnum = numdec (cstr);
@@ -1217,7 +1219,7 @@ char	*lfile;		/* Name of file with lines to list */
 			continue;
 			}
 		    }
-		*cop[iop] = top;
+		top = cop[iop];
 
 		/* Extract token from input line */
 		itok = atoi (op[iop]);
@@ -1315,7 +1317,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    num2str (numstr, dval, 0, ndec);
 		else {
 		    sprintf (numstr, "%f", dval);
-		    strclean (numstr);
+		    strfix (numstr, 0, 1);
 		    }
 		if (i < ncol-1)
 		    printf ("%s ", numstr);
@@ -1354,7 +1356,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    num2str (numstr, dval, 0, ndec);
 		else {
 		    sprintf (numstr, "%f", dval);
-		    strclean (numstr);
+		    strfix (numstr, 0, 1);
 		    }
 		if (i < ncol-1)
 		    printf ("%s ", numstr);
@@ -1393,7 +1395,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    num2str (numstr, dval, 0, ndec);
 		else {
 		    sprintf (numstr, "%f", dval);
-		    strclean (numstr);
+		    strfix (numstr, 0, 1);
 		    }
 		if (i < ncol-1)
 		    printf ("%s ", numstr);
@@ -1432,7 +1434,7 @@ char	*lfile;		/* Name of file with lines to list */
 		    num2str (numstr, dval, 0, ndec);
 		else {
 		    sprintf (numstr, "%f", dval);
-		    strclean (numstr);
+		    strfix (numstr, 0, 1);
 		    }
 		if (i < ncol-1)
 		    printf ("%s ", numstr);
@@ -1469,7 +1471,7 @@ char	*lfile;		/* Name of file with lines to list */
 		num2str (numstr, colmin[i], 0, ndec);
 	    else
 		sprintf (numstr, "%f", colmin[i]);
-	    strclean (numstr);
+	    strfix (numstr, 0, 1);
 	    printf ("%s-", numstr);
 	    if (hms[i]) {
 		if (ndec > -1)
@@ -1481,7 +1483,7 @@ char	*lfile;		/* Name of file with lines to list */
 		num2str (numstr, colmax[i], 0, ndec);
 	    else
 		sprintf (numstr, "%f", colmax[i]);
-	    strclean (numstr);
+	    strfix (numstr, 0, 1);
 	    if (i < ncol-1)
 		printf ("%s ", numstr);
 	    else
@@ -1512,11 +1514,11 @@ char	*lfile;		/* Name of file with lines to list */
 	if (nqsum > 0) {
 	    dval = qsum / (double)nqsum;
 	    sprintf (numstr, "%f", dval);
-	    strclean (numstr);
+	    strfix (numstr, 0, 1);
 	    printf ("%s", numstr);
 	    dval = median (qmed, nqsum);
 	    sprintf (numstr, "%f", dval);
-	    strclean (numstr);
+	    strfix (numstr, 0, 1);
 	    printf (" %s\n", numstr);
 	    }
 	if (countcol) {
@@ -1549,65 +1551,6 @@ int *i, *j;
     return (0);
 }
 
-
-/* Remove exponent and/or trailing zeroes, if reasonable */
-static void
-strclean (string)
-
-char *string;
-
-{
-    char *sdot, *s;
-    int ndek, lstr, i;
-
-    /* Remove positive exponent if there are enough digits given */
-    if (strsrch (string, "E+") != NULL) {
-	lstr = strlen (string);
-	ndek = (int) (string[lstr-1] - 48);
-	ndek = ndek + (10 * ((int) (string[lstr-2] - 48)));
-	if (ndek < lstr - 7) {
-	    lstr = lstr - 4;
-	    string[lstr] = (char) 0;
-	    string[lstr+1] = (char) 0;
-	    string[lstr+2] = (char) 0;
-	    string[lstr+3] = (char) 0;
-	    sdot = strchr (string, '.');
-	    if (ndek > 0 && sdot != NULL) {
-		for (i = 1; i <= ndek; i++) {
-		    *sdot = *(sdot+1);
-		    sdot++;
-		    *sdot = '.';
-		    }
-		}
-	    }
-	}
-
-    /* Remove trailing zeroes if they are not significant */
-    if (strchr (string, '.') != NULL &&
-	strsrch (string, "E-") == NULL &&
-	strsrch (string, "E+") == NULL &&
-	strsrch (string, "e-") == NULL &&
-	strsrch (string, "e+") == NULL) {
-	lstr = strlen (string);
-	s = string + lstr - 1;
-	while (*s == '0' && lstr > 1) {
-	    if (*(s - 1) != '.') {
-		*s = (char) 0;
-		lstr --;
-		}
-	    s--;
-	    }
-	}
-
-    /* Remove trailing decimal point */
-    lstr = strlen (string);
-    s = string + lstr - 1;
-    if (*s == '.')
-	*s = (char) 0;
-
-    return;
-	
-}
 
 static int
 iscolop (string)
@@ -1777,4 +1720,5 @@ void *pd1, *pd2;
  * Jun 21 2006	Increase maximum number of tokens from 256 to 1024
  * Jun 21 2006	Increase maximum line length from 1024 to 4096
  * Jun 21 2006	Clean up code
+ * Jun 29 2006	Rename strclean() strfix() and move to hget.c
  */

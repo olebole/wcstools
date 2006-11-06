@@ -1,9 +1,9 @@
 /* File scat.c
- * June 21, 2006
+ * November 6, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1996-2006 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -141,8 +141,8 @@ char **av;
 {
     FILE *fd;
     char *str, *str1;
-    char rastr[16];
-    char decstr[16];
+    char rastr[32];
+    char decstr[32];
     char line[200];
     char errmsg[256];
     int i, lcat;
@@ -269,12 +269,23 @@ char **av;
 	    if (ac < 2)
 		PrintUsage (*av);
 	    else {
-		strcpy (rastr, *av);
+		if (strlen (*av) < 32)
+		    strcpy (rastr, *av);
+		else {
+		    strncpy (rastr, *av, 31);
+		    rastr[31] = (char) 0;
+		    }
 		ac--;
-		strcpy (decstr, *++av);
+		av++;
+		if (strlen (*av) < 32)
+		    strcpy (decstr, *av);
+		else {
+		    strncpy (decstr, *av, 31);
+		    decstr[31] = (char) 0;
+		    }
+		ac--;
 		ra0 = str2ra (rastr);
 		dec0 = str2dec (decstr);
-		ac--;
 		if (ac < 1) {
 		    syscoor = WCS_J2000;
 		    eqcoor = 2000.0;
@@ -3214,6 +3225,9 @@ double	eqout;		/* Equinox for output coordinates */
 		else
 		    CatNum (refcat,-nnfld,starcat[icat]->nndec,gnum[i],numstr);
 		}
+
+	    else if (refcat == SDSS)
+		strcpy (numstr, gobj[i]);
 	    else
 		CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
 
@@ -3375,6 +3389,8 @@ double	eqout;		/* Equinox for output coordinates */
 		    strcat (headline, "	");
 		    if (gobj[i] != NULL)
 			strcat (headline, gobj[i]);
+		    else
+			strcat (headline, "___");
 		    }
 		if (catsort == SORT_MERGE) {
 	            sprintf (temp, "	%d", (int)gx[i]);
@@ -3541,7 +3557,10 @@ double	eqout;		/* Equinox for output coordinates */
 
 		/* Add specified keyword or object name */
 		if (refcat == TABCAT && keyword != NULL) {
-		    sprintf (temp, "  %s", gobj[i]);
+		    if (gobj[i] != NULL)
+			sprintf (temp, "  %s", gobj[i]);
+		    else
+			sprintf (temp, "  ___");
 		    strcat (headline, temp);
 		    }
 		else if ((refcat == BINCAT || refcat == TXTCAT) &&
@@ -4614,4 +4633,8 @@ PrintGSClass ()
  * Jun  6 2006	Add 2 spaces per magnitude header
  * Jun  8 2006	Print object name if no number present in one-line output
  * Jun 21 2006	Initialize uninitialized variables
+ * Jun 27 2006	Print ___ if requested keyword in Starbase file not present
+ * Sep 26 2006	Increase length of rastr and destr from 16 to 32
+ * Sep 26 2006	Allow coordinates on command line to be any length
+ * Nov  6 2006	Print SDSS number as character string; it is now 18 digits long
  */

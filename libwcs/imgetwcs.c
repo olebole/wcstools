@@ -1,8 +1,8 @@
 /*** File libwcs/imgetwcs.c
- *** November 1, 2005
+ *** October 30, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2005
+ *** Copyright (C) 1996-2006
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -256,6 +256,10 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	return (NULL);
 	}
 
+    /* If in linear coordinates, do not print as sexigesimal */
+    if (wcs->sysout < 1 || wcs->sysout == 6 || wcs->sysout == 10)
+	wcs->degout = 1;
+
     /* Set flag to get appropriate equinox for catalog search */
     if (!*sysout)
 	*sysout = wcs->syswcs;
@@ -299,16 +303,19 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
     pix2wcs (wcs, xmax, ymax, &ra4, &dec4);
 
     /* Convert search corners to output coordinate system and equinox */
-    wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra1,&dec1,wcs->epoch);
-    wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra2,&dec2,wcs->epoch);
-    wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra3,&dec3,wcs->epoch);
-    wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra4,&dec4,wcs->epoch);
+    if (wcs->syswcs > 0 && wcs->syswcs != 6 && wcs->syswcs != 10) {
+	wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra1,&dec1,wcs->epoch);
+	wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra2,&dec2,wcs->epoch);
+	wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra3,&dec3,wcs->epoch);
+	wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,&ra4,&dec4,wcs->epoch);
+	}
 
     /* Find center and convert to output coordinate system and equinox */
     x = 0.5 + (dx * 0.5);
     y = 0.5 + (dy * 0.5);
     pix2wcs (wcs, x, y, cra, cdec);
-    wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,cra,cdec,wcs->epoch);
+    if (wcs->syswcs > 0 && wcs->syswcs != 6 && wcs->syswcs != 10)
+	wcscon (wcs->syswcs,*sysout,wcs->equinox,*eqout,cra,cdec,wcs->epoch);
 
     /* Find maximum half-width in declination */
     *ddec = fabs (dec1 - *cdec);
@@ -417,8 +424,16 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	wcs->cel.ref[0] = wcs->crval[0];
 	wcs->cel.ref[1] = wcs->crval[1];
 	}
-    wcs->cel.flag = 0;
-    wcs->wcsl.flag = 0;
+
+    if (wcs->syswcs > 0 && wcs->syswcs != 6 && wcs->syswcs != 10) {
+	wcs->cel.flag = 0;
+	wcs->wcsl.flag = 0;
+	}
+    else {
+	wcs->lin.flag = LINSET;
+	wcs->wcsl.flag = WCSSET;
+	}
+
     wcs->equinox = *eqout;
     wcs->syswcs = *sysout;
     wcs->sysout = *sysout;
@@ -722,4 +737,6 @@ char *dateobs;
  * Jul 21 2005	Fix bug which caused bad results at RA ~= 0.0
  * Aug 30 2005	Implement multiple WCS's, though not modification thereof, yet
  * Nov  1 2005	Set RADECSYS to ICRS if appropriate
+ *
+ * Oct 30 2006	Do not precess LINEAR or XY coordinates
  */

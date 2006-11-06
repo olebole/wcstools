@@ -1,5 +1,5 @@
 /* File skycoor.c
- * June 21, 2006
+ * September 26, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -265,7 +265,7 @@ char **av;
 			    ra1 - ra, dec1 - dec);
 		    }
 		else
-		    printf ("%.7f degrees\n", r);
+		    printf ("%.7f\n", r);
 		}
 	    else {
 		r = r * 3600.0;
@@ -406,10 +406,18 @@ char **av;
 	    }
 	else if (ac > 0) {
 	    listname = NULL;
-	    strcpy (rastr0, *av);
+	    if (strlen (*av) < 32)
+		strcpy (rastr0, *av);
+	    else
+		strncpy (rastr0, *av, 31);
+	    rastr0[31] = (char) 0;
 	    ac--;
 	    av++;
-	    strcpy (decstr0, *av);
+	    if (strlen (*av) < 32)
+		strcpy (decstr0, *av);
+	    else
+		strncpy (decstr0, *av, 31);
+	    decstr0[31] = (char) 0;
 	    av++;
 
 	/* Set coordinate system from command line */
@@ -647,4 +655,6 @@ char *errstring;
  *
  * Jan  5 2006	Fix bug to use command line equinox for output
  * Jun 21 2006	Clean up code
+ * Aug 25 2006	No longer print " degrees" if output in degrees
+ * Sep 26 2006	Allow coordinates on command line to be any length
  */

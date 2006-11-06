@@ -1,5 +1,5 @@
 /* File gethead.c
- * June 20, 2006
+ * July 13, 2006
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -42,7 +42,6 @@ static int maxnfile = MAXFILES;
 #define FILE_ASCII 3
 
 static void usage();
-static void strclean();
 extern char *GetFITShead();
 static char nextnsp();
 static int PrintValues();
@@ -58,17 +57,18 @@ static int tabout = 0;
 static int tabpad = 0;
 static int logfile = 0;
 static int printhead = 0;
+static int fillblank=0;		/* If 1, replace blanks in strings with _ */
 static int forceascii = 0;
 static int version = 0;		/* If 1, print only program name and version */
 static int printfill=0;		/* If 1, print ___ for unfound keyword values */
 static int printfile=1;		/* If 1, print filename first if >1 files */
-static int fillblank=0;		/* If 1, replace blanks in strings with _ */
 static int keyeqval=0;		/* If 1, print keyword=value */
 static int keyeqvaln=0;		/* If 1, print keyword=value<nl> */
 static char *rootdir=NULL;	/* Root directory for input files */
 static int ncond=0;		/* Number of keyword conditions to check */
 static int condand=1;		/* If 1, AND comparisons, else OR */
 static int toeol = 0;		/* If 1, return values from ASCII file to EOL */
+static int maxml = 600;		/* Maximum length of IRAF multi-line keyword */
 static char **cond;		/* Conditions to check */
 static char **ccond;		/* Condition characters */
 static int nproc = 0;
@@ -139,7 +139,7 @@ char **av;
 		    break;
 	
 		case 'b': /* Replace blanks with underscores */
-		    fillblank++;
+		    fillblank = 1;
 		    break;
 	
 		case 'c': /* Force reading as an ASCII file */
@@ -175,6 +175,13 @@ char **av;
 	
 		case 'l': /* Return values to end of line */
 		    toeol++;
+		    break;
+	
+		case 'm': /* Maximum length of IRAF multi-line keyword */
+		    if (ac < 2)
+			usage();
+		    maxml = (int) (atof (*++av));
+		    ac--;
 		    break;
 	
 		case 'n': /* Number of decimal places in output */
@@ -218,7 +225,8 @@ char **av;
 			extensions = calloc (16, 1);
 			strcpy (extensions, "1-1000");
 			}
-		    listall++;
+		    if (isrange (extensions))
+			listall++;
 		    ac--;
 		    break;
 
@@ -555,12 +563,13 @@ usage ()
     fprintf(stderr,"  -a: List file even if keywords are not found or null\n");
     fprintf(stderr,"  -b: Replace blanks in strings with underscores\n");
     fprintf(stderr,"  -c: Read all files as plain ASCII\n");
-    fprintf(stderr,"  -d: Root directory for input files (default is cwd)\n");
+    fprintf(stderr,"  -d dir: Root directory for input files (default is cwd)\n");
     fprintf(stderr,"  -e: Output keyword=value's on one line per file\n");
     fprintf(stderr,"  -f: Never print filenames (default is print if >1)\n");
     fprintf(stderr,"  -g: Output keyword=value's on one line per keyword\n");
     fprintf(stderr,"  -h: Print column headings\n");
-    fprintf(stderr,"  -n: Number of decimal places in numeric output\n");
+    fprintf(stderr,"  -m num: Change maximum length of IRAF multi-line value\n");
+    fprintf(stderr,"  -n num: Number of decimal places in numeric output\n");
     fprintf(stderr,"  -o: OR conditions instead of ANDing them\n");
     fprintf(stderr,"  -p: Print full pathnames of files\n");
     fprintf(stderr,"  -s: Do not pad tab-separated table with spaces\n");
@@ -585,15 +594,16 @@ char	*kwd[];		/* Names of keywords for which to print values */
     char *cstr, *str;
     int iraffile;
     char fnform[8];
-    char string[80];
+    char string[256];
     char temp[1028];
     char keyword[16];
     char *filename;
     char outline[1000];
     char padline[1000];
-    char mstring[800];
+    char *mstring;
     char ctab = (char) 9;
     char cspace = (char) 32;
+    char *subkwd;
     char pchar;
     char *kw, *kwe, *filepath;
     char *ext, *namext, cext;
@@ -605,6 +615,8 @@ char	*kwd[];		/* Names of keywords for which to print values */
     char cvalue[64], *cval;
     char numstr[32], numstr1[32];
     int pass, iwcs, nwild;
+
+    mstring = (char *) calloc (maxml, 1);
 
     namext = NULL;
     ext = strchr (name, ',');
@@ -704,7 +716,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		num2str (numstr, dnum, 0, 7);
 		cstr = numstr;
 		}
-	    strclean (cstr);
+	    strfix (cstr, fillblank, 1);
 
 	    /* Read comparison value from header */
 	    if (!hgets (header, cond[icond], 64, cvalue))
@@ -715,7 +727,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		num2str (numstr1, dnum, 0, 7);
 		cval = numstr1;
 		}
-	    strclean (cval);
+	    strfix (cval, fillblank, 1);
 
 	    /* Compare floating point numbers */
 	    if (isnum (cstr) == 2 && isnum (cval)) {
@@ -767,6 +779,12 @@ char	*kwd[];		/* Names of keywords for which to print values */
     notfound = 0;
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
 
+	/* Allow for sub-keyword in IRAF multi-line keywords */
+	if ((subkwd = strchr (kwd[ikwd], ':')) != NULL) {
+	    *subkwd = (char) 0;
+	    subkwd++;
+	    }
+
 	/* IF FITS header, look for upper case keywords only */
 	if (filetype != FILE_ASCII) {
 	    lkwd = strlen (kwd[ikwd]);
@@ -780,13 +798,13 @@ char	*kwd[];		/* Names of keywords for which to print values */
 
 	/* Read keyword value from ASCII file */
 	if (toeol)
-	    lstr = -80;
+	    lstr = -256;
 	else
-	    lstr = 80;
+	    lstr = 256;
 	if (filetype == FILE_ASCII &&
 	    agets (header, keyword, lstr, string)) {
 	    str = string;
-	    strclean (str);
+	    strfix (str, fillblank, 0);
 	    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 		num2str (str, atof(str), 0, ndec);
 	    if (keyeqvaln)
@@ -820,7 +838,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 			    string[i] = string[i+1];
 			}
 		    str = string;
-		    strclean (str);
+		    strfix (str, fillblank, 0);
 		    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 			num2str (string, atof(str), 0, ndec);
 		    if (verbose) {
@@ -862,7 +880,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		    string[i] = string[i+1];
 		}
 	    str = string;
-	    strclean (str);
+	    strfix (str, fillblank, 0);
 	    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 		num2str (string, atof(str), 0, ndec);
 	    if (verbose) {
@@ -889,8 +907,36 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	    }
 
 	/* Read IRAF-style multiple-line keyword value */
-	else if (hgetm (header, keyword, 600, mstring)) {
-	    if (verbose) {
+	else if (hgetm (header, keyword, maxml, mstring)) {
+	    if (subkwd != NULL) {
+		if (agets (mstring, subkwd, lstr, string)) {
+		    if (verbose) {
+			if (strchr (string,' '))
+			    printf ("%s.%s = \"%s\"\n", keyword, subkwd, string);
+			else
+			    printf ("%s.%s = %s\n", keyword, subkwd, string);
+			}
+		    else if (keyeqvaln) {
+			if (strchr (mstring,' '))
+			    printf ("%s.%s=\"%s\"\n", keyword, subkwd, string);
+			else
+			    printf ("%s.%s=%s\n", keyword, subkwd, string);
+			}
+		    else if (keyeqval) {
+			sprintf (temp, " %s=%s", keyword, string);
+			strcat (outline, temp);
+			}
+		    else
+			strcat (outline, string);
+		    }
+		else if (keyeqvaln)
+		    printf ("%s not found\n", keyword);
+		else if (printfill)
+		    strcat (outline, "___");
+		else
+		    notfound = 1;
+		}
+	    else if (verbose) {
 		if (strchr (mstring,' '))
 		    printf ("%s = \"%s\"\n", keyword, mstring);
 		else
@@ -906,8 +952,12 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		sprintf (temp, " %s=%s", keyword, mstring);
 		strcat (outline, temp);
 		}
-	    else
-		strcat (outline, mstring);
+	    else {
+		if (strlen (mstring) < 1000)
+		    strcat (outline, mstring);
+		else
+		    strncat (outline, mstring, 999);
+		}
 	    nfound++;
 	    }
 
@@ -973,92 +1023,6 @@ char *string;
     return (*schar);
 }
 
-
-/* Remove exponent, leading #, and/or trailing zeroes, if reasonable */
-static void
-strclean (string)
-
-char *string;
-
-{
-    char *sdot, *s, *strend, *str, ctemp, *slast;
-    int ndek, lstr, i;
-
-    /* If number, ignore leading # and remove trailing non-numeric character */
-    if (string[0] == '#') {
-	strend = string + strlen (string);
-	str = string + 1;
-	strend = str + strlen (str) - 1;
-	ctemp = *strend;
-	if (!isnum (strend))
-	    *strend = (char) 0;
-	if (isnum (str)) {
-	    strend = string + strlen (string);
-	    for (str = string; str < strend; str++)
-		*str = *(str + 1);
-	    }
-	else
-	    *strend = ctemp;
-	}
-
-    /* Remove positive exponent if there are enough digits given */
-    if (strsrch (string, "E+") != NULL) {
-	lstr = strlen (string);
-	ndek = (int) (string[lstr-1] - 48);
-	ndek = ndek + (10 * ((int) (string[lstr-2] - 48)));
-	if (ndek < lstr - 7) {
-	    lstr = lstr - 4;
-	    string[lstr] = (char) 0;
-	    string[lstr+1] = (char) 0;
-	    string[lstr+2] = (char) 0;
-	    string[lstr+3] = (char) 0;
-	    sdot = strchr (string, '.');
-	    if (ndek > 0 && sdot != NULL) {
-		for (i = 1; i <= ndek; i++) {
-		    *sdot = *(sdot+1);
-		    sdot++;
-		    *sdot = '.';
-		    }
-		}
-	    }
-	}
-
-    /* Remove trailing zeroes if they are not significant */
-    if (strchr (string, '.') != NULL &&
-	strsrch (string, "E-") == NULL &&
-	strsrch (string, "E+") == NULL &&
-	strsrch (string, "e-") == NULL &&
-	strsrch (string, "e+") == NULL) {
-	lstr = strlen (string);
-	s = string + lstr - 1;
-	while (*s == '0' && lstr > 1) {
-	    if (*(s - 1) != '.') {
-		*s = (char) 0;
-		lstr --;
-		}
-	    s--;
-	    }
-	}
-
-    /* Remove trailing decimal point */
-    lstr = strlen (string);
-    s = string + lstr - 1;
-    if (*s == '.')
-	*s = (char) 0;
-
-    /* Replace embedded blanks with underscores, if requested to */
-    if (fillblank) {
-	lstr = strlen (string);
-	slast = string + lstr;
-	for (s = string; s < slast; s++) {
-	    if (*s == ' ') *s = '_';
-	    }
-	}
-
-    return;
-
-}
-
 /* Sep  4 1996	New program
  * Oct  8 1996	Add newline after file name in verbose mode
  *
@@ -1122,7 +1086,7 @@ char *string;
  * Mar 25 2003	If null keyword value and padding on, print ___
  * Jul 17 2003	Add root directory argumeht to isfilelist()
  * Oct 29 2003	Allow keyword specification from both list file and command line
- * Nov 18 2003	Fix strclean() to keep all of exponents (found by Anthony Miceli)
+ * Nov 18 2003	Fix strfix() to keep all of exponents (found by Anthony Miceli)
  *
  * Apr 15 2004	Allow e as well as E for exponents
  * Dec 20 2004	If printing filename for tab-separated file, head with PathName
@@ -1134,4 +1098,9 @@ char *string;
  *
  * Jan 17 2006	ALWAYS print line if -a
  * Jun 20 2006	Clean up code
+ * Jun 28 2006	Do not drop trailing zeroes except to compare values
+ * Jun 29 2006	Rename strclean() strfix() and move to hget.c
+ * Jul  5 2006	If only one extension specified by -x, do not listall
+ * Jul 12 2006	Add option using : to read a sub-keyword from IRAF multi-line
+ * Jul 13 2006	Print only first 999 characters of multiline keyword value
  */

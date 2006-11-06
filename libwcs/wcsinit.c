@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** May 19, 2006
+ *** October 30, 2006
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2006
@@ -261,6 +261,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     wcs->cel.flag = 0;
     wcs->lin.flag = 0;
     wcs->wcsl.flag = 0;
+    wcs->wcsl.cubeface = -1;
 
     /* Initialize to no plate fit */
     wcs->ncoeff1 = 0;
@@ -291,6 +292,8 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	wcsfree (wcs);
 	return (NULL);
 	}
+    if (naxes > 2)
+	naxes = 2;
     wcs->naxis = naxes;
     wcs->naxes = naxes;
     wcs->lin.naxis = naxes;
@@ -410,12 +413,16 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 		    wcs->units[0][0] = 0;
 		    }
 		}
+	    if (!strcmp (wcs->units[0], "pixel"))
+		wcs->prjcode = WCS_PIX;
 	    if (twod) {
 		if (!hgetsc (hstring, "CUNIT2", mchar, 16, wcs->units[1])) {
 		    if (!mgetstr (hstring, "WAT2", "units", 16, wcs->units[1])) {
 			wcs->units[1][0] = 0;
 			}
 		    }
+		if (!strcmp (wcs->units[0], "pixel"))
+		    wcs->prjcode = WCS_PIX;
 		}
 	    }
 
@@ -663,9 +670,12 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	    /* Read FITS WCS interim rotation matrix */
 	    if (!mchar && hgetr8 (hstring,"PC001001",&pc[0]) != 0) {
 		k = 0;
-		pc[naxes+1] = wcs->pc[0];
 		for (i = 0; i < naxes; i++) {
 		    for (j = 0; j < naxes; j++) {
+			if (i == j)
+			    pc[k] = 1.0;
+			else
+			    pc[k] = 0.0;
 			sprintf (keyword, "PC00%1d00%1d", i+1, j+1);
 			hgetr8 (hstring, keyword, &pc[k++]);
 			}
@@ -676,9 +686,12 @@ char	mchar;		/* Suffix character for one of multiple WCS */
 	    /* Read FITS WCS standard rotation matrix */
 	    else if (hgetr8c (hstring, "PC1_1", mchar, &pc[0]) != 0) {
 		k = 0;
-		pc[naxes+1] = wcs->pc[0];
 		for (i = 0; i < naxes; i++) {
 		    for (j = 0; j < naxes; j++) {
+			if (i == j)
+			    pc[k] = 1.0;
+			else
+			    pc[k] = 0.0;
 			sprintf (keyword, "PC%1d_%1d", i+1, j+1);
 			hgetr8c (hstring, keyword, mchar, &pc[k++]);
 			}
@@ -1034,6 +1047,8 @@ struct WorldCoor *wcs;
 {
     if (strlen (wcs->radecsys) == 0 || wcs->prjcode == WCS_LIN)
 	strcpy (wcs->radecsys, "LINEAR");
+    if (wcs->prjcode == WCS_PIX)
+	strcpy (wcs->radecsys, "PIXEL");
     wcs->syswcs = wcscsys (wcs->radecsys);
 
     if (wcs->syswcs == WCS_B1950)
@@ -1152,7 +1167,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
     if (ieq == 0) {
 	wcs->equinox = 2000.0;
 	ieq = 2000;
-	if (wcs->c1type[0] == 'R' || wcs->c1type[0] == 'D')
+	if (!strncmp (wcs->c1type, "RA",2) || !strncmp (wcs->c1type,"DEC",3))
 	    strcpy (systring,"FK5");
 	}
 
@@ -1315,4 +1330,7 @@ char	mchar;		/* Suffix character for one of multiple WCS */
  * Apr 24 2006	Initialize rotation matrices
  * Apr 25 2006	Ignore axes with dimension of one
  * May 19 2006	Initialize all of 9x9 PC matrix; read in loops
+ * Aug 21 2006	Limit naxes to 2 everywhere; RA and DEC should always be 1st
+ * Oct  6 2006	If units are pixels, projection type is PIXEL
+ * Oct 30 2006	Initialize cube face to -1, not a cube projection
  */

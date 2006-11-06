@@ -1,8 +1,18 @@
 WCSTools subroutine release history
 
-June 21, 2006 - Release 3.6.5 (Doug Mink, SAO)
+November 2, 2006 - Release 3.6.6 (Doug Mink, SAO)
+fitsfile.c: Use calloc() when reallocating header as it is read
+wcsinit.c: Limit naxes to 2 everywhere; RA and DEC should always be 1st
+wcsinit.c: If either CUNITi is "pixel" set projection to WCS_XY
+wcscon.c: In wcscsys, set system to WCS_XY if PIXEL projection
+wcscon.c: In wcscsys, set system to WCS_LINEAR if LINEAR coordinate system
+dateutil.c, fitshead.h: Add sidereal time to UT and vice versa
+
+June 30, 2006 - Release 3.6.5 (Doug Mink, SAO)
 wcsinit.c: Deal with up to 9x9 PC matrix
+wcs.c:     Limit WCSLIB dimensions to two (this will change in 4.0)
 hput.c:    Fix comment placement and replacement
+hget.c:    Add strfix(), a utility to clean up strings
 
 May 3, 2006 - Release 3.6.4 (Doug Mink, SAO)
 fileutil.c: Add istiff(), isjpeg(), isgif() to check TIFF, JPEG, GIF files
