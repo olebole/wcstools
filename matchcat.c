@@ -1,9 +1,9 @@
 /* File matchcat.c
- * April 9, 2003
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 2006-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -214,4 +214,5 @@ usage ()
     fprintf (stderr,"  -v: Verbose\n");
     exit (1);
 }
-
+/*
+ */

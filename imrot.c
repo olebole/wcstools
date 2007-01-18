@@ -1,5 +1,5 @@
 /* File imrot.c
- * June 22, 2006
+ * January 5, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -471,9 +471,9 @@ char *name;
 	bitpix = 16;
 	hgeti4 (header, "BITPIX", &bitpix0);
 	bs = 1.0;
-	hgeti4 (header, "BSCALE", &bs);
+	hgetr8 (header, "BSCALE", &bs);
 	bz = 0.0;
-	hgeti4 (header, "BZERO", &bz);
+	hgetr8 (header, "BZERO", &bz);
 	nx = 1;
 	hgeti4 (header, "NAXIS1", &nx);
 	ny = 1;
@@ -567,4 +567,6 @@ char *name;
  * Jan 19 2006	Add +i to force inheritance of keywords from primary header
  * Jun 21 2006	Clean up code
  * Jun 22 2006	Check for two-token extension .ms.fit(s)
+ *
+ * Jan  5 2007	Fix BSCALE and BZERO hget calls
  */

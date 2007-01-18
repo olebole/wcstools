@@ -1,7 +1,7 @@
 /*** File libwcs/actread.c
- *** September 26, 2006
+ *** January 10, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
- *** Copyright (C) 1999-2006
+ *** Copyright (C) 1999-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -117,17 +117,12 @@ int	nlog;		/* 1 for diagnostics */
 	verbose = 0;
 
     /* Set path to ACT Catalog */
-    if ((str = getenv("ACT_PATH")) != NULL ) {
+    if ((str = getenv("ACT_PATH")) == NULL )
+	str = actcd;
 
-	/* If pathname is a URL, search and return */
-	if (!strncmp (str, "http:",5)) {
-	    return (webread (str,"act",distsort,cra,cdec,dra,ddec,drad,dradi,
-			     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
-			     gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
-	    }
-	}
-    if (!strncmp (actcd, "http:",5)) {
-	return (webread (actcd,"act",distsort,cra,cdec,dra,ddec,drad,dradi,
+    /* If pathname is a URL, search and return */
+    if (!strncmp (str, "http:",5)) {
+	return (webread (str,"act",distsort,cra,cdec,dra,ddec,drad,dradi,
 			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	}
@@ -449,16 +444,12 @@ int	nlog;		/* 1 for diagnostics */
     char *str;
 
     /* Set path to ACT Catalog */
-    if ((str = getenv("ACT_PATH")) != NULL ) {
+    if ((str = getenv("ACT_PATH")) == NULL )
+	str = actcd;
 
-	/* If pathname is a URL, search and return */
-	if (!strncmp (str, "http:",5)) {
-	    return (webrnum (str,"act",nstars, sysout,eqout,epout,
-			     gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
-	    }
-	}
-    if (!strncmp (actcd, "http:",5)) {
-	return (webrnum (actcd,"act",nstars, sysout,eqout,epout,
+    /* If pathname is a URL, search and return */
+    if (!strncmp (str, "http:",5)) {
+	return (webrnum (str,"act",nstars, sysout,eqout,epout, 1,
 			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	}
 
@@ -575,6 +566,7 @@ int	nlog;		/* 1 for diagnostics */
     int pass;
     int magsort;
     int rnum, ireg;
+    int ix, iy;
     int jstar, iw;
     int nrmax,nstar, ntot;
     int istar, istar1, istar2;
@@ -725,14 +717,27 @@ int	nlog;		/* 1 for diagnostics */
 			    flux = magscale * exp (logt * (-mag / 2.5));
 			else
 			    flux = 1.0;
-			addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+			ix = (int) (xpix + 0.5);
+			iy = (int) (ypix + 0.5);
+			addpix1 (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
 			nstar++;
 			jstar++;
 			}
-
-		    if (nlog == 1)
-			fprintf (stderr,"ACTBIN: %11.6f: %9.5f %9.5f %5.2f %5.2f\n",
-				 num,ra,dec,magb,mag);
+		    else {
+			ix = 0;
+			iy = 0;
+			}
+		    if (nlog == 1) {
+			fprintf (stderr,"TABBIN: %11.6f: %9.5f %9.5f %s",
+				 num,ra,dec,cstr);
+			if (magscale > 0.0)
+			    fprintf (stderr, " %5.2f", mag);
+			if (!offscl)
+			    flux = getpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy);
+			else
+			    flux = 0.0;
+			fprintf (stderr," (%d,%d): %f\n", ix, iy, flux);
+			}
 
 		    /* End of accepted star processing */
 		    }
@@ -1187,4 +1192,8 @@ char	*filename;	/* Name of file for which to find size */
  *
  * Jun 20 2006	Initialize uninitialized variables
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
+ * Nov 16 2006	Fix binning
+ *
+ * Jan 10 2007	Add match=1 argument to webrnum()
+ * Jan 10 2007	Rewrite web access in actread() and actrnum() to reduce code
  */

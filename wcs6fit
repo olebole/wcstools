@@ -1,0 +1,329 @@
+#! /bin/ksh
+
+#*************************************************************************
+#
+# Script to fit WCS onto digitized Harvard plates
+#
+# written by Michael Shaw and Douglas Mink
+#
+# Input in a plate number on the command line--in full six digit notation
+# Runs a four step process to match best-fit WCS coordinates
+# 1) small number of stars in bin by 16
+# 2) many stars in bin by 16
+# 3) small number of stars in bin by 1
+# 4) many stars in bin by 1
+# 
+# After the first step, a check is performed, and if the fit is sufficiently bad, all 4 rotations are tried
+# The most number of stars fit is used to decide which rotation is correct
+#
+# Script DOES NOT YET break properly in cases of double exposure or tolerance issues
+#*************************************************************************
+
+
+# parameters that can change output
+#
+# Max number of stars from the sky2000 (rough) and Tycho 2 (precise) used for matching
+sky2k16=100
+sky2k1=150
+ty216=5000
+ty21=5000
+# offset tolerance--how far away we can be (in the bin by 16 and bin by 1)
+tol16sky2k=10
+tol16ty2=8
+tol1sky2k=15
+tol1ty2=12
+
+# Plate Scale -- empirically measured
+platescale=16.40
+
+# set path = ($path /home/mink/bin) # load appropriate WCS commands into path
+
+cd $1
+
+# store errors in a logfile
+
+logfile=/ice2/mshaw/work/logfile
+
+echo "" >> $logfile
+echo Starting $1 at `date` >> $logfile
+
+# create a semi-secure location for a tempfile
+
+tempfile=/tmp/tempfile.$$
+
+# In case of a duplicate picture (ie: an _0x) in the plate name, grab just the number for the catalog lookup
+
+catalog=`echo $1 | awk -F_ '{print $1}'`
+
+# Now, load the catalog RA and DEC of the plates (yeah, inefficient ...)
+
+RA=`scat -c /home/mink/Catalogs/mcj.cat $catalog | awk ' { print $2} '`
+DEC=`scat -c /home/mink/Catalogs/mcj.cat $catalog | awk ' { print $3} '`
+
+# Use SExtractor (through imsex) to find the brightest points in the image
+# here, we use the binned by 16 image -- we'll use bin by 1 later
+
+imsex -n 5000 wp_mc${1}_16.fit
+
+# Try a ROUGH fit for a smallish number of stars from the sky2k catalog
+# Start with brightest stars
+
+imwsky2k -eq it -vw -h $sky2k16 -j $RA $DEC -n 8 -p $platescale -t $tol16sky2k -d wp_mc${1}_16.sex wp_mc${1}_16.fit | awk '{if($2 == "nmatch=") print $3
+    if($7 == "sep=") print $8} ' > $tempfile
+
+# Grab nmatch and sep from the tempfile
+# Use these values to determine if orientation is correct
+
+nmatch=`(cat $tempfile | tail -1)`
+sep=`(cat $tempfile | tail -2 | head -1 | awk -F/ '{print $1}')`
+
+echo nmatch = $nmatch >> $logfile
+echo sep = $sep >> $logfile
+
+if (( (nmatch < 75) || (sep > 15) ))
+    then
+    imrot -r 90 wp_mc${1}_16.fit
+    imsex -n 5000 wp_mc${1}_16r90.fit
+    
+    imrot -r 180 wp_mc${1}_16.fit
+    imsex -n 5000 wp_mc${1}_16r180.fit
+    
+    imrot -r 270 wp_mc${1}_16.fit
+    imsex -n 5000 wp_mc${1}_16r270.fit
+
+    rot=-1
+    while (( rot == -1 ))
+      do
+      imwsky2k -eq it -vw -h $sky2k16 -j $RA $DEC -n 8 -p -16.40 -t $tol16sky2k -d wp_mc${1}_16.sex wp_mc${1}_16.fit | awk '{if($2 == "nmatch=") print $3
+        if($7 == "sep=") print $8} ' >> $tempfile
+      nmatch=`(cat $tempfile | tail -1)`
+      sep=`(cat $tempfile | tail -2 | head -1 | awk -F/ '{print $1}')`
+
+      imwsky2k -eq it -vw -h $sky2k16 -j $RA $DEC -n 8 -p -16.40 -t $tol16sky2k -d wp_mc${1}_16r90.sex wp_mc${1}_16r90.fit | awk '{if($2 == "nmatch=") print $3
+        if($7 == "sep=") print $8} ' >> $tempfile
+      nmatch90=`(cat $tempfile | tail -1)`
+      sep90=`(cat $tempfile | tail -2 | head -1 | awk -F/ '{print $1}')`
+      
+      imwsky2k -eq it -vw -h $sky2k16 -j $RA $DEC -n 8 -p -16.40 -t $tol16sky2k -d wp_mc${1}_16r180.sex wp_mc${1}_16r180.fit | awk '{if($2 == "nmatch=") print $3
+        if($7 == "sep=") print $8} ' >> $tempfile
+      nmatch180=`(cat $tempfile | tail -1)`
+      sep180=`(cat $tempfile | tail -2 | head -1 | awk -F/ '{print $1}')`
+      
+      imwsky2k -eq it -vw -h $sky2k16 -j $RA $DEC -n 8 -p -16.40 -t $tol16sky2k -d wp_mc${1}_16r270.sex wp_mc${1}_16r270.fit | awk '{if($2 == "nmatch=") print $3
+        if($7 == "sep=") print $8} ' >> $tempfile
+      nmatch270=`(cat $tempfile | tail -1)`
+      sep270=`(cat $tempfile | tail -2 | head -1 | awk -F/ '{print $1}')`
+      
+      if (( (nmatch <= (20 + sky2k16 / 3) ) && (nmatch90 <= (20 + sky2k16 / 3) ) && (nmatch180 <= (20 + sky2k16 / 3) ) && (nmatch270 <= (20+ sky2k16 / 3) ) ))
+	  then
+	  echo ""
+	  echo "No rotation works! Out of 100 possible stars, none match more than 20 + x/2. Try something else."
+	  echo nmatch = $nmatch
+	  echo nmatch90 = $nmatch90
+	  echo nmatch180 = $nmatch180
+	  echo nmatch270 = $nmatch270
+	  echo sep = $sep
+	  echo sep90 = $sep90
+	  echo sep180 = $sep180
+	  echo sep270 = $sep270
+	  if ((tol16sky2k <= 16)) 
+	      then
+	      $((tol16sky2k+=2))
+	  elif ((sky2k16 < 250)) 
+	      then
+	      $((sky2k16+=50))
+	      $((tol16sky2k-=2))
+      	  elif ((platescale == 16.40))
+	      then
+	      $((platescale=16.30))
+	  elif ((platescale == 16.30))
+	      then
+	      $((platescale=16.50))	      
+	  else
+	      $((rot=-2))
+	  fi
+      elif (( (sep > 60) && (sep90 > 60) && (sep180 > 60) && (sep270 > 60) ))
+	  then
+	  echo ""
+	  echo "No rotation works! Sep is huge in every direction. Try something else."
+	  echo nmatch = $nmatch
+	  echo nmatch90 = $nmatch90
+	  echo nmatch180 = $nmatch180
+	  echo nmatch270 = $nmatch270
+	  echo sep = $sep
+	  echo sep90 = $sep90
+	  echo sep180 = $sep180
+	  echo sep270 = $sep270
+	  if ((sky2k16 < 250)) 
+	      then
+	      $((sky2k16+=50))
+#	      $((tol16sky2k-=2))
+	  elif ((tol16sky2k <= 16)) 
+	      then
+	      $((tol16sky2k+=2))
+      	  elif ((platescale == 16.40))
+	      then
+	      $((platescale=16.30))
+	  elif ((platescale == 16.30))
+	      then
+	      $((platescale=16.50))	      
+	  else
+	      $((rot=-2))
+ 	  fi
+      elif (( (nmatch >= nmatch90) && (nmatch >= nmatch180) && (nmatch >= nmatch270) ))
+	  then
+	  rot=0
+      elif (( (nmatch90 >= nmatch) && (nmatch90 >= nmatch180) && (nmatch90 >= nmatch270) ))
+	  then
+	  rot=90
+      elif (( (nmatch180 >= nmatch) && (nmatch180 >= nmatch90) && (nmatch180 >= nmatch270) ))
+	  then
+	  rot=180
+      else
+	  rot=270
+      fi
+    done
+    
+else
+    rot=0
+fi
+
+if ((rot == -2))
+    then
+    echo Ending $1 at `date` >> $logfile
+    echo "Nothing seems to work. Going to tycho2 ??? (not implemented yet)" >> $logfile
+    echo nmatch = $nmatch >> $logfile
+    echo nmatch90 = $nmatch90 >> $logfile
+    echo nmatch180 = $nmatch180 >> $logfile
+    echo nmatch270 = $nmatch270 >> $logfile
+    echo sep = $sep >> $logfile
+    echo sep90 = $sep90 >> $logfile
+    echo sep180 = $sep180 >> $logfile
+    echo sep270 = $sep270 >> $logfile
+
+    job=`ps -a | grep killfit | awk '{print $1}'`
+    kill -9 $job
+    exit 1
+fi
+
+if ((rot == 0))
+    then
+    mv wp_mc${1}_16w.fits wp_mc${1}_16w.fit # keep all files as .fit
+else
+    mv wp_mc${1}_16r${rot}w.fits wp_mc${1}_16r${rot}w.fit # keep all files as .fit
+fi
+
+
+# Move to a more precise fit with the Tycho 2 catalog
+
+if ((rot == 0))
+    then
+    imwty2 -q it -vw -h $ty216 -n 8 -t $tol16ty2 -d wp_mc${1}_16.sex wp_mc${1}_16w.fit
+else
+    imwty2 -q it -vw -h $ty216 -n 8 -t $tol16ty2 -d wp_mc${1}_16r${rot}.sex wp_mc${1}_16r${rot}w.fit
+fi
+
+if ((rot == 0))
+    then
+    mv wp_mc${1}_16ww.fits wp_mc${1}_16ww.fit # keep all files as .fit
+else
+    mv wp_mc${1}_16r${rot}ww.fits wp_mc${1}_16r${rot}ww.fit # keep all files as .fit
+fi
+
+# Now, go to the bin by 1 image. Rotate if necessary and pull out the 5000 brightest images with sextractor
+
+if ((rot == 0))
+    then
+    imsex -n 5000 wp_mc${1}_01.fit
+else
+    imrot -r $rot wp_mc${1}_01.fit
+    imsex -n 5000 wp_mc${1}_01r${rot}.fit
+fi
+
+# grab the center RA and DEC from the best bin by 16 images to use in the bin by 1
+# also grab the scale size, but divide this by 16 for best use
+
+if ((rot == 0))
+    then
+    RA=`imsize wp_mc${1}_16ww.fit | awk ' { print $2} '`
+    DEC=`imsize wp_mc${1}_16ww.fit | awk ' { print $3} '`
+    scale=`imsize wp_mc${1}_16ww.fit | awk ' { print $6} '`
+else
+    RA=`imsize wp_mc${1}_16r${rot}ww.fit | awk ' { print $2} '`
+    DEC=`imsize wp_mc${1}_16r${rot}ww.fit | awk ' { print $3} '`
+    scale=`imsize wp_mc${1}_16r${rot}ww.fit | awk ' { print $6} '`
+fi  
+
+# Extract x and y scales, and divide by 16 to make appropriate for bin by 1
+
+scalex=`echo $scale | awk -F/ '{print $1}'`
+scaley=`echo $scale | awk -F/ '{print $2}' | awk -F'"' '{print $1}'`
+
+$((scalex /= 16))
+$((scaley /= 16))
+
+echo $scalex $scaley
+
+scale=${scalex}/${scaley}
+
+# Run a first run on the bin by 1 with a few stars from the sky2000 catalog
+
+if ((rot == 0))
+    then
+    imwsky2k -t ${tol1sky2k} -eq it -vw -h ${sky2k1} -j $RA $DEC -n 8 -p $scale -d wp_mc${1}_01.sex wp_mc${1}_01.fit
+else
+    imwsky2k -t ${tol1sky2k} -eq it -vw -h ${sky2k1} -j $RA $DEC -n 8 -p $scale -d wp_mc${1}_01r${rot}.sex wp_mc${1}_01r${rot}.fit
+fi
+
+if ((rot == 0))
+    then
+    mv wp_mc${1}_01w.fits wp_mc${1}_01w.fit # keep all files as .fit
+else
+    mv wp_mc${1}_01r${rot}w.fits wp_mc${1}_01r${rot}w.fit # keep all files as .fit
+fi
+
+if ((rot == 0))
+    then
+    imwty2 -t ${tol1ty2} -q it2 -vw -h ${ty21} -n 8 -d wp_mc${1}_01.sex wp_mc${1}_01w.fit
+else
+    imwty2 -t ${tol1ty2} -q it2 -vw -h ${ty21} -n 8 -d wp_mc${1}_01r${rot}.sex wp_mc${1}_01r${rot}w.fit
+fi
+
+if ((rot == 0))
+    then
+    mv wp_mc${1}_01ww.fits wp_mc${1}_01ww.fit # keep all files as .fit
+else
+    mv wp_mc${1}_01r${rot}ww.fits wp_mc${1}_01r${rot}ww.fit # keep all files as .fit
+fi
+
+if ((rot == 0))
+    then
+    imhead wp_mc${1}_01w.fit > wp_mc${1}_01w.head.fit
+    rm wp_mc${1}_01w.fit
+else
+    imhead wp_mc${1}_01r${rot}w.fit > wp_mc${1}_01r${rot}w.head.fit
+    rm wp_mc${1}_01r${rot}w.fit
+    imhead wp_mc${1}_01r${rot}.fit > wp_mc${1}_01r${rot}.head.fit
+    rm wp_mc${1}_01r${rot}.fit
+fi
+
+# Debugging commands
+
+echo Ending $1 at `date` >> $logfile
+echo nmatch = $nmatch >> $logfile
+echo nmatch90 = $nmatch90 >> $logfile
+echo nmatch180 = $nmatch180 >> $logfile
+echo nmatch270 = $nmatch270 >> $logfile
+echo sep = $sep >> $logfile
+echo sep90 = $sep90 >> $logfile
+echo sep180 = $sep180 >> $logfile
+echo sep270 = $sep270 >> $logfile
+echo rot = $rot >> $logfile
+echo scale = $scale >> $logfile
+echo pid = $$ >> $logfile
+
+cd ..
+
+job=`ps -a | grep killfit | awk '{print $1}'`
+kill -9 $job
+exit

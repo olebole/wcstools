@@ -1,9 +1,9 @@
 /* File setpix.c
- * November 17, 2004
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1996-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -168,7 +168,7 @@ char **av;
 
 	else if (str[0] == '-') {
 	    char c;
-	    while (c = *++str) {
+	    while ((c = *++str)) {
 		switch (c) {
 		    case 'a':	/* Add constant to image section */
 			op = PIX_ADD;

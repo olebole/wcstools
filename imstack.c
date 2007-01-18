@@ -1,9 +1,9 @@
 /* File imstack.c
- * June 21, 2006
+ * January 5, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1997-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -393,7 +393,7 @@ char	*filename;	/* FITS or IRAF file filename */
 		    hplace = ksearch (header, "NAXIS1");
 		if (hplace) {
 		    hplace = hplace + 80;
-		    hadd (hplace, "EXTNAME", extname);
+		    hadd (hplace, "EXTNAME");
 		    hputs (header, "EXTNAME", extname);
 		    }
 		else
@@ -504,4 +504,6 @@ char	*filename;	/* FITS or IRAF file filename */
  *
  * Jan  5 2006	Print CR or LF after stacking only in verbose mode
  * Jun 21 2006	Clean up code
+ *
+ * Jan  5 2007	Drop extra argument in call to hadd()
  */

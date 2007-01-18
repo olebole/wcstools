@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.c
- *** October 30, 2006
+ *** January 9, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2006
+ *** Copyright (C) 1994-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -76,6 +76,7 @@
  * Subroutine:	getwcscom (i)  Return specified WCS command 
  * Subroutine:	wcsfree (wcs)  Free storage used by WCS structure
  * Subroutine:	freewcscom (wcs)  Free storage used by WCS commands 
+ * Subroutine:  cpwcs (&header, cwcs)
  */
 
 #include <string.h>		/* strstr, NULL */
@@ -639,7 +640,6 @@ wcseqset (wcs, equinox)
 struct WorldCoor *wcs;		/* World coordinate system data structure */
 double equinox;			/* Desired equinox as fractional year */
 {
-    extern void fk425e(), fk524e();
 
     if (nowcs (wcs))
 	return;
@@ -703,7 +703,6 @@ wcscdset (wcs, cd)
 struct WorldCoor *wcs;	/* World coordinate system structure */
 double *cd;			/* CD matrix, ignored if NULL */
 {
-    extern int matinv();
     double tcd;
 
     if (cd == NULL)
@@ -749,7 +748,6 @@ double cdelt1;		/* degrees/pixel in first axis (or both axes) */
 double cdelt2;		/* degrees/pixel in second axis if nonzero */
 double crota;		/* Rotation counterclockwise in degrees */
 {
-    extern int matinv();
     double *pci;
     double crot, srot;
     int i, j, naxes;
@@ -889,7 +887,6 @@ double cdelt1;		/* degrees/pixel in first axis (or both axes) */
 double cdelt2;		/* degrees/pixel in second axis if nonzero */
 double *pc;		/* Rotation matrix, ignored if NULL */
 {
-    extern int matinv();
     double *pci, *pc0i;
     int i, j, naxes;
 
@@ -2061,11 +2058,6 @@ double	*xpos,*ypos;	/* RA and Dec in degrees (returned) */
     double	xpi, ypi, xp, yp;
     double	eqin, eqout;
     int wcspos();
-    extern int dsspos();
-    extern int platepos();
-    extern int worldpos();
-    extern int tnxpos();
-    extern void wcscon();
 
     if (nowcs (wcs))
 	return;
@@ -2184,11 +2176,6 @@ int	*offscl;	/* 0 if within bounds, else off scale */
     double eqin, eqout;
     int sysin;
     int wcspix();
-    extern int dsspix();
-    extern int platepix();
-    extern int worldpix();
-    extern int tnxpix();
-    extern void wcscon();
 
     if (nowcs (wcs))
 	return;
@@ -2535,6 +2522,165 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
     return;
 }
 
+int
+cpwcs (header, cwcs)
+
+char **header;	/* Pointer to start of FITS header */
+char *cwcs;	/* Keyword suffix character for output WCS */
+{
+    double tnum;
+    int dkwd[100];
+    int i, maxnkwd, ikwd, nleft, lbuff, lhead, nkwd, nbytes;
+    int nkwdw;
+    char **kwd;
+    char *newhead, *oldhead;
+    char kwdc[16], keyword[16];
+    char tstr[80];
+
+    /* Allocate array of keywords to be transferred */
+    maxnkwd = 100;
+    kwd = (char **)calloc (maxnkwd, sizeof(char *));
+    for (ikwd = 0; ikwd < maxnkwd; ikwd++)
+	kwd[ikwd] = (char *) calloc (16, 1);
+
+    /* Make list of all possible keywords to be transferred */
+    nkwd = 0;
+    strcpy (kwd[++nkwd], "EPOCH");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "EQUINOX");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "RADECSYS");
+    dkwd[nkwd] = 0;
+    strcpy (kwd[++nkwd], "CTYPE1");
+    dkwd[nkwd] = 0;
+    strcpy (kwd[++nkwd], "CTYPE2");
+    dkwd[nkwd] = 0;
+    strcpy (kwd[++nkwd], "CRVAL1");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "CRVAL2");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "CDELT1");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "CDELT2");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "CRPIX1");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "CRPIX2");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "CROTA1");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "CROTA2");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "CD1_1");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "CD1_2");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "CD2_1");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "CD2_2");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "PC1_1");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "PC1_2");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "PC2_1");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "PC2_2");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "PC001001");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "PC001002");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "PC002001");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "PC002002");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "LATPOLE");
+    dkwd[nkwd] = 1;
+    strcpy (kwd[++nkwd], "LONPOLE");
+    dkwd[nkwd] = 1;
+    for (i = 1; i < 13; i++) {
+	sprintf (keyword,"CO1_%d", i);
+	strcpy (kwd[++nkwd], keyword);
+	dkwd[nkwd] = 1;
+	}
+    for (i = 1; i < 13; i++) {
+	sprintf (keyword,"CO2_%d", i);
+	strcpy (kwd[++nkwd], keyword);
+	dkwd[nkwd] = 1;
+	}
+    for (i = 0; i < 10; i++) {
+	sprintf (keyword,"PROJP%d", i);
+	strcpy (kwd[++nkwd], keyword);
+	dkwd[nkwd] = 1;
+	}
+    for (i = 0; i < 10; i++) {
+	sprintf (keyword,"PV1_%d", i);
+	strcpy (kwd[++nkwd], keyword);
+	dkwd[nkwd] = 1;
+	}
+    for (i = 0; i < 10; i++) {
+	sprintf (keyword,"PV2_%d", i);
+	strcpy (kwd[++nkwd], keyword);
+	dkwd[nkwd] = 1;
+	}
+
+    /* Allocate new header buffer if needed */
+    lhead = (ksearch (*header, "END") - *header)  + 80;
+    lbuff = gethlength (*header);
+    nleft = (lbuff - lhead) / 80;
+    if (nleft < nkwd) {
+	nbytes = lhead + (nkwd * 80) + 400;
+	newhead = (char *) calloc (1, nbytes);
+	strncpy (newhead, *header, lhead);
+	oldhead = *header;
+	header = &newhead;
+	free (oldhead);
+	}
+    
+    /* Copy keywords to new WCS ID in header */
+    nkwdw = 0;
+    for (i = 0; i < nkwd; i++) {
+	if (dkwd[i]) {
+	    if (hgetr8 (*header, kwd[i], &tnum)) {
+		nkwdw++;
+		if (!strncmp (kwd[i], "PC0", 3)) {
+		    if (!strcmp (kwd[i], "PC001001"))
+			strcpy (kwdc, "PC1_1");
+		    else if (!strcmp (kwd[i], "PC001002"))
+			strcpy (kwdc, "PC1_2");
+		    else if (!strcmp (kwd[i], "PC002001"))
+			strcpy (kwdc, "PC2_1");
+		    else
+			strcpy (kwdc, "PC2_2");
+		    }
+		else
+		    strcpy (kwdc, kwd[i]);
+		strncat (kwdc, cwcs, 1);
+		(void)hputr8 (*header, kwdc, tnum);
+		}
+	    }
+	else {
+	    if (hgets (*header, kwd[i], 80, tstr)) {
+		nkwdw++;
+		if (!strncmp (kwd[i], "RADECSYS", 8))
+		    strcpy (kwdc, "RADECSY");
+		else
+		    strcpy (kwdc, kwd[i]);
+		strncat (kwdc, cwcs, 1);
+		hputs (*header, kwdc, tstr);
+		}
+	    }
+	}
+    
+    /* Free keyword list array */
+    for (ikwd = 0; ikwd < maxnkwd; ikwd++)
+	free (kwd[ikwd]);
+    free (kwd);
+    kwd = NULL;
+    return (nkwdw);
+}
+
 
 /* Oct 28 1994	new program
  * Dec 21 1994	Implement CD rotation matrix
@@ -2772,4 +2918,11 @@ struct WorldCoor *wcs;  /* WCS parameter structure */
  * Jun 30 2006	Set only 2-dimensional PC matrix; that is all lin* can deal with
  * Oct 30 2006	In pix2wcs(), do not limit x to between 0 and 360 if XY or LINEAR
  * Oct 30 2006	In wcsc2pix(), do not precess LINEAR or XY coordinates
+ * Dec 21 2006	Add cpwcs() to copy WCS keywords to new suffix
+ *
+ * Jan  4 2007	Fix pointer to header in cpwcs()
+ * Jan  5 2007	Drop declarations of wcscon(); it is in wcs.h
+ * Jan  9 2006	Drop declarations of fk425e() and fk524e(); moved to wcs.h
+ * Jan  9 2006	Drop *pix() and *pos() external declarations; moved to wcs.h
+ * Jan  9 2006	Drop matinv() external declaration; it is already in wcslib.h
  */

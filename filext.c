@@ -1,9 +1,9 @@
 /* File filext.c
- * April 29, 2002
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 2002-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -28,8 +28,6 @@
 #include <fcntl.h>
 
 static int verbose = 0;         /* verbose/debugging flag */
-static int replace = 0;         /* character replacement flag */
-static char c1, c2;
 static void usage();
 
 int
@@ -40,12 +38,11 @@ char **av;
     char *fn;
     char *str;
     char *ext, *ext2;
-    int i, lroot;
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
         char c;
-        while (c = *++str)
+        while ((c = *++str))
         switch (c) {
 
         case 'v':       /* more verbosity */
@@ -97,4 +94,6 @@ usage ()
     exit (1);
 }
 /* Apr 29 2002	New program
+ *
+ * Jan 10 2007	Drop unused variables
  */

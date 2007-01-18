@@ -1,10 +1,10 @@
 /* File immatch.c
- * September 26, 2006
+ * January 10, 2007
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1997-2007 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -64,8 +64,8 @@ extern void setsys();
 extern void setminb();
 extern void setmaxcat();
 extern void setstarsig();
-extern void setclass();
-extern void setplate();
+extern void setgsclass();
+extern void setuplate();
 extern void setimcat();
 extern void setbmin();
 extern void setfrac();
@@ -97,7 +97,6 @@ char **av;
     FILE *flist;
     char **fn;
     char *listfile = NULL;
-    char cs;
     double x, y;
     int imag;
     int ifile, nfile;
@@ -200,7 +199,7 @@ char **av;
 		case 'g':	/* Guide Star object class */
 		    if (ac < 2)
 			PrintUsage (str);
-		    setclass ((int) atof (*++av));
+		    setgsclass ((int) atof (*++av));
 		    ac--;
 		    break;
 
@@ -323,7 +322,7 @@ char **av;
 		case 'u':	/* UJ Catalog plate number */
 		    if (ac < 2)
 			PrintUsage (str);
-		    setplate ((int) atof (*++av));
+		    setuplate ((int) atof (*++av));
 		    ac--;
 		    break;
 
@@ -656,4 +655,8 @@ char	*name;			/* Name of FITS or IRAF image file */
  * May 30 2006	Use -mx to specify magnitude instead of -k
  * Jun 21 2006	Clean up code
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
+ *
+ * Jan 10 2007	Call setgsclass() instead of setclass()
+ * Jan 10 2007	Call setuplate() instead of setplate()
+ * Jan 10 2007	Drop unused variable cs
  */

@@ -1,9 +1,9 @@
 /* File delhead.c
- * June 20, 2006
+ * January 10, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1998-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -42,11 +42,12 @@ extern char *fitserrmsg;
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int newimage = 0;
-static readimage = 0;		/* Read and write image as well as header */
+static int readimage = 0;	/* Read and write image as well as header */
 static int version = 0;		/* If 1, print only program name and version */
 static int logfile = 0;
 static int nproc = 0;
 static int first_file = 1;
+
 
 int
 main (ac, av)
@@ -88,7 +89,7 @@ char **av;
     for (av++; --ac > 0; av++) {
 	if ((*(str = *av)) == '-') {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 	
 		case 'b': /* Leave blank lines at end after removing keywords */
@@ -518,4 +519,6 @@ char	*kwd[];		/* Names of those keywords */
  * Apr 26 2006	Avoid freeing alread-freed image buffers
  * May 23 2006	Add -b option to leave blank lines in header
  * Jun 20 2006	Clean up code
+ *
+ * Jan 10 2007	Add int to readimage declaration
  */

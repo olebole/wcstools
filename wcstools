@@ -1,8 +1,9 @@
 #!/bin/sh
-echo "WCSTools 3.6.4 Programs
+echo "WCSTools 3.6.7 Programs
 http://tdc-www.harvard.edu/software/wcstools/
 
 addpix:    Add a constant value(s) to specified pixel(s)
+bincat:    Bin a catalog into a FITS image in flux or number
 char2sp:   Replace this character with spaces in output (default=_)
 conpix:    Operate on all of the pixels of an image
 cphead:    Copy keyword values between FITS or IRAF images

@@ -1,0 +1,33 @@
+(477) warning: constant in conditional context
+(3428) error: syntax error before or at: if
+(3428) warning: old-style declaration or incorrect type for: wfile
+(3428) warning: identifier redeclared; ANSI C requires "static": wfile
+(3429) error: syntax error before or at: fclose
+(3429) warning: old-style declaration or incorrect type for: fclose
+(3429) warning: function prototype parameters must have types
+(3431) error: syntax error before or at: return
+(3431) warning: old-style declaration or incorrect type for: ns
+(3432) error: syntax error before or at: }
+(3753) warning: argument does not match remembered type: arg #1
+(3958) warning: constant in conditional context
+
+static unused
+    (50) cra1           (51) cdec1      
+
+argument unused in function
+    (3441) eqout in GetArea
+
+variable unused in function
+    (3459) cra1 in GetArea
+    (3459) cdec1 in GetArea
+    (3595) ra in SearchHead
+    (3595) dec in SearchHead
+    (3601) title in SearchHead
+
+set but not used in function
+    (1053) lrv in ListCat
+
+function falls off bottom without returning value
+    (3425) ListCat  
+lint: errors in scat.c; no output created
+lint: pass2 not run - errors in scat.c

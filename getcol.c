@@ -1,9 +1,9 @@
 /* File getcol.c
- * June 29, 2006
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1999-2007 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
+#include "libwcs/wcs.h"
 #include "libwcs/wcscat.h"
 #include "libwcs/fitsfile.h"
 
@@ -1721,4 +1722,7 @@ void *pd1, *pd2;
  * Jun 21 2006	Increase maximum line length from 1024 to 4096
  * Jun 21 2006	Clean up code
  * Jun 29 2006	Rename strclean() strfix() and move to hget.c
+ *
+ * Jan 10 2007	Declare revmsg static, not const
+ * Jan 10 2007	Include wcs.h
  */

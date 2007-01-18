@@ -1,10 +1,10 @@
 /* File imwcs.c
- * October 12, 2006
+ * January 10, 2007
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1996-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -74,8 +74,7 @@ extern void setsys();
 extern void setminb();
 extern void setmaxcat();
 extern void setstarsig();
-extern void setclass();
-extern void setplate();
+extern void setgsclass();
 extern void setimcat();
 extern void setbmin();
 extern void setfrac();
@@ -211,7 +210,7 @@ char **av;
 		case 'g':	/* Guide Star object class */
     		    if (ac < 2)
     			PrintUsage (str);
-    		    setclass ((int) atof (*++av));
+    		    setgsclass ((int) atof (*++av));
     		    ac--;
     		    break;
 
@@ -393,21 +392,21 @@ char **av;
     		    ac--;
     		    break;
 
-		case 's':   /* fraction image stars over reference stars */
+		case 's':   /* Fraction image stars over reference stars */
 	    	    if (ac < 2)
     			PrintUsage (str);
     		    setfrac (atof (*++av));
     		    ac--;
     		    break;
 
-    		case 't':	/* tolerance in pixels for star match */
+    		case 't':	/* Tolerance in pixels for star match */
     		    if (ac < 2)
     			PrintUsage (str);
     		    settolerance (atof (*++av));
     		    ac--;
     		    break;
 
-		case 'u':	/* UJ Catalog plate number */
+		case 'u':	/* File of prematched (x,y)/(ra,dec) */
     		    if (ac < 2)
     			PrintUsage (str);
 		    matchfile = *++av;
@@ -415,11 +414,11 @@ char **av;
     		    ac--;
     		    break;
 
-		case 'v':	/* more verbosity */
+		case 'v':	/* More verbosity */
     		    verbose++;
     		    break;
 
-    		case 'w':	/* update the fields */
+    		case 'w':	/* Update the fields in a new FITS file */
     		    writeheader++;
     		    break;
 
@@ -970,4 +969,6 @@ char	*name;		/* FITS or IRAF image filename */
  * Jun 21 2006	Clean up code
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  * Oct 12 2006	Add b option to q command to bin star matches for speed
+ *
+ * Jan 10 2007	Call setgsclass() instead of setclass()
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/ucacread.c
- *** September 26, 2006
+ *** January 10, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2006
+ *** Copyright (C) 2003-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -549,7 +549,7 @@ int	nlog;		/* 1 for diagnostics */
 
     /* If pathname is a URL, search and return */
     if (!strncmp (ucacpath, "http:",5))
-	return (webrnum (ucacpath,refcatname,nstars,sysout,eqout,epout,
+	return (webrnum (ucacpath,refcatname,nstars,sysout,eqout,epout,1,
 			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 
     /* Allocate catalog entry buffer */
@@ -675,9 +675,9 @@ int	nlog;		/* 1 for diagnostics */
     struct Star *star;		/* Single star cata structure */
     int verbose;
     int wrap;
-    int iz;
+    int ix, iy, iz;
     int magsort;
-    int jstar, iw;
+    int jstar;
     int nrmax = MAXZONE;
     int nstar, ntot;
     int istar, istar1, istar2;
@@ -848,12 +848,27 @@ int	nlog;		/* 1 for diagnostics */
 				flux = magscale * exp (logt * (-mag / 2.5));
 			    else
 				flux = 1.0;
-			    addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+			    ix = (int) (xpix + 0.5);
+			    iy = (int) (ypix + 0.5);
+			    addpix1 (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
 			    nstar++;
+			    jstar++;
 			    }
-			if (nlog == 1)
-			    fprintf (stderr,"UCACREAD: %11.6f: %9.5f %9.5f %5.2f\n",
-				 num,ra,dec,mag);
+			else {
+			    ix = 0;
+			    iy = 0;
+			    }
+			if (nlog == 1) {
+			    fprintf (stderr,"TABBIN: %11.6f: %9.5f %9.5f %s",
+				     num,ra,dec,cstr);
+			    if (magscale > 0.0)
+				fprintf (stderr, " %5.2f", mag);
+			    if (!offscl)
+				flux = getpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy);
+			    else
+				flux = 0.0;
+			    fprintf (stderr," (%d,%d): %f\n", ix, iy, flux);
+			    }
 
 			/* End of accepted star processing */
 			}
@@ -1278,4 +1293,8 @@ char *string;	/* Address of Integer*4 or Real*4 vector */
  *
  * Jun 20 2006	Drop unused variables
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
+ * Nov 16 2006	Fix binning
+ *
+ * Jan  8 2007	Drop unused variable in ucacbin()
+ * Jan 10 2007	Add match=1 argument to webrnum()
  */

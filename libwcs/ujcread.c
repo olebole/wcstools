@@ -1,8 +1,8 @@
 /*** File libwcs/ujcread.c
- *** September 26, 2006
+ *** January 10, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2006
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -416,7 +416,7 @@ int	nlog;		/* Logging interval */
 
 	/* If pathname is a URL, search and return */
 	if (!strncmp (str, "http:",5)) {
-	    return (webrnum (str,"ujc",nnum,sysout,eqout,epout,
+	    return (webrnum (str,"ujc",nnum,sysout,eqout,epout,1,
 			     unum,ura,udec,NULL,NULL,umag,uplate,nlog));
 	    }
 	else
@@ -529,6 +529,7 @@ int	verbose;	/* 1 for diagnostics */
     int itable = 0;
     int nstar;
     int pass;
+    int ix, iy;
     double ra,dec;
     double mag;
     double rdist, ddist;
@@ -672,13 +673,27 @@ int	verbose;	/* 1 for diagnostics */
 				    flux = magscale * exp (logt * (-mag / 2.5));
 				else
 				    flux = 1.0;
-				addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+				ix = (int) (xpix + 0.5);
+				iy = (int) (ypix + 0.5);
+				addpix1 (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
 				nstar++;
 				jstar++;
 				}
-			    if (nlog == 1)
-				fprintf (stderr,"UJCBIN: %04d.%04d: %9.5f %9.5f %s %5.2f\n",
-				    znum,istar,ra,dec,cstr,mag);
+			    else {
+				ix = 0;
+				iy = 0;
+				}
+			    if (nlog == 1) {
+				fprintf (stderr,"UJCBIN: %04d.%04d: %9.5f %9.5f %s",
+					 znum, istar,ra,dec,cstr);
+				if (magscale > 0.0)
+				    fprintf (stderr, " %5.2f", mag);
+				if (!offscl)
+				    flux = getpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy);
+				else
+				    flux = 0.0;
+				fprintf (stderr," (%d,%d): %f\n", ix, iy, flux);
+				}
 
 			    /* End of accepted star processing */
 			    }
@@ -1085,4 +1100,8 @@ int nbytes = 12; /* Number of bytes to reverse */
  *
  * Jun 20 2006	Initialize uninitialized variables
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
+ * Nov 16 2006	Fix binning
+ *
+ * Jan  8 2007	Fix bad format statement in ujcbin()
+ * Jan 10 2007	Add match=1 argument to webrnum()
  */

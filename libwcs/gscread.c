@@ -1,8 +1,8 @@
 /*** File libwcs/gscread.c
- *** June 20, 2006
+ *** January 10, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2006
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -60,14 +60,16 @@ static int ltab = 0;		/* Length of FITS table buffer */
 static double *gdist = NULL;	/* Array of distances to stars */
 static int ndist = 0;
 
-void gscfree()
+void
+gscfree()
 { free ((void *)table); ltab = 0;
   free ((void *)gdist); ndist = 0;
   return; }
 
 static int classd = -1; /* Desired object class
 			   (-2=all objects, -1=all, 0=stars, 3=nonstars) */
-void setgsclass (class)
+void
+setgsclass (class)
 int class;
 { classd = class; return; }
 
@@ -150,26 +152,23 @@ int	nlog;		/* 1 for diagnostics */
     verbose = nlog;
 
     /* If root pathname is a URL, search and return */
+    url = cdn;
     if (refcat == GSC) {
 	url = cdn;
 	if ((str = getenv("GSC_NORTH")) == NULL)
 	    str = getenv ("GSC_PATH");
 	if (str != NULL) url = str;
-	if (!strncmp (url, "http:",5))
-	    return (webread (url,"gsc",distsort,cra,cdec,dra,ddec,drad,dradi,
-			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
-			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
     if (refcat == GSCACT) {
 	url = cdna;
 	if ((str = getenv("GSCACT_NORTH")) == NULL)
 	    str = getenv ("GSCACT_PATH");
 	if (str != NULL) url = str;
-	if (!strncmp (url, "http:",5))
-	    return (webread (url,"gscact",distsort,cra,cdec,dra,ddec,drad,dradi,
-			     sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
-			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
+    if (!strncmp (url, "http:",5))
+	return (webread (url,"gsc",distsort,cra,cdec,dra,ddec,drad,dradi,
+			 sysout,eqout,epout,mag1,mag2,magsort,nstarmax,
+			 gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 
     /* Allocate FITS table buffer which is saved between calls */
     if (ltab < 1) {
@@ -581,13 +580,14 @@ int	nlog;		/* 1 for diagnostics */
     itot = 0;
 
     /* If root pathname is a URL, search and return */
+    url = cdn;
     if (refcat == GSC) {
 	url = cdn;
 	if ((str = getenv("GSC_NORTH")) == NULL)
 	    str = getenv ("GSC_PATH");
 	if (str != NULL) url = str;
 	if (!strncmp (url, "http:",5))
-	    return (webrnum (str,"gsc",nstars,sysout,eqout,epout,
+	    return (webrnum (str,"gsc",nstars,sysout,eqout,epout,1,
 			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
     if (refcat == GSCACT) {
@@ -595,10 +595,10 @@ int	nlog;		/* 1 for diagnostics */
 	if ((str = getenv("GSCACT_NORTH")) == NULL)
 	    str = getenv ("GSCACT_PATH");
 	if (str != NULL) url = str;
-	if (!strncmp (url, "http:",5))
-	    return (webrnum (url,"gscact",nstars,sysout,eqout,epout,
-			     gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 	}
+    if (!strncmp (url, "http:",5))
+	return (webrnum (str,"gsc",nstars,sysout,eqout,epout,1,
+			 gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 
     if (ltab < 1) {
 	ltab = 10000;
@@ -818,6 +818,7 @@ int	nlog;		/* 1 for diagnostics */
     int bitpix, w, h;	/* Image bits/pixel and pixel width and height */
     double logt = log(10.0);
     double xpix, ypix, flux;
+    int ix, iy;
     int offscl;
 
     itot = 0;
@@ -1016,14 +1017,27 @@ int	nlog;		/* 1 for diagnostics */
 			    flux = magscale * exp (logt * (-mag / 2.5));
 			else
 			    flux = 1.0;
-			addpix (image, bitpix, w, h, 0.0, 1.0,
-				xpix, ypix, flux);
+			ix = (int) (xpix + 0.5);
+			iy = (int) (ypix + 0.5);
+			addpix1 (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+			nstar++;
+			jstar++;
 			}
-		    nstar++;
-		    jstar++;
-		    if (nlog == 1)
-			fprintf (stderr,"GSCBIN: %04d.%04d: %9.5f %9.5f %s %5.2f %d %d\n",
-				rnum,num,ra,dec,cstr,mag,class,npos);
+		    else {
+			ix = 0;
+			iy = 0;
+			}
+		    if (nlog == 1) {
+			fprintf (stderr,"GSCBIN: %04d.%04d: %9.5f %9.5f %s %d %d",
+				 rnum, num, ra, dec, cstr, class, npos);
+			if (magscale > 0.0)
+			    fprintf (stderr, " %5.2f", mag);
+			if (!offscl)
+			    flux = getpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy);
+			else
+			    flux = 0.0;
+			fprintf (stderr," (%d,%d): %f\n", ix, iy, flux);
+			}
 		    }
 
 	/* Reset star position for averaging */
@@ -1528,4 +1542,8 @@ char	*path;		/* Pathname of GSC region FITS file */
  * Aug 27 2004	Include math.h
  *
  * Jun 20 2006	Initialize uninitialized variables
+ * Nov 16 2006	Fix binning
+ *
+ * Jan 10 2007	Add match=1 argument to webrnum()
+ * Jan 10 2007	Rewrite web access in gscread() and gscrnum() to reduce code
  */

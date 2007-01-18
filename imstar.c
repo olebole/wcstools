@@ -1,9 +1,9 @@
 /* File imstar.c
- * September 15, 2004
+ * January 10, 2006
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1996-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -28,8 +28,8 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitsfile.h"
 #include "libwcs/wcs.h"
+#include "libwcs/fitsfile.h"
 #include "libwcs/wcscat.h"
 
 #define CAT_DEFAULT	0
@@ -558,7 +558,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	ns = nstar;
 
     /* Sort stars */
-    MagSortStars (NULL,NULL,NULL,NULL,NULL,sx, sy, smag, NULL, sp, NULL, ns);
+    MagSortStars (NULL,NULL,NULL,NULL,NULL,sx, sy, &smag, sp, NULL, ns, 1, 1);
 
     /* Reset magnitude offset, if negative, so it is value for brightest star */
     /* Default is instrument magnitude */
@@ -582,7 +582,7 @@ char	*filename;	/* FITS or IRAF file filename */
 
     /* Sort star-like objects in image by right ascension */
     if (rasort && iswcs (wcs))
-	RASortStars (0, sra, sdec, NULL, NULL, sx, sy, smag, 0, sp, ns);
+	RASortStars (0, sra, sdec, NULL, NULL, sx, sy, &smag, sp, NULL, ns, 1);
     sprintf (headline, "IMAGE	%s", filename);
 
     /* Open plate catalog file */
@@ -907,4 +907,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Sep 15 2004	Add missing 0 shift arguments to RotFITS() call (Rob Creager)
  *
  * Jun 21 2006	Clean up code
+ *
+ * Jan 10 2007	Fix arguments to MagSortStars() and RASortStars()
  */

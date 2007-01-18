@@ -1,8 +1,8 @@
 /*** File libwcs/ctgread.c
- *** November 6, 2006
+ *** January 10, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2006
+ *** Copyright (C) 1998-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -67,7 +67,7 @@ ctgread (catfile, refcat, distsort, cra, cdec, dra, ddec, drad, dradi,
 	 tnum, tra, tdec, tpra, tpdec, tmag, tc, tobj, nlog)
 
 char	*catfile;	/* Name of reference star catalog file */
-int	refcat;		/* Catalog code from wcctg.h */
+int	refcat;		/* Catalog code from wcscat.h */
 int	distsort;	/* 1 to sort stars by distance from center */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
@@ -137,9 +137,9 @@ int	nlog;
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == SDSS)
-            nstar = sdssread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
+            nstar = sdssread (cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
-			     tobj,tnum,tra,tdec,tmag,tc,nlog);
+			     tnum,tobj,tra,tdec,tmag,tc,nlog);
         else if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
                  refcat == UAC  || refcat == UA1  || refcat == UA2)
             nstar = uacread (catfile,distsort,cra,cdec,dra,ddec,drad,dradi,
@@ -519,7 +519,7 @@ ctgrnum (catfile,refcat, nnum,sysout,eqout,epout,match,starcat,
 	 tnum,tra,tdec,tpra,tpdec,tmag,tc,tobj,nlog)
 
 char	*catfile;	/* Name of reference star catalog file */
-int	refcat;		/* Catalog code from wcctg.h */
+int	refcat;		/* Catalog code from wcscat.h */
 int	nnum;		/* Number of stars to look for */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
@@ -933,7 +933,7 @@ int
 ctgbin (catfile,refcat,wcs,header,image,mag1,mag2,sortmag,magscale,nlog)
 
 char	*catfile;	/* Name of reference star catalog file */
-int	refcat;		/* Catalog code from wcctg.h */
+int	refcat;		/* Catalog code from wcscat.h */
 struct WorldCoor *wcs;	/* World coordinate system for image */
 char	*header;	/* FITS header for output image */
 char	*image;		/* Output FITS image */
@@ -969,6 +969,7 @@ int	nlog;
     int istar;
     int verbose;
     int pass;
+    int ix, iy;
     double xpix, ypix, flux;
     int offscl;
     int bitpix, w, h;   /* Image bits/pixel and pixel width and height */
@@ -994,7 +995,9 @@ int	nlog;
         else if (refcat == ACT)
             nstar = actbin (wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == TYCHO2 || refcat == TYCHO2E)
-            nstar = ty2bin (refcat,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+            nstar = ty2bin (wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
+        else if (refcat == SDSS || refcat == GSC2)
+            nstar = -1;
         else if (refcat == SAO)
             nstar = binbin ("SAOra",wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == PPM)
@@ -1154,13 +1157,27 @@ int	nlog;
 		    flux = magscale * exp (logt * (-mag / 2.5));
 		else
 		    flux = 1.0;
-		addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+		ix = (int) (xpix + 0.5);
+		iy = (int) (ypix + 0.5);
+		addpix1 (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
 		nstar++;
 		jstar++;
 		}
-	    if (nlog == 1)
-		fprintf (stderr,"CTGBIN: %11.6f: %9.5f %9.5f %s %5.2f    \n",
-			 num,ra,dec,cstr,mag);
+	    else {
+		ix = 0;
+		iy = 0;
+		}
+	    if (nlog == 1) {
+		fprintf (stderr,"CTGBIN: %11.6f: %9.5f %9.5f %s",
+			 num,ra,dec,cstr);
+		if (magscale > 0.0)
+		    fprintf (stderr, " %5.2f", mag);
+		if (!offscl)
+		    flux = getpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy);
+		else
+		    flux = 0.0;
+		fprintf (stderr," (%d,%d): %f\n", ix, iy, flux);
+		}
 
 	    /* End of accepted star processing */
 	    }
@@ -1190,7 +1207,7 @@ struct StarCat *
 ctgopen (catfile, refcat)
 
 char	*catfile;	/* ASCII catalog file name */
-int	refcat;		/* Catalog code from wcctg.h (TXTCAT,BINCAT,TABCAT) */
+int	refcat;		/* Catalog code from wcscat.h (TXTCAT,BINCAT,TABCAT) */
 {
     struct StarCat *sc;
     struct Tokens tokens;
@@ -2077,5 +2094,10 @@ char	*in;	/* Character string */
  * Jun  6 2006	Add SKY2000 catalog
  * Jun 20 2006	Drop unused variables
  * Jun 30 2006	Add match argument to tabrnum() to enable sequential reads
- * Nov  6 2006	Add objet name to sdssread() call to deal with long IDs
+ * Nov  6 2006	Add object name to sdssread() call to deal with long IDs
+ * Nov 15 2006	Fix binning
+ * Nov 16 2006	Return -1 for SDSS and GSC2; binning subroutines do not exist
+ *
+ * Jan  9 2007	Fix reference to refcat code  in wcscat.h
+ * Jan  9 2007	Drop catfile from call to sdssread()
  */

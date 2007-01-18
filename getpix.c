@@ -1,9 +1,9 @@
 /* File getpix.c
- * June 21, 2006
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1996-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -816,4 +816,5 @@ double	dpix;	/* Current pixel value */
  * Jul 29 2005	Add mean and range computation
  *
  * Jun 21 2006	Clean up code
+ *
  */

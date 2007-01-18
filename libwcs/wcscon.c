@@ -1,5 +1,5 @@
 /*** File wcscon.c
- *** October 30, 2006
+ *** November 29, 2006
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Some subroutines are based on Starlink subroutines by Patrick Wallace
  *** Copyright (C) 1995-2006
@@ -1939,42 +1939,17 @@ double *ra;	/* RA in degrees mean equator & equinox of epoch ep0
 double *dec;	/* Dec in degrees mean equator & equinox of epoch ep0
 		       mean equator & equinox of epoch ep1 (returned) */
 /*
-**  Precession -  FK5 (Fricke, post-IAU1976)
+**  Precession -  FK5 (Fricke, post-IAU2000)
 **
 **  This routine will not correctly convert between FK5 and FK4.
 **  For output in FK4, precess to 2000.0 and use fk524() on result.
-**
-**  Based on slaPreces(), P.T.Wallace   Starlink   22 December 1993
 */
 {
-    int i, j;
-    double pm[9], *pmi, v1[3], v2[3], rra, rdec, r;
-    void v2s3(),s2v3(), mprecfk5();
+    void fk5ep2j(), fk5j2ep();
 
-    rra = degrad (*ra);
-    rdec = degrad (*dec);
-    r = 1.0;
- 
-    /* Generate appropriate precession matrix */
-    mprecfk5 (ep0, ep1, pm);
- 
-    /* Convert RA,Dec to x,y,z */
-    s2v3 (rra, rdec, r, v1);
- 
-    /* Multiply position vector by precession matrix */
-    pmi = pm;
-    for (i = 0; i < 3; i++) {
-	v2[i] = 0;
-	for (j = 0; j < 3; j++)
-	    v2[i] = v2[i] + ( v1[j] * *pmi++ );
-	}
- 
-    /* Back to RA,Dec */
-    v2s3 (v2, &rra, &rdec, &r);
+    fk5ep2j (ep0, ra, dec);
+    fk5j2ep (ep1, ra, dec);
 
-    /* Convert from radians to degrees */
-    *ra = raddeg (rra);
-    *dec = raddeg (rdec);
     return;
 }
 
@@ -2047,8 +2022,8 @@ double rmatp[9];	/* 3x3 Precession matrix (returned) */
 {
     double t0, t, tas2r, w, zeta, z, theta;
     void rotmat();
- 
-    /* Interval between basic epoch J2000.0 and beginning epoch (JC) */
+
+    /* Interval in Julian centuries  between J2000.0 and beginning epoch */
     t0 = ( ep0 - 2000.0 ) / 100.0;
  
     /* Interval over which precession required (JC) */
@@ -2064,6 +2039,155 @@ double rmatp[9];	/* 3x3 Precession matrix (returned) */
  
     /* Rotation matrix */
     rotmat (323, -zeta, theta, -z, rmatp);
+    return;
+}
+
+
+/* Precess coordinates to J2000 in FK5 */
+
+void
+fk5ep2j (ep, ra, dec)
+
+double ep;	/* Starting Julian epoch */
+double *ra;	/* RA in degrees mean equator & equinox of epoch ep0
+		      mean equator & equinox of epoch ep1 (returned) */
+double *dec;	/* Dec in degrees mean equator & equinox of epoch ep0
+		       mean equator & equinox of epoch ep1 (returned) */
+/*
+**  Precession -  FK5 (Fricke, post-IAU2000)
+**
+**  This routine will not correctly convert between FK5 and FK4.
+**  For output in FK4, precess to 2000.0 and use fk524() on result.
+**
+**  Based on slaPreces(), P.T.Wallace   Starlink   22 December 1993
+*/
+{
+    int i, j;
+    double pm[9], pmt[9], *pmi, v1[3], v2[3], rra, rdec, r;
+    void v2s3(),s2v3(), mfk5j2ep();
+
+    rra = degrad (*ra);
+    rdec = degrad (*dec);
+    r = 1.0;
+ 
+    /* Convert RA,Dec to x,y,z */
+    s2v3 (rra, rdec, r, v1);
+ 
+    /* Generate and transpose precession matrix */
+    mfk5j2ep ( ep, pm );
+    for (i = 0; i < 3; i++) {
+	for (j = 0; j < 3; j++) {
+	    pmt[i+(j*3)] = pm[j+(i*3)];
+	    }
+	}
+ 
+    /* Multiply position vector by precession matrix */
+    pmi = pmt;
+    for (i = 0; i < 3; i++) {
+	v2[i] = 0;
+	for (j = 0; j < 3; j++)
+	    v2[i] = v2[i] + (*pmi++ * v1[j]);
+	}
+ 
+    /* Back to RA,Dec */
+    v2s3 (v2, &rra, &rdec, &r);
+
+    /* Convert from radians to degrees */
+    *ra = raddeg (rra);
+    *dec = raddeg (rdec);
+}
+
+
+/* Precess coordinates from J2000 in FK5 */
+
+void
+fk5j2ep (ep, ra, dec)
+
+double ep;	/* Starting Julian epoch */
+double *ra;	/* RA in degrees mean equator & equinox of epoch ep0
+		      mean equator & equinox of epoch ep1 (returned) */
+double *dec;	/* Dec in degrees mean equator & equinox of epoch ep0
+		       mean equator & equinox of epoch ep1 (returned) */
+/*
+**  Precession -  FK5 (Fricke, post-IAU2000)
+**
+**  This routine will not correctly convert between FK5 and FK4.
+**  For output in FK4, precess to 2000.0 and use fk524() on result.
+**
+**  Based on slaPreces(), P.T.Wallace   Starlink   22 December 1993
+*/
+{
+    int i, j;
+    double pm[9], *pmi, v1[3], v2[3], rra, rdec, r;
+    void v2s3(), s2v3(), mfk5j2ep();
+
+    rra = degrad (*ra);
+    rdec = degrad (*dec);
+    r = 1.0;
+ 
+    /* Convert RA,Dec to x,y,z */
+    s2v3 (rra, rdec, r, v1);
+ 
+    /* Generate precession matrix */
+    mfk5j2ep ( ep, pm );
+ 
+    /* Multiply position vector by precession matrix */
+    pmi = pm;
+    for (i = 0; i < 3; i++) {
+	v2[i] = 0;
+	for (j = 0; j < 3; j++)
+	    v2[i] = v2[i] + (*pmi++ * v1[j]);
+	}
+ 
+    /* Back to RA,Dec */
+    v2s3 (v2, &rra, &rdec, &r);
+
+    /* Convert from radians to degrees */
+    *ra = raddeg (rra);
+    *dec = raddeg (rdec);
+}
+
+
+void
+mfk5j2ep (ep, rmatp)
+
+double ep;		/* Beginning epoch */
+double rmatp[9];	/* 3x3 Precession matrix (returned) */
+
+/*
+**  Form the matrix of precession between two epochs (IAU 2000, FK5).
+**  Notes:
+**  1)  The epochs are TDB (loosely ET) Julian epochs.
+**  2)  The matrix is in the sense   v(ep)  =  rmatp * v(J2000) .
+**
+**  References:
+**     Lieske,J.H., 1979. Astron. Astrophys.,73,282.
+**          equations (6) & (7), p283.
+**     Kaplan,G.H., 2005. USNO circular no. 179, p. 44.
+**
+**  Based on slaPrec(), P.T.Wallace   Starlink   31 October 1993
+*/
+{
+    double t, t2, t3, t4, tas2r, zeta, z, theta;
+    void rotmat();
+ 
+    /* Interval in Julian centuries  between J2000.0 and beginning epoch */
+    t = ( ep - 2000.0 ) / 100.0;
+    t2 = t * t;
+    t3 = t2 * t;
+    t4 = t3 * t;
+ 
+    /* Euler angles */
+    tas2r = secrad (t);
+    zeta = 2.65045 + (2306.083227 + (0.2988499 * t) + (0.01801828 * t2)
+	  - (0.000005971 * t3) - (0.0000003173 * t4)) * tas2r;
+    z = -2.650545 + (2306.077181 + (1.0927348 * t) + (0.01801828 * t2)
+	   - (0.000005971 * t3) - (0.0000003173 * t4)) * tas2r;
+    theta = (2004.191903 - (0.4294934 * t) - (0.04182264 * t2)
+	    - (0.000007089 * t3) - (0.0000001274 * t4)) * tas2r;
+ 
+    /* Rotation matrix */
+    rotmat (323, -z, theta, -zeta, rmatp);
     return;
 }
 
@@ -2286,4 +2410,5 @@ double *r;	/* Distance to object in same units as pos (returned) */
  * May  3 2006	Drop declarations of unused variables suggested by Robert Lupton
  * Oct  6 2006	If pixel coordinates, set system to WCS_XY in wcscsys()
  * Oct 30 2006	Add LINEAR and ICRS to wcscstr() returns
+ * Nov 29 2006	Rewrite FK5 precession subroutines to IAU 2000 standard
  */

@@ -1,8 +1,8 @@
 /*** File fitshead.h  FITS header access subroutines
- *** June 29, 2006
+ *** January 9, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2006
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -36,6 +36,10 @@
 
 #ifdef __cplusplus /* C++ prototypes */
 extern "C" {
+#endif
+
+
+#ifdef __STDC__   /* Full ANSI prototypes */
 
 /* Subroutines in hget.c */
     int hgeti2(			/* Extract short value from FITS header */
@@ -45,7 +49,7 @@ extern "C" {
     int hgeti4c(		/* Extract int value from FITS header */
 	const char* hstring,	/* FITS header string */
 	const char* keyword,	/* FITS keyword */
-	const char mchar,	/* WCS to use */
+	const char* wchar,	/* WCS to use (A-Z or null) */
 	int* val);		/* integer value (returned) */
     int hgeti4(			/* Extract int value from FITS header */
 	const char* hstring,	/* FITS header string */
@@ -55,10 +59,10 @@ extern "C" {
 	const char* hstring,	/* FITS header string */
 	const char* keyword,	/* FITS keyword */
 	float* val);		/* float value (returned) */
-    int hgetr8c(			/* Extract double value from FITS header */
+    int hgetr8c(		/* Extract double value from FITS header */
 	const char* hstring,	/* FITS header string */
 	const char* keyword,	/* FITS keyword */
-	const char mchar,	/* WCS to use */
+	const char* wchar,	/* WCS to use (A-Z or null) */
 	double* val);		/* double value (returned) */
     int hgetr8(			/* Extract double value from FITS header */
 	const char* hstring,	/* FITS header string */
@@ -83,7 +87,7 @@ extern "C" {
     int hgetsc(			/* Extract string value from FITS header */
 	const char* hstring,	/* FITS header string */
 	const char* keyword,	/* FITS keyword */
-	const char mchar,	/* WCS to use */
+	const char* wchar,	/* WCS to use (A-Z or null) */
 	const int lstr,		/* maximum length of returned string */
 	char* string);		/* null-terminated string value (returned) */
     int hgets(			/* Extract string value from FITS header */
@@ -129,10 +133,10 @@ extern "C" {
 	const int ls1);		/* Length of string being searched */
 
     int hlength(		/* Set length of unterminated FITS header */
-        char    *header,        /* FITS header */
+        const char *header,	/* FITS header */
         const int lhead);	/* Allocated length of FITS header */
     int gethlength(		/* Get length of current FITS header */
-        char    *header);	/* FITS header */
+        char* header);		/* FITS header */
 
     double str2ra(		/* Return RA in degrees from string */
 	const char* in);	/* Character string (hh:mm:ss.sss or dd.dddd) */
@@ -150,8 +154,8 @@ extern "C" {
 	int fillblank,		/* If 1, blanks are replaced by underscores */
 	int dropzero);		/* If 1, drop trailing zeroes from string */
 
-    char *getltime();		/* Return current local time in ISO format */
-    char *getutime();		/* Return current UT as an ISO-format string */
+    char *getltime(void);	/* Return current local time in ISO format */
+    char *getutime(void);	/* Return current UT as an ISO-format string */
 
 /* Subroutines in iget.c */
     int mgetstr(		/* Extract string from multiline FITS keyword */
@@ -169,7 +173,7 @@ extern "C" {
 	const char* hstring,	/* FITS header string */
 	const char* mkey,	/* FITS keyword root _n added for extra lines */
 	const char* keyword,	/* IRAF keyword */
-	double dval);		/* double keyword value (returned) */
+	double* dval);		/* double keyword value (returned) */
     int igeti4(			/* Extract int from IRAF keyword string */
 	const char* hstring,	/* Multiline IRAF keyword string value */
 	const char* keyword,	/* IRAF keyword */
@@ -196,7 +200,7 @@ extern "C" {
     int hputi2(		/* Implant short value into FITS header */
 	char* hstring,		/* FITS header string (modified) */
 	const char* keyword,	/* FITS keyword */
-	const short ival);	/* short value */
+	short ival);	/* short value */
     int hputi4(		/* Implant int value into FITS header */
 	char* hstring,		/* FITS header string (modified) */
 	const char* keyword,	/* FITS keyword */
@@ -204,7 +208,7 @@ extern "C" {
     int hputr4(		/* Implant float value into FITS header */
 	char* hstring,		/* FITS header string (modified) */
 	const char* keyword,	/* FITS keyword */
-	const float rval);	/* float value */
+	const float* rval);	/* float (4 byte) value */
     int hputr8(		/* Implant short into FITS header */
 	char* hstring,		/* FITS header string (modified) */
 	const char* keyword,	/* FITS keyword */
@@ -212,17 +216,17 @@ extern "C" {
     int hputnr8(	/* double with specified number of decimal places */
 	char* hstring,		/* FITS header string (modified) */
 	const char* keyword,	/* FITS keyword */
-	const int ndec,		/* Number of decimal places in keyword value */
+	const int ndec,	/* Number of decimal places in keyword value */
 	const double dval);	/* double value */
     int hputs(			/* Quoted character string into FITS header */
 	char* hstring,		/* FITS header string (modified) */
 	const char* keyword,	/* FITS keyword */
 	const char* cval);	/* Character string value */
-    int hputm(			/* Quoted character string, mutiple keywords */
+    int hputm(		/* Quoted character string, mutiple keywords */
 	char* hstring,		/* FITS header string (modified) */
 	const char* keyword,	/* FITS keyword */
 	const char* cval);	/* Character string value */
-    int hputcom(		/* Add comment to keyword line in FITS header */
+    int hputcom(	/* Add comment to keyword line in FITS header */
 	char* hstring,		/* FITS header string (modified) */
 	const char* keyword,	/* FITS keyword */
 	const char* comment);	/* Comment string */
@@ -278,8 +282,8 @@ extern "C" {
 	const int hsh);		/* 1 to shrink  header by one line */
     void setleaveblank(		/* 1 to keep blank line where keyword deleted */
 	const int hsh);		/* 0 to shrink  header by one line */
-};
-#else /* __cplusplus */
+
+#else /* K&R prototypes */
 
 /* Subroutines in hget.c */
 
@@ -371,7 +375,12 @@ extern int numdec();	/* Return number of decimal places in number */
 extern char *getltime(); /* Return current local time in ISO format */
 extern char *getutime(); /* Return current UT as an ISO-format string */
 
+#endif	/* __STDC__ */
+
+#ifdef __cplusplus
+}
 #endif	/* __cplusplus */
+
 #endif	/* fitshead_h_ */
 
 /* Apr 26 1996	Add HGETDATE to get year from date string
@@ -423,4 +432,7 @@ extern char *getutime(); /* Return current UT as an ISO-format string */
  *
  * May 22 2006	Add setleaveblank() to leave blank line where keyword is deleted
  * Jun 28 2006	Add strfix() to clean up characters in strings
+ * Nov 29 2006	Drop semicolon at end of C++ ifdef
+ *
+ * Jan  9 2007	Fix declarations so ANSI prototypes are not just for C++
  */

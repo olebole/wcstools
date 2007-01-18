@@ -1,9 +1,9 @@
 /* File imsmooth.c
- * July 6, 2006
+ * January 5, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 2005-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -421,7 +421,7 @@ char *name;
 	}
 
     /* Add IMSMOOTH keyword to say how image was changed */
-    if (hgets (header, "IMSMOOTH", history))
+    if (hgets (header, "IMSMOOTH", 63, history))
 	hputs (header, "HISTORY", history);
     if (filter == MEDIAN)
 	sprintf (history, "Median filtered over %d x %d pixels",xsize,ysize);
@@ -471,4 +471,6 @@ char *name;
  * Jun 21 2006	Add IMSMOOTH keyword to output image file
  * Jun 22 2006	Check for two-token extension .ms.fit(s)
  * Jul  6 2006	Make both dimensions of Gaussian variable
+ *
+ * Jan  5 2007	Add string length to call to hgets()
  */

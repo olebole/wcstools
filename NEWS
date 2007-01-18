@@ -1,9 +1,26 @@
+Version 3.6.7 (January 10, 2007)
+bincat: Make catalog binning finally work right
+sethead: Allow multiple keywords to be set from single line input file
+wcs.h: Fix and add ANSI C prototypes
+fitsfile.h, fitshead.h, wcscat.h: Add ANSI C prototypes
+wcsinit.c: Change WCS letter argument from char to char* in wcsinitc(),wcsninitc()
+findstar.c, imrotate.c: Include fitsfile.h instead of fitshead.h and imio.h
+hget.c: Change WCS letter argument from char to char* in hget*c()
+hget.c: Declare header and keyword const char in most subroutines
+hput.c: Declare keyword and value const in most subroutines
+imio.c: Include fitsfile.h instead of imio.h
+imio.h: Drop because all declarations are in fitsfile.h
+wcslib.h: Drop semicolon at end of c++ ifdef
+wcslib.h: Drop second declaration of SZP subroutines
+polfit.c: Move into catutil.c
+Many smaller fixes were made so that standard C profiles work
+
 Version 3.6.6 (November 6, 2006)
 getdate: Add sidereal time conversions
+imcat,scat: Fix SDSS returned data and ID number output
 imwcs: Add -q b option to speed up star matching
 remap: Check for output image off-scale as well as input image
 remap: Fix bug setting scale
-scat: Fix SDSS returned data and ID number output
 sethead: Do not read image unless header size in 2880-byte blocks is increased
 sethead: Increase header buffer size when next keyword exceeds current length
 skycoor: No longer print " degrees" if output in degrees

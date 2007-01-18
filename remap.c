@@ -1,9 +1,9 @@
 /* File remap.c
- * September 26, 2006
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1999-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -414,7 +414,7 @@ char	*filename;	/* FITS or IRAF file filename */
     char pixname[256];
     struct WorldCoor *wcsin;
     double bzin, bsin, bzout, bsout;
-    double dx, dy, secpixin1, secpixin2, secpix1, dpix, dnpix;
+    double dx, secpixin1, secpixin2, secpix1, dpix, dnpix;
     double xout, yout, xin, yin, xpos, ypos, dpixi, dpixo, xout0, yout0;
     double xmin, xmax, ymin, ymax, xin1, xin2, yin1, yin2;
     double pixratio;
@@ -923,4 +923,6 @@ double	*y2;		/* Upper right y coordinate (returned) */
  * Aug 16 2006	Check for output image off-scale as well as input image
  * Sep 11 2006	Cleanup scaling
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
+ *
+ * Jan 10 2007	Drop unused variable dy
  */

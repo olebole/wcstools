@@ -1,9 +1,9 @@
 /* File sethead.c
- * November 2, 2006
+ * January 5, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2006 
+   Copyright (C) 1996-2007 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <math.h>
 #include "libwcs/fitsfile.h"
+#include "libwcs/wcs.h"
 
 #define MAXKWD 500
 #define MAXFILES 1000
@@ -44,6 +45,9 @@ static int maxnfile = MAXFILES;
 static void usage();
 static void SetValues ();
 
+static int addecliptic = 0;
+static int addgalactic = 0;
+static int addj2000 = 0;
 static int verbose = 0;		/* verbose/debugging flag */
 static int newimage0 = 0;
 static int keyset = 0;
@@ -55,6 +59,7 @@ static int logfile = 0;
 static int first_file = 1;
 static char spchar = (char) 0;	/* Character to replace with spaces */
 static int nproc = 0;
+static int addwcs = 0;
 
 
 int
@@ -70,7 +75,7 @@ char **av;
     char **fn;
     int nfile = 0;
     int readlist = 0;
-    int ifile;
+    int ifile, lbuff;
     char filename[1024];
     char *keybuff, *kw1, *kw2, *kwdi, *kwdc;
     FILE *flist = NULL;
@@ -81,8 +86,11 @@ char **av;
     char *dq, *sq, *sl;
     char lf = (char) 10;
     char cr = (char) 13;
+    char sp = (char) 32;
+    char eq = (char) 61;
     char dquote = (char) 34;
     char squote = (char) 39;
+    kwd = (char **)calloc (maxnkwd, sizeof(char *));
 
     ilistfile = NULL;
     klistfile = NULL;
@@ -115,8 +123,23 @@ char **av;
 	    while ((c = *++str))
 	    switch (c) {
 
+		case 'e':	/* Add Ecliptic coordinate WCS */
+		    addecliptic = 1;
+		    addwcs++;
+		    break;
+
+		case 'g':	/* Add Galactic coordinate WCS */
+		    addgalactic = 1;
+		    addwcs++;
+		    break;
+
 		case 'h':	/* Set HISTORY */
 		    histset++;
+		    break;
+
+		case 'j':	/* Add J2000 coordinate WCS */
+		    addj2000 = 1;
+		    addwcs++;
 		    break;
 	
 		case 'k':	/* Set SETHEAD keyword */
@@ -213,6 +236,30 @@ char **av;
 		    if (keybuff != NULL) {
 			kw1 = keybuff;
 
+			/* If only one line, check for multiple assignments */
+			if (nkwd1 < 2) {
+			    char *kwe, *kwp, *keybufflast;
+			    kw2 = strchr (kw1, eq);
+			    kwe = strchr (kw2+1, eq);
+			    lbuff = strlen (keybuff);
+			    keybufflast = keybuff + lbuff;
+			    if (kwe != NULL) {
+				nkwd1 = 0;
+				for (kwp = kw1; kwp < keybufflast; kwp++) {
+				    if (*kwp == sp) {
+					if (*(kwp-1) != eq && *(kwp+1) != eq) {
+					    nkwd1++;
+					    *kwp = lf;
+					    }
+					}
+				    else if (*kwp == lf)
+					nkwd1++;
+				    }
+				if (*(kwp-1) != lf)
+				    nkwd1++;
+				}
+			    }
+
 			/* One keyword per line of buffer */
 			for (ikwd = 0; ikwd < nkwd1; ikwd++) {
 			    kwd[nkwd] = kw1;
@@ -264,7 +311,7 @@ char **av;
 				    *sl = (char) 0;
 				    comment[nkwd] = sl + 3;
 				    if (spchar)
-					stc2s (spchar, comment[nkwd]);
+					stc2s (&spchar, comment[nkwd]);
 				    }
 				}
 			    nkwd++;
@@ -280,7 +327,7 @@ char **av;
 	    ac--;
 	    if (nkwd > 0) {
 		if (spchar)
-		    stc2s (spchar, *av);
+		    stc2s (&spchar, *av);
 		comment[nkwd-1] = *av;
 		}
 	    }
@@ -317,12 +364,12 @@ char **av;
 
     if (nkwd <= 0 && nfile <= 0 )
 	usage ();
-    else if (nkwd <= 0) {
-	fprintf (stderr, "SETHEAD: no keywords specified\n");
-	exit (1);
-	}
     else if (nfile <= 0 ) {
 	fprintf (stderr, "SETHEAD: no files specified\n");
+	exit (1);
+	}
+    else if (nkwd <= 0 && !addwcs) {
+	fprintf (stderr, "SETHEAD: no keywords specified\n");
 	exit (1);
 	}
 
@@ -360,9 +407,12 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Set FITS or IRAF header keyword values\n");
     fprintf(stderr,"Usage: [-hknv][-r [char]][-s char] file1.fits [... filen.fits] kw1=val1 [ / comment] [ ... kwn=valuen]\n");
-    fprintf(stderr,"  or : [-hknv][-r [char]][-s char] file1.fits [... filen.fits] @keywordfile]\n");
-    fprintf(stderr,"  or : [-hknv][-r [char]][-s char] @listfile kw1=val1 [ ... kwn=valuen]\n");
-    fprintf(stderr,"  or : [-hknv][-r [char]][-s char] @listfile @keywordfile\n");
+    fprintf(stderr,"  or : [-eghjknv][-r [char]][-s char] file1.fits [... filen.fits] @keywordfile]\n");
+    fprintf(stderr,"  or : [-eghjknv][-r [char]][-s char] @listfile kw1=val1 [ ... kwn=valuen]\n");
+    fprintf(stderr,"  or : [-eghjknv][-r [char]][-s char] @listfile @keywordfile\n");
+    fprintf(stderr,"  -e: Add ecliptic WCS\n");
+    fprintf(stderr,"  -g: Add galactic WCS\n");
+    fprintf(stderr,"  -j: Add J2000 WCS\n");
     fprintf(stderr,"  -h: Write HISTORY line\n");
     fprintf(stderr,"  -k: Write SETHEAD keyword\n");
     fprintf(stderr,"  -l: Log files as processed (on one line)\n");
@@ -391,6 +441,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     char *irafheader = NULL;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
     int newimage;	/* 1 to write new image file, else 0 */
+    struct WorldCoor *wcs;
+    double dlong, dlat;
     int i, lext, lroot, ndec, isra;
     char *image = NULL;
     char newname[MAXNEW];
@@ -405,7 +457,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     char *newhead;
     char echar;
     int ikwd, lkwd, lkwv, lhist;
-    int fdr, fdw, ipos, nbr, nbw;
+    int fdw;
     int squote = 39;
     int dquote = 34;
     int naxis = 0;
@@ -469,12 +521,89 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	first_file = 0;
 	}
 
-    if (nkwd < 1)
+    if (nkwd < 1 && !addwcs)
 	return;
 
     nbold = fitsheadsize (header);
     hgeti4 (header,"NAXIS",&naxis);
     hgeti4 (header,"BITPIX",&bitpix);
+
+    /* Add coordinate system to header */
+    if (addj2000) {
+	wcs = wcsinit (header);
+	hputs (header, "WCSNAMEJ", "J2000");
+	cpwcs (&header, 'J');
+	if (wcs->syswcs != WCS_J2000) {
+	    dlong = wcs->xref;
+	    dlat = wcs->yref;
+	    wcscon (wcs->syswcs,WCS_J2000,wcs->equinox,wcs->equinox,
+		    &dlong,&dlat,wcs->epoch);
+	    hgets (header, "CTYPE1", 24, cval);
+	    strncpy (cval, "RA--", 4);
+	    hputs (header, "CTYPE1J", cval);
+	    hgets (header, "CTYPE2", 24, cval);
+	    strncpy (cval, "DEC-", 4);
+	    hputs (header, "CTYPE2J", cval);
+	    hputr8 (header, "CRVAL1J", dlong);
+	    hputr8 (header, "CRVAL2J", dlat);
+	    dlong = 0.0;
+	    dlat = 90.0;
+	    wcscon (wcs->syswcs,WCS_J2000,wcs->equinox,wcs->equinox,
+		    &dlong,&dlat,wcs->epoch);
+	    hputr8 (header, "LONPOLEJ", dlong);
+	    hputr8 (header, "LATPOLEJ", dlat);
+	    }
+	}
+    if (addgalactic) {
+	wcs = wcsinit (header);
+	hputs (header, "WCSNAMEG", "GALACTIC");
+	cpwcs (&header, 'G');
+	if (wcs->syswcs != WCS_GALACTIC) {
+	    dlong = wcs->xref;
+	    dlat = wcs->yref;
+	    wcscon (wcs->syswcs,WCS_GALACTIC,wcs->equinox,wcs->equinox,
+		    &dlong,&dlat,wcs->epoch);
+	    hgets (header, "CTYPE1", 24, cval);
+	    strncpy (cval, "GLON", 4);
+	    hputs (header, "CTYPE1G", cval);
+	    hgets (header, "CTYPE2", 24, cval);
+	    strncpy (cval, "GLAT", 4);
+	    hputs (header, "CTYPE2G", cval);
+	    hputr8 (header, "CRVAL1G", dlong);
+	    hputr8 (header, "CRVAL2G", dlat);
+	    dlong = 0.0;
+	    dlat = 90.0;
+	    wcscon (wcs->syswcs,WCS_GALACTIC,wcs->equinox,wcs->equinox,
+		    &dlong,&dlat,wcs->epoch);
+	    hputr8 (header, "LONPOLEG", dlong);
+	    hputr8 (header, "LATPOLEG", dlat);
+	    }
+	}
+    if (addecliptic) {
+	wcs = wcsinit (header);
+	hputs (header, "WCSNAMEE", "ECLIPTIC");
+	cpwcs (&header, 'E');
+	if (wcs->syswcs != WCS_ECLIPTIC) {
+	    dlong = wcs->xref;
+	    dlat = wcs->yref;
+	    wcscon (wcs->syswcs,WCS_ECLIPTIC,wcs->equinox,wcs->equinox,
+		    &dlong,&dlat,wcs->epoch);
+	    hgets (header, "CTYPE1", 24, cval);
+	    strncpy (cval, "ELON", 4);
+	    hputs (header, "CTYPE1E", cval);
+	    hgets (header, "CTYPE2", 24, cval);
+	    strncpy (cval, "ELAT", 4);
+	    hputs (header, "CTYPE2E", cval);
+	    hputr8 (header, "CRVAL1E", dlong);
+	    hputr8 (header, "CRVAL2E", dlat);
+	    dlong = 0.0;
+	    dlat = 90.0;
+	    wcscon (wcs->syswcs,WCS_ECLIPTIC,wcs->equinox,wcs->equinox,
+		    &dlong,&dlat,wcs->epoch);
+	    hputr8 (header, "LONPOLEE", dlong);
+	    hputr8 (header, "LATPOLEE", dlat);
+	    }
+	}
 
     /* Set keywords one at a time */
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
@@ -485,7 +614,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    if (lkwd > 8) {
 		kwv0 = kwd[ikwd] + 7;
 		if (spchar)
-		    stc2s (spchar, kwv0);
+		    stc2s (&spchar, kwv0);
 		}
 	    else
 		kwv0 = NULL;
@@ -699,7 +828,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    /* Write comment without quotes, filling spaces first */
 	    if (!strcmp (kwd[ikwd], "COMMENT") || !strcmp (kwd[ikwd], "HISTORY")) {
 		if (spchar)
-		    stc2s (spchar, kwv);
+		    stc2s (&spchar, kwv);
 		hputc (header, kwd[ikwd], kwv);
 		}
 
@@ -756,7 +885,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 
 		/* Replace special characters with spaces if not quoted */
 		else if (spchar)
-		    stc2s (spchar, kwv);
+		    stc2s (&spchar, kwv);
 
 		/* Remove trailing blanks */
 		lval = strlen (kwv);
@@ -1106,4 +1235,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Sep 28 2006	Don't overwrite image if header length in blocks is unchanged
  * Sep 28 2006	Fix bug naming file+extension if not new file
  * Nov  2 2006	Check header size and reallocate if necessary
+ * Nov 30 2006	Add code to accept multiple keyword assignments from one line files
+ * Dec 28 2006	Add -e, -g, and -j to add WCS's in alternate coordinate systems
+ *
+ * Jan  5 2007	Pass pointer to space-padding character, not character
  */

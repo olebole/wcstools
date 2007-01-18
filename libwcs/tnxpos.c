@@ -1,9 +1,9 @@
 /*** File wcslib/tnxpos.c
- *** June 27, 2005
+ *** January 9, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** After IRAF mwcs/wftnx.x and mwcs/wfgsurfit.x
- *** Copyright (C) 1998-2005
+ *** Copyright (C) 1998-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -72,8 +72,8 @@ static void wf_gsb1cheb();
 int
 tnxinit (header, wcs)
 
-char	*header;		/* FITS header */
-struct WorldCoor *wcs;		/* pointer to WCS structure */
+const char *header;	/* FITS header */
+struct WorldCoor *wcs;	/* pointer to WCS structure */
 {
     struct IRAFsurface *wf_gsopen();
     char *str1, *str2, *lngstr, *latstr;
@@ -726,7 +726,7 @@ double	x;		/* x values */
 double	y;		/* y values */
 int	nxd, nyd;	/* order of the derivatives in x and y */
 {
-    int ncoeff, nxder, nyder, i, j, k, nbytes;
+    int nxder, nyder, i, j, k, nbytes;
     int order, maxorder1, maxorder2, nmove1, nmove2;
     struct IRAFsurface *sf2 = 0;
     double *ptr1, *ptr2;
@@ -828,7 +828,7 @@ int	nxd, nyd;	/* order of the derivatives in x and y */
 	    coeff = (double *) malloc (nbytes);
 	nbcoeff = nbytes;
 	}
-    ncoeff = wf_gscoeff (sf1, coeff);
+    (void) wf_gscoeff (sf1, coeff);
 
     /* Compute the new coefficients */
     switch (sf2->xterms) {
@@ -1216,4 +1216,7 @@ double	*coeff;
  * Jun 26 2002	Increase size of WAT strings from 500 to 2000
  *
  * Jun 27 2005	Drop unused arguments k1 and k2 from wf_gsb1pol()
+ *
+ * Jan  8 2007	Drop unused variable ncoeff in wf_gsder()
+ * Jan  9 2007	Declare header const char in tnxinit()
  */

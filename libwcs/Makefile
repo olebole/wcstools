@@ -1,5 +1,5 @@
 CFLAGS= -g
-CC= cc
+CC= cc -Wall
 
 OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \
 	fitswcs.o wcsinit.o wcs.o ty2read.o webread.o tmcread.o \
@@ -8,7 +8,7 @@ OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \
 	imrotate.o fitsfile.o imhfile.o \
 	hget.o hput.o imio.o dateutil.o imutil.o \
 	worldpos.o tnxpos.o dsspos.o platepos.o \
-	sortstar.o platefit.o iget.o fileutil.o polfit.o \
+	sortstar.o platefit.o iget.o fileutil.o \
 	wcslib.o lin.o cel.o proj.o sph.o wcstrig.o distort.o
 
 libwcs.a:	$(OBJS)
@@ -20,13 +20,13 @@ binread.o:	wcscat.h wcs.h fitshead.h wcslib.h
 ctgread.o:	wcscat.h wcs.h fitshead.h wcslib.h
 catutil.o:	wcscat.h wcs.h fitshead.h wcslib.h
 cel.o:		wcslib.h
-daoread.o:	wcscat.h
+daoread.o:	wcscat.h wcs.h
 dateutil.o:	fitsfile.h fitshead.h
 distort.o:	wcs.h fitshead.h wcslib.h
 dsspos.o:	wcs.h fitshead.h wcslib.h
 fileutil.o:	fitsfile.h fitshead.h
 imutil.o:	fitsfile.h fitshead.h
-findstar.o:	fitshead.h lwcs.h imio.h wcscat.h
+findstar.o:	fitshead.h lwcs.h wcscat.h wcs.h
 fitsfile.o:	fitsfile.h fitshead.h
 fitswcs.o:	fitsfile.h wcs.h fitshead.h wcslib.h
 gscread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
@@ -36,17 +36,16 @@ hput.o:		fitshead.h
 iget.o:		fitshead.h
 imgetwcs.o:	fitshead.h wcs.h lwcs.h wcslib.h
 imhfile.o:	fitsfile.h fitshead.h
-imio.o:		fitshead.h imio.h
+imio.o:		fitsfile.h
 imsetwcs.o:	fitshead.h wcs.h lwcs.h wcscat.h wcslib.h
-imrotate.o:	fitshead.h imio.h
+imrotate.o:	fitsfile.h
 lin.o:		wcslib.h
 matchstar.o:	fitshead.h wcs.h lwcs.h wcslib.h wcscat.h
 platefit.o:	wcs.h fitshead.h wcslib.h
 platepos.o:	wcs.h fitshead.h wcslib.h
-polfit.o:	wcscat.h
 proj.o:		wcslib.h
 sdssread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
-sortstar.o:	wcscat.h
+sortstar.o:	wcscat.h wcs.h
 sph.o:		wcslib.h
 tabread.o:	fitshead.h wcs.h wcslib.h wcscat.h
 tmcread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
@@ -61,7 +60,7 @@ wcsinit.o:	fitshead.h wcs.h wcslib.h
 wcscon.o:	wcs.h fitshead.h wcslib.h
 wcslib.o:	wcslib.h
 wcstrig.o:	wcslib.h
-webread.o:	wcscat.h
+webread.o:	wcscat.h wcs.h
 worldpos.o:	wcs.h fitshead.h wcslib.h
 
 clean:

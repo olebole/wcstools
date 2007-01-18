@@ -1,8 +1,8 @@
 /*** File libwcs/imsetwcs.c
- *** June 19, 2006
+ *** January 10, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu (based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2006
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -47,7 +47,6 @@ extern int FitPlate();
 extern struct WorldCoor *GetFITSWCS ();
 extern char *getimcat();
 extern void SetFITSWCS();
-extern void fk425e(), fk524e();
 extern int iscdfit();
 extern void setminbin();
 extern void setnfit();
@@ -72,8 +71,6 @@ static int fitwcs = 1;		/* If 1, fit WCS, else use current WCS */
 static int fitplate = 0;	/* If 1, fit polynomial, else do not */
 static double imfrac0 = 0.0;	/* If > 0.0, multiply image dimensions
 					   by this for search */
-static int classd = -1;		/* Guide Star Catalog object classes */
-static int uplate = 0;		/* UJ Catalog plate number to use */
 static int iterate0 = 0;	/* If 1, search field again */
 static int toliterate0 = 0;	/* if 1, halve tolerances when iter */
 static int nfiterate0 = 0;	/* if 1, add two parameters to fit */
@@ -1045,11 +1042,6 @@ double lim1, lim2;
   return; }
 
 void
-setclass (class)
-int class;
-{ classd = class; return; }
-
-void
 setfitwcs (wfit)
 int wfit;
 { fitwcs = wfit; return; }
@@ -1058,11 +1050,6 @@ void
 setfitplate (nc)
 int nc;
 { fitplate = nc; return; }
-
-void
-setplate (plate)
-int plate;
-{ uplate = plate; return; }
 
 void
 setminstars (minstars)
@@ -1301,4 +1288,7 @@ setmagfit ()
  * Mar 30 2006	Allow number of decimal places in image coordinates to be set
  * Jun  8 2006	Print object name instead of number if necessary
  * Jun 19 2006	Initialize uninitialized variables
+ *
+ * Jan  9 2006	Drop declarations of fk425e() and fk524e(); moved to wcs.h
+ * Jan 10 2007	Drop setclass() and setplate(); it did not do anything
  */

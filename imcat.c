@@ -1,9 +1,9 @@
 /* File imcat.c
- * September 26, 2006
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1996-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -1583,7 +1583,10 @@ char	**refcatname;	/* reference catalog name */
 		band = gc[i] / 100;
 		gc[i] = gc[i] - (band * 100);
 		}
-	    CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
+	    if (refcat == SDSS)
+		strcpy (numstr, gobj[i]);
+	    else
+		CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
 
 	    /* Set up object name or number to print */
 	    if (starcat[icat] != NULL) {
@@ -2154,4 +2157,6 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Jun 27 2006	Deal with specified keyword in Starbase files correctly
  * Sep 11 2006	Add .reg suffix when writing PROS region files
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
+ * Nov  6 2006	Print SDSS number as character string; it is now 18 digits long
+ *
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/hget.c
- *** July 13, 2006
+ *** January 4, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2006
+ *** Copyright (C) 1994-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -83,7 +83,7 @@ static int lhead0 = 0;	/* Length of header string */
 /* Set the length of the header string, if not terminated by NULL */
 int
 hlength (header, lhead)
-char	*header; /* FITS header */
+const char *header; /* FITS header */
 int	lhead;	/* Maximum length of FITS header */
 {
     char *hend;
@@ -113,25 +113,25 @@ char	*header; /* FITS header */
 int
 hgeti4c (hstring,keyword,wchar,ival)
 
-char	*hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 			   in the format <keyword>= <value> {/ <comment>} */
-char	*keyword;	/* character string containing the name of the keyword
+const char *keyword;	/* character string containing the name of the keyword
 			   the value of which is returned.  hget searches for
 			   a line beginning with this string.  if "[n]" is
 			   present, the n'th token in the value is returned.
 			   (the first 8 characters must be unique) */
-unsigned char wchar;	/* Character of multiple WCS header; =0 if unused */
+const char *wchar;	/* Character of multiple WCS header; =0 if unused */
 int	*ival;		/* Keyword value returned */
 {
     char keyword1[16];
     int lkey;
 
-    if (wchar < 64)
+    if (wchar[0] < (char) 64)
 	return (hgeti4 (hstring, keyword, ival));
     else {
 	strcpy (keyword1, keyword);
 	lkey = strlen (keyword);
-	keyword1[lkey] = wchar;
+	keyword1[lkey] = wchar[0];
 	keyword1[lkey+1] = (char) 0;
 	return (hgeti4 (hstring, keyword1, ival));
 	}
@@ -143,9 +143,9 @@ int	*ival;		/* Keyword value returned */
 int
 hgeti4 (hstring,keyword,ival)
 
-char *hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the keyword
+const char *keyword;	/* character string containing the name of the keyword
 		   the value of which is returned.  hget searches for a
 		   line beginning with this string.  if "[n]" is present,
 		   the n'th token in the value is returned.
@@ -202,9 +202,9 @@ int *ival;
 int
 hgeti2 (hstring,keyword,ival)
 
-char *hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the keyword
+const char *keyword;	/* character string containing the name of the keyword
 		   the value of which is returned.  hget searches for a
 		   line beginning with this string.  if "[n]" is present,
 		   the n'th token in the value is returned.
@@ -260,9 +260,9 @@ short *ival;
 int
 hgetr4 (hstring,keyword,rval)
 
-char *hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the keyword
+const char *keyword;	/* character string containing the name of the keyword
 		   the value of which is returned.  hget searches for a
 		   line beginning with this string.  if "[n]" is present,
 		   the n'th token in the value is returned.
@@ -308,9 +308,9 @@ float *rval;
 int
 hgetra (hstring,keyword,dval)
 
-char *hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the keyword
+const char *keyword;	/* character string containing the name of the keyword
 		   the value of which is returned.  hget searches for a
 		   line beginning with this string.  if "[n]" is present,
 		   the n'th token in the value is returned.
@@ -337,9 +337,9 @@ double *dval;	/* Right ascension in degrees (returned) */
 int
 hgetdec (hstring,keyword,dval)
 
-char *hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the keyword
+const char *keyword;	/* character string containing the name of the keyword
 		   the value of which is returned.  hget searches for a
 		   line beginning with this string.  if "[n]" is present,
 		   the n'th token in the value is returned.
@@ -366,25 +366,25 @@ double *dval;	/* Right ascension in degrees (returned) */
 int
 hgetr8c (hstring,keyword,wchar,dval)
 
-char	*hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 			   in the format <keyword>= <value> {/ <comment>} */
-char	*keyword;	/* character string containing the name of the keyword
+const char *keyword;	/* character string containing the name of the keyword
 			   the value of which is returned.  hget searches for
 			   a line beginning with this string.  if "[n]" is
 			   present, the n'th token in the value is returned.
 			   (the first 8 characters must be unique) */
-unsigned char wchar;	/* Character of multiple WCS header; =0 if unused */
+const char *wchar;	/* Character of multiple WCS header; =0 if unused */
 double	*dval;		/* Keyword value returned */
 {
     char keyword1[16];
     int lkey;
 
-    if (wchar < 64)
+    if (wchar[0] < (char) 64)
 	return (hgetr8 (hstring, keyword, dval));
     else {
 	strcpy (keyword1, keyword);
 	lkey = strlen (keyword);
-	keyword1[lkey] = wchar;
+	keyword1[lkey] = wchar[0];
 	keyword1[lkey+1] = (char) 0;
 	return (hgetr8 (hstring, keyword1, dval));
 	}
@@ -397,9 +397,9 @@ double	*dval;		/* Keyword value returned */
 int
 hgetr8 (hstring,keyword,dval)
 
-char *hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the keyword
+const char *keyword;	/* character string containing the name of the keyword
 		   the value of which is returned.  hget searches for a
 		   line beginning with this string.  if "[n]" is present,
 		   the n'th token in the value is returned.
@@ -445,9 +445,9 @@ double *dval;
 int
 hgetl (hstring,keyword,ival)
 
-char *hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the keyword
+const char *keyword;	/* character string containing the name of the keyword
 		   the value of which is returned.  hget searches for a
 		   line beginning with this string.  if "[n]" is present,
 		   the n'th token in the value is returned.
@@ -488,9 +488,9 @@ int *ival;
 int
 hgetdate (hstring,keyword,dval)
 
-char *hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the keyword
+const char *keyword;	/* character string containing the name of the keyword
 		   the value of which is returned.  hget searches for a
 		   line beginning with this string.  if "[n]" is present,
 		   the n'th token in the value is returned.
@@ -651,14 +651,14 @@ double *dval;
 int
 hgetm (hstring, keyword, lstr, str)
 
-char *hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the root name of the keyword
+const char *keyword;	/* character string containing the root name of the keyword
 		   the value of which is returned.  hget searches for a
 		   line beginning with this string.  if "[n]" is present,
 		   the n'th token in the value is returned.
 		   (the first 8 characters must be unique) */
-int lstr;	/* Size of str in characters */
+const int lstr;	/* Size of str in characters */
 char *str;	/* String (returned) */
 {
     char *value;
@@ -727,26 +727,26 @@ char *str;	/* String (returned) */
 int
 hgetsc (hstring,keyword,wchar,lstr,str)
 
-char	*hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 			   in the format <keyword>= <value> {/ <comment>} */
-char	*keyword;	/* character string containing the name of the keyword
+const char *keyword;	/* character string containing the name of the keyword
 			   the value of which is returned.  hget searches for
 			   a line beginning with this string.  if "[n]" is
 			   present, the n'th token in the value is returned.
 			   (the first 8 characters must be unique) */
-unsigned char wchar;	/* Character of multiple WCS header; =0 if unused */
-int	lstr;		/* Size of str in characters */
+const char *wchar;	/* Character of multiple WCS header; =0 if unused */
+const int lstr;		/* Size of str in characters */
 char	*str;		/* String (returned) */
 {
     char keyword1[16];
     int lkey;
 
-    if (wchar < 64)
+    if (wchar[0] < (char) 64)
 	return (hgets (hstring, keyword, lstr, str));
     else {
 	strcpy (keyword1, keyword);
 	lkey = strlen (keyword);
-	keyword1[lkey] = wchar;
+	keyword1[lkey] = wchar[0];
 	keyword1[lkey+1] = (char) 0;
 	return (hgets (hstring, keyword1, lstr, str));
 	}
@@ -758,14 +758,14 @@ char	*str;		/* String (returned) */
 int
 hgets (hstring, keyword, lstr, str)
 
-char *hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the keyword
+const char *keyword;	/* character string containing the name of the keyword
 		   the value of which is returned.  hget searches for a
 		   line beginning with this string.  if "[n]" is present,
 		   the n'th token in the value is returned.
 		   (the first 8 characters must be unique) */
-int lstr;	/* Size of str in characters */
+const int lstr;	/* Size of str in characters */
 char *str;	/* String (returned) */
 {
     char *value;
@@ -794,9 +794,9 @@ char *str;	/* String (returned) */
 int
 hgetndec (hstring, keyword, ndec)
 
-char *hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword;	/* character string containing the name of the keyword
+const char *keyword;	/* character string containing the name of the keyword
 		   the value of which is returned.  hget searches for a
 		   line beginning with this string.  if "[n]" is present,
 		   the n'th token in the value is returned.
@@ -830,9 +830,9 @@ int *ndec;	/* Number of decimal places in keyword value */
 char *
 hgetc (hstring,keyword0)
 
-char *hstring;	/* character string containing FITS header information
+const char *hstring;	/* character string containing FITS header information
 		   in the format <keyword>= <value> {/ <comment>} */
-char *keyword0;	/* character string containing the name of the keyword
+const char *keyword0;	/* character string containing the name of the keyword
 		   the value of which is returned.  hget searches for a
 		   line beginning with this string.  if "[n]" is present,
 		   the n'th token in the value is returned.
@@ -1046,18 +1046,19 @@ blsearch (hstring,keyword)
    (the keyword may have a maximum of eight letters)
    NULL is returned if the keyword is not found */
 
-char *hstring;	/* character string containing fits-style header
+const char *hstring;	/* character string containing fits-style header
 		information in the format <keyword>= <value> {/ <comment>}
 		the default is that each entry is 80 characters long;
 		however, lines may be of arbitrary length terminated by
 		nulls, carriage returns or linefeeds, if packed is true.  */
-char *keyword;	/* character string containing the name of the variable
+const char *keyword;	/* character string containing the name of the variable
 		to be returned.  ksearch searches for a line beginning
 		with this string.  The string may be a character
 		literal or a character variable terminated by a null
 		or '$'.  it is truncated to 8 characters. */
 {
-    char *loc, *headnext, *headlast, *pval, *lc, *line;
+    const char *headlast;
+    char *loc, *headnext, *pval, *lc, *line;
     char *bval;
     int icol, nextchar, lkey, nleft, lhstr;
 
@@ -1072,7 +1073,7 @@ char *keyword;	/* character string containing the name of the variable
 	    lhstr++;
 	}
     headlast = hstring + lhstr;
-    headnext = hstring;
+    headnext = (char *) hstring;
     pval = NULL;
     while (headnext < headlast) {
 	nleft = headlast - headnext;
@@ -1142,18 +1143,19 @@ ksearch (hstring,keyword)
    (the keyword may have a maximum of eight letters)
    NULL is returned if the keyword is not found */
 
-char *hstring;	/* character string containing fits-style header
+const char *hstring;	/* character string containing fits-style header
 		information in the format <keyword>= <value> {/ <comment>}
 		the default is that each entry is 80 characters long;
 		however, lines may be of arbitrary length terminated by
 		nulls, carriage returns or linefeeds, if packed is true.  */
-char *keyword;	/* character string containing the name of the variable
+const char *keyword;	/* character string containing the name of the variable
 		to be returned.  ksearch searches for a line beginning
 		with this string.  The string may be a character
 		literal or a character variable terminated by a null
 		or '$'.  it is truncated to 8 characters. */
 {
-    char *loc, *headnext, *headlast, *pval, *lc, *line;
+    const char *headlast;
+    char *loc, *headnext, *pval, *lc, *line;
     int icol, nextchar, lkey, nleft, lhead, lmax;
 
 #ifdef USE_SAOLIB
@@ -1177,7 +1179,7 @@ char *keyword;	/* character string containing the name of the variable
 
 /* Search header string for variable name */
     headlast = hstring + lhead;
-    headnext = hstring;
+    headnext = (char *) hstring;
     pval = NULL;
     while (headnext < headlast) {
 	nleft = headlast - headnext;
@@ -1236,7 +1238,7 @@ char *keyword;	/* character string containing the name of the variable
 double
 str2ra (in)
 
-char	*in;	/* Character string of sexigesimal hours or decimal degrees */
+const char *in;	/* Character string of sexigesimal hours or decimal degrees */
 
 {
     double ra;	/* Right ascension in degrees (returned) */
@@ -1254,7 +1256,7 @@ char	*in;	/* Character string of sexigesimal hours or decimal degrees */
 double
 str2dec (in)
 
-char	*in;	/* Character string of sexigesimal or decimal degrees */
+const char *in;	/* Character string of sexigesimal or decimal degrees */
 
 {
     double dec;		/* Declination in degrees (returned) */
@@ -1271,7 +1273,7 @@ char	*in;	/* Character string of sexigesimal or decimal degrees */
 
     /* Translate value from ASCII colon-delimited string to binary */
     if (in[0]) {
-	value = in;
+	value = (char *) in;
 
 	/* Remove leading spaces */
 	while (*value == ' ')
@@ -1340,8 +1342,8 @@ char	*in;	/* Character string of sexigesimal or decimal degrees */
 char *
 strsrch (s1, s2)
 
-char *s1;	/* String to search */
-char *s2;	/* String to look for */
+const char *s1;	/* String to search */
+const char *s2;	/* String to look for */
 
 {
     int ls1;
@@ -1355,9 +1357,9 @@ char *s2;	/* String to look for */
 char *
 strnsrch (s1, s2, ls1)
 
-char	*s1;	/* String to search */
-char	*s2;	/* String to look for */
-int	ls1;	/* Length of string being searched */
+const char *s1;	/* String to search */
+const char *s2;	/* String to look for */
+const int ls1;	/* Length of string being searched */
 
 {
     char *s,*s1e;
@@ -1371,16 +1373,16 @@ int	ls1;	/* Length of string being searched */
     /* A zero-length pattern is found in any string */
     ls2 = strlen (s2);
     if (ls2 ==0)
-	return (s1);
+	return ((char *) s1);
 
     /* Only a zero-length string can be found in a zero-length string */
     if (ls1 ==0)
 	return (NULL);
 
-    cfirst = s2[0];
-    clast = s2[ls2-1];
-    s1e = s1 + ls1 - ls2 + 1;
-    s = s1;
+    cfirst = (char) s2[0];
+    clast = (char) s2[ls2-1];
+    s1e = (char *) s1 + (int) ls1 - ls2 + 1;
+    s = (char *) s1;
     while (s < s1e) { 
 
 	/* Search for first character in pattern string */
@@ -1418,12 +1420,12 @@ int	ls1;	/* Length of string being searched */
 char *
 strcsrch (s1, s2)
 
-char *s1;	/* String to search */
-char *s2;	/* String to look for */
+const char *s1;	/* String to search */
+const char *s2;	/* String to look for */
 
 {
     int ls1;
-    ls1 = strlen (s1);
+    ls1 = strlen ((char *) s1);
     return (strncsrch (s1, s2, ls1));
 }
 
@@ -1433,9 +1435,9 @@ char *s2;	/* String to look for */
 char *
 strncsrch (s1, s2, ls1)
 
-char	*s1;	/* String to search */
-char	*s2;	/* String to look for */
-int	ls1;	/* Length of string being searched */
+const char *s1;	/* String to search */
+const char *s2;	/* String to look for */
+const int ls1;	/* Length of string being searched */
 
 {
     char *s,*s1e, sl, *os2;
@@ -1451,7 +1453,7 @@ int	ls1;	/* Length of string being searched */
     /* A zero-length pattern is found in any string */
     ls2 = strlen (s2);
     if (ls2 ==0)
-	return (s1);
+	return ((char *) s1);
 
     /* Only a zero-length string can be found in a zero-length string */
     os2 = NULL;
@@ -1460,7 +1462,7 @@ int	ls1;	/* Length of string being searched */
 
     /* For one or two characters, set opposite case first and last letters */
     if (ls2 < 3) {
-	cfirst = s2[0];
+	cfirst = (char) s2[0];
 	if (cfirst > 96 && cfirst < 123)
 	    ocfirst = cfirst - 32;
 	else if (cfirst > 64 && cfirst < 91)
@@ -1496,8 +1498,8 @@ int	ls1;	/* Length of string being searched */
 	}
 
     /* Loop through input string, character by character */
-    s1e = s1 + ls1 - ls2 + 1;
-    s = s1;
+    s = (char *) s1;
+    s1e = s + (int) ls1 - ls2 + 1;
     while (s < s1e) { 
 
 	/* Search for first character in pattern string */
@@ -1517,7 +1519,7 @@ int	ls1;	/* Length of string being searched */
 
 		/* If 3 or more characters, check for rest of search string */
 		i = 1;
-		while (i < ls2 && (s[i] == s2[i] || s[i] == os2[i]))
+		while (i < ls2 && (s[i] == (char) s2[i] || s[i] == os2[i]))
 		    i++;
 
 		/* If entire string matches, return */
@@ -1538,7 +1540,7 @@ int	ls1;	/* Length of string being searched */
 int
 notnum (string)
 
-char *string;	/* Character string */
+const char *string;	/* Character string */
 {
     if (isnum (string))
 	return (0);
@@ -1553,7 +1555,7 @@ char *string;	/* Character string */
 int
 isnum (string)
 
-char *string;	/* Character string */
+const char *string;	/* Character string */
 {
     int lstr, i, nd;
     char cstr, cstr1;
@@ -1622,7 +1624,7 @@ char *string;	/* Character string */
 int
 numdec (string)
 
-char *string;   /* Numeric string */
+const char *string;	/* Numeric string */
 {
     char *cdot;
     int lstr;
@@ -1836,4 +1838,7 @@ int	dropzero;	/* If nonzero, drop trailing zeroes */
  * Jun 20 2006	Initialize uninitialized variables in strnsrch()
  * Jun 29 2006	Add new subroutine strfix() to clean strings for other uses
  * Jul 13 2006	Increase maximum number of multiline keywords from 20 to 500
+ *
+ * Jan  4 2007  Declare header, keyword to be const
+ * Jan  4 2007	Change WCS letter from char to char*
  */

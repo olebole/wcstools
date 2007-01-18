@@ -1,0 +1,36 @@
+.TH imfill(1) WCSTools "18 April 2006"
+.SH Name
+imfill \- Fill bad pixels in FITS and IRAF image files
+.SH Synopsis
+imfill [options] Fits or IRAF file(s)
+.SH Description
+.I imfill
+is a utility for filling in bad pixels in FITS or IRAF images.  Instead of
+linearly interpolating like fixpix, values to replace each flagged bad
+pixel are computed from the pixels in rectangular boxes centered on that
+pixel.  The options are mean, median, or a Gaussian weighting.  IRAF files
+may be written out as FITS files, and the shape of the Gaussian may be specified
+Bad pixels are identified by having the value of the header keyword BLANK or
+by non-zero pixels in a bad pixel file.
+.SH Options
+.B \-a dx dy
+Mean filter dx x dy pixels
+.B \-b filename
+FITS file with zeroes except at bad pixels
+.B \-g dx
+Gaussian filter dx pixels square
+.B \-h halfwidth
+Gaussian half-width at half-height
+.B \-l num
+Logging interval in lines
+.B \-m dx dy
+Median filter dx x dy pixels
+.B \-o [filename]
+If no argument, overwrite input image, else write the output to filename.
+.B \-v num
+Bad pixel value (default is BLANK or -9999)
+.B \-v
+Verbose
+
+.SH Author
+Doug Mink, SAO (dmink@cfa.harvard.edu)

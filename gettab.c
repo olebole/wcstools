@@ -1,7 +1,24 @@
 /* File gettab.c
- * June 28, 2006
- * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
+ * January 10, 2007
+ * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
+
+   Copyright (C) 1999-2007
+   Smithsonian Astrophysical Observatory, Cambridge, MA USA
+
+   This program is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License
+   as published by the Free Software Foundation; either version 2
+   of the License, or (at your option) any later version.
+
+   This program is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+   GNU General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with this program; if not, write to the Free Software Foundation,
+   Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
 #include <stdio.h>
@@ -66,7 +83,6 @@ char **av;
     int lfield = 0;
     char *kw1;
     char *cstr, *nstr;
-    char string[80];
     int icond;
     char *calias;
     char *ranges = NULL;
@@ -542,7 +558,6 @@ char	*alias[]; /* Output names of keywords if different from input */
 {
     char *str;
     char *cstr, *cval, cvalue[64];
-    char numstr[32];
     int pass = 0;
     int drop;
     int jval, jcond, icond;
@@ -803,4 +818,6 @@ char	*alias[]; /* Output names of keywords if different from input */
  *
  * Jun 21 2006	Drop unused; initialize uninitialized variables
  * Jun 29 2006	Rename strclean() strfix() and move to hget.c
+ *
+ * Jan 10 2007	Drop unused variable numstr
  */

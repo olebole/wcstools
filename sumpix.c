@@ -1,9 +1,9 @@
 /* File sumpix.c
- * September 18, 2006
+ * January 10, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1999-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
+#include "libwcs/wcs.h"
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcscat.h"
 
@@ -468,4 +469,6 @@ char *rrange;	/* Row range string */
  * Dec  6 2002	Add -l option to print range of values
  *
  * Jun 21 2006	Clean up code
+ *
+ * Jan 10 2007	Include wcs.h
  */

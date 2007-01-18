@@ -1,9 +1,9 @@
 /* File cphead.c
- * June 29, 2006
+ * January 10, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 2000-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -43,7 +43,6 @@ static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;
 static int ndec0 = -9;
 static int maxlfn = 0;
-static int listall = 0;
 static int listpath = 0;
 static int newimage0 = 0;
 static int keyset = 0;
@@ -96,7 +95,7 @@ char **av;
     for (av++; --ac > 0; av++) {
 	if ((*(str = *av))=='-') {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 
 		case 'd': /* Root directory for input */
@@ -660,4 +659,6 @@ char	*kwd[];		/* Names of keywords for which to copy values */
  * May 31 2006	Add diagnostic messages
  * Jun 20 2006	Drop unused variables
  * Jun 29 2006	Rename strclean() strfix() and move to hget.c
+ *
+ * Jan 10 2007	Add second set of parentheses in line 100 if clause
  */

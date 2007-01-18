@@ -1,9 +1,9 @@
 /* File getdate.c
- * October 2, 2006
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1999-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -70,7 +70,6 @@ extern void setdatedec();
 
 static int verbose = 0;		/* Verbose/debugging flag */
 static int version = 0;	/* If 1, print only program name and version */
-static int nread = 0;	/* Number of lines to read (0=all) */
 static int ndec = 5;	/* Number of decimal places in output */
 static int dateonly = 0; /* If 1, print date without time */
 static int timeonly = 0; /* If 1, print time without date */
@@ -232,7 +231,7 @@ char **av;
 	/* Read command line parameters */
 	else if (*(str = *av) == '-' && !isdate(*av) && !isnum(*av)) {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 
 		case 'a':	/* Append date to input file */
@@ -1551,10 +1550,14 @@ char	*timestring;	/* Input time string */
 	    break;
 	case DTUNIX:
 	    if (datestring != NULL) {
-    		if (strcmp (datestring, "now"))
-		    ts = (time_t) (atof (datestring) + 0.5);
+    		if (strcmp (datestring, "now")) {
+		    its = (time_t) (atof (datestring) + 0.5);
+		    ts = (double) its;
+		    }
+		else
+		    its = (int) ts;
 		if (verbose)
-		    printf ("%d -> ", ts);
+		    printf ("%d -> ", its);
 		switch (outtype) {
 		    case DTEP:
 			ts = tsu2ts (ts);
@@ -1857,7 +1860,7 @@ char	*timestring;	/* Input time string */
 		    printf (outform, jd);
 		    break;
 		case DTHJD:
-		    jd = ut2jd (epoch);
+		    jd = ut2jd ();
 		    jd = jd2hjd (jd, ra, dec, coorsys);
 		    printf (outform, jd);
 		    break;
@@ -1929,4 +1932,7 @@ char	*timestring;	/* Input time string */
  * Sep 15 2006	Add local sidereal time
  * Oct  2 2006	Add conversions from sidereal time to UT
  * Oct  2 2006	Add time to old FITS date conversions
+ *
+ * Jan 10 2007	Drop ignored argument from ut2jd() call
+ * Jan 10 2007	Fix unix time output format
  */

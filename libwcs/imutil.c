@@ -1,6 +1,9 @@
-/* File libwcs/imutil.c
- * September 25, 2006
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
+/*** File libwcs/imutil.c
+ *** January 8, 2007
+ *** By Doug Mink, dmink@cfa.harvard.edu
+ *** Harvard-Smithsonian Center for Astrophysics
+ *** Copyright (C) 2006-2007
+ *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
  */
 
 /* Smooth, fill, or shrink an image */
@@ -405,13 +408,10 @@ int	nx,ny;		/* Number of columns and rows in image */
 int	ix,iy;		/* Pixel around which to compute mean */
 int	npix;		/* Number of pixels in image */
 int	bitpix;		/* Number of bits per pixel (<0=floating point) */
-int	bitpixb;	/* Number of bits per pixel in bad pixel file */
-int	nxb,nyb;	/* Number of columns and rows in bad pixel image */
 int	checkmin = 0;
 int	checkmax = 0;
 int	naxes;
 char	*buff;
-char	*buffbad;
 
     hgeti4 (header, "BITPIX", &bitpix);
     hgeti4 (header, "NAXIS", &naxes);
@@ -2413,4 +2413,6 @@ int	bitpix;		/* Number of bits per output pixel (neg=f.p.) */
  * Jul  6 2006	Make both dimensions variable for Gaussian
  * Jul  7 2006	SetBadVal() now checks min and max allowable values
  * Sep 25 2006	Fix bug so CDELT1 and CDELT2 are scaled correctly
+ *
+ * Jan  8 2007	Drop unused variables from SetBadVal()
  */

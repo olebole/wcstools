@@ -1,5 +1,5 @@
 CFLAGS= -g
-CC= cc
+CC= cc -Wall
 LIBWCS = libwcs/libwcs.a
 LIBS = $(LIBWCS) -lm
 #CATLIBS = $(LIBS) -lnsl -lsocket
@@ -13,7 +13,7 @@ all:	cphead delwcs delhead edhead fixpix gethead i2f imcat imhead immatch \
 	imrot imsize imstar imwcs scat sethead addpix getpix setpix sky2xy \
 	keyhead skycoor subpix xy2sky wcshead conpix gettab newfits getfits \
 	imstack imextract sumpix remap getcol getdate imfill imsmooth imresize \
-	fileroot filename filext char2sp sp2char crlf isnum isrange simpos
+	fileroot filename filext char2sp sp2char crlf isnum isrange simpos bincat
 
 addpix: addpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/addpix addpix.c $(LIBS)
@@ -138,7 +138,7 @@ remap: remap.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
 scat: scat.c $(LIBWCS) libwcs/wcscat.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/scat scat.c $(CATLIBS)
 
-sethead: sethead.c $(LIBWCS) libwcs/fitsfile.h
+sethead: sethead.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/sethead sethead.c $(LIBS)
 
 setpix: setpix.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h

@@ -1,9 +1,9 @@
 /* File isnum.c
- * April 3, 2006
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 2001-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -34,7 +34,6 @@ main (ac, av)
 int ac;
 char **av;
 {
-    char *fn;
     char *str;
 
     /* Check for version or help command first */
@@ -59,4 +58,6 @@ char **av;
  * Apr 11 2005	Print version
  *
  * Apr  3 2006	Declare main to be int
+ *
+ * Jan 10 2007	Drop unused variable fn
  */

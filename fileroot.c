@@ -1,9 +1,9 @@
 /* File fileroot.c
- * June 21, 2006
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 2000-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -45,7 +45,7 @@ char **av;
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
         char c;
-        while (c = *++str)
+        while ((c = *++str))
         switch (c) {
 
         case 'v':       /* more verbosity */
@@ -112,4 +112,6 @@ usage ()
  * Mar  1 2000	Add character replacement
  *
  * Jun 21 2006	Clean up code
+ *
+ * Jan 10 2007	Add second parentheses around character check
  */

@@ -1,0 +1,9 @@
+#!/bin/nawk -f
+{
+    command = "sort "$1" > tempfile"
+    if (!system (command)) {
+	command = "mv tempfile "$1
+	if (!system (command))
+	    print $1 " sorted"
+	}
+}

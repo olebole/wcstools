@@ -1,8 +1,8 @@
 /*** File libwcs/ty2read.c
- *** October 5, 2006
+ *** January 10, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2000-2006
+ *** Copyright (C) 2000-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -130,7 +130,7 @@ int	nlog;		/* 1 for diagnostics */
     else
 	strncpy (ty2cd, str, 64);
     if (!strncmp (str, "http:",5)) {
-	return (webread (ty2cd,"tycho2",distsort,cra,cdec,dra,ddec,drad,
+	return (webread (ty2cd,"tycho2",distsort,cra,cdec,dra,ddec,drad,dradi,
 			 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
 	}
@@ -488,16 +488,11 @@ int	nlog;		/* 1 for diagnostics */
 	verbose = 0;
 
     /* If pathname is a URL, search and return */
-    if ((str = getenv("TY2_PATH")) != NULL ) {
-	if (!strncmp (str, "http:",5)) {
-	    return (webrnum (str,"tycho2",nstars,sysout,eqout,epout,
-			     gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
-	    }
-	}
-    if (!strncmp (ty2cd, "http:",5)) {
-	return (webrnum (ty2cd,"tycho2",nstars,sysout,eqout,epout,
+    if ((str = getenv("TY2_PATH")) == NULL )
+	str = ty2cd;
+    if (!strncmp (str, "http:",5))
+	return (webrnum (str,"tycho2",nstars,sysout,eqout,epout,1,
 			 gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog));
-	}
 
     /* Allocate catalog entry buffer */
     star = (struct Star *) calloc (1, sizeof (struct Star));
@@ -786,18 +781,25 @@ int	nlog;		/* 1 for diagnostics */
 			    flux = 1.0;
 			ix = (int) (xpix + 0.5);
 			iy = (int) (ypix + 0.5);
-			addpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy, flux);
+			addpix1 (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
 			nstar++;
 			jstar++;
 			}
 		    else {
-			flux = 0.0;
-			ix = -1;
-			iy = -1;
+			ix = 0;
+			iy = 0;
 			}
-		    if (nlog == 1)
-			fprintf (stderr,"TY2 %11.5f: %9.5f %9.5f %5.2f %5.2f (%.2f,%.2f) -> (%d,%d) %7g\n",
-				 num,ra,dec,magb,magv,xpix,ypix,ix,iy,flux);
+		    if (nlog == 1) {
+			fprintf (stderr,"TY2BIN: %11.5f: %9.5f %9.5f %s",
+				 num,ra,dec,cstr);
+			if (magscale > 0.0)
+			    fprintf (stderr, " %5.2f", mag);
+			if (!offscl)
+			    flux = getpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy);
+			else
+			    flux = 0.0;
+			fprintf (stderr," (%d,%d): %f\n", ix, iy, flux);
+			}
 
 		    /* End of accepted star processing */
 		    }
@@ -1423,4 +1425,9 @@ char	*filename;	/* Name of file for which to find size */
  * Apr  3 2006	Add refcat definition to ty2rnum()
  * Jun 20 2006	Initialize uninitialized variables
  * Oct  5 2006	Fix order of magnitudes to Bt-Vt from Vt-Bt
+ * Nov 16 2006	Fix binning
+ *
+ * Jan 10 2007	Add dradi argument to webread() call
+ * Jan 10 2007	Add match=1 argument to webrnum()
+ * Jan 10 2007	Rewrite web access in ty2rnum() to reduce code
  */

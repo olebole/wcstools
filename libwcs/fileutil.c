@@ -323,9 +323,6 @@ char    *filename;      /* Name of file to check */
 }
 
 
-static char *token1;
-
-
 /* FIRST_TOKEN -- Return first token from the next line of an ASCII file */
 
 int
@@ -356,10 +353,7 @@ char	*token;			/* First token on next line (returned) */
 
 	if ((lspace = strchr (token, ' ')) != NULL) {
 	    *lspace = (char) 0;
-	    token1 = lspace + 1;
 	    }
-	else
-	    token1 = NULL;
 	return (1);
 	}
     else
@@ -372,14 +366,14 @@ char	*token;			/* First token on next line (returned) */
 int
 stc2s (spchar, string)
 
-char	spchar;	/* Character to replace with spaces */
+char	*spchar;	/* Character to replace with spaces */
 char	*string;
 {
     int i, lstr, n;
     lstr = strlen (string);
     n = 0;
     for (i = 0; i < lstr; i++) {
-	if (string[i] == spchar) {
+	if (string[i] == spchar[0]) {
 	    n++;
 	    string[i] = ' ';
 	    }
@@ -393,7 +387,7 @@ char	*string;
 int
 sts2c (spchar, string)
 
-char	spchar;	/* Character wth which to replace spaces */
+char	*spchar;	/* Character with which to replace spaces */
 char	*string;
 {
     int i, lstr, n;
@@ -402,7 +396,7 @@ char	*string;
     for (i = 0; i < lstr; i++) {
 	if (string[i] == ' ') {
 	    n++;
-	    string[i] = spchar;
+	    string[i] = spchar[0];
 	    }
 	}
     return (n);
@@ -555,4 +549,6 @@ char    *filename;      /* Name of file to check */
  *
  * Feb 23 2006	Add istiff(), isjpeg(), isgif() to check TIFF, JPEG, GIF files
  * Jun 20 2006	Cast call to fgets() void
+ *
+ * Jan  5 2007	Change stc2s() and sts2c() to pass single character as pointer
  */

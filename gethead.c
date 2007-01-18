@@ -1,9 +1,9 @@
 /* File gethead.c
- * July 13, 2006
+ * January 10, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1996-2006 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
+#include "libwcs/wcs.h"
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcscat.h"
 
@@ -131,7 +132,7 @@ char **av;
     for (av++; --ac > 0; av++) {
 	if (*(str = *av)=='-') {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 
 		case 'a': /* list file even if the keywords are not found */
@@ -1103,4 +1104,5 @@ char *string;
  * Jul  5 2006	If only one extension specified by -x, do not listall
  * Jul 12 2006	Add option using : to read a sub-keyword from IRAF multi-line
  * Jul 13 2006	Print only first 999 characters of multiline keyword value
+ *
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/tmcread.c
- *** September 26, 2006
+ *** January 10, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2006
+ *** Copyright (C) 2001-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -84,7 +84,7 @@ double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
 int	nstarmax;	/* Maximum number of stars to be returned */
-double	*gnum;		/* Array of Guide Star numbers (returned) */
+double	*gnum;		/* Array of catalog numbers (returned) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
 double	**gmag;		/* Array of visual magnitudes (returned) */
@@ -518,7 +518,7 @@ int	nstars;		/* Number of stars to find */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
-double	*gnum;		/* Array of Guide Star numbers (returned) */
+double	*gnum;		/* Array of source numbers for which to search */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
 double	**gmag;		/* 2-D array of magnitudes (returned) */
@@ -566,7 +566,7 @@ int	nlog;		/* 1 for diagnostics */
 
     /* If pathname is a URL, search and return */
     if (!strncmp (tmcpath, "http:",5))
-	return (webrnum (tmcpath,"tmc",nstars,sysout,eqout,epout,
+	return (webrnum (tmcpath,"tmc",nstars,sysout,eqout,epout,1,
 			 gnum,gra,gdec,NULL,NULL,gmag,gtype,nlog));
 
     /* Allocate catalog entry buffer */
@@ -688,6 +688,7 @@ int	nlog;		/* 1 for diagnostics */
     char tmcenv[16];
     double xpix, ypix, flux;
     int offscl;
+    int ix, iy;
     int bitpix, w, h;   /* Image bits/pixel and pixel width and height */
     double logt = log(10.0);
 
@@ -854,13 +855,27 @@ int	nlog;		/* 1 for diagnostics */
 			    flux = magscale * exp (logt * (-mag / 2.5));
 			else
 			    flux = 1.0;
-			addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+			ix = (int) (xpix + 0.5);
+			iy = (int) (ypix + 0.5);
+			addpix1 (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
 			nstar++;
+			jstar++;
 			}
-
-		    if (nlog == 1)
-			fprintf (stderr,"TMCBIN: %11.6f: %9.5f %9.5f %5.2f %5.2f %5.2f\n",
-				 num,ra,dec,star->xmag[0],star->xmag[1],star->xmag[2]);
+		    else {
+			ix = 0;
+			iy = 0;
+			}
+		    if (nlog == 1) {
+			fprintf (stderr,"TMCBIN: %11.6f: %9.5f %9.5f %s",
+				 num,ra,dec,cstr);
+			if (magscale > 0.0)
+			    fprintf (stderr, " %5.2f", mag);
+			if (!offscl)
+			    flux = getpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy);
+			else
+			    flux = 0.0;
+			fprintf (stderr," (%d,%d): %f\n", ix, iy, flux);
+			}
 
 		    /* End of accepted star processing */
 		    }
@@ -1255,7 +1270,7 @@ int	zone;		/* Declination zone in which search is occurring */
 double	rax0;		/* Right ascension in degrees for which to search */
 int	minmax;		/* Flag to say whether this is a min or max RA */
 {
-    int istar, istar0, istar1, istar2, nrep, i;
+    int istar, istar0, istar1, nrep, i;
     double rax, ra0, ra1, ra, sdiff;
     char rastrx[32];
     char rastr[32];
@@ -1491,4 +1506,9 @@ int	istar;		/* Star sequence in 2MASS zone file */
  *
  * Jun 20 2006	Initialize uninitialized variables
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
+ * Nov 15 2006	Fix binning
+ *
+ * Jan  8 2007	Drop unused variables
+ * Jan  9 2007	Relabel number arrays
+ * Jan 10 2007	Add match=1 argument to webrnum()
  */

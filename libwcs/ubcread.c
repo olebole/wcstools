@@ -1,8 +1,8 @@
 /*** File libwcs/ubcread.c
- *** October 24, 2006
+ *** January 10, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2006
+ *** Copyright (C) 200
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -253,7 +253,7 @@ int	nlog;		/* Logging interval */
 	printf ("program        scat %s\n", revmessage);
 	CatID (catid, ucat);
 	printf ("%s	ra          	dec         	", catid);
-	printf ("magb1 	magr1 	magb2 	magr2 	magn  	ura  	udec  	");
+	printf ("magb1 	magr1 	magb1 	magb2 	magn  	ura  	udec  	");
 	printf ("pm	ni	arcmin\n");
 	printf ("------------	------------	------------	");
 	printf ("-----	-----	-----	-----	-----	-----	-----	");
@@ -629,7 +629,7 @@ int	nlog;		/* Logging interval */
 
     /* If root pathname is a URL, search and return */
     if (!strncmp (upath, "http:",5)) {
-	return (webrnum (upath,refcatname,nnum,sysout,eqout,epout,
+	return (webrnum (upath,refcatname,nnum,sysout,eqout,epout,1,
 			 unum,ura,udec,upra,updec,umag,upmni,nlog));
 	}
 
@@ -769,6 +769,7 @@ int	nlog;		/* Logging interval */
     int wrap, iwrap;
     int verbose;
     int znum, itot,iz, i;
+    int ix, iy;
     int nsg, qsg;
     int jtable,jstar;
     int itable = 0;
@@ -993,17 +994,19 @@ int	nlog;		/* Logging interval */
 				    flux = magscale * exp (logt * (-mag / 2.5));
 				else
 				    flux = 1.0;
-				addpix (image, bitpix, w, h, 0.0, 1.0,
-					xpix, ypix, flux);
+				ix = (int) (xpix + 0.5);
+				iy = (int) (ypix + 0.5);
+				addpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy, flux);
 				nstar++;
 				jstar++;
-				}
-			    if (nlog == 1) {
-				fprintf (stderr,"UBCBIN: %04d.%07d: %9.5f %9.5f %s\n",
-					znum,istar,ra,dec,cstr);
-				for (i = 0; i < 5; i++)
-				    fprintf (stderr, " %5.2f", ubcmag(star.mag[i]));
-				fprintf (stderr,"\n");
+				if (nlog == 1) {
+				    flux = getpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy);
+				    fprintf (stderr,"UBCBIN: %d %04d.%07d: %9.5f %9.5f %s",
+					nstar,znum,nstar,ra,dec,cstr);
+				    if (magscale > 0.0)
+					fprintf (stderr, " %5.2f", mag);
+				    fprintf (stderr," %5d %5d: %f\n", ix, iy, flux);
+				    }
 				}
 
 			    /* End of accepted star processing */
@@ -1474,5 +1477,7 @@ int nbytes = nbent; /* Number of bytes to reverse */
  *
  * Jun 20 2006	Drop unused variables
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
- * Oct 24 2006	Fix header in ubcread() nstarmax<1 tab output
+ * Nov 15 2006	Print coordinates if in verbose mode; convert coords to integer
+ *
+ * Jan 10 2007	Add match=1 argument to webrnum()
  */

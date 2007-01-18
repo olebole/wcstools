@@ -1,9 +1,9 @@
 /* File imextract.c
- * June 21, 2006
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1999-2007 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -136,7 +136,7 @@ char **av;
 		printf ("Reading %s\n",filelist[nfiles-1]);
 	    continue;
 	    }
-	while (c = *++str) {
+	while ((c = *++str)) {
 	    switch (c) {
 		case 'd':	/* Write to specific output directory */
 		    if (ac < 2)
@@ -523,7 +523,7 @@ char	*kwd[];		/* Names and values of those keywords */
 	    hputl (outheader, kwd[ikwd], 0);
 	else {
 	    if (spchar)
-		stc2s (spchar, kwv);
+		stc2s (&spchar, kwv);
 	    hputs (outheader, kwd[ikwd], kwv);
 	    }
 	if (verbose)
@@ -654,4 +654,6 @@ char	*kwd[];		/* Names and values of those keywords */
  *
  * Apr 22 2005	Fix bug so 2-D images can be extracted from data cubes
  * Jul 18 2005	Fix bug so 1-D images can be extracted from spectrum stacks
+ *
+ * Jan  5 2007	Pass pointer to space-padding character, not character
  */

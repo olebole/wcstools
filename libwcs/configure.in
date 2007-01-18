@@ -1,0 +1,57 @@
+dnl     This file is an input file used by the GNU "autoconf" program to
+dnl     generate the file "configure", which is run during wcssubs installation
+dnl     to configure the system for the local environment.
+AC_INIT(./wcs.h)
+
+WCS_MAJOR_VERSION=2
+WCS_MINOR_VERSION=7
+WCS_PATCH_LEVEL=0
+WCS_VERSION=${WCS_MAJOR_VERSION}.${WCS_MINOR_VERSION}.${WCS_PATCH_LEVEL}
+
+AC_PROG_RANLIB
+AC_ARG_ENABLE(gcc, [  --enable-gcc            allow use of gcc if available],
+    [wcs_ok=$enableval], [wcs_ok=no])
+if test "$wcs_ok" = "yes"; then
+    AC_PROG_CC
+else
+    CC=${CC-cc}
+    AC_SUBST(CC)
+fi
+
+DEFLIB="libwcs.a"
+AC_MSG_CHECKING(for alternate library)
+AC_ARG_WITH(altlib, [ --with-altlib=LIB  library name],
+        alt_lib=yes LIB=$withval, alt_lib=no LIB=$DEFLIB)
+AC_MSG_RESULT($alt_lib ($LIB))
+
+AC_HEADER_STDC
+AC_CHECK_HEADERS(string.h)
+AC_CHECK_HEADERS(stdlib.h)
+AC_CHECK_HEADERS(malloc.h)
+AC_HAVE_HEADERS(unistd.h)
+
+AC_CHECK_FUNCS(memcpy)
+
+AC_MSG_CHECKING([proper strstr implementation])
+AC_TRY_RUN([
+extern int strstr();
+int main()
+{
+    exit(strstr("\0test", "test") ? 1 : 0);
+}
+], wcs_ok=yes, wcs_ok=no, wcs_ok=no)
+    AC_MSG_RESULT(yes)
+else
+    AC_MSG_RESULT([broken, using substitute])
+    EXTRA_OBJS="$EXTRA_OBJS strstr.o"
+fi
+
+AC_SUBST(LIB)
+AC_SUBST(DEFLIB)
+AC_SUBST(EXTRA_OBJS)
+AC_SUBST(WCS_MAJOR_VERSION)
+AC_SUBST(WCS_MINOR_VERSION)
+AC_SUBST(WCS_PATCH_LEVEL)
+AC_SUBST(WCS_VERSION)
+
+AC_OUTPUT(Makefile)

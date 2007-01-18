@@ -1,8 +1,8 @@
 /*** File libwcs/daoread.c
- *** August 30, 2004
+ *** January 10, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2004
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -32,6 +32,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include "wcs.h"
 #include "wcscat.h"
 #include "fitsfile.h"
 
@@ -204,4 +205,6 @@ char *line;	/* Pointer to iline'th entry (returned updated) */
  * Aug 30 2004	Include fitsfile.h
  *
  * Jun 19 2006	Initialized uninitialized  variable iline
+ *
+ * Jan 10 2007	Include wcs.h
  */

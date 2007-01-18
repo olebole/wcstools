@@ -1,8 +1,8 @@
 /*** File libwcs/hput.c
- *** June 20, 2006
+ *** January 4, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1995-2006
+ *** Copyright (C) 1995-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -28,7 +28,6 @@
 
  * Module:	hput.c (Put FITS Header parameter values)
  * Purpose:	Implant values for parameters into FITS header string
- * Subroutine:	hputi2 (hstring,keyword,ival) sets integer*2 ival
  * Subroutine:	hputi4 (hstring,keyword,ival) sets int ival
  * Subroutine:	hputr4 (hstring,keyword,rval) sets real*4 rval
  * Subroutine:	hputr8 (hstring,keyword,dval) sets real*8 dval
@@ -67,36 +66,14 @@ static void fixnegzero();
 int
 hputi4 (hstring,keyword,ival)
 
-  char *hstring;	/* character string containing FITS-style header
-			   information in the format
+char *hstring;		/* FITS-style header information in the format
 			   <keyword>= <value> {/ <comment>}
 			   each entry is padded with spaces to 80 characters */
 
-  char *keyword;		/* character string containing the name of the variable
-			   to be returned.  hput searches for a line beginning
-			   with this string, and if there isn't one, creates one.
+const char *keyword;	/* Name of the variable in header to be returned.
+			   If no line begins with this string, one is created.
 		   	   The first 8 characters of keyword must be unique. */
-  int ival;		/* int number */
-{
-    char value[30];
-
-    /* Translate value from binary to ASCII */
-    sprintf (value,"%d",ival);
-
-    /* Put value into header string */
-    return (hputc (hstring,keyword,value));
-}
-
-
-/*  HPUTI2 - Set short keyword = ival in FITS header string */
-
-int
-hputi2 (hstring,keyword,ival)
-
-  char *hstring;	/* FITS header string */
-  char *keyword;		/* Keyword name */
-  short ival;		/* short number */
-
+int ival;		/* int number */
 {
     char value[30];
 
@@ -111,56 +88,57 @@ hputi2 (hstring,keyword,ival)
 /*  HPUTR4 - Set float keyword = rval in FITS header string */
 
 int
-hputr4 (hstring,keyword,rval)
+hputr4 (hstring, keyword, rval)
 
 char *hstring;		/* FITS header string */
-char *keyword;		/* Keyword name */
-float rval;		/* float number */
+const char *keyword;	/* Keyword name */
+const float *rval;	/* float number */
+
 {
     char value[30];
 
     /* Translate value from binary to ASCII */
-    sprintf (value,"%f",rval);
+    sprintf (value, "%f", *rval);
 
     /* Remove sign if string is -0 or extension thereof */
     fixnegzero (value);
 
     /* Put value into header string */
-    return (hputc (hstring,keyword,value));
+    return (hputc (hstring, keyword, value));
 }
 
 
 /*  HPUTR8 - Set double keyword = dval in FITS header string */
 
 int
-hputr8 (hstring,keyword,dval)
+hputr8 (hstring, keyword, dval)
 
 char	*hstring;	/* FITS header string */
-char	*keyword;	/* Keyword name */
-double	dval;		/* double number */
+const char *keyword;	/* Keyword name */
+const double dval;	/* double number */
 {
     char value[30];
 
     /* Translate value from binary to ASCII */
-    sprintf (value,"%g",dval);
+    sprintf (value, "%g", dval);
 
     /* Remove sign if string is -0 or extension thereof */
     fixnegzero (value);
 
     /* Put value into header string */
-    return (hputc (hstring,keyword,value));
+    return (hputc (hstring, keyword, value));
 }
 
 
 /*  HPUTNR8 - Set double keyword = dval in FITS header string */
 
 int
-hputnr8 (hstring,keyword,ndec,dval)
+hputnr8 (hstring, keyword, ndec, dval)
 
 char	*hstring;	/* FITS header string */
-char	*keyword;	/* Keyword name */
-int	ndec;		/* Number of decimal places to print */
-double	dval;		/* double number */
+const char *keyword;	/* Keyword name */
+const int ndec;		/* Number of decimal places to print */
+const double dval;	/* double number */
 {
     char value[30];
     char format[8];
@@ -183,18 +161,18 @@ double	dval;		/* double number */
     fixnegzero (value);
 
     /* Put value into header string */
-    return (hputc (hstring,keyword,value));
+    return (hputc (hstring, keyword, value));
 }
 
 
 /*  HPUTRA - Set double keyword = hh:mm:ss.sss in FITS header string */
 
 int
-hputra (hstring,keyword, ra)
+hputra (hstring, keyword, ra)
 
 char *hstring;		/* FITS header string */
-char *keyword;		/* Keyword name */
-double ra;		/* Right ascension in degrees */
+const char *keyword;	/* Keyword name */
+const double ra;		/* Right ascension in degrees */
 {
     char value[30];
 
@@ -205,7 +183,7 @@ double ra;		/* Right ascension in degrees */
     fixnegzero (value);
 
     /* Put value into header string */
-    return (hputs (hstring,keyword,value));
+    return (hputs (hstring, keyword, value));
 }
 
 
@@ -215,8 +193,8 @@ int
 hputdec (hstring, keyword, dec)
 
 char *hstring;		/* FITS header string */
-char *keyword;		/* Keyword name */
-double dec;		/* Declination in degrees */
+const char *keyword;	/* Keyword name */
+const double dec;		/* Declination in degrees */
 {
     char value[30];
 
@@ -227,7 +205,7 @@ double dec;		/* Declination in degrees */
     fixnegzero (value);
 
     /* Put value into header string */
-    return (hputs (hstring,keyword,value));
+    return (hputs (hstring, keyword, value));
 }
 
 
@@ -268,8 +246,8 @@ int
 hputl (hstring, keyword,lval)
 
 char *hstring;		/* FITS header */
-char *keyword;		/* Keyword name */
-int lval;		/* logical variable (0=false, else true) */
+const char *keyword;	/* Keyword name */
+const int lval;		/* logical variable (0=false, else true) */
 {
     char value[8];
 
@@ -291,13 +269,14 @@ int
 hputm (hstring,keyword,cval)
 
 char *hstring;	/* FITS header */
-char *keyword;	/* Keyword name root (6 characters or less) */
-char *cval;	/* character string containing the value for variable
+const char *keyword;	/* Keyword name root (6 characters or less) */
+const char *cval;	/* character string containing the value for variable
 		   keyword.  trailing and leading blanks are removed.  */
 {
     int lroot, lcv, i, ii, nkw, lkw, lval;
     int comment = 0;
-    char keyroot[8], newkey[12], *v, value[80];
+    const char *v;
+    char keyroot[8], newkey[12], value[80];
     char squot = 39;
 
     /*  If COMMENT or HISTORY, use the same keyword on every line */
@@ -370,8 +349,8 @@ int
 hputs (hstring,keyword,cval)
 
 char *hstring;	/* FITS header */
-char *keyword;	/* Keyword name */
-char *cval;	/* character string containing the value for variable
+const char *keyword; /* Keyword name */
+const char *cval; /* character string containing the value for variable
 		   keyword.  trailing and leading blanks are removed.  */
 {
     char squot = 39;
@@ -417,14 +396,14 @@ int
 hputc (hstring,keyword,value)
 
 char *hstring;
-char *keyword;
-char *value;	/* character string containing the value for variable
+const char *keyword;
+const char *value; /* character string containing the value for variable
 		   keyword.  trailing and leading blanks are removed.  */
 {
     char squot = 39;
     char line[100];
     char newcom[50];
-    char *v, *vp, *v1, *v2, *q1, *q2, *c1, *ve;
+    char *vp, *v1, *v2, *q1, *q2, *c1, *ve;
     int lkeyword, lcom, lval, lc, lv1, lhead, lblank, ln, nc, i;
 
     /* Find length of keyword, value, and header */
@@ -610,14 +589,13 @@ int
 hputcom (hstring,keyword,comment)
 
   char *hstring;
-  char *keyword;
-  char *comment;
+  const char *keyword;
+  const char *comment;
 {
     char squot;
     char line[100];
     int lkeyword, lcom, lhead, i, lblank, ln, nc, lc;
     char *vp, *v1, *v2, *c0, *c1, *q1, *q2;
-    char *ksearch();
 
     squot = 39;
 
@@ -732,10 +710,9 @@ int
 hdel (hstring,keyword)
 
 char *hstring;		/* FITS header */
-char *keyword;		/* Keyword of entry to be deleted */
+const char *keyword;	/* Keyword of entry to be deleted */
 {
     char *v, *v1, *v2, *ve;
-    char *ksearch();
 
     /* Search for keyword */
     v1 = ksearch (hstring,keyword);
@@ -785,10 +762,9 @@ int
 hadd (hplace, keyword)
 
 char *hplace;		/* FITS header position for new keyword */
-char *keyword;		/* Keyword of entry to be deleted */
+const char *keyword;	/* Keyword of entry to be deleted */
 {
     char *v, *v1, *v2, *ve;
-    char *ksearch();
     int i, lkey;
 
     /*  Find end of header */
@@ -832,12 +808,12 @@ int
 hchange (hstring, keyword1, keyword2)
 
 char *hstring;		/* FITS header */
-char *keyword1;		/* Keyword to be changed */
-char *keyword2;		/* New keyword name */
+const char *keyword1;	/* Keyword to be changed */
+const char *keyword2;	/* New keyword name */
 {
-    char *v, *v1, *v2;
+    char *v, *v1;
+    const char *v2;
     int lv2, i;
-    char *ksearch();
 
     /* Search for keyword */
     v1 = ksearch (hstring,keyword1);
@@ -1293,4 +1269,8 @@ int	ndec;		/* Number of decimal places in degree string */
  * May 22 2006	Add option to leave blank line when deleting a keyword
  * Jun 15 2006	Fix comment alignment in hputc() and hputcom()
  * Jun 20 2006	Initialized uninitialized variables in hputm() and hputcom()
+ *
+ * Jan  4 2007	Declare keyword to be const
+ * Jan  4 2007	Drop unused subroutine hputi2()
+ * Jan  5 2007	Drop ksearch() declarations; it is now in fitshead.h
  */

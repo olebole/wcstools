@@ -1,5 +1,5 @@
 /*** simpos.c - search object by its name from command line arguments
- *** June 20, 2006
+ *** January 10, 2007
  *** By Doug Mink, after IPAC byname.c
  */
 
@@ -13,6 +13,7 @@
 extern int   ned_errno;
 static void usage();
 
+int
 main (ac, av)
 int  ac;
 char *av[];
@@ -186,7 +187,7 @@ char *av[];
 	    }
 	free (buff);
 	}
-    return;
+    exit (0);
 }
 
 static void
@@ -206,4 +207,6 @@ usage ()
 /* Oct 25 2002	New program based on nedpos.c
  *
  * Jun 20 2006	Clean up code
+ *
+ * Jan 10 2007	exit(0) if successful
  */

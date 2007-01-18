@@ -1,9 +1,9 @@
 /*** File webread.c
- *** October 30, 2006
+ *** January 10, 20007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
- *** Copyright (C) 2000-2006
+ *** Copyright (C) 2000-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -277,7 +277,7 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 
 
 int
-webrnum (caturl,refcatname,nnum,sysout,eqout,epout,
+webrnum (caturl,refcatname,nnum,sysout,eqout,epout,match,
 	 unum,ura,udec,upra,updec,umag,utype,nlog)
 
 char	*caturl;	/* URL of search engine */
@@ -385,7 +385,7 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 	}
 
     /* Extract desired sources from catalog  and return them */
-    return (tabrnum (srchurl, nnum, sysout, eqout, epout, &starcat,
+    return (tabrnum (srchurl, nnum, sysout, eqout, epout, &starcat, match,
          unum, ura, udec, upra, updec, umag, utype, NULL, nlog));
 }
 
@@ -839,4 +839,6 @@ FileINetParse(file, port, adrinet)
  * Apr  6 2006	Check for sdss in URL for Sloan parsing
  * Jun 20 2006	Cast most stream I/O calls to void
  * Oct 30 2006	Reset buffer length for SDSS tables
+ *
+ * Jan 10 2006	Add match to webrnum argument list for tabrnum()
  */

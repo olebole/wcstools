@@ -131,7 +131,6 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     char *mwcs;		/* Pointer to WCS name separated by % */
     char *newhead;	/* New larger header */
     int nbh0;		/* Length of old too small header */
-    char *endnext;
     char *pheadend;
     int inherit = 1;	/* Value of INHERIT keyword in FITS extension header */
     int extfound = 0;	/* Set to one if desired FITS extension is found */
@@ -290,7 +289,6 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    if (naxis < 1) {
 		nbprim = nrec * FITSBLOCK;
 		headend = ksearch (header,"END");
-		endnext = headend;
 		lprim = headend + 80 - header;
 		pheader = (char *) calloc ((unsigned int) nbprim, 1);
 		for (i = 0; i < lprim; i++)
@@ -436,7 +434,6 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     /* Append primary data header to extension header */
     if (pheader != NULL && extnum != 0 && fitsinherit) {
 	extname[0] = 0;
-	endnext = headend;
 	hgets (header, "XTENSION", 32, extname);
 	if (!strcmp (extname,"IMAGE")) {
 	    strncpy (header, "SIMPLE  ", 8);
@@ -549,7 +546,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	nbr = read (fd, header, nbytes);
 
 	/* Check for SIMPLE at start of header */
-	for (i = 0; i < 2880; i++)
+	for (i = 0; i < nbr; i++)
 	    if (header[i] < 32) header[i] = 32;
 	if ((headstart = ksearch (header,"SIMPLE"))) {
 	    if (headstart != header) {
@@ -1818,7 +1815,7 @@ char	*filename;	/* Name of FITS image file with ,extension */
 char	*header;	/* FITS image header */
 
 {
-    int fd, ipos;
+    int fd;
     int nbhead, lhead;
     int nbw, nbnew, nbold;
     char *endhead, *lasthead, *oldheader;
@@ -1880,7 +1877,7 @@ char	*header;	/* FITS image header */
 	}
 
     /* Skip to appropriate place in file */
-    ipos = lseek (fd, ibhead, SEEK_SET);
+    (void) lseek (fd, ibhead, SEEK_SET);
 
     /* Write header to file */
     nbw = write (fd, oldheader, nbold);
@@ -2071,4 +2068,6 @@ fitserr ()
  * May  3 2006	Remove declarations of unused variables
  * Jun 20 2006	Initialize uninitialized variables
  * Nov  2 2006	Change all realloc() calls to calloc()
+ *
+ * Jan  5 2007	In fitsrtail(), change control characters in header to spaces
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/binread.c
- *** September 26, 3006
+ *** January 10, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2006
+ *** Copyright (C) 1998-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -157,7 +157,7 @@ int	nlog;
 	strcpy (str, sc->caturl);
 	free (sc);
 	return (webread (str,bincat,distsort,cra,cdec,dra,ddec,drad,dradi,
-		sysout,eqout,epout,mag1,mag2,nstarmax,
+		sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 		tnum,tra,tdec,tpra,tpdec,tmag,tpeak,nlog));
 	}
 
@@ -516,7 +516,7 @@ int	nlog;
     if (starcat->caturl != NULL) {
 	strcpy (str, starcat->caturl);
 	free (starcat);
-	return (webrnum (str,bincat,nnum,sysout,eqout,epout,
+	return (webrnum (str,bincat,nnum,sysout,eqout,epout,1,
 		tnum,tra,tdec,tpra,tpdec,tmag,tpeak,nlog));
 	}
 
@@ -689,16 +689,13 @@ int	nlog;
     struct StarCat *sc;	/* Star catalog data structure */
     struct Star *star;
     int wrap, iwrap, istar1,istar2;
+    int ix, iy;
     int pass;
-    int imag;
-    char *objname;
-    int lname;
     int nmag;		/* Real number of magnitudes per entry (- rv) */
     int jstar;
     int nstar;
     double mag;
     double num;
-    int i;
     int magsort;
     int istar = 0;
     int verbose;
@@ -864,9 +861,26 @@ int	nlog;
 			flux = magscale * exp (logt * (-mag / 2.5));
 		    else
 			flux = 1.0;
-		    addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+		    ix = (int) (xpix + 0.5);
+		    iy = (int) (ypix + 0.5);
+		    addpix1 (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
 		    nstar++;
 		    jstar++;
+		    }
+		else {
+		    ix = 0;
+		    iy = 0;
+		    }
+		if (nlog == 1) {
+		    fprintf (stderr,"BINBIN: %11.6f: %9.5f %9.5f %s",
+			     num,ra,dec,cstr);
+		    if (magscale > 0.0)
+			fprintf (stderr, " %5.2f", mag);
+		    if (!offscl)
+			flux = getpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy);
+		    else
+			flux = 0.0;
+		    fprintf (stderr," (%d,%d): %f\n", ix, iy, flux);
 		    }
 		if (nlog == 1)
 		    fprintf (stderr,"BINREAD: %11.6f: %9.5f %9.5f %5.2f\n",
@@ -1590,4 +1604,8 @@ char *from, *last, *to;
  * Jan 19 2006	Fix bug when J2000 system set by negative number of magnitudes
  * Jun 20 2006	Initialize uninitialized variables
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
+ * Nov 15 2006	Fix binning
+ *
+ * Jan  8 2007	Drop unused variables in binbin()
+ * Jan 10 2007	Add match=1 argument to webrnum()
  */

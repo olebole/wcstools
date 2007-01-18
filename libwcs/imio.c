@@ -1,8 +1,8 @@
 /*** File wcslib/imio.c
- *** June 20, 2006
+ *** January 8, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2006
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -70,7 +70,7 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#include "imio.h"
+#include "fitsfile.h"
 
 static int scale = 1;	/* If 0, skip scaling step */
 void
@@ -636,14 +636,14 @@ int	x2, y2;		/* Row and column for output pixel */
 double
 maxvec (image, bitpix, bzero, bscale, pix1, npix)
 
-char	*image;		/* Image array from which to extract vector */
+char	*image;		/* Image array from which to read vector */
 int	bitpix;		/* Number of bits per pixel in image */
 			/*  16 = short, -16 = unsigned short, 32 = int */
 			/* -32 = float, -64 = double */
 double  bzero;		/* Zero point for pixel scaling */
 double  bscale;		/* Scale factor for pixel scaling */
-int	pix1;		/* Offset of first pixel to extract */
-int	npix;		/* Number of pixels to extract */
+int	pix1;		/* Offset of first pixel to check */
+int	npix;		/* Number of pixels to check */
 
 {
     short *im2;
@@ -741,7 +741,7 @@ double  bzero;		/* Zero point for pixel scaling */
 double  bscale;		/* Scale factor for pixel scaling */
 int	pix1;		/* Offset of first pixel to extract */
 int	npix;		/* Number of pixels to extract */
-double	dpix;		/* Value by which to multiply pixels */
+double	dpix;		/* Value to add to pixels */
 
 {
     char *imc, ccon;
@@ -1423,4 +1423,6 @@ imswapped ()
  * May  3 2006	Code fixes in addpix and multpix suggested by Robert Lupton
  * Jun  8 2006	Drop erroneous second im2 assignment without offset in addvec()
  * Jun 20 2006	Fix typos masquerading as unitialized variables
+ *
+ * Jan  8 2007	Include fitsfile.h instead of imio.h
  */

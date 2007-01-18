@@ -1,8 +1,8 @@
 /*** File libwcs/matchstar.c
- *** October 23, 2006
+ *** January 8, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2006
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -190,7 +190,7 @@ int	debug;
 
     /* Build 2-d histogram of offset distribution */
     if (binarray) {
-	int nbx, nnbx, nbx2, nxpix, nby, nnby, nby2, nypix;
+	int nbx, nnbx, nbx2, nby, nnby, nby2;
 	int idxmax, idymax, idx, idy, tol2;
 	int *obin, *obini, nset, npos;
 
@@ -235,7 +235,7 @@ int	debug;
 		    idymax = idy;
 		    nmatch = *obini;
 		    if (debug)
-			fprintf (stderr, "%5d at offset %7.3f, %7.3f\n", *obini,
+			fprintf (stderr, "%5d at offset %5d, %5d\n", *obini,
 				 idx*tol2, idy*tol2);
 		    }
 		obini++;
@@ -1976,4 +1976,6 @@ int nitmax;
  * Jun 19 2006	Initialize unitialized variables dxs and dys
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  * Oct 23 2006	Add bin array option to see if it works better
+ *
+ * Jan  8 2007	Drop unused variables; fix two format disagreements
  */ 

@@ -18,6 +18,7 @@ ln -s scat sty2
 ln -s scat stmc
 ln -s scat stmx
 ln -s scat ssdss
+ln -s scat ssky2k
 ln -s imcat imgsc
 ln -s imcat imgsca
 ln -s imcat imgsc2
@@ -37,6 +38,7 @@ ln -s imcat imucac2
 ln -s imcat imtmc
 ln -s imcat imtmx
 ln -s imcat imsdss
+ln -s imcat imsky2k
 ln -s imwcs imwgsc
 ln -s imwcs imwgsca
 ln -s imwcs imwgsc2
@@ -56,6 +58,7 @@ ln -s imwcs imwucac2
 ln -s imwcs imwtmc
 ln -s imwcs imwtmx
 ln -s imwcs imwsdss
+ln -s imwcs imwsky2k
 ln -s immatch immgsc
 ln -s immatch immgsca
 ln -s immatch immgsc2
@@ -75,3 +78,4 @@ ln -s immatch immucac2
 ln -s immatch immtmc
 ln -s immatch immtmx
 ln -s immatch immsdss
+ln -s immatch immsky2k

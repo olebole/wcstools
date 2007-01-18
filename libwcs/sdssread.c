@@ -1,8 +1,8 @@
 /*** File libwcs/sdssread.c
- *** November 6, 2006
+ *** January 10, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2006
+ *** Copyright (C) 2004-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -58,10 +58,9 @@ char sdssmag[6]="ugriz";
 /* SDSSREAD -- Read Sloan Digital Sky Survey catalog stars over the web */
 
 int
-sdssread (refcatname,cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
-	  mag1,mag2,sortmag,nstarmax,gobj,gnum,gra,gdec,gmag,gtype,nlog)
+sdssread (cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
+	  mag1,mag2,sortmag,nstarmax,gnum,gobj,gra,gdec,gmag,gtype,nlog)
 
-char	*refcatname;	/* Name of catalog (UB1 only, for now) */
 double	cra;		/* Search center J2000 right ascension in degrees */
 double	cdec;		/* Search center J2000 declination in degrees */
 double	dra;		/* Search half width in right ascension in degrees */
@@ -75,8 +74,8 @@ double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
 double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
 int	nstarmax;	/* Maximum number of stars to be returned */
-double	**gobj;		/* Array of object IDs (too long for integer*4) */
-double	*gnum;		/* Array of Guide Star numbers (returned) */
+double	*gnum;		/* Array of catalog numbers (returned) */
+char	**gobj;		/* Array of object IDs (too long for integer*4) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
 double	**gmag;		/* 2-D array of magnitudes (returned) */
@@ -209,7 +208,6 @@ sdssc2t (csvbuff)
     int lbuff, i;
     char ctab = (char) 9;
     char ccom = ',';
-    char clf = (char) 10;
 
     /* Skip first line of returned header */
     databuff = strchr (csvbuff, '\n') + 1;
@@ -248,4 +246,8 @@ sdssc2t (csvbuff)
  * Oct 30 2006	Fix bug in buffer length when setting up tab table
  * Nov  3 2006	Drop extra characters from end of data returned from SDSS
  * Nov  6 2006	Pass SDSS ID as character string because it is too long integer
+ *
+ * Jan  8 2007	Drop unused variables
+ * Jan  9 2007	Drop refcatname from argument list; it is not used
+ * Jan 10 2007	Drop gnum argument from sdssread(); gobj replaced it
  */

@@ -31,9 +31,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-#include "fitshead.h"
-#include "imio.h"
-
+#include "fitsfile.h"
 
 static void RotWCSFITS();	/* rotate all the C* fields */
 

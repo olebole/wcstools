@@ -8,5 +8,5 @@
 CFLAGS = -g -D_NO_PROTO
 
 simpos: simpos.o ../libwcs/libwcs.a
-	cc -o simpos simpos.o ../libwcs/libwcs.a -lm
+	cc -o simpos simpos.o ../libwcs/libwcs.a -lsocket  -lnsl -lm
 

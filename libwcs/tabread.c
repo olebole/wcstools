@@ -29,6 +29,7 @@
 
 /* int tabread()	Read tab table stars in specified region
  * int tabrnum()	Read tab table stars with specified numbers
+ * int tabbin ()	Bin tab table stars in specified region into an image
  * int tabxyread()	Read x, y, and magnitude from tab table star list
  * int tabrkey()	Read single keyword from specified tab table stars
  * struct StarCat tabcatopen()	Open tab table catalog, return number of entries
@@ -733,7 +734,7 @@ int	nlog;
 }
 
 
-/* TABBIN -- Read tab table stars in specified region */
+/* TABBIN -- Bin tab table stars in specified region into an image */
 
 int
 tabbin (tabcatname, wcs, header, image, mag1, mag2, sortmag, magscale, nlog)
@@ -765,6 +766,7 @@ int	nlog;
     double secmarg = 0.0; /* Arcsec/century margin for proper motion */
     double magt;
     double rdist, ddist;
+    int ix, iy;
     int pass;
     char cstr[32];
     struct Star *star;
@@ -945,13 +947,27 @@ int	nlog;
 		    flux = magscale * exp (logt * (-magt / 2.5));
 		else
 		    flux = 1.0;
-		addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+		ix = (int) (xpix + 0.5);
+		iy = (int) (ypix + 0.5);
+		addpix1 (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
 		nstar++;
 		jstar++;
 		}
-	    if (nlog == 1)
-		fprintf (stderr,"TABBIN: %11.6f: %9.5f %9.5f %s %5.2f %d    \n",
-			 num,ra,dec,cstr,magt,peak);
+	    else {
+		ix = 0;
+		iy = 0;
+		}
+	    if (nlog == 1) {
+		fprintf (stderr,"TABBIN: %11.6f: %9.5f %9.5f %s",
+			 num,ra,dec,cstr);
+		if (magscale > 0.0)
+		    fprintf (stderr, " %5.2f", mag);
+		if (!offscl)
+		    flux = getpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy);
+		else
+		    flux = 0.0;
+		fprintf (stderr," (%d,%d): %f\n", ix, iy, flux);
+		}
 
 	    /* End of accepted star processing */
 	    }

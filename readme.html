@@ -1,0 +1,60 @@
+<HTML><HEAD>
+<TITLE>FTP Directory cfa-ftp.harvard.edu/pub/gsc/WCSTools</TITLE>
+</HEAD><BODY>
+<H2>FTP Directory cfa-ftp.harvard.edu/pub/gsc/WCSTools</H2>
+<H3>WCSTools 3.1.1 (June 26, 2002)</H3>
+
+WCSTools is a set of software utilities, written in C, which create,
+display and manipulate the world coordinate system of a FITS or IRAF
+image, using specific keywords in the image header which relate pixel
+position within the image to position on the sky.  Auxillary programs
+search star catalogs and manipulate images.
+
+The WCSTools package was developed by Doug Mink at the Smithsonian
+Astrophysical Observatory, with significant code from
+<UL>
+<LI>Bill Cotton of NRAO (projection),
+<LI>Mark Calabretta of CSIRO (projection),
+<LI>Pat Wallace of Cambridge University (coordinate conversion), and
+<LI>Elwood Downey of the University of Iowa (WCS fitting procedure).
+
+<LI>Bill Joye and Eric Mandel of SAO, Allan Brighton of ESO, and
+Jean-Baptiste Marquette of the Institut d'Astrophysique de Paris helped
+debug the subroutine library.
+<LI>Norman Grogin, Scott Kenyon, and Susan
+Tokarz of SAO and Andreas Jaunsen helped debug the programs.
+</UL>
+
+Documentation, with examples, is on the World Wide Web at
+<A HREF="http://tdc-www.harvard.edu/software/wcstools/">
+<I>http://tdc-www.harvard.edu/software/wcstools/</I></A>
+<P>
+Brief descriptions of file contents are in the
+<A HREF="Programs">Programs</A> file and a history
+of this software is in the <A HREF="Versions">Versions</A> file.
+<P>
+The complete source code is in
+
+<A HREF="ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-3.1.1.tar.gz">
+<I>ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-3.1.1.tar.gz</I></A>
+and
+<A HREF="ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstls31.zip">
+<I>ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstls31.zip</I></A>
+<P>
+To install the code, create a directory for it, download it, and run
+<PRE>
+        gzcat wcstools-3.1.1.tar.gz | tar xvf -
+or
+        unzip wcstls31.zip
+</PRE>
+
+The main directory will contain the source code for the programs, and
+a subdirectory, libwcs, will contain the source code for the subroutines
+Catalog access subroutines, such as gscread.c, uacread.c, and ujcread.c,
+contain wired-in paths to the root directories of the HST Guide Star Catalog,
+the USNO A 2.0 Catalog, and the USNO J Catalog, respectively.  You
+should change them to match the path in your local installation.
+Environment variables may be also used to override whatever path is
+in the code:  GSC_NORTH sets the path for the HST GSC CDROM containing
+the northern hemisphere and GSC_SOUTH does the same for the southern
+hemisphere.

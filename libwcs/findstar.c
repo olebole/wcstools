@@ -1,7 +1,7 @@
 /*** File libwcs/findstar.c
- *** October 24, 2006
+ *** January 10, 2007
  *** By Doug Mink, after Elwood Downey
- *** Copyright (C) 1996-2006
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -30,8 +30,8 @@
 #include <stdlib.h>
 #include <math.h>
 #include <string.h>
-#include "fitshead.h"
-#include "imio.h"
+#include "fitsfile.h"
+#include "wcs.h"
 #include "wcscat.h"
 #include "lwcs.h"
 
@@ -954,7 +954,6 @@ int	h;	/* Original height of image */
     double x1, y1, x2, y2;
     double xn = (double) w;
     double yn = (double) h;
-    double rot = rotate;	/* Rotation angle in degrees */
     int reflect=mirror;		/* 1 if image is reflected, else 0 */
 
     x1 = *x;
@@ -1085,4 +1084,8 @@ int	h;	/* Original height of image */
  *              Suggested by Hill & Biddick for high background situations
  * Jun 19 2006	Initialized uninitialized variables
  * Oct 24 2006	Add reflection across horizontal as well as vertical axis
+ *
+ * Jan  8 2007	Include fitsfile.h instead of fitshead.h and imio.h
+ * Jan  8 2007	Drop unused variables
+ * Jan 10 2007	Include wcs.h
  */

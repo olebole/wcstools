@@ -1,0 +1,6 @@
+Create new filename from extension code in subroutine in fileutil.c, not
+in main program.  Use imrot.c as a model.
+
+Access catalogs on ESO servers.
+
+Add SDSS catalog with magnitude errors, SDSSE

@@ -1,8 +1,8 @@
 /*** File libwcs/uacread.c
- *** September 26, 2006
+ *** January 10, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2006
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -148,7 +148,7 @@ int	nlog;		/* Logging interval */
     int uacread();
 
     ucat = USA2;
-    i = uacread ("usac",distsort,cra,cdec,dra,ddec,drad,
+    i = uacread ("usac",distsort,cra,cdec,dra,ddec,drad,dradi,
 		 sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,
 		 unum,ura,udec,umag,uplate,nlog);
     ucat = USA2;
@@ -676,7 +676,7 @@ int	nlog;		/* Logging interval */
 
     /* If root pathname is a URL, search and return */
     if (!strncmp (uapath, "http:",5)) {
-	return (webrnum (uapath,refcatname,nnum,sysout,eqout,epout,
+	return (webrnum (uapath,refcatname,nnum,sysout,eqout,epout,1,
 			 unum,ura,udec,NULL,NULL,umag,uplate,nlog));
 	}
 
@@ -816,6 +816,7 @@ int	nlog;		/* Logging interval */
 /*    int isp;
     char ispc[2]; */
     int pass;
+    int ix, iy;
     int magsort;
     char *str;
     char cstr[32];
@@ -1004,18 +1005,32 @@ int	nlog;		/* Logging interval */
 			    /* Save star in FITS image */
 			    if (pass) {
 				wcs2pix (wcs, ra, dec, &xpix, &ypix, &offscl);
-		    		if (!offscl) {
+				if (!offscl) {
 				    if (magscale > 0.0)
 					flux = magscale * exp (logt * (-mag / 2.5));
 				    else
 					flux = 1.0;
-				    addpix (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
+				    ix = (int) (xpix + 0.5);
+				    iy = (int) (ypix + 0.5);
+				    addpix1 (image, bitpix, w,h, 0.0,1.0, xpix,ypix, flux);
 				    nstar++;
 				    jstar++;
 				    }
-				if (nlog == 1)
-				    fprintf (stderr,"UACBIN: %04d.%08d: %9.5f %9.5f %s %5.2f %5.2f\n",
-					znum,istar,ra,dec,cstr,magb,magr);
+				else {
+				    ix = 0;
+				    iy = 0;
+				    }
+				if (nlog == 1) {
+				    fprintf (stderr,"UACBIN: %04d.%08d: %9.5f %9.5f %s",
+					     znum,istar,ra,dec,cstr);
+				    if (magscale > 0.0)
+					fprintf (stderr, " %5.2f", mag);
+				    if (!offscl)
+					flux = getpix1 (image, bitpix, w, h, 0.0, 1.0, ix, iy);
+				    else
+					flux = 0.0;
+				    fprintf (stderr," (%d,%d): %f\n", ix, iy, flux);
+				    }
 
 			    /* End of accepted star processing */
 				}
@@ -1515,4 +1530,8 @@ int nbytes = 12; /* Number of bytes to reverse */
  *
  * Sep 13 2006	Change default paths to /data/astrocat
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
+ * Nov 15 2006	Fix binning
+ *
+ * Jan 10 2007	Add match=1 argument to webrnum()
+ * Jan 10 2007	Add dradi arguemnt to uacread() call in usacread()
  */

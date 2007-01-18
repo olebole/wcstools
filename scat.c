@@ -1,9 +1,9 @@
 /* File scat.c
- * November 6, 2006
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2006 
+   Copyright (C) 1996-2007 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -402,7 +402,7 @@ char **av;
 	/* Otherwise, read command */
 	else if ((*(str = *av)) == '-') {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 
 	    case 'v':	/* more verbosity */
@@ -1591,7 +1591,7 @@ double	eqout;		/* Equinox for output coordinates */
 		    /* Sort found catalog objects by id number */
 		    case SORT_ID:
 			IDSortStars(gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
-				     ns,nmagmax,sortmag);
+				     ns,nmagmax);
 			break;
 		    }
 		}
@@ -1721,7 +1721,7 @@ double	eqout;		/* Equinox for output coordinates */
 		    /* Sort found catalog objects by ID number */
 		    case SORT_ID:
 			IDSortStars(gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
-				    ns,nmagmax,sortmag);
+				    ns,nmagmax);
 			break;
 		    }
 		}
@@ -1939,7 +1939,7 @@ double	eqout;		/* Equinox for output coordinates */
 		/* Sort found catalog objects by ID number */
 		else if (catsort == SORT_ID)
 		    IDSortStars(gnum,gra,gdec,gpra,gpdec,gx,gy,gm,gc,gobj1,
-				ns,nmagmax,sortmag);
+				ns,nmagmax);
 		}
 
 	    /* Print one line with search center and found star */
@@ -4637,4 +4637,6 @@ PrintGSClass ()
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  * Sep 26 2006	Allow coordinates on command line to be any length
  * Nov  6 2006	Print SDSS number as character string; it is now 18 digits long
+ *
+ * Jan 10 2007	Drop extra argument to IDSortStars (last one)
  */

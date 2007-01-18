@@ -1,9 +1,9 @@
 /* File getfits.c
- * June 21, 2006
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 2002-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -30,6 +30,7 @@
 #include <math.h>
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcs.h"
+#include "libwcs/wcscat.h"
 
 #define MAXRANGE 20
 #define MAXFILES 2000
@@ -37,23 +38,6 @@ static int maxnfile = MAXFILES;
 
 #define MAXKWD 500
 static int maxnkwd = MAXKWD;
-
-/* Structure for dealing with ranges */
-struct Range {
-    double first;	/* Current minimum value */
-    double last;	/* Current maximum value */
-    double step;	/* Current step in value */
-    double value;	/* Current value */
-    double ranges[MAXRANGE*3];  /* nranges sets of first, last, step */
-    int nvalues;	/* Total number of values in all ranges */
-    int nranges;	/* Number of ranges */
-    int irange;		/* Index of current range */
-};
-
-/* Subroutines for dealing with ranges */
-static struct Range *RangeInit(); /* Initialize range structure from string */
-static int isrange();	/* Return 1 if string is a range of numbers, else 0 */
-static double rgetr8();	/* Return next number in range as double */
 
 static void usage();
 static void nextname();	/* Find next available name (namea, nameb, ...) */
@@ -651,229 +635,6 @@ int	nkwd;
     return (0);
 }
 
-
-/* RANGEINIT -- Initialize range structure from string */
-
-static struct Range *
-RangeInit (string, ndef)
-
-char	*string;	/* String containing numbers separated by , and - */
-int	ndef;		/* Maximum allowable range value */
-
-{
-    struct Range *range;
-    int ip, irange;
-    char *slast;
-    double first, last, step;
-
-    if (!isrange (string) && !isnum (string))
-	return (NULL);
-    ip = 0;
-    range = (struct Range *)calloc (1, sizeof (struct Range));
-    range->irange = -1;
-    range->nvalues = 0;
-    range->nranges = 0;
-
-    for (irange = 0; irange < MAXRANGE; irange++) {
-
-	/* Default to entire list */
-	first = 1.0;
-	last = ndef;
-	step = 1.0;
-
-	/* Skip delimiters to start of range */
-	while (string[ip] == ' ' || string[ip] == '	' ||
-	       string[ip] == ',')
-	    ip++;
-
-	/* Get first limit
-	 * Must be a number, '-', 'x', or EOS.  If not return ERR */
-	if (string[ip] == (char)0) {	/* end of list */
-	    if (irange == 0) {
-
-		/* Null string defaults */
-		range->ranges[0] = first;
-		if (first < 1)
-		    range->ranges[1] = first;
-		else
-		    range->ranges[1] = last;
-		range->ranges[2] = step;
-		range->nvalues = range->nvalues + 1 +
-			  ((range->ranges[1]-range->ranges[0])/step);
-		range->nranges++;
-		return (range);
-		}
-	    else
-		return (range);
-	    }
-	else if (string[ip] > (char)47 && string[ip] < 58) {
-	    first = strtod (string+ip, &slast);
-	    ip = slast - string;
-	    }
-	else if (strchr ("-:x", string[ip]) == NULL) {
-	    free (range);
-	    return (NULL);
-	    }
-
-	/* Skip delimiters */
-	while (string[ip] == ' ' || string[ip] == '	' ||
-	       string[ip] == ',')
-	    ip++;
-
-	/* Get last limit
-	* Must be '-', or 'x' otherwise last = first */
-	if (string[ip] == '-' || string[ip] == ':') {
-	    ip++;
-	    while (string[ip] == ' ' || string[ip] == '	' ||
-	   	   string[ip] == ',')
-		ip++;
-	    if (string[ip] == (char)0)
-		last = first + ndef;
-	    else if (string[ip] > (char)47 && string[ip] < 58) {
-		last = strtod (string+ip, &slast);
-		ip = slast - string;
-		}
-	    else if (string[ip] != 'x')
-		last = first + ndef;
-	    }
-	else if (string[ip] != 'x')
-	    last = first;
-
-	/* Skip delimiters */
-	while (string[ip] == ' ' || string[ip] == '	' ||
-	       string[ip] == ',')
-	    ip++;
-
-	/* Get step
-	 * Must be 'x' or assume default step. */
-	if (string[ip] == 'x') {
-	    ip++;
-	    while (string[ip] == ' ' || string[ip] == '	' ||
-	   	   string[ip] == ',')
-		ip++;
-	    if (string[ip] == (char)0)
-		step = 1.0;
-	    else if (string[ip] > (char)47 && string[ip] < 58) {
-		step = strtod (string+ip, &slast);
-		ip = slast - string;
-		}
-	    else if (string[ip] != '-' && string[ip] != ':')
-		step = 1.0;
-            }
-
-	/* Output the range triple */
-	range->ranges[irange*3] = first;
-	range->ranges[irange*3 + 1] = last;
-	range->ranges[irange*3 + 2] = step;
-	range->nvalues = range->nvalues + ((last-first+(0.1*step)) / step + 1);
-	range->nranges++;
-	}
-
-    return (range);
-}
-
-
-/* ISRANGE -- Return 1 if string is a range, else 0 */
-
-static int
-isrange (string)
-
-char *string;		/* String which might be a range of numbers */
-
-{
-    int i, lstr;
-
-    /* If range separators present, check to make sure string is range */
-    if (strchr (string+1, '-') || strchr (string+1, ',')) {
-	lstr = strlen (string);
-	for (i = 0; i < lstr; i++) {
-	    if (strchr ("0123456789-,.x", (int)string[i]) == NULL)
-		return (0);
-	    }
-	return (1);
-	}
-    else
-	return (0);
-}
-
-
-/* RSTART -- Restart at beginning of range */
-
-static void
-rstart (range)
-
-struct Range *range;	/* Range structure */
-
-{
-    range->irange = -1;
-    return;
-}
-
-
-/* RGETN -- Return number of values from range structure */
-
-static int
-rgetn (range)
-
-struct Range *range;	/* Range structure */
-
-{
-    return (range->nvalues);
-}
-
-
-/*  RGETR8 -- Return next number from range structure as 8-byte f.p. number */
-
-static double
-rgetr8 (range)
-
-struct Range *range;	/* Range structure */
-
-{
-    int i;
-
-    if (range == NULL)
-	return (0.0);
-    else if (range->irange < 0) {
-	range->irange = 0;
-	range->first = range->ranges[0];
-	range->last = range->ranges[1];
-	range->step = range->ranges[2];
-	range->value = range->first;
-	}
-    else {
-	range->value = range->value + range->step;
-	if (range->value > range->last) {
-	    range->irange++;
-	    if (range->irange < range->nranges) {
-		i = range->irange * 3;
-		range->first = range->ranges[i];
-		range->last = range->ranges[i+1];
-		range->step = range->ranges[i+2];
-		range->value = range->first;
-		}
-	    else
-		range->value = 0.0;
-	    }
-	}
-    return (range->value);
-}
-
-
-/*  RGETI4 -- Return next number from range structure as 4-byte integer */
-
-static int
-rgeti4 (range)
-
-struct Range *range;	/* Range structure */
-
-{
-    double value;
-
-    value = rgetr8 (range);
-    return ((int) (value + 0.000000001));
-}
-
 static void
 nextname (name, newname)
 
@@ -922,4 +683,6 @@ char *newname;
  * Sep 30 2005	Convert input center coordinates to image system
  *
  * Jun 21 2006	Clean up code
+ *
+ * Jan 10 2007	Use range subroutines in library
  */

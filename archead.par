@@ -1,0 +1,14 @@
+INROOT='/ret/ret11/mmtred/mmt'
+OUTROOT='/home/mink/TDC/Database/fits'
+OBSDATE=1993.1022
+INFILE='0048.M81'
+IRAFFILE=F
+OUTFILE='0048.M81'
+OMIT001='henear'
+VERBOSE=F
+FIRST=1
+LAST=200
+INDIR='/ret/ret11/mmtred/mmt/1993/10/22'
+OUTDIR='/home/mink/TDC/Database/fits/1993.1022'
+PARMFILE='archead.par'
+END

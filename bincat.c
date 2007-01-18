@@ -1,9 +1,9 @@
 /* File bincat.c
- * September 25, 2003
+ * January 10, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 2003-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -38,7 +38,6 @@
 #include "libwcs/fitsfile.h"
 
 static void usage();
-static int scatparm();
 static void MakeFITS();
 extern void setcenter();
 extern void setsys();
@@ -66,20 +65,21 @@ static char *progname;          /* Name of program as executed */
 static struct StarCat *starcat;	/* Star catalog data structure */
 static char cpname[16];         /* Name of program for error messages */
 static int refcat;		/* Catalog code (wcscat.h) */
-static *ctype;			/* FITS projection code (wcs.h) */
 static int sortmag = 0;		/* Magnitude to bin */
 static double maglim1 = MAGLIM1; /* Catalog bright magnitude limit */
 static double maglim2 = MAGLIM2; /* Catalog faint magnitude limit */
 static int classd = -1;		/* Guide Star Catalog object classes */
-static int sysout0 = 0;		/* Output coordinate system */
 static double magscale = 0;	/* Flux scaling factor */
 static char *wcsfile;		/* Read WCS from this FITS or IRAF file */
+
+static int bincatparm();
 
 extern void setminpmqual();
 extern void setminid();
 extern void setrevmsg();
 extern void setproj();
 
+int
 main (ac, av)
 int ac;
 char **av;
@@ -92,7 +92,7 @@ char **av;
     char *listfile;
     char rastr[32], decstr[32];
     double x, y;
-    char cs, cs1;
+    char cs1;
     char *ccom;
     int i, lcat;
     char *refcatn;
@@ -172,7 +172,7 @@ char **av;
 	/* Otherwise, read command */
 	else if (*(str = *av) == '-') {
 	    char c;
-	    while (c = *++str)
+	    while ((c = *++str))
 	    switch (c) {
 
     		case 'a':	/* Initial rotation angle in degrees */
@@ -386,7 +386,7 @@ char	*message;	/* Error message */
     if (message != NULL)
 	fprintf (stderr, "ERROR: %c %s\n", arg, message);
     catname = CatName (refcat, "catalog");
-    fprintf (stderr,"Bin %s into a FITS image\n");
+    fprintf (stderr,"Bin %s into a FITS image\n", catname);
     fprintf(stderr,"Usage: [-v][-a degrees][-p scale][-b ra dec][-j ra dec][-s nx ny] filename\n");
     fprintf(stderr,"       [-x x y] [-c catname] file.fits ...\n");
     fprintf(stderr,"  -a ang: initial rotation angle in degrees (default 0)\n");
@@ -426,19 +426,15 @@ char *name;
     double eqout=0.0;	/* Equinox to return (0=image, returned) */
     int i;
     int nbimage;	/* Number of bytes in image */
-    int nbfile;		/* Number of bytes in file */
     char title[80];
     int sysref;         /* Coordinate system of reference catalog */
     double eqref;       /* Equinox of catalog to be searched */
     double epref;       /* Epoch of catalog to be searched */
-    int nbhead;
     struct WorldCoor *wcs;
     FILE *diskfile;
-    char *cplus;
-    char history[256];
-    char extname[16];
     int nlog = 0;
     int mprop = 0;
+    int nsw;
     int nmag;
 
     if (verbose)
@@ -519,12 +515,15 @@ char *name;
 	return;
 	}
 
-    ctgbin (refcatname,refcat,wcs,header,image,maglim1,maglim2,sortmag,magscale,nlog);
+    nsw = ctgbin (refcatname,refcat,wcs,header,image,maglim1,maglim2,sortmag,magscale,nlog);
 
     hputc (header, "COMMENT", "FITS (Flexible Image Transport System) format is defined in 'Astronomy");
     hputc (header, "COMMENT", "and Astrophysics' vol 376, page 359; bibcode 2001A&A...376..359H.");
 
-    if (fitswimage (name, header, image) > 0 && verbose) {
+    if (nsw < 1) {
+	printf ("*** No stars written to image\n");
+	}
+    else if (fitswimage (name, header, image) > 0 && verbose) {
 	printf ("%s: %d-byte FITS image written successfully.\n",
 		name, nbimage);
 	}
@@ -547,9 +546,6 @@ char *parstring;
     char *parname;
     char *parvalue;
     char *parequal;
-    char *temp;
-    char *refcatn;
-    int lcat, lrange;
     int minid;
 
     /* Separate parameter name and value */
@@ -591,4 +587,8 @@ char *parstring;
 
 
 /* Sep 25 2003	New program based on newfits and scat
+ *
+ * Nov 16 2006	Do not write image if no catalog objects are found
+ *
+ * Jan 10 2007	Drop unused variables
  */
