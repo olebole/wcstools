@@ -1,5 +1,5 @@
 /* File imrot.c
- * January 5, 2007
+ * April 4, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -34,6 +34,8 @@ static int xshift = 0;
 static int yshift = 0;
 static int shifted = 0;
 static int inverted = 0;	/* If 1, invert intensity (-1 * (z-zmax)) */
+static int deletewcs = 0;	/* If 1, delete FITS WCS keywords in image */
+static int rotatewcs = 1;	/* If 1, rotate FITS WCS keywords in image */
 
 int
 main (ac, av)
@@ -114,6 +116,10 @@ char **av;
 		    automirror = 1;
 		    break;
 
+		case 'e': /* Delete FITS WCS keywords in image header */
+		    deletewcs = 1;
+		    break;
+
 		case 'l':	/* image flipped around horizontal axis */
 		    mirror = 2;
 		    break;
@@ -159,15 +165,19 @@ char **av;
 		    ac--;
 		    break;
 
+		case 'v':	/* more verbosity */
+		    verbose++;
+		    break;
+
+		case 'w': /* Do not rotate FITS WCS keywords in image header */
+		    rotatewcs = 0;
+		    break;
+
 		case 'x':	/* Number of bits per pixel */
 		    if (ac < 2)
 			usage ();
 		    bitpix = (int) atof (*++av);
 		    ac--;
-		    break;
-
-		case 'v':	/* more verbosity */
-		    verbose++;
 		    break;
 
 		default:
@@ -257,6 +267,7 @@ usage ()
     fprintf(stderr,"  xshift: integer horizontal pixel shift, applied first\n");
     fprintf(stderr,"  yshift: integer vertical pixel shift, applied first\n");
     fprintf(stderr,"  -a: Mirror if IRAF image WCS says to\n");
+    fprintf(stderr,"  -e: Delete FITS WCS keywords in image\n");
     fprintf(stderr,"  -f: Write FITS image from IRAF input\n");
     fprintf(stderr,"  -i: Do not append primary header to extension header\n");
     fprintf(stderr,"  -l: Reflect image across horizontal axis\n");
@@ -266,6 +277,7 @@ usage ()
     fprintf(stderr,"  -r: Image rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -s: Split n-extension FITS file\n");
     fprintf(stderr,"  -v: Verbose\n");
+    fprintf(stderr,"  -w: Rotate FITS WCS keywords in image\n");
     fprintf(stderr,"  -x: Output pixel size in bits (FITS code, default=input)\n");
     exit (1);
 }
@@ -380,7 +392,6 @@ char *name;
 	    mirror = 1;
 	}
 
-
     /* Use output filename if it is set on the command line */
     if (outname[0] > 0)
 	strcpy (newname, outname);
@@ -485,8 +496,13 @@ char *name;
 	multvec (image, bitpix0, bz, bs, 0, npix, dpix);
 	}
 
+    /* Delete FITS WCS keywords in the image if requested */
+    if (deletewcs) {
+	DelWCSFITS (header, verbose);
+	}
+
     if ((newimage = RotFITS (name,header,image,xshift,yshift,rotate,mirror,
-			     bitpix,verbose)) == NULL) {
+			     bitpix,rotatewcs,verbose)) == NULL) {
 	fprintf (stderr,"Cannot rotate image %s; file is unchanged.\n",name);
 	}
     else {
@@ -569,4 +585,6 @@ char *name;
  * Jun 22 2006	Check for two-token extension .ms.fit(s)
  *
  * Jan  5 2007	Fix BSCALE and BZERO hget calls
+ *
+ * Apr  4 2007	Add -w option to not rotate and -e option to erase WCS keywords
  */

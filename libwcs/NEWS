@@ -1,5 +1,25 @@
 WCSTools subroutine release history
 
+April 3, 2007 - Release 3.6.8 (Doug Mink, SAO)
+hget.c: Initial header length to zero in hlength() if lhead argument <= 0
+wcs.c:  In wcstype(), set to WCS_PIX if CTYPEi starts with "DET"
+wcs.c: In wcspset(), use correct cdelts when converting PC matrix to CD matrix
+wcsinit.c: Fix bug so RA, DEC, SECPIX can be used to set a WCS
+tnxpos.c: Fix bug so it doesn't crash
+
+January 16, 2007 - Release 3.6.7 (Doug Mink, SAO)
+wcs.h: Fix and add ANSI C prototypes
+imio.h: Drop as it has been included in fitsfile.h for several releases now
+fitsfile.h, fitshead.h: Add ANSI C prototypes
+wcsinitc(),wcsninitc(),hgeti4c(),hgetr8c(),hgetsc(): Change WCS letter argument
+  from char to char*
+hget.c: Declare header and keyword const char in most subroutines
+hput.c: Declare keyword and value const in most subroutines
+hput.c: Fix bug in ra2str() and dec2str() so ndec=0 works
+imio.c: Include fitsfile.h instead of imio.h
+wcslib.h: Drop semicolon at end of c++ ifdef
+wcslib.h: Drop second declaration of SZP subroutines
+
 November 2, 2006 - Release 3.6.6 (Doug Mink, SAO)
 fitsfile.c: Use calloc() when reallocating header as it is read
 wcsinit.c: Limit naxes to 2 everywhere; RA and DEC should always be 1st

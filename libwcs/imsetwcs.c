@@ -1,5 +1,5 @@
 /*** File libwcs/imsetwcs.c
- *** January 10, 2007
+ *** March 14, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu (based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2007
@@ -34,6 +34,7 @@
 
 #include "wcs.h"
 #include "lwcs.h"
+#include "fitsfile.h"
 #include "wcscat.h"
 
 extern int FindStars();
@@ -220,6 +221,10 @@ int	verbose;
 	if (nowcs (wcs)) {
 	    ret = 0;
 	    goto out;
+	    }
+	if (getnfit() == 0) {
+	    SetFITSWCS (header, wcs);
+	    return (1);
 	    }
 	nbin = FitMatch (nbin, sx, sy, gra, gdec, wcs, verbose);
 	sm = (double *) calloc (nbin, sizeof (double));
@@ -1291,4 +1296,6 @@ setmagfit ()
  *
  * Jan  9 2006	Drop declarations of fk425e() and fk524e(); moved to wcs.h
  * Jan 10 2007	Drop setclass() and setplate(); it did not do anything
+ * Jan 11 2007	Include fitsfile.h
+ * Mar 14 2007	Return if -n 0 after computing WCS from match
  */

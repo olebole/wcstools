@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.h
- *** January 10, 2007
+ *** February 1, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2007
@@ -151,6 +151,7 @@ struct WorldCoor {
   struct WorldCoor *wcsdep;	/* WCS depending on this WCS */
   char		*wcsname;	/* WCS name (defaults to NULL pointer) */
   char		wcschar;	/* WCS character (A-Z, null, space) */
+  int		logwcs;		/* 1 if DC-FLAG is set for log wavelength */
 };
 
 /* Projections (1-26 are WCSLIB) (values for wcs->prjcode) */
@@ -887,4 +888,5 @@ extern int tnxpix();	/* Inverse transform (world to physical) gnomonic projectio
  * Jan  9 2007	Add fk425e() and fk524e() subroutines
  * Jan  9 2007	Add worldpos.c, dsspos.c, platepos.c, and tnxpos.c subroutines
  * Jan 10 2007	Add ANSI prototypes for all subroutines
+ * Feb  1 2007	Add wcs.wcslog for log wavelength
  */

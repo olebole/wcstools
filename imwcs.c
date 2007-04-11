@@ -1,5 +1,5 @@
 /* File imwcs.c
- * January 10, 2007
+ * April 6, 2007
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -50,6 +50,7 @@ static int bitpix = 0;
 static int fitsout = 0;		/* Output FITS file from IRAF input if 1 */
 static int imsearch = 1;	/* set to 0 if image catalog provided */
 static int erasewcs = 0;	/* Set to 1 to erase initial image WCS */
+static int rotatewcs = 1;	/* If 1, rotate FITS WCS keywords in image */
 char outname[128];		/* Name for output image */
 static char *refcatname;	/* Name of reference catalog to match */
 static int version = 0;		/* If 1, print only program name and version */
@@ -374,6 +375,10 @@ char **av;
 			case '8':	/* Fit 8 polynomial parameters */
 			    setfitplate (8);
 			    break;
+
+			case 'w':	/* Do not rotate image WCS */
+			    rotatewcs = 0;
+			    break;
 	
 			default:
 			    sprintf (errmsg, "* Illegal q option -%s-", str1);
@@ -584,7 +589,7 @@ char    *command;
     fprintf(stderr,"  -n: list of parameters to fit (12345678; negate for refinement)\n");
     fprintf(stderr,"  -o: name for output image, no argument to overwrite\n");
     fprintf(stderr,"  -p: initial plate scale in arcsec per pixel (default 0)\n");
-    fprintf(stderr,"  -q: <i>terate, <r>ecenter, <s>igma clip, <p>olynomial, <t>olerance reduce, <n>more params\n");
+    fprintf(stderr,"  -q: <i>terate, <r>ecenter, <s>igma clip, <p>olynomial, <t>olerance reduce, <w>do not rotate WCS, <n>more params\n");
     fprintf(stderr,"  -r: rotation angle in degrees before fitting (default 0)\n");
     fprintf(stderr,"  -s: use this fraction extra stars (default 1.0)\n");
     fprintf(stderr,"  -t: offset tolerance in pixels (default %d)\n", PIXDIFF);
@@ -688,7 +693,8 @@ char	*name;		/* FITS or IRAF image filename */
 
     /* Rotate and/or reflect image */
     if ((imsearch || writeheader) && (rot != 0 || mirror)) {
-	if ((newimage = RotFITS (name,header,image,0,0,rot,mirror,bitpix,verbose))
+	if ((newimage = RotFITS (name,header,image,0,0,rot,mirror,bitpix,
+				 rotatewcs,verbose))
 	    == NULL) {
 	    fprintf (stderr,"Image %s could not be rotated\n", name);
 	    if (iraffile)
@@ -971,4 +977,5 @@ char	*name;		/* FITS or IRAF image filename */
  * Oct 12 2006	Add b option to q command to bin star matches for speed
  *
  * Jan 10 2007	Call setgsclass() instead of setclass()
+ * Apr  6 2007	Add -q w to not rotate initial image WCS
  */

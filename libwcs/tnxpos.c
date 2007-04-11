@@ -1,5 +1,5 @@
 /*** File wcslib/tnxpos.c
- *** January 9, 2007
+ *** April 3, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** After IRAF mwcs/wftnx.x and mwcs/wfgsurfit.x
@@ -880,7 +880,7 @@ int	nxd, nyd;	/* order of the derivatives in x and y */
 
 	    else if (nxder > 0) { 
 		ptr1 = coeff;
-		ptr2 = sf2->coeff + sf2->ncoeff;
+		ptr2 = sf2->coeff + sf2->ncoeff - 1;
 		for (j = sf1->xorder; j >= nxder+1; j--) {
 		    for (k = j; k >= j - nxder + 1; k--)
 			ptr1[j-1] = ptr1[j-1] * (double)(k - 1);
@@ -890,10 +890,10 @@ int	nxd, nyd;	/* order of the derivatives in x and y */
 		}
 
 	    else if (nyder > 0) {
-		ptr1 = coeff + sf1->ncoeff;
+		ptr1 = coeff + sf1->ncoeff - 1;
 		ptr2 = sf2->coeff;
-		for (i = sf1->yorder; i > nyder + 1; i--) {
-		    for (j = i; j > i - nyder + 1; j--)
+		for (i = sf1->yorder; i >= nyder + 1; i--) {
+		    for (j = i; j >= i - nyder + 1; j--)
 			*ptr1 = *ptr1 * (double)(j - 1);
 		    ptr1 = ptr1 - 1;
 		    }
@@ -1219,4 +1219,5 @@ double	*coeff;
  *
  * Jan  8 2007	Drop unused variable ncoeff in wf_gsder()
  * Jan  9 2007	Declare header const char in tnxinit()
+ * Apr  3 2007	Fix offsets to hit last cooefficient in wf_gsder()
  */

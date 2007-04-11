@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** January 4, 2007
+ *** February 28, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2007
@@ -90,6 +90,7 @@ int	lhead;	/* Maximum length of FITS header */
     if (lhead > 0)
 	lhead0 = lhead;
     else {
+	lhead0 = 0;
 	hend = ksearch (header,"END");
 	lhead0 = hend + 80 - header;
 	}
@@ -1841,4 +1842,5 @@ int	dropzero;	/* If nonzero, drop trailing zeroes */
  *
  * Jan  4 2007  Declare header, keyword to be const
  * Jan  4 2007	Change WCS letter from char to char*
+ * Feb 28 2007	If header length is not set in hlength, set it to 0
  */

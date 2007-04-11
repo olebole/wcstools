@@ -29,8 +29,8 @@
 #include <unistd.h>
 #include <math.h>
 #include "libwcs/wcs.h"
-#include "libwcs/wcscat.h"
 #include "libwcs/fitsfile.h"
+#include "libwcs/wcscat.h"
 
 static void usage();
 static void skycons();

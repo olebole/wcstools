@@ -30,9 +30,9 @@
 #include <math.h>
 
 #include "libwcs/wcs.h"
+#include "libwcs/fitsfile.h"
 #include "libwcs/wcscat.h"
 #include "libwcs/lwcs.h"
-#include "libwcs/fitsfile.h"
 
 #define MAXFILES 1000
 static int maxnfile = MAXFILES;
@@ -1583,7 +1583,7 @@ char	**refcatname;	/* reference catalog name */
 		band = gc[i] / 100;
 		gc[i] = gc[i] - (band * 100);
 		}
-	    if (refcat == SDSS)
+	    if (refcat == SDSS || refcat == GSC2)
 		strcpy (numstr, gobj[i]);
 	    else
 		CatNum (refcat, -nnfld, nndec, gnum[i], numstr);

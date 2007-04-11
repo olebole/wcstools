@@ -34,8 +34,8 @@
 
 #include "libwcs/wcs.h"
 #include "libwcs/lwcs.h"
-#include "libwcs/wcscat.h"
 #include "libwcs/fitsfile.h"
+#include "libwcs/wcscat.h"
 
 static void usage();
 static void MakeFITS();

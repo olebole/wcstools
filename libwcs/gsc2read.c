@@ -1,8 +1,8 @@
 /*** File libwcs/gsc2read.c
- *** September 8, 2006
+ *** April 11, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2006
+ *** Copyright (C) 2001-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -37,18 +37,23 @@
 #include "wcs.h"
 #include "wcscat.h"
 
+static void parsex();
+
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 #define LINE    1024
 
-/* GSC II search engine URL */
+/* URLs for GSC II search engine at STScI Catalogs and Surveys Branch */
 char gsc22url[64]="http://www-gsss.stsci.edu/cgi-bin/gsc22query.exe";
 char gsc23url[64]="http://www-gsss.stsci.edu/cgi-bin/gsc23query.exe";
+
+/* URL for GSC II search engine at STScI MAST archive */
+char gsc2murl[64]="http://galex.stsci.edu/gsc2/GSC2DataReturn.aspx";
 
 /* GSC2READ -- Read GSC II catalog stars over the web */
 
 int
 gsc2read (refcatname,cra,cdec,dra,ddec,drad,dradi,distsort,sysout,eqout,epout,
-	  mag1,mag2,sortmag,nstarmax,gnum,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
+	  mag1,mag2,sortmag,nstarmax,gnum,gobj,gra,gdec,gpra,gpdec,gmag,gtype,nlog)
 
 char	*refcatname;	/* Name of catalog (GSC2 for 2.2; GSC2.3 for 2.3) */
 double	cra;		/* Search center J2000 right ascension in degrees */
@@ -65,6 +70,7 @@ double	mag1,mag2;	/* Limiting magnitudes (none if equal) */
 int	sortmag;	/* Magnitude by which to sort (1 to nmag) */
 int	nstarmax;	/* Maximum number of stars to be returned */
 double	*gnum;		/* Array of Guide Star numbers (returned) */
+char	**gobj;		/* Array of object IDs (mixed characters and numbers) */
 double	*gra;		/* Array of right ascensions (returned) */
 double	*gdec;		/* Array of declinations (returned) */
 double	*gpra;		/* Array of right ascension proper motions (returned) */
@@ -76,17 +82,32 @@ int	nlog;		/* 1 for diagnostics */
     char srchurl[LINE];
     char temp[64];
     struct TabTable *tabtable;
-    double dtemp, r2;
+    double dr;
     struct StarCat *starcat;
     int nstar, i;
+    int casb, mast;
+    int rah, ram, dd, dm;
+    double ras, ds;
+    char sr[4], sd[4];
     double ra, dec, mag, ddra;
     char rastr[32], decstr[32];
     char *gsc2url;
 
-    if (strchr (refcatname, '3'))
+    /* Select URL for search command */
+    if (strstr (refcatname, "23") != NULL)
 	gsc2url = gsc23url;
-    else
+    else if (strstr (refcatname, "22") != NULL)
 	gsc2url = gsc22url;
+    else
+	gsc2url = gsc2murl;
+    if (strstr (gsc2url, "galex") != NULL) {
+	mast = 1;
+	casb = 0;
+	}
+    else {
+	mast = 0;
+	casb = 1;
+	}
 
     if (nstarmax < 1)
 	nlog = -1;
@@ -105,31 +126,51 @@ int	nlog;		/* 1 for diagnostics */
 	wcscon (sysout, WCS_J2000, eqout, 2000.0, &ra, &dec, epout);
     ra2str (rastr, 32, ra, 3);
     dec2str (decstr, 32, dec, 2);
-    sprintf (srchurl, "?ra=%s&dec=%s&", rastr, decstr);
-    if (drad != 0.0) {
-	dtemp = drad * 60.0;
-	sprintf (temp, "r2=%.3f&",dtemp);
+    if (casb) {
+	sprintf (srchurl, "?ra=%s&dec=%s&", rastr, decstr);
+	if (drad != 0.0) {
+	    dr = drad * 60.0;
+	    sprintf (temp, "r2=%.3f&",dr);
+	    }
+	else {
+	    ddra = dra * cos (degrad (cdec));
+	    dr = sqrt (ddra*ddra + ddec*ddec) * 60.0;
+	    sprintf (temp, "r2=%.3f&",dr);
+	    }
+	strcat (srchurl, temp);
+	if (mag1 < mag2) {
+	    sprintf (temp, "m1=%.2f&m2=%.2f&", mag1, mag2);
+	    strcat (srchurl, temp);
+	    }
+	else if (mag1 > mag2) {
+	    sprintf (temp, "m1=%.2f&m2=%.2f&", mag2, mag1);
+	    strcat (srchurl, temp);
+	    }
+	if (gsc2url == gsc23url)
+	    nstar = 50000;
+	else
+	    nstar = 100000;
+	sprintf (temp, "n=%d",nstar);
+	strcat (srchurl, temp);
 	}
     else {
-	ddra = dra * cos (degrad (cdec));
-	r2 = sqrt (ddra*ddra + ddec*ddec) * 60.0;
-	sprintf (temp, "r2=%.3f&",r2);
-	}
-    strcat (srchurl, temp);
-    if (mag1 < mag2) {
-	sprintf (temp, "m1=%.2f&m2=%.2f&", mag1, mag2);
+	parsex (rastr, sr, &rah, &ram, &ras);
+	sprintf (srchurl, "?RAH=%d&RAM=%d&RAS=%.3f&", rah, ram, ras);
+	parsex (decstr, sd, &dd, &dm, &ds);
+	sprintf (temp, "DSN=%1s&DD=%d&DM=%d&DS=%.3f&", sd, dd, dm, ds);
+	strcat (srchurl, temp);
+	if (drad != 0.0) {
+	    dr = drad * 60.0;
+	    }
+	else {
+	    ddra = dra * cos (degrad (cdec));
+	    dr = sqrt (ddra*ddra + ddec*ddec) * 60.0;
+	    }
+	sprintf (temp, "EQ=2000&SIZE=%.3f&SRCH=Radius&FORMAT=CSV&CAT=GSC23&", dr);
+	strcat (srchurl, temp);
+	sprintf (temp, "HSTID=&GSC1ID=");
 	strcat (srchurl, temp);
 	}
-    else if (mag1 > mag2) {
-	sprintf (temp, "m1=%.2f&m2=%.2f&", mag2, mag1);
-	strcat (srchurl, temp);
-	}
-    if (gsc2url == gsc23url)
-	nstar = 50000;
-    else
-	nstar = 100000;
-    sprintf (temp, "n=%d",nstar);
-    strcat (srchurl, temp);
     if (nlog > 0)
 	fprintf (stderr,"%s%s\n", gsc2url, srchurl);
 
@@ -174,7 +215,7 @@ int	nlog;		/* 1 for diagnostics */
     /* Extract desired sources from catalog  and return them */
     nstar = tabread (gsc2url,distsort,cra,cdec,dra,ddec,drad,dradi,
 	     sysout,eqout,epout,mag1,mag2,sortmag,nstarmax,&starcat,
-	     gnum,gra,gdec,gpra,gpdec,gmag,gtype,NULL,nlog);
+	     gnum,gra,gdec,gpra,gpdec,gmag,gtype,gobj,nlog);
 
     tabcatclose (starcat);
 
@@ -191,6 +232,124 @@ int	nlog;		/* 1 for diagnostics */
     starcat = NULL;
 
     return (nstar);
+}
+
+static void
+parsex (str, ss, d, m, s)
+
+char *str;
+char *ss;
+int *d;
+int *m;
+double *s;
+{
+    char *c0, *cstr;
+    c0 = str;
+    *ss = (char) 0;
+    *d = 0;
+    *m = 0;
+    *s = 0.0;
+
+    /* Skip over blanks at start of number */
+    while (*c0 == ' ')
+	c0++;
+    if (*c0 == '+' || *c0 == '-') {
+	ss[0] = *c0;
+	ss[1] = (char) 0;
+	c0++;
+	}
+    else {
+	ss[0] = '+';
+	ss[1] = (char) 0;
+	}
+    cstr = strchr (c0,':');
+    if (cstr > c0) {
+        *cstr = (char) 0;
+        *d = (int) atof (c0);
+        *cstr = ':';
+        c0 = cstr + 1;
+        cstr = strchr (c0,':');
+        if (cstr > c0) {
+            *cstr = '\0';
+            *m = (int) atof (c0);
+            *cstr = ':';
+            c0 = cstr + 1;
+            *s = atof (c0);
+            }
+        else
+            *m = (int) atof (c0);
+        }
+    else
+        *d = (int) atof (c0);
+}
+
+
+char *
+gsc2c2t (csvbuff)
+
+    char *csvbuff;	/* Input comma-separated table */
+
+{
+    char *tabbuff;	/* Output tab-separated table */
+    char *databuff;
+    char *lastbuff;
+    char *oldbuff;
+    char *colhead, *colsep;
+    int lhead, lbuff, i, j;
+    char ctab = (char) 9;
+    char ccom = ',';
+    char clf = '\n';
+    char ccr = '\r';
+    char csp = ' ';
+
+    /* First line of buffer is header */
+    databuff = strchr (csvbuff, clf) + 1;
+    lhead = (int) (databuff - csvbuff);
+
+    /* Allocate buffer for tab-separated table with header */
+    lbuff = strlen (databuff) + (2 * lhead);
+    tabbuff = (char *) calloc (lbuff, 1);
+
+    /* Copy header into new buffer with tabs instead of commas */
+    oldbuff = csvbuff;
+    i = 0;
+    while (oldbuff < databuff) {
+	if (*oldbuff == ccom)
+	    tabbuff[i++] = ctab;
+	else if (*oldbuff != csp && *oldbuff != ccr && *oldbuff != clf)
+	    tabbuff[i++] = *oldbuff;
+	oldbuff++;
+	}
+    tabbuff[i++] = clf;
+
+    /* Make separating line from first line of input file */
+    oldbuff = csvbuff;
+    while (oldbuff < databuff) {
+	if (*oldbuff == ccom)
+	    tabbuff[i++] = ctab;
+	else if (*oldbuff != csp && *oldbuff != ccr && *oldbuff != clf)
+	    tabbuff[i++] = '-';
+	oldbuff++;
+	}
+    tabbuff[i++] = clf;
+
+    /* Drop extraneous data after last linefeed */
+    lbuff = strlen (databuff);
+    if (lbuff > 0) {
+	lastbuff = strrchr (databuff, '\n');
+	if (lastbuff - databuff < lbuff)
+	    *(lastbuff+1) = (char) 0;
+
+	/* Convert commas in data table to tabs and drop spaces */
+	for (j = 0; j < lbuff; j++) {
+	    if (databuff[j] == ccom)
+		tabbuff[i++] = ctab;
+	    else if (databuff[j] != csp && databuff[j] != ccr)
+		tabbuff[i++] = databuff[j];
+	    }
+	}
+
+    return (tabbuff);
 }
 
 /* Jun 22 2001	New program
@@ -218,4 +377,9 @@ int	nlog;		/* 1 for diagnostics */
  *
  * Jun 20 2006	Cast fwrite to void
  * Sep  8 2006	Fix comment which mentioned wrong catalog
+
+ * Mar 12 2007	Read from copy in STScI MAST GALEX archive
+ * Mar 12 2007	Add parsex \() to separate sexigesimal number into components
+ * Mar 13 2007	Add gsc2c2v() to convert comma-separated input to tab-separated
+ * Apr 11 2007	Return null data buffer from gsc2c2t() if no data
  */

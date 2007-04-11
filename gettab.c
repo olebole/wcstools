@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <math.h>
 #include "libwcs/wcs.h"
+#include "libwcs/fitsfile.h"
 #include "libwcs/wcscat.h"
 
 #define MAXCOL 500

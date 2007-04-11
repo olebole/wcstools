@@ -1,13 +1,13 @@
 /*** simpos.c - search object by its name from command line arguments
- *** January 10, 2007
+ *** January 16, 2007
  *** By Doug Mink, after IPAC byname.c
  */
 
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "libwcs/fitshead.h"
 #include "libwcs/wcs.h"
+#include "libwcs/fitsfile.h"
 #include "libwcs/wcscat.h"
 
 extern int   ned_errno;
@@ -112,8 +112,12 @@ char *av[];
 	/* Get position */
 	    if ((posline = strsrch (buff, "%J ")) != NULL) {
 		posra = posline + 3;
+		while (*posra == ' ')
+		    posra++;
 		ra = atof (posra);
 		posdec = strchr (posra, ' ');
+		while (*posdec == ' ')
+		    posdec++;
 		posline = strchr (posdec, ' ');
 		dec = atof (posdec);
 		}
@@ -209,4 +213,6 @@ usage ()
  * Jun 20 2006	Clean up code
  *
  * Jan 10 2007	exit(0) if successful
+ * Jan 11 2007	Include fitsfile.h instead of fitshead.h
+ * Jan 16 2007	Fix leading space bug
  */

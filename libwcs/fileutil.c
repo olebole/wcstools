@@ -1,8 +1,8 @@
 /*** File libwcs/fileutil.c
- *** June 20, 2006
+ *** January 11, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1999-2006
+ *** Copyright (C) 1999-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -52,6 +52,12 @@
  *		Return 1 if file is a readable TIFF graphics file, else 0
  * Subroutine:	isjpeg (filename)
  *		Return 1 if file is a readable JPEG graphics file, else 0
+ * int setoken (tokens, string, cwhite)
+ *	Tokenize a string for easy decoding
+ * int nextoken (tokens, token, maxchars)
+ *	Get next token from tokenized string
+ * int getoken (tokens, itok, token, maxchars)
+ *	Get specified token from tokenized string
  */
 
 #include <stdlib.h>
@@ -524,6 +530,263 @@ char    *filename;      /* Name of file to check */
         }
 }
 
+
+static int maxtokens = MAXTOKENS; /* Set maximum number of tokens from wcscat.h*/
+
+/* -- SETOKEN -- tokenize a string for easy decoding */
+
+int
+setoken (tokens, string, cwhite)
+
+struct Tokens *tokens;	/* Token structure returned */
+char	*string;	/* character string to tokenize */
+char	*cwhite;	/* additional whitespace characters
+			 * if = tab, disallow spaces and commas */
+{
+    char squote, dquote, jch, newline;
+    char *iq, *stri, *wtype, *str0, *inew;
+    int i,j,naddw, ltok;
+
+    newline = (char) 10;
+    squote = (char) 39;
+    dquote = (char) 34;
+    if (string == NULL)
+	return (0);
+
+    /* Line is terminated by newline or NULL */
+    inew = strchr (string, newline);
+    if (inew != NULL)
+	tokens->lline = inew - string - 1;
+    else
+	tokens->lline = strlen (string);
+
+    /* Save current line in structure */
+    tokens->line = string;
+
+    /* Add extra whitespace characters */
+    if (cwhite == NULL)
+	naddw = 0;
+    else
+	naddw = strlen (cwhite);
+
+    /* if character is tab, allow only tabs and nulls as separators */
+    if (naddw > 0 && !strncmp (cwhite, "tab", 3)) {
+	tokens->white[0] = (char) 9;	/* Tab */
+	tokens->white[1] = (char) 0;	/* NULL (end of string) */
+	tokens->nwhite = 2;
+	}
+
+    /* if character is bar, allow only bars and nulls as separators */
+    else if (naddw > 0 && !strncmp (cwhite, "bar", 3)) {
+	tokens->white[0] = '|';		/* Bar */
+	tokens->white[1] = (char) 0;	/* NULL (end of string) */
+	tokens->nwhite = 2;
+	}
+
+    /* otherwise, allow spaces, tabs, commas, nulls, and cwhite */
+    else {
+	tokens->nwhite = 4 + naddw;;
+	tokens->white[0] = ' ';		/* Space */
+	tokens->white[1] = (char) 9;	/* Tab */
+	tokens->white[2] = ',';		/* Comma */
+	tokens->white[3] = (char) 124;	/* Vertical bar */
+	tokens->white[4] = (char) 0;	/* Null (end of string) */
+	if (tokens->nwhite > 20)
+	    tokens->nwhite = 20;
+	if (naddw > 0) {
+	    i = 0;
+	    for (j = 4; j < tokens->nwhite; j++) {
+		tokens->white[j] = cwhite[i];
+		i++;
+		}
+	    }
+	}
+    tokens->white[tokens->nwhite] = (char) 0;
+
+    tokens->ntok = 0;
+    tokens->itok = 0;
+    iq = string - 1;
+    for (i = 0; i < maxtokens; i++) {
+	tokens->tok1[i] = NULL;
+	tokens->ltok[i] = 0;
+	}
+
+    /* Process string one character at a time */
+    stri = string;
+    str0 = string;
+    while (stri < string+tokens->lline) {
+
+	/* Keep stuff between quotes in one token */
+	if (stri <= iq)
+	    continue;
+	jch = *stri;
+
+	/* Handle quoted strings */
+	if (jch == squote)
+	    iq = strchr (stri+1, squote);
+	else if (jch == dquote)
+	    iq = strchr (stri+1, dquote);
+	else
+	    iq = stri;
+	if (iq > stri) {
+	    tokens->ntok = tokens->ntok + 1;
+	    if (tokens->ntok > maxtokens) return (maxtokens);
+	    tokens->tok1[tokens->ntok] = stri + 1;
+	    tokens->ltok[tokens->ntok] = (iq - stri) - 1;
+	    stri = iq + 1;
+	    str0 = iq + 1;
+	    continue;
+	    }
+
+	/* Search for unquoted tokens */
+	wtype = strchr (tokens->white, jch);
+
+	/* If this is one of the additional whitespace characters,
+	 * pass as a separate token */
+	if (wtype > tokens->white + 3) {
+
+	    /* Terminate token before whitespace */
+	    if (stri > str0) {
+		tokens->ntok = tokens->ntok + 1;
+		if (tokens->ntok > maxtokens) return (maxtokens);
+		tokens->tok1[tokens->ntok] = str0;
+		tokens->ltok[tokens->ntok] = stri - str0;
+		}
+
+	    /* Make whitespace character next token; start new one */
+	    tokens->ntok = tokens->ntok + 1;
+	    if (tokens->ntok > maxtokens) return (maxtokens);
+	    tokens->tok1[tokens->ntok] = stri;
+	    tokens->ltok[tokens->ntok] = 1;
+	    stri++;
+	    str0 = stri;
+	    }
+
+	/* Pass previous token if regular whitespace or NULL */
+	else if (wtype != NULL || jch == (char) 0) {
+
+	    /* Ignore leading whitespace */
+	    if (stri == str0) {
+		stri++;
+		str0 = stri;
+		}
+
+	    /* terminate token before whitespace; start new one */
+	    else {
+		tokens->ntok = tokens->ntok + 1;
+		if (tokens->ntok > maxtokens) return (maxtokens);
+		tokens->tok1[tokens->ntok] = str0;
+		tokens->ltok[tokens->ntok] = stri - str0;
+		stri++;
+		str0 = stri;
+		}
+	    }
+
+	/* Keep going if not whitespace */
+	else
+	    stri++;
+	}
+
+    /* Add token terminated by end of line */
+    if (str0 < stri) {
+	tokens->ntok = tokens->ntok + 1;
+	if (tokens->ntok > maxtokens)
+	    return (maxtokens);
+	tokens->tok1[tokens->ntok] = str0;
+	ltok = stri - str0 + 1;
+	tokens->ltok[tokens->ntok] = ltok;
+
+	/* Deal with white space just before end of line */
+	jch = str0[ltok-1];
+	if (strchr (tokens->white, jch)) {
+	    ltok = ltok - 1;
+	    tokens->ltok[tokens->ntok] = ltok;
+	    tokens->ntok = tokens->ntok + 1;
+	    tokens->tok1[tokens->ntok] = str0 + ltok;
+	    tokens->ltok[tokens->ntok] = 0;
+	    }
+	}
+
+    tokens->itok = 0;
+
+    return (tokens->ntok);
+}
+
+
+/* NEXTOKEN -- get next token from tokenized string */
+
+int
+nextoken (tokens, token, maxchars)
+ 
+struct Tokens *tokens;	/* Token structure returned */
+char	*token;		/* token (returned) */
+int	maxchars;	/* Maximum length of token */
+{
+    int ltok;		/* length of token string (returned) */
+    int it, i;
+    int maxc = maxchars - 1;
+
+    tokens->itok = tokens->itok + 1;
+    it = tokens->itok;
+    if (it > tokens->ntok)
+	it = tokens->ntok;
+    else if (it < 1)
+	it = 1;
+    ltok = tokens->ltok[it];
+    if (ltok > maxc)
+	ltok = maxc;
+    strncpy (token, tokens->tok1[it], ltok);
+    for (i = ltok; i < maxc; i++)
+	token[i] = (char) 0;
+    return (ltok);
+}
+
+
+/* GETOKEN -- get specified token from tokenized string */
+
+int
+getoken (tokens, itok, token, maxchars)
+
+struct Tokens *tokens;	/* Token structure returned */
+int	itok;		/* token sequence number of token
+			 * if <0, get whole string after token -itok
+			 * if =0, get whole string */
+char	*token;		/* token (returned) */
+int	maxchars;	/* Maximum length of token */
+{
+    int ltok;		/* length of token string (returned) */
+    int it, i;
+    int maxc = maxchars - 1;
+
+    it = itok;
+    if (it > 0 ) {
+	if (it > tokens->ntok)
+	    it = tokens->ntok;
+	ltok = tokens->ltok[it];
+	if (ltok > maxc)
+	    ltok = maxc;
+	strncpy (token, tokens->tok1[it], ltok);
+	}
+    else if (it < 0) {
+	if (it < -tokens->ntok)
+	    it  = -tokens->ntok;
+	ltok = tokens->line + tokens->lline - tokens->tok1[-it];
+	if (ltok > maxc)
+	    ltok = maxc;
+	strncpy (token, tokens->tok1[-it], ltok);
+	}
+    else {
+	ltok = tokens->lline;
+	if (ltok > maxc)
+	    ltok = maxc;
+	strncpy (token, tokens->tok1[1], ltok);
+	}
+    for (i = ltok; i < maxc; i++)
+	token[i] = (char) 0;
+
+    return (ltok);
+}
+
 /*
  * Jul 14 1999	New subroutines
  * Jul 15 1999	Add getfilebuff()
@@ -551,4 +814,5 @@ char    *filename;      /* Name of file to check */
  * Jun 20 2006	Cast call to fgets() void
  *
  * Jan  5 2007	Change stc2s() and sts2c() to pass single character as pointer
+ * Jan 11 2007	Move token access subroutines from catutil.c
  */

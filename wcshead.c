@@ -1,9 +1,9 @@
 /* File wcshead.c
- * June 21, 2006
+ * February 1, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1998-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -44,6 +44,7 @@ static int version = 0;		/* If 1, print only program name and version */
 static int wave = 0;		/* If 1, print first dimension limits */
 static int restwave = 0;	/* If 1, print first dimension limits */
 static int printhead = 1;	/* 1 until header has been printed */
+static char *rootdir=NULL;	/* Root directory for input files */
 
 
 int
@@ -76,13 +77,23 @@ char **av;
 	while ((c = *++str))
 	switch (c) {
 
+	case 'd':	/* Root directory for input files (default is cwd) */
+	    if (ac < 2)
+		usage();
+	    rootdir = *++av;
+	    ac--;
+	    break;
+
 	case 'h':	/* hh:mm:ss output for crval, cdelt in arcsec/pix */
 	    hms++;
 	    break;
 
-	case 'n':	/* hh:mm:ss output */
-	    tabout++;
-	    break;
+    	case 'n':	/* Number of decimal places in coordinates */
+    	    if (ac < 2)
+    		usage();
+    	    ndec = atoi (*++av);
+    	    ac--;
+    	    break;
 
 	case 'r':	/* Print first dimension as rest wavelength, first and last values */
 	    restwave++;
@@ -173,7 +184,9 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Print WCS part of FITS or IRAF image header\n");
     fprintf (stderr,"usage: wcshead [-htv] file.fit ...\n");
+    fprintf (stderr, " -d dir: Root directory for input files (default is cwd)\n");
     fprintf (stderr,"  -h: Print CRVALs as hh:mm:ss dd:mm:ss\n");
+    fprintf (stderr,"  -n num: Number of decimal places in CRVAL output\n");
     fprintf (stderr,"  -r: Print first dimension as rest wavelength limiting values\n");
     fprintf (stderr,"  -t: Print tab table output\n");
     fprintf (stderr,"  -v: Verbose\n");
@@ -190,23 +203,65 @@ char	*filename;	/* FITS or IRAF image file name */
     double w1, w2, dx, dy;
     int i, nxpix, nypix;
     char str[256], temp[256];
+    char pathname[256], ctype[16];
     char *header = NULL;
     char *GetFITShead();
     char rastr[32], decstr[32], fform[8];
     struct WorldCoor *wcs, *GetWCSFITS();
-    double wlast;
+    double wfrst, dwl, wlast, dxpix, zvel, vel;
+    int logwav = 0;
 
-    wcs = GetWCSFITS (filename, verbose);
+    if (rootdir){
+	strcpy (pathname, rootdir);
+	strcat (pathname, "/");
+	strcat (pathname, filename);
+	}
+    else
+	strcpy (pathname, filename);
+    wcs = GetWCSFITS (pathname, verbose);
     if (nowcs (wcs)) {
 	wcsfree (wcs);
 	wcs = NULL;
-	header = GetFITShead (filename, verbose);
+	header = GetFITShead (pathname, verbose);
+	if (wave) {
+	    hgetr8 (header, "NAXIS1", &dxpix);
+	    hgeti4 (header, "DC-FLAG", &logwav);
+	    hgetr8 (header, "CRVAL1", &wfrst);
+	    hgetr8 (header, "CDELT1", &dwl);
+	    if (logwav)
+		strcpy (ctype, "LOGWAV");
+	    else
+		strcpy (ctype, "LINEAR");
+	    hgets (header, "CTYPE1", 31, ctype);
+	    hgetr8 (header, "VELOCITY", &vel);
+	    zvel = vel / 299792.5;
+	    }
+	}
+    else {
+	dxpix = wcs->nxpix;
+	wfrst = wcs->xref;
+	dwl = wcs->cdelt[0];
+	strcpy (ctype, wcs->ctype[0]);
+	zvel = wcs->zvel;
+	logwav = wcs->logwcs;
 	}
 
     if (wcs && wcs->ctype[0][0] == (char) 0) {
 	wcsfree (wcs);
 	wcs = NULL;
-	header = GetFITShead (filename, verbose);
+	header = GetFITShead (pathname, verbose);
+	if (wave) {
+	    hgetr8 (header, "NAXIS1", &dxpix);
+	    hgeti4 (header, "DC-FLAG", &logwav);
+	    hgetr8 (header, "CRVAL1", &wfrst);
+	    hgetr8 (header, "CDELT1", &dwl);
+	    if (logwav)
+		strcpy (ctype, "LOGWAV");
+	    else
+		strcpy (ctype, "LINEAR");
+	    hgetr8 (header, "VELOCITY", &vel);
+	    zvel = vel / 299792.5;
+	    }
 	}
     if (tabout && printhead) {
 	strcpy (str, "filename");
@@ -221,13 +276,22 @@ char	*filename;	/* FITS or IRAF image file name */
 	else {
 	    strcat (str, "	naxis1	naxis2");
 	    strcat (str, "	ctype1  	ctype2  ");
-	    strcat (str, "	crval1 	crval2 	system  ");
+	    strcat (str, "	crval1	crval2	system  ");
 	    strcat (str, "	crpix1	crpix2");
 	    strcat (str, "	cdelt1	cdelt2");
 	    strcat (str, "	crota2\n");
 	    for (i = 0; i < nchar; i++) strcat (str, "-");
 	    strcat (str, "	------	------");
-	    strcat (str, "	--------	--------");
+	    if (ndec <= 2)
+		strcat (str, "	-------	-------");
+	    else if (ndec == 3)
+		strcat (str, "	--------	--------");
+	    else if (ndec == 4)
+		strcat (str, "	---------	---------");
+	    else if (ndec == 5)
+		strcat (str, "	----------	----------");
+	    else
+		strcat (str, "	-----------	-----------");
 	    strcat (str, "	-------	-------");
 	    strcat (str, "	--------	-------");
 	    strcat (str, "	-------	-------");
@@ -240,7 +304,37 @@ char	*filename;	/* FITS or IRAF image file name */
     sprintf (fform,"%%%d.%ds",nchar, nchar);
     if (tabout) {
 	sprintf (str, fform, filename);
-	if (!wcs) {
+	if (wave) {
+	    wlast = wfrst + ((dxpix - 1.0) * dwl);
+	    if (logwav) {
+		w1 = exp (log(10.0) * wfrst);
+		w2 = exp (log(10.0) * wlast);
+		dwl = (w2 - w1) / (dxpix - 1.0);
+		}
+	    else {
+		w1 = wfrst;
+		w2 = wlast;
+		}
+	    sprintf (temp, "	%.0f	%s	%9.4f	%9.4f	%7.4f",
+			 dxpix, ctype, w1, w2, dwl);
+	    strcat (str, temp);
+	    }
+	else if (restwave) {
+	    wlast = wfrst + ((dxpix - 1.0) * dwl);
+	    if (logwav) {
+		w1 = exp (log (10.0) * wfrst) / (1.0 + zvel);
+		w2 = exp (log (10.0) * wlast) / (1.0 + zvel);
+		dwl = (w2 - w1) / (dxpix - 1.0);
+		}
+	    else {
+		w1 = wfrst / (1.0 + zvel);
+		w2 = wlast / (1.0 + zvel);
+		}
+	    sprintf (temp, "	%.0f	%s	%9.4f	%9.4f	%7.4f",
+		     dxpix, ctype, w1, w2, dwl);
+	    strcat (str, temp);
+	    }
+	else if (!wcs) {
 	    if (wave) {
 		strcat (str, "	___	___	_________	_________	_______");
 		}
@@ -254,20 +348,6 @@ char	*filename;	/* FITS or IRAF image file name */
 		strcat (str, temp);
 		strcat (str, "	________	________	_______	_______	________	_______	_______	_______	_______	_______");
 		}
-	    }
-	else if (wave) {
-	    wlast = wcs->xref + ((wcs->nxpix - 1.0) * wcs->cdelt[0]);
-	    sprintf (temp, "	%.0f	%s	%9.4f	%9.4f	%7.4f",
-		     wcs->nxpix, wcs->ctype[0], wcs->xref, wlast, wcs->xinc);
-	    strcat (str, temp);
-	    }
-	else if (restwave) {
-	    w1 = wcs->xref / (1.0 + wcs->zvel);
-	    wlast = wcs->xref + ((wcs->nxpix - 1.0) * wcs->cdelt[0]);
-	    w2 = wlast / (1.0 + wcs->zvel);
-	    sprintf (temp, "	%.0f	%s	%9.4f	%9.4f	%7.4f",
-		     wcs->nxpix, wcs->ctype[0], w1, w2, wcs->xinc);
-	    strcat (str, temp);
 	    }
 	else {
 	    sprintf (temp, "	%.0f	%.0f", wcs->nxpix, wcs->nypix);
@@ -286,11 +366,12 @@ char	*filename;	/* FITS or IRAF image file name */
 			ra2str (rastr, 32, wcs->xref, ndec);
 			dec2str (decstr, 32, wcs->yref, ndec-1);
 			}
-		sprintf (temp, " %s %s %s", rastr, decstr, wcs->radecsys);
 		}
-	    else
-		sprintf (temp, "	%7.2f	%7.2f	%8s",
-			 wcs->xref, wcs->yref, wcs->radecsys);
+	    else {
+		num2str (rastr, wcs->xref, 0, ndec);
+		num2str (decstr, wcs->yref, 0, ndec);
+		}
+	    sprintf (temp, "	%s	%s	%s",rastr,decstr,wcs->radecsys);
 	    strcat (str, temp);
 	    sprintf (temp, "	%7.2f	%7.2f", wcs->xrefpix, wcs->yrefpix);
 	    strcat (str, temp);
@@ -311,7 +392,40 @@ char	*filename;	/* FITS or IRAF image file name */
 	}
     else {
 	sprintf (str, fform, filename);
-	if (!wcs) {
+	if (wave) {
+	    sprintf (temp, " %.0f %s", dxpix, ctype);
+	    strcat (str, temp);
+	    wlast = wfrst + ((dxpix - 1.0) * dwl);
+	    if (logwav) {
+		w1 = exp (log(10.0) * wfrst);
+		w2 = exp (log(10.0) * wlast);
+		dwl = (w2 - w1) / (dxpix - 1.0);
+		}
+	    else {
+		w1 = wfrst;
+		w2 = wlast;
+		}
+	    sprintf (temp, " %9.4f %9.4f %7.4f", w1, w2, dwl);
+	    strcat (str, temp);
+	    }
+	else if (restwave) {
+	    wlast = wfrst + ((dxpix - 1.0) * dwl);
+	    if (logwav) {
+		w1 = exp (log(10.0) * wfrst);
+		w2 = exp (log(10.0) * wlast);
+		dwl = (w2 - w1) / (dxpix - 1.0);
+		}
+	    else {
+		w1 = wfrst;
+		w2 = wlast;
+		}
+	    w1 = w1 / (1.0 + zvel);
+	    w2 = w2 / (1.0 + zvel);
+	    sprintf (temp, " %.0f %s %9.4f %9.4f %7.4f",
+		     dxpix, ctype, w1, w2, dwl);
+	    strcat (str, temp);
+	    }
+	else if (!wcs) {
 	    if (wave) {
 		strcpy (temp, " ___ ___ _________ _________ _______");
 		}
@@ -327,28 +441,11 @@ char	*filename;	/* FITS or IRAF image file name */
 		}
 	    strcat (str, temp);
 	    }
-	else if (wave) {
-	    sprintf (temp, " %.0f %s", wcs->nxpix, wcs->ctype[0]);
-	    strcat (str, temp);
-	    wlast = wcs->xref + ((wcs->nxpix - 1.0) * wcs->cdelt[0]);
-	    sprintf (temp, " %9.4f %9.4f", wcs->xref, wlast);
-	    strcat (str, temp);
-	    sprintf (temp, " %7.4f", wcs->xinc);
-	    strcat (str, temp);
-	    }
-	else if (restwave) {
-	    w1 = wcs->xref / (1.0 + wcs->zvel);
-	    wlast = wcs->xref + ((wcs->nxpix - 1.0) * wcs->cdelt[0]);
-	    w2 = wlast / (1.0 + wcs->zvel);
-	    sprintf (temp, " %.0f %s %9.4f %9.4f %7.4f",
-		     wcs->nxpix, wcs->ctype[0], w1, w2, wcs->xinc);
-	    strcat (str, temp);
-	    }
 	else {
 	    sprintf (temp, " %4.0f %4.0f", wcs->nxpix, wcs->nypix);
 	    strcat (str, temp);
 	    if (strlen (wcs->ctype[0]) < 8)
-		sprintf (temp, " %8.8s %8.8s", wcs->ctype[0], wcs->ctype[1]);
+		    sprintf (temp, " %8.8s %8.8s", wcs->ctype[0], wcs->ctype[1]);
 	    else
 		sprintf (temp, " %s %s", wcs->ctype[0], wcs->ctype[1]);
 	    strcat (str, temp);
@@ -361,11 +458,12 @@ char	*filename;	/* FITS or IRAF image file name */
 		    ra2str (rastr, 32, wcs->xref, ndec);
 		    dec2str (decstr, 32, wcs->yref, ndec-1);
 		    }
-		sprintf (temp, " %s %s %8s", rastr, decstr, wcs->radecsys);
 		}
-	    else
-		sprintf (temp, " %7.2f %7.2f %8s",
-			 wcs->xref, wcs->yref, wcs->radecsys);
+	    else {
+		num2str (rastr, wcs->xref, 0, ndec);
+		num2str (decstr, wcs->yref, 0, ndec);
+		}
+	    sprintf (temp, " %s %s %s", rastr, decstr, wcs->radecsys);
 	    strcat (str, temp);
 	    sprintf (temp, " %7.2f %7.2f", wcs->xrefpix, wcs->yrefpix);
 	    strcat (str, temp);
@@ -418,4 +516,10 @@ char	*filename;	/* FITS or IRAF image file name */
  * Jul 19 2004	Print underscores to fill lines if no WCS
  *
  * Jun 21 2006	Clean up code
+ *
+ * Jan 18 2007	Add -n option to set number of decimal places in CRVALi output
+ * Jan 25 2007	Add -d option to specify a rood directory
+ * Jan 25 2007	Handle log wavelength as well as wavelength
+ * Jan 26 2007	Deal with incomplete WCS
+ * Feb  1 2007	Fix wavelength delta for log wavelength
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/fitswcs.c
- *** Sewptember 26, 2006
+ *** April 2, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2006
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -33,7 +33,7 @@
  *		Open a FITS or IRAF image file and returns its WCS structure
  * Subroutine:  GetFITShead (filename, verbose)
  *		Open a FITS or IRAF image file and returns a FITS header
- * Subroutine:  DelWCSFITS (filename, verbose)
+ * Subroutine:  DelWCSFITS (header, verbose)
  *		Delete all standard WCS keywords from a FITS header
  * Subroutine:	PrintWCS (header, verbose)
  *		Check the WCS fields and print any that are found if verbose.
@@ -633,4 +633,6 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Feb 23 2006	Add code to read FITS header appended to TIFF file
  * Jun  1 2006	Fix bug so CD matrix is deleted by DelWCSFITS()
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
+ *
+ * APr  2 2007	Fix DelWCSFITS() argument description at top of file
  */

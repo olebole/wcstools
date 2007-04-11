@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** January 8, 2007
+ *** March 13, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2007
@@ -235,6 +235,8 @@ char *wchar;		/* Suffix character for one of multiple WCS */
     char temp[80];
     char wcsname[64];	/* Name of WCS depended on by current WCS */
     char mchar;
+    char cspace = (char) ' ';
+    char cnull = (char) 0;
     double mjd;
     double rot;
     double ut;
@@ -250,7 +252,7 @@ char *wchar;		/* Suffix character for one of multiple WCS */
     /* Set WCS character and name in structure */
     mchar = wchar[0];
     if (mchar == ' ')
-	mchar = (char) 0;
+	mchar = cnull;
     wcs->wcschar = mchar;
     if (hgetsc (hstring, "WCSNAME", &mchar, 63, wcsname)) {
 	wcs->wcsname = (char *) calloc (strlen (wcsname)+2, 1);
@@ -325,6 +327,8 @@ char *wchar;		/* Suffix character for one of multiple WCS */
     hgets (hstring, "INSTRUME", 16, wcs->instrument);
     hgeti4 (hstring, "DETECTOR", &wcs->detector);
     wcs->wcsproj = getdefwcs();
+    wcs->logwcs = 0;
+    hgeti4 (hstring, "DC-FLAG", &wcs->logwcs);
 
     /* Initialize rotation matrices */
     for (i = 0; i < 81; i++) wcs->pc[i] = 0.0;
@@ -531,8 +535,7 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 
 
 	/* Coordinate reference frame, equinox, and epoch */
-	if (strncmp (wcs->ptype,"LINEAR",6) &&
-	    strncmp (wcs->ptype,"PIXEL",5))
+	if (wcs->wcsproj > 0)
 	    wcseqm (hstring, wcs, &mchar);
 	wcsioset (wcs);
 
@@ -763,7 +766,7 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 	wcs->wcson = 1;
 	}
 
-    else if (&mchar != (char) 0) {
+    else if (mchar != cnull && mchar != cspace) {
 	(void) sprintf (temp, "WCSINITC: No image scale for WCS %c", mchar);
 	setwcserr (temp);
 	wcsfree (wcs);
@@ -938,7 +941,7 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 		*ic = ' ';
 	    ic = strchr (temp, ']');
 	    if (ic != NULL)
-		*ic = (char) 0;
+		*ic = cnull;
 	    sscanf (temp, "%d %d %d %d", &idx1, &idx2, &idy1, &idy2);
 	    dxrefpix = 0.5 * (double) (idx1 + idx2 - 1);
 	    dyrefpix = 0.5 * (double) (idy1 + idy2 - 1);
@@ -954,7 +957,7 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 		*ic = ' ';
 	    ic = strchr (temp, ']');
 	    if (ic != NULL)
-		*ic = (char) 0;
+		*ic = cnull;
 	    sscanf (temp, "%d %d %d %d", &ix1, &ix2, &iy1, &iy2);
 	    wcs->crpix[0] = dxrefpix - (double) (ix1 - 1);
 	    wcs->crpix[1] = dyrefpix - (double) (iy1 - 1);
@@ -1336,4 +1339,7 @@ char	*mchar;		/* Suffix character for one of multiple WCS */
  *
  * Jan  4 2007	Drop declarations of wcsinitc() and wcsinitn() already in wcs.h
  * Jan  8 2007	Change WCS letter from char to char*
+ * Feb  1 2007	Read IRAF log wavelength flag DC-FLAG to wcs.logwcs
+ * Feb 15 2007	Check for wcs->wcsproj > 0 instead of CTYPEi != LINEAR or PIXEL
+ * Mar 13 2007	Try for RA, DEC, SECPIX if WCS character is space or null
  */

@@ -1,5 +1,5 @@
 /* File immatch.c
- * January 10, 2007
+ * April 6, 2007
  * By Doug Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
@@ -47,6 +47,7 @@ static int rot = 0;
 static int mirror = 0;
 static int bitpix = 0;
 static int imsearch = 1;	/* set to 0 if image catalog provided */
+static int rotatewcs = 1;	/* If 1, rotate FITS WCS keywords in image */
 static char *refcatname;	/* Name of reference catalog to match */
 static int version = 0;		/* If 1, print only program name and version */
 static char *progname;		/* Name of program as executed */
@@ -330,6 +331,10 @@ char **av;
 		    verbose++;
 		    break;
 
+		case 'w':	/* Do not rotate image WCS with image */
+		    rotatewcs = 0;
+		    break;
+
 		case 'x':	/* X and Y coordinates of reference pixel */
 		    if (ac < 3)
 			PrintUsage (str);
@@ -492,6 +497,7 @@ char	*command;		/* Name of program being executed */
     fprintf(stderr,"  -t tol: offset tolerance in pixels (default 20)\n");
     fprintf(stderr,"  -u num: USNO catalog single plate number to accept\n");
     fprintf(stderr,"  -v: verbose\n");
+    fprintf(stderr,"  -w: rotate image WCS with image\n");
     fprintf(stderr,"  -x x y: X and Y coordinates of reference pixel (default is center)\n");
     fprintf(stderr,"  -y num: multiply image dimensions by this for search (default is 1)\n");
     fprintf(stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
@@ -574,7 +580,8 @@ char	*name;			/* Name of FITS or IRAF image file */
 
     /* Rotate and/or reflect image */
     if (imsearch  && (rot != 0 || mirror)) {
-	if ((newimage = RotFITS (name,header,image,0,0,rot,mirror,bitpix,verbose))
+	if ((newimage = RotFITS (name,header,image,0,0,rot,mirror,bitpix,
+				 rotatewcs,verbose))
 	    == NULL) {
 	    fprintf (stderr,"Image %s could not be rotated\n", name);
 	    free (header);
@@ -659,4 +666,5 @@ char	*name;			/* Name of FITS or IRAF image file */
  * Jan 10 2007	Call setgsclass() instead of setclass()
  * Jan 10 2007	Call setuplate() instead of setplate()
  * Jan 10 2007	Drop unused variable cs
+ * Apr  6 2007	Rotate the image WCS unless -w is set
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** January 10, 2007
+ *** March 13, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2007
@@ -42,8 +42,8 @@
 #include <math.h>
 #include <sys/types.h>
 #include "wcs.h"
-#include "wcscat.h"
 #include "fitsfile.h"
+#include "wcscat.h"
 
 /* default pathname for catalog,  used if catalog file not found in current
    working directory, but overridden by WCS_CATDIR environment variable */
@@ -135,7 +135,7 @@ int	nlog;
         else if (refcat == GSC2)
             nstar = gsc2read (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
-			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
+			     tnum,tobj,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == SDSS)
             nstar = sdssread (cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
@@ -2100,4 +2100,5 @@ char	*in;	/* Character string */
  *
  * Jan  9 2007	Fix reference to refcat code  in wcscat.h
  * Jan  9 2007	Drop catfile from call to sdssread()
+ * Mar 13 2007	Add object name array tobj to gsc2read() call
  */

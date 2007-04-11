@@ -1,5 +1,5 @@
 /* File catrot.c
- * August 3, 2004
+ * April 6, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -171,7 +171,7 @@ char **av;
 	while (fgets (filename, 128, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
 	    if (*lastchar < 32) *lastchar = 0;
-	    CaTRot (filename);
+	    CatRot (filename);
 	    if (verbose)
 		printf ("\n");
 	    }
@@ -316,118 +316,6 @@ char *name;
     return (nstars);
 }
 
-    /* Create new file name */
-	if (imext != NULL) {
-	    if (hgets (header, "EXTNAME",8,extname)) {
-		strcat (newname, ".");
-		strcat (newname, extname);
-		}
-	    else {
-		strcat (newname, "_");
-		strcat (newname, imext+1);
-		}
-	    }
-	if (shifted)
-	    strcat (newname, "s");
-	if (mirror)
-	    strcat (newname, "m");
-	if (rotate != 0) {
-	    strcat (newname, "r");
-	    if (rotate < 10 && rotate > -1)
-		sprintf (temp,"%1d",rotate);
-	    else if (rotate < 100 && rotate > -10)
-		sprintf (temp,"%2d",rotate);
-	    else if (rotate < 1000 && rotate > -100)
-		sprintf (temp,"%3d",rotate);
-	    else
-		sprintf (temp,"%4d",rotate);
-	    strcat (newname, temp);
-	    }
-	if (bitpix == -64)
-	    strcat (newname, "bn64");
-	else if (bitpix == -32)
-	    strcat (newname, "bn32");
-	else if (bitpix == -16)
-	    strcat (newname, "bn16");
-	else if (bitpix == 32)
-	    strcat (newname, "b32");
-	else if (bitpix == 16)
-	    strcat (newname, "b16");
-	else if (bitpix == 8)
-	    strcat (newname, "b8");
-	if (fitsout)
-	    strcat (newname, ".fits");
-	else if (lext > 0) {
-	    if (imext != NULL) {
-		echar = *imext;
-		*imext = (char) 0;
-		strcat (newname, ext);
-		*imext = echar;
-		if (imext1 != NULL)
-		    *imext1 = ']';
-		}
-	    else
-		strcat (newname, ext);
-	    }
-	}
-    else
-	strcpy (newname, name);
-
-    if (verbose) {
-	fprintf (stderr,"Shift, rotate, and/or reflect ");
-	if (iraffile)
-	    fprintf (stderr,"IRAF image file %s", name);
-	else
-	    fprintf (stderr,"FITS image file %s", name);
-	fprintf (stderr, " -> %s\n", newname);
-	}
-
-    if (bitpix != 0) {
-	hgeti4 (header, "BITPIX", &bitpix0);
-	if (verbose)
-	    fprintf (stderr, "IMROT: %d bits/pixel -> %d bits/pixel\n",
-		     bitpix0, bitpix);
-	sprintf (history, "New copy of %s BITPIX %d -> %d",
-		 name, bitpix0, bitpix);
-	hputc (header,"HISTORY",history);
-	}
-
-    if ((newimage = RotFITS (name,header,image,xshift,yshift,rotate,mirror,
-			     bitpix,verbose)) == NULL) {
-	fprintf (stderr,"Cannot rotate image %s; file is unchanged.\n",name);
-	}
-    else {
-	if (bitpix != 0)
-	    hputi4 (header, "BITPIX", bitpix);
-	if (iraffile && !fitsout) {
-	    if (irafwimage (newname,lhead,irafheader,header,newimage) > 0) {
-		if (verbose)
-		    printf ("%s: written successfully.\n", newname);
-		else
-		    printf ("%s\n", newname);
-		}
-	    else if (verbose)
-		printf ("IMROT: File %s not written.\n", newname);
-	    }
-	else {
-	    if (fitswimage (newname, header, newimage) > 0) {
-		if (verbose)
-		    printf ("%s: written successfully.\n", newname);
-		else
-		    printf ("%s\n", newname);
-		}
-	    else if (verbose)
-		printf ("IMROT: File %s not written.\n", newname);
-	    }
-	free (newimage);
-	}
-
-    free (header);
-    if (iraffile)
-	free (irafheader);
-    free (image);
-    return;
-}
 /* Apr 15 1996	New program
  * Apr 18 1996	Add option to write to current working directory
  * May  2 1996	Pass filename to rotFITS

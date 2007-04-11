@@ -1,5 +1,5 @@
 CFLAGS= -g
-CC= cc -Wall
+CC= cc
 LIBWCS = libwcs/libwcs.a
 LIBS = $(LIBWCS) -lm
 #CATLIBS = $(LIBS) -lnsl -lsocket
@@ -60,13 +60,13 @@ getcol: getcol.c $(LIBWCS) libwcs/wcscat.h
 getdate: getdate.c $(LIBWCS) libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/getdate getdate.c $(CATLIBS)
 
-gethead: gethead.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
+gethead: gethead.c $(LIBWCS) libwcs/wcs.h libwcs/fitsfile.h libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/gethead gethead.c $(CATLIBS)
 
-getfits: getfits.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
-	$(CC) $(CFLAGS) -o $(BIN)/getfits getfits.c $(LIBS)
+getfits: getfits.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h libwcs/wcscat.h
+	$(CC) $(CFLAGS) -o $(BIN)/getfits getfits.c $(CATLIBS)
 
-getpix: getpix.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcscat.h
+getpix: getpix.c $(LIBWCS) libwcs/wcs.h libwcs/fitsfile.h libwcs/wcscat.h
 	$(CC) $(CFLAGS) -o $(BIN)/getpix getpix.c $(CATLIBS)
 
 gettab: gettab.c $(LIBWCS) libwcs/wcscat.h

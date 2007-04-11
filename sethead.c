@@ -1,5 +1,5 @@
 /* File sethead.c
- * January 5, 2007
+ * January 10, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -532,7 +532,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     if (addj2000) {
 	wcs = wcsinit (header);
 	hputs (header, "WCSNAMEJ", "J2000");
-	cpwcs (&header, 'J');
+	cpwcs (&header, "J");
 	if (wcs->syswcs != WCS_J2000) {
 	    dlong = wcs->xref;
 	    dlat = wcs->yref;
@@ -557,7 +557,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     if (addgalactic) {
 	wcs = wcsinit (header);
 	hputs (header, "WCSNAMEG", "GALACTIC");
-	cpwcs (&header, 'G');
+	cpwcs (&header, "G");
 	if (wcs->syswcs != WCS_GALACTIC) {
 	    dlong = wcs->xref;
 	    dlat = wcs->yref;
@@ -582,7 +582,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     if (addecliptic) {
 	wcs = wcsinit (header);
 	hputs (header, "WCSNAMEE", "ECLIPTIC");
-	cpwcs (&header, 'E');
+	cpwcs (&header, "E");
 	if (wcs->syswcs != WCS_ECLIPTIC) {
 	    dlong = wcs->xref;
 	    dlat = wcs->yref;
@@ -1239,4 +1239,5 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Dec 28 2006	Add -e, -g, and -j to add WCS's in alternate coordinate systems
  *
  * Jan  5 2007	Pass pointer to space-padding character, not character
+ * Jan 10 2007	Change second argument of cpwcs() from char to char *
  */

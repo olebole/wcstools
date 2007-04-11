@@ -1,5 +1,5 @@
 /*** File webread.c
- *** January 10, 20007
+ *** April 11, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -34,6 +34,7 @@
 #include <string.h>
 #include <math.h>
 #include "wcs.h"
+#include "fitsfile.h"
 #include "wcscat.h"
 
 #define CHUNK   8192
@@ -439,6 +440,14 @@ int	nlog;		/* 1 to print diagnostic messages */
 	lbuff = strlen (tabbuff);
 	free (tempbuff);
 	}
+
+    /* Transform MAST GALEX  GSC 2 return into tab table */
+    else if (strsrch (srchurl, "galex")) {
+	tempbuff = tabbuff;
+	tabbuff = gsc2c2t (tempbuff);
+	lbuff = strlen (tabbuff);
+	free (tempbuff);
+	}
     
     /* Allocate tab table structure */
     ltab = sizeof (struct TabTable);
@@ -579,9 +588,9 @@ int	*lbuff;	/* Length of buffer (returned) */
     while (fgets (linebuff, LINE, sok) ) {
 	if (diag)
 	    fprintf (stderr, "%s", linebuff);
-	if (strsrch (linebuff, "chunked") != NULL)
+	if (strcsrch (linebuff, "chunked") != NULL)
 	    chunked = 1;
-	if (strsrch (linebuff, "Content-length") != NULL) {
+	if (strcsrch (linebuff, "Content-length") != NULL) {
 	    if ((cbcont = strchr (linebuff, ':')) != NULL)
 		nbcont = atoi (cbcont+1);
 	    }
@@ -643,7 +652,8 @@ int	*lbuff;	/* Length of buffer (returned) */
 
     /* Read table all at once if total length is passed */
     else if (nbcont > 0) {
-	tabbuff = (char *) calloc (1, nbcont);
+	tabbuff = (char *) calloc (1, nbcont+1);
+	tabbuff[nbcont] = (char) 0;
 	if ((lread = fread (tabbuff, 1, nbcont, sok)) <= 0) {
 	    free (tabbuff);
 	    tabbuff = NULL;
@@ -840,5 +850,9 @@ FileINetParse(file, port, adrinet)
  * Jun 20 2006	Cast most stream I/O calls to void
  * Oct 30 2006	Reset buffer length for SDSS tables
  *
- * Jan 10 2006	Add match to webrnum argument list for tabrnum()
+ * Jan 10 2007	Add match to webrnum argument list for tabrnum()
+ * Jan 11 2007	Include fitsfile.h
+ * Mar 13 2007	Process CSV data from STScI MAST GALEX GSC2 catalog
+ * Mar 13 2007	Caselessly search for header info
+ * Apr 11 2007	Terminate buffer read as number of characters
  */

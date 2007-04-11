@@ -1,5 +1,5 @@
 /* File scat.c
- * January 10, 2007
+ * March 13, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -30,8 +30,8 @@
 #include <math.h>
 #include "libwcs/wcs.h"
 #include "libwcs/lwcs.h"
-#include "libwcs/wcscat.h"
 #include "libwcs/fitsfile.h"
+#include "libwcs/wcscat.h"
 
 
 static void PrintUsage();
@@ -2885,7 +2885,7 @@ double	eqout;		/* Equinox for output coordinates */
 		}
 	    if (catsort == SORT_MERGE)
 		strcat (headline,"	nmatch");
-	    if (gobj1 != NULL) {
+	    if (gobj1 != NULL && refcat != GSC2 && refcat != SDSS) {
 		if (starcat[icat] == NULL ||
 		    (starcat[icat] != NULL && starcat[icat]->stnum > 0))
 		    strcat (headline,"	object");
@@ -2936,7 +2936,7 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline,"	------");
 	    if (catsort == SORT_MERGE)
 		strcat (headline,"	------");
-	    if (gobj1 != NULL) {
+	    if (gobj1 != NULL && refcat != GSC2 && refcat != SDSS) {
 		if (starcat[icat] == NULL ||
 		    starcat[icat]->stnum > 0)
 		     strcat (headline,"	------");
@@ -2957,7 +2957,7 @@ double	eqout;		/* Equinox for output coordinates */
 		if (refcat == GSC || refcat == GSCACT)
 		    strcpy (headline, "GSC_number ");
 		else if (refcat == GSC2)
-		    strcpy (headline, "GSC_II_number ");
+		    strcpy (headline, "GSC2_id     ");
 		else if (refcat == USAC)
 		    strcpy (headline, "USNO_SA_number ");
 		else if (refcat == USA1)
@@ -3128,7 +3128,7 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, " Velocity");
 	    if (ranges == NULL)
 		strcat (headline, "  Arcsec");
-	    if (gobj1 != NULL) {
+	    if (gobj1 != NULL && refcat != GSC2 && refcat != SDSS) {
 		if (starcat[icat] == NULL || starcat[icat]->stnum > 0)
 		    strcat (headline,"  Object");
 		}
@@ -3226,7 +3226,7 @@ double	eqout;		/* Equinox for output coordinates */
 		    CatNum (refcat,-nnfld,starcat[icat]->nndec,gnum[i],numstr);
 		}
 
-	    else if (refcat == SDSS)
+	    else if (refcat == SDSS || refcat == GSC2)
 		strcpy (numstr, gobj[i]);
 	    else
 		CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
@@ -4639,4 +4639,5 @@ PrintGSClass ()
  * Nov  6 2006	Print SDSS number as character string; it is now 18 digits long
  *
  * Jan 10 2007	Drop extra argument to IDSortStars (last one)
+ * Mar 13 2007	Print GSC2 ID from object name, not number
  */

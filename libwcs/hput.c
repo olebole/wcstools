@@ -1,5 +1,5 @@
 /*** File libwcs/hput.c
- *** January 4, 2007
+ *** January 16, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1995-2007
@@ -880,7 +880,6 @@ int	ndec;		/* Number of decimal places in seconds */
 
     /* Compute seconds */
     seconds = (b - (double)minutes) * 60.0;
-    isec = (int)(seconds + 0.5);
 
     if (ndec > 5) {
 	if (seconds > 59.999999) {
@@ -954,7 +953,8 @@ int	ndec;		/* Number of decimal places in seconds */
 	hours = hours % 24;
 	(void) sprintf (tstring,"%02d:%02d:%04.1f",hours,minutes,seconds);
 	}
-    else if (ndec > -1) {
+    else {
+	isec = (int)(seconds + 0.5);
 	if (isec > 59) {
 	    isec = 0;
 	    minutes = minutes + 1;
@@ -964,7 +964,7 @@ int	ndec;		/* Number of decimal places in seconds */
 	    hours = hours + 1;
 	    }
 	hours = hours % 24;
-	(void) sprintf (tstring,"%02d:%02d:%04.1f",hours,minutes,seconds);
+	(void) sprintf (tstring,"%02d:%02d:%02d",hours,minutes,isec);
 	}
 
     /* Move formatted string to returned string */
@@ -1030,7 +1030,6 @@ int	ndec;		/* Number of decimal places in arcseconds */
 
     /* Compute seconds */
     seconds = (b - (double)minutes) * 60.0;
-    isec = (int)(seconds + 0.5);
 
     if (ndec > 5) {
 	if (seconds > 59.999999) {
@@ -1098,7 +1097,8 @@ int	ndec;		/* Number of decimal places in arcseconds */
 	    }
 	(void) sprintf (tstring,"%c%02d:%02d:%04.1f",sign,degrees,minutes,seconds);
 	}
-    else if (ndec > -1) {
+    else {
+	isec = (int)(seconds + 0.5);
 	if (isec > 59) {
 	    isec = 0;
 	    minutes = minutes + 1;
@@ -1107,7 +1107,7 @@ int	ndec;		/* Number of decimal places in arcseconds */
 	    minutes = 0;
 	    degrees = degrees + 1;
 	    }
-	(void) sprintf (tstring,"%c%02d:%02d:%04.1f",sign,degrees,minutes,seconds);
+	(void) sprintf (tstring,"%c%02d:%02d:%02d",sign,degrees,minutes,isec);
 	}
 
     /* Move formatted string to returned string */
@@ -1273,4 +1273,5 @@ int	ndec;		/* Number of decimal places in degree string */
  * Jan  4 2007	Declare keyword to be const
  * Jan  4 2007	Drop unused subroutine hputi2()
  * Jan  5 2007	Drop ksearch() declarations; it is now in fitshead.h
+ * Jan 16 2007	Fix bugs in ra2str() and dec2str() so ndec=0 works
  */

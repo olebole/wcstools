@@ -1,5 +1,5 @@
 /*** File libwcs/matchstar.c
- *** January 8, 2007
+ *** January 11, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2007
@@ -51,6 +51,7 @@
 #include <string.h>
 #include "wcs.h"
 #include "lwcs.h"
+#include "fitsfile.h"
 #include "wcscat.h"
 
 #define NPAR 8
@@ -1978,4 +1979,5 @@ int nitmax;
  * Oct 23 2006	Add bin array option to see if it works better
  *
  * Jan  8 2007	Drop unused variables; fix two format disagreements
+ * Jan 11 2007	Include fitsfile.h
  */ 

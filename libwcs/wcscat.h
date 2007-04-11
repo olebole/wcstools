@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** January 10, 2007
+ *** March 13, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -202,19 +202,6 @@ struct TabTable {
 #define WEBCAT		-4	/* Tab catalog via the web */
 #define NUMCAT		30	/* Number of predefined catalogs */
 
-/* Structure for access to tokens within a string */
-#define MAXTOKENS 1000    /* Maximum number of tokens to parse */
-#define MAXWHITE 20     /* Maximum number of different whitespace characters */
-struct Tokens {
-    char *line;		/* Line which has been parsed */
-    int lline;		/* Number of characters in line */
-    int ntok;		/* Number of tokens on line */
-    int nwhite;		/* Number of whitespace characters */
-    char white[MAXWHITE]; /* Whitespace (separator) characters */
-    char *tok1[MAXTOKENS]; /* Pointers to start of tokens */
-    int ltok[MAXTOKENS]; /* Lengths of tokens */
-    int itok;		/* Current token number */
-};
 #define EP_EP   1	/* Output epoch as fractional year */
 #define EP_JD   2	/* Output epoch as Julian Date */
 #define EP_MJD  3	/* Ouput epoch as Modified Julian Date */
@@ -392,7 +379,7 @@ extern "C" {
 	double *gdec,	/* Array of declinations (returned) */
 	double **gmag,	/* 2-D array of magnitudes (returned) */
 	int *gtype,	/* Array of object types (returned) */
-	int nlog);	/* Verbose mode if > 1, number of sources per log line */
+	int nlog);	/* Verbose mode if >1, number of sources per log line */
     int gscbin(		/* Bin sources from HST Guide Star Catalog */
 	int refcat,	/* Catalog code from wcscat.h (GSC or GSCACT) */
 	struct WorldCoor *wcs, /* World coordinate system for image */
@@ -402,7 +389,7 @@ extern "C" {
 	double mag2,	/* Maximum (faintest) magnitude (no limits if equal) */
 	double magscale, /* Scaling factor for magnitude to pixel flux
 			 * (image of number of catalog objects per bin if 0) */
-	int nlog);	/* Verbose mode if > 1, number of sources per log line */
+	int nlog);	/* Verbose mode if >1, number of sources per log line */
     void setgsclass(	/* Set GSC object class to return (<0=all) */
 	int class);	/* Class of objects to return */
 
@@ -424,13 +411,16 @@ extern "C" {
 	int sortmag,	/* Number of magnitude by which to limit and sort */
 	int nstarmax,	/* Maximum number of stars to be returned */
 	double *gnum,	/* Array of ID numbers (returned) */
+	char **gobj,	/* Array of object IDs (mixed letters and numbers) */
 	double *gra,	/* Array of right ascensions (returned) */
 	double *gdec,	/* Array of declinations (returned) */
 	double *gpra,	/* Array of right ascension proper motions (returned) */
 	double *gpdec,	/* Array of declination proper motions (returned) */
 	double **gmag,	/* 2-D array of magnitudes (returned) */
 	int *gtype,	/* Array of object types (returned) */
-	int nlog);	/* Verbose mode if > 1, number of sources per log line */
+	int nlog);	/* Verbose mode if >1, number of sources per log line */
+    char *gsc2c2t(	/* Convert GSC2 buffer from comma- to tab-separated */
+	char *csvbuff);	/* Input comma-separated table */
 
 /* Subroutine to read SDSS catalog over the web */
     int sdssread(	/* Read sources by sky region from SDSS Catalog */
@@ -454,7 +444,7 @@ extern "C" {
 	double *gdec,	/* Array of declinations (returned) */
 	double **gmag,	/* 2-D array of magnitudes (returned) */
 	int *gtype,	/* Array of object types (returned) */
-	int nlog);	/* Verbose mode if > 1, number of sources per log line */
+	int nlog);	/* Verbose mode if >1, number of sources per log line */
     char *sdssc2t(	/* Convert SDSS buffer from comma- to tab-separated */
 	char *csvbuff);	/* Input comma-separated table */
 
@@ -1275,24 +1265,7 @@ extern "C" {
     double rgetr8(	/* Return next number in range as double */
 	struct Range *range); /* Range structure */
 
-/* Subroutines for access to tokens within a string */
-    int setoken(	/* Tokenize a string for easy decoding */
-	struct Tokens *tokens, /* Token structure returned */
-	char    *string, /* character string to tokenize */
-	char *cwhite);	/* additional whitespace characters
-			 * if = tab, disallow spaces and commas */
-    int nextoken(	/* Get next token from tokenized string */
-	struct Tokens *tokens, /* Token structure returned */
-	char *token,	/* token (returned) */
-	int maxchars);	/* Maximum length of token */
-    int getoken(	/* Get specified token from tokenized string */
-	struct Tokens *tokens, /* Token structure returned */
-	int itok,	/* token sequence number of token
-			 * if <0, get whole string after token -itok
-			 * if =0, get whole string */
-	char *token,	/* token (returned) */
-	int maxchars);	/* Maximum length of token */
-
+/* Subroutines for read values from keyword=value in blocks of text */
     int ageti4(		/* Extract int value from keyword= value in string */
 	char *string,	/* character string containing <keyword>= <value> */
 	char *keyword,	/* character string containing the name of the keyword
@@ -1368,6 +1341,7 @@ void setgsclass();	/* Set GSC object class */
 
 /* Subroutine to read GSC II catalog over the web (gsc2read.c) */
 int gsc2read();		/* Read sources by sky region from GSC II Catalog */
+char *gsc2c2t();	/* Convert GSC2 buffer from comma- to tab-separated */
 
 /* Subroutine to read SDSS catalog over the web (sdssread.c) */
 int sdssread();		/* Read sources by sky region from SDSS Catalog */
@@ -1502,11 +1476,6 @@ int rgetn();		/* Return number of values in all ranges */
 int rgeti4();		/* Return next number in range as integer */
 double rgetr8();	/* Return next number in range as double */
 void rstart();		/* Restart range */
-
-/* Subroutines for access to tokens within a string */
-int setoken();		/* Tokenize a string for easy decoding */
-int nextoken();		/* Get next token from tokenized string */
-int getoken();		/* Get specified token from tokenized string */
 
 /* Subroutines for VOTable output */
 int vothead();		/* Print heading for VOTable SCAT output */
@@ -1648,4 +1617,7 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * Jun 20 2006	Add IDSortStars()
  *
  * Jan 10 2006	Add ANSI C function prototypes
+ * Jan 11 2007	Move token access subroutines to fileutil.c/fitsfile.h
+ * Mar 13 2007	Add gsc2c2t() to convert CSV GSC2 buffer to TSV table
+ * Mar 13 2007	Add gobj object name to gsc2read()
  */

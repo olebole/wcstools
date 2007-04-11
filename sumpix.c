@@ -1,5 +1,5 @@
 /* File sumpix.c
- * January 10, 2007
+ * January 11, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -33,7 +33,8 @@
 #include "libwcs/wcscat.h"
 
 static void usage();
-static void SumPix ();
+static void SumPix();
+extern double PhotPix();
 
 
 static int verbose = 0;		/* verbose/debugging flag */
@@ -43,6 +44,10 @@ static int compsum = 0;	/* If 1, compute sum over range */
 static int compmean = 0;/* If 1, compute mean over range */
 static int compvar = 0;	/* If 1, compute variance over range */
 static int compstd = 0;	/* If 1, compute standard deviation over range */
+static int compphot = 0; /* If 1, compute photometry in circular aperture */
+static char *xstr;	/* X coordinate of center of aperture */
+static char *ystr;	/* Y coordinate of center of aperture */
+static double rad;	/* Radius of aperture in pixels */
 static int printfile = 0;/* If 1, print file name at start of line */
 static int ndec = -1;	/* Number of decimal places in outout */
 
@@ -76,6 +81,18 @@ char **av;
 	    char c;
 	    while ((c = *++str))
 	    switch (c) {
+
+		case 'c':	/* Compute circular aperture */
+		    if (ac < 4)
+			usage();
+		    xstr = *++av;
+		    ac--;
+		    ystr = *++av;
+		    ac--;
+		    rad = atof (*++av);
+		    ac--;
+		    compstd++;
+		    break;
 
 		case 'd':	/* Compute standard deviation */
 		    compstd++;
@@ -149,6 +166,7 @@ usage ()
 	exit (-1);
     fprintf (stderr,"Sum row, column, or region of a FITS or IRAF image\n");
     fprintf(stderr,"Usage: sumpix [-dmrsv][-n num] x_range  y_range file.fit ...\n");
+    fprintf(stderr,"  -c x y r: compute total counts in circle r from (x,y)\n");
     fprintf(stderr,"  -d: compute and print standard deviation\n");
     fprintf(stderr,"  -l: compute and print min and max values\n");
     fprintf(stderr,"  -m: compute and print mean\n");
@@ -178,10 +196,14 @@ char *rrange;	/* Row range string */
     char *image;	/* FITS or IRAF image */
     double bzero;	/* Zero point for pixel scaling */
     double bscale;	/* Scale factor for pixel scaling */
+    double counts;
+    double wt;
     int iraffile;
     double dpix, sum;
+    double ra, dec, xp, yp;
     int bitpix,xdim,ydim;
     int nx, ny, ix, iy, x, y;
+    int offscl;
     int np;
     double dnp, mean, variance, std, sumsq, dmin, dmax;
     char pixname[256];
@@ -189,6 +211,7 @@ char *rrange;	/* Row range string */
     char numforme[8];
     struct Range *xrange = NULL;    /* X range structure */
     struct Range *yrange = NULL;    /* Y range structure */
+    struct WorldCoor *wcs, *GetWCSFITS();
 
     /* Open IRAF image if .imh extension is present */
     if (isiraf (name)) {
@@ -265,8 +288,31 @@ char *rrange;	/* Row range string */
     if (printfile)
 	printf ("%s ", name);
 
+    /* Compute counts in circular area */
+    if (compphot) {
+	if (strchr (xstr, ':') != NULL || strchr (ystr, ':') != NULL) {
+	    wcs = GetWCSFITS (name, header, verbose);
+	    ra = str2ra (xstr);
+	    dec = str2dec (ystr);
+	    wcs2pix (wcs, ra, dec, &xp, &yp, &offscl);
+	    if (verbose)
+		printf ("%s %s (%.3f,%.3f) %.1f = ", xstr, ystr, xp, yp, rad);
+	    }
+	else {
+	    xp = atof (xstr);
+	    yp = atof (ystr);
+	    if (verbose)
+		printf ("(%.3f,%.3f) %.1f = ", xp, yp, rad);
+	    }
+	counts = PhotPix (image, header, xp, yp, rad, &wt);
+	printf ("%f", counts);
+	if (verbose)
+	    printf (" (%f pixels)", wt);
+	printf ("\n");
+	}
+
     /* Sum entire image */
-    if (!strcmp (crange, "0") && !strcmp (rrange, "0")) {
+    else if (!strcmp (crange, "0") && !strcmp (rrange, "0")) {
 	nx = xdim;
 	ny = ydim;
 	sum = 0.0;
@@ -471,4 +517,5 @@ char *rrange;	/* Row range string */
  * Jun 21 2006	Clean up code
  *
  * Jan 10 2007	Include wcs.h
+ * Jan 11 2007	Add PhotPix to compute circular aperture photometry
  */

@@ -1,3 +1,0 @@
-#!/bin/csh
-set QUERY_STRING="catalog=ua2&ra=150.0000000&dec=10.0000000&system=J2000&dra=182.777&ddec=180.000&epoch=2000.00000&"
-scat

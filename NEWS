@@ -1,6 +1,23 @@
-Version 3.6.7 (January 10, 2007)
+Version 3.6.8 (April 11, 2007)
+getcol: Fix arithmetic combination of columns
+imrotate, immatch: Add -w to not rotate WCS keywords with image
+imrotate: Add -e to delete WCS keywords in output
+imstar: Add -g to not rotate WCS keywords if image is rotated
+imwcs: Add -q w to not rotate initial WCS keywords if image is rotated using -r
+wcshead: Add -d argument to use a single root directory and deal with
+         incomplete WCS, especially for spectra
+gsc2read.c: Read catalog from STScI MAST GALEX archive if gsc2, CASB if gsc22,23
+hget.c: Initial header length to zero in hlength() if lhead argument <= 0
+tnxpos.c: Fix bug so it doesn't crash
+wcs.c:  In wcstype(), set to WCS_PIX if CTYPEi starts with "DET"
+wcs.c: In wcspset(), use correct cdelts when converting PC matrix to CD matrix
+wcsinit.c: Fix bug so RA, DEC, SECPIX can be used to set a WCS
+
+Version 3.6.7 (January 18, 2007)
 bincat: Make catalog binning finally work right
 sethead: Allow multiple keywords to be set from single line input file
+wcshead: Add -n argument to set number of decimal points in CRVALi
+simpos: Fix parsing problem which returned erroneous results for low-RA objects
 wcs.h: Fix and add ANSI C prototypes
 fitsfile.h, fitshead.h, wcscat.h: Add ANSI C prototypes
 wcsinit.c: Change WCS letter argument from char to char* in wcsinitc(),wcsninitc()
@@ -8,7 +25,9 @@ findstar.c, imrotate.c: Include fitsfile.h instead of fitshead.h and imio.h
 hget.c: Change WCS letter argument from char to char* in hget*c()
 hget.c: Declare header and keyword const char in most subroutines
 hput.c: Declare keyword and value const in most subroutines
+hput.c: Fix to return integer seconds from ra2str() and dec2str() when requested
 imio.c: Include fitsfile.h instead of imio.h
+catutil.c,fileutil.c: Move token parsing subroutines from catutil.c to fileutil.c
 imio.h: Drop because all declarations are in fitsfile.h
 wcslib.h: Drop semicolon at end of c++ ifdef
 wcslib.h: Drop second declaration of SZP subroutines

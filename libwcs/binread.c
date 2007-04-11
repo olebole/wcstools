@@ -1,5 +1,5 @@
 /*** File libwcs/binread.c
- *** January 10, 2007
+ *** January 11, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2007
@@ -53,8 +53,8 @@ static int ndist = 0;
 #include <sys/types.h>
 #include <fcntl.h>
 #include "wcs.h"
-#include "wcscat.h"
 #include "fitsfile.h"
+#include "wcscat.h"
 #ifndef O_BINARY
 #define O_BINARY 0
 #endif

@@ -1,5 +1,5 @@
 /* File imstar.c
- * January 10, 2006
+ * April 6, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -79,6 +79,7 @@ static int setuns = 0;		/* Change to unsigned integer flag */
 static int imsearch = 1;	/* If 1, search for stars in image */
 static int region_char;
 static int region_radius;
+static int rotatewcs = 1;	/* If 1, rotate FITS WCS keywords in image */
 
 int
 main (ac, av)
@@ -190,6 +191,10 @@ char **av;
 	
 		case 'f':	/* Write ASCII catalog format for SKYMAP */
 		    outform = CAT_ASCII;
+		    break;
+	
+		case 'g':	/* Do not rotate image WCS with image */
+		    rotatewcs = 0;
 		    break;
 	
 		case 'h':	/* ouput descriptive header */
@@ -405,6 +410,7 @@ char	*command;	/* Name of program being executed */
     fprintf(stderr,"  -d: Read following DAOFIND output catalog instead of search \n");
     fprintf(stderr,"  -e: Number of pixels to ignore around image edge \n");
     fprintf(stderr,"  -f: Output simple ASCII catalog format\n");
+    fprintf(stderr,"  -g: Do not rotate image WCS with image\n");
     fprintf(stderr,"  -h: Print heading, else do not \n");
     fprintf(stderr,"  -i: Minimum peak value for star in image (<0=-sigma)\n");
     fprintf(stderr,"  -j: Output J2000 (FK5) coordinates \n");
@@ -513,8 +519,8 @@ char	*filename;	/* FITS or IRAF file filename */
 
     /* Rotate and/or reflect image */
     if (imsearch && (rot != 0 || mirror)) {
-	if ((newimage=RotFITS(filename,header,image,0,0,rot,mirror,bitpix,verbose))
-	    == NULL) {
+	if ((newimage = RotFITS (filename,header,image,0,0,rot,mirror,bitpix,
+				 rotatewcs,verbose)) == NULL) {
 	    fprintf (stderr,"Image %s could not be rotated\n", filename);
 	    if (iraffile)
 		free (irafheader);
@@ -909,4 +915,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jun 21 2006	Clean up code
  *
  * Jan 10 2007	Fix arguments to MagSortStars() and RASortStars()
+ * Apr  6 2007	Add -g command to not rotate image WCS with image
  */

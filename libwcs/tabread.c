@@ -1,8 +1,8 @@
 /*** File libwcs/tabread.c
- *** June 30, 2006
+ *** March 13, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2006
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -57,8 +57,8 @@
 #include <math.h>
 #include <sys/types.h>
 #include "wcs.h"
-#include "wcscat.h"
 #include "fitsfile.h"
+#include "wcscat.h"
 
 #define ABS(a) ((a) < 0 ? (-(a)) : (a))
 
@@ -1515,6 +1515,10 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	strcpy (sc->keypeak, "field");
 	sc->plate = 1;
 	}
+    else if ((sc->entpeak = tabcol (startab, "Class"))) {
+	strcpy (sc->keypeak, "class");
+	sc->plate = 1;
+	}
     else if ((sc->entpeak = tabcol (startab, "c"))) {
 	strcpy (sc->keypeak, "class");
 	sc->plate = 1;
@@ -1728,7 +1732,8 @@ int	verbose;	/* 1 to print error messages */
 	else
 	    cn = cnum;
 	lcn = strlen (cn);
-	if (lcn < 16 && (isnum (cn) || isnum (cn+1))) {
+	/* if (lcn < 16 && (isnum (cn) || isnum (cn+1))) { */
+	if (lcn < 16 && isnum (cn)) {
 	    if (isnum(cnum)) {
 		lcn = strlen (cn);
 		if (lcn > 15)
@@ -2815,4 +2820,8 @@ char    *filename;      /* Name of file to check */
  * Jun 15 2006	Read ID field length from header, if present
  * Jun 20 2006	Drop unused variables; initialize uninitialized variables
  * Jun 30 2006	Add match argument to tabrnum() to add sequential read option
+ *
+ * Jan 11 2007	Switch order of wcscat.h and fitsfile.h includes
+ * Mar 13 2007	Return object name if first character of ID is non-numeric
+ * Mar 13 2007	Check for "Class" for GSC2 object class
  */

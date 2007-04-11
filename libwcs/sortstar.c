@@ -1,8 +1,8 @@
 /*** File libwcs/sortstar.c
- *** April 13, 2006
+ *** January 11, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2006
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -49,6 +49,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "wcs.h"
+#include "fitsfile.h"
 #include "wcscat.h"
 
 /* structure for star lists needed for sorting */
@@ -1128,4 +1129,6 @@ double	rad;		/* Maximum separation in arcseconds to merge */
  * Aug 30 2004	Fix bad declaration
  *
  * Apr 13 2006	Add sort by ID number
+ *
+ * Jan 11 2007	Include fitsfile.h
  */

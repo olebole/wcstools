@@ -1,5 +1,5 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** January 9, 2007
+ *** January 11, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2007
@@ -34,6 +34,8 @@
 /* Declarations for subroutines in fitsfile.c, imhfile.c, imio.c,
  * fileutil.c, and dateutil.c */
 
+#define FITSBLOCK 2880
+
 /* FITS table keyword structure */
 struct Keyword {
     char kname[10];	/* Keyword for table entry */
@@ -43,7 +45,19 @@ struct Keyword {
     int kl;		/* Length of entry value */
 };
 
-#define FITSBLOCK 2880
+/* Structure for access to tokens within a string */
+#define MAXTOKENS 1000    /* Maximum number of tokens to parse */
+#define MAXWHITE 20     /* Maximum number of different whitespace characters */
+struct Tokens {
+    char *line;		/* Line which has been parsed */
+    int lline;		/* Number of characters in line */
+    int ntok;		/* Number of tokens on line */
+    int nwhite;		/* Number of whitespace characters */
+    char white[MAXWHITE]; /* Whitespace (separator) characters */
+    char *tok1[MAXTOKENS]; /* Pointers to start of tokens */
+    int ltok[MAXTOKENS]; /* Lengths of tokens */
+    int itok;		/* Current token number */
+};
 
 #ifdef __cplusplus /* C++ prototypes */
 extern "C" {
@@ -392,6 +406,24 @@ float ftgetr4(		/* Extract column for keyword from FITS table line
     int sts2c (		/* Replace spaces in string with character */
 	char *spchar,	/* Character with which to replace spaces */
 	char *string);	/* Character string to process */
+
+/* Subroutines for access to tokens within a string from fileutil.c */
+    int setoken(	/* Tokenize a string for easy decoding */
+	struct Tokens *tokens, /* Token structure returned */
+	char    *string, /* character string to tokenize */
+	char *cwhite);	/* additional whitespace characters
+			 * if = tab, disallow spaces and commas */
+    int nextoken(	/* Get next token from tokenized string */
+	struct Tokens *tokens, /* Token structure returned */
+	char *token,	/* token (returned) */
+	int maxchars);	/* Maximum length of token */
+    int getoken(	/* Get specified token from tokenized string */
+	struct Tokens *tokens, /* Token structure returned */
+	int itok,	/* token sequence number of token
+			 * if <0, get whole string after token -itok
+			 * if =0, get whole string */
+	char *token,	/* token (returned) */
+	int maxchars);	/* Maximum length of token */
 
 /* Subroutines for translating dates and times in dateutil.c */
 
@@ -965,6 +997,11 @@ extern int isjpeg();
 extern int isgif();
 extern int first_token();
 
+/* Subroutines for access to tokens within a string from fileutil.c */
+int setoken();		/* Tokenize a string for easy decoding */
+int nextoken();		/* Get next token from tokenized string */
+int getoken();		/* Get specified token from tokenized string */
+
 /* Subroutines for translating dates and times in dateutil.c */
 
 void doy2dt();	/* year and day of year to yyyy.mmdd hh.mmss */
@@ -1201,4 +1238,5 @@ void compnut();	/* Compute nutation in longitude and obliquity and mean obliquit
  * Oct  5 2006	Add local sidereal time conversions
  *
  * Jan  9 2007	Add ANSI prototypes
+ * Jan 11 2007	Add token subroutines from catutil.c/wcscat.h to fileutil.c
  */

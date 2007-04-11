@@ -42,16 +42,17 @@ static void RotWCSFITS();	/* rotate all the C* fields */
  */
 
 char *
-RotFITS (pathname,header,image0,xshift,yshift,rotate,mirror,bitpix2,verbose)
+RotFITS (pathname,header,image0,xshift,yshift,rotate,mirror,bitpix2,rotwcs,verbose)
 
 char	*pathname;	/* Name of file which is being changed */
 char	*header;	/* FITS header */
-char	*image0;		/* Image pixels */
+char	*image0;	/* Unrotated image pixels */
 int	xshift;		/* Number of pixels to shift image horizontally, +=right */
 int	yshift;		/* Number of pixels to shift image vertically, +=right */
 int	rotate;		/* Angle to by which to rotate image (90, 180, 270) */
 int	mirror;		/* Reflect image around 1=vertical, 2=horizontal axis */
 int	bitpix2;	/* Number of bits per pixel in output image */
+int	rotwcs;		/* If not =0, rotate WCS keywords, else leave them */
 int	verbose;
 
 {
@@ -108,17 +109,17 @@ int	verbose;
 	bitpix2 = bitpix1;
 
     /* Shift WCS fields in header */
-    if (hgetr8 (header, "CRPIX1", &crpix)) {
+    if (rotwcs && hgetr8 (header, "CRPIX1", &crpix)) {
 	crpix = crpix + xshift;
 	hputr8 (header, "CRPIX1", crpix);
 	}
-    if (hgetr8 (header, "CRPIX2", &crpix)) {
+    if (rotwcs && hgetr8 (header, "CRPIX2", &crpix)) {
 	crpix = crpix + yshift;
 	hputr8 (header, "CRPIX2", crpix);
 	}
 
     /* Rotate WCS fields in header */
-    if (rotate != 0 || mirror)
+    if (rotwcs && (rotate != 0 || mirror))
 	RotWCSFITS (header, rotate, mirror, verbose);
 
     /* Compute size of image in bytes */
@@ -410,24 +411,15 @@ int	verbose;	/* Print progress if 1 */
 	return;
 	}
 
-    /* Reset CTYPEn and CRVALn if axes have been exchanged */
-    if (angle == 90 || angle == 270) {
-	if (hgets (header, "CTYPE1", 16, ctype1) &&
-	    hgets (header, "CTYPE2", 16, ctype2)) {
-	    hputs (header, "CTYPE1", ctype2);
-	    hputs (header, "CTYPE2", ctype1);
+    /* Reset CROTAn and CD matrix if axes have been exchanged */
+    if (angle == 90) {
+	if (hgetr8 (header, "CROTA1", &ctemp1)) {
+	    hgetndec (header, "CROTA1", &ndec1);
+	    hputnr8 (header, "CROTA1", ndec1, ctemp1+90.0);
 	    }
-	if (hgetr8 (header, "CRVAL1", &ctemp1) &&
-	    hgetr8 (header, "CRVAL2", &ctemp2)) { 
-	    hgetndec (header, "CRVAL1", &ndec1);
-	    hgetndec (header, "CRVAL2", &ndec2);
-	    hputnr8 (header, "CRVAL1", ndec2, ctemp2);
-	    hputnr8 (header, "CRVAL2", ndec1, ctemp1);
-	    }
-	if (hgets (header, "CUNIT1", 16, ctype1) &&
-	    hgets (header, "CUNIT2", 16, ctype2)) {
-	    hputs (header, "CUNIT1", ctype2);
-	    hputs (header, "CUNIT2", ctype1);
+	if (hgetr8 (header, "CROTA2", &ctemp2)) {
+	    hgetndec (header, "CROTA2", &ndec2);
+	    hputnr8 (header, "CROTA2", ndec2, ctemp2+90.0);
 	    }
 	}
 

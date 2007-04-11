@@ -1,0 +1,9 @@
+Date: Mon, 12 Mar 2007 23:08:59 GMT
+Server: Microsoft-IIS/6.0
+X-Powered-By: ASP.NET
+X-AspNet-Version: 2.0.50727
+Cache-Control: private
+Content-Type: text/plain; charset=utf-8
+Content-Length: 440
+
+HSTID,GSC1ID,RA,DEC,RAErr,DecErr,Epoch,FpgMag,FpgBand,FpgErr,JpgMag,JpgBand,JpgErr,NpgMag,NpgBand,NpgErr,UMag,UBand,UErr,BMag,BBand,BErr,VMag,VBand,VErr,RMag,RBand,RErr,IMag,IBand,IErr,Class,Status,a,pa,e,vflag,mflag

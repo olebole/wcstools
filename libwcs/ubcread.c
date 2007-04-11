@@ -1,5 +1,5 @@
 /*** File libwcs/ubcread.c
- *** January 10, 2007
+ *** January 11, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 200
@@ -35,8 +35,8 @@
 #include <string.h>
 #include <math.h>
 #include "wcs.h"
-#include "wcscat.h"
 #include "fitsfile.h"
+#include "wcscat.h"
 
 static int ucat=UB1;
 

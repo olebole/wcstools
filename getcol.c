@@ -1,5 +1,5 @@
 /* File getcol.c
- * January 10, 2007
+ * February 7, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -29,8 +29,8 @@
 #include <unistd.h>
 #include <math.h>
 #include "libwcs/wcs.h"
-#include "libwcs/wcscat.h"
 #include "libwcs/fitsfile.h"
+#include "libwcs/wcscat.h"
 
 #define	MAX_LTOK	256
 #define	MAX_NTOK	1024
@@ -40,7 +40,7 @@
 
 static void usage();
 static int ListFile();
-static int iscolop();
+static char *iscolop();
 static int iscol();
 static double median();
 
@@ -72,8 +72,9 @@ static int condand=1;		/* If 1, AND comparisons, else OR */
 static char **cond;		/* Conditions to check */
 static char **ccond;		/* Condition characters */
 static int nop=0;		/* Number of keyword values to operate on */
-static char **op;		/* Operator */
-static char *cop;		/* Operation character */
+static char **cop;		/* First column to operate on */
+static int *lc;			/* Length of column 1 */
+static char **op;		/* Operator and second column to operate on */
 static int napp=0;		/* Number of lines to append */
 static int ndec=-1;		/* Number of decimal places in f.p. output */
 static int printcol = 1;	/* Flag to print extracted data */
@@ -100,13 +101,16 @@ char **av;
     char *lfile = NULL;
     char *lranges = NULL;
     char *cdot, *ccol;
+    char *opi;
     int icol;
     int match, newbytes;
     int nrbytes = 0;
     int maxnop0;
     int i;
     char **op1;		/* Operator */
-    char *cop1;		/* Operation character */
+    char **cop1;	/* Operation character */
+    int *lc1;		/* Length of column 1 */
+    char sop1[16], sop2[16];
 
     cwhite = NULL;
     fn = (char **)calloc (maxnfile, sizeof(char *));
@@ -117,7 +121,8 @@ char **av;
     cond = (char **)calloc (maxncond, sizeof(char *));
     ccond = (char **)calloc (maxncond, sizeof(char *));
     op = (char **)calloc (maxnop, sizeof(char *));
-    cop = (char *)calloc (maxnop, sizeof(char));
+    lc = (int *)calloc (maxnop, sizeof(int *));
+    cop = (char **)calloc (maxnop, sizeof(char));
     frstchar = (int *) calloc (MAX_NTOK, sizeof (int));
     lastchar = (int *) calloc (MAX_NTOK, sizeof (int));
     format = (char **)calloc (MAX_NTOK, sizeof (char *));
@@ -404,31 +409,44 @@ char **av;
 	    }
 
 	/* Operation */
-	else if (iscolop (*av)) {
+	else if ((opi = iscolop (*av)) != NULL) {
 	    if (nop >= maxnop) {
 		maxnop0 = maxnop;
 		maxnop = maxnop0 * 2;
 		op1 = (char **)calloc (maxnop, sizeof (char *));
-		cop1 = (char *)calloc (maxnop, sizeof (char));
+		cop1 = (char **)calloc (maxnop, sizeof (char));
+		lc1 = (int *) calloc (maxnop, sizeof (int));
 		for (i = 0; i < maxnop0; i++) {
 		    op1[i] = op[i];
 		    cop1[i] = cop[i];
+		    lc1[i] = lc[i];
 		    }
 		free (op);
 		free (cop);
+		free (lc);
 		op = op1;
 		cop = cop1;
+		lc = lc1;
 		op1 = NULL;
 		cop1 = NULL;
+		lc1 = NULL;
 		}
-	    op[nop] = *av + 1;
-	    cop[nop] = *av[0];
-	    if (cop[nop] != 0 && isnum (op[nop])) {
+	    op[nop] = opi;
+	    cop[nop] = *av;
+	    lc[nop] = (int) (op[nop] - cop[nop]);
+	    for (i = 0; i < 16; i++)
+		sop1[i] = (char) 0;
+	    for (i = 0; i < 16; i++)
+		sop2[i] = (char) 0;
+	    strncpy (sop1, cop[nop], lc[nop]);
+	    strcpy (sop2, op[nop]+1);
+	    if (isnum (sop1) && isnum (sop2)) {
 		if (verbose)
-		    printf (" Column %d %c %s\n", icol, cop[nop], op[nop]);
+		    printf (" Column %s %c %s\n", sop1, opi[0], sop2);
+		nop++;
 		}
 	    else
-		printf (" Operation %c or constant %s illegal\n",cop[nop],op[nop]);
+		printf (" Constants %s, %s, or operation %s illegal\n",sop1,sop2,opi[0]);
 	    }
 
 	/* File to read */
@@ -455,8 +473,10 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Extract specified columns from an ASCII table file\n");
-    fprintf (stderr,"Usage: [-abcefghijkmopqtv][-d num][-l num][-n num][-r lines][-s num] filename [col] [col] ...\n");
+    fprintf (stderr,"Usage: [-abcefghijkmopqtv][-d num][-l num][-n num][-r lines][-s num] filename [col] [cond] ...\n");
     fprintf(stderr," col: Number range (n1-n2,n3-n4...) or col.c1:c2\n");
+    fprintf(stderr," col: Combination of columns n1[+_*/asmd][n2 or constant with .]\n");
+    fprintf(stderr," cond: Condition for which to list [n1][=#><][n2 or constant with .]\n");
     fprintf(stderr," %%f.dx: C output format for last column specified\n");
     fprintf(stderr,"  -a: Sum selected numeric column(s)\n");
     fprintf(stderr,"  -b: Input columns are delimited by vertical bars\n");
@@ -525,6 +545,7 @@ char	*lfile;		/* Name of file with lines to list */
     int *inum;
     int icond, itok;
     char tcond, *cstr, *cval, top;
+    char colstr[16];
     char numstr[32], numstr1[32];
     double dcond, dval;
     int pass;
@@ -1203,14 +1224,16 @@ char	*lfile;		/* Name of file with lines to list */
 			}
 		    }
 
-		/* Extract test value from comparison string */
-		cstr = op[iop];
-		if (isnum (cstr) > 1) {
-		    dnum = atof (cstr);
-		    ndnum = numdec (cstr);
+		/* Extract first value from input line */
+		for (j = 0; j< 16; j++)
+		    colstr[j] = (char) 0;
+		strncpy (colstr, cop[iop], lc[iop]);
+		if (isnum (colstr) > 1) {
+		    dnum = atof (colstr);
+		    ndnum = numdec (colstr);
 		    }
 		else {
-		    itok = atoi (cstr);
+		    itok = atoi (colstr);
 		    if (getoken (&tokens, itok, token, MAX_LTOK)) {
 			dnum = atof (token);
 			ndnum = numdec (token);
@@ -1220,10 +1243,12 @@ char	*lfile;		/* Name of file with lines to list */
 			continue;
 			}
 		    }
-		top = cop[iop];
 
-		/* Extract token from input line */
-		itok = atoi (op[iop]);
+		/* Extract operator from input line */
+		top = op[iop][0];
+
+		/* Extract second value from input line and operate on it */
+		itok = atoi (op[iop]+1);
 		if (getoken (&tokens, itok, token, MAX_LTOK)) {
 		    dtok = atof (token);
 		    ndtok = numdec (token);
@@ -1233,20 +1258,20 @@ char	*lfile;		/* Name of file with lines to list */
 		    if (ndnum > nd)
 			nd = ndnum;
 		    if (top == '+' || top == 'a') {
-			num2str (numstr, dtok+dnum, 0, nd);
-			dval = dtok + dnum;
+			num2str (numstr, dnum+dtok, 0, nd);
+			dval = dnum + dtok;
 			}
-		    else if (top == '-' || top == 's') {
-			num2str (numstr, dtok-dnum, 0, nd);
-			dval = dtok - dnum;
+		    else if (top == '_' || top == 's') {
+			num2str (numstr, dnum-dtok, 0, nd);
+			dval = dnum - dtok;
 			}
 		    else if (top == '*' || top == 'm') {
-			num2str (numstr, dtok*dnum, 0, nd);
-			dval = dtok * dnum;
+			num2str (numstr, dnum*dtok, 0, nd);
+			dval = dnum * dtok;
 			}
 		    else if (top == '/' || top == 'd') {
-			num2str (numstr, dtok/dnum, 0, nd);
-			dval = dtok / dnum;
+			num2str (numstr, dnum/dtok, 0, nd);
+			dval = dnum / dtok;
 			}
 		    else
 			strcpy (numstr,"___");
@@ -1553,25 +1578,31 @@ int *i, *j;
 }
 
 
-static int
+static char *
 iscolop (string)
 
 char *string;
 {
+    char *c;
+
     /* Check for presence of operation */
-    if (strchr (string, '+') != NULL || strchr (string, '-') != NULL ||
-	strchr (string, '*') != NULL || strchr (string, '/') != NULL ||
-	strchr (string, 'a') != NULL || strchr (string, 's') != NULL ||
-	strchr (string, 'm') != NULL || strchr (string, 'd') != NULL) {
+    if ((c = strchr (string, '+')) != NULL ||
+	(c = strchr (string, '_')) != NULL ||
+	(c = strchr (string, '*')) != NULL ||
+	(c = strchr (string, '/')) != NULL ||
+	(c = strchr (string, 'a')) != NULL ||
+	(c = strchr (string, 's')) != NULL ||
+	(c = strchr (string, 'm')) != NULL ||
+	(c = strchr (string, 'd')) != NULL) {
 
 	/* Check to see if string is a file */
 	if (access(string,0) && strcmp (string, "stdin"))
-	    return (1);
+	    return (c);
 	else
-	    return (0);
+	    return (NULL);
 	}
     else
-	return (0);
+	return (NULL);
 }
 
 static double
@@ -1725,4 +1756,6 @@ void *pd1, *pd2;
  *
  * Jan 10 2007	Declare revmsg static, not const
  * Jan 10 2007	Include wcs.h
+ * Feb  6 2006	Fix bug setting conditions and improve usage()
+ * Feb  7 2007	Fix bug setting up column arithmetic
  */

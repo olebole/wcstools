@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** January 9, 2007
+ *** April 2, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2007
@@ -386,6 +386,10 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 
     /* Pixel coordinates */
     else if (!strncmp (ctype1,"PIXEL",6))
+	wcs->prjcode = WCS_PIX;
+
+    /*Detector pixel coordinates */
+    else if (strsrch (ctype1,"DET"))
 	wcs->prjcode = WCS_PIX;
 
     /* Set up right ascension, declination, latitude, or longitude */
@@ -922,8 +926,8 @@ double *pc;		/* Rotation matrix, ignored if NULL */
     /* Set CD matrix */
     if (naxes > 1) {
 	wcs->cd[0] = pc[0] * wcs->cdelt[0];
-	wcs->cd[1] = pc[1] * wcs->cdelt[1];
-	wcs->cd[2] = pc[naxes] * wcs->cdelt[0];
+	wcs->cd[1] = pc[1] * wcs->cdelt[0];
+	wcs->cd[2] = pc[naxes] * wcs->cdelt[1];
 	wcs->cd[3] = pc[naxes+1] * wcs->cdelt[1];
 	}
     else {
@@ -2925,4 +2929,7 @@ char *cwcs;	/* Keyword suffix character for output WCS */
  * Jan  9 2006	Drop declarations of fk425e() and fk524e(); moved to wcs.h
  * Jan  9 2006	Drop *pix() and *pos() external declarations; moved to wcs.h
  * Jan  9 2006	Drop matinv() external declaration; it is already in wcslib.h
+ * Feb 15 2007	If CTYPEi contains DET, set to WCS_PIX projection
+ * Feb 23 2007	Fix bug when checking for "DET" in CTYPEi
+ * Apr  2 2007	Fix PC to CD matrix conversion
  */
