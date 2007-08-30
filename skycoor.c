@@ -1,9 +1,9 @@
 /* File skycoor.c
- * September 26, 2006
+ * July 25, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1996-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -49,6 +49,7 @@ static int mprop = 0;		/* If 1, proper motion is present */
 static double rapm = 0.0;	/* Right ascension proper motion in mas/year */
 static double decpm = 0.0;	/* Declination proper motion in mas/year */
 static int epset = 0;
+static int inhours = 0;
 
 
 int
@@ -68,7 +69,7 @@ char **av;
     char cunit;
     int sys0;
     int sys1 = -1;
-    double ra, dec, r, ra1, dec1, dra, ddec, a;
+    double ra, dec, r, ra1, dec1, ra2, dec2, dra, ddec, a;
     double offra = 0.0;
     double offdec = 0.0;
     int lstr = 32;
@@ -107,37 +108,33 @@ char **av;
 	case 'a':	/* Position angle (N->E) between two RA Dec pairs */
 	    if (ac < 5)
 		usage("Missing coordinates for -a");
-	    ra = str2ra (*++av);
-	    ac--;
-	    dec = str2dec (*++av);
-	    ac--;
 	    ra1 = str2ra (*++av);
+	    if (ra1 < 0.0)
+		ra1 = 360.0 + ra1;
 	    ac--;
 	    dec1 = str2dec (*++av);
 	    ac--;
-	    ra2str (rastr0, lstr, ra, 3);
-	    dec2str (decstr0, lstr, dec, 2);
+	    ra2 = str2ra (*++av);
+	    if (ra2 < 0.0)
+		ra2 = 360.0 + ra2;
+	    ac--;
+	    dec2 = str2dec (*++av);
+	    ac--;
+	    ra2str (rastr0, lstr, ra1, 3);
+	    dec2str (decstr0, lstr, dec1, 2);
 	    if (verbose) {
 		printf ("ra1, dec1: %s %s\n", rastr0, decstr0);
 		}
-	    ra2str (rastr0, lstr, ra1, 3);
-	    dec2str (decstr0, lstr, dec1, 2);
+	    ra2str (rastr0, lstr, ra2, 3);
+	    dec2str (decstr0, lstr, dec2, 2);
 	    if (verbose) 
 		printf ("ra2, dec2: %s %s\n", rastr0, decstr0);
-	    dra = wcsdist (ra, dec, ra1, dec);
-	    ddec = wcsdist (ra, dec, ra, dec1);
-	    if (ra1 >= ra) {
-		if (dec1 < dec)
-		   ddec = -ddec;
-		}
-	    else {
-		if (dec1 >= dec)
-		   dra = -dra;
-		else {
-		    dra = -dra;
-		    ddec = -ddec;
-		    }
-		}
+	    dra = wcsdist (ra1, dec1, ra2, dec1);
+	    ddec = wcsdist (ra1, dec1, ra1, dec2);
+	    if (dec2 < dec1)
+		ddec = -ddec;
+	    if (ra2 - ra1 > -180.0 && ra2 - ra1 < 180.0)
+		dra = -dra;
 	    a = raddeg (atan2 (dra, ddec));
 	    if (verbose) {
 		printf ("dRA = %.5f deg, dDec = %.5f deg\n",dra, ddec);
@@ -178,6 +175,10 @@ char **av;
 	    if (!ndecset)
 		ndec = 5;
     	    break;
+
+	case 'h':	/* Input RA in fractional hours, not degrees */
+	    inhours++;
+	    break;
 
 	case 'i':	/* Input units (r=radians, d=degrees, ...) */
 	    if (ac < 2)
@@ -353,6 +354,11 @@ char **av;
 		while (fgets (line, 80, fd)) {
 		   csys[0] = 0;
 		    sscanf (line,"%s %s %s", rastr0, decstr0, csys);
+		    if (inhours) {
+			ra = str2dec (rastr0);
+			ra = ra * 15.0;
+			ra2str (rastr0, 16, ra, 3);
+			}
 	    	    if (csys[0] == 0) {
 			if (sys1 == WCS_J2000)
 			    sys0 = WCS_B1950;
@@ -411,6 +417,11 @@ char **av;
 	    else
 		strncpy (rastr0, *av, 31);
 	    rastr0[31] = (char) 0;
+	    if (inhours) {
+		ra = str2dec (rastr0);
+		ra = ra * 15.0;
+		ra2str (rastr0, 16, ra, 3);
+		}
 	    ac--;
 	    av++;
 	    if (strlen (*av) < 32)
@@ -594,6 +605,7 @@ char *errstring;
     fprintf (stderr,"  -e: Ecliptic longitude and latitude output\n");
     fprintf (stderr,"  -f file: File of coordinates (one position per line) to convert\n");
     fprintf (stderr,"  -g: Galactic longitude and latitude output\n");
+    fprintf (stderr,"  -h: Input RA in fractional hours instead of degrees\n");
     fprintf (stderr,"  -i code: Input units (r=radians, d=degrees, ...\n");
     fprintf (stderr,"  -j: J2000 (FK5) output\n");
     fprintf (stderr,"  -n num: Number of decimal places in output RA seconds\n");
@@ -657,4 +669,7 @@ char *errstring;
  * Jun 21 2006	Clean up code
  * Aug 25 2006	No longer print " degrees" if output in degrees
  * Sep 26 2006	Allow coordinates on command line to be any length
+ *
+ * Jun 13 2007	Add -h option for input in fractional hours instead of degrees
+ * Jul 25 2007	Fix bug in position angle computation
  */

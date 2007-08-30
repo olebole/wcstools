@@ -1,5 +1,5 @@
 /* File scat.c
- * March 13, 2007
+ * August 24, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -113,7 +113,7 @@ static char *refcatname[5];	/* reference catalog names */
 static char *ranges;		/* Catalog numbers to print */
 static int http=0;		/* Set to one if http header needed on output */
 static int padspt = 0;		/* Set to one to pad out long spectral type */
-static int nmagmax = 5;
+static int nmagmax = 10;
 static int sortmag = 0;
 static int lofld = 0;		/* Length of object name field in output */
 static int webdump = 0;
@@ -1108,7 +1108,7 @@ double	eqout;		/* Equinox for output coordinates */
     double maxnum;
     FILE *fd = NULL;
     char rastr[32], decstr[32];	/* coordinate strings */
-    char numstr[32];	/* Catalog number */
+    char numstr[80];	/* Catalog number */
     char cstr[32];	/* Coordinate system */
     char *catalog;
     double drad = 0.0;
@@ -1132,12 +1132,14 @@ double	eqout;		/* Equinox for output coordinates */
     int ngsc = 0;
     int smag;
     int nns;
+    int nid;
     int icat, nndec, nnfld, nsfld;
     double date, time;
     int gcset;
     int ndist;
     int distsort;
     int lrv;
+    int lobj;
     int nf;
     char tstr[32];
     double flux;
@@ -1469,6 +1471,14 @@ double	eqout;		/* Equinox for output coordinates */
 	    /* Find largest catalog number printed */
 	    if (starcat[icat] != NULL && starcat[icat]->nnfld != 0)
 		nnfld = starcat[icat]->nnfld;
+	    else if (refcat == SKYBOT) {
+		nnfld = 6;
+		for (i = 0; i < ng; i++) {
+		    lobj = strlen (gobj[i]);
+		    if (lobj > nnfld)
+			nnfld = lobj;
+		    }
+		}
 	    else {
 		maxnum = 0.0;
 		for (i = 0; i < ns; i++ ) {
@@ -1495,7 +1505,8 @@ double	eqout;		/* Equinox for output coordinates */
 
 	    /* Set flag for plate, class, or type column */
 	    if (refcat == BINCAT || refcat == SAO  || refcat == PPM ||
-		refcat == BSC || refcat == SDSS || refcat == SKY2K)
+		refcat == BSC || refcat == SDSS || refcat == SKY2K ||
+		refcat == IRAS || refcat == HIP)
 		typecol = 1;
 	    else if ((refcat == GSC || refcat == GSCACT) && classd < -1)
 		typecol = 3;
@@ -1651,6 +1662,14 @@ double	eqout;		/* Equinox for output coordinates */
 	    /* Find largest catalog number printed */
 	    if (starcat[icat] != NULL && starcat[icat]->nnfld != 0)
 		nnfld = starcat[icat]->nnfld;
+	    else if (refcat == SKYBOT) {
+		nnfld = 6;
+		for (i = 0; i < ng; i++) {
+		    lobj = strlen (gobj[i]);
+		    if (lobj > nnfld)
+			nnfld = lobj;
+		    }
+		}
 	    else {
 		maxnum = 0.0;
 		for (i = 0; i < ns; i++ ) {
@@ -1864,6 +1883,14 @@ double	eqout;		/* Equinox for output coordinates */
 	    /* Find largest catalog number to be printed */
 	    if (starcat[icat] != NULL && starcat[icat]->nnfld != 0)
 		nnfld = starcat[icat]->nnfld;
+	    else if (refcat == SKYBOT) {
+		nnfld = 6;
+		for (i = 0; i < ng; i++) {
+		    lobj = strlen (gobj[i]);
+		    if (lobj > nnfld)
+			nnfld = lobj;
+		    }
+		}
 	    else {
 		maxnum = 0.0;
 		for (i = 0; i < ns; i++ ) {
@@ -1957,10 +1984,11 @@ double	eqout;		/* Equinox for output coordinates */
 			dds = drs;
 			}
 		    if (srchcat != NULL) {
+			smag = srchcat->nmag;
 			if (srchcat->entrv > 0)
-			    smag = srchcat->nmag - 1;
-			else
-			    smag = srchcat->nmag;
+			    smag = smag - 1;
+			if (srchcat->nepoch)
+			    smag = smag - 1;
 			}
 		    else
 			smag = 1;
@@ -2082,9 +2110,11 @@ double	eqout;		/* Equinox for output coordinates */
 			printf ("%s", headline);
 			printf ("	ra          	dec        	");
 			if (refcat == GSC2)
-			    printf ("magf 	magj 	magv 	magn 	");
+			    printf ("magf 	magj 	magn 	magb 	magv	");
 			else if (refcat == HIP)
 			    printf ("magb 	magv 	parlx	parer	");
+			else if (refcat == SKYBOT)
+			    printf ("magv 	gdist 	hdist	");
 			else if (refcat == IRAS)
 			    printf ("f10m 	f25m 	f60m 	f100m	");
 			else if (refcat == TMPSC || refcat == TMIDR2)
@@ -2163,7 +2193,7 @@ double	eqout;		/* Equinox for output coordinates */
 			printf ("%s", headline);
 			printf ("	------------	------------	");
 			if (refcat == GSC2)
-			    printf ("-----	-----	-----	-----	");
+			    printf ("-----	-----	-----	-----	-----	");
 			else if (refcat == HIP || refcat == IRAS)
 			    printf ("-----	-----	-----	-----	");
 			else if (refcat == TMPSC || refcat == TMIDR2)
@@ -2186,6 +2216,7 @@ double	eqout;		/* Equinox for output coordinates */
 			if (refcat == UB1)
 			    printf ("--	--	--	");
 			printf ("--	");
+			printf ("---	");
 			for (i = 0; i < LenNum(das,2); i++)
 			    printf ("-");
 			printf ("	");
@@ -2285,9 +2316,11 @@ double	eqout;		/* Equinox for output coordinates */
 			}
 
 		    /* Set up object name or number to print */
-		    if (starcat[icat] != NULL) {
+		    if (refcat == SDSS || refcat == GSC2 || refcat == SKYBOT)
+			strcpy (numstr, gobj[0]);
+		    else if (starcat[icat] != NULL) {
 			if (starcat[icat]->stnum < 0 && gobj1 != NULL) {
-			    strncpy (numstr, gobj1[0], 32);
+			    strncpy (numstr, gobj1[0], 79);
 			    if (lofld > 0) {
 				for (j = 0; j < lofld; j++) {
 				    if (!numstr[j])
@@ -2322,7 +2355,15 @@ double	eqout;		/* Equinox for output coordinates */
 		    else
 			printf (" %s %s %s",
 			        numstr, rastr, decstr);
-		    if (refcat == GSC2 || refcat == HIP) {
+		    if (refcat == GSC2) {
+			if (tabout)
+			    printf ("	%5.2f	%5.2f	%5.2f	%5.2f %5.2f",
+				    gm[0][0],gm[1][0],gm[2][0],gm[4][0],gm[5][0]);
+			else
+			    printf (" %5.2f %5.2f %5.2f %5.2f",
+				    gm[0][0],gm[1][0],gm[2][0],gm[4][0],gm[5][0]);
+			}
+		    else if (refcat == HIP) {
 			if (tabout)
 			    printf ("	%5.2f	%5.2f	%5.2f	%5.2f",
 				    gm[0][0], gm[1][0], gm[2][0], gm[3][0]);
@@ -2808,6 +2849,11 @@ double	eqout;		/* Equinox for output coordinates */
 	    /* Print column headings */
 	    if (refcat == TABCAT && strlen(starcat[icat]->keyid) > 0)
 		sprintf (headline,"%s          ", starcat[icat]->keyid);
+	    else if (refcat == SKYBOT) {
+		strcpy (headline, "object");
+		for (i = 6; i < nnfld; i++)
+		    strcat (headline, " ");
+		}
 	    else
 		CatID (headline, refcat);
 	    headline[nnfld] = (char) 0;
@@ -2836,9 +2882,11 @@ double	eqout;		/* Equinox for output coordinates */
 	    else if (refcat == SDSS)
 		strcat (headline, "	magu 	magg 	magr 	magi 	magz ");
 	    else if (refcat == GSC2)
-		strcat (headline,"	magf	magj	magv  	magn ");
+		strcat (headline,"	magf	magj	magn  	magb 	magv ");
 	    else if (refcat == UCAC2)
 		strcat (headline,"	magj	magh	magk  	magc ");
+	    else if (refcat == SKYBOT)
+		strcat (headline,"	magv	gdist	hdist ");
 	    else if (refcat == IRAS)
 		strcat (headline,"	f10m  	f25m  	f60m   	f100m ");
 	    else if (refcat == HIP)
@@ -2851,6 +2899,8 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline,"	magb 	magv 	magph	magpv");
 	    else if (refcat==HIP)
 		strcat (headline,"	magb 	magv 	prllx	parer");
+	    else if (refcat==SKYBOT)
+		strcat (headline,"	magv 	gdist  	hdist");
 	    else if (refcat == GSC || refcat == GSCACT)
 		strcat (headline,"	mag	class	band	N");
 	    else if (refcat == UJC)
@@ -2885,7 +2935,7 @@ double	eqout;		/* Equinox for output coordinates */
 		}
 	    if (catsort == SORT_MERGE)
 		strcat (headline,"	nmatch");
-	    if (gobj1 != NULL && refcat != GSC2 && refcat != SDSS) {
+	    if (gobj1 != NULL && refcat != GSC2 && refcat != SDSS && refcat != SKYBOT) {
 		if (starcat[icat] == NULL ||
 		    (starcat[icat] != NULL && starcat[icat]->stnum > 0))
 		    strcat (headline,"	object");
@@ -2897,7 +2947,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    else
 		printf ("%s\n", headline);
 
-	    strcpy (headline, "---------------------");
+	    strcpy (headline, "-------------------------");
 	    headline[nnfld] = (char) 0;
 	    strcat (headline,"	------------	------------");
 	    if (refcat == TMPSC || refcat == TMIDR2)
@@ -2908,8 +2958,10 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline,"	-------	-------	-------	------");
 	    else if (refcat == IRAS)
 		strcat (headline,"	-----	-----	-----	-----");
-	    else if (refcat==HIP || refcat == GSC2)
+	    else if (refcat == HIP)
 		strcat (headline,"	-----	-----	-----	-----");
+	    else if (refcat == GSC2)
+		strcat (headline,"	-----	-----	-----	-----	-----");
 	    else if (nmagr > 0) {
 		for (imag = 0; imag < nmagr; imag++)
 		    strcat (headline,"	-----");
@@ -2936,7 +2988,7 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline,"	------");
 	    if (catsort == SORT_MERGE)
 		strcat (headline,"	------");
-	    if (gobj1 != NULL && refcat != GSC2 && refcat != SDSS) {
+	    if (gobj1 != NULL && refcat != GSC2 && refcat != SDSS && refcat != SKYBOT) {
 		if (starcat[icat] == NULL ||
 		    starcat[icat]->stnum > 0)
 		     strcat (headline,"	------");
@@ -2976,6 +3028,8 @@ double	eqout;		/* Equinox for output coordinates */
 		    strcpy (headline, "USNO_YB6_number ");
 		else if (refcat == SDSS)
 		    strcpy (headline, "SDSS_number          ");
+		else if (refcat == SKYBOT)
+		    strcpy (headline, "Object          ");
 		else if (refcat == UCAC1)
 		    strcpy (headline, "UCAC1_num    ");
 		else if (refcat == UCAC2)
@@ -3074,6 +3128,8 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, "   MagB   MagV  MagPh  MagPv");
 	    else if (refcat==UCAC2)
 		strcat (headline, "   MagJ   MagH   MagK   MagC");
+	    else if (refcat==SKYBOT)
+		strcat (headline, "     MagV   GDist  HDist");
 	    else if (refcat==TMPSC || refcat == TMIDR2)
 		strcat (headline, "   MagJ    MagH    MagK  ");
 	    else if (refcat==TMPSCE)
@@ -3081,9 +3137,9 @@ double	eqout;		/* Equinox for output coordinates */
 	    else if (refcat==TMXSC)
 		strcat (headline, "   MagJ    MagH    MagK  ");
 	    else if (refcat==IRAS)
-		strcat (headline, "f10m   f25m   f60m   f100m");
+		strcat (headline, "  f10m   f25m   f60m   f100m");
 	    else if (refcat==GSC2)
-		strcat (headline, "   MagF  MagJ  MagV  MagN");
+		strcat (headline, "  MagF  MagJ  MagN  MagB  MagV");
 	    else if (refcat==HIP)
 		strcat (headline, "  MagB  MagV  Parlx Parer");
 	    else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
@@ -3128,7 +3184,7 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, " Velocity");
 	    if (ranges == NULL)
 		strcat (headline, "  Arcsec");
-	    if (gobj1 != NULL && refcat != GSC2 && refcat != SDSS) {
+	    if (gobj1 != NULL && refcat != GSC2 && refcat != SDSS && refcat != SKYBOT) {
 		if (starcat[icat] == NULL || starcat[icat]->stnum > 0)
 		    strcat (headline,"  Object");
 		}
@@ -3191,6 +3247,14 @@ double	eqout;		/* Equinox for output coordinates */
 	    band = gc[i] / 100;
 	    gc[i] = gc[i] - (band * 100);
 	    }
+
+	/* For USNO-B1.0 catalog, drop sources on too few plates */
+	if (refcat == UB1 && minid > 0) {
+	    nid = gc[i]%100;
+	    if (nid < minid)
+		continue;
+	    }
+
 	if (gy[i] > 0.0) {
 	    if (degout) {
 		deg2str (rastr, 32, gra[i], nddeg);
@@ -3226,8 +3290,14 @@ double	eqout;		/* Equinox for output coordinates */
 		    CatNum (refcat,-nnfld,starcat[icat]->nndec,gnum[i],numstr);
 		}
 
-	    else if (refcat == SDSS || refcat == GSC2)
+	    else if (refcat == SDSS || refcat == GSC2 || refcat == SKYBOT) {
 		strcpy (numstr, gobj[i]);
+		lobj = strlen (gobj[i]);
+		if (lobj < nnfld) {
+		    for (j = lobj; j < nnfld; j++)
+			strcat (numstr, " ");
+		    }
+		}
 	    else
 		CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
 
@@ -3294,8 +3364,8 @@ double	eqout;		/* Equinox for output coordinates */
 			}
 		    }
 		else if (refcat == GSC2)
-		    sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f",
-		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
+		    sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f	%.2f",
+		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[4][i],gm[5][i]);
 		else if (refcat == IRAS) {
 		    sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
 		    for (imag = 0; imag < 4; imag++) {
@@ -3457,7 +3527,11 @@ double	eqout;		/* Equinox for output coordinates */
 			strcat (headline, temp);
 			}
 		    }
-		else if (refcat == GSC2 || refcat == HIP)
+		else if (refcat == GSC2)
+		    sprintf (headline, "%s %s %s %5.2f %5.2f %5.2f %5.2f %5.2f",
+			     numstr, rastr, decstr, gm[0][i], gm[1][i],
+			     gm[2][i], gm[4][i], gm[5][i]);
+		else if (refcat == HIP)
 		    sprintf (headline, "%s %s %s %5.2f %5.2f %5.2f %5.2f",
 			     numstr, rastr, decstr, gm[0][i], gm[1][i],
 			     gm[2][i], gm[3][i]);
@@ -3988,26 +4062,47 @@ char *parstring;
     else if (!strncasecmp (parname,"rad",3)) {
 	if (strchr (parvalue,':'))
 	    rad0 = 3600.0 * str2dec (parvalue);
-	else
+	else if (isnum (parvalue))
 	    rad0 = atof (parvalue);
+	else {
+	    sprintf (voerror, "Search radius %s (seconds) is not a number", parvalue);
+	    return (-1);
+	    }
+	}
+
+    /* Radius in arcminutes */
+    else if (!strncasecmp (parname,"mrad",4)) {
+	if (strchr (parvalue,':'))	/* hours:minutes:seconds */
+	    rad0 = 3600.0 * str2dec (parvalue);
+	else if (isnum (parvalue))
+	    rad0 = 60.0 * atof (parvalue);
+	else {
+	    sprintf (voerror, "Search radius %s (minutes) is not a number", parvalue);
+	    return (-1);
+	    }
 	}
 
     /* Inner Annulus radius in arcseconds */
     else if (!strncasecmp (parname,"inrad",5)) {
-	if (strchr (parvalue,':'))
+	if (strchr (parvalue,':'))	/* hours:minutes:seconds */
 	    rad1 = 3600.0 * str2dec (parvalue);
-	else
+	else if (isnum (parvalue))
 	    rad1 = atof (parvalue);
+	else {
+	    sprintf (voerror, "Search radius %s is not a number", parvalue);
+	    return (-1);
+	    }
 	}
 
     /* Radius in degrees */
-    else if (!strncasecmp (parname,"sr",3)) {
+    else if (!strncasecmp (parname,"sr",2) ||
+	     !strncasecmp (parname,"drad",4)) {
 	if (strchr (parvalue,':'))
 	    rad0 = 3600.0 * str2dec (parvalue);
 	else if (isnum (parvalue))
 	    rad0 = 3600.0 * atof (parvalue);
 	else {
-	    sprintf (voerror, "Search radius %s is not a number", parvalue);
+	    sprintf (voerror, "Search radius %s (degrees) is not a number", parvalue);
 	    return (-1);
 	    }
 	votab = 1;
@@ -4640,4 +4735,10 @@ PrintGSClass ()
  *
  * Jan 10 2007	Drop extra argument to IDSortStars (last one)
  * Mar 13 2007	Print GSC2 ID from object name, not number
+ * May 21 2007	Raise maximum object name length from 32 to 79
+ * Jul  6 2007	Drop a magnitude if epoch present in search catalog
+ * Jul  9 2007	Print 5 magnitudes for GSC 2.3, not 4; add B
+ * Jul  9 2007	Fix bug so GSC2 or SDSS numbers print correctly in 1-line output
+ * Jul 20 2007	Add SkyBot report format
+ * Aug 24 2007	Add mrad for search radius in minutes; add number checking, too
  */

@@ -1,9 +1,9 @@
 /* File gethead.c
- * January 10, 2007
+ * July 25, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2006 
+   Copyright (C) 1996-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -882,8 +882,10 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		}
 	    str = string;
 	    strfix (str, fillblank, 0);
-	    if (ndec > -9 && isnum (str) && strchr (str, '.'))
-		num2str (string, atof(str), 0, ndec);
+	    if (ndec > -9 && isnum (str) && strchr (str, '.')) {
+		if (isnum (str) < 3)
+		    num2str (string, atof(str), 0, ndec);
+		}
 	    if (verbose) {
 		if (strchr (str,' '))
 		    printf ("%s = \"%s\"\n", keyword, str);
@@ -1105,4 +1107,5 @@ char *string;
  * Jul 12 2006	Add option using : to read a sub-keyword from IRAF multi-line
  * Jul 13 2006	Print only first 999 characters of multiline keyword value
  *
+ * Jul 25 2007	Fix bug which badly reset sexigesimal decimal places to ndec
  */

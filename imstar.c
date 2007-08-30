@@ -1,5 +1,5 @@
 /* File imstar.c
- * April 6, 2007
+ * April 27, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -570,7 +570,7 @@ char	*filename;	/* FITS or IRAF file filename */
     /* Default is instrument magnitude */
     if (magoff <= 0.0)
 	magoff = -magoff - smag[0];
-    else if (magoff > 20.0)
+    else if (magoff > 89.0)
 	magoff = 0.0;
 
     /* Compute right ascension and declination for all stars to be listed */
@@ -916,4 +916,5 @@ char	*filename;	/* FITS or IRAF file filename */
  *
  * Jan 10 2007	Fix arguments to MagSortStars() and RASortStars()
  * Apr  6 2007	Add -g command to not rotate image WCS with image
+ * Apr 27 2007	Set magoff to zero only if greater than 89, not 20
  */

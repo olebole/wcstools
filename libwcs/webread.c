@@ -1,5 +1,5 @@
 /*** File webread.c
- *** April 11, 2007
+ *** August 28, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -64,7 +64,7 @@ static FILE *SokOpen();
 
 #define File    FILE *
 #define FileFd(fd)              fileno(fd)
-static char newline = 10;
+static char newline = '\n';
 
 
 /* WEBREAD -- Read a catalog over the web and return results */
@@ -122,7 +122,7 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
     if (!strncmp (caturl+lurl-4,"scat",4)) {
 
 	/* Center coordinates of search */
-	sprintf (srchurl, "?catalog=%s&ra=%.7f&dec=%.7f&system=%s",
+	sprintf (srchurl, "?catalog=%s&ra=%.7f&dec=%.7f&system=%s&format=tab",
 		 refcatname, cra, cdec, cstr);
 
 	/* Search radius or box size */
@@ -244,6 +244,10 @@ int	nlog;		/* Logging interval (-1 to dump returned file) */
 	if (nlog > 0)
 	    fprintf (stderr, "WEBREAD: No data returned\n");
 	return (0);
+	}
+
+    /* If scat, make sure that tab table has tabs */
+    if (!strncmp (caturl+lurl-4,"scat",4)) {
 	}
 
     /* Dump returned file and stop */
@@ -402,11 +406,13 @@ int	nlog;		/* 1 to print diagnostic messages */
     int lsrch;
     char *tabbuff;
     int	lbuff = 0;
-    char *tabnew, *tabline, *lastline, *tempbuff;
+    char *tabnew, *tabline, *lastline, *tempbuff, *tabold;
     int formfeed = (char) 12;
     struct TabTable *tabtable;
     int ltab, lname;
     int diag;
+    int tabdiff;
+    char *space2tab();
 
     if (nlog == 1)
 	diag = 1;
@@ -447,6 +453,30 @@ int	nlog;		/* 1 to print diagnostic messages */
 	tabbuff = gsc2c2t (tempbuff);
 	lbuff = strlen (tabbuff);
 	free (tempbuff);
+	}
+
+    /* Transform SkyBot return into tab table */
+    else if (strsrch (srchurl, "skybot")) {
+	tempbuff = tabbuff;
+	tabbuff = skybot2tab (tempbuff);
+	lbuff = strlen (tabbuff);
+	free (tempbuff);
+	}
+
+    /* Make sure that scat data is tab-separated (3 tabs found) */
+    else if (strsrch (srchurl, "scat")) {
+	tempbuff = strchr (tabbuff, '\t');
+	if (tempbuff != NULL) {
+	    tempbuff = strchr (tempbuff+1, '\t');
+	    if (tempbuff != NULL)
+		tempbuff = strchr (tempbuff+1, '\t');
+	    }	
+	if (tempbuff == NULL) {
+	    tempbuff = tabbuff;
+	    tabbuff = space2tab (tempbuff);
+	    lbuff = strlen (tabbuff);
+	    free (tempbuff);
+	    }
 	}
     
     /* Allocate tab table structure */
@@ -506,15 +536,21 @@ int	nlog;		/* 1 to print diagnostic messages */
 
     /* Enumerate entries in tab table catalog by counting newlines */
     tabnew = tabtable->tabdata;
+    tabold = tabnew;
+    tabdiff = 0;
     tabtable->nlines = 0;
     while ((tabnew = strchr (tabnew, newline)) != NULL) {
+	tabdiff = tabnew - tabold;
 	tabnew = tabnew + 1;
 	tabtable->nlines = tabtable->nlines + 1;
 	if (*tabnew == formfeed)
 	    break;
 	if (!strncasecmp (tabnew, "[EOD]", 5))
 	    break;
+	tabold = tabnew;
 	}
+    if (tabdiff < 2 && tabtable->nlines > 0)
+	tabtable->nlines = tabtable->nlines - 1;
 
     tabtable->tabline = tabtable->tabdata;
     tabtable->iline = 1;
@@ -535,7 +571,8 @@ int	*lbuff;	/* Length of buffer (returned) */
     char *server;
     char linebuff[LINE];
     char *buff;
-    char *tabbuff, *newbuff;
+    char *tabbuff;
+    char *newbuff;
     char *urlpath;
     char *servurl;
     int	status;
@@ -545,10 +582,13 @@ int	*lbuff;	/* Length of buffer (returned) */
     int lchunk, lline;
     int nbcont = 0;
     int lcbuff;
-    int lb;
+    int lb, i;
+    int ltbuff;
     char *cbcont;
 
     *lbuff = 0;
+    newbuff = NULL;
+    diag = 0;
 
     /* Extract server name and path from URL */
     servurl = url;
@@ -605,6 +645,7 @@ int	*lbuff;	/* Length of buffer (returned) */
 	lchunk = 1;
 	lline = 1;
 	*lbuff = 0;
+	ltbuff = 0;
 	while (lline > 0) {
 	    (void) fgets (linebuff, LINE, sok);
 	    lline = strlen (linebuff);
@@ -614,39 +655,45 @@ int	*lbuff;	/* Length of buffer (returned) */
 		linebuff[lline-1] = (char) 0;
 	    if (linebuff[lline-2] < 32)
 		linebuff[lline-2] = (char) 0;
-	    if (strlen (linebuff) > 0) {
-		lchunk = (int) strtol (linebuff, NULL, 16);
-		if (lchunk < 1)
-		    break;
-		}
-	    else
-		lchunk = 0;
+	    if (strlen (linebuff) <= 0)
+		continue;
+	    lchunk = (int) strtol (linebuff, NULL, 16);
+	    if (lchunk < 1)
+		break;
+	    /* else if (lchunk == 1)
+		continue; */
 	    if (diag)
 		fprintf (stderr, "%s (=%d)\n", linebuff, lchunk);
-	    if (lchunk > 0) {
-		lcbuff = *lbuff;
-		*lbuff = *lbuff + lchunk;
-		if (tabbuff == NULL) {
-		    lb = 2 * *lbuff;
-		    tabbuff = (char *) calloc (lb, 1);
-		    buff = tabbuff;
-		    }
-		else if (*lbuff > lb) {
-		    lb = lb * 2;
-		    newbuff = (char *) calloc (lb, 1);
-		    movebuff (tabbuff, newbuff, lcbuff, 0, 0);
-		    free (tabbuff);
-		    tabbuff = newbuff;
-		    buff = tabbuff + lcbuff;
-		    }
-		else {
-		    buff = tabbuff + lcbuff;
-		    }
-        	(void) fread (buff, 1, lchunk, sok);
-		buff[lchunk] = (char) 0;
-		if (diag)
-		    fprintf (stderr, "%s\n", buff);
+	    lcbuff = ltbuff;
+	    ltbuff = ltbuff + lchunk;
+
+	    /* Allocate buffer on first time through */
+	    if (tabbuff == NULL) {
+		lb = 10 * ltbuff;
+		tabbuff = (char *) calloc ((size_t)lb, (size_t)1);
+		buff = tabbuff;
 		}
+
+	    /* Increase buffer size if this chunk will push it over current limit */
+	    else if (ltbuff > lb) {
+		lb = lb * 10;
+		newbuff = (char *) realloc (tabbuff, lb);
+		if (tabbuff != newbuff)
+		    free (tabbuff);
+		tabbuff = newbuff;
+		buff = tabbuff + lcbuff;
+		for (i = lcbuff; i < lb; i++)
+		    tabbuff[i] = (char) 0;
+		newbuff = NULL;
+		}
+	    else {
+		buff = tabbuff + lcbuff;
+		}
+            (void) fread (buff, 1, lchunk, sok);
+	    buff[lchunk] = (char) 0;
+	    if (diag)
+		fprintf (stderr, "%s\n", buff);
+	    *lbuff = ltbuff;
 	    }
 	}
 
@@ -670,14 +717,14 @@ int	*lbuff;	/* Length of buffer (returned) */
 	    *lbuff = *lbuff + lread;
 	    if (tabbuff == NULL) {
 		tabbuff = (char *) malloc (*lbuff+8);
-		movebuff (buff, tabbuff, lread, 0, 0);
+		movebuff (tabbuff, buff, lread, 0, 0);
 		}
 	    else {
 		newbuff = (char *) malloc (*lbuff+8);
-		movebuff (tabbuff, newbuff, lcbuff, 0, 0);
+		movebuff (newbuff, tabbuff, lcbuff, 0, 0);
 		free (tabbuff);
 		tabbuff = newbuff;
-		movebuff (buff, tabbuff, lread, 0, lcbuff);
+		movebuff (tabbuff, buff, lread, lcbuff, 0);
 		}
 	    if (diag)
 		fprintf (stderr, "%s\n", buff);
@@ -689,9 +736,13 @@ int	*lbuff;	/* Length of buffer (returned) */
 }
 
 static void
-movebuff (source,dest,nbytes,offs,offd)
-char *source,*dest;
-int nbytes,offs,offd;
+movebuff (dest, source, nbytes, offd, offs)
+
+char	*dest;		/* First byte of destination buffer */
+char	*source;	/* First byte of source buffer */
+int	nbytes;		/* Number of bytes to move */
+int	offd;		/* Offset from first byte of destination buffer */
+int	offs;		/* Offset from first byte of source buffer */
 {
 char *from, *last, *to;
         from = source + offs;
@@ -809,6 +860,60 @@ FileINetParse(file, port, adrinet)
     return type;
 }
 
+char *
+space2tab (tabbuff)
+    char *tabbuff;	/* Tab table filled with spaces */
+{
+    char *newbuff, *line0, *line1, *ic, *icn, *tstart;
+    char cspace, ctab, cdash;
+    int lbuff;
+    int alltab = 0;
+    int notab = 0;
+
+    cspace = ' ';
+    cdash = '-';
+    ctab = '\t';
+    line0 = tabbuff;
+    lbuff = strlen (tabbuff);
+    newbuff = (char *) calloc (lbuff, 1);
+    icn = newbuff;
+    while ((line1 = strchr (line0, newline))) {
+	if (alltab == 0 && *(line1+1) == cdash) {
+	    alltab = 1;
+	    }
+	ic = line0;
+	notab = 1;
+	while (ic <= line1) {
+	    if (*ic != cspace)
+		*icn++ = *ic++;
+	    else {
+		if (alltab) {
+		    *icn++ = ctab;
+		    while (*ic++ == cspace) {
+			}
+		    ic--;
+		    }
+		else if (notab) {
+		    notab = 0;
+		    *icn++ = ctab;
+		    while (*ic++ == cspace) {
+			}
+		    ic--;
+		    }
+		else
+		    *icn++ = *ic++;
+		}
+	    }
+	line0 = line1 + 1;
+	notab = 1;
+	if (strlen (line0) < 1) {
+	    *icn++ = (char) 0;
+	    break;
+	    }
+	}
+    return (newbuff);
+}
+
 /* Nov 29 2000	New subroutines
  * Dec 11 2000	Do not print messages unless nlog > 0
  * Dec 12 2000	Fix problems with return if no stars
@@ -855,4 +960,10 @@ FileINetParse(file, port, adrinet)
  * Mar 13 2007	Process CSV data from STScI MAST GALEX GSC2 catalog
  * Mar 13 2007	Caselessly search for header info
  * Apr 11 2007	Terminate buffer read as number of characters
+ * Jul 13 2007	Add SkyBot data transformation to webopen()
+ * Jul 17 2007	Change order of arguments in movebuff() so destination is first
+ * Jul 18 2007	Fix bug in chunked data reading
+ * Jul 19 2007	If last line of table has no content, drop it
+ * Aug 24 2007	Fix tab tables filled with spaces
+ * Aug 28 2007	Fix space2tab() declarations which passed on Solaris, not Linux
  */

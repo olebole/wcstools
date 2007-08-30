@@ -1,5 +1,5 @@
 /* File imstack.c
- * January 5, 2007
+ * August 30, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -42,6 +42,7 @@ static int nbstack = 0;
 static int extend = 0;		/* If 1, output multi-extension FITS file */
 static FILE *fstack = NULL;
 static int version = 0;		/* If 1, print only program name and version */
+static int multispec = 0;	/* Add header keywords for IRAF multispec format */
 static char *extroot;
 
 int
@@ -85,6 +86,10 @@ char **av;
 		newname = calloc (16, 1);
 		strcpy (newname,"imstack.out");
 		}
+	    break;
+
+	case 'm':	/* Add header keywords for IRAF multispec format */
+	    multispec++;
 	    break;
 
 	case 'n':	/* Use each input file this many times */
@@ -213,6 +218,7 @@ usage ()
     fprintf(stderr,"  or : imstack [-vi][-n num] @filelist\n");
     fprintf(stderr,"  -i: Do not put FITS header in output file\n");
     fprintf(stderr,"  -n num: Use each file this many times\n");
+    fprintf(stderr,"  -m: Write IRAF multispec file\n");
     fprintf(stderr,"  -o name: Output filename\n");
     fprintf(stderr,"  -v: Verbose\n");
     fprintf(stderr,"  -x root: Make first file root, others extensions\n");
@@ -344,6 +350,21 @@ char	*filename;	/* FITS or IRAF file filename */
 	nbhead = nbytes;
 	}
 
+    if (multispec) {
+	hputi4 (header,"NAXIS",3);
+	hputi4 (header,"NAXIS2",1);
+	hputi4 (header,"NAXIS3",nfiles);
+	hputi4 (header,"WCSDIM",3);
+	hputs (header,"BANDID2","raw spectrum");
+	hputs (header,"BANDID3","averaged sky");
+	hputs (header,"WAT2_001","wtype=linear");
+	hputs (header,"WAT3_001","wtype=linear");
+	hputnr8 (header,"CD2_2",1.0,1);
+	hputnr8 (header,"CD3_3",1.0,1);
+	hputnr8 (header,"LTM2_2",1.0,1);
+	hputnr8 (header,"LTM3_3",1.0,1);
+	}
+
     /* If first file, open to write and, optionally, write FITS header */
     if (ifile == 0) {
 	if (extend)
@@ -425,6 +446,11 @@ char	*filename;	/* FITS or IRAF file filename */
 
 	/* Write data */
         if (nbimage > 0 && image != NULL) {
+
+	    /* Swap data if it has been swapped for this architecture */
+	    if (imswapped())
+		imswap (bitpix,image, nbimage);
+
 	    if (fwrite (image, (size_t) 1, (size_t) nbimage, fstack)) {
 		if (verbose) {
 		    if (iraffile)
@@ -506,4 +532,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jun 21 2006	Clean up code
  *
  * Jan  5 2007	Drop extra argument in call to hadd()
+ * Aug 30 2007	Add -m to stack IRAF multispec files
  */

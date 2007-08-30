@@ -455,7 +455,7 @@ char **av;
 	}
 
     if (nfile <= 0) {
-	fprintf (stderr, "GETHEAD: no files specified\n");
+	fprintf (stderr, "GETCOL: no files specified\n");
 	exit (1);
 	}
     for (ifile = 0; ifile < nfile; ifile++)

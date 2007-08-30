@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** March 13, 2007
+ *** July 18, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -63,6 +63,7 @@ struct Star {
 #define PM_ARCSECCEN		6	/* arcseconds per year */
 #define PM_TSECCEN		7	/* seconds of time (RA) per century */
 #define PM_MTSYR		8	/* milliseconds of time (RA) per year */
+#define PM_ARCSECHR		9	/* arcseconds per hour (solar system) */
 
 /* Data structure for SAO TDC ASCII and binary star catalogs */
 struct StarCat {
@@ -196,11 +197,12 @@ struct TabTable {
 #define TMPSCE		28	/* 2MASS Point Source Catalog with mag errors */
 #define TYCHO2E		29	/* Tycho-2 Star Catalog with magnitude errors */
 #define SKY2K		30	/* SKY2000 Master Catalog */
+#define SKYBOT		31	/* SKYBOT Solar System Objects */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */
 #define WEBCAT		-4	/* Tab catalog via the web */
-#define NUMCAT		30	/* Number of predefined catalogs */
+#define NUMCAT		31	/* Number of predefined catalogs */
 
 #define EP_EP   1	/* Output epoch as fractional year */
 #define EP_JD   2	/* Output epoch as Julian Date */
@@ -787,6 +789,33 @@ extern "C" {
 			 * (image of number of catalog objects per bin if 0) */
 	int nlog);	/* Verbose mode if > 1, number of sources per log line */
 
+    int skybotread (	/* Find solar system objects from SkyBot */
+	double cra,	/* Search center J2000 right ascension in degrees */
+	double cdec,	/* Search center J2000 declination in degrees */
+	double dra,	/* Search half width in right ascension in degrees */
+	double ddec,	/* Search half-width in declination in degrees */
+	double drad,	/* Limiting separation in degrees (ignore if 0) */
+	int distsort,	/* 1 to sort asteroids by distance from center */
+	int sysout,	/* Search coordinate system */
+	double eqout,	/* Search coordinate equinox */
+	double epout,	/* Julian date for positions (current time if zero) */
+	double mag1,	/* Lower limiting magnitude (none if equal to mag2) */
+	double mag2,	/* Upper limiting magnitude (none if equal to mag1) */
+	int sortmag,	/* Magnitude by which to sort (1 to nmag) */
+	int nstarmax,	/* Maximum number of stars to be returned */
+	double *gnum,	/* Array of asteroid numbers (returned) */
+	char **gobj,	/* Array of object IDs (too long for integer*4) */
+	double *gra,	/* Array of right ascensions (returned) */
+	double *gdec,	/* Array of declinations (returned) */
+	double *gpra,	/* Array of right ascension motions (returned) */
+	double *gpdec,	/* Array of declination motions (returned) */
+	double **gmag,	/* 2-D array of magnitudes and other info (returned) */
+	int *gtype,	/* Array of object classes (returned) */
+	int nlog);	/* 1 for diagnostics */
+
+    char *skybot2tab(	/* Convert SkyBot buffer from space- to tab-separated */
+	char *csvbuff);	/* Input comma-separated table */
+
 /* Subroutines to read SAO-TDC binary format catalogs */
     int binread(	/* Read from sky region from SAO TDC binary format catalog */
 	char *bincat,	/* Name of reference star catalog file */
@@ -968,7 +997,10 @@ extern "C" {
 	int maxchar);	/* Maximum number of characters in returned string */
     int tabparse(		/* Aeturn column names and positions in tabtable */
 	struct TabTable *tabtable); /* Tab table data structure */
-    int tabcol(		/* Find column for name */
+    int tabcol(		/* Find column for name (case-sensitive) */
+	struct TabTable *tabtable, /* Tab table data structure */
+	char *keyword);	/* column header of desired value */
+    int tabccol(	/* Find column for name  (case-insensitive) */
 	struct TabTable *tabtable, /* Tab table data structure */
 	char *keyword);	/* column header of desired value */
     int istab(		/* Return 1 if tab table file, else 0 */
@@ -1384,6 +1416,12 @@ int actread();		/* Read sources by sky region from USNO ACT Catalog */
 int actrnum();		/* Read sources by ID number from USNO ACT Catalog */
 int actbin();		/* Bin sources from USNO ACT Catalog */
 
+/* Subroutines to retrieve solar system objects over the web from SkyBot */
+int skybotread();	/* Find solar system objects from SkyBot */
+char *skybot2tab();	/* Convert SkyBot returned data to Starbase table */
+void setobs();		/* Set observatory using IAU code */
+void setobsname();	/* Set IAU code from observatory name */
+
 /* Subroutines to read SAO-TDC binary format catalogs (binread.c) */
 int binread();		/* Read sources by sky region from SAO TDC binary format catalog */
 int binrnum();		/* Read sources by ID number from SAO TDC binary format catalog */
@@ -1404,7 +1442,8 @@ int tabxyread();	/* Read x, y, and magnitude from tab table star list */
 void settabkey();	/* Set tab table keyword to read for object */
 char *gettabline();	/* Find a specified line in a tab table */
 int tabrkey();		/* Keyword values from tab table catalogs */
-int tabcol();		/* Find column for name */
+int tabcol();		/* Find column for name (case-sensitive) */
+int tabccol();		/* Find column for name (case-insensitive) */
 int tabgetk();		/* Get tab table entries for named column */
 int tabgetc();		/* Get tab table entry for named column */
 int tabgeti4();		/* Return 4-byte integer from tab table line */
@@ -1620,4 +1659,7 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * Jan 11 2007	Move token access subroutines to fileutil.c/fitsfile.h
  * Mar 13 2007	Add gsc2c2t() to convert CSV GSC2 buffer to TSV table
  * Mar 13 2007	Add gobj object name to gsc2read()
+ * Jul  5 2007	Add SKYBOT=31 to catalog list
+ * Jul 13 2007	Add skybotread() and skybot2tab()
+ * Jul 18 2007	Add tabccol() and PM_ARCSECHR for SkyBot
  */

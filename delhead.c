@@ -1,5 +1,5 @@
 /* File delhead.c
- * January 10, 2007
+ * June 12, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -38,14 +38,18 @@ static int maxnfile = MAXFILES;
 
 static void usage();
 static void DelKeywords();
+static void DelCOMMENT();
 extern char *fitserrmsg;
 
 static int verbose = 0;		/* verbose/debugging flag */
+static int delwcs = 0;		/* WCS deletion flag */
 static int newimage = 0;
+static int delcom = 0;		/* If 1, delete blank COMMENT lines */
 static int readimage = 0;	/* Read and write image as well as header */
 static int version = 0;		/* If 1, print only program name and version */
 static int logfile = 0;
 static int nproc = 0;
+static int overwrite = 0;	/* If 1, overwrite input image */
 static int first_file = 1;
 
 
@@ -96,6 +100,11 @@ char **av;
 		    setheadshrink (0);
 		    readimage = 0;
 		    break;
+
+		case 'c': /* Delete blank COMMENTs */
+		    delcom++;
+		    nkwd++;
+		    break;
 	
 		case 'l':	/* Log files changed */
 		    logfile++;
@@ -104,9 +113,19 @@ char **av;
 		case 'n':	/* write new file */
 		    newimage++;
 		    break;
+
+		case 'o':	/* overwrite file */
+		    newimage++;
+		    overwrite++;
+		    break;
 	
 		case 'v':	/* more verbosity */
 		    verbose++;
+		    break;
+	
+		case 'w':	/* delete all WCS keywords */
+		    delwcs++;
+		    nkwd++;
 		    break;
 	
 		default:
@@ -222,8 +241,11 @@ usage ()
     fprintf(stderr,"  or : [-nv] file1.fits [ ... filen.fits] @keylistfile\n");
     fprintf(stderr,"  or : [-nv] @listfile @keylistfile\n");
     fprintf(stderr,"  -b: leave blank line in header for each deleted line\n");
+    fprintf(stderr,"  -c: delete blank COMMENT lines\n");
     fprintf(stderr,"  -n: write new file\n");
+    fprintf(stderr,"  -o: overwrite file\n");
     fprintf(stderr,"  -v: verbose\n");
+    fprintf(stderr,"  -w: delete all WCS keywords in header\n");
     exit (1);
 }
 
@@ -247,9 +269,10 @@ char	*kwd[];		/* Names of those keywords */
     char newname[MAXNEW];
     char *ext, *fname, *imext, *imext1;
     char *kw, *kwl;
+    char kwi[10];
     char echar;
     int ikwd;
-    int fdr, fdw, ipos, nbr, nbw, bitpix;
+    int fdr, fdw, ipos, nbr, nbw, bitpix, i;
     int imageread = 0;
     int nbold, nbnew;
 
@@ -284,7 +307,12 @@ char	*kwd[];		/* Names of those keywords */
 	    }
 	}
     if (verbose && first_file) {
-	fprintf (stderr,"Delete Header Parameter Entries from ");
+	if (delwcs)
+	    fprintf (stderr,"Delete Header WCS Parameter Entries from ");
+	else if (delcom)
+	    fprintf (stderr,"Delete Blank COMMENT lines from ");
+	else
+	    fprintf (stderr,"Delete Header Parameter Entries from ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", filename);
 	else
@@ -311,6 +339,18 @@ char	*kwd[];		/* Names of those keywords */
     if (newimage)
 	readimage = 1;
 
+    /* First, delete WCS keywords if requested */
+    if (delwcs) {
+	DelWCSFITS (header, verbose);
+	nkwd--;
+	}
+
+    /* Then delete blank COMMENT lines if requested */
+    if (delcom) {
+	DelCOMMENT (header, verbose);
+	nkwd--;
+	}
+
     /* Delete keywords one at a time */
     for (ikwd = 0; ikwd < nkwd; ikwd++) {
 
@@ -322,8 +362,21 @@ char	*kwd[];		/* Names of those keywords */
 	    }
 
 	/* Delete keyword */
-	if (hdel (header, kwd[ikwd]) && verbose)
-	    printf ("%s: %s deleted\n", filename, kwd[ikwd]);
+	if (hdel (header, kwd[ikwd])) {
+	    if (verbose)
+		 printf ("%s: %s deleted\n", filename, kwd[ikwd]);
+	    }
+
+	/* If single-line keyword not found, try IRAF multiple-line format */
+	else {
+	    i = 1;
+	    sprintf (kwi, "%s_%03d", kwd[ikwd], i++);
+	    while (hdel (header, kwi)) {
+		if (verbose)
+		    printf ("%s: %s deleted\n", filename, kwi);
+		sprintf (kwi, "%s_%03d", kwd[ikwd], i++);  
+		}
+	    }
 	}
 
     /* Compare size of output header to size of input header */
@@ -470,6 +523,12 @@ char	*kwd[];		/* Names of those keywords */
 	    }
 	}
 
+    if (overwrite) {
+	rename (newname, filename);
+	if (verbose)
+	    printf ("%s: overwritten successfully.\n", filename);
+	}
+
     /* Log the processing of this file, if requested */
     if (logfile) {
 	nproc++;
@@ -481,6 +540,60 @@ char	*kwd[];		/* Names of those keywords */
     if (image != NULL)
 	free (image);
     return;
+}
+
+static void
+DelCOMMENT (header, verbose)
+
+char *header;	/* FITS header */
+int verbose;	/* If true, print deletion confirmations */
+{
+    char *hplace, *hcom, *v, *v1, *v2, *ve;
+    int i, killcom, nline;
+    int nkill = 0;
+
+    hplace = header;
+    while ((hcom = ksearch (hplace, "COMMENT"))) {
+	killcom = 1;
+	for (i = 7; i < 80; i++) {
+	    if (hcom[i] != '=' && hcom[i] != ':' && hcom[i] != ' ' && hcom[i] != '\'')
+		killcom = 0;
+	    }
+	if (killcom) {
+	    if (verbose) {
+		nkill++;
+		nline = (hplace - header) / 80 + 1;
+		/* fprintf (stderr, "%3d %3d %70.70s\n", nkill, nline, hcom); */
+		}
+
+	    /* Shift rest of header up one line */
+	    if (newimage) {
+		ve = ksearch (header, "END");
+		for (v =hcom; v < ve; v = v + 80) {
+		    v2 = v + 80;
+		    strncpy (v, v2, 80);
+		    }
+
+		/* Cover former last line with spaces */
+		v2 = ve + 80;
+		for (v = ve; v < v2; v++)
+		    *v = ' ';
+		}
+
+	    /* Fill line with blanks */
+	    else {
+		for (i = 0; i++; i < 80)
+		    hcom[i] = ' ';
+		hplace = hplace + 80;
+		}
+	    }
+
+	/* Move on to next line if COMMENT line is OK */
+	else
+	    hplace = hplace + 80;
+	}
+	if (verbose)
+	    fprintf (stderr, "%d blank COMMENT lines deleted\n", nkill);
 }
 
 /* Jul 27 1998	New program
@@ -521,4 +634,7 @@ char	*kwd[];		/* Names of those keywords */
  * Jun 20 2006	Clean up code
  *
  * Jan 10 2007	Add int to readimage declaration
+ * Apr 18 2007	Add -w to delete all WCS keywords
+ * May  1 2007	Add -c to delete blank COMMENTs
+ * Jun 12 2007	Delete IRAF multiple line keywords
  */

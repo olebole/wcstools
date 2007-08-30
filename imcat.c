@@ -1,5 +1,5 @@
 /* File imcat.c
- * January 10, 2007
+ * July 26, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -107,6 +107,10 @@ char **av;
     char cs, cs1;
     char **fn;
     int i, ic;
+    int nx, ny;
+    char *header;
+    double cra, cdec, dra, ddec, secpix;
+    int wp, hp, bitpix;
     double x, y;
     char *refcatname[5];	/* reference catalog name */
     int ncat = 0;
@@ -118,6 +122,7 @@ char **av;
     int scat = 0;
     char c1, c, *ccom;
     double drot;
+    struct WorldCoor *wcs = NULL; /* World coordinate system structure */
 
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
@@ -278,6 +283,16 @@ char **av;
 		    else
 			obname[0]++;
 		    ac--;
+		    break;
+
+		case 'l':   /* Size of image in X and Y pixels */
+		    if (ac < 3)
+			PrintUsage(str);
+		    nx = atoi (*++av);
+		    ac--;
+		    ny = atoi (*++av);
+		    ac--;
+		    setnpix (nx, ny);
 		    break;
 
 		case 'm':	/* Limiting reference star magnitude */
@@ -545,7 +560,7 @@ char **av;
 
     /* If reference catalog is not set, exit with error message */
     if (refcatname == NULL) {
-	PrintUsage ("* Must specifiy a reference catalog using -c or alias.");
+	PrintUsage ("* Reference catalog must be specified using -c or alias.");
 	}
 
     /* Process image files from list file */
@@ -575,9 +590,11 @@ char **av;
 	    }
 	}
 
-    /* Print error message if no image files to process */
-    else
-	PrintUsage ("* No files to process.");
+    /* Create header with WCS information on command line */
+    else {
+	filename[0] = (char) 0;
+	ListCat (progname, filename, ncat, refcatname);
+	}
 
     /* Close source catalogs */
     for (i = 0; i < 5; i++)
@@ -631,6 +648,7 @@ char	*command;
     fprintf (stderr,"  -i: Print name instead of number in region file \n");
     fprintf (stderr,"  -j [RA Dec]: Output (center) in J2000 (FK5) RA and Dec\n");
     fprintf (stderr,"  -k keyword: Add this keyword to output from tab table search\n");
+    fprintf (stderr,"  -l nx ny: X and Y size of image in pixels\n");
     fprintf (stderr,"  -mx m1[,m2]: Catalog magnitude #x limit(s) (only one set allowed, default none)\n");
     fprintf (stderr,"  -n num: Number of brightest stars to print \n");
     fprintf (stderr,"  -o name: Set HST Guide Star object class to print \n");
@@ -656,7 +674,7 @@ ListCat (progname, filename, ncat, refcatname)
 
 char	*progname;	/* Name of program being executed */
 char	*filename;	/* FITS or IRAF file filename */
-int	ncat;		/* Number oc catalogs to search */
+int	ncat;		/* Number of catalogs to search */
 char	**refcatname;	/* reference catalog name */
 
 {
@@ -701,12 +719,15 @@ char	**refcatname;	/* reference catalog name */
     int nnfld;
     char blanks[256];
     int lfn;
+    int lobj;
+    int lhead;
     int band = 0;
     int ngsc = 0;
     int gcset;
     int mprop;
     int nmag;
     int sptype;
+    int nofile = 0;
     int magsort;
     double gxmax, gymax;
     double pra, pdec;
@@ -714,7 +735,7 @@ char	**refcatname;	/* reference catalog name */
     char *catalog;
 
     /* Drop out if no catalog is specified */
-    if (ncat < 1) {
+    if (ncat == 0) {
 	fprintf (stderr, "No catalog specified\n");
 	exit (-1);
 	}
@@ -741,6 +762,11 @@ char	**refcatname;	/* reference catalog name */
 	blanks[i] = ' ';
     blanks[255] = (char) 0;
 
+    if (strlen (filename) < 1) {
+	strcpy (filename, "NoFile");
+	nofile = 1;
+	}
+
     /* Loop through catalogs */
     for (icat = 0; icat < ncat; icat++) {
 
@@ -765,15 +791,34 @@ char	**refcatname;	/* reference catalog name */
     else if (classd == 3)
 	strcat (title, " nonstars");
 
-    /* Read world coordinate system information from the image header */
-    if ((header = GetFITShead (filename, verbose)) == NULL)
+    /* Initialize FITS header from file if one is there or to nothing */
+    if (nofile) {
+	lhead = 14400;
+	header = (char *) calloc (1, lhead);
+	strcpy (header, "END ");
+	for (i = 4; i < lhead; i++)
+	    header[i] = ' ';
+	hlength (header, 14400);
+	hputl (header, "SIMPLE", 1);
+	hputi4 (header, "BITPIX", 0);
+	hputi4 (header, "NAXIS", 2);
+	hputi4 (header, "NAXIS1", 1);
+	hputi4 (header, "NAXIS2", 1);
+	}
+    else if ((header = GetFITShead (filename, verbose)) == NULL)
 	return;
+
+    /* Read world coordinate system information from the image header */
     wcs = GetFITSWCS (filename, header, verbose, &cra, &cdec, &dra, &ddec,
 		      &secpix, &imw, &imh, &sysout, &eqout);
     gxmax = (double) imw + 0.5;
     gymax = (double) imh + 0.5;
     free (header);
     if (nowcs (wcs)) {
+	if (nofile)
+	    PrintUsage ("* No files to process or incomplete command line WCS.");
+	else
+	    fprintf (stderr, "Incomplete WCS in image file\n");
 	wcsfree (wcs);
 	return;
 	}
@@ -942,12 +987,24 @@ char	**refcatname;	/* reference catalog name */
 	nbg = ng;
 
     /* Find largest catalog number printed */
-    maxnum = 0.0;
-    for (i = 0; i < nbg; i++ ) {
-	if (gnum[i] > maxnum)
-	    maxnum = gnum[i];
+    if (starcat[icat] != NULL && starcat[icat]->nnfld != 0)
+	nnfld = starcat[icat]->nnfld;
+    else if (refcat == SKYBOT) {
+	nnfld = 6;
+	for (i = 0; i < ng; i++) {
+	    lobj = strlen (gobj[i]);
+	    if (lobj > nnfld)
+		nnfld = lobj;
+	    }
 	}
-    nnfld = CatNumLen (refcat, maxnum, nndec);
+    else {
+	maxnum = 0.0;
+	for (i = 0; i < nbg; i++ ) {
+	    if (gnum[i] > maxnum)
+		maxnum = gnum[i];
+	    }
+	nnfld = CatNumLen (refcat, maxnum, nndec);
+	}
 
     /* Check to see if epoch is contained in entries */
     if (starcat[icat] != NULL && starcat[icat]->nepoch != 0)
@@ -964,7 +1021,29 @@ char	**refcatname;	/* reference catalog name */
 	    gy[i] = 0.0;
 	    }
 	if (debug) {
-	    CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
+	    if (starcat[icat] != NULL) {
+		if (starcat[icat]->stnum < 0 && gobj1 != NULL) {
+		    strncpy (numstr, gobj1[i], 32);
+		    if (lofld > 0) {
+			for (j = 0; j < lofld; j++) {
+			    if (!numstr[j])
+				numstr[j] = ' ';
+			    }
+			}
+		    }
+		else
+		    CatNum (refcat,-nnfld,starcat[icat]->nndec,gnum[i],numstr);
+		}
+	    else if (refcat == SDSS || refcat == GSC2 || refcat == SKYBOT) {
+		strcpy (numstr, gobj[i]);
+		lobj = strlen (gobj[i]);
+		if (lobj < nnfld) {
+		    for (j = lobj; j < nnfld; j++)
+			strcat (numstr, " ");
+		    }
+		}
+	    else
+		CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
 	    ra2str (rastr, 32, gra[i], 3);
 	    dec2str (decstr, 32, gdec[i], 2);
 	    fprintf (stderr, "%s	%s	%s	%5.2f	%5.2f	%8.2f	%8.2f\n",
@@ -1329,6 +1408,11 @@ char	**refcatname;	/* reference catalog name */
 	strcpy (headline, starcat[icat]->keyid);
 	strcat (headline, "                ");
 	}
+    else if (refcat == SKYBOT) {
+	strcpy (headline, "object");
+	for (i = 6; i < nnfld; i++)
+	    strcat (headline, " ");
+	}
     else
 	CatID (headline, refcat);
     headline[nnfld] = (char) 0;
@@ -1364,8 +1448,12 @@ char	**refcatname;	/* reference catalog name */
 	strcat (headline,"magj   	magh   	magk   	magje	maghe	magke	");
     else if (refcat == TMXSC)
 	strcat (headline,"magj   	magh   	magk  	");
+    else if (refcat == TMXSC)
+	strcat (headline,"magj   	magh   	magk  	");
+    else if (refcat == SKYBOT)
+	strcat (headline, "magv  	gdist 	hdist 	");
     else if (refcat == SDSS)
-	printf ("magu   	magg   	magr   	magi   	magz    ");
+	strcat (headline, "magu   	magg   	magr   	magi   	magz    ");
     else {
 	for (imag = 0; imag < nmag; imag++) {
 	    if (printepoch && imag == nmag-1)
@@ -1412,7 +1500,7 @@ char	**refcatname;	/* reference catalog name */
     if (tabout)
 	printf ("%s\n", headline);
 
-    strcpy (headline,"----------------------");		/* ID number */
+    strcpy (headline,"--------------------------------");	/* ID number */
     headline[nnfld] = (char) 0;
     strcat (headline, "	-----------	------------	-----");/* RA Dec Mag */
     if (refcat == UAC  || refcat == UA1  || refcat == UA2 || 
@@ -1431,8 +1519,10 @@ char	**refcatname;	/* reference catalog name */
 	strcat (headline,"-	------	------	------"); /* 4 fluxes */
     else if (refcat == GSC2)
 	strcat (headline,"	-----	-----	-----	-----"); /* 4 magnitudes */
+    else if (refcat == SKYBOT)
+	strcat (headline,"	-----	-----	-----"); /* 1 magnitude, 2 distances */
     else if (refcat == HIP)
-	strcat (headline,"	-----	-----	-----"); /* 4 magnitudes */
+	strcat (headline,"	-----	-----	-----"); /* 3 magnitudes */
     else if (refcat == UB1 || refcat == YB6)
 	strcat (headline,"	-----	-----	-----	-----");
     else {
@@ -1470,6 +1560,11 @@ char	**refcatname;	/* reference catalog name */
 	else {
 	    if (refcat == TABCAT && strlen(starcat[icat]->keyid) > 0)
 		printf ("%s          ", starcat[icat]->keyid);
+	    else if (refcat == SKYBOT) {
+		strcpy (headline, "Object");
+		for (i = 6; i < nnfld-1; i++)
+		    strcat (headline, " ");
+		}
 	    else
 		CatID (headline, refcat);
 	    headline[nnfld] = (char) 0;
@@ -1530,6 +1625,8 @@ char	**refcatname;	/* reference catalog name */
 		printf ("MagB  MagV  parlx parer   X       Y   \n");
 	    else if (refcat == TMPSC || refcat == TMIDR2)
 		printf ("MagJ    MagH    MagK      X       Y   \n");
+	    else if (refcat == SKYBOT)
+		printf (" MagV  GDist HDist   X      Y   \n");
 	    else if (refcat == TMPSCE)
 		printf ("MagJ    MagH    MagK   MagJe MagHe MagKe   X       Y   \n");
 	    else if (refcat == TMXSC)
@@ -1583,10 +1680,6 @@ char	**refcatname;	/* reference catalog name */
 		band = gc[i] / 100;
 		gc[i] = gc[i] - (band * 100);
 		}
-	    if (refcat == SDSS || refcat == GSC2)
-		strcpy (numstr, gobj[i]);
-	    else
-		CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
 
 	    /* Set up object name or number to print */
 	    if (starcat[icat] != NULL) {
@@ -1602,8 +1695,17 @@ char	**refcatname;	/* reference catalog name */
 		else
 		    CatNum (refcat,-nnfld,starcat[icat]->nndec,gnum[i],numstr);
 		}
+	    else if (refcat == SDSS || refcat == GSC2 || refcat == SKYBOT) {
+		strcpy (numstr, gobj[i]);
+		lobj = strlen (gobj[i]);
+		if (lobj < nnfld) {
+		    for (j = lobj; j < nnfld; j++)
+			strcat (numstr, " ");
+		    }
+		}
 	    else
 		CatNum (refcat, -nnfld, nndec, gnum[i], numstr);
+
 	    if (degout) {
 		deg2str (rastr, 32, gra[i], 5);
 		deg2str (decstr, 32, gdec[i], 5);
@@ -1669,6 +1771,9 @@ char	**refcatname;	/* reference catalog name */
 			 refcat == USAC || refcat == USA1 || refcat == USA2)
 		    sprintf (headline, "%s	%s	%s	%5.1f	%5.1f	%d",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gc[i]);
+		else if (refcat == SKYBOT)
+		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f",
+		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
 		else if (refcat == UJC)
 		    sprintf (headline, "%s	%s	%s	%5.2f	%d",
 		     numstr, rastr, decstr, gm[0][i], gc[i]);
@@ -1756,6 +1861,9 @@ char	**refcatname;	/* reference catalog name */
 		else if (refcat == GSC2)
 		    sprintf (headline,"%s %s %s %5.2f %5.2f %5.2f %5.2f   %2d  ",
 			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],gc[i]);
+		else if (refcat == SKYBOT)
+		    sprintf (headline,"%s %s %s %5.2f %5.2f %5.2f",
+			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i]);
 		else if (refcat == HIP)
 		    sprintf (headline,"%s %s %s %5.2f %5.2f %5.2f %5.2f",
 			     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
@@ -2159,4 +2267,8 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  * Nov  6 2006	Print SDSS number as character string; it is now 18 digits long
  *
+ * Jul  5 2007	Add -l command to set image size
+ * Jul  5 2007	Modify code to use WCS info from command line without image
+ * Jul 24 2007	Add SkyBot format for output
+ * Jul 26 2007	Clean up code for running without an image file
  */

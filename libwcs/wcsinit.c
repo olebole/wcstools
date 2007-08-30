@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** March 13, 2007
+ *** April 27, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2007
@@ -313,11 +313,21 @@ char *wchar;		/* Suffix character for one of multiple WCS */
     /* Reset number of axes to only those with dimension greater than one */
     nax = 0;
     for (i = 0; i < naxes; i++) {
+
+	/* Check for number of pixels in axis more than one */
 	strcpy (keyword, "NAXIS");
 	sprintf (temp, "%d", i+1);
 	strcat (keyword, temp);
 	if (!hgeti4 (hstring, keyword, &j))
 	    fprintf (stderr,"WCSINIT: Missing keyword %s assumed 1\n",keyword);
+
+	/* Check for TAB WCS in axis */
+	strcpy (keyword, "CTYPE");
+	strcat (keyword, temp);
+	if (hgets (hstring, keyword, 16, temp)) {
+	    if (strsrch (temp, "-TAB"))
+		j = 0;
+	    }
 	if (j > 1) nax = nax + 1;
 	}
     naxes = nax;
@@ -1342,4 +1352,5 @@ char	*mchar;		/* Suffix character for one of multiple WCS */
  * Feb  1 2007	Read IRAF log wavelength flag DC-FLAG to wcs.logwcs
  * Feb 15 2007	Check for wcs->wcsproj > 0 instead of CTYPEi != LINEAR or PIXEL
  * Mar 13 2007	Try for RA, DEC, SECPIX if WCS character is space or null
+ * Apr 27 2007	Ignore axes with TAB WCS for now
  */

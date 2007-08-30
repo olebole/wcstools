@@ -1,5 +1,5 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** January 11, 2007
+ *** June 11, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2007
@@ -235,6 +235,13 @@ float ftgetr4(		/* Extract column for keyword from FITS table line
 	int x,		/* One-based horizontal pixel number */
 	int y);		/* One-based vertical pixel number */
     double maxvec(	/* Get maximum value in vector from a image */
+	char *image,	/* Image array from which to extract vector */
+	int bitpix,	/* Number of bits per pixel in image */
+	double bzero,	/* Zero point for pixel scaling */
+	double bscale,	/* Scale factor for pixel scaling */
+	int pix1,	/* Offset of first pixel to extract */
+	int npix);	/* Number of pixels to extract */
+    double minvec(	/* Get minimum value in vector from a image */
 	char *image,	/* Image array from which to extract vector */
 	int bitpix,	/* Number of bits per pixel in image */
 	double bzero,	/* Zero point for pixel scaling */
@@ -966,6 +973,7 @@ extern char *fits2iraf();
 extern double getpix();	/* Read one pixel from any data type 2-D array (0,0)*/
 extern double getpix1(); /* Read one pixel from any data type 2-D array (1,1)*/
 extern double maxvec(); /* Get maximum value in vector from a image */
+extern double minvec(); /* Get minimum value in vector from a image */
 extern void putpix();	/* Write one pixel to any data type 2-D array (0,0)*/
 extern void putpix1();	/* Write one pixel to any data type 2-D array (1,1) */
 extern void addpix();	/* Add to one pixel in any data type 2-D array (0,0)*/
@@ -1239,4 +1247,5 @@ void compnut();	/* Compute nutation in longitude and obliquity and mean obliquit
  *
  * Jan  9 2007	Add ANSI prototypes
  * Jan 11 2007	Add token subroutines from catutil.c/wcscat.h to fileutil.c
+ * Jun 11 2007	Add minvec() subroutine in imio.c
  */

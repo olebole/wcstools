@@ -1,5 +1,5 @@
 /* File getfits.c
- * January 10, 2007
+ * June 11, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -358,12 +358,14 @@ int	nkwd;
     double crpix1, crpix2;
     double cxpix, cypix;
     double ra, dec;
+    double bzero, bscale, dmin, dmax, drange;
     int offscl;
     int wp;             /* Image width in pixels (returned) */
     int hp;             /* Image height in pixels (returned) */
     double eqout=0.0;   /* Equinox to return (0=image, returned) */
     int ifrow1, ifrow2;	/* First and last rows to extract */
     int ifcol1, ifcol2;	/* First and last columns to extracT */
+    int npimage;        /* Number of pixels in image */
     int nbimage;        /* Number of bytes in image */
     int ikwd;
     char *endchar;
@@ -372,7 +374,7 @@ int	nkwd;
     char *kw, *kwl;
     int bitpix;
     int bytepix;
-    int nblock, nbleft, nbout;
+    int nblock, nbleft;
     int nrows, ncols;
     char rastr[32], decstr[32], cstr[32];
     char temp[80];
@@ -502,12 +504,25 @@ int	nkwd;
     hdel (header, "NAXIS3");
     hdel (header, "NAXIS4");
     hdel (header, "NAXIS5");
-    nbout = wp * bytepix;
-    nbimage = nbout * hp;
+    npimage = wp * hp;
+    nbimage = npimage * bytepix;
     nblock = nbimage / 2880;
     nbleft = (nblock + 1) * 2880 - nbimage;
     if (nbleft > 2880)
 	nbleft = 0;
+
+    /* Set data limits for scaling when converting image formats */
+    bscale = 1.0;
+    hgetr8 (header, "BSCALE", &bscale);
+    bzero = 0.0;
+    hgetr8 (header, "BZERO", &bzero);
+    dmin = minvec (newimage, bitpix, bzero, bscale, 0, npimage);
+    dmax = maxvec (newimage, bitpix, bzero, bscale, 0, npimage);
+    drange = dmax - dmin;
+    dmin = dmin - (0.2 * drange);
+    dmax = dmax + (0.2 * drange);
+    hputnr8 (header, "DATAMIN", 0, dmin);
+    hputnr8 (header, "DATAMAX", 0, dmax);
 
     /* Reset image WCS if present */
     if (ifcol1 > 1 || ifrow1 > 1) {
@@ -685,4 +700,5 @@ char *newname;
  * Jun 21 2006	Clean up code
  *
  * Jan 10 2007	Use range subroutines in library
+ * Jun 11 2007	Compute minimum and maximum data values in output image
  */

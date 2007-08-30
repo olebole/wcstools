@@ -1,5 +1,5 @@
 /*** File libwcs/tabread.c
- *** March 13, 2007
+ *** July 23, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2007
@@ -45,7 +45,8 @@
  * int tabhgeti4()	Return 4-byte integer keyword value from header
  * int tabhgetc()	Return character keyword value from header
  * int tabparse()	Make a table of column headings
- * int tabcol()		Search a table of column headings for a particlar entry
+ * int tabcol()		Find entry in a table of column headings (case-dependent)
+ * int tabccol()	Find entry in a table of column headings (case-independent)
  * int tabsize()	Return length of file in bytes
  * int istab()		Return 1 if first line of file contains a tab, else 0
  */
@@ -66,6 +67,7 @@ static int tabhgetr8();
 static int tabhgeti4();
 static int tabhgetc();
 static int tabcont();
+static int tabccont();
 static int tabsize();
 static int nndec = 0;
 static int verbose = 0;
@@ -229,11 +231,13 @@ int	nlog;
 	/* Set magnitude to test */
 	if (sc->nmag > 0) {
 	    magt = star->xmag[magsort];
-	    imag = 0;
-	    while (magt == 99.90 && imag < sc->nmag)
-		magt = star->xmag[imag++];
-	    if (magt > 100.0)
-		magt = magt - 100.0;
+	    if (sortmag < 1) {
+		imag = 0;
+		while (magt == 99.90 && imag < sc->nmag)
+		    magt = star->xmag[imag++];
+		if (magt > 100.0)
+		    magt = magt - 100.0;
+		}
 	    }
 	else
 	    magt = mag1;
@@ -1017,18 +1021,14 @@ int	nlog;
 	}
 
     /* Find columns for X and Y */
-    if (!(entx = tabcol (startab, "X")))
-	entx = tabcol (startab, "x");
-    if (!(enty = tabcol (startab, "Y")))
-	enty = tabcol (startab, "y");
+    entx = tabccol (startab, "x");
+    enty = tabccol (startab, "y");
 
     /* Find column for magnitude */
-    if (!(entmag = tabcol (startab, "MAG"))) {
-	if (!(entmag = tabcol (startab, "mag"))) {
-	    if (!(entmag = tabcol (startab, "magv"))) {
-		if (!(entmag = tabcol (startab, "magj")))
-		    entmag = tabcol (startab, "magr");
-		}
+    if (!(entmag = tabccol (startab, "mag"))) {
+	if (!(entmag = tabccol (startab, "magv"))) {
+	    if (!(entmag = tabccol (startab, "magj")))
+		entmag = tabccol (startab, "magr");
 	    }
 	}
 
@@ -1235,23 +1235,27 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
     /* Find column and name of object identifier */
     sc->entid = -1;
     sc->keyid[0] = (char) 0;
-    if ((sc->entid = tabcol (startab, "ID")))
-	strcpy (sc->keyid, "ID");
-    else if ((sc->entid = tabcol (startab, "id")))
-	strcpy (sc->keyid, "id");
-    else if ((sc->entid = tabcont (startab, "_id"))) {
+    if ((sc->entid = tabccol (startab, "id"))) {
 	i = sc->entid - 1;
 	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
 	}
-    else if ((sc->entid = tabcont (startab, "ID"))) {
+    else if ((sc->entid = tabccont (startab, "_id"))) {
 	i = sc->entid - 1;
 	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
 	}
-    else if ((sc->entid = tabcont (startab, "num"))) {
+    else if ((sc->entid = tabccont (startab, "id"))) {
 	i = sc->entid - 1;
 	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
 	}
-    else if ((sc->entid = tabcont (startab, "name"))) {
+    else if ((sc->entid = tabccont (startab, "num"))) {
+	i = sc->entid - 1;
+	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
+	}
+    else if ((sc->entid = tabccont (startab, "name"))) {
+	i = sc->entid - 1;
+	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
+	}
+    else if ((sc->entid = tabccont (startab, "obj"))) {
 	i = sc->entid - 1;
 	strncpy (sc->keyid, startab->colname[i], startab->lcol[i]);
 	}
@@ -1275,33 +1279,31 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
     sc->entra = -1;
     sc->keyra[0] = (char) 0;
     if (sc->coorsys == WCS_GALACTIC) {
-	if ((sc->entra = tabcol (startab, "long_gal")))
+	if ((sc->entra = tabccol (startab, "long_gal")))
 	    strcpy (sc->keyra, "long_gal");
-	else if ((sc->entra = tabcol (startab, "long")))
+	else if ((sc->entra = tabccol (startab, "long")))
 	    strcpy (sc->keyra, "long_gal");
-	else if ((sc->entra = tabcont (startab, "long"))) {
+	else if ((sc->entra = tabccont (startab, "long"))) {
 	    i = sc->entra - 1;
 	    strncpy (sc->keyra, startab->colname[i], startab->lcol[i]);
 	    }
 	}
-    if (sc->coorsys == WCS_ECLIPTIC) {
-	if ((sc->entra = tabcol (startab, "long_ecl")))
+    else if (sc->coorsys == WCS_ECLIPTIC) {
+	if ((sc->entra = tabccol (startab, "long_ecl")))
 	    strcpy (sc->keyra, "long_ecl");
-	else if ((sc->entra = tabcol (startab, "long")))
+	else if ((sc->entra = tabccol (startab, "long")))
 	    strcpy (sc->keyra, "long_ecl");
-	else if ((sc->entra = tabcont (startab, "long"))) {
+	else if ((sc->entra = tabccont (startab, "long"))) {
 	    i = sc->entra - 1;
 	    strncpy (sc->keyra, startab->colname[i], startab->lcol[i]);
 	    }
 	}
     else {
-	if ((sc->entra = tabcol (startab, "RA")))
-	    strcpy (sc->keyra, "RA");
-	else if ((sc->entra = tabcol (startab, "ra")))
-	    strcpy (sc->keyra, "ra");
-	else if ((sc->entra = tabcol (startab, "Ra")))
-	    strcpy (sc->keyra, "ra");
-	else if ((sc->entra = tabcont (startab, "ra"))) {
+	if ((sc->entra = tabccol (startab, "ra"))) {
+	    i = sc->entra - 1;
+	    strncpy (sc->keyra, startab->colname[i], startab->lcol[i]);
+	    }
+	else if ((sc->entra = tabccont (startab, "ra"))) {
 	    i = sc->entra - 1;
 	    strncpy (sc->keyra, startab->colname[i], startab->lcol[i]);
 	    }
@@ -1311,33 +1313,35 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
     sc->entdec = -1;
     sc->keydec[0] = (char) 0;
     if (sc->coorsys == WCS_GALACTIC) {
-	if ((sc->entdec = tabcol (startab, "lat_gal")))
+	if ((sc->entdec = tabccol (startab, "lat_gal")))
 	    strcpy (sc->keydec, "lat_gal");
-	else if ((sc->entdec = tabcol (startab, "lat")))
+	else if ((sc->entdec = tabccol (startab, "lat")))
 	    strcpy (sc->keydec, "lat_gal");
-	else if ((sc->entdec = tabcont (startab, "lat"))) {
+	else if ((sc->entdec = tabccont (startab, "lat"))) {
 	    i = sc->entdec;
 	    strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
 	    }
 	}
-    if (sc->coorsys == WCS_ECLIPTIC) {
-	if ((sc->entdec = tabcol (startab, "lat_ecl")))
+    else if (sc->coorsys == WCS_ECLIPTIC) {
+	if ((sc->entdec = tabccol (startab, "lat_ecl")))
 	    strcpy (sc->keydec, "lat_ecl");
-	else if ((sc->entdec = tabcol (startab, "lat")))
+	else if ((sc->entdec = tabccol (startab, "lat")))
 	    strcpy (sc->keydec, "lat_ecl");
-	else if ((sc->entdec = tabcont (startab, "lat"))) {
+	else if ((sc->entdec = tabccont (startab, "lat"))) {
 	    i = sc->entdec;
 	    strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
 	    }
 	}
     else {
-	if ((sc->entdec = tabcol (startab, "DEC")))
-	    strcpy (sc->keydec, "DEC");
-	else if ((sc->entdec = tabcol (startab, "dec")))
+	if ((sc->entdec = tabccol (startab, "de(deg)"))) {
+	    i = sc->entdec;
 	    strcpy (sc->keydec, "dec");
-	else if ((sc->entdec = tabcol (startab, "Dec")))
-	    strcpy (sc->keydec, "dec");
-	else if ((sc->entdec = tabcont (startab, "dec"))) {
+	    }
+	else if ((sc->entdec = tabccol (startab, "dec"))) {
+	    i = sc->entdec;
+	    strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
+	    }
+	else if ((sc->entdec = tabccont (startab, "dec"))) {
 	    i = sc->entdec;
 	    strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
 	    }
@@ -1366,8 +1370,14 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	    sc->entmag[sc->nmag] = icol;
 	    sc->nmag++;
 	    }
+	else if (strcsrch (keyword, "dist")) {
+	    strcpy (sc->keymag[sc->nmag], keyword);
+	    sc->entmag[sc->nmag] = icol;
+	    sc->nmag++;
+	    }
 	else if ((keyword[0] == 'M' || keyword[0] == 'm') &&
-		 !strcsrch (keyword, "err")) {
+		 !strcsrch (keyword, "err") &&
+		 !strcsrch (keyword, "flag")) {
 	    strcpy (sc->keymag[sc->nmag], keyword);
 	    sc->entmag[sc->nmag] = icol;
 	    sc->nmag++;
@@ -1377,25 +1387,29 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
     /* Find column and name of object right ascension proper motion */
     sc->entrpm = -1;
     sc->keyrpm[0] = (char) 0;
-    if ((sc->entrpm = tabcol (startab, "ura")))
+    if ((sc->entrpm = tabccol (startab, "ura")))
 	strcpy (sc->keyrpm, "ura");
-    else if ((sc->entrpm = tabcol (startab, "rapm")))
+    else if ((sc->entrpm = tabccol (startab, "rapm")))
 	strcpy (sc->keyrpm, "rapm");
-    else if ((sc->entrpm = tabcol (startab, "pmra")))
+    else if ((sc->entrpm = tabccol (startab, "pmra")))
 	strcpy (sc->keyrpm, "pmra");
-    else if ((sc->entrpm = tabcol (startab, "ux")))
+    else if ((sc->entrpm = tabccol (startab, "dra")))
+	strcpy (sc->keyrpm, "dra");
+    else if ((sc->entrpm = tabccol (startab, "ux")))
 	strcpy (sc->keyrpm, "ux");
 
     /* Find column and name of object declination proper motion */
     sc->entdpm = -1;
     sc->keydpm[0] = (char) 0;
-    if ((sc->entdpm = tabcol (startab, "udec")))
+    if ((sc->entdpm = tabccol (startab, "udec")))
 	strcpy (sc->keydpm, "udec");
-    else if ((sc->entdpm = tabcol (startab, "decpm")))
+    else if ((sc->entdpm = tabccol (startab, "decpm")))
 	strcpy (sc->keydpm, "decpm");
-    else if ((sc->entdpm = tabcol (startab, "pmdec")))
+    else if ((sc->entdpm = tabccol (startab, "pmdec")))
 	strcpy (sc->keydpm, "pmdec");
-    else if ((sc->entdpm = tabcol (startab, "uy")))
+    else if ((sc->entrpm = tabccol (startab, "ddec")))
+	strcpy (sc->keyrpm, "ddec");
+    else if ((sc->entdpm = tabccol (startab, "uy")))
 	strcpy (sc->keydpm, "uy");
 
     /* Find units for RA proper motion */
@@ -1417,6 +1431,8 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	    sc->rpmunit = PM_MTSYR;
 	else if (!strcmp (cstr, "arcsec/yr") || !strcmp (cstr, "arcsec/year"))
 	    sc->rpmunit = PM_ARCSECYR;
+	else if (!strcmp (cstr, "arcsec/hr") || !strcmp (cstr, "arcsec/hour"))
+	    sc->rpmunit = PM_ARCSECHR;
 	else if (!strcmp (cstr, "arcsec/cen") || !strcmp (cstr, "arcsec/century"))
 	    sc->rpmunit = PM_ARCSECCEN;
 	else if (!strcmp (cstr, "rad/yr") || !strcmp (cstr, "rad/year"))
@@ -1449,6 +1465,8 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	    sc->dpmunit = PM_ARCSECYR;
 	else if (!strcmp (cstr, "tsec/yr") || !strcmp (cstr, "tsec/year"))
 	    sc->dpmunit = PM_ARCSECYR;
+	else if (!strcmp (cstr, "arcsec/hr") || !strcmp (cstr, "arcsec/hour"))
+	    sc->dpmunit = PM_ARCSECHR;
 	else if (!strcmp (cstr, "arcsec/cen") || !strcmp (cstr, "arcsec/century"))
 	    sc->dpmunit = PM_ARCSECCEN;
 	else if (!strcmp (cstr, "arcsec/yr") || !strcmp (cstr, "arcsec/year"))
@@ -1463,18 +1481,18 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 
     /* Find column for parallax */
     sc->entpx = 0;
-    sc->entpx = tabcol (startab, "px");
+    sc->entpx = tabccol (startab, "px");
 
     /* Find column for parallax error */
     sc->entpxe = 0;
-    sc->entpxe = tabcol (startab, "pxerr");
+    sc->entpxe = tabccol (startab, "pxerr");
 
     /* Find column for radial velocity */
     sc->entrv = 0;
     sc->keyrv[0] = (char) 0;
-    if ((sc->entrv = tabcol (startab, "rv")))
+    if ((sc->entrv = tabccol (startab, "rv")))
 	strcpy (sc->keyrv, "rv");
-    else if ((sc->entrv = tabcol (startab, "cz")))
+    else if ((sc->entrv = tabccol (startab, "cz")))
 	strcpy (sc->keyrv, "cz");
     if (sc->entrv > 0 && sc->nmag < 10) {
 	strcpy (sc->keymag[sc->nmag], sc->keyrv);
@@ -1485,9 +1503,9 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
     /* Find column for epoch */
     sc->entepoch = 0;
     sc->keyepoch[0] = (char) 0;
-    if ((sc->entepoch = tabcol (startab, "epoch")))
+    if ((sc->entepoch = tabccol (startab, "epoch")))
 	strcpy (sc->keyepoch, "epoch");
-    else if ((sc->entepoch = tabcol (startab, "ep")))
+    else if ((sc->entepoch = tabccol (startab, "ep")))
 	strcpy (sc->keyepoch, "ep");
     if (sc->entepoch > 0 && sc->nmag < 10) {
 	strcpy (sc->keymag[sc->nmag], sc->keyepoch);
@@ -1498,24 +1516,24 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 
     /* Find column for date (in FITS format as epoch alternate) */
     sc->entdate = 0;
-    sc->entdate = tabcol (startab, "date");
+    sc->entdate = tabccol (startab, "date");
 
     /* Find column and name of object peak or plate number */
     sc->entpeak = -1;
     sc->keypeak[0] = (char) 0;
-    if ((sc->entpeak = tabcol (startab, "PEAK")))
+    if ((sc->entpeak = tabccol (startab, "PEAK")))
 	strcpy (sc->keypeak, "PEAK");
-    else if ((sc->entpeak = tabcol (startab, "peak")))
+    else if ((sc->entpeak = tabccol (startab, "peak")))
 	strcpy (sc->keypeak, "peak");
-    else if ((sc->entpeak = tabcol (startab, "plate"))) {
+    else if ((sc->entpeak = tabccol (startab, "plate"))) {
 	strcpy (sc->keypeak, "plate");
 	sc->plate = 1;
 	}
-    else if ((sc->entpeak = tabcol (startab, "field"))) {
+    else if ((sc->entpeak = tabccol (startab, "field"))) {
 	strcpy (sc->keypeak, "field");
 	sc->plate = 1;
 	}
-    else if ((sc->entpeak = tabcol (startab, "Class"))) {
+    else if ((sc->entpeak = tabccol (startab, "Class"))) {
 	strcpy (sc->keypeak, "class");
 	sc->plate = 1;
 	}
@@ -1523,23 +1541,19 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	strcpy (sc->keypeak, "class");
 	sc->plate = 1;
 	}
-    else if ((entpmq = tabcol (startab, "pm")) > 0 &&
-	     (entnid = tabcol (startab, "ni")) > 0) {
+    else if ((entpmq = tabccol (startab, "pm")) > 0 &&
+	     (entnid = tabccol (startab, "ni")) > 0) {
 	sc->entpeak = (entpmq * 100) + entnid;
 	}
 
     /* Find column and name of object spectral type */
     sc->enttype = 0;
     sc->keytype[0] = (char) 0;
-    if ((sc->enttype = tabcol (startab, "SpT")))
+    if ((sc->enttype = tabccol (startab, "SpT")))
 	strcpy (sc->keytype, "spt");
-    else if ((sc->enttype = tabcol (startab, "spt")))
-	strcpy (sc->keytype, "spt");
-    else if ((sc->enttype = tabcol (startab, "TYPE")))
-	strcpy (sc->keytype, "TYPE");
-    else if ((sc->enttype = tabcol (startab, "type")))
+    else if ((sc->enttype = tabccol (startab, "TYPE")))
 	strcpy (sc->keytype, "type");
-    else if ((sc->enttype = tabcont (startab, "typ"))) {
+    else if ((sc->enttype = tabccont (startab, "typ"))) {
 	i = sc->enttype - 1;
 	strncpy (sc->keytype, startab->colname[i], startab->lcol[i]);
 	}
@@ -1549,7 +1563,7 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
     sc->entadd = -1;
     sc->keyadd[0] = (char) 0;
     if (kwo != NULL) {
-	sc->entadd = tabcol (startab, kwo);
+	sc->entadd = tabccol (startab, kwo);
 	strcpy (sc->keyadd, kwo);
 	}
 
@@ -2365,7 +2379,7 @@ char	*keyword;		/* column header of desired value */
 char	*string;		/* character string (returned) */
 int	maxchar;	/* Maximum number of characters in returned string */
 {
-    int ientry = tabcol (tabtable, keyword);
+    int ientry = tabccol (tabtable, keyword);
 
     return (tabgetc (tabtok, ientry, string, maxchar));
 }
@@ -2583,6 +2597,30 @@ char	*keyword;		/* Column heading to find */
     for (i = 0; i < tabtable->ncols; i++) {
 	lcol = tabtable->lcol[i];
 	if (lcol == lkey &&
+	    !strncmp (keyword, tabtable->colname[i], lcol)) {
+	    return (i + 1);
+	    }
+	}
+    return (0);
+}
+
+
+
+/* Search table of column headings for a particlar entry (case-independent) */
+
+int
+tabccol (tabtable, keyword)
+
+struct TabTable *tabtable;	/* Tab table structure */
+char	*keyword;		/* Column heading to find */
+
+{
+    int i, lkey, lcol;
+    lkey = strlen (keyword);
+
+    for (i = 0; i < tabtable->ncols; i++) {
+	lcol = tabtable->lcol[i];
+	if (lcol == lkey &&
 	    !strncasecmp (keyword, tabtable->colname[i], lcol)) {
 	    return (i + 1);
 	    }
@@ -2609,6 +2647,27 @@ char	*keyword;		/* Part of column heading to find */
 	}
     return (0);
 }
+
+
+/* Search table of column headings for first with string (case-independent) */
+
+static int
+tabccont (tabtable, keyword)
+
+struct TabTable *tabtable;	/* Tab table structure */
+char	*keyword;		/* Part of column heading to find */
+
+{
+    int i;
+
+    for (i = 0; i < tabtable->ncols; i++) {
+	if (strncsrch (tabtable->colname[i], keyword, tabtable->lcol[i])) {
+	    return (i + 1);
+	    }
+	}
+    return (0);
+}
+
 
 
 /* TABSIZE -- return size of file in bytes */
@@ -2824,4 +2883,10 @@ char    *filename;      /* Name of file to check */
  * Jan 11 2007	Switch order of wcscat.h and fitsfile.h includes
  * Mar 13 2007	Return object name if first character of ID is non-numeric
  * Mar 13 2007	Check for "Class" for GSC2 object class
+ * Jul  9 2007	Reject mflag as a magnitude
+ * Jul  9 2007	Sort by designated magnitude only unless sort mag is 0
+ * Jul 18 2007	Add tabccol() and tabccont() case-insensitive header searches
+ * Jul 19 2007	Add proper motion in arsec/hour for solar system objects
+ * Jul 23 2007	Add ...obj... as possible identifier
+ * Jul 23 2007	Add ...dist... as possible "magnitude"
  */

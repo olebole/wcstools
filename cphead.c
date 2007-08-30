@@ -1,5 +1,5 @@
 /* File cphead.c
- * January 10, 2007
+ * May 15, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -40,6 +40,7 @@ static void CopyValues();
 extern char *GetFITShead();
 
 static int verbose = 0;		/* verbose/debugging flag */
+static int copyall = 0;		/* Copy entire header, overwriting old one */
 static int nfile = 0;
 static int ndec0 = -9;
 static int maxlfn = 0;
@@ -97,6 +98,10 @@ char **av;
 	    char c;
 	    while ((c = *++str))
 	    switch (c) {
+
+		case 'a':	/* Copy entire header */
+		    copyall++;
+		    break;
 
 		case 'd': /* Root directory for input */
 		    if (ac < 2)
@@ -273,7 +278,7 @@ char **av;
 
     if (nkwd <= 0 && nfile <= 0 )
 	usage ();
-    else if (nkwd <= 0) {
+    else if (!copyall && nkwd <= 0) {
 	fprintf (stderr, "CPHEAD: no keywords specified\n");
 	exit (1);
 	}
@@ -320,6 +325,7 @@ usage ()
     fprintf(stderr,"Usage: cphead [-v][-d dir][-p num] file1.fit ... filen.fits kw1 kw2 ... kwn\n");
     fprintf(stderr,"  or : cphead [-v][-d dir][-p num] file1.fit @filelist kw1 kw2 ... kwn\n");
     fprintf(stderr,"  or : cphead [-v][-d dir][-p num] file1.fit @filelist @kwlist\n");
+    fprintf(stderr,"  -a: Replace header of 2nd file with that from first\n");
     fprintf(stderr,"  -d: Root directory for input files (default is cwd)\n");
     fprintf(stderr,"  -h: Write HISTORY line\n");
     fprintf(stderr,"  -k: Write CPHEAD keyword\n");
@@ -424,12 +430,21 @@ char	*kwd[];		/* Names of keywords for which to copy values */
     /* Allocate output FITS header and copy original header into it */
     nbheader = strlen (header);
     nbheadin = nbhead;
-    nbheadout = nbheadin + (nkwd * 80);
-    headout = (char *) calloc (nbheadout, 1);
-    strncpy (headout, headin, nbheadin);
+    if (copyall) {
+	nbhead = strlen (header);
+	headout = header;
+	}
+    else {
+	nbheadout = nbheadin + (nkwd * 80);
+	headout = (char *) calloc (nbheadout, 1);
+	strncpy (headout, headin, nbheadin);
+	}
 
     if (verbose) {
-	fprintf (stderr,"Read %d Header Parameter Values from ", nkwd);
+	if (copyall)
+	    fprintf (stderr,"Copy Header from ");
+	else
+	    fprintf (stderr,"Read %d Header Parameter Values from ", nkwd);
 	hgeti4 (header, "IMHVER", &iraffile );
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", infile);
@@ -484,7 +499,7 @@ char	*kwd[];		/* Names of keywords for which to copy values */
 	    notfound++;
 	}
 
-    if (nfound < 1) {
+    if (nfound < 1 && !copyall) {
 	if (verbose)
 	    fprintf (stderr, "No keywords on list in input file %s\n", infile);
 	return;
@@ -661,4 +676,5 @@ char	*kwd[];		/* Names of keywords for which to copy values */
  * Jun 29 2006	Rename strclean() strfix() and move to hget.c
  *
  * Jan 10 2007	Add second set of parentheses in line 100 if clause
+ * May 15 2007	Add -a option to copy an entire header from one image to another
  */

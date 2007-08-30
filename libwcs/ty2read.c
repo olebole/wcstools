@@ -1,5 +1,5 @@
 /*** File libwcs/ty2read.c
- *** January 10, 2007
+ *** July 9, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2000-2007
@@ -105,6 +105,7 @@ int	nlog;		/* 1 for diagnostics */
     int verbose;
     int wrap;
     int ireg;
+    int ierr;
     int magsort, magsort1;
     int jstar, iw;
     int nrmax = MAXREG;
@@ -253,9 +254,12 @@ int	nlog;		/* 1 for diagnostics */
 
 	    /* Loop through catalog for this region */
 	    for (istar = istar1; istar < istar2; istar++) {
-		if (ty2star (starcat, star, istar)) {
-		    fprintf (stderr,"TY2READ: Cannot read star %d\n", istar);
-		    break;
+		if ((ierr = ty2star (starcat, star, istar))) {
+		    /* fprintf (stderr,"TY2READ: Cannot read star %d\n", istar); */
+		    if (ierr < 3)
+			break;
+		    else
+			continue;
 		    }
 
 		/* ID number */
@@ -477,8 +481,9 @@ int	nlog;		/* 1 for diagnostics */
 
     int verbose;
     int rnum;
+    int ierr;
     int jstar;
-    int istar, istar1, istar2, nstar;
+    int istar, istar1, istar2, jstar1, jstar2, nstar;
 /*    int isp; */
     double num, ra, dec, rapm, decpm, magb, magv;
 
@@ -513,8 +518,8 @@ int	nlog;		/* 1 for diagnostics */
 		return (0);
 		}
 	    for (istar = istar1; istar < istar2; istar++) {
-		if (ty2star (starcat, star, istar)) {
-		    fprintf (stderr,"TY2RNUM: Cannot read star %d\n", istar);
+		if ((ierr = ty2star (starcat, star, istar))) {
+		    /* fprintf (stderr,"TY2RNUM: Cannot read star %d\n", istar); */
 		    gra[jstar] = 0.0;
 		    gdec[jstar] = 0.0;
 		    gmag[0][jstar] = 0.0;
@@ -522,6 +527,8 @@ int	nlog;		/* 1 for diagnostics */
 		    gmag[2][jstar] = 0.0;
 		    gmag[3][jstar] = 0.0;
 		    gtype[jstar] = 0;
+		    if (ierr < 3)
+			break;
 		    }
 		else {
 		    if (fabs (gnum[jstar] - star->num) < 0.0000005)
@@ -532,14 +539,18 @@ int	nlog;		/* 1 for diagnostics */
 	    }
 	/* Find nth sequential stars in catalog (not rrrr.nnnnn) */
 	else {
+	    /* Find out whether file has CR/LF or LF only at end of lines */
+	    rnum = 1;
+	    ty2regn (rnum, &jstar1, &jstar2, verbose);
+
 	    istar = (int) (gnum[jstar] + 0.01);
 	    starcat = ty2open (istar, 10);
     	    if (starcat == NULL) {
 		fprintf (stderr,"TY2RNUM: File %s not found\n",inpath);
 		return (0);
 		}
-	    if (ty2star (starcat, star, istar)) {
-		fprintf (stderr,"TY2RNUM: Cannot read star %d\n", istar);
+	    if ((ierr = ty2star (starcat, star, istar))) {
+		/* fprintf (stderr,"TY2RNUM: Cannot read star %d\n", istar); */
 		gra[jstar] = 0.0;
 		gdec[jstar] = 0.0;
 		gmag[0][jstar] = 0.0;
@@ -549,7 +560,10 @@ int	nlog;		/* 1 for diagnostics */
 		    gmag[3][jstar] = 0.0;
 		    }
 		gtype[jstar] = 0;
-		continue;
+		if (ierr < 3)
+		    break;
+		else
+		    continue;
 		}
 	    ty2close (starcat);
 	    }
@@ -639,6 +653,7 @@ int	nlog;		/* 1 for diagnostics */
     int verbose;
     int wrap;
     int ireg;
+    int ierr;
     int magsort;
     int jstar, iw;
     int nrmax = MAXREG;
@@ -747,9 +762,12 @@ int	nlog;		/* 1 for diagnostics */
 
 	    /* Loop through catalog for this region */
 	    for (istar = istar1; istar < istar2; istar++) {
-		if (ty2star (starcat, star, istar)) {
-		    fprintf (stderr,"TY2BIN: Cannot read star %d\n", istar);
-		    break;
+		if ((ierr = ty2star (starcat, star, istar))) {
+		    /* fprintf (stderr,"TY2BIN: Cannot read star %d\n", istar); */
+		    if (ierr < 3)
+			break;
+		    else
+			continue;
 		    }
 
 		/* ID number */
@@ -1289,12 +1307,16 @@ int istar;	/* Star sequence number in Tycho 2 catalog region file */
     double regnum, starnum, multnum;
 
     /* Drop out if catalog pointer is not set */
-    if (sc == NULL)
+    if (sc == NULL) {
+	fprintf (stderr, "TY2STAR:  Catalog pointer not set\n");
 	return (1);
+	}
 
     /* Drop out if catalog is not open */
-    if (sc->ifcat == NULL)
+    if (sc->ifcat == NULL) {
+	fprintf (stderr, "TY2STAR:  Catalog is not open\n");
 	return (2);
+	}
 
     /* Drop out if star number is too large */
     if (istar > sc->nstars) {
@@ -1317,8 +1339,8 @@ int istar;	/* Star sequence number in Tycho 2 catalog region file */
 
     /* Read catalog entry */
     if (sc->nbent > sc->catlast-line) {
-	fprintf (stderr, "TY2STAR:  %d / %d bytes read\n",
-		 sc->catlast - line, sc->nbent);
+	fprintf (stderr, "TY2STAR:  %d / %d bytes read for star %d\n",
+		 sc->catlast - line, sc->nbent, istar);
 	return (5);
 	}
 
@@ -1326,6 +1348,11 @@ int istar;	/* Star sequence number in Tycho 2 catalog region file */
     starnum = atof (line+5);
     multnum = atof (line+11);
     st->num = regnum + (0.0001 * starnum) + (0.00001 * multnum);
+
+    if (line[13] == 'X') {
+	fprintf (stderr, "TY2STAR:  No position for star %010.5f\n", st->num);
+	return (6);
+	}
 
     /* Read position in degrees */
     st->ra = atof (line+15);
@@ -1430,4 +1457,8 @@ char	*filename;	/* Name of file for which to find size */
  * Jan 10 2007	Add dradi argument to webread() call
  * Jan 10 2007	Add match=1 argument to webrnum()
  * Jan 10 2007	Rewrite web access in ty2rnum() to reduce code
+ * Jul  6 2007	Skip stars with no positions (=unfound Guide Stars?)
+ * Jul  6 2007	Skip stars with entry read errors; stop if catalog problem
+ * Jul  6 2007	Print read errors in ty2star() only
+ * Jun  9 2007	Fix bug so that sequential catalog entry reading works
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/fitswcs.c
- *** April 2, 2007
+ *** April 18, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2007
@@ -277,6 +277,16 @@ int verbose;
 	    }
 	else if (verbose)
 	    fprintf (stderr,"DelWCS: EPOCH, but not EQUINOX found\n");
+	}
+
+    /* Delete IMWCS result keywords, if present */
+    if (ksearch (header, "WCSMATCH")) {
+	hdel (header, "WCSMATCH");
+	hdel (header, "WCSRFCAT");
+	hdel (header, "WCSIMCAT");
+	hdel (header, "WCSNREF");
+	hdel (header, "WCSTOL");
+	hdel (header, "WCSSEP");
 	}
 
     /* Delete SAO polynomial, if present */
@@ -634,5 +644,6 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Jun  1 2006	Fix bug so CD matrix is deleted by DelWCSFITS()
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  *
- * APr  2 2007	Fix DelWCSFITS() argument description at top of file
+ * Apr  2 2007	Fix DelWCSFITS() argument description at top of file
+ * Apr 18 2007	Delete WCS result keywords with DelWCSFITS()
  */

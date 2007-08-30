@@ -35,7 +35,6 @@
 #define MAXCOL 500
 #define MAXCOND 10
 #define MAXFILES 1000
-#define MAXLINES 5000
 
 static void usage();
 static void PrintValues();

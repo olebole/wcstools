@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** March 13, 2007
+ *** July 13, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2007
@@ -187,6 +187,14 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	*epcat = 2000.0;
 	*catprop = 0;
 	*nmag = 5;
+	}
+    else if (refcat == SKYBOT) {
+	strcpy (title, "SkyBot Sources");
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	*catprop = 1;
+	*nmag = 3;
 	}
     else if (refcat == UB1) {
 	strcpy (title, "USNO-B1.0 Sources");
@@ -474,6 +482,9 @@ char	*refcatname;	/* Name of reference catalog */
     else if (strncasecmp(refcatname,"sdss",4)==0 &&
 	     strcsrch(refcatname, ".tab") == NULL)
 	refcat = SDSS;
+    else if (strncasecmp(refcatname,"skyb",4)==0 &&
+	     strcsrch(refcatname, ".tab") == NULL)
+	refcat = SKYBOT;
     else if (strncasecmp(refcatname,"gs",2)==0 &&
 	     strcsrch(refcatname, ".tab") == NULL)
 	refcat = GSC;
@@ -706,6 +717,8 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "2MASS PSC IDR2");
     else if (refcat ==  SKY2K)	/* SKY2000 Master Catalog */
 	strcpy (catname, "SKY2000");
+    else if (refcat ==  SKYBOT)	/* SkyBot Solar System Objects */
+	strcpy (catname, "SkyBot");
     return (catname);
 }
 
@@ -799,6 +812,8 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "2MASS-IDR2 Point Sources");
     else if (refcat ==  SKY2K)	/* SKY2000 Master Catalog */
 	strcpy (catname, "SKY2000 Catalog Stars");
+    else if (refcat ==  SKYBOT)	/* SkyBot Solar System Objects */
+	strcpy (catname, "SkyBot Objects");
     return (catname);
 }
 
@@ -859,6 +874,8 @@ int	refcat;		/* Catalog code */
 	strcpy (catid,"hip_id ");
     else if (refcat == SKY2K)
 	strcpy (catid,"sky_id ");
+    else if (refcat == SKYBOT)
+	strcpy (catid,"skybot_id ");
     else
 	strcpy (catid,"id              ");
 
@@ -885,7 +902,8 @@ int	refcat;		/* Catalog code */
 	return (900.0);
     else if (refcat==GSC2)
 	return (120.0);
-    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat == SKY2K)
+    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat == SKY2K ||
+	    refcat==SKYBOT)
 	return (5000.0);
     else
 	return (1800.0);
@@ -1021,6 +1039,10 @@ char *progname;	/* Program name which might contain catalog code */
     else if (strcsrch (progname,"sky2k") != NULL) {
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "sky2k");
+	}
+    else if (strcsrch (progname,"skybot") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "skybot");
 	}
     else if (strcsrch (progname,"2mp") != NULL ||
 	strcsrch (progname,"tmc") != NULL) {
@@ -1276,6 +1298,10 @@ int	nndec;		/* Number of decimal places ( >= 0) */
     else if (refcat == SDSS)
 	return (18);
 
+    /* SkyBot Objects */
+    else if (refcat == SKYBOT)
+	return (6);
+
     /* HST Guide Star Catalog */
     else if (refcat == GSC || refcat == GSCACT)
 	return (9);
@@ -1358,6 +1384,10 @@ int	refcat;		/* Catalog code */
 
     /* SDSS */
     else if (refcat == SDSS)
+	return (0);
+
+    /* SkyBot */
+    else if (refcat == SKYBOT)
 	return (0);
 
     /* 2MASS Point Source Catalog */
@@ -1479,9 +1509,17 @@ char	*magname;	/* Name of magnitude, returned */
 	if (imag == 2)
 	    strcpy (magname, "MagJ");
 	else if (imag == 3)
-	    strcpy (magname, "MagV");
-	else if (imag == 4)
 	    strcpy (magname, "MagN");
+	else if (imag == 4)
+	    strcpy (magname, "MagU");
+	else if (imag == 5)
+	    strcpy (magname, "MagB");
+	else if (imag == 6)
+	    strcpy (magname, "MagV");
+	else if (imag == 7)
+	    strcpy (magname, "MagR");
+	else if (imag == 8)
+	    strcpy (magname, "MagI");
 	else
 	    strcpy (magname, "MagF");
 	}
@@ -1517,6 +1555,8 @@ char	*magname;	/* Name of magnitude, returned */
 	else if (imag == 6)
 	    strcpy (magname, "MagKe");
 	}
+    else if (refcat==SKYBOT)
+	strcpy (magname, "MagV");
     else
 	strcpy (magname, "Mag");
     return;
@@ -1565,6 +1605,9 @@ int	refcat;		/* Catalog code */
 	else
 	    return (3);	/* J */
 	}
+    else if (refcat == SKYBOT) {
+	return (1);
+	}
     else if (refcat == SDSS) {
 	if (cmag == 'Z')
 	    return (5);
@@ -1588,10 +1631,18 @@ int	refcat;		/* Catalog code */
     else if (refcat==GSC2) {
 	if (cmag == 'J')
 	    return (2);
-	else if (cmag == 'V')
-	    return (3);
 	else if (cmag == 'N')
+	    return (3);
+	else if (cmag == 'U')
 	    return (4);
+	else if (cmag == 'B')
+	    return (5);
+	else if (cmag == 'V')
+	    return (6);
+	else if (cmag == 'R')
+	    return (7);
+	else if (cmag == 'I')
+	    return (8);
 	else
 	    return (1);	/* F */
 	}
@@ -3204,4 +3255,6 @@ double	*a;	/* Vector containing coeffiecients */
  * Jan 10 2007	Add polynomial fitting subroutines from polfit.c
  * Jan 11 2007	Move token access subroutines to fileutil.c
  * Mar 13 2007	Set title accordingly for gsc22 and gsc23 and gsc2 options
+ * Jul  8 2007	Set up 8 magnitudes for GSC 2.3 from GALEX
+ * Jul 13 2007	Add SkyBot solar system object search
  */

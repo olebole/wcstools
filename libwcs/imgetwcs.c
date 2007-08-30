@@ -1,8 +1,8 @@
 /*** File libwcs/imgetwcs.c
- *** October 30, 2006
+ *** July 26, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2006
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -61,6 +61,8 @@ static char ctypes[32][4];		/* 3-letter codes for projections */
 static int usecdelt = 0;		/* Use CDELT if 1, else CD matrix */
 static char *dateobs0 = NULL;		/* Initial DATE-OBS value in FITS date format */
 
+struct WorldCoor *ChangeFITSWCS();
+
 /* Set a nominal world coordinate system from image header info.
  * If the image center is not FK5 (J2000) equinox, convert it
  * Return a WCS structure if OK, else return NULL
@@ -83,169 +85,18 @@ int	*hp;		/* Image height in pixels (returned) */
 int	*sysout;	/* Coordinate system to return (0=image, returned) */
 double	*eqout;		/* Equinox to return (0=image, returned) */
 {
-    int nax, naxes;
-    double eq1, xref, yref, degpix, ra1, dec1, x, y, dx, dy;
+    int naxes;
+    double eq1, x, y;
+    double ra1, dec1, dx, dy;
     double xmin, xmax, ymin, ymax, ra2, dec2, ra3, dec3, ra4, dec4;
     double dra0, dra1, dra2, dra3, dra4;
     struct WorldCoor *wcs;
-    char rstr[64], dstr[64], temp[16], cstr[16];
-    char *cwcs;
+    char rstr[64], dstr[64], cstr[16];
 
-    /* Set the world coordinate system from the image header */
-    cwcs = strchr (filename, '%');
-    if (cwcs != NULL)
-	cwcs++;
-
-    /* Set image dimensions */
-    nax = 0;
-    if (hp0 > 0 || wp0 > 0) {
-	*hp = hp0;
-	*wp = wp0;
-	if (*hp > 0 && *wp > 0)
-	    nax = 2;
-	else
-	    nax = 1;
-	hputi4 (header, "NAXIS", nax);
-	hputi4 (header, "NAXIS1", *wp);
-	hputi4 (header, "NAXIS2", *hp);
-	}
-    else if (hgeti4 (header,"NAXIS",&nax) < 1)
-	return (NULL);
-    else {
-	if (hgeti4 (header,"NAXIS1",wp) < 1)
-	    return (NULL);
-	else {
-	    if (hgeti4 (header,"NAXIS2",hp) < 1)
-		return (NULL);
-	    }
-	}
-
-    /* Set plate center from command line, if it is there */
-    if (ra0 > -99.0 && dec0 > -99.0) {
-	hputnr8 (header, "CRVAL1" ,8,ra0);
-	hputnr8 (header, "CRVAL2" ,8,dec0);
-	hputra (header, "RA", ra0);
-	hputdec (header, "DEC", dec0);
-	if (comsys == WCS_B1950) {
-	    hputi4 (header, "EPOCH", 1950);
-	    hputi4 (header, "EQUINOX", 1950);
-	    hputs (header, "RADECSYS", "FK4");
-	    }
-	else {
-	    hputi4 (header, "EPOCH", 2000);
-	    hputi4 (header, "EQUINOX", 2000);
-	    if (comsys == WCS_GALACTIC)
-		hputs (header, "RADECSYS", "GALACTIC");
-	    else if (comsys == WCS_ECLIPTIC)
-		hputs (header, "RADECSYS", "ECLIPTIC");
-	    else if (comsys == WCS_ICRS)
-		hputs (header, "RADECSYS", "ICRS");
-	    else
-		hputs (header, "RADECSYS", "FK5");
-	    }
-	if (hgetr8 (header, "SECPIX", secpix)) {
-	    degpix = *secpix / 3600.0;
-	    hputnr8 (header, "CDELT1", 8, -degpix);
-	    hputnr8 (header, "CDELT2", 8, degpix);
-	    hdel (header, "CD1_1");
-	    hdel (header, "CD1_2");
-	    hdel (header, "CD2_1");
-	    hdel (header, "CD2_2");
-	    } 
-	}
-    if (ptype0 > -1 && ptype0 < nctype) {
-	strcpy (temp,"RA---");
-	strcat (temp, ctypes[ptype0]);
-	hputs (header, "CTYPE1", temp);
-	strcpy (temp,"DEC--");
-	strcat (temp, ctypes[ptype0]);
-	hputs (header, "CTYPE2", temp);
-	}
-
-    /* Set reference pixel from command line, if it is there */
-    if (xref0 > -99999.0 && yref0 > -99999.0) {
-	hputr8 (header, "CRPIX1", xref0);
-	hputr8 (header, "CRPIX2", yref0);
-	}
-    else if (hgetr8 (header, "CRPIX1", &xref) < 1) {
-	xref = 0.5 + (double) *wp / 2.0;
-	yref = 0.5 + (double) *hp / 2.0;
-	hputnr8 (header, "CRPIX1", 3, xref);
-	hputnr8 (header, "CRPIX2", 3, yref);
-	}
-
-    /* Set plate scale from command line, if it is there */
-    if (secpix0 != 0.0 || cd0 != NULL) {
-	if (secpix2 != 0.0) {
-	    *secpix = 0.5 * (secpix0 + secpix2);
-	    hputnr8 (header, "SECPIX1", 5, secpix0);
-	    hputnr8 (header, "SECPIX2", 5, secpix2);
-	    degpix = -secpix0 / 3600.0;
-	    hputnr8 (header, "CDELT1", 8, degpix);
-	    degpix = secpix2 / 3600.0;
-	    hputnr8 (header, "CDELT2", 8, degpix);
-	    hdel (header, "CD1_1");
-	    hdel (header, "CD1_2");
-	    hdel (header, "CD2_1");
-	    hdel (header, "CD2_2");
-	    }
-	else if (secpix0 != 0.0) {
-	    *secpix = secpix0;
-	    hputnr8 (header, "SECPIX", 5, *secpix);
-	    degpix = *secpix / 3600.0;
-	    hputnr8 (header, "CDELT1", 8, -degpix);
-	    hputnr8 (header, "CDELT2", 8, degpix);
-	    hdel (header, "CD1_1");
-	    hdel (header, "CD1_2");
-	    hdel (header, "CD2_1");
-	    hdel (header, "CD2_2");
-	    }
-	else {
-	    hputr8 (header, "CD1_1", cd0[0]);
-	    hputr8 (header, "CD1_2", cd0[1]);
-	    hputr8 (header, "CD2_1", cd0[2]);
-	    hputr8 (header, "CD2_2", cd0[3]);
-	    hdel (header, "CDELT1");
-	    hdel (header, "CDELT2");
-	    hdel (header, "CROTA1");
-	    hdel (header, "CROTA2");
-	    }
-	if (!ksearch (header,"CRVAL1")) {
-	    hgetra (header, "RA", &ra0);
-	    hgetdec (header, "DEC", &dec0);
-	    hputnr8 (header, "CRVAL1", 8, ra0);
-	    hputnr8 (header, "CRVAL2", 8, dec0);
-	    }
-	if (!ksearch (header,"CRPIX1")) {
-	    xref = (double) *wp / 2.0;
-	    yref = (double) *hp / 2.0;
-	    hputnr8 (header, "CRPIX1", 3, xref);
-	    hputnr8 (header, "CRPIX2", 3, yref);
-	    }
-	if (!ksearch (header,"CTYPE1")) {
-	    if (comsys == WCS_GALACTIC) {
-		hputs (header, "CTYPE1", "GLON-TAN");
-		hputs (header, "CTYPE2", "GLAT-TAN");
-		}
-	    else {
-		hputs (header, "CTYPE1", "RA---TAN");
-		hputs (header, "CTYPE2", "DEC--TAN");
-		}
-	    }
-	}
-
-    /* Set rotation angle from command line, if it is there */
-    if (rot0 < 361.0) {
-	hputnr8 (header, "CROTA1", 5, rot0);
-	hputnr8 (header, "CROTA2", 5, rot0);
-	}
-
-    /* Set observation date for epoch, if it is there */
-    if (dateobs0 != NULL)
-	hputs (header, "DATE-OBS", dateobs0);
-
-    /* Initialize WCS structure from FITS header */
-    wcs = wcsinitn (header, cwcs);
+    /* Initialize WCS structure from possibly revised FITS header */
+    wcs = ChangeFITSWCS (filename, header, verbose);
+    *hp = (int) wcs->nypix;
+    *wp = (int) wcs->nxpix;
 
     /* If incomplete WCS in header, drop out */
     if (nowcs (wcs)) {
@@ -291,8 +142,8 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 	}
 
     /* Get coordinates of corners for size for catalog searching */
-    dx = (double) *wp;
-    dy = (double) *hp;
+    dx = wcs->nxpix;
+    dy = wcs->nypix;
     xmin = 0.5;
     ymin = 0.5;
     xmax = 0.5 + dx;
@@ -513,6 +364,201 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 				*wp, *hp, *secpix);
 	}
 
+    return (wcs);
+}
+
+
+/* ChangeFITSWCS: Modify FITS WCS header from command line values */
+
+struct WorldCoor *
+ChangeFITSWCS (filename, header, verbose)
+
+char	*filename;	/* FITS or IRAF file name */
+char	*header;	/* Image FITS header */
+int	verbose;	/* Extra printing if =1 */
+{
+    int nax, i, hp, wp;
+    double xref, yref, degpix, secpix;
+    struct WorldCoor *wcs;
+    char temp[16];
+    char *cwcs;
+
+    /* Set the world coordinate system from the image header */
+    if (strlen (filename) > 0) {
+	cwcs = strchr (filename, '%');
+	if (cwcs != NULL)
+	    cwcs++;
+	}
+    if (!strncmp (header, "END", 3)) {
+	cwcs = NULL;
+	for (i = 0; i < 2880; i++)
+	    header[i] = (char) 32;
+	hputl (header, "SIMPLE", 1);
+	hputi4 (header, "BITPIX", 0);
+	hputi4 (header, "NAXIS", 2);
+	hputi4 (header, "NAXIS1", 1);
+	hputi4 (header, "NAXIS2", 1);
+	}
+
+    /* Set image dimensions */
+    nax = 0;
+    if (hp0 > 0 || wp0 > 0) {
+	hp = hp0;
+	wp = wp0;
+	if (hp > 0 && wp > 0)
+	    nax = 2;
+	else
+	    nax = 1;
+	hputi4 (header, "NAXIS", nax);
+	hputi4 (header, "NAXIS1", wp);
+	hputi4 (header, "NAXIS2", hp);
+	}
+    else if (hgeti4 (header,"NAXIS",&nax) < 1)
+	return (NULL);
+    else {
+	if (hgeti4 (header,"NAXIS1",&wp) < 1)
+	    return (NULL);
+	else {
+	    if (hgeti4 (header,"NAXIS2",&hp) < 1)
+		return (NULL);
+	    }
+	}
+
+    /* Set plate center from command line, if it is there */
+    if (ra0 > -99.0 && dec0 > -99.0) {
+	hputnr8 (header, "CRVAL1" ,8,ra0);
+	hputnr8 (header, "CRVAL2" ,8,dec0);
+	hputra (header, "RA", ra0);
+	hputdec (header, "DEC", dec0);
+	if (comsys == WCS_B1950) {
+	    hputi4 (header, "EPOCH", 1950);
+	    hputi4 (header, "EQUINOX", 1950);
+	    hputs (header, "RADECSYS", "FK4");
+	    }
+	else {
+	    hputi4 (header, "EPOCH", 2000);
+	    hputi4 (header, "EQUINOX", 2000);
+	    if (comsys == WCS_GALACTIC)
+		hputs (header, "RADECSYS", "GALACTIC");
+	    else if (comsys == WCS_ECLIPTIC)
+		hputs (header, "RADECSYS", "ECLIPTIC");
+	    else if (comsys == WCS_ICRS)
+		hputs (header, "RADECSYS", "ICRS");
+	    else
+		hputs (header, "RADECSYS", "FK5");
+	    }
+	if (hgetr8 (header, "SECPIX", &secpix)) {
+	    degpix = secpix / 3600.0;
+	    hputnr8 (header, "CDELT1", 8, -degpix);
+	    hputnr8 (header, "CDELT2", 8, degpix);
+	    hdel (header, "CD1_1");
+	    hdel (header, "CD1_2");
+	    hdel (header, "CD2_1");
+	    hdel (header, "CD2_2");
+	    } 
+	}
+    if (ptype0 > -1 && ptype0 < nctype) {
+	strcpy (temp,"RA---");
+	strcat (temp, ctypes[ptype0]);
+	hputs (header, "CTYPE1", temp);
+	strcpy (temp,"DEC--");
+	strcat (temp, ctypes[ptype0]);
+	hputs (header, "CTYPE2", temp);
+	}
+
+    /* Set reference pixel from command line, if it is there */
+    if (xref0 > -99999.0 && yref0 > -99999.0) {
+	hputr8 (header, "CRPIX1", xref0);
+	hputr8 (header, "CRPIX2", yref0);
+	}
+    else if (hgetr8 (header, "CRPIX1", &xref) < 1) {
+	xref = 0.5 + (double) wp / 2.0;
+	yref = 0.5 + (double) hp / 2.0;
+	hputnr8 (header, "CRPIX1", 3, xref);
+	hputnr8 (header, "CRPIX2", 3, yref);
+	}
+
+    /* Set plate scale from command line, if it is there */
+    if (secpix0 != 0.0 || cd0 != NULL) {
+	if (secpix2 != 0.0) {
+	    secpix = 0.5 * (secpix0 + secpix2);
+	    hputnr8 (header, "SECPIX1", 5, secpix0);
+	    hputnr8 (header, "SECPIX2", 5, secpix2);
+	    degpix = -secpix0 / 3600.0;
+	    hputnr8 (header, "CDELT1", 8, degpix);
+	    degpix = secpix2 / 3600.0;
+	    hputnr8 (header, "CDELT2", 8, degpix);
+	    hdel (header, "CD1_1");
+	    hdel (header, "CD1_2");
+	    hdel (header, "CD2_1");
+	    hdel (header, "CD2_2");
+	    }
+	else if (secpix0 != 0.0) {
+	    secpix = secpix0;
+	    hputnr8 (header, "SECPIX", 5, secpix);
+	    degpix = secpix / 3600.0;
+	    hputnr8 (header, "CDELT1", 8, -degpix);
+	    hputnr8 (header, "CDELT2", 8, degpix);
+	    hdel (header, "CD1_1");
+	    hdel (header, "CD1_2");
+	    hdel (header, "CD2_1");
+	    hdel (header, "CD2_2");
+	    }
+	else {
+	    hputr8 (header, "CD1_1", cd0[0]);
+	    hputr8 (header, "CD1_2", cd0[1]);
+	    hputr8 (header, "CD2_1", cd0[2]);
+	    hputr8 (header, "CD2_2", cd0[3]);
+	    hdel (header, "CDELT1");
+	    hdel (header, "CDELT2");
+	    hdel (header, "CROTA1");
+	    hdel (header, "CROTA2");
+	    }
+	if (!ksearch (header,"CRVAL1")) {
+	    hgetra (header, "RA", &ra0);
+	    hgetdec (header, "DEC", &dec0);
+	    hputnr8 (header, "CRVAL1", 8, ra0);
+	    hputnr8 (header, "CRVAL2", 8, dec0);
+	    }
+	if (!ksearch (header,"CRPIX1")) {
+	    xref = (double) wp / 2.0;
+	    yref = (double) hp / 2.0;
+	    hputnr8 (header, "CRPIX1", 3, xref);
+	    hputnr8 (header, "CRPIX2", 3, yref);
+	    }
+	if (!ksearch (header,"CTYPE1")) {
+	    if (comsys == WCS_GALACTIC) {
+		hputs (header, "CTYPE1", "GLON-TAN");
+		hputs (header, "CTYPE2", "GLAT-TAN");
+		}
+	    else {
+		hputs (header, "CTYPE1", "RA---TAN");
+		hputs (header, "CTYPE2", "DEC--TAN");
+		}
+	    }
+	}
+
+    /* Set rotation angle from command line, if it is there */
+    if (rot0 < 361.0) {
+	hputnr8 (header, "CROTA1", 5, rot0);
+	hputnr8 (header, "CROTA2", 5, rot0);
+	}
+
+    /* Set observation date for epoch, if it is there */
+    if (dateobs0 != NULL)
+	hputs (header, "DATE-OBS", dateobs0);
+
+    /* Initialize WCS structure from FITS header */
+    wcs = wcsinitn (header, cwcs);
+
+    /* If incomplete WCS in header, drop out */
+    if (nowcs (wcs)) {
+	setwcsfile (filename);
+	/* wcserr(); */
+	if (verbose)
+	    fprintf (stderr,"Insufficient information for initial WCS\n");
+	return (NULL);
+	}
     return (wcs);
 }
 
@@ -739,4 +785,9 @@ char *dateobs;
  * Nov  1 2005	Set RADECSYS to ICRS if appropriate
  *
  * Oct 30 2006	Do not precess LINEAR or XY coordinates
+ *
+ * Jun  1 2007	In GetFITSWCS, deal with no input file
+ * Jun  5 2007	Add ChangeFITSWCS to set header WCS arguments and WCS
+ * Jul  3 2007	Fix bug by setting hp and wp
+ * Jul 26 2007	If first line of header is END, initialize other needed values
  */

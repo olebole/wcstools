@@ -1,5 +1,5 @@
 /* File httpget.c
- * July 12, 2001
+ * July 17, 2007
  * By Doug Mink and John Roll
 
  * Test http access to scat
@@ -13,6 +13,7 @@
 #define LINE	1024
 
 FILE *gethttp();
+static int all = 0;
 
 main (ac, av)
 int ac;
@@ -24,10 +25,15 @@ char **av;
 
     if (ac == 1) {
 	printf ("HTTPGET: Print contents of URL\n");
+	printf ("If -a, all to standard out, else non-data to stderr\n");
 	exit (0);
 	}
 
     url = *(av+1);
+    if (url[0] == '-' && url[1] == 'a') {
+	all = 1;
+	url = *(av+2);
+	}
     if ( !(fp = gethttp (url)) ) {
 	fprintf(stderr, "Can't read URL %s\n", url);
 	exit(1);
@@ -110,7 +116,10 @@ char	*url;
 
     nbcont = 0;
     while ( fgets(linebuf, LINE, sok) ) {
-	fprintf (stderr, "%s", linebuf);
+	if (all)
+	    fprintf (stdout, "%s", linebuf);
+	else
+	    fprintf (stderr, "%s", linebuf);
 	if (strsrch (linebuf, "chunked") != NULL)
 	    chunked = 1;
 	if (strsrch (linebuf, "Content-length") != NULL) {
@@ -123,7 +132,9 @@ char	*url;
 
     if (nbcont == 0) {
 	fgets (linebuf, LINE, sok);
-	if (diag)
+	if (all)
+	    fprintf (stdout, "%s", linebuf);
+	else if (diag)
 	    fprintf (stderr, "%s", linebuf);
 	}
 
@@ -137,10 +148,14 @@ char	*url;
 	    nbr = fread (buffer, 1, lchunk, sok);
 	    fprintf (stdout, "%s", buffer);
 	    fgets (linebuf, LINE, sok);
-	    if (diag)
+	    if (all)
+		fprintf (stdout, "%s", linebuf);
+	    else if (diag)
 		fprintf (stderr, "%s", linebuf);
 	    fgets (linebuf, LINE, sok);
-	    if (diag)
+	    if (all)
+		fprintf (stdout, "%s", linebuf);
+	    else if (diag)
 		fprintf (stderr, "%s", linebuf);
 	    if (strlen (linebuf) < 1)
 		break;

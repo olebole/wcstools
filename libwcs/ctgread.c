@@ -1,5 +1,5 @@
 /*** File libwcs/ctgread.c
- *** March 13, 2007
+ *** July 13, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2007
@@ -206,6 +206,10 @@ int	nlog;
             nstar = tabread (catfile, distsort,cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,starcat,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,tobj,nlog);
+        else if (refcat == SKYBOT)
+            nstar = skybotread (cra,cdec,dra,ddec,drad,distsort,
+			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
+			     tnum,tobj,tra,tdec,tpra,tpdec,tmag,tc,nlog);
 	return (nstar);
 	}
 
@@ -2101,4 +2105,5 @@ char	*in;	/* Character string */
  * Jan  9 2007	Fix reference to refcat code  in wcscat.h
  * Jan  9 2007	Drop catfile from call to sdssread()
  * Mar 13 2007	Add object name array tobj to gsc2read() call
+ * Jul 13 2007	Add skybotread() for SkyBot solar system object search
  */

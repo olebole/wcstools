@@ -1,5 +1,5 @@
 /*** File libwcs/ujcread.c
- *** January 11, 2007
+ *** July 5, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2007
@@ -226,7 +226,7 @@ int	verbose;	/* 1 for diagnostics */
 
 			/* Check plate number */
 			plate = ujcplate (star.magetc);	/* Plate number */
-			if (xplate != 0 || plate != xplate)
+			if (xplate != 0 && plate != xplate)
 			    pass = 0;
 
 			/* Check position limits */
@@ -645,7 +645,7 @@ int	verbose;	/* 1 for diagnostics */
 
 			/* Check plate number */
 			plate = ujcplate (star.magetc);	/* Plate number */
-			if (xplate != 0 || plate != xplate)
+			if (xplate != 0 && plate != xplate)
 			    pass = 0;
 
 			/* Check position limits */
@@ -1104,4 +1104,5 @@ int nbytes = 12; /* Number of bytes to reverse */
  *
  * Jan  8 2007	Fix bad format statement in ujcbin()
  * Jan 10 2007	Add match=1 argument to webrnum()
+ * Jul  5 2007	Fix bug in ujcread() and ujcbin() which always rejected stars
  */

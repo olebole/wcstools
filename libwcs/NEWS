@@ -1,5 +1,12 @@
 WCSTools subroutine release history
 
+August 24, 2007 - Release 3.7.0 (Doug Mink, SAO)
+hget.c: If a closing quote isn't found in a string value, make one up
+hput.c: Fix bug in comment insertion and deal correctly with missing quotes
+
+June 11, 2007 - Release 3.6.9 (Doug Mink, SAO)
+imio.c: Add minvec() and speed up maxvec()
+
 April 3, 2007 - Release 3.6.8 (Doug Mink, SAO)
 hget.c: Initial header length to zero in hlength() if lhead argument <= 0
 wcs.c:  In wcstype(), set to WCS_PIX if CTYPEi starts with "DET"

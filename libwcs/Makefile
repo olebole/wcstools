@@ -5,7 +5,7 @@ OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \
 	fitswcs.o wcsinit.o wcs.o ty2read.o webread.o tmcread.o \
 	gscread.o gsc2read.o ujcread.o uacread.o ubcread.o ucacread.o \
 	sdssread.o tabread.o binread.o ctgread.o actread.o catutil.o \
-	imrotate.o fitsfile.o imhfile.o \
+	skybotread.o imrotate.o fitsfile.o imhfile.o \
 	hget.o hput.o imio.o dateutil.o imutil.o \
 	worldpos.o tnxpos.o dsspos.o platepos.o \
 	sortstar.o platefit.o iget.o fileutil.o \
@@ -45,6 +45,7 @@ platefit.o:	wcs.h fitshead.h wcslib.h
 platepos.o:	wcs.h fitshead.h wcslib.h
 proj.o:		wcslib.h
 sdssread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
+skybotread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
 sortstar.o:	wcscat.h
 sph.o:		wcslib.h
 tabread.o:	fitshead.h wcs.h wcslib.h wcscat.h

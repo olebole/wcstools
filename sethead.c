@@ -1,5 +1,5 @@
 /* File sethead.c
- * January 10, 2007
+ * April 30, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -60,6 +60,7 @@ static int first_file = 1;
 static char spchar = (char) 0;	/* Character to replace with spaces */
 static int nproc = 0;
 static int addwcs = 0;
+static int errflag = 0;		/* Error return from program */
 
 
 int
@@ -397,7 +398,7 @@ char **av;
     if (keybuff != NULL)
 	free (keybuff);
 
-    return (0);
+    return (errflag);
 }
 
 static void
@@ -1103,8 +1104,11 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     if (iraffile) {
 	if (irafwhead (newname, lhead, irafheader, header) > 0 && verbose)
 	    printf ("%s rewritten successfully.\n", newname);
-	else if (verbose)
-	    printf ("%s could not be written.\n", newname);
+	else {
+	    if (verbose)
+		printf ("%s could not be written.\n", newname);
+	    errflag = 1;
+	    }
 	free (irafheader);
 	irafheader = NULL;
 	}
@@ -1116,6 +1120,13 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		printf ("%s: rewritten successfully.\n", newname);
 	    close (fdw);
 	    }
+	else {
+	    if (verbose) {
+		fitserr();
+		fprintf (stderr, "*** New header not written\n");
+		}
+	    errflag = 1;
+	    }
 	}
 
     /* If header size is less than or equal to original, overwrite it */
@@ -1124,14 +1135,24 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    if (verbose)
 		printf ("%s: rewritten successfully.\n", newname);
 	    }
+	else {
+	    if (verbose) {
+		fitserr();
+		fprintf (stderr, "*** New header not written\n");
+		}
+	    errflag = 1;
+	    }
 	}
 
     /* Rewrite header and data to a new image file */
     else if (naxis > 0) {
 	if (!imageread) {
 	    if ((image = fitsrfull (filename, nbhead, header)) == NULL) {
-		if (verbose)
-		    fprintf (stderr, "No FITS image in %s\n", filename);
+		errflag = 1;
+		if (verbose) {
+		    fitserr();
+		    fprintf (stderr, "*** New header not written\n");
+		    }
 		}
 	    else
 		imageread = 1;
@@ -1139,8 +1160,13 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	if (imageread) {
 	    if (fitswimage (newname, header, image) > 0 && verbose)
 		printf ("%s: rewritten successfully.\n", newname);
-	    else if (verbose)
-		printf ("%s could not be written.\n", newname);
+	    else {
+		errflag = 1;
+		if (verbose) {
+		    fitserr();
+		    fprintf (stderr, "*** New header not written\n");
+		    }
+		}
 	    free (image);
 	    image = NULL;
 	    }
@@ -1240,4 +1266,6 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  *
  * Jan  5 2007	Pass pointer to space-padding character, not character
  * Jan 10 2007	Change second argument of cpwcs() from char to char *
+ * Apr 30 2007	Print error messages returned by FITS access subroutines
+ * Apr 30 2007	Return error code = 1 if any revised header not written
  */

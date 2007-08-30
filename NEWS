@@ -1,3 +1,28 @@
+Version 3.7.0 (August 30, 2007)
+imcat,scat: Add option to list minor planets in field using SkyBot service
+scat: Add mrad=search radius in arcminutes to cgi-bin parameters
+scat: Add number checking to cgi-bin parameter parsing
+skycoor: Fix bugs computing position angles with -a
+gethead: Fix bug which screwed up sexigesimal data when -ndec was used
+imstack: Add -m option to make IRAf multispec file headers
+imstack: Fix bug so output on PCs is in correct byte order
+skybotread.c: New subroutines to access SkyBot over the web
+ucacread.c: Improve byte-swap check so it works in all cases, not all but one
+hput.c: Fix bug which could drop quote when adding comment to string value
+hput.c, hget.c: Deal with missing quotes in header without crashing
+webread.c: Add space2tab() to use scat-based catalog server at NOAO
+Set TMC_PATH or UB1_PATH to http://archive.tuc.noao.edu/cgi-bin/scat to use it.
+
+Version 3.6.9 (July 9, 2007)
+cphead: Add -a option to copy entire header from first file to second and others
+imstar: Fix magnitude offset so it works if 20 < offset < 90
+scat: Fix GSC2 and other formats
+xy2sky: Fix headings for radecsys and epoch columns in tab table output
+delhead: Add -c option to delete blank COMMENTs and -o to overwrite files
+         Delete IRAF-style multi-line keywords
+wcsinit.c: Ignore axes with TAB WCS for rotation matrix
+ty2read.c: Skip stars with no positions, only magnitudes; print error message
+
 Version 3.6.8 (April 11, 2007)
 getcol: Fix arithmetic combination of columns
 imrotate, immatch: Add -w to not rotate WCS keywords with image

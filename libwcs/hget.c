@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** February 28, 2007
+ *** August 22, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2007
@@ -843,6 +843,7 @@ const char *keyword0;	/* character string containing the name of the keyword
     char *value;
     char cwhite[2];
     char squot[2], dquot[2], lbracket[2], rbracket[2], slash[2], comma[2];
+    char space;
     char keyword[81]; /* large for ESO hierarchical keywords */
     char line[100];
     char *vpos, *cpar;
@@ -868,6 +869,7 @@ const char *keyword0;	/* character string containing the name of the keyword
     rbracket[1] = (char) 0;
     slash[0] = (char) 47;
     slash[1] = (char) 0;
+    space = (char) 32;
 
     /* Find length of variable name */
     strncpy (keyword,keyword0, sizeof(keyword)-1);
@@ -900,20 +902,52 @@ const char *keyword0;	/* character string containing the name of the keyword
     q1 = strsrch (line,squot);
     c1 = strsrch (line,slash);
     if (q1 != NULL) {
-	if (c1 != NULL && q1 < c1)
+	if (c1 != NULL && q1 < c1) {
 	    q2 = strsrch (q1+1,squot);
-	else if (c1 == NULL)
+	    if (q2 == NULL) {
+		q2 = c1 - 1;
+		while (*q2 == space)
+		    q2--;
+		q2++;
+		}
+	    else if (c1 < q2)
+		c1 = strsrch (q2,slash);
+	    }
+	else if (c1 == NULL) {
 	    q2 = strsrch (q1+1,squot);
+	    if (q2 == NULL) {
+		q2 = line + 79;
+		while (*q2 == space)
+		    q2--;
+		q2++;
+		}
+	    }
 	else
 	    q1 = NULL;
 	}
     else {
 	q1 = strsrch (line,dquot);
 	if (q1 != NULL) {
-	    if (c1 != NULL && q1 < c1)
+	    if (c1 != NULL && q1 < c1) {
 		q2 = strsrch (q1+1,dquot);
-	    else if (c1 == NULL)
+		if (q2 == NULL) {
+		    q2 = c1 - 1;
+		    while (*q2 == space)
+			q2--;
+		    q2++;
+		    }
+		else if (c1 < q2)
+		    c1 = strsrch (q2,slash);
+		}
+	    else if (c1 == NULL) {
 		q2 = strsrch (q1+1,dquot);
+		if (q2 == NULL) {
+		    q2 = line + 79;
+		    while (*q2 == space)
+			q2--;
+		    q2++;
+		    }
+		}
 	    else
 		q1 = NULL;
 	    }
@@ -925,18 +959,8 @@ const char *keyword0;	/* character string containing the name of the keyword
 
     /* Extract value and remove excess spaces */
     if (q1 != NULL) {
-	v1 = q1 + 1;;
-	if (q2 != NULL) {
-	    v2 = q2;
-	    c1 = strsrch (q2,"/");
-	    }
-	else {
-	    c1 = strsrch (line,"/");
-	    if (c1 != NULL)
-		v2 = c1;
-	    else
-		v2 = line + 79;
-	    }
+	v1 = q1 + 1;
+	v2 = q2;
 	}
     else {
 	v1 = strsrch (line,"=");
@@ -1550,7 +1574,10 @@ const char *string;	/* Character string */
 }
 
 
-/* ISNUM-- Return 1 if string is an integer number, 2 if floating point, else 0
+/* ISNUM-- Return 1 if string is an integer number,
+		  2 if floating point,
+		  3 if sexigesimal, with or without decimal point
+		  else 0
  */
 
 int
@@ -1558,7 +1585,7 @@ isnum (string)
 
 const char *string;	/* Character string */
 {
-    int lstr, i, nd;
+    int lstr, i, nd, cl;
     char cstr, cstr1;
     int fpcode;
 
@@ -1568,6 +1595,7 @@ const char *string;	/* Character string */
 
     lstr = strlen (string);
     nd = 0;
+    cl = 0;
     fpcode = 1;
 
     /* Return 0 if string starts with a D or E */
@@ -1595,7 +1623,7 @@ const char *string;	/* Character string */
 	    cstr != '+' && cstr != '-' &&
 	    cstr != 'D' && cstr != 'd' &&
 	    cstr != 'E' && cstr != 'e' &&
-	    cstr != '.')
+	    cstr != ':' && cstr != '.')
 	    return (0);
 	else if (cstr == '+' || cstr == '-') {
 	    if (string[i+1] == '-' || string[i+1] == '+')
@@ -1604,17 +1632,24 @@ const char *string;	/* Character string */
 		cstr1 = string[i-1];
 		if (cstr1 != 'D' && cstr1 != 'd' &&
 		    cstr1 != 'E' && cstr1 != 'e' &&
-		    cstr1 != ' ')
+		    cstr1 != ':' && cstr1 != ' ')
 		    return (0);
 		}
 	    }
 	else if (cstr >= 47 && cstr <= 57)
 	    nd++;
+
+	/* Check for colon */
+	else if (cstr == 58)
+	    cl++;
 	if (cstr=='.' || cstr=='d' || cstr=='e' || cstr=='d' || cstr=='e')
 	    fpcode = 2;
 	}
-    if (nd > 0)
+    if (nd > 0) {
+	if (cl)
+	    fpcode = 3;
 	return (fpcode);
+	}
     else
 	return (0);
 }
@@ -1843,4 +1878,6 @@ int	dropzero;	/* If nonzero, drop trailing zeroes */
  * Jan  4 2007  Declare header, keyword to be const
  * Jan  4 2007	Change WCS letter from char to char*
  * Feb 28 2007	If header length is not set in hlength, set it to 0
+ * May 31 2007	Add return value of 3 to isnum() if string has colon(s)
+ * Aug 22 2007	If closing quote not found, make one up
  */

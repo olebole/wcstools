@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** April 2, 2007
+ *** July 25, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2007
@@ -1415,29 +1415,20 @@ double	x1,y1;	/* (RA,Dec) or (Long,Lat) in degrees */
 double	x2,y2;	/* (RA,Dec) or (Long,Lat) in degrees */
 
 {
-	double xr1, xr2, yr1, yr2;
+	double xr1, xr2, yr1, yr2, r, diffi;
 	double pos1[3], pos2[3], w, diff, cosb;
 	int i;
 
 	/* Convert two vectors to direction cosines */
-	xr1 = degrad (x1);
-	yr1 = degrad (y1);
-	cosb = cos (yr1);
-	pos1[0] = cos (xr1) * cosb;
-	pos1[1] = sin (xr1) * cosb;
-	pos1[2] = sin (yr1);
-
-	xr2 = degrad (x2);
-	yr2 = degrad (y2);
-	cosb = cos (yr2);
-	pos2[0] = cos (xr2) * cosb;
-	pos2[1] = sin (xr2) * cosb;
-	pos2[2] = sin (yr2);
+	r = 1.0;
+	d2v3 (x1, y1, r, pos1);
+	d2v3 (x2, y2, r, pos2);
 
 	/* Modulus squared of half the difference vector */
 	w = 0.0;
 	for (i = 0; i < 3; i++) {
-	    w = w + (pos1[i] - pos2[i]) * (pos1[i] - pos2[i]);
+	    diffi = pos1[i] - pos2[i];
+	    w = w + (diffi * diffi);
 	    }
 	w = w / 4.0;
 	if (w > 1.0) w = 1.0;
@@ -2932,4 +2923,5 @@ char *cwcs;	/* Keyword suffix character for output WCS */
  * Feb 15 2007	If CTYPEi contains DET, set to WCS_PIX projection
  * Feb 23 2007	Fix bug when checking for "DET" in CTYPEi
  * Apr  2 2007	Fix PC to CD matrix conversion
+ * Jul 25 2007	Compute distance between two coordinates using d2v3()
  */

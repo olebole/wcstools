@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.h
- *** February 1, 2007
+ *** July 25, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2007
@@ -571,6 +571,26 @@ extern "C" {
 	int    syswcs,	/* Coordinate system code */
 	double equinox,	/* Equinox of coordinate system */
 	double epoch);	/* Epoch of coordinate system */
+    void d2v3 (		/* Convert RA and Dec in degrees and distance to vector */
+	double	rra,	/* Right ascension in degrees */
+	double	rdec,	/* Declination in degrees */
+	double	r,	/* Distance to object in same units as pos */
+	double pos[3]);	/* x,y,z geocentric equatorial position of object (returned) */
+    void s2v3 (		/* Convert RA and Dec in radians and distance to vector */
+	double	rra,	/* Right ascension in radians */
+	double	rdec,	/* Declination in radians */
+	double	r,	/* Distance to object in same units as pos */
+	double pos[3]);	/* x,y,z geocentric equatorial position of object (returned) */
+    void v2d3 (		/* Convert vector to RA and Dec in degrees and distance */
+	double	pos[3],	/* x,y,z geocentric equatorial position of object */
+	double	*rra,	/* Right ascension in degrees (returned) */
+	double	*rdec,	/* Declination in degrees (returned) */
+	double	*r);	/* Distance to object in same units as pos (returned) */
+    void v2s3 (		/* Convert vector to RA and Dec in radians and distance */
+	double	pos[3],	/* x,y,z geocentric equatorial position of object */
+	double	*rra,	/* Right ascension in radians (returned) */
+	double	*rdec,	/* Declination in radians (returned) */
+	double	*r);	/* Distance to object in same units as pos (returned) */
 
 /* Distortion model subroutines in distort.c */
     void distortinit (	/* Set distortion coefficients from FITS header */
@@ -737,6 +757,10 @@ void fk425e();		/* Convert B1950(FK4) to J2000(FK5) coordinates */
 void fk524e();		/* Convert J2000(FK5) to B1950(FK4) coordinates */
 int wcscsys();		/* Set coordinate system from string */
 double wcsceq();	/* Set equinox from string (return 0.0 if not obvious) */
+void d2v3();		/* Convert RA and Dec in degrees and distance to vector */
+void s2v3();		/* Convert RA and Dec in radians and distance to vector */
+void v2d3();		/* Convert vector to RA and Dec in degrees and distance */
+void v2s3();		/* Convert vector to RA and Dec in radians and distance */
 
 /* Distortion model subroutines in distort.c */
 void distortinit();	/* Set distortion coefficients from FITS header */
@@ -889,4 +913,5 @@ extern int tnxpix();	/* Inverse transform (world to physical) gnomonic projectio
  * Jan  9 2007	Add worldpos.c, dsspos.c, platepos.c, and tnxpos.c subroutines
  * Jan 10 2007	Add ANSI prototypes for all subroutines
  * Feb  1 2007	Add wcs.wcslog for log wavelength
+ * Jul 25 2007	Add v2s3(), s2v3(), d2v3(), v2d3() for coordinate-vector conversion
  */

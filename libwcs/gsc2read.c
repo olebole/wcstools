@@ -210,7 +210,6 @@ int	nlog;		/* 1 for diagnostics */
     starcat->coorsys = WCS_J2000;
     starcat->epoch = 2000.0;
     starcat->equinox = 2000.0;
-    starcat->nmag = 5;
 
     /* Extract desired sources from catalog  and return them */
     nstar = tabread (gsc2url,distsort,cra,cdec,dra,ddec,drad,dradi,

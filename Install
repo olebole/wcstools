@@ -14,7 +14,7 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.6.5 of the WCSTools package developed by Doug Mink
+This is version 3.6.9 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code or algorithms from
 
@@ -50,40 +50,52 @@ most applicable, the full texts are available on the WCSTools web site at
 
 The paper presented at ADASS in 1996 is the best published description
 of the IMWCS world coordinate system fitting program: 
-     "WCSTools: Putting Image World Coordinate Systems to Use",
-     Douglas J. Mink, 1997, in Astronomical Data Analysis Software and
-     Systems VI, A.S.P. Conference Series, Vol. 125, Gareth Hunt and
-     H. E. Payne, eds., pp.  249-252. 
+    "WCSTools: Putting Image World Coordinate Systems to Use",
+    Douglas J. Mink, 1997, in Astronomical Data Analysis Software and
+    Systems VI, A.S.P. Conference Series, Vol. 125, Gareth Hunt and
+    H. E. Payne, eds., pp.  249-252. 
 
 The 1998 ADASS paper is the best published description of the other tools
 in the WCSTools package, including SAOimage when used for WCS work: 
-     "WCSTools: An Image Astrometry Toolkit",
-     Douglas J. Mink (1998), in Astronomical Data Analysis Software and
-     Systems VIII, A.S.P. Conference Series, Vol. 172, 1999, Dave Mehringer,
-     Ray Plante, Doug Roberts, eds., pp.  498-501. 
+    "WCSTools: An Image Astrometry Toolkit",
+    Douglas J. Mink, 1998, in Astronomical Data Analysis Software and
+    Systems VIII, A.S.P. Conference Series, Vol. 172, 1999, Dave Mehringer,
+    Ray Plante, Doug Roberts, eds., pp.  498-501. 
+
+At the 2005 ADASS conference, the latest features were described, as well as
+a still-not-quite-complete upgrade to the latest version of the underlying
+WCSTOOLS library:
+
+    "WCSTools 4.0: Building Astrometry and Catalogs into Pipelines,"
+    Douglas J. Mink, 2006 in Astronomical Data Analysis Software and Systems XV,
+    ASP Conference Series, Vol. 351, edited by C. Gabriel, C. Arviset, D. Ponz,
+    and E. Solano.  San Francisco: Astronomical Society of the Pacific, p. 204.
 
 A paper presented at the 2001 ADASS conference describes how the
 WCSTools package uses the web, among other new features:
-     "WCSTools 3.0: More Tools for Image Astrometry and Catalog Searching",
-     Douglas J. Mink, 2001, to be published in Astronomical Data Analysis
-     Software and Systems XI, whenever it comes out.
+    "WCSTools 3.0: More Tools for Image Astrometry and Catalog Searching",
+    Douglas J. Mink, 2002, in Astronomical Data Analysis Software and
+    Systems XI, A.S.P. Conference Series, Vol. 281, David A. Bohlender,
+    Daniel Durand, and T. H. Handley, eds., pp. 169-172.
 
 This paper presented at the 2002 ADASS conference describes interesting
 ways to use the SCAT program:
-     "Federating Catalogs and Interfacing Them with Archives: A VO Prototype",
-     Douglas J. Mink and Michael J. Kurtz, 2002, to be published in
-     Astronomical Data Analysis Software and Systems XII, whenever it comes out.
+    "Federating Catalogs and Interfacing Them with Archives: A VO Prototype",
+    Douglas J. Mink and Michael J. Kurtz, 2003, in Astronomical Data Analysis
+    Software and Systems XII, ASP Conference Proceedings, Vol. 295, edited
+    by Harry E. Payne, Robert I. Jedrzejewski, and Richard N. Hook. San
+    Francisco: Astronomical Society of the Pacific, pp. 51-54.
 
 To assist users in selecting the best catalog to use, we tested the accuracy of
 the various catalogs one is likely to use with imwcs, showing how well it works
 in a pipeline mode on 1728 images. This ADASS paper is an improved version of
 our AAS/DDA paper, adding the UCAC2 catalog and emphasizing usefulness more than
 astrometry:
-     "A Comparison of Large All-Sky Catalogs" Douglas J. Mink, Warren R. Brown,
-and Michael J. Kurtz in Astronomical Data Analysis Software and Systems XIII,
-ASP Conference Proceedings, Vol. 314. Edited by Francois Oschenbein, Mark Allen,
-and Daniel Egret. San Francisco: Astronomical Society of the Pacific,
-ISSN: 1080-7926, 2004., p. 141. 
+    "A Comparison of Large All-Sky Catalogs"
+    Douglas J. Mink, Warren R. Brown, and Michael J. Kurtz, 2004, in
+    Astronomical Data Analysis Software and Systems XIII, ASP Conference
+    Proceedings, Vol. 314. Edited by Francois Oschenbein, Mark Allen, and
+    Daniel Egret.  San Francisco: Astronomical Society of the Pacific, p. 141. 
 
 Program Descriptions
 

@@ -1,8 +1,8 @@
 /*** File libwcs/fitsfile.c
- *** November 2, 2006
+ *** April 30, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2006
+ *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -852,14 +852,14 @@ char	*header;	/* FITS header for image (previously read) */
 
 	fd = fitsropen (filename);
 	if (fd < 0) {
-	    snprintf (fitserrmsg,79, "FITSRIMAGE:  cannot read file %s\n", filename);
+	    snprintf (fitserrmsg,79, "FITSRFULL:  cannot read file %s\n", filename);
 	    return (NULL);
 	    }
 
 	/* Skip over FITS header and whatever else needs to be skipped */
 	if (lseek (fd, nbhead, SEEK_SET) < 0) {
 	    (void)close (fd);
-	    snprintf (fitserrmsg,79, "FITSRIMAGE:  cannot skip header of file %s\n",
+	    snprintf (fitserrmsg,79, "FITSRFULL:  cannot skip header of file %s\n",
 		     filename);
 	    return (NULL);
 	    }
@@ -874,7 +874,7 @@ char	*header;	/* FITS header for image (previously read) */
     if (!simple) {
 	nbytes = getfilesize (filename) - nbhead;
 	if ((image = (char *) malloc (nbytes + 1)) == NULL) {
-	    /* snprintf (fitserrmsg,79, "FITSRIMAGE:  %d-byte image buffer cannot be allocated\n"); */
+	    snprintf (fitserrmsg,79, "FITSRFULL:  %d-byte image buffer cannot be allocated\n");
 	    (void)close (fd);
 	    return (NULL);
 	    }
@@ -887,7 +887,7 @@ char	*header;	/* FITS header for image (previously read) */
     bitpix = 0;
     hgeti4 (header,"BITPIX",&bitpix);
     if (bitpix == 0) {
-	/* snprintf (fitserrmsg,79, "FITSRIMAGE:  BITPIX is 0; image not read\n"); */
+	snprintf (fitserrmsg,79, "FITSRFULL:  BITPIX is 0; image not read\n");
 	(void)close (fd);
 	return (NULL);
 	}
@@ -933,7 +933,7 @@ char	*header;	/* FITS header for image (previously read) */
 	(void)close (fd);
 #endif
     if (nbr < nbimage) {
-	snprintf (fitserrmsg,79, "FITSRIMAGE:  %d of %d bytes read from file %s\n",
+	snprintf (fitserrmsg,79, "FITSRFULL:  %d of %d image bytes read from file %s\n",
 		 nbr, nbimage, filename);
 	return (NULL);
 	}
@@ -2070,4 +2070,5 @@ fitserr ()
  * Nov  2 2006	Change all realloc() calls to calloc()
  *
  * Jan  5 2007	In fitsrtail(), change control characters in header to spaces
+ * Apr 30 2007	Improve error reporting in FITSRFULL
  */

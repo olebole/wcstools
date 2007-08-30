@@ -1,5 +1,5 @@
 /*** File libwcs/ucacread.c
- *** January 10, 2007
+ *** July 11, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2003-2007
@@ -1116,22 +1116,23 @@ int	zone;	/* Number of catalog zone to read */
 	    }
 
 	/* RA should be between 0 and 360 degrees in milliarcseconds */
-	if (ust.rasec > 360 * 3600000 || ust.rasec < 0) {
+	if (ust.rasec > 360 * 3600000 || ust.rasec < 0)
 	    cswap = 1;
-	    /* fprintf (stderr,
-		  "UCACOPEN: swapping bytes in UCAC2 zone catalog %s\n",
-		   zonepath); */
-	    }
 
 	/* Dec should be between -90 and +90 degrees in milliarcseconds */
-	else if (ust.decsec > 90 * 3600000 || ust.decsec < -90 * 3600000) {
+	else if (ust.decsec > 90 * 3600000 || ust.decsec < -90 * 3600000)
 	    cswap = 1;
-	    /* fprintf (stderr,
-		    "UCACOPEN: swapping bytes in UCAC2 zone catalog %s\n",
-		     zonepath); */
-	    }
+
+	/* J H K magnitudes should be near-positive */
+	else if (ust.j2m < -1000 || ust.h2m < -1000  || ust.k2m < -1000)
+	    cswap = 1;
 	else
 	    cswap = 0;
+
+	/* if (cswap)
+	    fprintf (stderr,
+		    "UCACOPEN: swapping bytes in UCAC2 zone catalog %s\n",
+		     zonepath); */
 	}
 
     sc->istar = 0;
@@ -1297,4 +1298,5 @@ char *string;	/* Address of Integer*4 or Real*4 vector */
  *
  * Jan  8 2007	Drop unused variable in ucacbin()
  * Jan 10 2007	Add match=1 argument to webrnum()
+ * Jul 11 2007	Add magnitude byte-swap check
  */

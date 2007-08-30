@@ -278,7 +278,7 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("program	scat %s\n", revmessage);
 	CatID (catid, refcat);
 	printf ("%s	ra          	dec         	", catid);
-	printf ("magv 	ulass	band	n	arcmin\n");
+	printf ("magv 	class	band	n	arcmin\n");
 	printf ("---------	------------	------------	");
 	printf ("-----	-----	----	-	------\n");
 	}

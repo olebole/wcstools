@@ -1,9 +1,9 @@
 /* File sky2xy.c
- * October 30, 2006
+ * July 5, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1996-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -66,6 +66,8 @@ char **av;
     double eqout = 0.0;
     double eqin = 0.0;
     int sysout = 0;
+    int syscoor = 0;
+    int degout = 0;
     int wp, hp;
     char coorsys[16];
     int ndec = 3;		/* Number of decimal places in output coords */
@@ -115,6 +117,7 @@ char **av;
 		else {
 		    setsys(WCS_B1950);
 		    sysout = WCS_B1950;
+		    syscoor = WCS_B1950;
 		    eqout = 1950.0;
 		    if (strlen (*++av) < 32)
 			strcpy (rastr, *av);
@@ -136,10 +139,56 @@ char **av;
     		break;
 
 	    case 'e':
+		str1 = *(av+1);
+		ic = (int)str1[0];
+		if (*(str+1) || ic < 48 || ic > 58) {
+		    setsys (WCS_ECLIPTIC);
+		    sysout = WCS_ECLIPTIC;
+		    syscoor = WCS_ECLIPTIC;
+		    eqout = 2000.0;
+		    }
+		else if (ac < 3)
+		    PrintUsage (str);
+		else {
+		    setsys (WCS_ECLIPTIC);
+		    sysout = WCS_ECLIPTIC;
+		    syscoor = WCS_ECLIPTIC;
+		    eqout = 2000.0;
+		    strcpy (rastr, *++av);
+		    ac--;
+		    strcpy (decstr, *++av);
+		    ac--;
+		    setcenter (rastr, decstr);
+		    modwcs = 1;
+		    }
+        	degout++;
 		strcpy (coorsys,"ecliptic");
     		break;
 
 	    case 'g':
+		str1 = *(av+1);
+		ic = (int)str1[0];
+		if (*(str+1) || ic < 48 || ic > 58) {
+		    setsys (WCS_GALACTIC);
+		    sysout = WCS_GALACTIC;
+		    syscoor = WCS_GALACTIC;
+		    eqout = 2000.0;
+		    }
+		else if (ac < 3)
+		    PrintUsage (str);
+		else {
+		    setsys (WCS_GALACTIC);
+		    sysout = WCS_GALACTIC;
+		    syscoor = WCS_GALACTIC;
+		    eqout = 2000.0;
+		    strcpy (rastr, *++av);
+		    ac--;
+		    strcpy (decstr, *++av);
+		    ac--;
+		    setcenter (rastr, decstr);
+		    modwcs = 1;
+		    }
+        	degout++;
 		strcpy (coorsys,"galactic");
     		break;
 
@@ -154,6 +203,7 @@ char **av;
 		else {
 		    setsys(WCS_J2000);
 		    sysout = WCS_J2000;
+		    syscoor = WCS_J2000;
 		    eqout = 2000.0;
 		    if (strlen (*++av) < 32)
 			strcpy (rastr, *av);
@@ -202,6 +252,7 @@ char **av;
 		ac--;
 		ny = atoi (*++av);
 		ac--;
+		setnpix (nx, ny);
 		modwcs = 1;
     		break;
 
@@ -248,6 +299,12 @@ char **av;
 	header = GetFITShead (fn, verbose);
 	wcs = GetFITSWCS (fn,header,verbose,&cra,&cdec,&dra,&ddec,&secpix,
 			  &wp, &hp, &sysout, &eqout);
+	if (nowcs (wcs)) {
+	    fprintf (stderr, "No WCS in image file %s\n", fn);
+	    wcsfree (wcs);
+	    free (header);
+	    exit (1);
+	    }
 	}
     else {
 	fn = NULL;
@@ -264,16 +321,12 @@ char **av;
 	hputi4 (header, "NAXIS2", 100);
 	wcs = GetFITSWCS (fn,header,verbose,&cra,&cdec,&dra,&ddec,&secpix,
 			  &wp, &hp, &sysout, &eqout);
-	}
-
-    /* Initialize world coordinate system structure */
-    if (nowcs (wcs)) {
-	if (fn == NULL)
+	if (nowcs (wcs)) {
 	    fprintf (stderr, "Incomplete WCS on command line\n");
-	else
-	    fprintf (stderr, "No WCS in image file %s\n", fn);
-	wcsfree (wcs);
-	exit (1);
+	    wcsfree (wcs);
+	    free (header);
+	    exit (1);
+	    }
 	}
 
     /* Set size of image coordinate field */
@@ -287,6 +340,9 @@ char **av;
 	nf = 5 + ndec;
     else
 	nf = 6 + ndec;
+
+    if (degout)
+	wcs->degout = degout;
 
     while (ac-- > 1) {
 	listname = *av;
@@ -348,29 +404,20 @@ char **av;
 	    av++;
 
 	/* Convert coordinates system to that of image */
-	    if (ac > 1) {
+	    if (ac > 1 && wcscsys (*av) > -1) {
 		strcpy (csys, *av);
-		if (csys[0] == 'B' || csys[0] == 'b' || csys[2] == '4' ||
-		    csys[0] == 'J' || csys[0] == 'j' || csys[2] == '5' ||
-		    csys[0] == 'G' || csys[0] == 'g' ||
-		    csys[0] == 'E' || csys[0] == 'e' ||
-		    csys[0] == 'L' || csys[0] == 'l') {
-		    ac--;
-		    av++;
-		    }
-		else if (*coorsys)
-		    strcpy (csys, coorsys);
-		else
-		    strcpy (csys, wcs->radecsys);
+		ac--;
+		av++;
 		}
+	    else if (*coorsys)
+		strcpy (csys, coorsys);
 	    else {
 		if (wcs->prjcode < 0)
 		    strcpy (csys, "PIXEL");
 		else if (wcs->prjcode < 2)
 		    strcpy (csys, "LINEAR");
-		else {
+		else
 		    strcpy (csys, wcs->radecsys);
-		    }
 		}
 
 	    sysin = wcscsys (csys);
@@ -424,8 +471,10 @@ char	*command;
     fprintf (stderr,"Usage: [-vbjg] file.fts ra1 dec1 sys1 ... ran decn sysn\n");
     fprintf (stderr,"  or : [-vbjg] file.fts @listfile\n");
     fprintf (stderr,"  -a rot: rotation angle (counterclockwise degrees)\n");
-    fprintf (stderr,"  -b ra dec: reference sky position (B1950)\n");
-    fprintf (stderr,"  -j ra dec: reference sky position (J2000)\n");
+    fprintf (stderr,"  -b [ra dec]: input in B1950 [image reference sky position]\n");
+    fprintf (stderr,"  -e [long lat]: input in ecliptic [image reference sky position]\n");
+    fprintf (stderr,"  -g [long lat]: input in galactic [image reference sky position]\n");
+    fprintf (stderr,"  -j [ra dec]: input in J2000 [image reference sky position]\n");
     fprintf (stderr,"  -n num: number of decimal places in output\n");
     fprintf (stderr,"  -o x|y: print only x or y coordinate\n");
     fprintf (stderr,"  -p scale: plate scale in arcsec/pixel\n");
@@ -495,4 +544,7 @@ char	*command;
  * Jun 21 2006	Clean up code
  * Sep 26 2006	Allow coordinates on command line to be any length
  * Oct 30 2006	Do not precess LINEAR or XY coordinates
+ *
+ * Jul  5 2007	Parse command line arguments to initialize a WCS without a file
+ * Jul  5 2007	Use command line argument if no system with coordinates
  */

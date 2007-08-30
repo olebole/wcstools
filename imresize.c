@@ -1,5 +1,5 @@
 /* File imresize.c
- * January 5, 2007
+ * June 12, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
+#include "libwcs/wcs.h"
 #include "libwcs/fitsfile.h"
 
 #define MEDIAN 1
@@ -59,6 +60,7 @@ static int yfactor = 0;		/* Vertical axis reduction factor */
 static double ghwidth = 1.0;	/* Gaussian half width for smoothing */
 static int bitpix = 0;		/* Bits per output pixel */
 static int mean = 0;		/* 1 if mean for regrouped pixels */
+static int northup = 0;		/* 1 to rotate to north up, east left */
 
 
 int
@@ -166,6 +168,10 @@ char **av;
 		    ac--;
 		    ysize = (int) atof (*++av);
 		    ac--;
+		    break;
+
+		case 'n': /* Rotate to north up, east left */
+		    northup++;
 		    break;
 
 		case 'o':	/* Specifiy output image filename */
@@ -285,6 +291,7 @@ usage ()
     fprintf(stderr,"  -h halfwidth: Gaussian half-width at half-height\n");
     fprintf(stderr,"  -l num: Logging interval in lines\n");
     fprintf(stderr,"  -m dx dy: Median filter dx x dy pixels\n");
+    fprintf(stderr,"  -n: Rotate to North Up East Left\n");
     fprintf(stderr,"  -o: Allow overwriting of input image, else write new one\n");
     fprintf(stderr,"  -v: Verbose\n");
     fprintf(stderr,"  -x factor: Reduce image horizontal dimension by factor\n");
@@ -312,10 +319,13 @@ char *name;
     char extname[16];
     int lext = 0;
     int lroot;
+    double rotang;
     char echar;
     char temp[16];
     char history[64];
     char pixname[256];
+    char *RotFITS();
+    struct WorldCoor *wcs;
 
     /* If not overwriting input file, make up a name for the output file */
     if (!overwrite) {
@@ -484,6 +494,7 @@ char *name;
 	fprintf (stderr, " -> %s\n", newname);
 	}
 
+    /* Resize image, if requested */
     if (resize) {
 	if ((newhead = ShrinkFITSHeader (name, header, xfactor, yfactor, mean, bitpix)) == NULL)
 	    fprintf (stderr,"Cannot make new image header for %s; file is unchanged.\n",newname);
@@ -506,6 +517,22 @@ char *name;
 	    sprintf (history, "Image size reduced by %d in x, %d in y",
 		     xfactor, yfactor);
 	    hputs (header, "IMRESIZE", history);
+	    }
+	}
+
+    /* Rotate image to north up, east left, if requested */
+    if (northup) {
+	wcs = wcsinit (header);
+	if (wcs != NULL) {
+	    if (wcs->rot >= 45.0 && wcs->rot < 135.0)
+		rotang = 270.0;
+	    else if (wcs->rot >= 135.0 && wcs->rot < 225.0)
+		rotang = 180.0;
+	    else if (wcs->rot >= 225.0 && wcs->rot < 315.0)
+		rotang = 90.0;
+	    else
+		rotang = 0.0;
+	    newimage = RotFITS (name,header,image,0,0,rotang,0,bitpix,1,verbose);
 	    }
 	}
 
@@ -564,4 +591,5 @@ char *name;
  * Sep 25 2006	Add -f to reduce both dimensions by the same factor
  *
  * Jan  5 2007	Add string length argument to hgets() call
+ * Jun 12 2007	Add -n option to rotate WCS-ed image to north up, east left
  */

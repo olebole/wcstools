@@ -1,5 +1,5 @@
 /*** File wcslib/imio.c
- *** January 8, 2007
+ *** June 11, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2007
@@ -40,8 +40,10 @@
  *		Copy pixel into 2D image of any numeric type (0,0 lower left)
  * Subroutine:	addpix1 (image, bitpix, w, h, bz, bs, x, y, dpix)
  *		Add pixel into 2D image of any numeric type (1,1 lower left)
- * Subroutine:	maxvec (image, bitpix, bz, bs, pix1, npix, dmax)
+ * Subroutine:	maxvec (image, bitpix, bz, bs, pix1, npix)
  *		Get maximum of vector from 2D image of any numeric type
+ * Subroutine:	minvec (image, bitpix, bz, bs, pix1, npix)
+ *		Get minimum of vector from 2D image of any numeric type
  * Subroutine:	getvec (image, bitpix, bz, bs, pix1, npix, dvec)
  *		Get vector from 2D image of any numeric type
  * Subroutine:	putvec (image, bitpix, bz, bs, pix1, npix, dvec)
@@ -646,75 +648,81 @@ int	pix1;		/* Offset of first pixel to check */
 int	npix;		/* Number of pixels to check */
 
 {
-    short *im2;
-    int *im4;
-    unsigned short *imu;
-    float *imr;
+    short *im2, imax2, ip2;
+    int *im4, imax4, ip4;
+    unsigned short *imu, imaxu, ipu;
+    float *imr, imaxr, ipr;
     double *imd;
     double dmax = 0.0;
-    double dpix;
+    double ipd;
     int ipix, pix2;
+    char imaxc, ipc;
 
     pix2 = pix1 + npix;
 
     switch (bitpix) {
 
 	case 8:
-	    dmax = (double) *(image + pix1);
+	    imaxc = *(image + pix1);
 	    for (ipix = pix1; ipix < pix2; ipix++) {
-		dpix = (double) *(image + ipix);
-		if (dpix > dmax)
-		    dmax = dpix;
+		ipc = *(image + ipix);
+		if (ipc > imaxc)
+		    imaxc = ipc;
 		}
+	    dmax = (double) imaxc;
 	    break;
 
 	case 16:
 	    im2 = (short *)image;
-	    dmax = (double) *(im2 + pix1);
+	    imax2 = *(im2 + pix1);
 	    for (ipix = pix1; ipix < pix2; ipix++) {
-		dpix = (double) *(im2 + ipix);
-		if (dpix > dmax)
-		    dmax = dpix;
+		ip2 = *(im2 + ipix);
+		if (ip2 > imax2)
+		    imax2 = ip2;
 		}
+	    dmax = (double) imax2;
 	    break;
 
 	case 32:
 	    im4 = (int *)image;
-	    dmax = (double) *(im4 + pix1);
+	    imax4 = *(im4 + pix1);
 	    for (ipix = pix1; ipix < pix2; ipix++) {
-		dpix = (double) *(im4 + ipix);
-		if (dpix > dmax)
-		    dmax = dpix;
+		ip4 = *(im4 + ipix);
+		if (ip4 > imax4)
+		    imax4 = ip4;
 		}
+	    dmax = (double) imax4;
 	    break;
 
 	case -16:
 	    imu = (unsigned short *)image;
-	    dmax = (double) *(imu + pix1);
+	    imaxu = *(imu + pix1);
 	    for (ipix = pix1; ipix < pix2; ipix++) {
-		dpix = (double) *(imu + ipix);
-		if (dpix > dmax)
-		    dmax = dpix;
+		ipu = *(imu + ipix);
+		if (ipu > imaxu)
+		    imaxu = ipu;
 		}
+	    dmax = (double) imaxu;
 	    break;
 
 	case -32:
 	    imr = (float *)image;
-	    dmax = (double) *(imr + pix1);
+	    imaxr = *(imr + pix1);
 	    for (ipix = pix1; ipix < pix2; ipix++) {
-		dpix = (double) *(imr + ipix);
-		if (dpix > dmax)
-		    dmax = dpix;
+		ipr = *(imr + ipix);
+		if (ipr > imaxr)
+		    imax2 = ipr;
 		}
+	    dmax = (double) imaxr;
 	    break;
 
 	case -64:
 	    imd = (double *)image;
 	    dmax = *(imd + pix1);
 	    for (ipix = pix1; ipix < pix2; ipix++) {
-		dpix = *(imd + ipix);
-		if (dpix > dmax)
-		    dmax = dpix;
+		ipd = *(imd + ipix);
+		if (ipd > dmax)
+		    dmax = ipd;
 		}
 	    break;
 
@@ -725,6 +733,110 @@ int	npix;		/* Number of pixels to check */
 	dmax = (dmax * bscale) + bzero;
 
     return (dmax);
+}
+
+
+/* MINVEC -- Get minimum value in vector from 2D image of any numeric type */
+
+double
+minvec (image, bitpix, bzero, bscale, pix1, npix)
+
+char	*image;		/* Image array from which to read vector */
+int	bitpix;		/* Number of bits per pixel in image */
+			/*  16 = short, -16 = unsigned short, 32 = int */
+			/* -32 = float, -64 = double */
+double  bzero;		/* Zero point for pixel scaling */
+double  bscale;		/* Scale factor for pixel scaling */
+int	pix1;		/* Offset of first pixel to check */
+int	npix;		/* Number of pixels to check */
+
+{
+    short *im2, imin2, *ip2, *il2;
+    int *im4, imin4, ip4;
+    unsigned short *imu, iminu, ipu;
+    float *imr, iminr, ipr;
+    double *imd, ipd;
+    double dmin = 0.0;
+    int ipix, pix2;
+    char cmin, cp;
+
+    pix2 = pix1 + npix;
+
+    switch (bitpix) {
+
+	case 8:
+	    cmin = *(image + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		cp = *(image + ipix);
+		if (cp < cmin)
+		    cmin = cp;
+		}
+	    dmin = (double) cmin;
+	    break;
+
+	case 16:
+	    im2 = (short *)image + pix1;
+	    imin2 = *im2;
+	    il2 = im2 + npix;
+	    ip2 = im2;
+	    while (ip2 < il2) {
+		if (*ip2 < imin2)
+		    imin2 = *ip2;
+		ip2++;
+		}
+	    dmin = (double) imin2;
+	    break;
+
+	case 32:
+	    im4 = (int *)image;
+	    imin4 = *(im4 + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		ip4 = *(im4 + ipix);
+		if (ip4 < imin4)
+		    imin4 = ip4;
+		}
+	    dmin = (double) imin4;
+	    break;
+
+	case -16:
+	    imu = (unsigned short *)image;
+	    iminu = *(imu + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		ipu = *(imu + ipix);
+		if (ipu < iminu)
+		    iminu = ipu;
+		}
+	    dmin = (double) iminu;
+	    break;
+
+	case -32:
+	    imr = (float *)image;
+	    iminr = *(imr + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		ipr = *(imr + ipix);
+		if (ipr < iminr)
+		    iminr = ipr;
+		}
+	    dmin = (double) iminr;
+	    break;
+
+	case -64:
+	    imd = (double *)image;
+	    dmin = *(imd + pix1);
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		ipd = *(imd + ipix);
+		if (ipd < dmin)
+		    dmin = ipd;
+		}
+	    break;
+
+	}
+
+    /* Scale data if either BZERO or BSCALE keyword has been set */
+    if (scale && (bzero != 0.0 || bscale != 1.0))
+	dmin = (dmin * bscale) + bzero;
+
+    return (dmin);
 }
 
 
@@ -1425,4 +1537,5 @@ imswapped ()
  * Jun 20 2006	Fix typos masquerading as unitialized variables
  *
  * Jan  8 2007	Include fitsfile.h instead of imio.h
+ * Jun 11 2007	Add minvec() and speed up maxvec()
  */
