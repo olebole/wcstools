@@ -46,12 +46,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#ifdef HAVE_FCNTL_H
+#include <fcntl.h>
+#else
+#include <sys/fcntl.h>
+#endif
+
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <sys/time.h>
-#include <sys/resource.h>
 #include <netinet/in.h>
 #include <netdb.h>
+
+#include <sys/resource.h>
 
 #include "nedc.h"
 #include "ned_client.h"

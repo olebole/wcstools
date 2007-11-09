@@ -55,7 +55,6 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <varargs.h>
 #include <math.h>
 #include "nedc.h"
 #include "ned_client.h"
@@ -66,11 +65,13 @@
 extern int  ned_errno;          /* define in ned_cif.c */
 
 int
-ned_query(cmd_code, va_alist)
-int    cmd_code;
-va_dcl
+ned_query(cmd_code, s1, d1, d2, d3)
+
+int	cmd_code;
+char	*s1;
+double	d1, d2, d3;
+
 {
-   va_list   ap;
    char      *objname, *refcode;
    int       begin_year, end_year;
    double    ra_j2000;
@@ -81,44 +82,43 @@ va_dcl
    char      cmd[CMD_LENGTH+1];
    int       st;
 
-   va_start(ap);
    switch(cmd_code) {
       case NED_NAME_RESOLVER:
-	 objname = va_arg(ap, char *);
+	 objname = s1;
 	 sprintf(cmd, "name_resolver \"%s\"\n", objname);
 	 break;
       case NED_BYNAME:
-	 objname = va_arg(ap, char *);
+	 objname = s1;
 	 sprintf(cmd, "obj_byname \"%s\"\n", objname);
 	 break;
       case NED_NEARNAME:
-	 objname = va_arg(ap, char *);
-	 radius = va_arg(ap, double);
+	 objname = s1;
+	 radius = d1;
 	 sprintf(cmd, "obj_nearname \"%s\", %.5f\n", objname, radius);
 	 break;
       case NED_NEARPOSN:
-	 ra_j2000 = va_arg(ap, double);
-	 dec_j2000 = va_arg(ap, double);
-	 radius = va_arg(ap, double);
+	 ra_j2000 = d1;
+	 dec_j2000 = d2;
+	 radius = d3;
 	 sprintf(cmd, "obj_nearposn %.8f, %.8f, %.5f\n", 
 	    ra_j2000, dec_j2000, radius);
 	 break;
       case NED_IAUFORMAT:
-	 objname = va_arg(ap, char *);
-	 style = va_arg(ap, int );
-	 calendar = va_arg(ap, int );
-	 epoch = va_arg(ap, double);
+	 objname = s1;
+	 style =  (int) (d1 + 0.5);
+	 calendar = (int) (d2 + 0.5);
+	 epoch = d3;
 	 sprintf(cmd, "obj_iauformat %s, %c, %c, %.3f\n", 
 	    objname, style, calendar, epoch);
          break;
       case NED_XREFCODE:
-	 refcode = va_arg(ap, char *);
+	 refcode = s1;
 	 sprintf(cmd, "expand_refcode %s\n", refcode);
 	 break;
       case NED_REF:
-	 objname = va_arg(ap, char *);
-	 begin_year = va_arg(ap, int);
-	 end_year = va_arg(ap, int);
+	 objname = s1;
+	 begin_year = (int) (d1 + 0.5);
+	 end_year = (int) (d2 + 0.5);
 	 sprintf(cmd, "ref_objname \"%s\", %d, %d\n", 
 		      objname, begin_year, end_year);
 	 break;
@@ -126,8 +126,6 @@ va_dcl
 	 break;
       }
  
-   va_end(ap);
-
    st = send_cmd(cmd);
    return(st);
 }
@@ -310,3 +308,6 @@ double radius;
    else
       return(0);
 }
+
+/* Sep 18 2007	Modified to avoid use of vararg for portability
+ */

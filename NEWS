@@ -1,3 +1,11 @@
+Version 3.7.1 (September 19, 2007)
+nedpos,nedname: Programs from NED for retrieving positions for objects and
+names for positions which were modified to work with WCSTools several years
+ago have now been rewritten for portability and added to the WCSTools
+release.  nedpos works like simpos, but has more options.
+simpos,nedpos: Options for input file of object names and output tab-separated
+tables have been added.
+
 Version 3.7.0 (August 30, 2007)
 imcat,scat: Add option to list minor planets in field using SkyBot service
 scat: Add mrad=search radius in arcminutes to cgi-bin parameters

@@ -1,5 +1,5 @@
 /*** nedpos.c - search object by its name from command line arguments
- *** August 23, 2004
+ *** September 14, 2007
  *** By Doug Mink, after IPAC byname.c
  */
 
@@ -7,8 +7,9 @@
 #include <stdio.h>
 #include <string.h>
 #include "ned_client.h"
-#include "../wcstools/libwcs/fitshead.h"
-#include "../wcstools/libwcs/wcs.h"
+#include "../libwcs/fitshead.h"
+#include "../libwcs/wcs.h"
+
 
 extern int ned_errno;
 static void usage();
@@ -30,6 +31,7 @@ char *av[];
     char magnitude[32];
     char velocity[32];
     char zstring[32];
+    char str[32];
     CrossID *cp, *tmpcp;
     ObjInfo *op, *tmpop;
     MoreData     *mdatap;
@@ -50,6 +52,12 @@ char *av[];
 	fprintf(stderr, "connection failed \n");
 	exit(1);
 	}
+
+    str = *(av+1);
+    if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
+	PrintUsage (NULL);
+    if (!strcmp (str, "version") || !strcmp (str, "-version")
+	PrintUsage ("version");
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {

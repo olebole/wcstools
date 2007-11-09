@@ -1,11 +1,12 @@
 CFLAGS= -g
 CC= cc
 LIBWCS = libwcs/libwcs.a
+LIBNED = libned/libned.a
 LIBS = $(LIBWCS) -lm
 CATLIBS = $(LIBS) -lnsl -lsocket
 #CATLIBS = $(LIBS)
 BIN = bin
-.PRECIOUS: ${LIBWCS}
+.PRECIOUS: ${LIBWCS} ${LIBNED}
 .c.o:
 	$(CC) -c $(CFLAGS) $(DEFS) $<
 
@@ -129,6 +130,12 @@ keyhead: keyhead.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
 matchcat: matchcat.c $(LIBWCS) libwcs/wcscat.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/matchcat matchcat.c $(CATLIBS)
 
+nedname: nedname.c $(LIBWCS) $(LIBNED) libwcs/wcs.h libned/ned_client.h
+	$(CC) $(CFLAGS) -o $(BIN)/nedname nedname.c $(CATLIBS) $(LIBNED)
+
+nedpos: nedpos.c $(LIBWCS) $(LIBNED) libwcs/wcs.h libned/ned_client.h
+	$(CC) $(CFLAGS) -o $(BIN)/nedpos nedpos.c $(CATLIBS) $(LIBNED)
+
 newfits: newfits.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/newfits newfits.c $(LIBS)
 
@@ -171,8 +178,12 @@ simpos: simpos.c libwcs/libwcs.a
 $(LIBWCS): libwcs/*.c libwcs/*.h
 	cd libwcs; make
 
+$(LIBNED): libned/*.c libned/*.h
+	cd libned; make
+
 objclean:
 	cd libwcs; make clean
+	cd libned; make clean
 
 binclean:
 	rm -f ./bin/*

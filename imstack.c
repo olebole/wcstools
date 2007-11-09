@@ -340,6 +340,23 @@ char	*filename;	/* FITS or IRAF file filename */
 	    hputi4 (header,"NAXIS", 4);
 	    hputi4 (header,"NAXIS4", nfiles*ntimes);
 	    }
+
+	/* Add IRAF multispec header keywords, if requested */
+	if (multispec) {
+	    hputi4 (header,"NAXIS",3);
+	    hputi4 (header,"NAXIS2",1);
+	    hputi4 (header,"NAXIS3",nfiles);
+	    hputi4 (header,"WCSDIM",3);
+	    hputs (header,"BANDID2","raw spectrum");
+	    hputs (header,"BANDID3","averaged sky");
+	    hputs (header,"WAT2_001","wtype=linear");
+	    hputs (header,"WAT3_001","wtype=linear");
+	    hputnr8 (header,"CD2_2",1.0,1);
+	    hputnr8 (header,"CD3_3",1.0,1);
+	    hputnr8 (header,"LTM2_2",1.0,1);
+	    hputnr8 (header,"LTM3_3",1.0,1);
+	    }
+
 	nbhead = strlen (header);
 	nblocks = nbhead / FITSBLOCK;
 	if (nblocks * FITSBLOCK < nbhead)
@@ -348,21 +365,6 @@ char	*filename;	/* FITS or IRAF file filename */
 	for (i = nbhead+1; i < nbytes; i++)
 	    header[i] = ' ';
 	nbhead = nbytes;
-	}
-
-    if (multispec) {
-	hputi4 (header,"NAXIS",3);
-	hputi4 (header,"NAXIS2",1);
-	hputi4 (header,"NAXIS3",nfiles);
-	hputi4 (header,"WCSDIM",3);
-	hputs (header,"BANDID2","raw spectrum");
-	hputs (header,"BANDID3","averaged sky");
-	hputs (header,"WAT2_001","wtype=linear");
-	hputs (header,"WAT3_001","wtype=linear");
-	hputnr8 (header,"CD2_2",1.0,1);
-	hputnr8 (header,"CD3_3",1.0,1);
-	hputnr8 (header,"LTM2_2",1.0,1);
-	hputnr8 (header,"LTM3_3",1.0,1);
 	}
 
     /* If first file, open to write and, optionally, write FITS header */
