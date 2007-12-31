@@ -1,5 +1,5 @@
 /* File imstar.c
- * April 27, 2007
+ * October 15, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -26,6 +26,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <math.h>
 #include <unistd.h>
 #include <math.h>
 #include "libwcs/wcs.h"
@@ -46,6 +47,7 @@ static int debug = 0;		/* debugging flag */
 static int version = 0;		/* If 1, print only program name and version */
 static int rot = 0;		/* Angle to rotate image (multiple of 90 deg) */
 static int mirror = 0;		/* If 1, flip image right-left before rotating*/
+static int printcounts = 0;	/* If 1, print counts instead of magnitudes */
 
 static void PrintUsage();
 static void ListStars();
@@ -169,9 +171,13 @@ char **av;
 		    ac--;
 		    break;
 	
-		case 'b':	/* ouput FK4 (B1950) coordinates */
+		case 'b':	/* Output FK4 (B1950) coordinates */
 		    eqout = 1950.0;
 		    sysout = WCS_B1950;
+		    break;
+	
+		case 'c':	/* Output coounts instead of magnitudes */
+		    printcounts++;;
 		    break;
 	
 		case 'd':	/* Read image star positions from DAOFIND file */
@@ -197,7 +203,7 @@ char **av;
 		    rotatewcs = 0;
 		    break;
 	
-		case 'h':	/* ouput descriptive header */
+		case 'h':	/* Output descriptive header */
 		    printhead++;
 		    break;
 	
@@ -212,7 +218,7 @@ char **av;
 		    ac--;
 		    break;
 	
-		case 'j':	/* ouput FK5 (J2000) coordinates */
+		case 'j':	/* Output FK5 (J2000) coordinates */
 		    eqout = 2000.0;
 		    sysout = WCS_J2000;
 		    break;
@@ -407,6 +413,7 @@ char	*command;	/* Name of program being executed */
     fprintf(stderr,"usage: imstar [-vbsjt] [-m mag_off] [-n num] [-d file][ra dec sys] file.fits ...\n");
     fprintf(stderr,"  -a: Rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b: Output B1950 (FK4) coordinates \n");
+    fprintf(stderr,"  -c: Output total flux in counts instead of magnitudes\n");
     fprintf(stderr,"  -d: Read following DAOFIND output catalog instead of search \n");
     fprintf(stderr,"  -e: Number of pixels to ignore around image edge \n");
     fprintf(stderr,"  -f: Output simple ASCII catalog format\n");
@@ -736,6 +743,8 @@ char	*filename;	/* FITS or IRAF file filename */
 		sprintf (headline, "#equinox 1950.0");
 	    else
 		sprintf (headline, "#equinox 2000.0");
+	    if (printcounts)
+		strcat (headline, "(counts)");
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
 	    else
@@ -752,7 +761,10 @@ char	*filename;	/* FITS or IRAF file filename */
 		fprintf (fd, "%s\n", headline);
 	    else
 		printf ("%s\n", headline);
-	    sprintf (headline,"id 	ra      	dec     	mag   	x    	y    	peak");
+	    if (printcounts)
+		sprintf (headline,"id 	ra      	dec     	counts	x    	y    	peak");
+	    else
+		sprintf (headline,"id 	ra      	dec     	mag   	x    	y    	peak");
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
 	    else
@@ -781,6 +793,8 @@ char	*filename;	/* FITS or IRAF file filename */
     for (i = 0; i < ns; i++) {
 	ra2str (rastr, 32, sra[i], 3);
 	dec2str (decstr, 32, sdec[i], 2);
+	if (printcounts)
+	    smag[i] = pow (10.0, smag[i] / -2.5);
 	if (outform == CAT_STARBASE) {
 	    sprintf (headline, "%d	%s	%s	%.2f	%.2f	%.2f	%d",
 		     i+1, rastr,decstr, smag[i], sx[i], sy[i], sp[i]);
@@ -917,4 +931,5 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jan 10 2007	Fix arguments to MagSortStars() and RASortStars()
  * Apr  6 2007	Add -g command to not rotate image WCS with image
  * Apr 27 2007	Set magoff to zero only if greater than 89, not 20
+ * Oct 15 2007	Add -c option to print total flux in counts
  */

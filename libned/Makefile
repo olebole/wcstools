@@ -6,7 +6,7 @@
 
 
 CFLAGS = -g -D_NO_PROTO
-CC = cc
+CC = cc -m32
 
 SRC = ned_cli.c ned_cif.c ned_err.c ned_sk.c
 OBJ = ned_cli.o ned_cif.o ned_err.o ned_sk.o

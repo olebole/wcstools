@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** April 30, 2007
+ *** December 20, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2007
@@ -134,6 +134,8 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     char *pheadend;
     int inherit = 1;	/* Value of INHERIT keyword in FITS extension header */
     int extfound = 0;	/* Set to one if desired FITS extension is found */
+    int npcount;
+    int npblock;
 
     pheader = NULL;
     lprim = 0;
@@ -233,16 +235,26 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 #endif
 			    (void)close (fd);
 			free (header);
-			if (pheader != NULL)
-			    return (pheader);
+			/* if (pheader != NULL)
+			    return (pheader); */
     			if (extnum != -1 && !extfound) {
-			    if (extnum < 0)
-	    			fprintf (stderr, "FITSRHEAD: Extension %s not found in file %s\n",extnam, filename);
-			    else
-	    			fprintf (stderr, "FITSRHEAD: Extension %d not found in file %s\n",extnum, filename);
+			    *ext = (char) 0;
+			    if (extnum < 0) {
+	    			snprintf (fitserrmsg,79,
+				    "FITSRHEAD: Extension %s not found in file %s",
+				    extnam, filename);
+				}
+			    else {
+	    			snprintf (fitserrmsg,79,
+				    "FITSRHEAD: Extension %d not found in file %s",
+				    extnum, filename);
+				}
+			    *ext = cext;
 			    }
-			else
-	    		    fprintf (stderr, "FITSRHEAD: No header found in file %s\n", filename);
+			else {
+	    		    snprintf (fitserrmsg,79,
+				"FITSRHEAD: No header found in file %s", filename);
+			    }
 			return (NULL);
 			}
 		    }
@@ -352,6 +364,14 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		    nblock = nbskip / 2880;
 		    if (nblock*2880 < nbskip)
 			nblock = nblock + 1;
+		    npcount = 0;
+		    hgeti4 (header,"PCOUNT", &npcount);
+		    if (npcount > 0) {
+			nbskip = nbskip + npcount;
+			nblock = nbskip / 2880;
+			if (nblock*2880 < nbskip)
+			    nblock = nblock + 1;
+			}
 		    }
 		else
 		    nblock = 0;
@@ -384,6 +404,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		    if (ipos < npos) {
 			snprintf (fitserrmsg,79,"FITSRHEAD: %d / %d bytes skipped\n",
 				 ipos,npos);
+			extfound = 0;
 			break;
 			}
 		    }
@@ -1040,16 +1061,18 @@ int	*nbhead;	/* Number of characters before table starts */
 /* Make sure this file is really a FITS table file */
     temp[0] = 0;
     (void) hgets (header,"XTENSION",16,temp);
-    if (strncmp (temp, "TABLE", 5)) {
-	snprintf (fitserrmsg,79, "FITSRTOPEN:  %s is not a FITS table file\n",inpath);
+    if (strlen (temp) == 0) {
+	snprintf (fitserrmsg,79,
+		  "FITSRTOPEN:  %s is not a FITS table file\n",inpath);
 	free ((void *) header);
 	return (0);
 	}
 
 /* If it is a FITS file, get table information from the header */
-    else {
+    else if (!strcmp (temp, "TABLE") || !strcmp (temp, "BINTABLE")) {
 	if (fitsrthead (header, nk, kw, nrows, nchar)) {
-	    snprintf (fitserrmsg,79, "FITSRTOPEN: Cannot read FITS table from %s\n",inpath);
+	    snprintf (fitserrmsg,79,
+		      "FITSRTOPEN: Cannot read FITS table from %s\n",inpath);
 	    free ((void *) header);
 	    return (-1);
 	    }
@@ -1060,6 +1083,15 @@ int	*nbhead;	/* Number of characters before table starts */
 	    free ((void *) header);
 	    return (fd);
 	    }
+	}
+
+/* If it is another FITS extension note it and return */
+    else {
+	snprintf (fitserrmsg,79,
+		  "FITSRTOPEN:  %s is a %s extension, not table\n",
+		  inpath, temp);
+	free ((void *) header);
+	return (0);
 	}
 }
 
@@ -1081,21 +1113,28 @@ int	*nchar;		/* Number of characters in one table row (returned) */
 {
     struct Keyword *rw;	/* Structure for desired entries */
     int nfields;
-    int ifield,ik,ln, i;
+    int ifield,ik,ln, i, ikf, ltform, kl;
     char *h0, *h1, *tf1, *tf2;
     char tname[12];
     char temp[16];
     char tform[16];
     int tverb;
+    int bintable = 0;
 
     h0 = header;
 
 /* Make sure this is really a FITS table file header */
     temp[0] = 0;
     hgets (header,"XTENSION",16,temp);
-    if (strncmp (temp, "TABLE", 5) != 0) {
-	snprintf (fitserrmsg,79, "FITSRTHEAD:  Not a FITS table file\n");
-	free (temp);
+    if (strlen (temp) == 0) {
+	snprintf (fitserrmsg,79, "FITSRTHEAD:  Not a FITS table header\n");
+	return (-1);
+	}
+    else if (!strcmp (temp, "BINTABLE")) {
+	bintable = 1;
+	}
+    else if (strcmp (temp, "TABLE")) {
+	snprintf (fitserrmsg,79, "FITSRTHEAD:  %s extension, not TABLE\n",temp);
 	return (-1);
 	}
 
@@ -1135,35 +1174,65 @@ int	*nchar;		/* Number of characters in one table row (returned) */
 
     tverb = verbose;
     verbose = 0;
+    ikf = 0;
 
     for (ifield = 0; ifield < nfields; ifield++) {
 
-    /* First column of field */
+    /* Name of field */
 	for (i = 0; i < 12; i++) tname[i] = 0;
-	sprintf (tname, "TBCOL%d", ifield+1);
+	sprintf (tname, "TTYPE%d", ifield+1);;
+	temp[0] = 0;
 	h1 = ksearch (h0,tname);
-	pw[ifield].kf = 0;
-	hgeti4 (h0,tname, &pw[ifield].kf);
+	h0 = h1;
+	hgets (h0,tname,16,temp);
+	strcpy (pw[ifield].kname,temp);
+	pw[ifield].lname = strlen (pw[ifield].kname);
+
+    /* Sequence of field on line
+	pw[ifield].kn = ifield + 1;
+
+    /* First column of field */
+	if (bintable)
+	    pw[ifield].kf = ikf;
+	else {
+	    for (i = 0; i < 12; i++) tname[i] = 0;
+	    sprintf (tname, "TBCOL%d", ifield+1);
+	    pw[ifield].kf = 0;
+	    hgeti4 (h0,tname, &pw[ifield].kf);
+	    }
 
     /* Length of field */
 	for (i = 0; i < 12; i++) tname[i] = 0;
 	sprintf (tname, "TFORM%d", ifield+1);;
 	tform[0] = 0;
 	hgets (h0,tname,16,tform);
-	tf1 = tform + 1;
-	tf2 = strchr (tform,'.');
-	if (tf2 != NULL)
-	    *tf2 = ' ';
-	pw[ifield].kl = atoi (tf1);
-
-    /* Name of field */
-	for (i = 0; i < 12; i++) tname[i] = 0;
-	sprintf (tname, "TTYPE%d", ifield+1);;
-	temp[0] = 0;
-	hgets (h0,tname,16,temp);
-	strcpy (pw[ifield].kname,temp);
-	lpnam[ifield] = strlen (pw[ifield].kname);
-	h0 = h1;
+	strcpy (pw[ifield].kform, tform);
+	ltform = strlen (tform);
+	if (tform[ltform-1] == 'A') {
+	    pw[ifield].kform[0] = 'A';
+	    for (i = 0; i < ltform-1; i++)
+		pw[ifield].kform[i+1] = tform[i];
+	    pw[ifield].kform[ltform] = (char) 0;
+	    tf1 = pw[ifield].kform + 1;
+	    kl = atof (tf1);
+	    }
+	else if (tform[0] == 'I')
+	    kl = 2;
+	else if (tform[0] == 'J')
+	    kl = 4;
+	else if (tform[0] == 'E')
+	    kl = 4;
+	else if (tform[0] == 'D')
+	    kl = 8;
+	else {
+	    tf1 = tform + 1;
+	    tf2 = strchr (tform,'.');
+	    if (tf2 != NULL)
+		*tf2 = ' ';
+	    kl = atoi (tf1);
+	    }
+	pw[ifield].kl = kl;
+	ikf = ikf + kl;
 	}
 
 /* Set up table for access to desired fields */
@@ -1184,10 +1253,9 @@ int	*nchar;		/* Number of characters in one table row (returned) */
     for (ik = 0; ik < *nk; ik++) {
 	if (rw[ik].kn <= 0) {
 	    for (ifield = 0; ifield < nfields; ifield++) {
-		ln = lpnam[ifield];
-		if (rw[ik].lname > ln)
-		    ln = rw[ik].lname;
-		if (strncmp (pw[ifield].kname, rw[ik].kname, ln) == 0) {
+		if (rw[ik].lname != pw[ifield].lname)
+		    continue;
+		if (strcmp (pw[ifield].kname, rw[ik].kname) == 0) {
 		    break;
 		    }
 		}
@@ -1199,6 +1267,7 @@ int	*nchar;		/* Number of characters in one table row (returned) */
 	rw[ik].kn = ifield + 1;
 	rw[ik].kf = pw[ifield].kf - 1;
 	rw[ik].kl = pw[ifield].kl;
+	strcpy (rw[ik].kform, pw[ifield].kform);
 	strcpy (rw[ik].kname, pw[ifield].kname);
 	}
 
@@ -1280,9 +1349,30 @@ char	*entry;		/* Row or entry from table */
 struct Keyword *kw;	/* Table column information from FITS header */
 {
     char temp[30];
+    short i;
+    int j;
+    float r;
+    double d;
 
-    if (ftgetc (entry, kw, temp, 30))
-	return ( (short) atof (temp) );
+    if (ftgetc (entry, kw, temp, 30)) {
+	if (!strcmp (kw->kform, "I"))
+	    moveb (temp, i, 2, 0, 0);
+	else if (!strcmp (kw->kform, "J")) {
+	    moveb (temp, j, 4, 0, 0);
+	    i = (short) j;
+	    }
+	else if (!strcmp (kw->kform, "E")) {
+	    moveb (temp, r, 4, 0, 0);
+	    i = (short) r;
+	    }
+	else if (!strcmp (kw->kform, "D")) {
+	    moveb (temp, d, 8, 0, 0);
+	    i = (short) d;
+	    }
+	else
+	    i = (short) atof (temp);
+	return (i);
+	}
     else
 	return ((short) 0);
 }
@@ -1297,9 +1387,30 @@ char	*entry;		/* Row or entry from table */
 struct Keyword *kw;	/* Table column information from FITS header */
 {
     char temp[30];
+    short i;
+    int j;
+    float r;
+    double d;
 
-    if (ftgetc (entry, kw, temp, 30))
-	return ( (int) atof (temp) );
+    if (ftgetc (entry, kw, temp, 30)) {
+	if (!strcmp (kw->kform, "I")) {
+	    moveb (temp, i, 2, 0, 0);
+	    j = (int) i;
+	    }
+	else if (!strcmp (kw->kform, "J"))
+	    moveb (temp, j, 4, 0, 0);
+	else if (!strcmp (kw->kform, "E")) {
+	    moveb (temp, r, 4, 0, 0);
+	    j = (int) r;
+	    }
+	else if (!strcmp (kw->kform, "D")) {
+	    moveb (temp, d, 8, 0, 0);
+	    j = (int) d;
+	    }
+	else
+	    j = (int) atof (temp);
+	return (j);
+	}
     else
 	return (0);
 }
@@ -1314,9 +1425,30 @@ char	*entry;		/* Row or entry from table */
 struct Keyword *kw;	/* Table column information from FITS header */
 {
     char temp[30];
+    short i;
+    int j;
+    float r;
+    double d;
 
-    if (ftgetc (entry, kw, temp, 30))
-	return ( (float) atof (temp) );
+    if (ftgetc (entry, kw, temp, 30)) {
+	if (!strcmp (kw->kform, "I")) {
+	    moveb (temp, i, 2, 0, 0);
+	    r = (float) i;
+	    }
+	else if (!strcmp (kw->kform, "J")) {
+	    moveb (temp, j, 4, 0, 0);
+	    r = (float) j;
+	    }
+	else if (!strcmp (kw->kform, "E"))
+	    moveb (temp, r, 4, 0, 0);
+	else if (!strcmp (kw->kform, "D")) {
+	    moveb (temp, d, 8, 0, 0);
+	    r = (float) d;
+	    }
+	else
+	    r = (float) atof (temp);
+	return (r);
+	}
     else
 	return ((float) 0.0);
 }
@@ -1331,9 +1463,30 @@ char	*entry;		/* Row or entry from table */
 struct Keyword *kw;	/* Table column information from FITS header */
 {
     char temp[30];
+    short i;
+    int j;
+    float r;
+    double d;
 
-    if (ftgetc (entry, kw, temp, 30))
-	return ( atof (temp) );
+    if (ftgetc (entry, kw, temp, 30)) {
+	if (!strcmp (kw->kform, "I")) {
+	    moveb (temp, i, 2, 0, 0);
+	    d = (double) i;
+	    }
+	else if (!strcmp (kw->kform, "J")) {
+	    moveb (temp, j, 4, 0, 0);
+	    d = (double) j;
+	    }
+	else if (!strcmp (kw->kform, "E")) {
+	    moveb (temp, r, 4, 0, 0);
+	    d = (double) r;
+	    }
+	else if (!strcmp (kw->kform, "D"))
+	    moveb (temp, d, 8, 0, 0);
+	else
+	    d = atof (temp);
+	return (d);
+	}
     else
 	return ((double) 0.0);
 }
@@ -2071,4 +2224,7 @@ fitserr ()
  *
  * Jan  5 2007	In fitsrtail(), change control characters in header to spaces
  * Apr 30 2007	Improve error reporting in FITSRFULL
+ * Nov 28 2007	Add support to BINTABLE in ftget*() and fitsrthead()
+ * Dec 20 2007	Add data heap numerated by PCOUNT when skipping HDU in fitsrhead()
+ * Dec 20 2007	Return NULL pointer if fitsrhead() cannot find requested HDU
  */

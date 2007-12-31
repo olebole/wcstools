@@ -1,9 +1,9 @@
 /* File keyhead.c
- * June 21, 2006
+ * November 9, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1997-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -356,49 +356,57 @@ char	*kwd[];		/* Names and values of those keywords */
 
 	/* Change keyword value */
 	if (replace) {
-	    if ((line = ksearch (header, kwn)) == NULL)
-		continue;
-	    q = strchr (line, squote);
-	    if (q == NULL)
-		q = strchr (line, dquote);
-	    value = hgetc (header, kwn);
-
-	    /* Some special replacements to standardize 2dF data */
-	    if (!strcmp (kwn, "UTDATE") && !strcmp (kwd[ikwd], "DATE-OBS")) {
-		if ((ccol = strchr (value, ':')) != NULL)
-		    *ccol = '-';
-		if ((ccol = strchr (value, ':')) != NULL)
-		    *ccol = '-';
-		hputs (header, kwd[ikwd], value);
-		if (verbose)
-		    printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, value);
-		}
-	    else if (!strcmp (kwn, "OBSRA") && !strcmp (kwd[ikwd], "RA")) {
-		rnum = atof (value);
-		dnum = raddeg (rnum);
-		ra2str (newvalue, 32, dnum, 3);
-		hputs (header, kwd[ikwd], newvalue);
-		if (verbose)
-		    printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, newvalue);
-		}
-	    else if (!strcmp (kwn, "OBSDEC") && !strcmp (kwd[ikwd], "DEC")) {
-		rnum = atof (value);
-		dnum = raddeg (rnum);
-		dec2str (newvalue, 32, dnum, 3);
-		hputs (header, kwd[ikwd], newvalue);
-		if (verbose)
-		    printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, newvalue);
-		}
-
-	    else if (q != NULL && q < line+80) {
-		hputs (header, kwd[ikwd], value);
-		if (verbose)
-		    printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, value);
+	    if ((line = ksearch (header, kwn)) == NULL) {
+		if (verbose) {
+		    if (hgets (header, kwd[ikwd], 64, oldvalue))
+			printf ("%s = %s already\n", kwd[ikwd], oldvalue);
+		    else
+			printf ("%s not found\n", kwn);
+		    }
 		}
 	    else {
-		hputc (header, kwd[ikwd], value);
-		if (verbose)
-		    printf ("%s = %s = %s\n", kwd[ikwd], kwn, value);
+		q = strchr (line, squote);
+		if (q == NULL)
+		    q = strchr (line, dquote);
+		value = hgetc (header, kwn);
+
+		/* Some special replacements to standardize 2dF data */
+		if (!strcmp (kwn, "UTDATE") && !strcmp (kwd[ikwd], "DATE-OBS")) {
+		    if ((ccol = strchr (value, ':')) != NULL)
+			*ccol = '-';
+		    if ((ccol = strchr (value, ':')) != NULL)
+			*ccol = '-';
+		    hputs (header, kwd[ikwd], value);
+		    if (verbose)
+			printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, value);
+		    }
+		else if (!strcmp (kwn, "OBSRA") && !strcmp (kwd[ikwd], "RA")) {
+		    rnum = atof (value);
+		    dnum = raddeg (rnum);
+		    ra2str (newvalue, 32, dnum, 3);
+		    hputs (header, kwd[ikwd], newvalue);
+		    if (verbose)
+			printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, newvalue);
+		    }
+		else if (!strcmp (kwn, "OBSDEC") && !strcmp (kwd[ikwd], "DEC")) {
+		    rnum = atof (value);
+		    dnum = raddeg (rnum);
+		    dec2str (newvalue, 32, dnum, 3);
+		    hputs (header, kwd[ikwd], newvalue);
+		    if (verbose)
+			printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, newvalue);
+		    }
+
+		else if (q != NULL && q < line+80) {
+		    hputs (header, kwd[ikwd], value);
+		    if (verbose)
+			printf ("%s = %s = '%s'\n", kwd[ikwd], kwn, value);
+		    }
+		else {
+		    hputc (header, kwd[ikwd], value);
+		    if (verbose)
+			printf ("%s = %s = %s\n", kwd[ikwd], kwn, value);
+		    }
 		}
 	    }
 
@@ -643,4 +651,6 @@ char	*kwd[];		/* Names and values of those keywords */
  * Mar  1 2005	Print program information only on first file if looping
  *
  * Jun 21 2006	Clean up code
+ *
+ * Nov 09 2007	Add more verbosity replacing value from another keyword
  */

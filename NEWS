@@ -1,10 +1,24 @@
-Version 3.7.1 (September 19, 2007)
+Version 3.7.2 (December 31, 2007)
+getdate: Fix bug so the -t time-only flag works with all 2fd options
+gethead,imsize,wcshead: Allow range of extensions or "all" after comma in filename
+getpix: Read list of pixel coordinates using @filename
+scat: Fix bug so limit flag(s) match appropriate magnitude(s)
+fitsfile.c: Skip over binary tables in multiextension FITS files
+tmcread.c: Shift position of magnitude flags in 2MASS catalog with errors by one
+ubcread.c: Expand zone searches by one star at each end
+webread.c: Fix chunk reading code which worked in Solaris but failed in Linux
+
+Version 3.7.1 (November 9, 2007)
+fixpix: Fix bug reading coordinates from file found by Saurabh Jha
+keyhead: Rewrite code implementing -r value assignment so it always works
 nedpos,nedname: Programs from NED for retrieving positions for objects and
 names for positions which were modified to work with WCSTools several years
 ago have now been rewritten for portability and added to the WCSTools
 release.  nedpos works like simpos, but has more options.
 simpos,nedpos: Options for input file of object names and output tab-separated
 tables have been added.
+findstar.c: Trim section parsing fixed
+imgetwcs.c: Return NULL wcs pointer if no wcs in header
 
 Version 3.7.0 (August 30, 2007)
 imcat,scat: Add option to list minor planets in field using SkyBot service

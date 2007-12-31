@@ -1,5 +1,5 @@
 /* File imsize.c
- * January 10, 2007
+ * December 21, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -73,8 +73,11 @@ char **av;
     char filename[128];
     FILE *flist;
     char *listfile = NULL;
+    char *fext = NULL;
+    char *fcomma = NULL;
     int nfext=0;
-    int i, j;
+    int i, j, nch;
+    char *namext;
     int nrmax=10;
     struct Range *erange;
 
@@ -247,13 +250,38 @@ char **av;
 	while (fgets (filename, 128, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
 	    if (*lastchar < 32) *lastchar = 0;
+	    if ((fcomma = strchr (filename, ','))) {
+		fext = fcomma + 1;
+		if (isrange (fext)) {
+		    erange = RangeInit (fext, nrmax);
+		    nfext = rgetn (erange);
+		    extension = calloc (1, 8);
+		    *fcomma = (char) 0;
+		    }
+		else if (!strcmp (fext, "all")) {
+		    erange = RangeInit ("1-500", nrmax);
+		    nfext = rgetn (erange);
+		    extension = calloc (1, 8);
+		    *fcomma = (char) 0;
+		    }
+		else
+		    nfext = 1;
+		}
+	    else
+		nfext = 0;
 	    if (nfext > 1) {
 		rstart (erange);
 		for (i = 0; i < nfext; i++) {
 		    j = rgeti4 (erange);
 		    sprintf (extension, "%d", j);
-		    if (PrintWCS (filename))
+		    nch = strlen (filename) + 2 + strlen (extension);
+		    namext = (char *) calloc (1, nch);
+		    strcpy (namext, filename);
+		    strcat (namext, ",");
+		    strcat (namext, extension);
+		    if (PrintWCS (namext))
 			break;
+		    free (namext);
 		    }
 		}
 	    else
@@ -270,13 +298,38 @@ char **av;
 
     while (ac-- > 0) {
 	char *fn = *av++;
+	if ((fcomma = strchr (fn, ','))) {
+	    fext = fcomma + 1;
+	    if (isrange (fext)) {
+		erange = RangeInit (fext, nrmax);
+		nfext = rgetn (erange);
+		extension = calloc (1, 8);
+		*fcomma = (char) 0;
+		}
+	    else if (!strcmp (fext, "all")) {
+		erange = RangeInit ("1-500", nrmax);
+		nfext = rgetn (erange);
+		extension = calloc (1, 8);
+		*fcomma = (char) 0;
+		}
+	    else
+		nfext = 1;
+	    }
+	else
+	    nfext = 0;
 	if (nfext > 1) {
 	    rstart (erange);
 	    for (i = 0; i < nfext; i++) {
 		j = rgeti4 (erange);
 		sprintf (extension, "%d", j);
-		if (PrintWCS (fn))
+		nch = strlen (fn) + 2 + strlen (extension);
+		namext = (char *) calloc (1, nch);
+		strcpy (namext, fn);
+		strcat (namext, ",");
+		strcat (namext, extension);
+		if (PrintWCS (namext))
 		    break;
+		free (namext);
 		}
 	    }
 	else
@@ -607,4 +660,5 @@ char *name;
  * Jun 21 2006	Clean up code
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  *
+ * Dec 21 2007	Add option to put range of extensions in filenames
  */

@@ -1,5 +1,5 @@
 #!/bin/sh
-echo "WCSTools 3.7.1 Programs
+echo "WCSTools 3.7.2 Programs
 http://tdc-www.harvard.edu/software/wcstools/
 
 addpix:    Add a constant value(s) to specified pixel(s)

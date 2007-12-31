@@ -1,8 +1,8 @@
 /*** File libwcs/ubcread.c
- *** January 11, 2007
+ *** December 05, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 200
+ *** Copyright (C) 2003-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -148,9 +148,10 @@ int	nlog;		/* Logging interval */
     int znum, itot,iz, i;
     int jtable,jstar;
     int itable = 0;
+    int objtype = 0;
     int nstar, nread, pass;
     int ubra1, ubra2, ubdec1, ubdec2;
-    int nsg, qsg;
+    int nsg, isg, qsg;
     double ra,dec, ra0, dec0;
     double mag, magtest, secmarg;
     int istar, istar1, istar2, pmni, nid;
@@ -183,6 +184,11 @@ int	nlog;		/* Logging interval */
 	fprintf (stderr, "UBCREAD:  %s not a USNO catalog\n", refcatname);
 	return (0);
 	}
+
+    if (strchr (refcatname, 't'))
+	objtype = 1;
+    else
+	objtype = 0;
 
     /* If root pathname is a URL, search and return */
     if (!strncmp (upath, "http:",5)) {
@@ -252,12 +258,24 @@ int	nlog;		/* Logging interval */
 	printf ("epoch  %.3f\n", epout);
 	printf ("program        scat %s\n", revmessage);
 	CatID (catid, ucat);
-	printf ("%s	ra          	dec         	", catid);
-	printf ("magb1 	magr1 	magb1 	magb2 	magn  	ura  	udec  	");
-	printf ("pm	ni	arcmin\n");
-	printf ("------------	------------	------------	");
-	printf ("-----	-----	-----	-----	-----	-----	-----	");
-	printf ("--	--	------\n");
+	if (objtype) {
+	    printf ("%s	ra          	dec         	", catid);
+	    printf ("magb1 	magr1 	magb1 	magb2 	magn  	");
+	    printf ("sgb1 	sgr1 	sgb1 	sgb2	");
+	    printf ("ura  	udec	pm	ni	qsg	arcmin\n");
+	    printf ("------------	------------	------------	");
+	    printf ("-----	-----	-----	-----	-----	");
+	    printf ("----	----	----	----	");
+	    printf ("-----	-----	--	--	---	------\n");
+	    }
+	else {
+	    printf ("%s	ra          	dec         	", catid);
+	    printf ("magb1 	magr1 	magb1 	magb2 	magn  	ura  	");
+	    printf ("udec	pm	ni	qsg	arcmin\n");
+	    printf ("------------	------------	------------	");
+	    printf ("-----	-----	-----	-----	-----	-----	");
+	    printf ("-----	--	--	---	------\n");
+	    }
 	}
 
     /* Convert RA and Dec limits to same units as catalog for quick filter */
@@ -293,14 +311,20 @@ int	nlog;		/* Logging interval */
 	    for (iwrap = 0; iwrap <= wrap; iwrap++) {
 
 	    /* Find first star based on RA */
-		if (iwrap == 0 || wrap == 0)
+		if (iwrap == 0 || wrap == 0) {
 		    istar1 = ubcsra (rra1);
+		    if (istar1 > 1)
+			istar1 = istar1 - 1;
+		    }
 		else
 		    istar1 = 1;
 
 	    /* Find last star based on RA */
-		if (iwrap == 1 || wrap == 0)
+		if (iwrap == 1 || wrap == 0) {
 		    istar2 = ubcsra (rra2);
+		    if (istar2 < nstars)
+			istar2 = istar2 + 1;
+		    }
 		else
 		    istar2 = nstars;
 
@@ -363,10 +387,13 @@ int	nlog;		/* Logging interval */
 				pmqual = 10;
 			    nsg = 0;
 			    qsg = 0;
-			    for (i = 0; i < 5; i++) {
+			    for (i = 0; i < 4; i++) {
 				if (star.mag[i] > 0) {
-				    nsg++;
-				    qsg = qsg + ubcsg (star.mag[i]);
+				    isg = ubcsg (star.mag[i]);
+				    if (isg > 0) {
+					nsg++;
+					qsg = qsg + isg;
+					}
 				    }
 				}
 			    if (pmqual == 10 || nsg < 1)
@@ -428,6 +455,10 @@ int	nlog;		/* Logging interval */
 				printf ("%s	%s	%s", numstr,rastr,decstr);
 				for (i = 0; i < 5; i++)
 				    printf ("	%.2f",ubcmag(star.mag[i]));
+				if (objtype) {
+				    for (i = 0; i < 4; i++)
+					printf ("	%2d",ubcsg(star.mag[i]));
+				    }
 				printf ("	%6.1f	%6.1f",
 					rapm * 3600000.0 * cosdeg(dec),
 					decpm * 3600000.0);
@@ -663,7 +694,7 @@ int	nlog;		/* Logging interval */
 		    pmqual = 10;
 		nsg = 0;
 		qsg = 0;
-		for (i = 0; i < 5; i++) {
+		for (i = 0; i < 4; i++) {
 		    if (star.mag[i] > 0) {
 			nsg++;
 			qsg = qsg + ubcsg (star.mag[i]);
@@ -877,14 +908,20 @@ int	nlog;		/* Logging interval */
 	    for (iwrap = 0; iwrap <= wrap; iwrap++) {
 
 	    /* Find first star based on RA */
-		if (iwrap == 0 || wrap == 0)
+		if (iwrap == 0 || wrap == 0) {
 		    istar1 = ubcsra (rra1);
+		    if (istar1 > 1)
+			istar1 = istar1 - 1;
+		    }
 		else
 		    istar1 = 1;
 
 	    /* Find last star based on RA */
-		if (iwrap == 1 || wrap == 0)
+		if (iwrap == 1 || wrap == 0) {
 		    istar2 = ubcsra (rra2);
+		    if (istar2 < nstars)
+			istar2 = istar2 + 1;
+		    }
 		else
 		    istar2 = nstars;
 
@@ -947,7 +984,7 @@ int	nlog;		/* Logging interval */
 				pmqual = 10;
 			    nsg = 0;
 			    qsg = 0;
-			    for (i = 0; i < 5; i++) {
+			    for (i = 0; i < 4; i++) {
 				if (star.mag[i] > 0) {
 				    nsg++;
 				    qsg = qsg + ubcsg (star.mag[i]);
@@ -1125,6 +1162,7 @@ ubcmag (magetc)
 int magetc;	/* Magnitude 4 bytes from UB catalog entry */
 {
     double xmag;
+
     if (ucat == YB6)
 	xmag =  0.001 * (double) magetc;
     else if (magetc < 0)
@@ -1145,6 +1183,7 @@ ubcpra (magetc)
 int magetc;	/* Proper motion field from UB catalog entry */
 {
     double pm;
+
     if (magetc < 0)
 	pm = (double) (-magetc % 10000);
     else
@@ -1274,7 +1313,7 @@ double	rax0;		/* Right ascension in degrees for which to search */
     ra1 = ubcra (star.rasec);
     istar = nstars;
     nrep = 0;
-    while (istar != istar1 && nrep < 25) {
+    while (istar != istar1 && nrep < 30) {
 	if (ubcstar (istar, &star))
 	    break;
 	else {
@@ -1290,7 +1329,7 @@ double	rax0;		/* Right ascension in degrees for which to search */
 	    rdiff = ra1 - ra;
 	    rdiff1 = ra1 - rax;
 	    rdiff2 = ra - rax;
-	    if (nrep > 20 && ABS(rdiff2) > ABS(rdiff1)) {
+	    if (nrep > 25 && ABS(rdiff2) > ABS(rdiff1)) {
 		istar = istar1;
 		break;
 		}
@@ -1298,16 +1337,16 @@ double	rax0;		/* Right ascension in degrees for which to search */
 	    sdiff = (double)(istar - istar1) * rdiff1 / rdiff;
 	    istar2 = istar1 + (int) (sdiff + 0.5);
 	    ra1 = ra;
-	    istar1 = istar;
-	    istar = istar2;
 	    if (debug) {
 		fprintf (stderr," ra1=    %.5f ra=     %.5f rax=    %.5f\n",
 			 ra1,ra,rax);
 		fprintf (stderr," rdiff=  %.5f rdiff1= %.5f rdiff2= %.5f\n",
 			 rdiff,rdiff1,rdiff2);
-		fprintf (stderr," istar1= %d istar= %d istar1= %d\n",
+		fprintf (stderr," istar1= %d istar= %d istar2= %d\n",
 			 istar1,istar,istar2);
 		}
+	    istar1 = istar;
+	    istar = istar2;
 	    if (istar < 1)
 		istar = 1;
 	    if (istar > nstars)
@@ -1480,4 +1519,7 @@ int nbytes = nbent; /* Number of bytes to reverse */
  * Nov 15 2006	Print coordinates if in verbose mode; convert coords to integer
  *
  * Jan 10 2007	Add match=1 argument to webrnum()
+ * Nov 26 2007	Add one at each end of search range in ubcread()
+ * Dec 05 2007	Add option to print per magnitude star/galaxy discriminators if ub1t
+ * Dec 05 2007	Drop sg flag=0 from average qsg
  */

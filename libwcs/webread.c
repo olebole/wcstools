@@ -1,5 +1,5 @@
 /*** File webread.c
- *** August 28, 2007
+ *** December 31, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -677,13 +677,11 @@ int	*lbuff;	/* Length of buffer (returned) */
 	    /* Increase buffer size if this chunk will push it over current limit */
 	    else if (ltbuff > lb) {
 		lb = lb * 10;
-		newbuff = (char *) realloc (tabbuff, lb);
-		if (tabbuff != newbuff)
-		    free (tabbuff);
+		newbuff = (char *) calloc ((size_t)lb, (size_t)1); 
+		movebuff (newbuff, tabbuff, lcbuff, 0, 0);
+		free (tabbuff);
 		tabbuff = newbuff;
 		buff = tabbuff + lcbuff;
-		for (i = lcbuff; i < lb; i++)
-		    tabbuff[i] = (char) 0;
 		newbuff = NULL;
 		}
 	    else {
@@ -966,4 +964,5 @@ space2tab (tabbuff)
  * Jul 19 2007	If last line of table has no content, drop it
  * Aug 24 2007	Fix tab tables filled with spaces
  * Aug 28 2007	Fix space2tab() declarations which passed on Solaris, not Linux
+ * Dec 31 2007	Fix chunk reading code in webbuff()
  */

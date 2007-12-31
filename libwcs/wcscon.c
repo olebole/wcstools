@@ -1,5 +1,5 @@
 /*** File wcscon.c
- *** August 15, 2007
+ *** November 8, 2007
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Some subroutines are based on Starlink subroutines by Patrick Wallace
  *** Copyright (C) 1995-2007
@@ -60,6 +60,8 @@
  * Subroutine:  s2v3 (rra, rdec, r, pos) RA, Dec, Distance to Cartesian
  * Subroutine:  v2s3 (pos, rra, rdec, r) Cartesian to RA, Dec, Distance
  * Subroutine:  rotmat (axes, rot1, rot2, rot3, matrix) Rotation angles to matrix
+ *
+ * Note: Proper motions are always in RA/Dec degrees/year; no cos(Dec) correction
  */
 
 #include <math.h>
@@ -92,9 +94,9 @@ double	*dtheta; /* Longitude or right ascension in degrees
 		   Input in sys1, returned in sys2 */
 double	*dphi;	/* Latitude or declination in degrees
 		   Input in sys1, returned in sys2 */
-double	*ptheta; /* Longitude or right ascension proper motion in degrees/year
+double	*ptheta; /* Longitude or right ascension proper motion in RA degrees/year
 		   Input in sys1, returned in sys2 */
-double	*pphi;	/* Latitude or declination proper motion in degrees/year
+double	*pphi;	/* Latitude or declination proper motion in Dec degrees/year
 		   Input in sys1, returned in sys2 */
 
 {
@@ -2322,4 +2324,5 @@ double *r;	/* Distance to object in same units as pos (returned) */
  * Oct 30 2006	Add LINEAR and ICRS to wcscstr() returns
  *
  * Aug 15 2007	Clean up code in rotmat()
+ * Nov  8 2007	In wcsconp, make it clear that proper motion is in spherical coordinates
  */

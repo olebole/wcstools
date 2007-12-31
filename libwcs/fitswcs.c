@@ -1,5 +1,5 @@
 /*** File libwcs/fitswcs.c
- *** April 18, 2007
+ *** December 20, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2007
@@ -123,7 +123,8 @@ int verbose;	/* Print error messages if nonzero */
     else {
 	if ((header = fitsrhead (filename, &lhead, &nbfits)) == NULL) {
 	    if (verbose)
-		fprintf (stderr, "Cannot read FITS file %s\n", filename);
+		/* fprintf (stderr, "Cannot read FITS file %s\n", filename); */
+		fitserr ();
 	    return (NULL);
 	    }
 	}
@@ -646,4 +647,5 @@ struct WorldCoor *wcs;	/* WCS structure */
  *
  * Apr  2 2007	Fix DelWCSFITS() argument description at top of file
  * Apr 18 2007	Delete WCS result keywords with DelWCSFITS()
+ * Dec 20 2007	Print error message set by fitsrhead()
  */

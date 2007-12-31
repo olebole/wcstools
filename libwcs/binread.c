@@ -65,7 +65,6 @@ void binclose();
 static void binswap8();
 static void binswap4();
 static void binswap2();
-static void moveb();
 
 
 /* BINREAD -- Read binary catalog sources + names in specified region */
@@ -1511,21 +1510,6 @@ char    *filename;      /* Name of file to check */
 	}
 }
 
-/* MOVEB -- Move bytes from one place to another (any data type) */
-
-static void
-moveb (source,dest,nbytes,offs,offd)
-char *source,*dest;
-int nbytes,offs,offd;
-{
-char *from, *last, *to;
-        from = source + offs;
-        to = dest + offd;
-        last = from + nbytes;
-        while (from < last) *(to++) = *(from++);
-        return;
-}
-
 /* Sep 10 1998	New subroutines
  * Sep 15 1998	Add byte swapping
  * Sep 16 1998	Use limiting radius correctly; use arbitrary search system
@@ -1608,4 +1592,5 @@ char *from, *last, *to;
  *
  * Jan  8 2007	Drop unused variables in binbin()
  * Jan 10 2007	Add match=1 argument to webrnum()
+ * Nov 28 2007	Move moveb() to catutil.c
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/wcscat.h
- *** July 18, 2007
+ *** November 28, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Copyright (C) 1998-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -1281,6 +1281,12 @@ extern "C" {
 	double *decmax,	/* Upper declination limit in degrees (returned) */
 	int *wrap,	/* 1 if search passes through 0:00:00 RA */
 	int verbose);	/* 1 to print limits, else 0 */
+    void moveb (	/* Copy nbytes bytes from source+offs to dest+offd */
+	char *source,	/* Pointer to source */
+	char *dest,	/* Pointer to destination */
+	int nbytes,	/* Number of bytes to move */
+	int offs,	/* Offset in bytes in source from which to start copying */
+	int offd);	/* Offset in bytes in destination to which to start copying */
 
 /* Subroutines for dealing with ranges */
     struct Range *RangeInit(	/* Initialize range structure from string */
@@ -1507,6 +1513,7 @@ int ageti4();		/* Extract int value from keyword= value in string */
 int agetr8();		/* Extract double value from keyword= value in string */
 int agets();		/* Extract value from keyword= value in string */
 void bv2sp();		/* Approximate main sequence spectral type from B - V */
+void moveb();		/* Copy nbytes bytes from source+offs to dest+offd */
 
 /* Subroutines for dealing with ranges */
 struct Range *RangeInit();	/* Initialize range structure from string */
@@ -1662,4 +1669,5 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * Jul  5 2007	Add SKYBOT=31 to catalog list
  * Jul 13 2007	Add skybotread() and skybot2tab()
  * Jul 18 2007	Add tabccol() and PM_ARCSECHR for SkyBot
+ * Nov 28 2007	Add moveb() which used to be local to binread()
  */

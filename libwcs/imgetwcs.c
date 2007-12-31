@@ -1,5 +1,5 @@
 /*** File libwcs/imgetwcs.c
- *** July 26, 2007
+ *** October 19, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2007
@@ -95,6 +95,9 @@ double	*eqout;		/* Equinox to return (0=image, returned) */
 
     /* Initialize WCS structure from possibly revised FITS header */
     wcs = ChangeFITSWCS (filename, header, verbose);
+    if (wcs == NULL) {
+	return (NULL);
+	}
     *hp = (int) wcs->nypix;
     *wp = (int) wcs->nxpix;
 
@@ -790,4 +793,5 @@ char *dateobs;
  * Jun  5 2007	Add ChangeFITSWCS to set header WCS arguments and WCS
  * Jul  3 2007	Fix bug by setting hp and wp
  * Jul 26 2007	If first line of header is END, initialize other needed values
+ * Oct 19 2007	Return NULL from GetFITSWCS() immediately if no WCS in header
  */

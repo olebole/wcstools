@@ -1,9 +1,9 @@
 /* File fixpix.c
- * June 20, 2006
+ * October 9, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1997-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -277,7 +277,7 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
 		}
 	while (fgets (line, 128, freg) != NULL) {
 	    i = 0;
-	    sscanf (line,"%d %d %d %d", &xl[i], &yl[i], &xl[i], &yr[i]);
+	    sscanf (line,"%d %d %d %d", &xl[i], &yl[i], &xr[i], &yr[i]);
 	    FixReg (image,bitpix,xdim,ydim,bzero,bscale,xl[i],yl[i],xr[i],yr[i]);
 
 	    /* Note addition as history line in header */
@@ -453,4 +453,6 @@ int	ixr, iyr;	/* Upper right corner of region (1 based) */
  * Apr  9 2002	Do not free unallocated header
  *
  * Jun 20 2006	Clean up code
+ *
+ * Oct  9 2007	Fix bug reading coordinates from file found by Saurabh Jha
  */

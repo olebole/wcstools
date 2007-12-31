@@ -1,5 +1,5 @@
 /*** File libwcs/findstar.c
- *** January 10, 2007
+ *** October 19, 2007
  *** By Doug Mink, after Elwood Downey
  *** Copyright (C) 1996-2007
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -213,12 +213,15 @@ int	zap;		/* If 1, set star to background after reading */
 	tx2 = strchr (trimsec, ':');
 	*tx2 = (char) 0;
 	xborder1 = atoi (tx1+1);
+	tx2 = tx2 + 1;
 	tx3 = strchr (tx2, ',');
 	*tx3 = (char) 0;
 	xborder2 = w - atoi (tx2);
-	tx4 = strchr (tx2, ':');
+	tx3 = tx3 + 1;
+	tx4 = strchr (tx3, ':');
 	*tx4 = (char) 0;
 	yborder1 = atoi (tx3);
+	tx4= tx4 + 1;
 	tx5 = strchr (tx4, ']');
 	*tx5 = (char) 0;
 	yborder2 = atoi (tx4) - h;
@@ -1088,4 +1091,5 @@ int	h;	/* Original height of image */
  * Jan  8 2007	Include fitsfile.h instead of fitshead.h and imio.h
  * Jan  8 2007	Drop unused variables
  * Jan 10 2007	Include wcs.h
+ * Oct 19 2007	Fix pointers in trim section processing
  */

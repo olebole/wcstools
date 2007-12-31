@@ -100,6 +100,9 @@ char **av;
     int ikwd, lkwd, i, j;
     char *kw, *kwe;
     char string[80];
+    char *fext, *fcomma;
+    char *namext;
+    int nch;
     int nbytes;
     int filetype;
     int icond;
@@ -506,8 +509,26 @@ char **av;
 		filetype = FILE_ASCII;
 	    else if (isiraf (filename))
 		filetype = FILE_IRAF;
-	    else if (isfits (filename))
+	    else if (isfits (filename)) {
 		filetype = FILE_FITS;
+		if ((fcomma = strchr (filename, ','))) {
+		    fext = fcomma + 1;
+		    if (isrange (fext)) {
+			erange = RangeInit (fext, nrmax);
+			nfext = rgetn (erange);
+			extension = calloc (1, 8);
+			*fcomma = (char) 0;
+			}
+		    else if (!strcmp (fext, "all")) {
+			erange = RangeInit ("1-500", nrmax);
+			nfext = rgetn (erange);
+			extension = calloc (1, 8);
+			*fcomma = (char) 0;
+			}
+		    else
+			nfext = 1;
+		    }
+		}
 	    else
 		filetype = FILE_ASCII;
 	    if (nfext > 1) {
@@ -515,21 +536,53 @@ char **av;
 		for (i = 0; i < nfext; i++) {
 		    j = rgeti4 (erange);
 		    sprintf (extension, "%d", j);
+		    nch = strlen (filename) + 2 + strlen (extension);
+		    namext = (char *) calloc (1, nch);
+		    strcpy (namext, filename);
+		    strcat (namext, ",");
+		    strcat (namext, extension);
+		    sprintf (extension, "%d", j);
 		    if (PrintValues (filename, filetype, nkwd, kwd))
 			break;
+		    free (namext);
 		    }
 		}
 	    else
 		PrintValues (filename, filetype, nkwd, kwd);
 	    }
 	else {
+	    if ((fcomma = strchr (fn[ifile], ','))) {
+		fext = fcomma + 1;
+		if (isrange (fext)) {
+		    erange = RangeInit (fext, nrmax);
+		    nfext = rgetn (erange);
+		    extension = calloc (1, 8);
+		    *fcomma = (char) 0;
+		    }
+		else if (!strcmp (fext, "all")) {
+		    erange = RangeInit ("1-500", nrmax);
+		    nfext = rgetn (erange);
+		    extension = calloc (1, 8);
+		    *fcomma = (char) 0;
+		    }
+		else
+		    nfext = 1;
+		}
+	    
 	    if (nfext > 1) {
 		rstart (erange);
 		for (i = 0; i < nfext; i++) {
 		    j = rgeti4 (erange);
 		    sprintf (extension, "%d", j);
-		    if (PrintValues (fn[ifile], ft[ifile], nkwd, kwd))
+		    nch = strlen (fn[ifile]) + 2 + strlen (extension);
+		    namext = (char *) calloc (1, nch);
+		    strcpy (namext, fn[ifile]);
+		    strcat (namext, ",");
+		    strcat (namext, extension);
+		    sprintf (extension, "%d", j);
+		    if (PrintValues (namext, ft[ifile], nkwd, kwd))
 			break;
+		    free (namext);
 		    }
 		}
 	    else
@@ -1108,4 +1161,5 @@ char *string;
  * Jul 13 2006	Print only first 999 characters of multiline keyword value
  *
  * Jul 25 2007	Fix bug which badly reset sexigesimal decimal places to ndec
+ * Dec 21 2007	Add option to put range of extensions in filenames
  */

@@ -1,5 +1,5 @@
 /* File wcshead.c
- * February 1, 2007
+ * December 21, 2007
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -30,9 +30,10 @@
 #include <math.h>
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcs.h"
+#include "libwcs/wcscat.h"
 
 static void usage();
-static void ListWCS();
+static int ListWCS();
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int tabout = 0;		/* tab table output flag */
@@ -59,6 +60,17 @@ char **av;
     char filename[256];
     FILE *flist;
     char *listfile = NULL;
+    struct Range *erange;
+    char *fext = NULL;
+    char *fcomma = NULL;
+    int nfext=0;
+    int i, j, nch;
+    char *namext;
+    char *extension;         /* Extension number or name to read */
+    int nrmax=10;
+
+    erange = NULL;
+    extension = NULL;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -154,7 +166,43 @@ char **av;
 	while (fgets (filename, 256, flist) != NULL) {
 	    lastchar = filename + strlen (filename) - 1;
 	    *lastchar = 0;
-	    ListWCS (filename);
+	    if ((fcomma = strchr (filename, ','))) {
+		fext = fcomma + 1;
+		if (isrange (fext)) {
+		    erange = RangeInit (fext, nrmax);
+		    nfext = rgetn (erange);
+		    extension = calloc (1, 8);
+		    *fcomma = (char) 0;
+		    }
+		else if (!strcmp (fext, "all")) {
+		    erange = RangeInit ("1-500", nrmax);
+		    nfext = rgetn (erange);
+		    extension = calloc (1, 8);
+		    *fcomma = (char) 0;
+		    }
+		else
+		    nfext = 1;
+		}
+	    else
+		nfext = 0;
+	    if (nfext > 1) {
+		rstart (erange);
+		for (i = 0; i < nfext; i++) {
+		    j = rgeti4 (erange);
+		    sprintf (extension, "%d", j);
+		    nch = strlen (filename) + 2 + strlen (extension);
+		    namext = (char *) calloc (1, nch);
+		    strcpy (namext, filename);
+		    strcat (namext, ",");
+		    strcat (namext, extension);
+		    if (ListWCS (namext))
+			break;
+		    free (namext);
+		    }
+		}
+	    else
+		(void) ListWCS (filename);
+
 	    if (verbose)
 		printf ("\n");
 	    }
@@ -171,7 +219,42 @@ char **av;
     while (ac-- > 0) {
 	char *fn = *av++;
 	nf++;
-	ListWCS (fn);
+	if ((fcomma = strchr (fn, ','))) {
+	    fext = fcomma + 1;
+	    if (isrange (fext)) {
+		erange = RangeInit (fext, nrmax);
+		nfext = rgetn (erange);
+		extension = calloc (1, 8);
+		*fcomma = (char) 0;
+		}
+	    else if (!strcmp (fext, "all")) {
+		erange = RangeInit ("1-500", nrmax);
+		nfext = rgetn (erange);
+		extension = calloc (1, 8);
+		*fcomma = (char) 0;
+		}
+	    else
+		nfext = 1;
+	    }
+	else
+	    nfext = 0;
+	if (nfext > 1) {
+	    rstart (erange);
+	    for (i = 0; i < nfext; i++) {
+		j = rgeti4 (erange);
+		sprintf (extension, "%d", j);
+		nch = strlen (fn) + 2 + strlen (extension);
+		namext = (char *) calloc (1, nch);
+		strcpy (namext, fn);
+		strcat (namext, ",");
+		strcat (namext, extension);
+		if (ListWCS (namext))
+		    break;
+		free (namext);
+		}
+	    }
+	else
+	    (void) ListWCS (fn);
 	}
 
     return (0);
@@ -195,7 +278,7 @@ usage ()
     exit (1);
 }
 
-static void
+static int
 ListWCS (filename)
 
 char	*filename;	/* FITS or IRAF image file name */
@@ -222,7 +305,8 @@ char	*filename;	/* FITS or IRAF image file name */
     if (nowcs (wcs)) {
 	wcsfree (wcs);
 	wcs = NULL;
-	header = GetFITShead (pathname, verbose);
+	if ((header = GetFITShead (pathname, verbose)) == NULL)
+	    return (-1);
 	if (wave) {
 	    hgetr8 (header, "NAXIS1", &dxpix);
 	    hgeti4 (header, "DC-FLAG", &logwav);
@@ -488,7 +572,7 @@ char	*filename;	/* FITS or IRAF image file name */
     wcsfree (wcs);
     wcs = NULL;
 
-    return;
+    return (0);
 }
 /* Feb 18 1998	New program
  * May 27 1998	Include fitsio.h instead of fitshead.h
@@ -522,4 +606,5 @@ char	*filename;	/* FITS or IRAF image file name */
  * Jan 25 2007	Handle log wavelength as well as wavelength
  * Jan 26 2007	Deal with incomplete WCS
  * Feb  1 2007	Fix wavelength delta for log wavelength
+ * Dec 21 2007	Add option to put range of extensions in filenames
  */

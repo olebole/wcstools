@@ -1,5 +1,5 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** June 11, 2007
+ *** November 28, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2007
@@ -43,6 +43,7 @@ struct Keyword {
     int kn;		/* Index of entry on line */
     int kf;		/* Index in line of first character of entry */
     int kl;		/* Length of entry value */
+    char kform[8];	/* Format for this value */
 };
 
 /* Structure for access to tokens within a string */
@@ -1248,4 +1249,5 @@ void compnut();	/* Compute nutation in longitude and obliquity and mean obliquit
  * Jan  9 2007	Add ANSI prototypes
  * Jan 11 2007	Add token subroutines from catutil.c/wcscat.h to fileutil.c
  * Jun 11 2007	Add minvec() subroutine in imio.c
+ * Nov 28 2007	Add kform format to FITS table keyword data structure
  */

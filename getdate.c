@@ -1,5 +1,5 @@
 /* File getdate.c
- * January 10, 2007
+ * December 12, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -504,9 +504,28 @@ char	*timestring;	/* Input time string */
 			else if (outtime == GST) fitsdate = fd2gst (fitsdate);
 			else if (outtime == MST) fitsdate = fd2mst (fitsdate);
 			else if (outtime == LST) fitsdate = fd2lst (fitsdate);
-			tchar = strchr (fitsdate, 'T');
-			if (dateonly && tchar != NULL) *tchar = (char) 0;
-			printf ("%s\n", fitsdate);
+			tchar = strchr (newfdate, 'T');
+			if (tchar == NULL)
+			    tchar = strchr (newfdate, 'S');
+			if (dateonly) {
+			    strncpy (fyear, newfdate, 10);
+			    fyear[10] = (char) 0;
+			    printf ("%s\n", fyear);
+			    }
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", newfdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, newfdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", newfdate);
+			    }
 			break;
 		    case DTJD:
 			jd = dt2jd (vdate, vtime);
@@ -656,6 +675,7 @@ char	*timestring;	/* Input time string */
 			    tchar = strchr (newfdate, 'S');
 			if (dateonly) {
 			    strncpy (fyear, newfdate, 10);
+			    fyear[10] = (char) 0;
 			    printf ("%s\n", fyear);
 			    }
 			else if (timeonly) {
@@ -794,12 +814,28 @@ char	*timestring;	/* Input time string */
 			else if (outtime == GST) fitsdate = fd2gst (fitsdate);
 			else if (outtime == MST) fitsdate = fd2mst (fitsdate);
 			else if (outtime == LST) fitsdate = fd2lst (fitsdate);
+			tchar = strchr (fitsdate, 'T');
+			if (tchar == NULL)
+			    tchar = strchr (fitsdate, 'S');
 			if (dateonly) {
-			    tchar = strchr (fitsdate, 'T');
-			    if (tchar != NULL)
-				*tchar = (char) 0;
+			    strncpy (fyear, fitsdate, 10);
+			    fyear[10] = (char) 0;
+			    printf ("%s\n", fyear);
 			    }
-			printf ("%s\n", fitsdate);
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", fitsdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, fitsdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", fitsdate);
+			    }
 			break;
 		    case DTJD:
 			jd = doy2jd (vyear, vdoy);
@@ -902,12 +938,27 @@ char	*timestring;	/* Input time string */
 			else if (outtime == GST) fitsdate = fd2gst (fitsdate);
 			else if (outtime == MST) fitsdate = fd2mst (fitsdate);
 			else if (outtime == LST) fitsdate = fd2lst (fitsdate);
+			tchar = strchr (fitsdate, 'T');
+			if (tchar == NULL)
+			    tchar = strchr (fitsdate, 'S');
 			if (dateonly) {
-			    tchar = strchr (fitsdate, 'T');
-			    if (tchar != NULL)
-				*tchar = (char) 0;
+			    strncpy (fyear, fitsdate, 10);
+			    fyear[10] = (char) 0;
 			    }
-			printf ("%s\n", fitsdate);
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", fitsdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, fitsdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", fitsdate);
+			    }
 			break;
 		    case DT1950:
 			ts = jd2ts (jd);
@@ -989,12 +1040,28 @@ char	*timestring;	/* Input time string */
 			else if (outtime == GST) fitsdate = fd2gst (fitsdate);
 			else if (outtime == MST) fitsdate = fd2mst (fitsdate);
 			else if (outtime == LST) fitsdate = fd2lst (fitsdate);
+			tchar = strchr (fitsdate, 'T');
+			if (tchar == NULL)
+			    tchar = strchr (fitsdate, 'S');
 			if (dateonly) {
-			    tchar = strchr (fitsdate, 'T');
-			    if (tchar != NULL)
-				*tchar = (char) 0;
+			    strncpy (fyear, fitsdate, 10);
+			    fyear[10] = (char) 0;
+			    printf ("%s\n", fyear);
 			    }
-			printf ("%s\n", fitsdate);
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", fitsdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, fitsdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", fitsdate);
+			    }
 			break;
 		    case DT1950:
 			ts = mjd2ts (jd);
@@ -1069,12 +1136,28 @@ char	*timestring;	/* Input time string */
 			else if (outtime == GST) fitsdate = fd2gst (fitsdate);
 			else if (outtime == MST) fitsdate = fd2mst (fitsdate);
 			else if (outtime == LST) fitsdate = fd2lst (fitsdate);
+			tchar = strchr (fitsdate, 'T');
+			if (tchar == NULL)
+			    tchar = strchr (fitsdate, 'S');
 			if (dateonly) {
-			    tchar = strchr (fitsdate, 'T');
-			    if (tchar != NULL)
-				*tchar = (char) 0;
+			    strncpy (fyear, fitsdate, 10);
+			    fyear[10] = (char) 0;
+			    printf ("%s\n", fyear);
 			    }
-			printf ("%s\n", fitsdate);
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", fitsdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, fitsdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", fitsdate);
+			    }
 			break;
 		    case DT1950:
 			jd = hjd2jd (jd, ra, dec, coorsys);
@@ -1163,12 +1246,28 @@ char	*timestring;	/* Input time string */
 			if (outtime == ET) fitsdate = fd2et (fitsdate);
 			if (outtime == GST) fitsdate = fd2gst (fitsdate);
 			if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			tchar = strchr (fitsdate, 'T');
+			if (tchar == NULL)
+			    tchar = strchr (fitsdate, 'S');
 			if (dateonly) {
-			    tchar = strchr (fitsdate, 'T');
-			    if (tchar != NULL)
-				*tchar = (char) 0;
+			    strncpy (fyear, fitsdate, 10);
+			    fyear[10] = (char) 0;
+			    printf ("%s\n", fyear);
 			    }
-			printf ("%s\n", fitsdate);
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", fitsdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, fitsdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", fitsdate);
+			    }
 			break;
 		    case DT1950:
 			jd = mhjd2mjd (jd, ra, dec, coorsys);
@@ -1290,7 +1389,8 @@ char	*timestring;	/* Input time string */
 			if (tchar == NULL)
 			    tchar = strchr (newfdate, 'S');
 			if (dateonly) {
-			    strncpy (fyear, newfdate, 10);
+			    strncpy (fyear, fitsdate, 10);
+			    fyear[10] = (char) 0;
 			    printf ("%s\n", fyear);
 			    }
 			else if (timeonly) {
@@ -1432,12 +1532,28 @@ char	*timestring;	/* Input time string */
 			if (outtime == ET) fitsdate = fd2et (fitsdate);
 			if (outtime == GST) fitsdate = fd2gst (fitsdate);
 			if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			tchar = strchr (fitsdate, 'T');
+			if (tchar == NULL)
+			    tchar = strchr (fitsdate, 'S');
 			if (dateonly) {
-			    tchar = strchr (fitsdate, 'T');
-			    if (tchar != NULL)
-				*tchar = (char) 0;
+			    strncpy (fyear, fitsdate, 10);
+			    fyear[10] = (char) 0;
+			    printf ("%s\n", fyear);
 			    }
-			printf ("%s\n", fitsdate);
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", fitsdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, fitsdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", fitsdate);
+			    }
 			break;
 		    case DTJD:
 			jd = ts2jd (ts);
@@ -1514,12 +1630,28 @@ char	*timestring;	/* Input time string */
 			if (outtime == ET) fitsdate = fd2et (fitsdate);
 			if (outtime == GST) fitsdate = fd2gst (fitsdate);
 			if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			tchar = strchr (fitsdate, 'T');
+			if (tchar == NULL)
+			    tchar = strchr (fitsdate, 'S');
 			if (dateonly) {
-			    tchar = strchr (fitsdate, 'T');
-			    if (tchar != NULL)
-				*tchar = (char) 0;
+			    strncpy (fyear, fitsdate, 10);
+			    fyear[10] = (char) 0;
+			    printf ("%s\n", fyear);
 			    }
-			printf ("%s\n", fitsdate);
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", fitsdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, fitsdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", fitsdate);
+			    }
 			break;
 		    case DTJD:
 			ts = tsi2ts (ts);
@@ -1591,12 +1723,28 @@ char	*timestring;	/* Input time string */
 			if (outtime == ET) fitsdate = fd2et (fitsdate);
 			if (outtime == GST) fitsdate = fd2gst (fitsdate);
 			if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			tchar = strchr (fitsdate, 'T');
+			if (tchar == NULL)
+			    tchar = strchr (fitsdate, 'S');
 			if (dateonly) {
-			    tchar = strchr (fitsdate, 'T');
-			    if (tchar != NULL)
-				*tchar = (char) 0;
+			    strncpy (fyear, fitsdate, 10);
+			    fyear[10] = (char) 0;
+			    printf ("%s\n", fyear);
 			    }
-			printf ("%s\n", fitsdate);
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", fitsdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, fitsdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", fitsdate);
+			    }
 			break;
 		    case DTJD:
 			ts = tsu2ts (ts);
@@ -1660,12 +1808,28 @@ char	*timestring;	/* Input time string */
 			if (outtime == ET) fitsdate = fd2et (fitsdate);
 			if (outtime == GST) fitsdate = fd2gst (fitsdate);
 			if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			tchar = strchr (fitsdate, 'T');
+			if (tchar == NULL)
+			    tchar = strchr (fitsdate, 'S');
 			if (dateonly) {
-			    tchar = strchr (fitsdate, 'T');
-			    if (tchar != NULL)
-				*tchar = (char) 0;
+			    strncpy (fyear, fitsdate, 10);
+			    fyear[10] = (char) 0;
+			    printf ("%s\n", fyear);
 			    }
-			printf ("%s\n", fitsdate);
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", fitsdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, fitsdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", fitsdate);
+			    }
 			break;
 		    case DTJD:
 			jd = ep2jd (epoch);
@@ -1722,12 +1886,28 @@ char	*timestring;	/* Input time string */
 			if (outtime == ET) fitsdate = fd2et (fitsdate);
 			if (outtime == GST) fitsdate = fd2gst (fitsdate);
 			if (outtime == MST) fitsdate = fd2mst (fitsdate);
+			tchar = strchr (fitsdate, 'T');
+			if (tchar == NULL)
+			    tchar = strchr (fitsdate, 'S');
 			if (dateonly) {
-			    tchar = strchr (fitsdate, 'T');
-			    if (tchar != NULL)
-				*tchar = (char) 0;
+			    strncpy (fyear, fitsdate, 10);
+			    fyear[10] = (char) 0;
+			    printf ("%s\n", fyear);
 			    }
-			printf ("%s\n", fitsdate);
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", fitsdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, fitsdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", fitsdate);
+			    }
 			break;
 		    case DTJD:
 			jd = epb2jd (epoch);
@@ -1785,9 +1965,27 @@ char	*timestring;	/* Input time string */
 			if (outtime == GST) fitsdate = fd2gst (fitsdate);
 			if (outtime == MST) fitsdate = fd2mst (fitsdate);
 			tchar = strchr (fitsdate, 'T');
-			if (dateonly && tchar != NULL) *tchar = (char) 0;
-			if (outtime == ET) *tchar = 'E';
-			printf ("%s\n", fitsdate);
+			if (tchar == NULL)
+			    tchar = strchr (fitsdate, 'S');
+			if (dateonly) {
+			    strncpy (fyear, fitsdate, 10);
+			    fyear[10] = (char) 0;
+			    printf ("%s\n", fyear);
+			    }
+			else if (timeonly) {
+			    if (tchar != NULL)
+				printf ("%s\n", tchar+1);
+			    else
+				printf ("%s\n", fitsdate);
+			    }
+			else if (outtime==GST || outtime==MST || outtime==LST) {
+			    printf ("%10sS%s\n", fyear, fitsdate);
+			    }
+			else {
+			    if (outtime == ET)
+				*tchar = 'E';
+			    printf ("%s\n", fitsdate);
+			    }
 			break;
 		    case DTJD:
 			jd = epj2jd (epoch);
@@ -1845,10 +2043,27 @@ char	*timestring;	/* Input time string */
 		    if (outtime == GST) newfdate = fd2gst (newfdate);
 		    if (outtime == MST) newfdate = fd2mst (newfdate);
 		    tchar = strchr (newfdate, 'T');
-		    if (dateonly && tchar != NULL) *tchar = (char) 0;
-		    if (outtime == GST) *tchar = 'S';
-		    if (outtime == ET) *tchar = 'E';
-		    printf ("%s\n", newfdate);
+		    if (tchar == NULL)
+			tchar = strchr (newfdate, 'S');
+		    if (dateonly) {
+			strncpy (fyear, fitsdate, 10);
+			fyear[10] = (char) 0;
+			printf ("%s\n", fyear);
+			}
+		    else if (timeonly) {
+			if (tchar != NULL)
+			    printf ("%s\n", tchar+1);
+			else
+			    printf ("%s\n", newfdate);
+			}
+		    else if (outtime==GST || outtime==MST || outtime==LST) {
+			printf ("%10sS%s\n", fyear, newfdate);
+			}
+		    else {
+			if (outtime == ET)
+			    *tchar = 'E';
+			printf ("%s\n", newfdate);
+			}
 		    break;
 		case DTJD:
 		    jd = ut2jd ();
@@ -1935,4 +2150,5 @@ char	*timestring;	/* Input time string */
  *
  * Jan 10 2007	Drop ignored argument from ut2jd() call
  * Jan 10 2007	Fix unix time output format
+ * Dec 12 2007	Implement time only output for all 2FD options
  */

@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** July 13, 2007
+ *** November 28, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2007
@@ -97,6 +97,8 @@
  *	Polynomial least squares fitting program
  *double polcomp (xi, x0, norder, a)
  *	Polynomial evaluation Y = A(1) + A(2)*X + A(3)*X^2 + A(3)*X^3 + ...
+ * void moveb (source, dest, nbytes, offs, offd)
+ *	Copy nbytes bytes from source+offs to dest+offd (any data type)
  */
 
 #include <unistd.h>
@@ -3123,6 +3125,25 @@ double	*a;	/* Vector containing coeffiecients */
     return (y);
 }
 
+/* MOVEB -- Copy nbytes bytes from source+offs to dest+offd (any data type) */
+
+void
+moveb (source, dest, nbytes, offs, offd)
+
+char *source;	/* Pointer to source */
+char *dest;	/* Pointer to destination */
+int nbytes;	/* Number of bytes to move */
+int offs;	/* Offset in bytes in source from which to start copying */
+int offd;	/* Offset in bytes in destination to which to start copying */
+{
+char *from, *last, *to;
+        from = source + offs;
+        to = dest + offd;
+        last = from + nbytes;
+        while (from < last) *(to++) = *(from++);
+        return;
+}
+
 /* Mar  2 1998	Make number and second magnitude optional
  * Oct 21 1998	Add RefCat() to set reference catalog code
  * Oct 26 1998	Include object names in star catalog entry structure
@@ -3257,4 +3278,5 @@ double	*a;	/* Vector containing coeffiecients */
  * Mar 13 2007	Set title accordingly for gsc22 and gsc23 and gsc2 options
  * Jul  8 2007	Set up 8 magnitudes for GSC 2.3 from GALEX
  * Jul 13 2007	Add SkyBot solar system object search
+ * Nov 28 2006	Add moveb() from binread.c
  */

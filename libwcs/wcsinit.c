@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** April 27, 2007
+ *** October 17, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2007
@@ -681,7 +681,7 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 		pc[(i*naxes)+i] = 1.0;
 
 	    /* Read FITS WCS interim rotation matrix */
-	    if (!&mchar && hgetr8 (hstring,"PC001001",&pc[0]) != 0) {
+	    if (!mchar && hgetr8 (hstring,"PC001001",&pc[0]) != 0) {
 		k = 0;
 		for (i = 0; i < naxes; i++) {
 		    for (j = 0; j < naxes; j++) {
@@ -1353,4 +1353,5 @@ char	*mchar;		/* Suffix character for one of multiple WCS */
  * Feb 15 2007	Check for wcs->wcsproj > 0 instead of CTYPEi != LINEAR or PIXEL
  * Mar 13 2007	Try for RA, DEC, SECPIX if WCS character is space or null
  * Apr 27 2007	Ignore axes with TAB WCS for now
+ * Oct 17 2007	Fix bug testing &mchar instead of mchar in if statement
  */

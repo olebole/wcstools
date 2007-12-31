@@ -1,5 +1,5 @@
 /* File getpix.c
- * January 10, 2007
+ * December 21, 2007
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -56,6 +56,7 @@ static double dra0 = 0.0;	/* Search box width */
 static double ddec0 = 0.0;	/* Search box height */
 static double eqcoor = 2000.0;  /* Equinox of search center */
 static int syscoor = 0;         /* Input search coordinate system */
+static int identifier = 0;	/* If 1, identifier precedes x y in file */
 
 int
 main (ac, av)
@@ -73,10 +74,16 @@ char **av;
     int systemp;
     int i;
     int npix = 0;
-    int maxnpix = 10;
+    int maxnpix = 100;
+    char linebuff[1024];
+    char listname[256];
+    char *line;
+    char xstr[16], ystr[16], temp[64];
     int ix, iy;
     int *xpix, *ypix;
-    int nmaxpix, *xp1, *yp1;
+    int iline, nlines;
+    FILE *fd;
+    int *xp1, *yp1;
 
     xpix = calloc (maxnpix, sizeof (int));
     ypix = calloc (maxnpix, sizeof (int));
@@ -98,12 +105,12 @@ char **av;
     for (av++; --ac > 0; av++) {
 	str = *av;
 
-	/* output format */
+	/* Output format */
 	if (str[0] == '%') {
 	    pform = *av;
 	    }
 
-	/* other command */
+	/* Other command */
 	else if (str[0] == '-') {
 	    char c;
 	    while ((c = *++str))
@@ -123,6 +130,10 @@ char **av;
 		    gtval = atof (*++av);
 		    gtcheck++;
 		    ac--;
+		    break;
+
+		case 'i':	/* Identifier precedes x y in file */
+		    identifier++;
 		    break;
 
 		case 'l':	/* Keep pixels less than this */
@@ -232,10 +243,10 @@ char **av;
 	/* Coordinate pairs for pixels to print */
         else if (isnum (str) && ac > 1 && isnum (*(av+1))) {
 	    if (npix+1 > maxnpix) {
-		nmaxpix = 2 * maxnpix;
-		xp1 = calloc (nmaxpix, sizeof (int));
-		yp1 = calloc (nmaxpix, sizeof (int));
-		for (i = 0; i < nmaxpix; i++) {
+		maxnpix = 2 * maxnpix;
+		xp1 = calloc (maxnpix, sizeof (int));
+		yp1 = calloc (maxnpix, sizeof (int));
+		for (i = 0; i < maxnpix; i++) {
 		    xp1[i] = xpix[i];
 		    yp1[i] = ypix[i];
 		    }
@@ -254,7 +265,9 @@ char **av;
 	        xpix[npix] = ix;
 	        ypix[npix] = iy;
 	        npix++;
+		av++;
 		}
+	    ac--;
 	    ac--;
 	    }
 
@@ -263,6 +276,45 @@ char **av;
 	    crange = *av++;
 	    ac--;
 	    rrange = *av;
+	    }
+
+	/* File containing a list of image coordinates */
+	else if (str[0] == '@') {
+	    strcpy (listname, str+1);
+	    nlines = getfilelines (listname);
+	    fd = fopen (listname, "r");
+	    if (fd == NULL) {
+		fprintf (stderr, "Cannot read file %s\n", listname);
+		nlines = 0;
+		}
+	    for (iline = 0; iline < nlines; iline++) {
+		if (!fgets (linebuff, 1023, fd))
+		    break;
+		line = linebuff;
+		if (line[0] == '#')
+		    continue;
+		if (identifier)
+		    sscanf (line,"%s %s %s", temp, xstr, ystr);
+		else
+		    sscanf (line,"%s %s", xstr, ystr);
+		if (npix+1 > maxnpix) {
+		    maxnpix = 2 * maxnpix;
+		    xp1 = calloc (maxnpix, sizeof (int));
+		    yp1 = calloc (maxnpix, sizeof (int));
+		    for (i = 0; i < maxnpix; i++) {
+			xp1[i] = xpix[i];
+			yp1[i] = ypix[i];
+			}
+		    free (xpix);
+		    free (ypix);
+		    xpix = xp1;
+		    ypix = yp1;
+		    }
+		xpix[npix] = atoi (xstr);
+		ypix[npix] = atoi (ystr);
+		npix++;
+		}
+	    ac--;
 	    }
 
 	/* file name */
@@ -285,10 +337,13 @@ usage ()
     fprintf (stderr,"Print FITS or IRAF pixel values\n");
     fprintf(stderr,"Usage: getpix [-vp][-n num][-g val][-l val][format] file.fit x_range y_range\n");
     fprintf(stderr,"  or   getpix [-vp][-n num][-g val][-l val][format] file.fit x1 y1 x2 y2 ... xn yn\n");
+    fprintf(stderr,"  or   getpix [-vp][-n num][-g val][-l val][format] file.fit @file\n");
     fprintf(stderr,"  format: C-style (%%f, %%d, ...) format for pixel values\n");
+    fprintf(stderr,"  file: File with x y coordinates as first two tokens on lines\n");
     fprintf(stderr,"  -d: Print range of pixel values in specified image region\n");
     fprintf(stderr,"  -f name: Write specified region to a FITS file\n");
     fprintf(stderr,"  -g num: keep pixels with values greater than this\n");
+    fprintf(stderr,"  -i: Ignore first token per line of coordinate file\n");
     fprintf(stderr,"  -l num: keep pixels with values less than this\n");
     fprintf(stderr,"  -m: Print mean of pixel values in specified image region\n");
     fprintf(stderr,"  -n num: number of pixel values printed per line\n");
@@ -817,4 +872,6 @@ double	dpix;	/* Current pixel value */
  *
  * Jun 21 2006	Clean up code
  *
+ * Dec 20 2007	Add option to read x y coordinates from a file
+ * Dec 21 2007	Fix bug reallocating coordinate list when current size exceeded
  */

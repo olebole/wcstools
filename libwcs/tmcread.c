@@ -1,5 +1,5 @@
 /*** File libwcs/tmcread.c
- *** January 10, 2007
+ *** November 20, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2001-2007
@@ -535,6 +535,7 @@ int	nlog;		/* 1 for diagnostics */
 
     int rnum;
     int jstar;
+    int imag, nmag;
     int istar, nstar;
     double num, ra, dec, rapm, decpm, dstar;
     char tmcenv[16];
@@ -543,18 +544,22 @@ int	nlog;		/* 1 for diagnostics */
     if (refcat == TMIDR2) {
 	tmcpath = tmc2path;
 	strcpy (tmcenv, "TMCIDR2_PATH");
+	nmag = 3;
 	}
     else if (refcat == TMXSC) {
 	tmcpath = tmxpath;
 	strcpy (tmcenv, "TMX_PATH");
+	nmag = 3;
 	}
     else if (refcat == TMPSCE) {
 	tmcpath = tmcepath;
 	strcpy (tmcenv, "TMCE_PATH");
+	nmag = 6;
 	}
     else {
 	tmcpath = tmcapath;
 	strcpy (tmcenv, "TMC_PATH");
+	nmag = 3;
 	}
 
     if (nlog < 0)
@@ -591,9 +596,9 @@ int	nlog;		/* 1 for diagnostics */
 	    fprintf (stderr,"TMCRNUM: Cannot read star %d\n", istar);
 	    gra[jstar] = 0.0;
 	    gdec[jstar] = 0.0;
-	    gmag[0][jstar] = 0.0;
-	    gmag[1][jstar] = 0.0;
-	    gmag[2][jstar] = 0.0;
+	    for (imag = 0; imag < nmag; imag++) {
+		gmag[imag][jstar] = 0.0;
+		}
 	    gtype[jstar] = 0;
 	    continue;
 	    }
@@ -615,16 +620,22 @@ int	nlog;		/* 1 for diagnostics */
 	gnum[jstar] = num;
 	gra[jstar] = ra;
 	gdec[jstar] = dec;
-	gmag[0][jstar] = star->xmag[0];
-	gmag[1][jstar] = star->xmag[1];
-	gmag[2][jstar] = star->xmag[2];
+	for (imag = 0; imag < nmag; imag++) {
+	    gmag[imag][jstar] = star->xmag[imag];
+	    }
 	if (refcat == TMXSC)
 	    gtype[jstar] = (int) ((star->size * 10.0) + 0.5);
 	else
 	    gtype[jstar] = 0;
-	if (nlog == 1)
-	    fprintf (stderr,"TMCRNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %5.2f\n",
+	if (nlog == 1) {
+	    fprintf (stderr,"TMCRNUM: %11.6f: %9.5f %9.5f %5.2f %5.2f %5.2f",
 		     num, ra, dec, star->xmag[0],star->xmag[1],star->xmag[2]);
+	    if (nmag > 3) {
+		fprintf (stderr," %5.2f %5.2f %5.2f",
+			 star->xmag[3],star->xmag[4],star->xmag[5]);
+		}
+	    fprintf (stderr, "\n");
+	    }
 
 	/* End of star loop */
 	}
@@ -1122,7 +1133,7 @@ int	zone;		/* RA zone (hours) to read */
 	sc->entmag[3] = 60;
 	sc->entmag[4] = 66;
 	sc->entmag[5] = 72;
-	sc->entadd = 78;
+	sc->entadd = 79;
 	sc->nbent = 87;
 	}
     else if (refcat == TMXSC) {
@@ -1511,4 +1522,6 @@ int	istar;		/* Star sequence in 2MASS zone file */
  * Jan  8 2007	Drop unused variables
  * Jan  9 2007	Relabel number arrays
  * Jan 10 2007	Add match=1 argument to webrnum()
+ * Oct 31 2007	Properly return magnitude errors from tmcrnum(), if present
+ * Nov 20 2007	Fix bug which offset limit flag by one (found by Gus Muensch)
  */

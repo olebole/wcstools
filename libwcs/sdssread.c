@@ -1,5 +1,5 @@
 /*** File libwcs/sdssread.c
- *** January 10, 2007
+ *** October 22, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2004-2007
@@ -48,9 +48,13 @@ char sdssburl[64]="http://skyserver.sdss.org/cas/en/tools/search/x_rect.asp"; */
 char sdssrurl[64]="http://cas.sdss.org/dr4/en/tools/search/x_radial.asp";
 char sdssburl[64]="http://cas.sdss.org/dr4/en/tools/search/x_rect.asp"; */
 
-/* SDSS DR5 search engine URL */
+/* SDSS DR5 search engine URL
 char sdssrurl[64]="http://cas.sdss.org/dr5/en/tools/search/x_radial.asp";
-char sdssburl[64]="http://cas.sdss.org/dr5/en/tools/search/x_rect.asp";
+char sdssburl[64]="http://cas.sdss.org/dr5/en/tools/search/x_rect.asp"; */
+
+/* SDSS DR6 search engine URL */
+char sdssrurl[64]="http://cas.sdss.org/dr6/en/tools/search/x_radial.asp";
+char sdssburl[64]="http://cas.sdss.org/dr6/en/tools/search/x_rect.asp";
 
 /* SDSS magnitudes */
 char sdssmag[6]="ugriz";
@@ -250,4 +254,5 @@ sdssc2t (csvbuff)
  * Jan  8 2007	Drop unused variables
  * Jan  9 2007	Drop refcatname from argument list; it is not used
  * Jan 10 2007	Drop gnum argument from sdssread(); gobj replaced it
+ * Oct 22 2007	Change path to Data Release 6
  */
