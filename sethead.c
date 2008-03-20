@@ -1,9 +1,9 @@
 /* File sethead.c
- * April 30, 2007
+ * March 20, 2008
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2007 
+   Copyright (C) 1996-2008
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -30,6 +30,7 @@
 #include <math.h>
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcs.h"
+#include "libwcs/wcscat.h"
 
 #define MAXKWD 500
 #define MAXFILES 1000
@@ -43,7 +44,7 @@ static int maxnfile = MAXFILES;
 #define KEY_DIV 4
 
 static void usage();
-static void SetValues ();
+static int SetValues ();
 
 static int addecliptic = 0;
 static int addgalactic = 0;
@@ -59,8 +60,11 @@ static int logfile = 0;
 static int first_file = 1;
 static char spchar = (char) 0;	/* Character to replace with spaces */
 static int nproc = 0;
+static char *extensions;	/* Extension number(s) or name to read */
+static char *extension;		/* Extension number or name to read */
 static int addwcs = 0;
 static int errflag = 0;		/* Error return from program */
+static char *rootdir=NULL;	/* Root directory for input files */
 
 
 int
@@ -83,7 +87,15 @@ char **av;
     char *listfile;
     char *ilistfile;
     char *klistfile;
+    char *fext, *fcomma;
+    char *namext;
+    int nch;
+    int nfext;
+    int nrmax=10;
+    struct Range *erange = NULL;
     int ikwd;
+    int i, j;
+    int nerr = 0;
     char *dq, *sq, *sl;
     char lf = (char) 10;
     char cr = (char) 13;
@@ -91,6 +103,7 @@ char **av;
     char eq = (char) 61;
     char dquote = (char) 34;
     char squote = (char) 39;
+
     kwd = (char **)calloc (maxnkwd, sizeof(char *));
 
     ilistfile = NULL;
@@ -123,6 +136,13 @@ char **av;
 	    char c;
 	    while ((c = *++str))
 	    switch (c) {
+
+		case 'd': /* Root directory for input */
+		    if (ac < 2)
+			usage();
+		    rootdir = *++av;
+		    ac--;
+		    break;
 
 		case 'e':	/* Add Ecliptic coordinate WCS */
 		    addecliptic = 1;
@@ -197,13 +217,26 @@ char **av;
 			ac--;
 			}
 		    break;
+	
+		case 'x': /* FITS extension to read */
+		    if (ac < 2)
+			usage();
+		    if (isnum (*(av+1)))
+			extensions = *++av;
+		    else {
+			extensions = calloc (16, 1);
+			strcpy (extensions, "1-1000");
+			}
+		    ac--;
+		    break;
 
 		case 'v':	/* more verbosity */
 		    verbose++;
 		    break;
 
 		default:
-		    usage();
+		    fprintf (stderr, "SETHEAD: Illegal Command \"%c\"\n", c);
+		    nerr++;
 		    break;
 		}
 	    }
@@ -212,7 +245,7 @@ char **av;
 	else if (*av[0] == '@') {
 	    readlist++;
 	    listfile = *av + 1;
-	    if (nfile == 0 && isimlist (listfile)) {
+	    if (nfile == 0 && isimlistd (listfile, rootdir)) {
 		ilistfile = listfile;
 		nfile = getfilelines (ilistfile);
 		}
@@ -363,6 +396,8 @@ char **av;
 	    }
 	}
 
+    if (nerr > 0)
+	exit (1);
     if (nkwd <= 0 && nfile <= 0 )
 	usage ();
     else if (nfile <= 0 ) {
@@ -383,29 +418,132 @@ char **av;
 	    }
 	}
 
+    /* Check extensions for range and set accordingly */
+    if (extensions != NULL) {
+	if (isrange (extensions)) {
+	    erange = RangeInit (extensions, nrmax);
+	    nfext = rgetn (erange);
+	    extension = calloc (1, 8);
+	    }
+	else {
+	    extension = extensions;
+	    if (extension)
+		nfext = 1;
+	    else
+		nfext = 0;
+	    }
+	}
+    else {
+	extension = NULL;
+	nfext = 0;
+	}
+
     /* Read through headers of images */
     for (ifile = 0; ifile < nfile; ifile++) {
 	if (ilistfile != NULL) {
 	    first_token (flist, 254, filename);
-	    SetValues (filename, nkwd, kwd, comment);
+	    if (isfits (filename)) {
+		if ((fcomma = strchr (filename, ','))) {
+		    fext = fcomma + 1;
+		    if (isrange (fext)) {
+			erange = RangeInit (fext, nrmax);
+			nfext = rgetn (erange);
+			extension = calloc (1, 8);
+			*fcomma = (char) 0;
+			}
+		    else if (!strcmp (fext, "all")) {
+			erange = RangeInit ("1-500", nrmax);
+			nfext = rgetn (erange);
+			extension = calloc (1, 8);
+			*fcomma = (char) 0;
+			}
+		    else
+			nfext = 1;
+		    }
+		}
+	    if (nfext > 1) {
+		rstart (erange);
+		for (i = 0; i < nfext; i++) {
+		    j = rgeti4 (erange);
+		    sprintf (extension, "%d", j);
+		    nch = strlen (filename) + 2 + strlen (extension);
+		    namext = (char *) calloc (1, nch);
+		    strcpy (namext, filename);
+		    strcat (namext, ",");
+		    strcat (namext, extension);
+		    sprintf (extension, "%d", j);
+		    if (SetValues (namext, nkwd, kwd, comment))
+			break;
+		    free (namext);
+		    }
+		}
+	    else
+		(void) SetValues (filename, nkwd, kwd, comment);
 	    }
-	else
-	    SetValues (fn[ifile], nkwd, kwd, comment);
+	else {
+	    if ((fcomma = strchr (fn[ifile], ','))) {
+		fext = fcomma + 1;
+		if (isrange (fext)) {
+		    erange = RangeInit (fext, nrmax);
+		    nfext = rgetn (erange);
+		    extension = calloc (1, 8);
+		    *fcomma = (char) 0;
+		    }
+		else if (!strcmp (fext, "all")) {
+		    erange = RangeInit ("1-500", nrmax);
+		    nfext = rgetn (erange);
+		    extension = calloc (1, 8);
+		    *fcomma = (char) 0;
+		    }
+		else
+		    nfext = 1;
+		}
+
+	    /* If there is a range of extensions, use them */
+	    if (nfext > 1) {
+		rstart (erange);
+		for (i = 0; i < nfext; i++) {
+		    j = rgeti4 (erange);
+		    sprintf (extension, "%d", j);
+		    nch = strlen (fn[ifile]) + 2 + strlen (extension);
+		    namext = (char *) calloc (1, nch);
+		    strcpy (namext, fn[ifile]);
+		    strcat (namext, ",");
+		    strcat (namext, extension);
+		    sprintf (extension, "%d", j);
+		    if (SetValues (namext, nkwd, kwd, comment))
+			break;
+		    free (namext);
+		    }
+		}
+	    else
+		(void) SetValues (fn[ifile], nkwd, kwd, comment);
+	    }
+
+	if (verbose)
+	    printf ("\n");
+
+	/* Log the processing of this file, if requested */
+	if (logfile) {
+	    nproc++;
+	    fprintf (stderr, "%d: %s processed.\r", nproc, filename);
+	    }
 	}
+
     if (ilistfile != NULL)
 	fclose (flist);
 
     if (keybuff != NULL)
 	free (keybuff);
 
-    return (errflag);
+    exit (0);
 }
 
 static void
 usage ()
 {
     if (version)
-	exit (-1);
+	exit (0);
     fprintf (stderr,"Set FITS or IRAF header keyword values\n");
     fprintf(stderr,"Usage: [-hknv][-r [char]][-s char] file1.fits [... filen.fits] kw1=val1 [ / comment] [ ... kwn=valuen]\n");
     fprintf(stderr,"  or : [-eghjknv][-r [char]][-s char] file1.fits [... filen.fits] @keywordfile]\n");
@@ -422,12 +560,13 @@ usage ()
     fprintf(stderr,"  -r [char]: Rename reset keywords with char or X prefixed\n");
     fprintf(stderr,"  -s [char]: Replace this character with space in string values\n");
     fprintf(stderr,"  -v: Verbose\n");
+    fprintf(stderr,"  -x [range]: Read header for these extensions (no arg=all)\n");
     fprintf(stderr,"  / comment: Add this comment to previous keyword\n");
-    exit (1);
+    exit (0);
 }
 
 
-static void
+static int
 SetValues (filename, nkwd, kwd, comment)
 
 char	*filename;	/* Name of FITS or IRAF image file */
@@ -442,6 +581,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     char *irafheader = NULL;	/* IRAF image header */
     int iraffile;	/* 1 if IRAF image, 0 if FITS image */
     int newimage;	/* 1 to write new image file, else 0 */
+    char *filepath;
     struct WorldCoor *wcs;
     double dlong, dlat;
     int i, lext, lroot, ndec, isra;
@@ -449,7 +589,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     char newname[MAXNEW];
     char *newval;
     char string[80];
-    char *ext, *fname;
+    char *ext, *namext, cext;
+    char *fname;
     char *imext = NULL;
     char *imext1;
     char *kw, *kwl, *kwv0, *knl;
@@ -458,6 +599,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     char *newhead;
     char echar;
     int ikwd, lkwd, lkwv, lhist;
+    int nch;
     int fdw;
     int squote = 39;
     int dquote = 34;
@@ -486,20 +628,50 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     strcpy (ops, "=+-*/");
     newimage = newimage0;
 
+    /* Add extension to filename */
+    namext = NULL;
+    ext = strchr (filename, ',');
+    if (extension && !ext) {
+	nch = strlen (filename) + 2 + strlen (extension);
+	namext = (char *) calloc (1, nch);
+	strcpy (namext, filename);
+	strcat (namext, ",");
+	strcat (namext, extension);
+	}
+    else {
+	nch = strlen (filename) + 1;
+	namext = (char *) calloc (1, nch);
+	strcpy (namext, filename);
+	}
+    ext = strchr (namext, ',');
+
+    if (rootdir) {
+	nch = strlen (rootdir) + strlen (namext) + 1;
+	filepath = (char *) calloc (1, nch);
+	strcat (filepath, rootdir);
+	strcat (filepath, "/");
+	strcat (filepath, namext);
+	}
+    else {
+	nch = strlen (namext) + 1;
+	filepath = (char *) calloc (1, nch);
+	strcpy (filepath, namext);
+	}
+
     /* Open IRAF image if .imh extension is present */
-    if (isiraf (filename)) {
+    if (isiraf (filepath)) {
 	iraffile = 1;
-	if ((irafheader = irafrhead (filename, &lhead)) != NULL) {
-	    if ((header = iraf2fits (filename, irafheader, lhead, &nbhead)) == NULL) {
-		fprintf (stderr, "Cannot translate IRAF header %s/n",filename);
+	if ((irafheader = irafrhead (filepath, &lhead)) != NULL) {
+	    if ((header = iraf2fits (filepath, irafheader, lhead, &nbhead)) == NULL) {
+		fprintf (stderr, "Cannot translate IRAF header %s/n",filepath);
 		free (irafheader);
 		irafheader = NULL;
-		return;
+		return (-1);
 		}
 	    }
 	else {
-	    fprintf (stderr, "Cannot read IRAF file %s\n", filename);
-	    return;
+	    fprintf (stderr, "Cannot read IRAF file %s\n", filepath);
+	    return (-1);
 	    }
 	}
 
@@ -508,22 +680,22 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	iraffile = 0;
 	setfitsinherit (0);
 	imageread = 0;
-	if ((header = fitsrhead (filename, &lhead, &nbhead)) == NULL) {
-	    fprintf (stderr, "Cannot read FITS file %s\n", filename);
-	    return;
+	if ((header = fitsrhead (filepath, &lhead, &nbhead)) == NULL) {
+	    fprintf (stderr, "Cannot read FITS file %s\n", filepath);
+	    return (-1);
 	    }
 	}
     if (verbose && first_file) {
 	fprintf (stderr,"Set Header Parameter Values in ");
 	if (iraffile)
-	    fprintf (stderr,"IRAF image file %s\n", filename);
+	    fprintf (stderr,"IRAF image file %s\n", filepath);
 	else
-	    fprintf (stderr,"FITS image file %s\n", filename);
+	    fprintf (stderr,"FITS image file %s\n", filepath);
 	first_file = 0;
 	}
 
     if (nkwd < 1 && !addwcs)
-	return;
+	return (-1);
 
     nbold = fitsheadsize (header);
     hgeti4 (header,"NAXIS",&naxis);
@@ -1036,11 +1208,11 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     if (newimage) {
 
     /* Remove directory path and extension from file name */
-	fname = strrchr (filename, '/');
+	fname = strrchr (filepath, '/');
 	if (fname)
 	    fname = fname + 1;
 	else
-	    fname = filename;
+	    fname = filepath;
 	ext = strrchr (fname, '.');
 	if (ext != NULL) {
 	    lext = (fname + strlen (fname)) - ext;
@@ -1074,7 +1246,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	if (fname)
 	    fname = fname + 1;
 	else
-	    fname = filename;
+	    fname = filepath;
 	strcat (newname, "e");
 	if (lext > 0) {
 	    if (imext != NULL) {
@@ -1090,7 +1262,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    }
 	}
     else {
-	strcpy (newname, filename);
+	strcpy (newname, filepath);
 	imext = strchr (filename, ',');
 	if (!imext && ksearch (header,"XTENSION")) {
 	    strcat (newname, ",1");
@@ -1184,7 +1356,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	free (image);
 	image = NULL;
 	}
-    return;
+    return (0);
 }
 
 /* Oct 11 1996	New program
@@ -1268,4 +1440,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Jan 10 2007	Change second argument of cpwcs() from char to char *
  * Apr 30 2007	Print error messages returned by FITS access subroutines
  * Apr 30 2007	Return error code = 1 if any revised header not written
+
+ * Jan  9 2008	Add -x option and ranges of extensions
+ * Mar 19 2008	exit(0) if no error
+ * Mar 20 2008	Clean up error handling
  */

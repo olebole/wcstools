@@ -1,3 +1,9 @@
+Version 3.7.3 (March 20, 2008)
+sethead: Return error code =0 normally, 1 and printed message if problem
+filename:  Add -n option to keep directory with "." and allow more than one -r command
+sethead: Add -x and -d options to specify extensions and root directory
+gethead: Fix handling of filenames in list with -x extensions
+
 Version 3.7.2 (December 31, 2007)
 getdate: Fix bug so the -t time-only flag works with all 2fd options
 gethead,imsize,wcshead: Allow range of extensions or "all" after comma in filename

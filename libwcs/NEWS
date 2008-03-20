@@ -1,4 +1,17 @@
-WCSTools subroutine release history
+WCSTools WCS subroutine release history
+
+March 20, 2008 - Release 3.7.3
+wcs.c: Compute angular separation in wcsdist() using arcos
+
+December 31, 2007 - Release 3.7.2 
+wcscon.c: In wcsconp, make it clear that proper motion is in spherical coordinates
+fitsfile.c: Add support to BINTABLE in ftget*() and fitsrthead()
+fitsfile.c: Add data heap numerated by PCOUNT when skipping HDU in fitsrhead()
+fitsfile.c: Return NULL pointer if fitsrhead() cannot find requested HDU
+fitswcs.c: Print error message set by fitsrhead()
+
+November 9, 2007 - Release 3.7.1 
+wcsinit.c:  Fix bug which tested &mchar instead of mchar in if statement
 
 August 24, 2007 - Release 3.7.0 (Doug Mink, SAO)
 hget.c: If a closing quote isn't found in a string value, make one up

@@ -1415,8 +1415,8 @@ double	x1,y1;	/* (RA,Dec) or (Long,Lat) in degrees */
 double	x2,y2;	/* (RA,Dec) or (Long,Lat) in degrees */
 
 {
-	double xr1, xr2, yr1, yr2, r, diffi;
-	double pos1[3], pos2[3], w, diff, cosb;
+	double d1, d2, r, diffi;
+	double pos1[3], pos2[3], w, diff;
 	int i;
 
 	/* Convert two vectors to direction cosines */
@@ -1436,6 +1436,16 @@ double	x2,y2;	/* (RA,Dec) or (Long,Lat) in degrees */
 	/* Angle beween the vectors */
 	diff = 2.0 * atan2 (sqrt (w), sqrt (1.0 - w));
 	diff = raddeg (diff);
+
+	w = 0.0;
+	d1 = 0.0;
+	d2 = 0.0;
+	for (i = 0; i < 3; i++) {
+	    w = w + (pos1[i] * pos2[i]);
+	    d1 = d1 + (pos1[i] * pos1[i]);
+	    d2 = d2 + (pos2[i] * pos2[i]);
+	    }
+	diff = acosdeg (w / (sqrt (d1) * sqrt (d2)));
 	return (diff);
 }
 

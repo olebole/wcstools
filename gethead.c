@@ -1,9 +1,9 @@
 /* File gethead.c
- * July 25, 2007
+ * January 9, 2008
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2007
+   Copyright (C) 1996-2008
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -542,7 +542,7 @@ char **av;
 		    strcat (namext, ",");
 		    strcat (namext, extension);
 		    sprintf (extension, "%d", j);
-		    if (PrintValues (filename, filetype, nkwd, kwd))
+		    if (PrintValues (namext, filetype, nkwd, kwd))
 			break;
 		    free (namext);
 		    }
@@ -568,7 +568,8 @@ char **av;
 		else
 		    nfext = 1;
 		}
-	    
+
+	    /* If there is a range of extensions, use them */
 	    if (nfext > 1) {
 		rstart (erange);
 		for (i = 0; i < nfext; i++) {
@@ -1162,4 +1163,6 @@ char *string;
  *
  * Jul 25 2007	Fix bug which badly reset sexigesimal decimal places to ndec
  * Dec 21 2007	Add option to put range of extensions in filenames
+ *
+ * Jan 09 2008	Fix handling of extensions with files from listfile
  */

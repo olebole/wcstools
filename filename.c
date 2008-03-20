@@ -1,9 +1,9 @@
 /* File filename.c
- * June 11, 2007
+ * February 6, 2008
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006-2007
+   Copyright (C) 2006-2008
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -30,6 +30,7 @@
 static int verbose = 0;         /* Verbose/debugging flag */
 static int getroot = 0;         /* Return file root */
 static int nslash = 1;		/* Start this many slashes from end of name */
+static int keepdir = 0;		/* Return directory(ies) as part of name */
 static void usage();
 
 int
@@ -50,7 +51,7 @@ char **av;
         while ((c = *++str))
         switch (c) {
 
-        case 'v':       /* more verbosity */
+        case 'v':       /* More verbosity */
             verbose++;
             break;
 
@@ -58,8 +59,13 @@ char **av;
             getroot++;
             break;
 
-        case '/':       /* keep one more directory in path */
+        case '/':       /* Keep one more directory in path */
             nslash++;
+            break;
+
+        case 'n':       /* Prepend directory to name with . */
+            keepdir++;
+	    nslash++;
             break;
 
         default:
@@ -88,11 +94,20 @@ char **av;
 	    name = strrchr (fn, '/');
 	    if (n == 0 && getroot) {
 		if (name != NULL)
-		    endroot = strchr (name, '.');
+		    endroot = strrchr (name, '.');
 		else
-		    endroot = strchr (fn, '.');
-		if (endroot != NULL)
+		    endroot = strrchr (fn, '.');
+		if (endroot != NULL) {
 		    *endroot = (char) 0;
+		    if (getroot > 1) {
+			if (name != NULL)
+			    endroot = strrchr (name, '.');
+			else
+			    endroot = strrchr (fn, '.');
+			if (endroot != NULL)
+			    *endroot = (char) 0;
+			}
+		    }
 		}
 	    if (name == NULL) {
 		name = fn;
@@ -101,28 +116,43 @@ char **av;
 	    else {
 		if (name > fn0) {
 		    is[n] = name;
-		    *name = (char) 0;
+		    if (keepdir)
+			*name = '.';
+		    else
+			*name = (char) 0;
 		    }
 		else
 		    break;
 		name = name + 1;
 		if (verbose) {
 		    for (i = 0; i < nslash; i++) {
-			if (is[i] != NULL)
-			    *(is[i]) = '/';
+			if (is[i] != NULL) {
+			    if (keepdir)
+			 	*(is[i]) = '.';
+			    else
+			 	*(is[i]) = '/';
+			    }
 			}
 		    printf ("%s\n", name);
 		    for (i = 0; i < nslash; i++) {
-			if (is[i] != NULL)
-			    *(is[i]) = (char) 0;
+			if (is[i] != NULL) {
+			    if (keepdir)
+				*(is[i]) = '.';
+			    else
+				*(is[i]) = (char) 0;
+			    }
 			}
 		    }
 		}
 	    }
 
 	for (n = 0; n < nslash; n++) {
-	    if (is[n] != NULL)
-		*(is[n]) = '/';
+	    if (is[n] != NULL) {
+		if (keepdir)
+		    *(is[n]) = '.';
+		else
+		    *(is[n]) = '/';
+		}
 	    }
 
 	printf ("%s\n", name);
@@ -137,6 +167,7 @@ usage ()
     fprintf (stderr,"FILENAME: Drop directory from pathname\n");
     fprintf(stderr,"Usage:  filename [-v/] path1 path2 path3 ...\n");
     fprintf(stderr,"  -/: Keep one more end directory for each /\n");
+    fprintf(stderr,"  -n: Prepend one more end directory with .\n");
     fprintf(stderr,"  -r: Root of file name (before first .)\n");
     fprintf(stderr,"  -v: Verbose\n");
     exit (1);
@@ -147,4 +178,7 @@ usage ()
  *
  * Jun  1 2007	Add option to keep directories up from file
  * Jun 11 2007	Add -r option to keep only root of file name (before first .)
+ *
+ * Feb  6 2008	Add -n option to keep directory with "."
+ * Feb  6 2008	Allow more than one -r command
  */
