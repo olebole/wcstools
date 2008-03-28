@@ -1,9 +1,9 @@
 /* File getfits.c
- * June 11, 2007
+ * April 4, 2008
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2002-2007
+   Copyright (C) 2002-2008
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -526,16 +526,37 @@ int	nkwd;
 
     /* Reset image WCS if present */
     if (ifcol1 > 1 || ifrow1 > 1) {
-	if (hgetr8 (header, "CRPIX1", &crpix1)) {
-	    crpix1 = crpix1 - (double) (ifcol1 - 1);
-	    hputr8 (header, "CRPIX1", crpix1);
-	    }
+
+	/* If IRAF TNX image, keep all WCS keywords, but add dependency on PLATE WCS */
+	if (wcs->lngcor != NULL) {
+	   hputs (header, "WCSDEP", "PLATE");
+	   }
+
+	/* Otherwise, reset reference pixel coordinate */
 	else {
-	    hputs (header, "CTYPE1", "PIXEL");
-	    hputi4 (header, "CRPIX1", 1);
-	    hputi4 (header, "CRVAL1", ifcol1);
-	    hputi4 (header, "CDELT1", 1);
+	    if (hgetr8 (header, "CRPIX1", &crpix1)) {
+		crpix1 = crpix1 - (double) (ifcol1 - 1);
+		hputr8 (header, "CRPIX1", crpix1);
+		}
+	    else {
+		hputs (header, "CTYPE1", "PIXEL");
+		hputi4 (header, "CRPIX1", 1);
+		hputi4 (header, "CRVAL1", ifcol1);
+		hputi4 (header, "CDELT1", 1);
+		}
+	    if (hgetr8 (header, "CRPIX2", &crpix2)) {
+		crpix2 = crpix2 - (double) (ifrow1 - 1);
+		hputr8 (header, "CRPIX2", crpix2);
+		}
+	    else {
+		hputs (header, "CTYPE2", "PIXEL");
+		hputi4 (header, "CRPIX2", 1);
+		hputi4 (header, "CRVAL2", ifrow1);
+		hputi4 (header, "CDELT2", 1);
+		}
 	    }
+
+	/* Set up output pixel to original pixel transformation */
 	if (hgetr8 (header, "CRPIX1P", &crpix1)) {
 	    crpix1 = crpix1 - (double) (ifcol1 - 1);
 	    hputr8 (header, "CRPIX1P", crpix1);
@@ -546,16 +567,6 @@ int	nkwd;
 	    hputi4 (header, "CRPIX1P", 1);
 	    hputi4 (header, "CRVAL1P", ifcol1);
 	    hputi4 (header, "CDELT1P", 1);
-	    }
-	if (hgetr8 (header, "CRPIX2", &crpix2)) {
-	    crpix2 = crpix2 - (double) (ifrow1 - 1);
-	    hputr8 (header, "CRPIX2", crpix2);
-	    }
-	else {
-	    hputs (header, "CTYPE2", "PIXEL");
-	    hputi4 (header, "CRPIX2", 1);
-	    hputi4 (header, "CRVAL2", ifrow1);
-	    hputi4 (header, "CDELT2", 1);
 	    }
 	if (hgetr8 (header, "CRPIX2P", &crpix2)) {
 	    crpix2 = crpix2 - (double) (ifrow1 - 1);
@@ -701,4 +712,6 @@ char *newname;
  *
  * Jan 10 2007	Use range subroutines in library
  * Jun 11 2007	Compute minimum and maximum data values in output image
+ *
+ * Apr  4 2008	Make extracted TNX WCS dependent on original PLATE WCS
  */

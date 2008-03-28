@@ -1,9 +1,9 @@
 /* File imsize.c
- * December 21, 2007
+ * May 23, 2008
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2007
+   Copyright (C) 1996-2008
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -53,7 +53,8 @@ static double eqout = 0.0;
 static double eqim = 0.0;
 static int sysout0 = 0;
 static int sysim = 0;
-static int printepoch = 0;
+static int printepoch = 0;	/* If 1, print epoch of image */
+static int printyear = 0;	/* If 1, print FITS date of image */
 static int printrange = 0;	/* Flag to print range rather than center */
 static int version = 0;		/* If 1, print only program name and version */
 static int ndec = 3;		/* Number of decimal places in non-angles */
@@ -142,15 +143,15 @@ char **av;
 		}
 	    break;
 
-	case 'd':	/* ouput center in degrees */
+	case 'd':	/* output center in degrees */
 	    degout++;
 	    break;
 
-	case 'e':	/* ouput epoch of plate */
+	case 'e':	/* output epoch of plate */
 	    printepoch++;
 	    break;
 
-	case 'j':	/* ouput J2000 (J2000) coordinates */
+	case 'j':	/* output J2000 (J2000) coordinates */
 	    str1 = *(av+1);
 	    eqout = 2000.0;
 	    sysout0 = WCS_J2000;
@@ -208,6 +209,10 @@ char **av;
 		usage();
 	    extensions = *++av;
 	    ac--;
+	    break;
+
+	case 'y':	/* output date of plate */
+	    printyear++;
 	    break;
 
 	case 'z':       /* Use AIPS classic WCS */
@@ -359,6 +364,7 @@ usage ()
     fprintf (stderr,"  -s: Format output as input to DSS getimage (optional size change)\n");
     fprintf (stderr,"  -v: Verbose\n");
     fprintf (stderr,"  -x range: Print size for these extensions\n");
+    fprintf (stderr,"  -y: Add FITS date of image to output line\n");
     fprintf (stderr,"  -z: use AIPS classic projections instead of WCSLIB\n");
     exit (1);
 }
@@ -382,6 +388,7 @@ char *name;
     struct WorldCoor *wcs;
     char *namext;
     char *colon;
+    char *fd;
     char rstr[32], dstr[32], blanks[64];
     char ramin[32], ramax[32], decmin[32], decmax[32];
 
@@ -564,7 +571,7 @@ char *name;
 	printf ("%s%s %s %s %s", fileroot, ext, rstr, dstr, coorsys);
 	if (secpix > 0.0)
 	    if (wcs->sysout < 3 && degout == 0)
-		printf (" %.3f\'x%.3f\'", dra*60.0, ddec*60.0);
+		printf (" %.3fmx%.3fm", dra*60.0, ddec*60.0);
 	    else {
 		num2str (rstr, dra, 0, ndec);
 		num2str (dstr, ddec, 0, ndec);
@@ -577,14 +584,18 @@ char *name;
 	    dy = wcs->yinc * 3600.0;
 	    if (secpix > 0.0) {
 		if (dx == dy)
-		    printf (" %.4f\"/pix", secpix);
+		    printf (" %.4fs/pix", secpix);
 		else
-		    printf (" %.4f/%.4f\"/pix", dx, dy);
+		    printf (" %.4f/%.4fs/pix", dx, dy);
 		}
 	    printf ("  %dx%d pix", wp, hp);
 	    }
 	if (printepoch)
-	    printf (" (%.5f)",wcs->epoch);
+	    printf (" %.5f",wcs->epoch);
+	if (printyear) {
+	    fd = ep2fd (wcs->epoch);
+	    printf (" %s", fd);
+	    }
 	printf ("\n");
 	}
 
@@ -661,4 +672,7 @@ char *name;
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  *
  * Dec 21 2007	Add option to put range of extensions in filenames
+ * 
+ * May 23 2008	Add y option to print FITS ISO format date of image
+ * May 23 2008	Drop quotes from output: use m and s instead
  */

@@ -1,5 +1,5 @@
 /*** simpos.c - search object by its name from command line arguments
- *** September 19, 2007
+ *** April 16, 2008
  *** By Doug Mink, sort of after IPAC byname.c
  */
 
@@ -50,11 +50,12 @@ char *av[];
 
 
     /* crack arguments */
-    for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
+    for (av++; --ac > 0 && (**av == '-' || **av == '@'); av++) {
 
-	if (*(str = *av) = '-') {
+	if (**av == '-') {
             char c;
-            while (c = *++str)
+	    str = *av;
+            while (c = *++str) {
             switch (c) {
 
         	case 'b':       /* Print coordinates in B1950 */
@@ -89,10 +90,11 @@ char *av[];
 		    PrintUsage(NULL);
 		    break;
 		}
+		}
 	    }
 
 	/* File containing a list of object names */
-	else if (*av[0] == '@') {
+	else if (**av == '@') {
 	    listfile = *av + 1;
 	    if (isfile (listfile)) {
 		nfobj = getfilelines (listfile);
@@ -318,4 +320,6 @@ char	*command;	/* Command where error occurred or NULL */
  * Jan 11 2007	Include fitsfile.h instead of fitshead.h
  * Jan 16 2007	Fix leading space bug
  * Sep 19 2007	Add -t option for Starbase output and @ for lists of names
+ *
+ * Apr 16 2008	Fix @ mode for processing lists of objects
  */

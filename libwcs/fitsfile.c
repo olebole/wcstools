@@ -1,8 +1,8 @@
 /*** File libwcs/fitsfile.c
- *** December 20, 2007
+ *** April 7, 2008
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2007
+ *** Copyright (C) 1996-2008
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -2054,6 +2054,7 @@ char    *filename;      /* Name of file for which to find size */
 {
     int diskfile;
     char keyword[16];
+    char *comma;
     int nbr;
 
     /* First check to see if this is an assignment */
@@ -2072,10 +2073,17 @@ char    *filename;      /* Name of file for which to find size */
 
     /* If no FITS file extension, try opening the file */
     else {
-	if ((diskfile = open (filename, O_RDONLY)) < 0)
+	if ((comma = strchr (filename,',')))
+	    *comma = (char) 0;
+	if ((diskfile = open (filename, O_RDONLY)) < 0) {
+	    if (comma)
+		*comma = ',';
 	    return (0);
+	    }
 	else {
 	    nbr = read (diskfile, keyword, 8);
+	    if (comma)
+		*comma = ',';
 	    close (diskfile);
 	    if (nbr < 8)
 		return (0);
@@ -2227,4 +2235,6 @@ fitserr ()
  * Nov 28 2007	Add support to BINTABLE in ftget*() and fitsrthead()
  * Dec 20 2007	Add data heap numerated by PCOUNT when skipping HDU in fitsrhead()
  * Dec 20 2007	Return NULL pointer if fitsrhead() cannot find requested HDU
+ *
+ * Apr  7 2008	Drop comma from name when reading file in isfits()
  */

@@ -1,3 +1,11 @@
+Version 3.7.4 (May 28, 2008)
+cphead: Clean up code to make sure numeric variables for formatted correctly
+getfits: Make TNX WCS of extracted file dependent on PLATE WCS
+imsize: Add option to print the FITS format date of the image; drop quotes
+isfits: New program to detect whehter or not a string is the name of a FITS file
+fitsfile.c: Allow FITS files without FITS or FTS in name to have extensions
+wcsinit.c: Call tnxinit() before any projection calls are made
+
 Version 3.7.3 (March 20, 2008)
 sethead: Return error code =0 normally, 1 and printed message if problem
 filename:  Add -n option to keep directory with "." and allow more than one -r command

@@ -33,6 +33,7 @@ imsmooth:  Filter FITS and IRAF image files with 2-D Gaussian, mean, or median
 imstack    Stack 1-dimensional images into a 2-dimensional image
 imstar:    Find and list stars in an IRAF or FITS image
 imwcs:     Match FITS or IRAF image stars to catalog stars and fit a WCS
+isfits:    Return 1 if argument is a FITS file, else 0
 isnum:     Return 1 if argument is an integer, 2 if it is floating point, else 0
 isrange:   Return 1 if argument is a range of the format n1[-n2[xs]],...
 keyhead:   Change keyword names in headers of FITS or IRAF images

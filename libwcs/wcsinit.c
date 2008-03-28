@@ -1,8 +1,8 @@
 /*** File libwcs/wcsinit.c
- *** October 17, 2007
+ *** May 9, 2008
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2007
+ *** Copyright (C) 1998-2008
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -532,6 +532,17 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 		}
 	    }
 
+	/* Initialize TNX, defaulting to TAN if there is a problem */
+	if (wcs->prjcode == WCS_TNX) {
+	    if (tnxinit (hstring, wcs)) {
+		wcs->ctype[0][6] = 'A';
+		wcs->ctype[0][7] = 'N';
+		wcs->ctype[1][6] = 'A';
+		wcs->ctype[1][7] = 'N';
+		wcs->prjcode = WCS_TAN;
+		}
+	    }
+
 	/* If ZPX, read coefficients from WATi keyword */
 	if (iszpx) {
 	    char mkey[8];
@@ -732,17 +743,6 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 	    wcs->rot = 0.0;
 	    wcs->rotmat = 0;
 	    setwcserr ("WCSINIT: setting CDELT to 1");
-	    }
-
-	/* Initialize TNX, defaulting to TAN if there is a problem */
-	if (wcs->prjcode == WCS_TNX) {
-	    if (tnxinit (hstring, wcs)) {
-		wcs->ctype[0][6] = 'A';
-		wcs->ctype[0][7] = 'N';
-		wcs->ctype[1][6] = 'A';
-		wcs->ctype[1][7] = 'N';
-		wcs->prjcode = WCS_TAN;
-		}
 	    }
 
 	/* If linear or pixel WCS, print "degrees" */
@@ -1354,4 +1354,6 @@ char	*mchar;		/* Suffix character for one of multiple WCS */
  * Mar 13 2007	Try for RA, DEC, SECPIX if WCS character is space or null
  * Apr 27 2007	Ignore axes with TAB WCS for now
  * Oct 17 2007	Fix bug testing &mchar instead of mchar in if statement
+ *
+ * May  9 2008	Initialize TNX projection when projection types first set
  */

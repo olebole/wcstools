@@ -1,9 +1,9 @@
 /* File cphead.c
- * May 15, 2007
+ * May 28, 2008
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2000-2007
+   Copyright (C) 2000-2008
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -353,7 +353,7 @@ char	*kwd[];		/* Names of keywords for which to copy values */
     char *irafheader = NULL;	/* IRAF image header */
     char *image = NULL;	/* Input and output image buffer */
     double dval;
-    int ival, nch;
+    int ival, nch, inum;
     int iraffile;
     int ndec, nbheadout, nbheadin, nbheader;
     char newname[128];
@@ -469,25 +469,25 @@ char	*kwd[];		/* Names of keywords for which to copy values */
 	(void) hlength (header, nbheader);
 	if (hgets (header, kwd[ikwd], 80, string)) {
 	    strfix (string,0,0);
-	    if (isnum (string)) {
-		if (strchr (string,'.')) {
-		    if (ndec0 > -9)
-			ndec = ndec0;
-		    else
-			ndec = numdec (string);
-		    hgetr8 (header, kwd[ikwd], &dval);
-		    (void) hlength (headout, nbheadout);
-		    hputnr8 (headout, kwd[ikwd], ndec, dval);
-		    }
-		else {
-		    hgeti4 (header, kwd[ikwd], &ival);
-		    (void) hlength (headout, nbheadout);
-		    hputi4 (headout, kwd[ikwd], ival);
-		    }
+	    inum = isnum (string);
+	    if (inum == 2) {
+		if (ndec0 > -9)
+		    ndec = ndec0;
+		else
+		    ndec = numdec (string);
+		hgetr8 (header, kwd[ikwd], &dval);
+		(void) hlength (headout, nbheadout);
+		hputnr8 (headout, kwd[ikwd], ndec, dval);
 		}
-	    else
+	    else if (inum == 1) {
+		hgeti4 (header, kwd[ikwd], &ival);
+		(void) hlength (headout, nbheadout);
+		hputi4 (headout, kwd[ikwd], ival);
+		}
+	    else {
 		(void) hlength (headout, nbheadout);
 		hputs (headout, kwd[ikwd], string);
+		}
 
 	    if (verbose)
 		printf ("%03d: %s = %s\n", ikwd, kwd[ikwd], string);
@@ -585,6 +585,8 @@ char	*kwd[];		/* Names of keywords for which to copy values */
 	    /* If too may keywords, start a second history line */
 	    if (lhist + lkwd + 10 > 71) {
 		if (histset) {
+		    if (history[lhist-2] == ',')
+			history[lhist-2] = (char) 0;
 		    strcat (history, " updated");
 		    hputc (headout, "HISTORY", history);
 		    endchar = strchr (history, ',');
@@ -677,4 +679,6 @@ char	*kwd[];		/* Names of keywords for which to copy values */
  *
  * Jan 10 2007	Add second set of parentheses in line 100 if clause
  * May 15 2007	Add -a option to copy an entire header from one image to another
+ *
+ * May 28 2008	Clean up value string copying code
  */

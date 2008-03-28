@@ -1,5 +1,9 @@
 WCSTools WCS subroutine release history
 
+May 9, 2008 - Release 3.7.4
+fitsfile.c: In isfits(), allow extensions in FITS files without .fit or .fts
+wcsinit.c: Call tnxinit() before any projection calls are made
+
 March 20, 2008 - Release 3.7.3
 wcs.c: Compute angular separation in wcsdist() using arcos
 

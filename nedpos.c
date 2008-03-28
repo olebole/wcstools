@@ -1,5 +1,5 @@
 /*** nedpos.c - search object by its name from command line arguments
- *** September 19, 2007
+ *** April 16, 2008
  *** By Doug Mink, after IPAC byname.c
  */
 
@@ -65,10 +65,11 @@ char *av[];
 	PrintUsage ("version");
 
     /* crack arguments */
-    for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
+    for (av++; --ac > 0 && (**av == '-' || **av == '@'); av++) {
 
-	if (*(str = *av) = '-') {
+	if (**av == '-') {
             char c;
+	    str = *av;
             while (c = *++str)
             switch (c) {
 
@@ -123,7 +124,7 @@ char *av[];
 	    }
 
 	/* File containing a list of object names */
-	else if (*av[0] == '@') {
+	else if (**av == '@') {
 	    listfile = *av + 1;
 	    if (isfile (listfile)) {
 		nfobj = getfilelines (listfile);
@@ -455,4 +456,6 @@ char	*command;	/* Command where error occurred or NULL */
  * Aug  2 2004	Fix bug which truncated object names on output
  * Aug 23 2004	Read velocity from Z as well as HRV
  * Sep 19 2007	Add -t option for Starbase output and @ for lists of names
+ *
+ * Apr 16 2008	Fix @ option for processing a list of objects
  */
