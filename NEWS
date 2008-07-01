@@ -1,3 +1,8 @@
+Version 3.7.5 (July 1, 2008)
+getcol: Fix bug so columns are compared if both conditions are integer
+imrot: Fix bug so x and y shifts occur even if one is zero; fix WCS modification
+fitsfile.c: Do not append primary header if it is the only one
+
 Version 3.7.4 (May 28, 2008)
 cphead: Clean up code to make sure numeric variables for formatted correctly
 getfits: Make TNX WCS of extracted file dependent on PLATE WCS

@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** April 7, 2008
+ *** June 27, 2008
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2008
@@ -251,6 +251,17 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 				}
 			    *ext = cext;
 			    }
+			else if (hdu > 0) {
+	    		    snprintf (fitserrmsg,79,
+				"FITSRHEAD: No extensions found in file %s", filename);
+			    hdu = 0;
+			    if (pheader != NULL) {
+				*lhead = nbprim;
+				*nbhead = nbprim;
+				return (pheader);
+				}
+			    break;
+			    }
 			else {
 	    		    snprintf (fitserrmsg,79,
 				"FITSRHEAD: No header found in file %s", filename);
@@ -453,7 +464,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	}
 
     /* Append primary data header to extension header */
-    if (pheader != NULL && extnum != 0 && fitsinherit) {
+    if (pheader != NULL && extnum != 0 && fitsinherit && hdu > 0) {
 	extname[0] = 0;
 	hgets (header, "XTENSION", 32, extname);
 	if (!strcmp (extname,"IMAGE")) {
@@ -2237,4 +2248,5 @@ fitserr ()
  * Dec 20 2007	Return NULL pointer if fitsrhead() cannot find requested HDU
  *
  * Apr  7 2008	Drop comma from name when reading file in isfits()
+ * Jun 27 2008	Do not append primary data header if it is the only header
  */

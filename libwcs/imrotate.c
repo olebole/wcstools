@@ -1,8 +1,8 @@
 /*** File libwcs/imrotate.c
- *** August 17, 2005
+ *** June 26, 2008
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2005
+ *** Copyright (C) 1996-2008
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -157,7 +157,7 @@ int	verbose;
 	}
 
     /* Shift image first */
-    if (xshift != 0 && yshift != 0) {
+    if (xshift != 0 || yshift != 0) {
 
 	/* Allocate buffer for shifted image */
 	image = (char *) calloc (nbytes, 1);
@@ -655,4 +655,6 @@ int	verbose;	/* Print progress if 1 */
  * Sep 15 2004	Fix bugs in calls to hgetr8 for crpix (found by Rob Creager)
  *
  * Aug 17 2005	Add mirror = 2 flag indicating a flip across x axis
+ *
+ * Jun 26 2008	Shift pixels if either xshift or yshift is not zero
  */

@@ -1,4 +1,3 @@
-CFLAGS= -g
 CC= cc
 LIBWCS = libwcs/libwcs.a
 LIBS = $(LIBWCS) -lm
@@ -8,7 +7,7 @@ CATLIBS = $(LIBS) -L/usr/lib -lSystemStubs
 BIN = bin
 .PRECIOUS: ${LIBWCS}
 .c.o:
-        $(CC) -c $(CFLAGS) $(DEFS) $<
+	$(CC) -c $(CFLAGS) $(DEFS) $<
 
 all:	cphead delwcs delhead edhead fixpix gethead i2f imcat imhead immatch \
 	imrot imsize imstar imwcs scat sethead addpix getpix setpix sky2xy \

@@ -37,6 +37,7 @@ static int inverted = 0;	/* If 1, invert intensity (-1 * (z-zmax)) */
 static int deletewcs = 0;	/* If 1, delete FITS WCS keywords in image */
 static int rotatewcs = 1;	/* If 1, rotate FITS WCS keywords in image */
 
+
 int
 main (ac, av)
 int ac;

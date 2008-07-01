@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** May 9, 2008
+ *** June 27, 2008
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2008
@@ -302,13 +302,22 @@ char *wchar;		/* Suffix character for one of multiple WCS */
     wcs->lin.naxis = naxes;
     wcs->nxpix = 0;
     hgetr8 (hstring, "NAXIS1", &wcs->nxpix);
+    if (wcs->nxpix < 1)
+	hgetr8 (hstring, "IMAGEW", &wcs->nxpix);
     if (wcs->nxpix < 1) {
-	setwcserr ("WCSINIT: No NAXIS1 keyword");
+	setwcserr ("WCSINIT: No NAXIS1 or IMAGEW keyword");
 	wcsfree (wcs);
 	return (NULL);
 	}
     wcs->nypix = 0;
     hgetr8 (hstring, "NAXIS2", &wcs->nypix);
+    if (wcs->nypix < 1)
+	hgetr8 (hstring, "IMAGEH", &wcs->nypix);
+    if (naxes > 1 && wcs->nypix < 1) {
+	setwcserr ("WCSINIT: No NAXIS2 or IMAGEH keyword");
+	wcsfree (wcs);
+	return (NULL);
+	}
 
     /* Reset number of axes to only those with dimension greater than one */
     nax = 0;
@@ -318,8 +327,16 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 	strcpy (keyword, "NAXIS");
 	sprintf (temp, "%d", i+1);
 	strcat (keyword, temp);
-	if (!hgeti4 (hstring, keyword, &j))
-	    fprintf (stderr,"WCSINIT: Missing keyword %s assumed 1\n",keyword);
+	if (!hgeti4 (hstring, keyword, &j)) {
+	    if (i == 0 && wcs->nxpix > 1)
+		fprintf (stderr,"WCSINIT: Missing keyword %s set to %.0f from IMAGEW\n",
+			 keyword, wcs->nxpix);
+	    else if (i == 1 && wcs->nypix > 1)
+		fprintf (stderr,"WCSINIT: Missing keyword %s set to %.0f from IMAGEH\n",
+			 keyword, wcs->nypix);
+	    else
+		fprintf (stderr,"WCSINIT: Missing keyword %s assumed 1\n",keyword);
+	    }
 
 	/* Check for TAB WCS in axis */
 	strcpy (keyword, "CTYPE");
@@ -1356,4 +1373,5 @@ char	*mchar;		/* Suffix character for one of multiple WCS */
  * Oct 17 2007	Fix bug testing &mchar instead of mchar in if statement
  *
  * May  9 2008	Initialize TNX projection when projection types first set
+ * Jun 27 2008	If NAXIS1 and NAXIS2 not present, check for IMAGEW and IMAGEH
  */

@@ -1,9 +1,9 @@
 /* File getcol.c
- * February 7, 2007
+ * July 1, 2008
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2007 
+   Copyright (C) 1999-2008
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -553,6 +553,7 @@ char	*lfile;		/* Name of file with lines to list */
     int iapp;
     int jcond, jval;
     char token[MAX_LTOK];
+    char token1[MAX_LTOK];
     int lform;
     char *iform;
     char cform;
@@ -768,20 +769,26 @@ char	*lfile;		/* Name of file with lines to list */
 		for (icond = 0; icond < ncond; icond++) {
 		    if (condand)
 			pass = 0;
-		    tcond = *ccond[icond];
 	
 		    /* Extract test value from comparison string */
-		    *ccond[icond] = (char) 0;
 		    cstr = ccond[icond]+1;
 		    if (strchr (cstr, ':')) {
 			dnum = str2dec (cstr);
 			num2str (numstr, dnum, 0, 7);
 			cstr = numstr;
 			}
+		    else if (isnum (cstr) == 1) {
+			itok = atoi (cstr);
+			getoken (&tokens, itok, token1, MAX_LTOK);
+			cstr = token1;
+			}
 		    strfix (cstr, 0, 1);
 	
 		    /* Read comparison value from header */
+		    tcond = *ccond[icond];
+		    *ccond[icond] = (char) 0;
 		    itok = atoi (cond[icond]);
+		    *ccond[icond] = tcond;
 		    getoken (&tokens, itok, token, MAX_LTOK);
 		    cval = token;
 		    if (strchr (cval, ':')) {
@@ -793,7 +800,6 @@ char	*lfile;		/* Name of file with lines to list */
 	
 		    /* Compare floating point numbers */
 		    if (isnum (cstr) == 2 && isnum (cval)) {
-			*ccond[icond] = tcond;
 			dcond = atof (cstr);
 			dval = atof (cval);
 			if (tcond == '=' && dval == dcond)
@@ -808,9 +814,8 @@ char	*lfile;		/* Name of file with lines to list */
 	
 		    /* Compare integers */
 		    else if (isnum (cstr) == 1 && isnum (cval)) {
-			*ccond[icond] = tcond;
-			jcond = atoi (cstr);
-			jval = atoi (cval);
+			jcond = (int) atof (cstr);
+			jval = (int) atof (cval);
 			if (tcond == '=' && jval == jcond)
 			    pass = 1;
 			if (tcond == '#' && jval != jcond)
@@ -823,7 +828,6 @@ char	*lfile;		/* Name of file with lines to list */
 	
 		    /* Compare strings (only equal or not equal */
 		    else {
-			*ccond[icond] = tcond;
 			if (tcond == '=' && !strcmp (cstr, cval))
 			    pass = 1;
 			if (tcond == '#' && strcmp (cstr, cval))
@@ -1010,20 +1014,26 @@ char	*lfile;		/* Name of file with lines to list */
 		for (icond = 0; icond < ncond; icond++) {
 		    if (condand)
 			pass = 0;
-		    tcond = *ccond[icond];
 	
 		    /* Extract test value from comparison string */
-		    *ccond[icond] = (char) 0;
 		    cstr = ccond[icond]+1;
 		    if (strchr (cstr, ':')) {
 			dnum = str2dec (cstr);
 			num2str (numstr, dnum, 0, 7);
 			cstr = numstr;
 			}
+		    else if (isnum (cstr) == 1) {
+			itok = atoi (cstr);
+			getoken (&tokens, itok, token1, MAX_LTOK);
+			cstr = token1;
+			}
 		    strfix (cstr, 0, 1);
 	
 		    /* Read comparison value from header */
+		    tcond = *ccond[icond];
+		    *ccond[icond] = (char) 0;
 		    itok = atoi (cond[icond]);
+		    *ccond[icond] = tcond;
 		    getoken (&tokens, itok, token, MAX_LTOK);
 		    cval = token;
 		    if (strchr (cval, ':')) {
@@ -1035,7 +1045,6 @@ char	*lfile;		/* Name of file with lines to list */
 	
 		    /* Compare floating point numbers */
 		    if (isnum (cstr) == 2 && isnum (cval)) {
-			*ccond[icond] = tcond;
 			dcond = atof (cstr);
 			dval = atof (cval);
 			if (tcond == '=' && dval == dcond)
@@ -1050,7 +1059,6 @@ char	*lfile;		/* Name of file with lines to list */
 	
 		    /* Compare integers */
 		    else if (isnum (cstr) == 1 && isnum (cval)) {
-			*ccond[icond] = tcond;
 			jcond = atoi (cstr);
 			jval = atoi (cval);
 			if (tcond == '=' && jval == jcond)
@@ -1065,7 +1073,6 @@ char	*lfile;		/* Name of file with lines to list */
 	
 		    /* Compare strings (only equal or not equal */
 		    else {
-			*ccond[icond] = tcond;
 			if (tcond == '=' && !strcmp (cstr, cval))
 			    pass = 1;
 			if (tcond == '#' && strcmp (cstr, cval))
@@ -1758,4 +1765,6 @@ void *pd1, *pd2;
  * Jan 10 2007	Include wcs.h
  * Feb  6 2006	Fix bug setting conditions and improve usage()
  * Feb  7 2007	Fix bug setting up column arithmetic
+ *
+ * Jul  1 2008	Fix bug so columns can be compared if both are integers
  */

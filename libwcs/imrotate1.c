@@ -1,8 +1,8 @@
 /*** File libwcs/imrotate.c
- *** April 4, 2007
+ *** June 30, 2008
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2007
+ *** Copyright (C) 1996-2008
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -42,7 +42,8 @@ static void RotWCSFITS();	/* rotate all the C* fields */
  */
 
 char *
-RotFITS (pathname,header,image0,xshift,yshift,rotate,mirror,bitpix2,rotwcs,verbose)
+RotFITS (pathname,header,image0,xshift,yshift,rotate,mirror,bitpix2,rotwcs,
+	 verbose)
 
 char	*pathname;	/* Name of file which is being changed */
 char	*header;	/* FITS header */
@@ -157,7 +158,7 @@ int	verbose;
 	}
 
     /* Shift image first */
-    if (xshift != 0 && yshift != 0) {
+    if (xshift != 0 || yshift != 0) {
 
 	/* Allocate buffer for shifted image */
 	image = (char *) calloc (nbytes, 1);
@@ -362,21 +363,18 @@ int	verbose;
  * return 0 if at least one such field is found, else -1.  */
 
 static void
-RotWCSFITS (header, rotate, mirror, verbose)
+RotWCSFITS (header, angle, mirror, verbose)
 
 char	*header;	/* FITS header */
-int	rotate;		/* Angle to be rotated (0, 90, 180, 270) */
-int	mirror;		/* 1 if mirrored left to right, else 0 */
+int	angle;		/* Angle to be rotated (0, 90, 180, 270) */
+int	mirror;		/* Reflect image around 1=vertical, 2=horizontal axis */
 int	verbose;	/* Print progress if 1 */
 
 {
     static char flds[15][8];
     char ctype1[16], ctype2[16];
-    double ctemp1, ctemp2, ctemp3, ctemp4, naxis1, naxis2, angle, newangle;
+    double ctemp1, ctemp2, ctemp3, ctemp4, naxis1, naxis2;
     int i, n, ndec1, ndec2, ndec3, ndec4;
-
-    hgetr8 (header, "NAXIS1", &naxis1);
-    hgetr8 (header, "NAXIS2", &naxis2);
 
     strcpy (flds[0], "CTYPE1");
     strcpy (flds[1], "CTYPE2");
@@ -395,6 +393,8 @@ int	verbose;	/* Print progress if 1 */
     strcpy (flds[14], "CD2_2");
 
     n = 0;
+    hgetr8 (header, "NAXIS1", &naxis1);
+    hgetr8 (header, "NAXIS2", &naxis2);
 
     /* Find out if there any WCS keywords in this header */
     for (i = 0; i < sizeof(flds)/sizeof(flds[0]); i++) {
@@ -412,42 +412,20 @@ int	verbose;	/* Print progress if 1 */
 	return;
 	}
 
-    /* Set rotation angle to nearest 90 degrees */
-    angle = 0.0;
-    if (angle >= -315 && rotate < -225) {
-	angle = 90.0;
-    else if (angle >= -225 && rotate < -135) {
-	angle = 180.0;
-    else if (angle >= -135 && rotate < -45) {
-	angle = 270.0;
-    else if (angle >= 45 && rotate < 135) {
-	angle = 90.0;
-    else if (angle >= 135 && rotate < 225) {
-	angle = 180.0;
-    else if (angle >= 225 && rotate < 315) {
-	angle = 270.0;
-
-    /* Reset CROTAn and CD matrix if axes have been rotated */
-    if (hgetr8 (header, "CROTA1", &ctemp1)) {
-	hgetndec (header, "CROTA1", &ndec1);
-	newangle = ctemp1 + angle;
-	if (newangle > 360.0)
-	    newangle = newangle - 360;
-	if (newangle < -360.0)
-	    newangle = newangle + 360;
-	hputnr8 (header, "CROTA1", ndec1, newangle);
-	}
-    if (hgetr8 (header, "CROTA2", &ctemp2)) {
-	hgetndec (header, "CROTA2", &ndec2);
-	if (newangle > 360.0)
-	    newangle = newangle - 360;
-	if (newangle < -360.0)
-	    newangle = newangle + 360;
-	hputnr8 (header, "CROTA2", ndec2, newangle);
+    /* Reset CROTAn and CD matrix if axes have been exchanged */
+    if (angle == 90) {
+	if (hgetr8 (header, "CROTA1", &ctemp1)) {
+	    hgetndec (header, "CROTA1", &ndec1);
+	    hputnr8 (header, "CROTA1", ndec1, ctemp1+90.0);
+	    }
+	if (hgetr8 (header, "CROTA2", &ctemp2)) {
+	    hgetndec (header, "CROTA2", &ndec2);
+	    hputnr8 (header, "CROTA2", ndec2, ctemp2+90.0);
+	    }
 	}
 
-    /* Negate rotation angle if mirrored */
-    if (mirror) {
+    /* Negate rotation angle if mirrored or flipped */
+    if (mirror > 0) {
 	if (hgetr8 (header, "CROTA1", &ctemp1)) {
 	    hgetndec (header, "CROTA1", &ndec1);
 	    hputnr8 (header, "CROTA1", ndec1, -ctemp1);
@@ -460,8 +438,14 @@ int	verbose;	/* Print progress if 1 */
 	    hgetndec (header, "LTM1_1", &ndec1);
 	    hputnr8 (header, "LTM1_1", ndec1, -ctemp1);
 	    }
-	if (hgetr8 (header, "CD1_1", &ctemp1))
-	    hputr8 (header, "CD1_1", -ctemp1);
+	if (mirror == 1) {
+	    if (hgetr8 (header, "CD1_1", &ctemp1))
+		hputr8 (header, "CD1_1", -ctemp1);
+	    }
+	if (mirror == 2) {
+	    if (hgetr8 (header, "CD2_2", &ctemp1))
+		hputr8 (header, "CD2_2", -ctemp1);
+	    }
 	if (hgetr8 (header, "CD1_2", &ctemp1))
 	    hputr8 (header, "CD1_2", -ctemp1);
 	if (hgetr8 (header, "CD2_1", &ctemp1))
@@ -585,7 +569,7 @@ int	verbose;	/* Print progress if 1 */
 	hgetndec (header, "CD1_2", &ndec2);
 	hgetndec (header, "CD2_1", &ndec3);
 	hgetndec (header, "CD2_2", &ndec4);
-	if (mirror) {
+	if (mirror == 1) {
 	    if (angle == 0) {
 		hputnr8 (header, "CD1_2", ndec2, -ctemp2);
 		hputnr8 (header, "CD2_1", ndec3, -ctemp3);
@@ -611,10 +595,10 @@ int	verbose;	/* Print progress if 1 */
 	    }
 	else {
 	    if (angle == 90) {
-		hputnr8 (header, "CD1_1", ndec4, -ctemp4);
-		hputnr8 (header, "CD1_2", ndec3, -ctemp3);
-		hputnr8 (header, "CD2_1", ndec2, ctemp2);
-		hputnr8 (header, "CD2_2", ndec1, ctemp1);
+		hputnr8 (header, "CD1_1", ndec2, -ctemp2);
+		hputnr8 (header, "CD1_2", ndec1, ctemp1);
+		hputnr8 (header, "CD2_1", ndec4, -ctemp4);
+		hputnr8 (header, "CD2_2", ndec3, ctemp3);
 		}
 	    else if (angle == 180) {
 		hputnr8 (header, "CD1_1", ndec1, -ctemp1);
@@ -623,10 +607,10 @@ int	verbose;	/* Print progress if 1 */
 		hputnr8 (header, "CD2_2", ndec4, -ctemp4);
 		}
 	    else if (angle == 270) {
-		hputnr8 (header, "CD1_1", ndec4, ctemp4);
-		hputnr8 (header, "CD1_2", ndec3, ctemp3);
-		hputnr8 (header, "CD2_1", ndec2, -ctemp2);
-		hputnr8 (header, "CD2_2", ndec1, -ctemp1);
+		hputnr8 (header, "CD1_1", ndec2, ctemp2);
+		hputnr8 (header, "CD1_2", ndec1, -ctemp1);
+		hputnr8 (header, "CD2_1", ndec4, ctemp4);
+		hputnr8 (header, "CD2_2", ndec3, -ctemp3);
 		}
 	    }
 	}
@@ -679,5 +663,6 @@ int	verbose;	/* Print progress if 1 */
  *
  * Aug 17 2005	Add mirror = 2 flag indicating a flip across x axis
  *
- * Apr  4 2007	Add rotwcs to selectively rotate the WCS keywords
+ * Jun 26 2008	Shift pixels if either xshift or yshift is not zero
+ * Kim 30 2008	Correct WCS changes as suggested by Ed Los
  */
