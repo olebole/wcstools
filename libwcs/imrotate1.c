@@ -664,5 +664,5 @@ int	verbose;	/* Print progress if 1 */
  * Aug 17 2005	Add mirror = 2 flag indicating a flip across x axis
  *
  * Jun 26 2008	Shift pixels if either xshift or yshift is not zero
- * Kim 30 2008	Correct WCS changes as suggested by Ed Los
+ * Jun 30 2008	Correct WCS changes as suggested by Ed Los
  */

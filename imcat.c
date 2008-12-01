@@ -1,9 +1,9 @@
 /* File imcat.c
- * July 26, 2007
+ * July 9, 2008
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2007
+   Copyright (C) 1996-2008
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -36,6 +36,18 @@
 
 #define MAXFILES 1000
 static int maxnfile = MAXFILES;
+static double *gnum;	/* Catalog numbers */
+static double *gra;	/* Catalog right ascensions, degrees */
+static double *gdec;	/* Catalog declinations, degrees */
+static double *gpra;	/* Catalog right ascension proper motions, degrees/year */
+static double *gpdec;	/* Catalog declination proper motions, degrees/year */
+static double **gm;		/* Catalog star magnitudes */
+static double *gx;	/* Catalog star X positions on image */
+static double *gy;	/* Catalog star Y positions on image */
+static int *gc;		/* Catalog object classes, plates, etc. */
+static char **gobj;	/* Catalog object names */
+static char **gobj1;	/* Catalog object names */
+static int nalloc = 0;
 
 static void PrintUsage();
 static void ListCat();
@@ -107,6 +119,7 @@ char **av;
     char cs, cs1;
     char **fn;
     int i, ic;
+    int imag;
     int nx, ny;
     char *header;
     double cra, cdec, dra, ddec, secpix;
@@ -600,6 +613,50 @@ char **av;
     for (i = 0; i < 5; i++)
 	if (starcat[i] != NULL) ctgclose (starcat[i]);
 
+    /* Free memory used for search results and return */
+    if (gx) {
+	free ((char *)gx);
+	gx = NULL;
+	}
+    if (gy) {
+	free ((char *)gy);
+	gy = NULL;
+	}
+    if (gm) {
+	for (imag = 0; i < nmagmax; i++) {
+	    if (gm[imag]) {
+		free ((char *)gm[imag]);
+		gm[imag] = NULL;
+		}
+	    }
+	free ((char *)gm);
+	gm = NULL;
+	}
+    if (gra) {
+	free ((char *)gra);
+	gra = NULL;
+	}
+    if (gdec) {
+	free ((char *)gdec);
+	gdec = NULL;
+	}
+    if (gnum) {
+	free ((char *)gnum);
+	gnum = NULL;
+	}
+    if (gc) {
+	free ((char *)gc);
+	gc = NULL;
+	}
+    if (gobj) {
+	for (i = 0; i < nalloc; i++) {
+	    if (gobj[i] != NULL)
+		free ((char *)gobj[i]);
+	    }
+	free ((char *)gobj);
+	gobj = NULL;
+	}
+
     return (0);
 }
 
@@ -679,16 +736,6 @@ char	**refcatname;	/* reference catalog name */
 
 {
     char *header;	/* FITS image header */
-    double *gnum;	/* Catalog numbers */
-    double *gra;	/* Catalog right ascensions, degrees */
-    double *gdec;	/* Catalog declinations, degrees */
-    double *gpra;	/* Catalog right ascension proper motions, degrees/year */
-    double *gpdec;	/* Catalog declination proper motions, degrees/year */
-    double **gm;		/* Catalog star magnitudes */
-    double *gx, *gy;	/* Catalog star positions on image */
-    char **gobj;	/* Catalog object names */
-    char **gobj1;	/* Catalog object names */
-    int *gc;		/* Catalog object classes, plates, etc. */
     int ng;		/* Number of catalog stars */
     int nbg;		/* Number of brightest catalog stars actually used */
     int imh, imw;	/* Image height and width in pixels */
@@ -714,6 +761,7 @@ char	**refcatname;	/* reference catalog name */
     char magname[8];
     char isp[4];
     int icat;
+    int is;
     int printobj = 0;
     int nndec = 0;
     int nnfld;
@@ -740,17 +788,140 @@ char	**refcatname;	/* reference catalog name */
 	exit (-1);
 	}
 
-    gnum = NULL;
-    gra = NULL;
-    gdec = NULL;
-    gpra = NULL;
-    gpdec = NULL;
-    gm = NULL;
-    gx = NULL;
-    gy = NULL;
-    gc = NULL;
-    gobj = NULL;
-    gobj1 = NULL;
+    /* Allocate space for returned catalog information */
+    if (nstars != 0)
+	ngmax = nstars;
+    else
+	ngmax = MAXCAT;
+
+    if (ngmax > nalloc) {
+
+	/* Free currently allocated buffers if more entries are needed */
+	if (nalloc > 0) {
+	    if (gm) {
+		for (imag = 0; imag < nmagmax; imag++)
+		    if (gm[imag]) free ((char *) gm[imag]);
+		free ((char *)gm);
+		}
+	    if (gra) free ((char *)gra);
+	    if (gdec) free ((char *)gdec);
+	    if (gpra) free ((char *)gpra);
+	    if (gpdec) free ((char *)gpdec);
+	    if (gnum) free ((char *)gnum);
+	    if (gc) free ((char *)gc);
+	    if (gx) free ((char *)gx);
+	    if (gy) free ((char *)gy);
+	    if (gobj) {
+		for (is = 1; is < nalloc; is++) {
+		    if (gobj[is] != NULL)
+			free ((char *)gobj[is]);
+		    }
+		free ((char *)gobj);
+		}
+	    }
+	gm = NULL;
+	gra = NULL;
+	gdec = NULL;
+	gpra = NULL;
+	gpdec = NULL;
+	gnum = NULL;
+	gc = NULL;
+	gx = NULL;
+	gy = NULL;
+	gobj = NULL;
+
+	if (!(gnum = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gnum\n",
+		    ngmax*sizeof(double));
+	if (!(gra = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gra\n",
+		     ngmax*sizeof(double));
+	if (!(gdec = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gdec\n",
+		     ngmax*sizeof(double));
+	if (!(gm = (double **) calloc (nmagmax, sizeof(double *))))
+	    fprintf (stderr, "Could not calloc %d bytes for gm\n",
+		     nmagmax*sizeof(double *));
+	else {
+	    for (imag = 0; imag < nmagmax; imag++) {
+		if (!(gm[imag] = (double *) calloc (ngmax, sizeof(double))))
+		    fprintf (stderr, "Could not calloc %d bytes for gm\n",
+			     ngmax*sizeof(double));
+		}
+	    }
+	if (!(gc = (int *) calloc (ngmax, sizeof(int))))
+	    fprintf (stderr, "Could not calloc %d bytes for gc\n",
+		     ngmax*sizeof(int));
+	if (!(gx = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gx\n",
+		     ngmax*sizeof(double));
+	if (!(gy = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gy\n",
+		     ngmax*sizeof(double));
+	if (!(gobj = (char **) calloc (ngmax, sizeof(char *))))
+	    fprintf (stderr, "Could not calloc %d bytes for obj\n",
+		     ngmax*sizeof(char *));
+	else {
+	    for (i = 0; i < ngmax; i++)
+		gobj[i] = NULL;
+	    }
+	if (!(gpra = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gpra\n",
+		     ngmax*sizeof(double));
+	if (!(gpdec = (double *) calloc (ngmax, sizeof(double))))
+	    fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
+		     ngmax*sizeof(double));
+	if (gnum==NULL || gra==NULL || gdec==NULL || gm==NULL || gc==NULL ||
+	   gx==NULL || gy==NULL || gobj==NULL || gpra == NULL || gpdec == NULL){
+	    if (gm) {
+		for (imag = 0; imag < nmagmax; imag++)
+		    if (gm[imag]) free ((char *) gm[imag]);
+		free ((char *)gm);
+		gm = NULL;
+		}
+	    if (gra) free ((char *)gra);
+	    gra = NULL;
+	    if (gdec) free ((char *)gdec);
+	    gdec = NULL;
+	    if (gpra) free ((char *)gpra);
+	    gpra = NULL;
+	    if (gpdec) free ((char *)gpdec);
+	    gpdec = NULL;
+	    if (gnum) free ((char *)gnum);
+	    gnum = NULL;
+	    if (gc) free ((char *)gc);
+	    gc = NULL;
+	    if (gx) free ((char *)gx);
+	    gx = NULL;
+	    if (gy) free ((char *)gy);
+	    gy = NULL;
+	    if (gobj) {
+		for (is = 1; is < nalloc; is++) {
+		    if (gobj[is] != NULL)
+			free ((char *)gobj[is]);
+		    }
+		free ((char *)gobj);
+		}
+	    gobj = NULL;
+	    nalloc = 0;
+	    return;
+	    }
+
+	/* Initialize catalog entry values */
+	for (i = 0; i < ngmax; i++) {
+	    for (imag = 0; imag < nmagmax; imag++)
+		gm[imag][i] = 99.0;
+	    gra[i] = 0.0;
+	    gdec[i] = 0.0;
+	    gpra[i] = 0.0;
+	    gpdec[i] = 0.0;
+	    gnum[i] = 0.0;
+	    gc[i] = 0;
+	    gx[i] = 0.0;
+	    gy[i] = 0.0;
+	    }
+	nalloc = ngmax;
+	}
 
     if (tabout)
 	printhead = 0;
@@ -1972,18 +2143,6 @@ char	**refcatname;	/* reference catalog name */
 
     if (wfile)
 	fclose (fd);
-    if (gx) free ((char *)gx);
-    if (gy) free ((char *)gy);
-    if (gm) {
-	for (imag = 0; i < nmagmax; i++)
-	    free ((char *)gm[imag]);
-	free ((char *)gm);
-	}
-    if (gra) free ((char *)gra);
-    if (gdec) free ((char *)gdec);
-    if (gnum) free ((char *)gnum);
-    if (gc) free ((char *)gc);
-    if (gobj) free ((char *)gobj);
     wcsfree (wcs);
 
     return;
@@ -2271,4 +2430,6 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Jul  5 2007	Modify code to use WCS info from command line without image
  * Jul 24 2007	Add SkyBot format for output
  * Jul 26 2007	Clean up code for running without an image file
+ *
+ * Jul  9 2008	Free catalog arrays at end of program not of image
  */

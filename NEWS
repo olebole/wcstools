@@ -1,3 +1,16 @@
+Version 3.7.6 (October 24, 2008)
+skycoor: Add -t command to subtract times
+getdate: fix local sidereal time (*2lst, *2mst)
+dateutil.c: Use IAU 2006 nutation for sidereal time computations
+dateutil.c: Add ang2hr(), ang2deg(), deg2ang(), and ang2hr() to
+            convert betweem decimal floating point degrees and
+            vigesimal hours or degrees
+dateutil.c: Fix local sidereal time computation (2008-10-08)
+tnxpos.c: Fix image to world coordinate system transformation and
+          WCS to image transformation
+tnxpos.c: Fix tnxpos() for null correction case (2008-09-17)
+gsc2read.c: Read GSC2 catalog from STScI CASB instead of GALEX
+
 Version 3.7.5 (July 1, 2008)
 getcol: Fix bug so columns are compared if both conditions are integer
 imrot: Fix bug so x and y shifts occur even if one is zero; fix WCS modification

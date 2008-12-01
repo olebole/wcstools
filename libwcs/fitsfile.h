@@ -1,8 +1,8 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** November 28, 2007
+ *** September 8, 2008
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2007
+ *** Copyright (C) 1996-2008
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -434,6 +434,21 @@ float ftgetr4(		/* Extract column for keyword from FITS table line
 	int maxchars);	/* Maximum length of token */
 
 /* Subroutines for translating dates and times in dateutil.c */
+
+    /* Subroutines to convert between floating point and vigesimal angles */
+
+    void ang2hr ( 	/* Fractional degrees to hours as hh:mm:ss.ss */
+	double angle,	/* Angle in fractional degrees */
+	int lstr,	/* Maximum number of characters in string */
+	char *string);	/* Character string (hh:mm:ss.ss returned) */
+    void ang2deg (	/* Fractional degrees to degrees as dd:mm:ss.ss */
+	double  angle,	/* Angle in fractional degrees */
+	int lstr,	/* Maximum number of characters in string */
+	char *string);	/* Character string (dd:mm:ss.ss returned) */
+    double deg2ang (	/* Degrees as dd:mm:ss.ss to fractional degrees */
+	char *angle);	/* Angle as dd:mm:ss.ss */
+    double hr2ang (	/* Hours as hh:mm:ss.ss to fractional degrees */
+	char *angle);	/* Angle in sexigesimal hours (hh:mm:ss.sss) */
 
     /* Subroutines to convert from year and day of year */
 
@@ -1013,6 +1028,11 @@ int getoken();		/* Get specified token from tokenized string */
 
 /* Subroutines for translating dates and times in dateutil.c */
 
+void ang2hr();		/* Fractional degrees to hours as hh:mm:ss.ss */
+void ang2deg();		/* Fractional degrees to degrees as dd:mm:ss.ss */
+double deg2ang();	/* Degrees as dd:mm:ss.ss to fractional degrees */
+double hr2ang();	/* Hours as hh:mm:ss.ss to fractional degrees */
+
 void doy2dt();	/* year and day of year to yyyy.mmdd hh.mmss */
 double doy2ep(); /* year and day of year to fractional year (epoch) */
 double doy2epb(); /* year and day of year to Besselian epoch */
@@ -1250,4 +1270,6 @@ void compnut();	/* Compute nutation in longitude and obliquity and mean obliquit
  * Jan 11 2007	Add token subroutines from catutil.c/wcscat.h to fileutil.c
  * Jun 11 2007	Add minvec() subroutine in imio.c
  * Nov 28 2007	Add kform format to FITS table keyword data structure
+ *
+ * Sep  8 2008	Add ag2hr(), ang2deg(), deg2ang(), and hr2ang()
  */

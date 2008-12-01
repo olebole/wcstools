@@ -1,9 +1,9 @@
 /* File getdate.c
- * December 12, 2007
+ * September 8, 2008
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2007
+   Copyright (C) 1999-2008
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -56,6 +56,9 @@
 #define DTGST	22	/* Greenwich Sidereal Time (with nutation) */
 #define DTLST	23	/* Local Sidereal Time (requires longitude) */
 #define DTET	24	/* Local Sidereal Time (requires longitude) */
+#define DTANG	25	/* Angle in fractional degrees */
+#define DTHR	26	/* Angle in sexigesimal hours (hh:mm:ss.ss) */
+#define DTDEG	27	/* Angle in sexigesimal degrees (dd:mm:ss.ss) */
 
 #define UT	0
 #define ET	1
@@ -122,6 +125,12 @@ char **av;
 	    /* Set input date format */
 	    if (!strncmp (*av, "dt2", 3))
 		intype = DTVIG;
+	    else if (!strncmp (*av, "ang2", 4))
+		intype = DTANG;
+	    else if (!strncmp (*av, "deg2", 4))
+		intype = DTDEG;
+	    else if (!strncmp (*av, "hr2", 3))
+		intype = DTHR;
 	    else if (!strncmp (*av, "ep2", 3))
 		intype = DTEP;
 	    else if (!strncmp (*av, "epb2", 3))
@@ -134,24 +143,40 @@ char **av;
 		}
 	    else if (!strncmp (*av, "fd2", 3))
 		intype = DTFITS;
-	    else if (!strncmp (*av, "jd2", 3))
+	    else if (!strncmp (*av, "jd2", 3)) {
 		intype = DTJD;
-	    else if (!strncmp (*av, "hjd2", 4))
+		nftok = 1;
+		}
+	    else if (!strncmp (*av, "hjd2", 4)) {
 		intype = DTHJD;
-	    else if (!strncmp (*av, "mjd2", 4))
+		nftok = 1;
+		}
+	    else if (!strncmp (*av, "mjd2", 4)) {
 		intype = DTMJD;
-	    else if (!strncmp (*av, "mhjd2", 5))
+		nftok = 1;
+		}
+	    else if (!strncmp (*av, "mhjd2", 5)) {
 		intype = DTMHJD;
+		nftok = 1;
+		}
 	    else if (!strncmp (*av, "now2", 4))
 		intype = DTNOW;
-	    else if (!strncmp (*av, "ts2", 3))
+	    else if (!strncmp (*av, "ts2", 3)) {
 		intype = DT1950;
-	    else if (!strncmp (*av, "tsi2", 4))
+		nftok = 1;
+		}
+	    else if (!strncmp (*av, "tsi2", 4)) {
 		intype = DTIRAF;
-	    else if (!strncmp (*av, "tsd2", 4))
+		nftok = 1;
+		}
+	    else if (!strncmp (*av, "tsd2", 4)) {
 		intype = DTDSEC;
-	    else if (!strncmp (*av, "tsu2", 4))
+		nftok = 1;
+		}
+	    else if (!strncmp (*av, "tsu2", 4)) {
 		intype = DTUNIX;
+		nftok = 1;
+		}
 	    else if (!strncmp (*av, "lt2", 3))
 		intype = DTLT;
 	    else if (!strncmp (*av, "ut2", 3))
@@ -168,6 +193,12 @@ char **av;
 	    /* Set output date format */
 	    if (strsrch (*av, "2dt"))
 		outtype = DTVIG;
+	    else if (strsrch (*av, "2ang"))
+		outtype = DTANG;
+	    else if (strsrch (*av, "2deg"))
+		outtype = DTDEG;
+	    else if (strsrch (*av, "2hr"))
+		outtype = DTHR;
 	    else if (strsrch (*av, "2epb"))
 		outtype = DTEPB;
 	    else if (strsrch (*av, "2epj"))
@@ -307,7 +338,7 @@ char **av;
 			line[lline-1] = (char) 0;
 		    if (appdate)
 			printf ("%s ", line);
-		    if (intype != DTVIG && intype != DTDOY && nftok != 1)
+		    if (nftok > 1)
 			sscanf (line, "%s %s", datestring, timestring);
 		    else
 			sscanf (line, "%s", datestring);
@@ -368,14 +399,15 @@ usage ()
     fprintf (stderr,"Convert date and time between various formats\n");
     fprintf (stderr,"Usage: [-dv][-n dec][-f format] itype2otype [date and/or time] [ra dec sys]\n");
     fprintf (stderr,"       [-dv][-n dec][-f format] itype2otype @file\n");
-    fprintf(stderr,"  itype: nfd=ISOFITS fd=FITS, dt=yyyy.mmdd\n");
+    fprintf(stderr,"  itype: nfd=ISOFITS fd=FITS, dt=yyyy.mmdd, hr=hh:mm:ss, deg=dd:mm:ss\n");
     fprintf(stderr,"         jd=Julian Date, mjd=Modified Julian Date\n");
     fprintf(stderr,"         jhd=Heliocentric Julian Date, mhjd=Modified HJD\n");
     fprintf(stderr,"         ep=epoch, epj=Julian epoch, epb=Besselian epoch\n");
     fprintf(stderr,"         lt=local time, ut=UT, ts=seconds since 1950-01-01\n");
-    fprintf(stderr,"         now=current time\n");
+    fprintf(stderr,"         now=current time, ang=fractional degrees\n");
     fprintf(stderr,"  otype: fd=FITS, dt=yyyy.mmdd, jd=Julian Date, mjd=Modified Julian Date\n");
     fprintf(stderr,"         jhd=Heliocentric Julian Date, mhjd=Modified HJD\n");
+    fprintf(stderr,"         hr=hh:mm:ss, deg=dd:mm:ss, ang=fractional degrees\n");
     fprintf(stderr,"         ep=epoch, epj=Julian epoch, epb=Besselian epoch\n");
     fprintf(stderr,"         ts=seconds since 1950-01-01, tsu=Unix sec, tsi=IRAF sec\n");
     fprintf(stderr,"         gst=Greenwich Sidereal Time, lst=Local Sidereal Time\n");
@@ -439,10 +471,10 @@ char	*timestring;	/* Input time string */
 	    }
 	}
     if (outtype == DTLST) {
-	if (longitude < 0.0) {
+/* 	if (longitude < 0.0) {
 	    setlongitude (0.0);
 	    fprintf (stderr, "*** Greenwich longitude used for Local Sidereal Time ***\n");
-	    }
+	    } */
 	outtime = LST;
 	if (intype == DTFITS || intype == DTVIG)
 	    outtype = intype;
@@ -469,6 +501,65 @@ char	*timestring;	/* Input time string */
 	}
 
     switch (intype) {
+
+	/* Angle in degrees */
+	case DTANG:
+	    if (verbose)
+		printf ("%s -> ", datestring);
+	    switch (outtype) {
+		case DTHR:
+		    vtime = atof (datestring);
+		    ang2hr (vtime, 64, temp);
+		    printf ("%s\n", temp);
+		    break;
+		case DTDEG:
+		    vtime = atof (datestring);
+		    ang2deg (vtime, 64, temp);
+		    printf ("%s\n", temp);
+		    break;
+		default:
+		    printf ("*** Unknown output type %d\n", outtype);
+		}
+	    break;
+
+	/* Angle as dd:mm:ss */
+	case DTDEG:
+	    if (verbose)
+		printf ("%s -> ", datestring);
+	    switch (outtype) {
+		case DTANG:
+		    vtime = deg2ang (datestring);
+		    printf (outform, vtime);
+		    break;
+		case DTHR:
+		    vtime = deg2ang (datestring);
+		    ang2hr (vtime, 64, temp);
+		    printf ("%s\n", temp);
+		    break;
+		default:
+		    printf ("*** Unknown output type %d\n", outtype);
+		}
+	    break;
+
+	/* Angle as hh:mm:ss */
+	case DTHR:
+	    if (verbose)
+		printf ("%s -> ", datestring);
+	    switch (outtype) {
+		case DTANG:
+		    vtime = hr2ang (datestring);
+		    printf (outform, vtime);
+		    break;
+		case DTDEG:
+		    vtime = hr2ang (datestring);
+		    ang2deg (vtime, 64, temp);
+		    printf ("%s\n", temp);
+		    break;
+		default:
+		    printf ("*** Unknown output type %d\n", outtype);
+		}
+	    break;
+
 
 	/* Vigesimal date and time (yyyy.mmdd hh.mmssss) */
 	case DTVIG:
@@ -500,10 +591,11 @@ char	*timestring;	/* Input time string */
 			break;
 		    case DTFITS:
 			fitsdate = dt2fd (vdate, vtime);
-			if (outtime == ET) fitsdate = fd2et (fitsdate);
-			else if (outtime == GST) fitsdate = fd2gst (fitsdate);
-			else if (outtime == MST) fitsdate = fd2mst (fitsdate);
-			else if (outtime == LST) fitsdate = fd2lst (fitsdate);
+			if (outtime == ET) newfdate = fd2et (fitsdate);
+			else if (outtime == GST) newfdate = fd2gst (fitsdate);
+			else if (outtime == MST) newfdate = fd2mst (fitsdate);
+			else if (outtime == LST) newfdate = fd2lst (fitsdate);
+			else newfdate = fitsdate;
 			tchar = strchr (newfdate, 'T');
 			if (tchar == NULL)
 			    tchar = strchr (newfdate, 'S');
@@ -2151,4 +2243,8 @@ char	*timestring;	/* Input time string */
  * Jan 10 2007	Drop ignored argument from ut2jd() call
  * Jan 10 2007	Fix unix time output format
  * Dec 12 2007	Implement time only output for all 2FD options
+ *
+ * Jul 28 2008	Fix file input problems for vigesimal date/time strings
+ * Jul 28 2008	Fix time system conversion but for vigesimal date/time strings
+ * Sep  8 2008	Add vigesimal hour and degree to fractional degree conversions
  */

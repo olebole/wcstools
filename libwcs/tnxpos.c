@@ -1,9 +1,9 @@
 /*** File wcslib/tnxpos.c
- *** April 3, 2007
+ *** September 17, 2008
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** After IRAF mwcs/wftnx.x and mwcs/wfgsurfit.x
- *** Copyright (C) 1998-2007
+ *** Copyright (C) 1998-2008
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -165,7 +165,7 @@ double	*xpos, *ypos;	/*o world coordinates (ra, dec) */
     int	ira, idec;
     double x, y, r, phi, theta, costhe, sinthe, dphi, cosphi, sinphi, dlng, z;
     double colatp, coslatp, sinlatp, longp;
-    double xs, ys, ra, dec;
+    double xs, ys, ra, dec, xp, yp;
     double wf_gseval();
 
     /* Convert from pixels to image coordinates */
@@ -221,9 +221,15 @@ double	*xpos, *ypos;	/*o world coordinates (ra, dec) */
     /*  Compute native spherical coordinates phi and theta in degrees from the
 	projected coordinates. this is the projection part of the computation */
     if (wcs->lngcor != NULL)
-	x = x + wf_gseval (wcs->lngcor, x, y);
+	xp = x + wf_gseval (wcs->lngcor, x, y);
+    else
+	xp = x;
     if (wcs->latcor != NULL)
-	y = y + wf_gseval (wcs->latcor, x, y);
+	yp = y + wf_gseval (wcs->latcor, x, y);
+    else
+	yp = y;
+    x = xp;
+    y = yp;
     r = sqrt (x * x + y * y);
 
     /* Compute phi */
@@ -835,10 +841,10 @@ int	nxd, nyd;	/* order of the derivatives in x and y */
 	case TNX_XFULL:
 	    ptr2 = sf2->coeff + (sf2->yorder - 1) * sf2->xorder;
 	    ptr1 = coeff + (sf1->yorder - 1) * sf1->xorder;
-	    for (i = sf1->yorder - 1; i >= nyder+1; i--) {
+	    for (i = sf1->yorder - 1; i >= nyder; i--) {
 		for (j = i; j >= i-nyder+1; j--) {
 		    for (k = 0; k < sf2->xorder; k++)
-			ptr1[nxder+k] = ptr1[nxder+k] * (double)(j-1);
+			ptr1[nxder+k] = ptr1[nxder+k] * (double)(j);
 		    }
 		for (j = sf1->xorder; j >= nxder+1; j--) {
 		    for (k = j; k >= j-nxder+1; k--)
@@ -1220,4 +1226,9 @@ double	*coeff;
  * Jan  8 2007	Drop unused variable ncoeff in wf_gsder()
  * Jan  9 2007	Declare header const char in tnxinit()
  * Apr  3 2007	Fix offsets to hit last cooefficient in wf_gsder()
+ *
+ * Sep  5 2008	Fix wf_gseval() call in tnxpos() so unmodified x and y are used
+ * Sep  9 2008	Fix loop in TNX_XFULL section of wf_gsder()
+ * 		(last two bugs found by Ed Los)
+ * Sep 17 2008	Fix tnxpos for null correction case (fix by Ed Los)
  */

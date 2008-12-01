@@ -1,5 +1,19 @@
 WCSTools WCS subroutine release history
 
+September 9, 2008 - Release 3.7.6
+dateutil.c: Use IAU 2006 nutation for sidereal time computations
+dateutil.c: Add ang2hr(), ang2deg(), deg2ang(), and ang2hr() to
+            convert betweem decimal floating point degrees and 
+            vigesimal hours or degrees
+tnxpos.c: Fix image to world coordinate system transformation and
+          WCS to image transformation
+
+July 1, 2008 - Release 3.7.5
+wcsinit.c: Initialize TNX projection when projection types first set and
+           check for IMAGEW and IMAGEH if NAXIS1 and NAXIS2 not present,
+fitsfile.c: Drop comma from name when reading file in isfits() and
+            do not append primary data header if it is the only header
+
 May 9, 2008 - Release 3.7.4
 fitsfile.c: In isfits(), allow extensions in FITS files without .fit or .fts
 wcsinit.c: Call tnxinit() before any projection calls are made

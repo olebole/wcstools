@@ -1,9 +1,9 @@
 /* File skycoor.c
- * July 25, 2007
+ * September 4, 2008
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2007
+   Copyright (C) 1996-2008
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -66,12 +66,14 @@ char **av;
     char rastr1[32], decstr1[32];
     char csys0[32], csys1[32];
     char csys[32];
+    char ha[32];
     char cunit;
     int sys0;
     int sys1 = -1;
     double ra, dec, r, ra1, dec1, ra2, dec2, dra, ddec, a;
     double offra = 0.0;
     double offdec = 0.0;
+    double t1, t2, tdiff;
     int lstr = 32;
     int lfn;
     int degout = 0;
@@ -285,6 +287,25 @@ char **av;
 	    keyeqval++;
 	    break;
 
+	case 't':	/* Separation between two times */
+	    if (ac < 3)
+		usage("Missing times for -t");
+	    t1 = str2dec (*++av);
+	    ac--;
+	    t2 = str2dec (*++av);
+	    ac--;
+	    tdiff = t1 - t2;
+	    if (tdiff > 12.0)
+		tdiff = tdiff - 24.0;
+	    if (tdiff < -12.0)
+		tdiff = tdiff + 24.0;
+	    dec2str (ha, 32, tdiff, ndec);
+	    if (verbose)
+		printf ("Time difference is %s\n", ha);
+	    else
+		printf ("%s\n", ha);
+	    break;
+
     	case 'v':	/* more verbosity */
     	    verbose++;
     	    break;
@@ -464,15 +485,27 @@ char **av;
 		wcscstr (coorout, sys1, 0.0, 0.0);
 	    eqout = wcsceq (coorout);
 
-	    if (offra != 0.0) {
-		ra = str2ra (rastr0);
-		ra = ra + (offra / 3600.0);
-		ra2str (rastr0, 32, ra, 4);
-		}
-	    if (offdec != 0.0) {
-		dec = str2dec (decstr0);
-		dec = dec + (offdec / 3600.0);
-		dec2str (decstr0, 32, dec, 3);
+	    if (offra != 0.0 || offdec != 0.0) {
+		if (verbose) {
+		    wcscstr (csys0, sys0, 0.0, 0.0);
+		    printf ("%s %s %s -> ", rastr0, decstr0, csys0);
+		    }
+		if (offra != 0.0) {
+		    ra = str2ra (rastr0);
+		    ra = ra + (offra / 3600.0);
+		    ra2str (rastr0, 32, ra, ndec);
+		    }
+		if (offdec != 0.0) {
+		    dec = str2dec (decstr0);
+		    dec = dec + (offdec / 3600.0);
+		    dec2str (decstr0, 32, dec, ndec);
+		    }
+		if (verbose) {
+		    printf ("%s %s %s", rastr0, decstr0, csys0);
+		    if (epset)
+			printf (" at %s", ep2fd (epin));
+		    printf ("\n");
+		    }
 		}
 	    skycons (rastr0, decstr0, sys0, rastr1, decstr1, sys1, lstr, ndec);
 	    if (degout) {
@@ -614,6 +647,7 @@ char *errstring;
     fprintf (stderr,"  -q sys: Output system, including equinox\n");
     fprintf (stderr,"  -r ra dec ra dec: Angular separation between two RA, Dec pairs\n");
     fprintf (stderr,"  -s: Output ra= dec= epoch= radecsys= for sethead\n");
+    fprintf (stderr,"  -t t1 t2: Separation t1 - t2 as hh:mm:ss.ss\n");
     fprintf (stderr,"  -v: verbose\n");
     fprintf (stderr,"  -w: Convert RA, Dec equatorial coordinates to x,y,z\n");
     fprintf (stderr,"  -x: Convert x,y,z equatorial coordinates to RA, Dec\n");
@@ -672,4 +706,7 @@ char *errstring;
  *
  * Jun 13 2007	Add -h option for input in fractional hours instead of degrees
  * Jul 25 2007	Fix bug in position angle computation
+ *
+ * Sep  4 2008	Add -t to compute separation between two times (for HA)
+ * Sep  4 2008	Clean up verbose output for offset addition
  */
