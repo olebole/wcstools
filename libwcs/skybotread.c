@@ -224,8 +224,11 @@ int	nlog;		/* 1 for diagnostics */
     strcat (srchurl, "-mime=text&");
 
     /* IAU observatory code*/
-    sprintf (temp, "loc=%03d", obscode);
+    sprintf (temp, "loc=%03d&", obscode);
     strcat (srchurl, temp);
+
+    /* Source of search */
+    strcat (srchurl, "-from=WCSTools");
 
     if (nlog0 > 0)
 	fprintf (stderr,"%s%s\n", skyboturl, srchurl);

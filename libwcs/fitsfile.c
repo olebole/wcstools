@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** June 27, 2008
+ *** November 21, 2008
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2008
@@ -1960,7 +1960,7 @@ char	*header;	/* FITS image header */
 	*(endhead++) = ' ';
     
     nbw = write (fd, header, nbytes);
-    if (nbw < nbhead) {
+    if (nbw < nbytes) {
 	fprintf (stderr, "FITSWHEAD:  wrote %d / %d bytes of header to file %s\n",
 		 nbw, nbytes, filename);
 	(void)close (fd);
@@ -2048,7 +2048,7 @@ char	*header;	/* FITS image header */
     (void)close (fd);
     free (oldheader);
     oldheader = NULL;
-    if (nbw < nbhead) {
+    if (nbw < nbold) {
 	fprintf (stderr, "FITSWHEAD:  wrote %d / %d bytes of header to file %s\n",
 		 nbw, nbold, filename);
 	return (-1);
@@ -2249,4 +2249,5 @@ fitserr ()
  *
  * Apr  7 2008	Drop comma from name when reading file in isfits()
  * Jun 27 2008	Do not append primary data header if it is the only header
+ * Nov 21 2008	In fitswhead(), print message if too few bytes written
  */

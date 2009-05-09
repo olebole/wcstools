@@ -1,7 +1,7 @@
 /*** File libwcs/wcscat.h
- *** November 28, 2007
+ *** October 24, 2008
  *** By Doug Mink, dmink@cfa.harvard.edu
- *** Copyright (C) 1998-2007
+ *** Copyright (C) 1998-2008
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -423,6 +423,8 @@ extern "C" {
 	int nlog);	/* Verbose mode if >1, number of sources per log line */
     char *gsc2c2t(	/* Convert GSC2 buffer from comma- to tab-separated */
 	char *csvbuff);	/* Input comma-separated table */
+    char *gsc2t2t(	/* Clean up GSC2 tab-separated buffer */
+	char *tsvbuff);	/* Input tab-separated table */
 
 /* Subroutine to read SDSS catalog over the web */
     int sdssread(	/* Read sources by sky region from SDSS Catalog */
@@ -1380,6 +1382,7 @@ void setgsclass();	/* Set GSC object class */
 /* Subroutine to read GSC II catalog over the web (gsc2read.c) */
 int gsc2read();		/* Read sources by sky region from GSC II Catalog */
 char *gsc2c2t();	/* Convert GSC2 buffer from comma- to tab-separated */
+char *gsc2t2t();	/* Clean up GSC2 tab-separated buffer */
 
 /* Subroutine to read SDSS catalog over the web (sdssread.c) */
 int sdssread();		/* Read sources by sky region from SDSS Catalog */
@@ -1670,4 +1673,7 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * Jul 13 2007	Add skybotread() and skybot2tab()
  * Jul 18 2007	Add tabccol() and PM_ARCSECHR for SkyBot
  * Nov 28 2007	Add moveb() which used to be local to binread()
+ *
+ * Oct 24 2008	Add gsct2t() to clean up tab-separated table from STScI
+CASB
  */

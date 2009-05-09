@@ -1,9 +1,9 @@
 /* File imsize.c
- * May 23, 2008
+ * March 24, 2009
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2008
+   Copyright (C) 1996-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -434,15 +434,21 @@ char *name;
 
     /* Set image dimensions */
     nax = 0;
-    if (hgeti4 (header,"NAXIS",&nax) < 1)
-	return (-1);
+    if (hgeti4 (header,"NAXIS",&nax) < 1 || nax < 1) {
+	if (hgeti4 (header, "WCSAXES", &nax) < 1)
+	    return (-1);
+	else {
+	    if (hgeti4 (header, "IMAGEW", &wp) < 1)
+		return (-1);
+	    if (hgeti4 (header, "IMAGEH", &hp) < 1)
+		return (-1);
+	    }
+	}
     else {
 	if (hgeti4 (header,"NAXIS1",&wp) < 1)
 	    return (-1);
-	else {
-	    if (hgeti4 (header,"NAXIS2",&hp) < 1)
-		return (-1);
-	    }
+	if (hgeti4 (header,"NAXIS2",&hp) < 1)
+	    return (-1);
 	}
     sysim = 0;
     eqim = 0;
@@ -675,4 +681,6 @@ char *name;
  * 
  * May 23 2008	Add y option to print FITS ISO format date of image
  * May 23 2008	Drop quotes from output: use m and s instead
+ *
+ * Mar 24 2009	Set dimensions from IMAGEW and IMAGEH if WCSAXES > 0
  */

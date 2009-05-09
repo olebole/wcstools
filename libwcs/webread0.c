@@ -1,5 +1,5 @@
 /*** File webread.c
- *** January 8, 2008
+ *** January 5, 2008
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
@@ -595,6 +595,7 @@ int	*lbuff;	/* Length of buffer (returned) */
     int lcom;
     char *cbcont;
     char *newserver;
+    char *command;
     char *sokptr;
 
     *lbuff = 0;
@@ -619,55 +620,58 @@ int	*lbuff;	/* Length of buffer (returned) */
 	}
 
     /* Send HTTP GET command */
-    fprintf (sok, "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n",urlpath,server);
+    lcom = 32 + strlen (urlpath) + strlen (server);
+    command = (char *) calloc (lcom, 1);
+    sprintf (command, "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n",urlpath,server);
+    fprintf (sok, command);
     fflush(sok);
     free (server);
+    for (i = 0; i < lcom; i++)
+	command[i] = (char) 0;
+    free (command);
 
-    (void) fscanf(sok, "%*s %d %s\r\n", &status, linebuff);
+    (void) fscanf(sok, "%*s %d %*s\r\n", &status);
 
     /* If Redirect code encounter, go to alternate URL at Location: */
     if ( status == 301 || status == 302 || status == 303 || status == 307 ) {
-	char redirect[LINE];
-	while (servurl = fgets (redirect, LINE, sok)) {
-	    if (!(strncmp (redirect, "Location:", 9)))
-		break;
-	    }
-	(void) fclose (sok);
-	if (servurl == NULL) {
-	    if (diag)
-		fprintf (stderr,"WEBBUFF: No forward for HTTP Code %d\n", status);
+	sokptr = strsrch ((char *) sok->_ptr, "Location:") + 10;
+	newserver = strsrch (sokptr, "http");
+	j = 7;
+	while (newserver[j] != '/')
+	    j = j + 1;
+	if ((server = (char *) malloc (j+2)) == NULL) {
+	    (void) fclose (sok);
 	    return (NULL);
 	    }
-	if ((servurl = strsrch (servurl, "http://")) == NULL) {
-	    if (diag)
-		fprintf (stderr,"WEBBUFF: No forward URL for HTTP Code %d\n", status);
-	    return (NULL);
-	    }
-	servurl = servurl + 7;
-	urlpath = strchr (servurl, '/');
-	lserver = urlpath - servurl;
-	if ((server = (char *) malloc (lserver+2)) == NULL) {
-	    return (NULL);
-	    }
-	strncpy (server, servurl, lserver);
-	server[lserver] = (char) 0;
+	strncpy (server, sokptr, j);
+	server[j] = (char) 0;
 
 	if (diag)
-	    fprintf (stderr,"WEBBUFF: HTTP Code %d: Temporary Redirect to %s\n",
+	    fprintf (stderr,"HTTP Code %d: Temporary Redirect to %s\n",
 		     status, server);
 
 	/* Open port to HTTP server */
-	if ( (sok = SokOpen (server, 80, XFREAD | XFWRITE)) == NULL ) {
+	if ( (sok1 = SokOpen (server, 80, XFREAD | XFWRITE)) == NULL ) {
 	    free (server);
 	    return (NULL);
 	    }
 
 	/* Send HTTP GET command (simbad forward fails if HTTP/1.1 included) */
-	fprintf(sok, "GET %s HTTP/1.1\r\nHost: %s\r\n\r\n",urlpath,server);
-	fflush(sok);
+	lcom = 32 + strlen (urlpath) + strlen (server);
+	command = (char *) calloc (lcom, 1);
+	sprintf(command, "GET %s\r\nHost: %s\r\n\r\n",urlpath,server);
+	fprintf(sok1, command);
+	fflush(sok1);
 	free (server);
+	for (i = 0; i < lcom; i++)
+	    command[i] = (char) 0;
+	free (command);
 
-	(void) fscanf(sok, "%*s %d %*s\r\n", &status);
+	(void) fscanf(sok1, "%*s %d %*s\r\n", &status);
+
+	/* Close old socket structure and assign new structure to it */
+	(void) fclose (sok);
+	sok = sok1;
 	}
 
     /* Skip continue lines
@@ -1025,5 +1029,5 @@ space2tab (tabbuff)
  * Aug 28 2007	Fix space2tab() declarations which passed on Solaris, not Linux
  * Dec 31 2007	Fix chunk reading code in webbuff()
  *
- * Jan  8 2008	Forward automatically if status=301|302|303|307 (code from Ed Los)
+ * Jan  5 2008	Add code to forward automatically if status=301|302|303|307
  */

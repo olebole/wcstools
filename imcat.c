@@ -1,5 +1,5 @@
 /* File imcat.c
- * July 9, 2008
+ * November 17, 2008
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -1133,7 +1133,7 @@ char	**refcatname;	/* reference catalog name */
 	} */
 
     /* Set flag if spectral type is present */
-    if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==TYCHO ||
+    if (refcat==SAO || refcat==PPM || refcat==IRAS ||
 	refcat==HIP || refcat==BSC || refcat==SDSS)
 	sptype = 1;
     else if (refcat == TMPSC || refcat == TMIDR2)
@@ -1952,11 +1952,11 @@ char	**refcatname;	/* reference catalog name */
 		    sprintf (headline, "%s	%s	%s	%5.2f	%2s",
 		     numstr,rastr,decstr,gm[0][i],isp);
 		else if (refcat==TYCHO || refcat==TYCHO2 || refcat==ACT)
-		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%2s",
-		     numstr,rastr,decstr,gm[0][i],gm[1][i],isp);
+		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f",
+		     numstr,rastr,decstr,gm[0][i],gm[1][i]);
 		else if (refcat==TYCHO2E)
-		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%s",
-		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i],isp);
+		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f",
+		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
 		else {
 		    sprintf (headline, "%s	%s	%s",
 			     numstr, rastr, decstr);
@@ -2432,4 +2432,5 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Jul 26 2007	Clean up code for running without an image file
  *
  * Jul  9 2008	Free catalog arrays at end of program not of image
+ * Nov 17 2008	Drop computed spectral type from Tycho and Tycho-2 catalogs
  */

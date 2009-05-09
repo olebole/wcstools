@@ -1,6 +1,6 @@
 /*** simpos.c - search object by its name from command line arguments
- *** April 16, 2008
- *** By Doug Mink, sort of after IPAC byname.c
+ *** March 3, 2009
+ *** By Doug Mink, sort of after IPAC byname.c for searching NED
  */
 
 #include <stdlib.h>
@@ -135,8 +135,12 @@ char *av[];
 	for (i = 0; i < lobj; i++) {
 	    if (objname[i] == '_')
 		objname[i] = '+';
-	    if (objname[i] == ' ')
-		objname[i] = '+';
+	    if (objname[i] == ' ') {
+		if (i == lobj-1)
+		    objname = (char) 0;
+		else
+		    objname[i] = '+';
+		}
 	    }
 	if (verbose)
 	    printf ("%s -> ", objname);
@@ -228,11 +232,13 @@ char *av[];
 		printf ("--	------------	------------");
 		printf ("\n");
 		}
-	    printf ("%s", objname);
-	    if (tabout)
-		printf ("	");
-	    else
-		printf (" ");
+	    if (printid) {
+		printf ("%s", objname);
+		if (tabout)
+		    printf ("	");
+		else
+		    printf (" ");
+		}
 	    if (outsys != WCS_J2000)
 		wcscon (sysj, outsys, 0.0, 0.0, &ra, &dec, 0.0);
 	    if (outsys == WCS_ECLIPTIC || outsys == WCS_GALACTIC) {
@@ -322,4 +328,6 @@ char	*command;	/* Command where error occurred or NULL */
  * Sep 19 2007	Add -t option for Starbase output and @ for lists of names
  *
  * Apr 16 2008	Fix @ mode for processing lists of objects
+ * 
+ * Mar  3 2009	Put -i option back in; print name only if requested
  */

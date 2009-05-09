@@ -1,9 +1,9 @@
 /* File imhead.c
- * June 20, 2006
+ * December 1, 2008
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1996-2008 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -162,7 +162,7 @@ char *name;
 
 {
     char *header;	/* FITS image header */
-    int nw, nbytes, lhead, nblk;
+    int i, nw, nbytes, lhead, nblk;
     char *endhead;
 
     if ((header = GetFITShead (name, verbose)) == NULL)
@@ -198,10 +198,12 @@ char *name;
 	endhead = ksearch (header,"END");
 	lhead = endhead + 80 - header;
 	nblk = lhead / 2880;
-	if (lhead < nblk * 2880)
+	if (lhead <= nblk * 2880)
 	   nbytes = nblk * 2880;
 	else
 	    nbytes = (nblk + 1) * 2880;
+	for (i = lhead; i < nbytes; i++)
+	    header[i] = ' ';
 	nw = write (1, header, nbytes);
 	}
     else if (PrintFITSHead (header) && verbose)
@@ -284,4 +286,6 @@ char	*header;	/* Image FITS header */
  * Jan 17 2006	Add +i to append primary header even if INHERIT is not set
  * Feb 23 2006	Read headers appended to TIFF, JPEG, or GIF image files
  * Jun 20 2006	Clean up code
+ *
+ * Dec  1 2008	Pad output FITS header with blanks
  */

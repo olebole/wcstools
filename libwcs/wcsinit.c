@@ -1,8 +1,8 @@
 /*** File libwcs/wcsinit.c
- *** June 27, 2008
+ *** March 24, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2008
+ *** Copyright (C) 1998-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -328,12 +328,16 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 	sprintf (temp, "%d", i+1);
 	strcat (keyword, temp);
 	if (!hgeti4 (hstring, keyword, &j)) {
-	    if (i == 0 && wcs->nxpix > 1)
-		fprintf (stderr,"WCSINIT: Missing keyword %s set to %.0f from IMAGEW\n",
-			 keyword, wcs->nxpix);
-	    else if (i == 1 && wcs->nypix > 1)
-		fprintf (stderr,"WCSINIT: Missing keyword %s set to %.0f from IMAGEH\n",
-			 keyword, wcs->nypix);
+	    if (i == 0 && wcs->nxpix > 1) {
+		/* fprintf (stderr,"WCSINIT: Missing keyword %s set to %.0f from IMAGEW\n",
+			 keyword, wcs->nxpix); */
+		j = wcs->nxpix;
+		}
+	    else if (i == 1 && wcs->nypix > 1) {
+		/* fprintf (stderr,"WCSINIT: Missing keyword %s set to %.0f from IMAGEH\n",
+			 keyword, wcs->nypix); */
+		j = wcs->nypix;
+		}
 	    else
 		fprintf (stderr,"WCSINIT: Missing keyword %s assumed 1\n",keyword);
 	    }
@@ -1374,4 +1378,6 @@ char	*mchar;		/* Suffix character for one of multiple WCS */
  *
  * May  9 2008	Initialize TNX projection when projection types first set
  * Jun 27 2008	If NAXIS1 and NAXIS2 not present, check for IMAGEW and IMAGEH
+ *
+ * Mar 24 2009	Fix dimension bug if NAXISi not present (fix from John Burns)
  */

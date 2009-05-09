@@ -1,9 +1,9 @@
 /* File imextract.c
- * January 10, 2007
+ * March 27, 2009
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2007 
+   Copyright (C) 1999-2009 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -367,6 +367,8 @@ char	*kwd[];		/* Names and values of those keywords */
 	ranges = (char *) calloc (strlen(imext+1) + 1, 1);
 	strcpy (ranges, imext+1);
 	}
+    else
+	strcpy (ranges, "0");
 
     /* Figure out how much to write out and where to start */
     range = RangeInit (ranges, nidef);
@@ -656,4 +658,6 @@ char	*kwd[];		/* Names and values of those keywords */
  * Jul 18 2005	Fix bug so 1-D images can be extracted from spectrum stacks
  *
  * Jan  5 2007	Pass pointer to space-padding character, not character
+ *
+ * Mar 27 2009	Set extension to 0 if not specified
  */

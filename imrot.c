@@ -1,5 +1,5 @@
 /* File imrot.c
- * April 4, 2007
+ * March 27, 2009
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -36,7 +36,7 @@ static int shifted = 0;
 static int inverted = 0;	/* If 1, invert intensity (-1 * (z-zmax)) */
 static int deletewcs = 0;	/* If 1, delete FITS WCS keywords in image */
 static int rotatewcs = 1;	/* If 1, rotate FITS WCS keywords in image */
-
+static int extnum = 0;		/* Use extension number instead of EXTNAME for output */
 
 int
 main (ac, av)
@@ -131,6 +131,10 @@ char **av;
 
 		case 'i':	/* Turn off inheritance from Primary header */
 		    setfitsinherit (0);
+		    break;
+
+		case 'n':	/* Use extension number instead of EXTNAME */
+		    extnum++;
 		    break;
 
 		case 'o':	/* Specifiy output image filename */
@@ -273,6 +277,7 @@ usage ()
     fprintf(stderr,"  -i: Do not append primary header to extension header\n");
     fprintf(stderr,"  -l: Reflect image across horizontal axis\n");
     fprintf(stderr,"  -m: Reflect image across vertical axis\n");
+    fprintf(stderr,"  -n: Use extension number instead of EXTNAME for output file name\n");
     fprintf(stderr,"  -o: Allow overwriting of input image, else write new one\n");
     fprintf(stderr,"  -p: Make positive from negative image\n");
     fprintf(stderr,"  -r: Image rotation angle in degrees (default 0)\n");
@@ -400,8 +405,8 @@ char *name;
     /* Create new file name */
     else if (!overwrite) {
 	if (imext != NULL) {
-	    if (hgets (header, "EXTNAME",8,extname)) {
-		strcat (newname, ".");
+	    if (!extnum && hgets (header, "EXTNAME",8,extname)) {
+		strcat (newname, "_");
 		strcat (newname, extname);
 		}
 	    else {
@@ -588,4 +593,7 @@ char *name;
  * Jan  5 2007	Fix BSCALE and BZERO hget calls
  *
  * Apr  4 2007	Add -w option to not rotate and -e option to erase WCS keywords
+ *
+ * Mar 27 2009	Use _ instead of . to separate extension name or number in output filename
+ * Mar 27 2009	Add -n option to force use of extension number instead of EXTNAME
  */

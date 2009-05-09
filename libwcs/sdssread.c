@@ -52,9 +52,13 @@ char sdssburl[64]="http://cas.sdss.org/dr4/en/tools/search/x_rect.asp"; */
 char sdssrurl[64]="http://cas.sdss.org/dr5/en/tools/search/x_radial.asp";
 char sdssburl[64]="http://cas.sdss.org/dr5/en/tools/search/x_rect.asp"; */
 
-/* SDSS DR6 search engine URL */
+/* SDSS DR6 search engine URL
 char sdssrurl[64]="http://cas.sdss.org/dr6/en/tools/search/x_radial.asp";
-char sdssburl[64]="http://cas.sdss.org/dr6/en/tools/search/x_rect.asp";
+char sdssburl[64]="http://cas.sdss.org/dr6/en/tools/search/x_rect.asp"; */
+
+/* SDSS DR7 search engine URL */
+char sdssrurl[64]="http://cas.sdss.org/dr7/en/tools/search/x_radial.asp";
+char sdssburl[64]="http://cas.sdss.org/dr7/en/tools/search/x_rect.asp";
 
 /* SDSS magnitudes */
 char sdssmag[6]="ugriz";

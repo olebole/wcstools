@@ -1,5 +1,5 @@
 /*** nedname.c - Find name of object from its position as command line arguments
- *** September 14, 2007
+ *** February 25, 2009
  *** By Doug Mink, after IPAC nearposn.c
  */
 
@@ -60,9 +60,11 @@ char *av[];
 
     /* print command list if no arguments */
     if (ac == 1)
-	PrintUsage();
+	PrintUsage("");
 
     str = *(av+1);
+    if (!strcmp (str, "help") || !strcmp (str, "-help"))
+	PrintUsage ("");
     if (!strcmp (str, "version") || !strcmp (str, "-version"))
 	PrintUsage ("version");
 
@@ -351,10 +353,10 @@ PrintUsage (command)
 char	*command;	/* Command generating an error */
 {
     /* Print program name and version */
-    if (command != NULL && !strncasecmp (command, "ver", 3))
+    if (strlen (command) > 0 && !strncasecmp (command, "ver", 3))
 	exit (0);
 
-    if (command != NULL) {
+    if (strlen (command) > 0) {
 	if (command[0] == '*')
 	    fprintf (stderr, "%s\n", command);
 	else
@@ -386,5 +388,6 @@ char	*command;	/* Command generating an error */
  * Aug 23 2004	Read velocity from Z as well as HRV
  *
  * Sep 19 2007	Change includes to make this a standard WCSTools program
+ *
+ * Feb 25 2009	Fix help printing so the program doesn't crash
  */
-

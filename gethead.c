@@ -1,9 +1,9 @@
 /* File gethead.c
- * January 9, 2008
+ * April 3, 2009
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2008
+   Copyright (C) 1996-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -69,7 +69,7 @@ static char *rootdir=NULL;	/* Root directory for input files */
 static int ncond=0;		/* Number of keyword conditions to check */
 static int condand=1;		/* If 1, AND comparisons, else OR */
 static int toeol = 0;		/* If 1, return values from ASCII file to EOL */
-static int maxml = 600;		/* Maximum length of IRAF multi-line keyword */
+static int maxml = 20000;	/* Maximum length of IRAF multi-line keyword */
 static char **cond;		/* Conditions to check */
 static char **ccond;		/* Condition characters */
 static int nproc = 0;
@@ -1165,4 +1165,5 @@ char *string;
  * Dec 21 2007	Add option to put range of extensions in filenames
  *
  * Jan 09 2008	Fix handling of extensions with files from listfile
+ * Apr 03 2009	Increase default size of multi-line value buffer to 20000
  */

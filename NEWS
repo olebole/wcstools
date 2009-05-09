@@ -1,6 +1,20 @@
-Version 3.7.6 (October 24, 2008)
+Version 3.7.7 (April 3, 2009)
+simpos: Put back -i option which seemed to have disappeared
+simpos: Use webbuff() modification below to get to temporary URL
+imsize: Set dimensions from IMAGEW and IMAGEH if NAXIS=0 and WCSAXIS>0
+imextract: Fix but so it doesn't crash if no line/image specified
+imrot: Add -n option to force extension number in output file name
+scat,imcat,imwcs,immatch: Upgrade web access to SDSS catalog from DR6 to DR7
+gethead: Increase default multi-line IRAF keyword value buffer to 20000
+webread.c: Add handling of 30* URL forwarding to webbuff()
+wcsinit.c: Fix bug setting dimensions of image if NAXISi not present
+imgetwcs.c: Set dimensions from IMAGEW and IMAGEH if NAXIS=0 and WCSAXIS>0
+sdssread.c: Upgrade web access to SDSS catalog to DR7 from DR6
+
+Version 3.7.6 (December 1, 2008)
 skycoor: Add -t command to subtract times
 getdate: fix local sidereal time (*2lst, *2mst)
+imhead: Do not output extra block if length is exact number of 2880-byte blocks (2008-12-01)
 dateutil.c: Use IAU 2006 nutation for sidereal time computations
 dateutil.c: Add ang2hr(), ang2deg(), deg2ang(), and ang2hr() to
             convert betweem decimal floating point degrees and
@@ -10,6 +24,7 @@ tnxpos.c: Fix image to world coordinate system transformation and
           WCS to image transformation
 tnxpos.c: Fix tnxpos() for null correction case (2008-09-17)
 gsc2read.c: Read GSC2 catalog from STScI CASB instead of GALEX
+fitsfile.c: In fitswhead(), do not write error if correct number of bytes written
 
 Version 3.7.5 (July 1, 2008)
 getcol: Fix bug so columns are compared if both conditions are integer

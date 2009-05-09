@@ -1,8 +1,8 @@
 /*** File libwcs/imgetwcs.c
- *** October 19, 2007
+ *** March 24, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2007
+ *** Copyright (C) 1996-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -416,15 +416,21 @@ int	verbose;	/* Extra printing if =1 */
 	hputi4 (header, "NAXIS1", wp);
 	hputi4 (header, "NAXIS2", hp);
 	}
-    else if (hgeti4 (header,"NAXIS",&nax) < 1)
-	return (NULL);
+    else if (hgeti4 (header,"NAXIS",&nax) < 1 || nax < 1) {
+	if (hgeti4 (header, "WCSAXES", &nax) < 1)
+	    return (NULL);
+	else {
+	    if (hgeti4 (header, "IMAGEW", &wp) < 1)
+		return (NULL);
+	    if (hgeti4 (header, "IMAGEH", &wp) < 1)
+		return (NULL);
+	    }
+	}
     else {
 	if (hgeti4 (header,"NAXIS1",&wp) < 1)
 	    return (NULL);
-	else {
-	    if (hgeti4 (header,"NAXIS2",&hp) < 1)
-		return (NULL);
-	    }
+	if (hgeti4 (header,"NAXIS2",&hp) < 1)
+	    return (NULL);
 	}
 
     /* Set plate center from command line, if it is there */
@@ -794,4 +800,6 @@ char *dateobs;
  * Jul  3 2007	Fix bug by setting hp and wp
  * Jul 26 2007	If first line of header is END, initialize other needed values
  * Oct 19 2007	Return NULL from GetFITSWCS() immediately if no WCS in header
+ *
+ * Mar 24 2009	Set dimensions from IMAGEW and IMAGEH if WCSAXES > 0
  */
