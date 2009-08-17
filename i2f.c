@@ -1,9 +1,9 @@
 /* File i2f.c
- * June 21, 2006
+ * May 11 2009
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 1996-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -188,7 +188,6 @@ char *name;
 	    if ((image = irafrimage (header)) == NULL) {
 		hgetm (header,"PIXFIL", 255, pixname);
 		fprintf (stderr, "Cannot read IRAF pixel file %s\n", pixname);
-		free (irafheader);
 		free (header);
 		return;
 		}
@@ -372,4 +371,6 @@ char *name;
  * Jul  6 2000	Implement conversion of file list
  *
  * Jun 21 2006	Clean up code
+ *
+ * May 11 2006	Drop extra free of irafheader when pixel file is missing
  */

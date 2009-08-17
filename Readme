@@ -1,4 +1,4 @@
-WCSTools 3.7.7
+WCSTools 3.7.8
 
 WCSTools is a set of software utilities, written in C, which create,
 display and manipulate the world coordinate system of a FITS or IRAF
@@ -14,7 +14,7 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.7.7 of the WCSTools package developed by Doug Mink
+This is version 3.7.8 of the WCSTools package developed by Doug Mink
 (dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code or algorithms from
 
@@ -148,4 +148,4 @@ wcshead	Print basic world coordinate system information on one line per image
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
 
--Doug Mink, SAO, 2009-03-27
+-Doug Mink, SAO, 2009-07-24

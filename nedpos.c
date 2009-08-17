@@ -1,5 +1,5 @@
 /*** nedpos.c - search object by its name from command line arguments
- *** April 16, 2008
+ *** June 3, 2009
  *** By Doug Mink, after IPAC byname.c
  */
 
@@ -295,9 +295,9 @@ char *av[];
 			    printf (",");
 			}
 		    }
-		else {
+/*		else {
 		    printf ("%s", objname);
-		    }
+		    } */
 		if (tabout)
 		    printf ("	");
 		else
@@ -458,4 +458,6 @@ char	*command;	/* Command where error occurred or NULL */
  * Sep 19 2007	Add -t option for Starbase output and @ for lists of names
  *
  * Apr 16 2008	Fix @ option for processing a list of objects
+ *
+ * Jun  3 2009	Do not print object name unless asked to!
  */

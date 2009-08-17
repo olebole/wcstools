@@ -1,9 +1,9 @@
 /* File skycoor.c
- * September 4, 2008
+ * July 24, 2009
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2008
+   Copyright (C) 1996-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -135,7 +135,7 @@ char **av;
 	    ddec = wcsdist (ra1, dec1, ra1, dec2);
 	    if (dec2 < dec1)
 		ddec = -ddec;
-	    if (ra2 - ra1 > -180.0 && ra2 - ra1 < 180.0)
+	    if (ra2 - ra1 > -180.0 && ra2 - ra1 < 0.0)
 		dra = -dra;
 	    a = raddeg (atan2 (dra, ddec));
 	    if (verbose) {
@@ -709,4 +709,6 @@ char *errstring;
  *
  * Sep  4 2008	Add -t to compute separation between two times (for HA)
  * Sep  4 2008	Clean up verbose output for offset addition
+ *
+ * Jul 24 2009	Fix sign error in RA difference in -a position angle computation
  */

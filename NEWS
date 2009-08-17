@@ -1,10 +1,17 @@
-Version 3.7.7 (April 3, 2009)
+Version 3.7.8 (July 24, 2009)
+nedpos: Do not print name unless asked to
+imwcs: Fix bug when matched stars wrap around RA=0:00 or have same image position
+skycoor: Fix sign error in RA difference in -a position angle computation
+skybotread.c: Add flag to skip comets and save time
+
+Version 3.7.7 (April 9, 2009)
 simpos: Put back -i option which seemed to have disappeared
 simpos: Use webbuff() modification below to get to temporary URL
 imsize: Set dimensions from IMAGEW and IMAGEH if NAXIS=0 and WCSAXIS>0
 imextract: Fix but so it doesn't crash if no line/image specified
 imrot: Add -n option to force extension number in output file name
 scat,imcat,imwcs,immatch: Upgrade web access to SDSS catalog from DR6 to DR7
+scat: Add degrees=[yes|no] to CGI interface
 gethead: Increase default multi-line IRAF keyword value buffer to 20000
 webread.c: Add handling of 30* URL forwarding to webbuff()
 wcsinit.c: Fix bug setting dimensions of image if NAXISi not present

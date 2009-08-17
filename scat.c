@@ -1,9 +1,9 @@
 /* File scat.c
- * August 24, 2007
+ * April 9, 20097
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2007 
+   Copyright (C) 1996-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -4059,6 +4059,14 @@ char *parstring;
 	}
 
     /* Radius in arcseconds */
+    else if (!strncasecmp (parname,"degree",6)) {
+	if (strchr (parvalue, 'y'))
+	     degout0 = 1;
+	else
+	     degout0 = 0;
+	}
+
+    /* Radius in arcseconds */
     else if (!strncasecmp (parname,"rad",3)) {
 	if (strchr (parvalue,':'))
 	    rad0 = 3600.0 * str2dec (parvalue);
@@ -4741,4 +4749,6 @@ PrintGSClass ()
  * Jul  9 2007	Fix bug so GSC2 or SDSS numbers print correctly in 1-line output
  * Jul 20 2007	Add SkyBot report format
  * Aug 24 2007	Add mrad for search radius in minutes; add number checking, too
+ *
+ * Apr  9 2009	Add "degrees" as CGI parameter
  */

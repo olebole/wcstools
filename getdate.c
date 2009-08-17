@@ -1,9 +1,9 @@
 /* File getdate.c
- * September 8, 2008
+ * April 6, 2009
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2008
+   Copyright (C) 1999-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -351,12 +351,12 @@ char **av;
 		
 	else if (datestring == NULL) {
 	    datestring = *av;
-	    if (ac > 1) {
+	    if (ac > 1 && isdate (datestring) == 1) {
 		timestring = *(av+1);
 		if (strchr (timestring, ':')) {
 		    av++;
 		    ac--;
-		    timestring = NULL;
+		    /* timestring = NULL; */
 		    }
 		}
 	    if (intype == DTDSEC) {
@@ -2247,4 +2247,5 @@ char	*timestring;	/* Input time string */
  * Jul 28 2008	Fix file input problems for vigesimal date/time strings
  * Jul 28 2008	Fix time system conversion but for vigesimal date/time strings
  * Sep  8 2008	Add vigesimal hour and degree to fractional degree conversions
+ * Apr  6 2009	Fix bug so positions after FITS ISO dates are read correctly
  */

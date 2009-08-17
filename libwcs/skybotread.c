@@ -1,8 +1,8 @@
 /*** File libwcs/skybotread.c
- *** July 26, 2007
+ *** May 5, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2007
+ *** Copyright (C) 2004-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -226,6 +226,12 @@ int	nlog;		/* 1 for diagnostics */
     /* IAU observatory code*/
     sprintf (temp, "loc=%03d&", obscode);
     strcat (srchurl, temp);
+
+    /* Drop comets to save time */
+    strcat (srchurl, "-objFilter=110&");
+
+    /* Drop planets to save time (unused)
+    strcat (srchurl, "-objFilter=100&"); */
 
     /* Source of search */
     strcat (srchurl, "-from=WCSTools");
@@ -472,4 +478,6 @@ skybot2tab (skybuff)
 }
 
 /* Jul 26 2004	New program
+ *
+ * May  5 2009	Add -objFilter=110 to drop comets (someday, this might be optional)
  */
