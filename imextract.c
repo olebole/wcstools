@@ -1,5 +1,5 @@
 /* File imextract.c
- * March 27, 2009
+ * November 12, 2009
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -367,8 +367,10 @@ char	*kwd[];		/* Names and values of those keywords */
 	ranges = (char *) calloc (strlen(imext+1) + 1, 1);
 	strcpy (ranges, imext+1);
 	}
-    else
+    else if (ranges == NULL) {
+	ranges = (char *) calloc (8, 1);
 	strcpy (ranges, "0");
+	}
 
     /* Figure out how much to write out and where to start */
     range = RangeInit (ranges, nidef);
@@ -660,4 +662,5 @@ char	*kwd[];		/* Names and values of those keywords */
  * Jan  5 2007	Pass pointer to space-padding character, not character
  *
  * Mar 27 2009	Set extension to 0 if not specified
+ * Nov 12 2009	Only set extension to 0 if not specified in any way
  */

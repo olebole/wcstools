@@ -1,8 +1,8 @@
 /*** File libwcs/binread.c
- *** January 11, 2007
+ *** September 25, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2007
+ *** Copyright (C) 1998-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -1298,10 +1298,10 @@ int istar;	/* Star sequence number in binary catalog */
     sc->ncobj = 0;
     if (sc->stnum <= 0) {
 	sc->ncobj = -sc->stnum;
-	moveb (sc->catline, st->objname, sc->ncobj, sc->entname, 0);
+	movebuff (sc->catline, st->objname, sc->ncobj, sc->entname, 0);
 	}
     else {
-	moveb (sc->catline, (char *) &st->xno, 4, 0, 0);
+	movebuff (sc->catline, (char *) &st->xno, 4, 0, 0);
 	if (sc->byteswapped)
 	    binswap4 (&st->xno);
 	}
@@ -1332,8 +1332,8 @@ int istar;	/* Star sequence number in binary catalog */
 	}
 
     /* Right ascension and declination and convert to degrees */
-    moveb (sc->catline, (char *) &st->ra, 8, sc->entra, 0);
-    moveb (sc->catline, (char *) &st->dec, 8, sc->entdec, 0);
+    movebuff (sc->catline, (char *) &st->ra, 8, sc->entra, 0);
+    movebuff (sc->catline, (char *) &st->dec, 8, sc->entdec, 0);
     if (sc->byteswapped) {
 	binswap8 (&st->ra);
 	binswap8 (&st->dec);
@@ -1344,8 +1344,8 @@ int istar;	/* Star sequence number in binary catalog */
     /* Proper motion, if present, and convert to degrees/year */
     nmag = sc->nmag;
     if (sc->mprop == 1) {
-	moveb (sc->catline, (char *) &pm[0], 4, sc->entrpm, 0);
-	moveb (sc->catline, (char *) &pm[1], 4, sc->entdpm, 0);
+	movebuff (sc->catline, (char *) &pm[0], 4, sc->entrpm, 0);
+	movebuff (sc->catline, (char *) &pm[1], 4, sc->entdpm, 0);
 	if (sc->byteswapped) {
 	    binswap4 (&pm[0]);
 	    binswap4 (&pm[1]);
@@ -1356,7 +1356,7 @@ int istar;	/* Star sequence number in binary catalog */
 
     /* Radial velocity, if it is present */
     else if (sc->mprop == 2) {
-	moveb (sc->catline, (char *) &radvel, 8, sc->entrv, 0);
+	movebuff (sc->catline, (char *) &radvel, 8, sc->entrv, 0);
 	if (sc->byteswapped)
 	    binswap8 (&radvel);
 	st->radvel = radvel;
@@ -1364,12 +1364,12 @@ int istar;	/* Star sequence number in binary catalog */
 	}
 
     /* Spectral type */
-    moveb (sc->catline, (char *) st->isp, 2, sc->entpeak, 0);
+    movebuff (sc->catline, (char *) st->isp, 2, sc->entpeak, 0);
 
     /* Magnitudes */
     if (sc->entmag[0] > 0) {
 	for (i = 0; i < nmag; i++) {
-	    moveb (sc->catline, (char *) st->mag, 2, sc->entmag[0]+(i*2), i*2);
+	    movebuff (sc->catline, (char *) st->mag, 2, sc->entmag[0]+(i*2), i*2);
 	    if (sc->byteswapped)
 		binswap2 (&st->mag[i], 2);
 	    st->xmag[i] = 0.01 * (double) st->mag[i];
@@ -1593,4 +1593,6 @@ char    *filename;      /* Name of file to check */
  * Jan  8 2007	Drop unused variables in binbin()
  * Jan 10 2007	Add match=1 argument to webrnum()
  * Nov 28 2007	Move moveb() to catutil.c
+ *
+ * Sep 25 2009	Call movebuff() instead of moveb() and move mvebuff() to catutil.c
  */

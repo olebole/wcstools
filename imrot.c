@@ -1,5 +1,5 @@
 /* File imrot.c
- * March 27, 2009
+ * September 25, 2009
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
  */
@@ -16,6 +16,7 @@
 static void usage();
 static void imRot ();
 extern char *RotFITS();
+extern int DelWCSFITS();
 
 #define MAXFILES 1000
 static int maxnfile = MAXFILES;
@@ -596,4 +597,5 @@ char *name;
  *
  * Mar 27 2009	Use _ instead of . to separate extension name or number in output filename
  * Mar 27 2009	Add -n option to force use of extension number instead of EXTNAME
+ * Sep 25 2009	Declare DelWCSFITS()
  */

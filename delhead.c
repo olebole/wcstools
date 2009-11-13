@@ -1,9 +1,9 @@
 /* File delhead.c
- * June 12, 2007
+ * September 25, 2009
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1998-2007
+   Copyright (C) 1998-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -39,6 +39,7 @@ static int maxnfile = MAXFILES;
 static void usage();
 static void DelKeywords();
 static void DelCOMMENT();
+extern int DelWCSFITS();
 extern char *fitserrmsg;
 
 static int verbose = 0;		/* verbose/debugging flag */
@@ -63,9 +64,11 @@ char **av;
     int nkwd = 0;
     int nkwd1 = 0;
     int ikwd;
-    char **fn;
+    int i;
+    char **fn, **newfn;
     int nfile = 0;
     int ifile;
+    int nbytes;
     char filename[128];
     FILE *flist = NULL;
     FILE *fdk;
@@ -172,7 +175,12 @@ char **av;
 	else if (isfits (*av) || isiraf (*av)) {
 	    if (nfile >= maxnfile) {
 		maxnfile = maxnfile * 2;
-		fn = (char **) realloc ((void *)fn, maxnfile);
+		nbytes = maxnfile * sizeof (char *);
+		newfn = (char **) calloc (maxnfile, sizeof (char *));
+		for (i = 0; i < nfile; i++)
+		    newfn[i] = fn[i];
+		free (fn);
+		fn = newfn;
 		}
 	    fn[nfile] = *av;
 	    nfile++;
@@ -341,7 +349,7 @@ char	*kwd[];		/* Names of those keywords */
 
     /* First, delete WCS keywords if requested */
     if (delwcs) {
-	DelWCSFITS (header, verbose);
+	(void) DelWCSFITS (header, verbose);
 	nkwd--;
 	}
 
@@ -548,7 +556,7 @@ DelCOMMENT (header, verbose)
 char *header;	/* FITS header */
 int verbose;	/* If true, print deletion confirmations */
 {
-    char *hplace, *hcom, *v, *v1, *v2, *ve;
+    char *hplace, *hcom, *v, *v2, *ve;
     int i, killcom, nline;
     int nkill = 0;
 
@@ -582,7 +590,7 @@ int verbose;	/* If true, print deletion confirmations */
 
 	    /* Fill line with blanks */
 	    else {
-		for (i = 0; i++; i < 80)
+		for (i = 0; i < 80; i++)
 		    hcom[i] = ' ';
 		hplace = hplace + 80;
 		}
@@ -637,4 +645,7 @@ int verbose;	/* If true, print deletion confirmations */
  * Apr 18 2007	Add -w to delete all WCS keywords
  * May  1 2007	Add -c to delete blank COMMENTs
  * Jun 12 2007	Delete IRAF multiple line keywords
+ *
+ * Aug 19 2009	Fix bug to remove limit to the number of files on command line
+ * Sep 25 2009	Declare DelWCSFITS() and drop unused variable v1
  */

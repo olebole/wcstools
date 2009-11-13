@@ -1,7 +1,7 @@
 /*** File libwcs/wcscat.h
- *** October 24, 2008
+ *** November 2, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
- *** Copyright (C) 1998-2008
+ *** Copyright (C) 1998-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -28,6 +28,7 @@
 
 #ifndef _wcscat_h_
 #define _wcscat_h_
+#define MAXNMAG	20
 
 /* Data structure for SAO TDC ASCII and binary star catalog entries */
 struct Star {
@@ -35,11 +36,15 @@ struct Star {
     float xno;		/* Catalog number */
     double ra;		/* Right Ascension (degrees) */
     double dec;		/* Declination (degrees) */
+    double errra;	/* Right Ascension (degrees) */
+    double errdec;	/* Declination (degrees) */
     char isp[24];	/* Spectral type or other 2-char identifier */
-    short mag[11];	/* Up to 10 Magnitudes * 100 */
+    short mag[MAXNMAG+1]; /* Up to MAXNMAG Magnitudes * 100 */
     double rapm;	/* RA proper motion (degrees per year) */
     double decpm;	/* Dec proper motion (degrees per year) */
-    double xmag[11];	/* Up to 10 Magnitudes */
+    double errpmr;	/* RA proper motion error (degrees per year) */
+    double errpmd;	/* Dec proper motion error (degrees per year) */
+    double xmag[MAXNMAG+1]; /* Up to MAXNMAG Magnitudes */
     double num;		/* Actual star number */
     int coorsys;	/* Coordinate system (WCS_J2000, WCS_B1950,...) */
     double equinox;	/* Equinox of coordinate system as fractional year */
@@ -49,6 +54,8 @@ struct Star {
     double radvel;	/* Radial velocity in km/sec, positive away */
     double dist;	/* Distance from search center in arcseconds */
     double size;	/* Semi-major axis in arcseconds */
+    int nimage;		/* Number of images for catalog position */
+    int ncat;		/* Number of catalogs for catalog proper motion */
     char *entry;	/* Line copied from input catalog */
     char objname[80];	/* Object name */
     int peak;		/* Peak flux per pixel in star image */
@@ -113,7 +120,7 @@ struct StarCat {
     int entid;		/* Entry number for ID */
     int entra;		/* Entry number for right ascension */
     int entdec;		/* Entry number for declination */
-    int entmag[10];	/* Entry numbers for up to 10 magnitudes */
+    int entmag[MAXNMAG+1]; /* Entry numbers for up to MAXNMAG magnitudes */
     int entpeak;	/* Entry number for peak counts */
     int entepoch;	/* Entry number for epoch of observation */
     int entdate;	/* Entry number for FITS-format date of observation */
@@ -132,7 +139,7 @@ struct StarCat {
     char keyid[16];	/* Entry name for ID */
     char keyra[16];	/* Entry name for right ascension */
     char keydec[16];	/* Entry name for declination */
-    char keymag[10][16]; /* Entry name for up to 10 magnitudes */
+    char keymag[MAXNMAG+1][16]; /* Entry name for up to MAXNMAG magnitudes */
     char keyrpm[16];	/* Entry name for right ascension proper motion */
     char keydpm[16];	/* Entry name for declination proper motion */
     char keypeak[16];	/* Entry name for integer code */
@@ -198,6 +205,7 @@ struct TabTable {
 #define TYCHO2E		29	/* Tycho-2 Star Catalog with magnitude errors */
 #define SKY2K		30	/* SKY2000 Master Catalog */
 #define SKYBOT		31	/* SKYBOT Solar System Objects */
+#define UCAC3		32	/* USNO CCD Astrograph Catalog 3.0 (2009) */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */
@@ -1283,7 +1291,7 @@ extern "C" {
 	double *decmax,	/* Upper declination limit in degrees (returned) */
 	int *wrap,	/* 1 if search passes through 0:00:00 RA */
 	int verbose);	/* 1 to print limits, else 0 */
-    void moveb (	/* Copy nbytes bytes from source+offs to dest+offd */
+    void movebuff (	/* Copy nbytes bytes from source+offs to dest+offd */
 	char *source,	/* Pointer to source */
 	char *dest,	/* Pointer to destination */
 	int nbytes,	/* Number of bytes to move */
@@ -1676,4 +1684,10 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  *
  * Oct 24 2008	Add gsct2t() to clean up tab-separated table from STScI
 CASB
+ *
+ * Sep 25 2009	Rename moveb() to movebuff()
+ * Sep 25 2009	Add UCAC3 as catalog code 32
+ * Oct 30 2009	Add position and proper motion error to star structure
+ * Nov  2 2009	Add numbers of images and catalogs to star structure
+ * Nov  3 2009	Parameterize as MAXNMAG the maximum number of magnitudes
  */

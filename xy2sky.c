@@ -1,9 +1,9 @@
 /* File xy2sky.c
- * July 18, 2007
+ * September 25, 2009
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2007 
+   Copyright (C) 1996-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -34,6 +34,7 @@
 
 static void PrintUsage();
 extern struct WorldCoor *GetWCSFITS();	/* Read WCS from FITS or IRAF header */
+extern void setsys(),setcenter(),setsecpix(),setnpix(),setrefpix(),setdateobs();
 static void PrintHead();
 
 static int verbose = 0;		/* verbose/debugging flag */
@@ -46,9 +47,6 @@ static int face = 1;
 static int ncm = 0;
 static int printhead = 0;
 static char printonly = 'n';
-static int centerset = 0;
-static int sizeset = 0;
-static int scaleset = 0;
 static int version = 0;		/* If 1, print only program name and version */
 
 
@@ -69,9 +67,8 @@ char **av;
     int entmag = 0;
     int i, ic;
     double x, y, mag;
-    double cra, cdec, dra, ddec, secpix, drot;
+    double cra, cdec, dra, ddec, secpix;
     double eqout = 0.0;
-    double eqin = 0.0;
     int sysout = 0;
     int wp, hp, nx, ny, lhead;
     FILE *fd = NULL;
@@ -874,4 +871,6 @@ char *listfile;		/* Name of file with list of input coordinates */
  * May  2 2007	Add heading for radecsys column in tab table output
  * Jul  5 2007	Parse command line arguments to initialize a WCS without a file
  * Jul 18 2007	Call tabccol() instead of tabcol()
+ *
+ * Sep 25 2009	Drop unused variables; declare setting subroutines
  */

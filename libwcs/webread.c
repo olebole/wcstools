@@ -1,9 +1,9 @@
 /*** File webread.c
- *** January 8, 2008
+ *** September 25, 2008
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
- *** Copyright (C) 2000-2008
+ *** Copyright (C) 2000-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -55,7 +55,6 @@
 
 /* static int FileINetParse (char *file,int port,struct sockaddr_in *adrinet);*/
 static int FileINetParse();
-static void movebuff();
 
 static FILE *SokOpen();
 #define XFREAD  1
@@ -429,6 +428,7 @@ int	nlog;		/* 1 to print diagnostic messages */
     /* Open port to HTTP server, send command, and fill buffer with return */
     if ((tabbuff = webbuff (srchurl, diag, &lbuff)) == NULL) {
 	fprintf (stderr,"WEBOPEN: cannot read URL %s\n", srchurl);
+	free (srchurl);
 	return (NULL);
 	}
     if (!strchr (tabbuff, '	') && !strchr (tabbuff, ',') && !strchr (tabbuff, '|')) {
@@ -436,6 +436,7 @@ int	nlog;		/* 1 to print diagnostic messages */
 	    fprintf (stderr,"Message returned from %s\n", srchurl);
 	    fprintf (stderr,"%s\n", tabbuff);
 	    }
+	free (srchurl);
 	return (NULL);
 	}
 
@@ -492,6 +493,7 @@ int	nlog;		/* 1 to print diagnostic messages */
     if ((tabtable = (struct TabTable *) calloc (1, ltab)) == NULL) {
 	fprintf (stderr,"WEBOPEN: cannot allocate Tab Table structure for %s",
 	         srchurl);
+	free (srchurl);
 	return (NULL);
 	}
 
@@ -506,6 +508,7 @@ int	nlog;		/* 1 to print diagnostic messages */
 	fprintf (stderr,"WEBOPEN: cannot allocate filename %s in structure",
 	         caturl);
 	tabclose (tabtable);
+	free (srchurl);
 	return (NULL);
 	}
     strcpy (tabtable->filename, caturl);
@@ -516,6 +519,7 @@ int	nlog;		/* 1 to print diagnostic messages */
 	fprintf (stderr,"WEBOPEN: cannot allocate tabname %s in structure",
 	         srchurl);
 	tabclose (tabtable);
+	free (srchurl);
 	return (NULL);
 	}
     strcpy (tabtable->tabname, srchpar);
@@ -530,6 +534,7 @@ int	nlog;		/* 1 to print diagnostic messages */
     if (*tabline != '-') {
 	fprintf (stderr,"WEBOPEN: No - line in tab table %s",srchurl);
 	tabclose (tabtable);
+	free (srchurl);
 	return (NULL);
 	}
     tabtable->tabhead = lastline;
@@ -539,6 +544,7 @@ int	nlog;		/* 1 to print diagnostic messages */
     if (!tabparse (tabtable)) {
 	fprintf (stderr,"TABOPEN: No columns in tab table %s\n",srchurl);
 	tabclose (tabtable);
+	free (srchurl);
 	return (NULL);
 	}
 
@@ -562,6 +568,8 @@ int	nlog;		/* 1 to print diagnostic messages */
 
     tabtable->tabline = tabtable->tabdata;
     tabtable->iline = 1;
+
+    free (srchurl);
     return (tabtable);
 }
 
@@ -575,7 +583,7 @@ char	*url;	/* URL to read */
 int	diag;	/* 1 to print diagnostic messages */
 int	*lbuff;	/* Length of buffer (returned) */
 {
-    File sok,*sok1;
+    File sok;
     char *server;
     char linebuff[LINE];
     char *buff;
@@ -590,7 +598,7 @@ int	*lbuff;	/* Length of buffer (returned) */
     int lchunk, lline;
     int nbcont = 0;
     int lcbuff;
-    int lb, i, j;
+    int lb;
     int ltbuff;
     int lcom;
     char *cbcont;
@@ -628,7 +636,7 @@ int	*lbuff;	/* Length of buffer (returned) */
     /* If Redirect code encounter, go to alternate URL at Location: */
     if ( status == 301 || status == 302 || status == 303 || status == 307 ) {
 	char redirect[LINE];
-	while (servurl = fgets (redirect, LINE, sok)) {
+	while ((servurl = fgets (redirect, LINE, sok))) {
 	    if (!(strncmp (redirect, "Location:", 9)))
 		break;
 	    }
@@ -737,7 +745,7 @@ int	*lbuff;	/* Length of buffer (returned) */
 	    else if (ltbuff > lb) {
 		lb = lb * 10;
 		newbuff = (char *) calloc ((size_t)lb, (size_t)1); 
-		movebuff (newbuff, tabbuff, lcbuff, 0, 0);
+		movebuff (tabbuff, newbuff, lcbuff, 0, 0);
 		free (tabbuff);
 		tabbuff = newbuff;
 		buff = tabbuff + lcbuff;
@@ -769,46 +777,42 @@ int	*lbuff;	/* Length of buffer (returned) */
 	lchunk = 8192;
 	*lbuff = 0;
 	buff = (char *) calloc (1, lchunk+8);
+	if (buff == NULL) {
+	    fprintf (stderr, "WEBBUFF: unable to allocate chunk buffer of %d bytes\n", lchunk + 8);
+	    return (NULL);
+	    }
 	while ( (lread = fread (buff, 1, lchunk, sok)) > 0 ) {
 	    lcbuff = *lbuff;
 	    *lbuff = *lbuff + lread;
 	    if (tabbuff == NULL) {
 		tabbuff = (char *) malloc (*lbuff+8);
-		movebuff (tabbuff, buff, lread, 0, 0);
+		if (tabbuff == NULL) {
+		    fprintf (stderr, "WEBBUFF: unable to allocate buffer of %d bytes\n", *lbuff + 8);
+		    return (NULL);
+		    }
+		movebuff (buff, tabbuff, lread, 0, 0);
 		}
 	    else {
 		newbuff = (char *) malloc (*lbuff+8);
-		movebuff (newbuff, tabbuff, lcbuff, 0, 0);
+		if (newbuff == NULL) {
+		    fprintf (stderr, "WEBBUFF: unable to allocate new buffer of %d bytes\n", *lbuff + 8);
+		    return (NULL);
+		    }
+		movebuff (tabbuff, newbuff, lcbuff, 0, 0);
 		free (tabbuff);
 		tabbuff = newbuff;
-		movebuff (tabbuff, buff, lread, lcbuff, 0);
+		movebuff (buff, tabbuff, lread, 0, lcbuff);
 		}
 	    if (diag)
 		fprintf (stderr, "%s\n", buff);
 	    }
+	free (buff);
+	buff = NULL;
 	}
     (void) fclose (sok);
 
     return (tabbuff);
 }
-
-static void
-movebuff (dest, source, nbytes, offd, offs)
-
-char	*dest;		/* First byte of destination buffer */
-char	*source;	/* First byte of source buffer */
-int	nbytes;		/* Number of bytes to move */
-int	offd;		/* Offset from first byte of destination buffer */
-int	offs;		/* Offset from first byte of source buffer */
-{
-char *from, *last, *to;
-        from = source + offs;
-        to = dest + offd;
-        last = from + nbytes;
-        while (from < last) *(to++) = *(from++);
-        return;
-}
-
 
 /* sokFile.c
  * copyright 1991, 1993, 1995, 1999 John B. Roll jr.
@@ -921,7 +925,7 @@ char *
 space2tab (tabbuff)
     char *tabbuff;	/* Tab table filled with spaces */
 {
-    char *newbuff, *line0, *line1, *ic, *icn, *tstart;
+    char *newbuff, *line0, *line1, *ic, *icn;
     char cspace, ctab, cdash;
     int lbuff;
     int alltab = 0;
@@ -1026,4 +1030,7 @@ space2tab (tabbuff)
  * Dec 31 2007	Fix chunk reading code in webbuff()
  *
  * Jan  8 2008	Forward automatically if status=301|302|303|307 (code from Ed Los)
+ *
+ * Sep 25 2009	Reverse movebuff() source, destination arguments for compatibility
+ * Sep 25 2009	Free allocated pointers before returning after Douglas Burke
  */

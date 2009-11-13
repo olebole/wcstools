@@ -1,9 +1,9 @@
 /* File sky2xy.c
- * July 5, 2007
+ * September 25, 2009
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2007
+   Copyright (C) 1996-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -33,6 +33,7 @@
 
 static void PrintUsage();
 extern void setrot(),setsys(),setcenter(),setsecpix(),setrefpix(),setdateobs();
+extern void setnpix();
 extern struct WorldCoor *GetFITSWCS ();	/* Read WCS from FITS or IRAF header */
 extern struct WorldCoor *GetWCSFITS ();	/* Read WCS from FITS or IRAF file */
 extern char *GetFITShead();
@@ -547,4 +548,6 @@ char	*command;
  *
  * Jul  5 2007	Parse command line arguments to initialize a WCS without a file
  * Jul  5 2007	Use command line argument if no system with coordinates
+ *
+ * Sep 25 2009	Declare setnpix()
  */

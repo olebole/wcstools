@@ -1,8 +1,8 @@
 /*** File fitsfile.h  FITS and IRAF file access subroutines
- *** September 8, 2008
+ *** September 25, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2008
+ *** Copyright (C) 1996-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -178,6 +178,14 @@ float ftgetr4(		/* Extract column for keyword from FITS table line
 	struct Keyword *kw, /* Table column information from FITS header */
 	char *string,	/* Returned string */
 	int maxchar);	/* Maximum number of characters in returned string */
+
+    void moveb (     /* Copy nbytes bytes from source+offs to dest+offd */
+	char *source,   /* Pointer to source */
+	char *dest,     /* Pointer to destination */
+	int nbytes,     /* Number of bytes to move */
+	int offs,       /* Offset in bytes in source from which to start copying */
+	int offd);      /* Offset in bytes in destination to which to start copying */
+
 
 /* IRAF file access subroutines in imhfile.c */
 
@@ -975,6 +983,7 @@ extern int ftgeti4();
 extern float ftgetr4();
 extern double ftgetr8();
 extern int ftgetc();
+extern void moveb();	/* Copy nbytes bytes from source+offs to dest+offd */
 
 /* IRAF file access subroutines in imhfile.c */
 extern char *irafrhead();
@@ -1272,4 +1281,6 @@ void compnut();	/* Compute nutation in longitude and obliquity and mean obliquit
  * Nov 28 2007	Add kform format to FITS table keyword data structure
  *
  * Sep  8 2008	Add ag2hr(), ang2deg(), deg2ang(), and hr2ang()
+ *
+ * Sep 25 2009	Add moveb()
  */

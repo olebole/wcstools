@@ -1,9 +1,9 @@
 /* File imcat.c
- * November 17, 2008
+ * November 10, 2009
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2008
+   Copyright (C) 1996-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -48,8 +48,11 @@ static int *gc;		/* Catalog object classes, plates, etc. */
 static char **gobj;	/* Catalog object names */
 static char **gobj1;	/* Catalog object names */
 static int nalloc = 0;
+static int nbuffer = 0;	/* size of buffer */
 
 static void PrintUsage();
+static void FreeBuffers();
+static int AllocBuffers();
 static void ListCat();
 extern void fk524e();
 extern struct WorldCoor *GetFITSWCS();
@@ -60,6 +63,7 @@ extern void setsecpix();
 extern void setrefpix();
 extern void setdateobs();
 extern void setparm();
+extern void setnpix();
 
 
 static int verbose = 0;		/* verbose/debugging flag */
@@ -82,7 +86,7 @@ static double eqout = 0.0;	/* Equinox for output coordinates */
 static int version = 0;		/* If 1, print only program name and version */
 static int obname[5];		/* If 1, print object name, else number */
 static struct StarCat *starcat[5]; /* Star catalog data structure */
-static int nmagmax = 4;
+static int nmagmax = MAXNMAG;
 static int sortmag = 0;		/* Magnitude by which to sort stars */
 static int webdump = 0;
 static char *progname;		/* Name of program as executed */
@@ -119,11 +123,7 @@ char **av;
     char cs, cs1;
     char **fn;
     int i, ic;
-    int imag;
     int nx, ny;
-    char *header;
-    double cra, cdec, dra, ddec, secpix;
-    int wp, hp, bitpix;
     double x, y;
     char *refcatname[5];	/* reference catalog name */
     int ncat = 0;
@@ -135,7 +135,22 @@ char **av;
     int scat = 0;
     char c1, c, *ccom;
     double drot;
-    struct WorldCoor *wcs = NULL; /* World coordinate system structure */
+
+    /* Ensure global variables are set up so that Alloc/FreeBuffers
+       work sensibly */
+    nbuffer = 0;
+    nalloc = 0;
+    gm = NULL;
+    gra = NULL;
+    gdec = NULL;
+    gpra = NULL;
+    gpdec = NULL;
+    gnum = NULL;
+    gc = NULL;
+    gx = NULL;
+    gy = NULL;
+    gobj = NULL;
+    gobj1 = NULL;
 
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
@@ -200,9 +215,9 @@ char **av;
 		    if (ac < 2)
 			PrintUsage (str);
 		    drot = atof (*++av);
-                    setrot (drot);
-                    ac--;
-                    break;
+		    setrot (drot);
+		    ac--;
+		    break;
 
 		case 'b':	/* initial coordinates on command line in B1950 */
 		    str1 = *(av+1);
@@ -334,7 +349,7 @@ char **av;
 			    maglim1 = maglim2;
 			    maglim2 = atof (*av);
 			    }
-		        else if (MAGLIM1 == MAGLIM2)
+			else if (MAGLIM1 == MAGLIM2)
 			    maglim1 = -2.0;
 			}
 		    break;
@@ -614,49 +629,9 @@ char **av;
 	if (starcat[i] != NULL) ctgclose (starcat[i]);
 
     /* Free memory used for search results and return */
-    if (gx) {
-	free ((char *)gx);
-	gx = NULL;
-	}
-    if (gy) {
-	free ((char *)gy);
-	gy = NULL;
-	}
-    if (gm) {
-	for (imag = 0; i < nmagmax; i++) {
-	    if (gm[imag]) {
-		free ((char *)gm[imag]);
-		gm[imag] = NULL;
-		}
-	    }
-	free ((char *)gm);
-	gm = NULL;
-	}
-    if (gra) {
-	free ((char *)gra);
-	gra = NULL;
-	}
-    if (gdec) {
-	free ((char *)gdec);
-	gdec = NULL;
-	}
-    if (gnum) {
-	free ((char *)gnum);
-	gnum = NULL;
-	}
-    if (gc) {
-	free ((char *)gc);
-	gc = NULL;
-	}
-    if (gobj) {
-	for (i = 0; i < nalloc; i++) {
-	    if (gobj[i] != NULL)
-		free ((char *)gobj[i]);
-	    }
-	free ((char *)gobj);
-	gobj = NULL;
-	}
-
+    FreeBuffers();
+    free (fn);
+    fn = NULL;
     return (0);
 }
 
@@ -726,6 +701,131 @@ char	*command;
 }
 
 
+/* Returns 1 if buffers could be allocated, 0 otherwise */
+static int
+AllocBuffers (ngmax)
+
+int    ngmax;	  /* Number of entries to allocate */
+
+{
+    int i, imag;
+
+    FreeBuffers();
+
+    nbuffer = nmagmax;
+    nalloc = ngmax;
+
+    if (!(gm = (double **) calloc (nbuffer, sizeof(double *)))) {
+	fprintf (stderr, "Could not calloc %d bytes for gm\n",
+	    nbuffer*sizeof(double *));
+	FreeBuffers();
+	return (0);
+    }
+    for (imag = 0; imag < nbuffer; imag++) {
+	if (!(gm[imag] = (double *) calloc (ngmax, sizeof(double)))) {
+	   fprintf (stderr, "Could not calloc %d bytes for gm\n",
+		    ngmax*sizeof(double));
+	    FreeBuffers();
+	    return (0);
+       }
+    }
+
+    if (!(gra = (double *) calloc (ngmax, sizeof(double)))) {
+	fprintf (stderr, "Could not calloc %d bytes for gra\n",
+	    ngmax*sizeof(double));
+	FreeBuffers();
+	return (0);
+    }
+    if (!(gdec = (double *) calloc (ngmax, sizeof(double)))) {
+	fprintf (stderr, "Could not calloc %d bytes for gdec\n",
+	    ngmax*sizeof(double));
+	FreeBuffers();
+	return (0);
+    }
+    if (!(gpra = (double *) calloc (ngmax, sizeof(double)))) {
+	fprintf (stderr, "Could not calloc %d bytes for gpra\n",
+	    ngmax*sizeof(double));
+	FreeBuffers();
+	return (0);
+    }
+    if (!(gpdec = (double *) calloc (ngmax, sizeof(double)))) {
+	fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
+	    ngmax*sizeof(double));
+	FreeBuffers();
+	return (0);
+    }
+    if (!(gnum = (double *) calloc (ngmax, sizeof(double)))) {
+	fprintf (stderr, "Could not calloc %d bytes for gnum\n",
+	   ngmax*sizeof(double));
+       FreeBuffers();
+	return (0);
+    }
+    if (!(gc = (int *) calloc (ngmax, sizeof(int)))) {
+	fprintf (stderr, "Could not calloc %d bytes for gc\n",
+	    ngmax*sizeof(int));
+	FreeBuffers();
+	return (0);
+    }
+    if (!(gx = (double *) calloc (ngmax, sizeof(double)))) {
+	fprintf (stderr, "Could not calloc %d bytes for gx\n",
+	    ngmax*sizeof(double));
+	FreeBuffers();
+	return (0);
+    }
+    if (!(gy = (double *) calloc (ngmax, sizeof(double)))) {
+	fprintf (stderr, "Could not calloc %d bytes for gy\n",
+	    ngmax*sizeof(double));
+	FreeBuffers();
+	return (0);
+    }
+    if (!(gobj = (char **) calloc (ngmax, sizeof(char *)))) {
+	fprintf (stderr, "Could not calloc %d bytes for obj\n",
+	    ngmax*sizeof(char *));
+	FreeBuffers();
+	return (0);
+    }
+    for (i = 0; i < ngmax; i++)
+	gobj[i] = NULL;
+
+    return 1;
+}
+
+
+static void
+FreeBuffers ()
+{
+    int i, imag;
+
+    if (gm) {
+	for (imag = 0; imag < nbuffer; imag++)
+	    if (gm[imag]) {free ((char *) gm[imag]); gm[imag] = NULL; }
+	free ((char *)gm);
+	gm = NULL;
+    }
+    if (gra) { free ((char *)gra); gra = NULL; }
+    if (gdec) { free ((char *)gdec); gdec = NULL; }
+    if (gpra) { free ((char *)gpra); gpra = NULL; }
+    if (gpdec) { free ((char *)gpdec); gpdec = NULL; }
+    if (gnum) { free ((char *)gnum); gnum = NULL; }
+    if (gc) { free ((char *)gc); gc = NULL; }
+    if (gx) { free ((char *)gx); gx = NULL; }
+    if (gy) { free ((char *)gy); gy = NULL; }
+    if (gobj) {
+	for (i = 0; i < nalloc; i++) {
+	    if (gobj[i] != NULL) {
+		free ((char *)gobj[i]);
+		gobj[i] = NULL;
+		}
+	    }
+	free ((char *)gobj);
+	gobj = NULL;
+	}
+    nbuffer = 0;
+    nalloc = 0;
+    return;
+}
+
+
 static void
 ListCat (progname, filename, ncat, refcatname)
 
@@ -751,6 +851,8 @@ char	**refcatname;	/* reference catalog name */
     char numstr[32];	/* Catalog number */
     double cra, cdec, dra, ddec, ra1, ra2, dec1, dec2, mag1, mag2,secpix;
     double mag, drad, flux;
+    double era, edec, epmr, epmd;
+    int nim, nct;
     int offscale, nlog, imag;
     char headline[160];
     char temp[80];
@@ -761,7 +863,6 @@ char	**refcatname;	/* reference catalog name */
     char magname[8];
     char isp[4];
     int icat;
-    int is;
     int printobj = 0;
     int nndec = 0;
     int nnfld;
@@ -794,118 +895,10 @@ char	**refcatname;	/* reference catalog name */
     else
 	ngmax = MAXCAT;
 
+    /* Allocate or reallocate buffers for current catalog if necessary */
     if (ngmax > nalloc) {
-
-	/* Free currently allocated buffers if more entries are needed */
-	if (nalloc > 0) {
-	    if (gm) {
-		for (imag = 0; imag < nmagmax; imag++)
-		    if (gm[imag]) free ((char *) gm[imag]);
-		free ((char *)gm);
-		}
-	    if (gra) free ((char *)gra);
-	    if (gdec) free ((char *)gdec);
-	    if (gpra) free ((char *)gpra);
-	    if (gpdec) free ((char *)gpdec);
-	    if (gnum) free ((char *)gnum);
-	    if (gc) free ((char *)gc);
-	    if (gx) free ((char *)gx);
-	    if (gy) free ((char *)gy);
-	    if (gobj) {
-		for (is = 1; is < nalloc; is++) {
-		    if (gobj[is] != NULL)
-			free ((char *)gobj[is]);
-		    }
-		free ((char *)gobj);
-		}
-	    }
-	gm = NULL;
-	gra = NULL;
-	gdec = NULL;
-	gpra = NULL;
-	gpdec = NULL;
-	gnum = NULL;
-	gc = NULL;
-	gx = NULL;
-	gy = NULL;
-	gobj = NULL;
-
-	if (!(gnum = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gnum\n",
-		    ngmax*sizeof(double));
-	if (!(gra = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gra\n",
-		     ngmax*sizeof(double));
-	if (!(gdec = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gdec\n",
-		     ngmax*sizeof(double));
-	if (!(gm = (double **) calloc (nmagmax, sizeof(double *))))
-	    fprintf (stderr, "Could not calloc %d bytes for gm\n",
-		     nmagmax*sizeof(double *));
-	else {
-	    for (imag = 0; imag < nmagmax; imag++) {
-		if (!(gm[imag] = (double *) calloc (ngmax, sizeof(double))))
-		    fprintf (stderr, "Could not calloc %d bytes for gm\n",
-			     ngmax*sizeof(double));
-		}
-	    }
-	if (!(gc = (int *) calloc (ngmax, sizeof(int))))
-	    fprintf (stderr, "Could not calloc %d bytes for gc\n",
-		     ngmax*sizeof(int));
-	if (!(gx = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gx\n",
-		     ngmax*sizeof(double));
-	if (!(gy = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gy\n",
-		     ngmax*sizeof(double));
-	if (!(gobj = (char **) calloc (ngmax, sizeof(char *))))
-	    fprintf (stderr, "Could not calloc %d bytes for obj\n",
-		     ngmax*sizeof(char *));
-	else {
-	    for (i = 0; i < ngmax; i++)
-		gobj[i] = NULL;
-	    }
-	if (!(gpra = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gpra\n",
-		     ngmax*sizeof(double));
-	if (!(gpdec = (double *) calloc (ngmax, sizeof(double))))
-	    fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
-		     ngmax*sizeof(double));
-	if (gnum==NULL || gra==NULL || gdec==NULL || gm==NULL || gc==NULL ||
-	   gx==NULL || gy==NULL || gobj==NULL || gpra == NULL || gpdec == NULL){
-	    if (gm) {
-		for (imag = 0; imag < nmagmax; imag++)
-		    if (gm[imag]) free ((char *) gm[imag]);
-		free ((char *)gm);
-		gm = NULL;
-		}
-	    if (gra) free ((char *)gra);
-	    gra = NULL;
-	    if (gdec) free ((char *)gdec);
-	    gdec = NULL;
-	    if (gpra) free ((char *)gpra);
-	    gpra = NULL;
-	    if (gpdec) free ((char *)gpdec);
-	    gpdec = NULL;
-	    if (gnum) free ((char *)gnum);
-	    gnum = NULL;
-	    if (gc) free ((char *)gc);
-	    gc = NULL;
-	    if (gx) free ((char *)gx);
-	    gx = NULL;
-	    if (gy) free ((char *)gy);
-	    gy = NULL;
-	    if (gobj) {
-		for (is = 1; is < nalloc; is++) {
-		    if (gobj[is] != NULL)
-			free ((char *)gobj[is]);
-		    }
-		free ((char *)gobj);
-		}
-	    gobj = NULL;
-	    nalloc = 0;
+	if (AllocBuffers (ngmax) == 0)
 	    return;
-	    }
 
 	/* Initialize catalog entry values */
 	for (i = 0; i < ngmax; i++) {
@@ -920,7 +913,6 @@ char	**refcatname;	/* reference catalog name */
 	    gx[i] = 0.0;
 	    gy[i] = 0.0;
 	    }
-	nalloc = ngmax;
 	}
 
     if (tabout)
@@ -954,8 +946,11 @@ char	**refcatname;	/* reference catalog name */
 	}
 
     /* If more magnitudes are needed, allocate space for them */
-    if (nmag > nmagmax)
+    if (nmag > nmagmax) {
 	nmagmax = nmag;
+	if (AllocBuffers (ngmax) == 0)
+	    return;
+	}
 
     if (classd == 0)
 	strcat (title, " stars");
@@ -1035,64 +1030,11 @@ char	**refcatname;	/* reference catalog name */
     else
 	ngmax = MAXCAT;
 
-    if (!(gnum = (double *) calloc (ngmax, sizeof (double))))
-	fprintf (stderr, "Could not calloc %d bytes for gnum\n",
-		 ngmax * sizeof (double));
-    if (!(gra = (double *) calloc (ngmax, sizeof (double))))
-	fprintf (stderr, "Could not calloc %d bytes for gra\n",
-		 ngmax * sizeof (double));
-    if (!(gdec = (double *) calloc (ngmax, sizeof (double))))
-	fprintf (stderr, "Could not calloc %d bytes for gdec\n",
-		 ngmax * sizeof (double));
-    if (!(gm = (double **) calloc (nmagmax, sizeof(double *))))
-	fprintf (stderr, "Could not calloc %d bytes for gm\n",
-		 nmagmax*sizeof(double *));
-    else {
-	for (imag = 0; imag < nmagmax; imag++) {
-	    if (!(gm[imag] = (double *) calloc (ngmax, sizeof(double))))
-		fprintf (stderr, "Could not calloc %d bytes for gm\n",
-			 ngmax*sizeof(double));
-	    }
+    if (AllocBuffers (ngmax) != 1) {
+        wcsfree (wcs);
+        return;
 	}
-    if (!(gc = (int *) calloc (ngmax, sizeof (int))))
-	fprintf (stderr, "Could not calloc %d bytes for gc\n",
-		 ngmax * sizeof (double));
-    if (!(gx = (double *) calloc (ngmax, sizeof (double))))
-	fprintf (stderr, "Could not calloc %d bytes for gx\n",
-		 ngmax * sizeof (double));
-    if (!(gy = (double *) calloc (ngmax, sizeof (double))))
-	fprintf (stderr, "Could not calloc %d bytes for gy\n",
-		 ngmax * sizeof (double));
-    if (!(gobj = (char **) calloc (ngmax, sizeof (void *))))
-	fprintf (stderr, "Could not calloc %d bytes for obj\n",
-		 ngmax*sizeof(void *));
-    if (!(gpra = (double *) calloc (ngmax, sizeof(double))))
-	fprintf (stderr, "Could not calloc %d bytes for gpra\n",
-		 ngmax*sizeof(double));
-    if (!(gpdec = (double *) calloc (ngmax, sizeof(double))))
-	fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
-		 ngmax*sizeof(double));
 
-    if (!gnum || !gra || !gdec || !gm || !gc || !gx || !gy || !gobj ||
-	!gpra || !gpdec) {
-	if (gm) {
-	    for (imag = 0; imag < nmagmax; imag++)
-		free ((char *) gm[imag]);
-	    free ((char *)gm);
-	    gm = NULL;
-	    }
-	if (gra) free ((char *)gra);
-	if (gdec) free ((char *)gdec);
-	if (gpra) free ((char *)gpra);
-	if (gpdec) free ((char *)gpdec);
-	if (gnum) free ((char *)gnum);
-	if (gc) free ((char *)gc);
-	if (gx) free ((char *)gx);
-	if (gy) free ((char *)gy);
-	if (gobj) free ((char *)gobj);
-	wcsfree (wcs);
-	return;
-	}
     if (webdump)
 	nlog = -1;
     else if (verbose) {
@@ -1328,20 +1270,7 @@ char	**refcatname;	/* reference catalog name */
 	fd = fopen (outfile, "w");
 	if (fd == NULL) {
 	    fprintf (stderr, "IMCAT:  cannot write file %s\n", outfile);
-	    if (gm) {
-		for (imag = 0; i < nmagmax; i++)
-		    free ((char *)gm[imag]);
-		free ((char *)gm);
-		}
-	    if (gra) free ((char *)gra);
-	    if (gdec) free ((char *)gdec);
-	    if (gpra) free ((char *)gpra);
-	    if (gpdec) free ((char *)gpdec);
-	    if (gnum) free ((char *)gnum);
-	    if (gc) free ((char *)gc);
-	    if (gx) free ((char *)gx);
-	    if (gy) free ((char *)gy);
-	    if (gobj) free ((char *)gobj);
+	    FreeBuffers();
 	    wcsfree (wcs);
             return;
 	    }
@@ -1596,6 +1525,8 @@ char	**refcatname;	/* reference catalog name */
 	strcat (headline,"long_gal  	lat_gal       	");
     else
 	strcat (headline,"ra      	dec           	");
+    if (refcat == UCAC2 || refcat == UCAC3)
+	strcat (headline,"raerr 	decerr	");
     if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
 	refcat == USAC || refcat == USA1 || refcat == USA2)
 	strcat (headline,"magb  	magr  	");
@@ -1609,6 +1540,8 @@ char	**refcatname;	/* reference catalog name */
 	strcat (headline,"magf  	magj 	magv	magn	");
     else if (refcat == UCAC2)
 	strcat (headline,"magj 	magh 	magk 	magc 	");
+    else if (refcat == UCAC3)
+	strcat (headline,"magb 	magr 	magi 	magj 	magh 	magk 	magm 	maga 	");
     else if (refcat == UB1)
 	strcat (headline,"magb1 	magr1	magb2	magr2	magn 	");
     else if (refcat == YB6)
@@ -1659,6 +1592,8 @@ char	**refcatname;	/* reference catalog name */
 	strcat (headline,"peak	");
     if (mprop)
 	strcat (headline, "pmra 	pmdec	");
+    if (refcat == UCAC2 || refcat == UCAC3)
+	strcat (headline, "epmra 	epmdec	ni	nc	");
     if (refcat == GSC2)
 	strcat (headline,"class	");
     strcat (headline,"x    	y    ");
@@ -1673,7 +1608,10 @@ char	**refcatname;	/* reference catalog name */
 
     strcpy (headline,"--------------------------------");	/* ID number */
     headline[nnfld] = (char) 0;
-    strcat (headline, "	-----------	------------	-----");/* RA Dec Mag */
+    strcat (headline, "	-----------	------------	-----");/* RA Dec */
+    if (refcat == UCAC2 || refcat == UCAC3)
+	strcat (headline,"	------	------");	/* RA, Dec error */
+    strcat (headline, "	-----");	/* First Mag */
     if (refcat == UAC  || refcat == UA1  || refcat == UA2 || 
 	refcat == USAC || refcat == USA1 || refcat == USA2 || refcat == TYCHO ||
 	refcat == TYCHO2 || refcat == ACT)
@@ -1712,10 +1650,12 @@ char	**refcatname;	/* reference catalog name */
 	strcat (headline,"	--	--	--");
     else if (refcat == TMXSC)
 	strcat (headline,"	------");
-    else if (gcset)
+    else if (gcset && refcat != UCAC2 && refcat != UCAC3)
 	strcat (headline, "	-----");		/* plate or peak */
     if (mprop)
 	strcat (headline, "	------	------");	/* Proper motion */
+    if (refcat == UCAC2 || refcat == UCAC3)
+	strcat (headline, "	------	------	--	--");
     if (refcat == GSC2)
 	strcat (headline,"	-----");		/* GSC2 object class */
     strcat (headline, "	------	------");		/* X and Y */
@@ -1783,7 +1723,9 @@ char	**refcatname;	/* reference catalog name */
 	    else if (refcat == GSC2)
 		printf ("MagF  MagJ  MagV  MagN   Class   X       Y   \n");
 	    else if (refcat == UCAC2)
-		printf ("MagJ  MagH  MagK  MagC    X       Y   \n");
+		printf (" MagJ   MagH   MagK   MagC   NIm NCt   X      Y   \n");
+	    else if (refcat == UCAC3)
+		printf (" MagB   MagR   MagI   MagJ   MagH   MagK   MagM   MagA   NIm NCt   X      Y   \n");
 	    else if (refcat == UB1)
 		printf ("MagB1 MagR1 MagB2 MagR2 MagN  PM NI SG    X       Y   \n");
 	    else if (refcat == YB6)
@@ -1821,7 +1763,13 @@ char	**refcatname;	/* reference catalog name */
 			sprintf (temp, "    mag  ");
 		    strcat (headline, temp);
 		    }
-		if (gcset)
+		if (refcat == UCAC2 || refcat == UCAC3) {
+		    nim = gc[i] / 1000;
+		    nct = gc[i] % 1000;
+		    sprintf (temp, "  ni  nc", nim, nct);
+		    strcat (headline, temp);
+		    }
+		else if (gcset)
 		    printf (" Peak ");
 		printf (" X      Y  ");
 		if (keyword != NULL)
@@ -1943,7 +1891,7 @@ char	**refcatname;	/* reference catalog name */
 		    sprintf (headline, "%s	%s	%s	%5.1f	%5.1f	%d",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gc[i]);
 		else if (refcat == SKYBOT)
-		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f",
+		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
 		else if (refcat == UJC)
 		    sprintf (headline, "%s	%s	%s	%5.2f	%d",
@@ -1960,6 +1908,12 @@ char	**refcatname;	/* reference catalog name */
 		else {
 		    sprintf (headline, "%s	%s	%s",
 			     numstr, rastr, decstr);
+		    if (tabout && (refcat == UCAC2 || refcat == UCAC3)) {
+			era = gm[nmag][i] * cosdeg (gdec[i]) * 3600.0;
+			edec = gm[nmag+1][i] * 3600.0;
+			sprintf (temp, "	%5.3f	%5.3f");
+			strcat (headline, temp);
+			}
 		    for (imag = 0; imag < nmag; imag++) {
 			if (printepoch && imag == nmag-1) {
 			    temp1 = ep2fd (gm[nmag-1][i]);
@@ -1986,9 +1940,23 @@ char	**refcatname;	/* reference catalog name */
 		if (mprop) {
 		    pra = gpra[i] * 3600000.0 * cosdeg (gpdec[i]);
 		    pdec = gpdec[i] * 3600000.0;
-		    sprintf (temp, "	%.1f	%.1f", pra,pdec);
+		    sprintf (temp, "	%5.1f	%5.1f", pra,pdec);
 		    strcat (headline, temp);
 		    }
+		if (refcat == UCAC2 || refcat == UCAC3) {
+		    nim = gc[i] / 1000;
+		    nct = gc[i] % 1000;
+		    if (tabout) {
+			epmr = gm[nmag+2][i] * cosdeg (gdec[i]) * 3600000.0;
+			epmd = gm[nmag+3][i] * 3600000.0;
+			sprintf (temp, "	%5.1f	%5.1f	%2d	%2d",
+				 epmr, epmd, nim, nct);
+			}
+		    else
+			sprintf (temp, "	%2d	%2d", nim, nct);
+		    strcat (headline, temp);
+		    }
+
 		sprintf (temp, "	%.2f	%.2f",
 			 gx[i],gy[i]);
 		strcat (headline, temp);
@@ -2099,6 +2067,12 @@ char	**refcatname;	/* reference catalog name */
 			strcat (headline, temp);
 			}
 		    }
+		if (refcat == UCAC2 || refcat == UCAC3) {
+		    nim = gc[i] / 1000;
+		    nct = gc[i] % 1000;
+		    sprintf (temp, "  %2d  %2d", nim, nct);
+		    strcat (headline, temp);
+		    }
 
 		/* Add image pixel coordinates to output line */
 		if (wcs->nxpix < 1000.0 && wcs->nypix < 1000.0)
@@ -2136,8 +2110,12 @@ char	**refcatname;	/* reference catalog name */
 
 	/* Free memory used for object names in current catalog */
 	if (gobj1 != NULL) {
-	    for (i = 0; i < nbg; i++)
-		if (gobj[i] != NULL) free (gobj[i]);
+	    for (i = 0; i < nbg; i++) {
+		if (gobj[i] != NULL) {
+		    free (gobj[i]);
+		    gobj[i] = NULL;
+		    }
+		}
 	    }
 	}
 
@@ -2191,15 +2169,17 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
 	if (ra[2] > *ramax)
 	   *ramax = ra[2];
 	}
-    else if (wcs->rot > 225.0 && wcs->rot <= 135.0) {
+    else if (wcs->rot > 45.0 && wcs->rot <= 135.0) {
 	*ramin = ra[0];
-	if (ra[1] < *ramin)
-	    *ramin = ra[1];
-	if (ra[2] < *ramin)
-	    *ramin = ra[2];
-	*ramax = ra[5];
-	if (ra[6] > *ramax)
-	   *ramax = ra[5];
+	if (ra[3] < *ramin)
+	    *ramin = ra[3];
+	if (ra[5] < *ramin)
+	    *ramin = ra[5];
+	*ramax = ra[1];
+	if (ra[2] > *ramax)
+	   *ramax = ra[2];
+	if (ra[4] > *ramax)
+	   *ramax = ra[4];
 	if (ra[7] > *ramax)
 	   *ramax = ra[7];
 	}
@@ -2433,4 +2413,9 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  *
  * Jul  9 2008	Free catalog arrays at end of program not of image
  * Nov 17 2008	Drop computed spectral type from Tycho and Tycho-2 catalogs
+ *
+ * Sep 25 2009	Add FreeBuffers() and AllocBuffers() after Douglas Burke
+ * Nov 10 2009	Fix image limits for 90 degree rotation
+ * Nov 10 2009	Allocat MAXNMAG magnitude vectors
+ * Nov 10 2009	Add UCAC3 catalog
  */

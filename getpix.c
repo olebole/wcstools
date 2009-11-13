@@ -1,9 +1,9 @@
 /* File getpix.c
- * December 21, 2007
+ * August 14, 2009
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2007
+   Copyright (C) 1996-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -84,6 +84,7 @@ char **av;
     int iline, nlines;
     FILE *fd;
     int *xp1, *yp1;
+    double x, y;
 
     xpix = calloc (maxnpix, sizeof (int));
     ypix = calloc (maxnpix, sizeof (int));
@@ -219,24 +220,52 @@ char **av;
 		}
 	    }
 
-	/* Center coordinates in degrees */
+	/* Search coordinates in degrees if coordinate system specified */
 	else if (isnum (str) == 2 && ac > 1 && isnum (*(av+1)) == 2) {
 	    rstr = *av++;
 	    ac--;
-	    dstr = *av;
+	    dstr = *av++;
 	    ac--;
-	    ra0 = atof (rstr);
-	    dec0 = atof (dstr);
 	    if (ac > 0 && (systemp = wcscsys (*av)) > 0) {
+		ra0 = atof (rstr);
+		dec0 = atof (dstr);
 		cstr = *av++;
 		syscoor = systemp;
 		eqcoor = wcsceq (cstr);
 		}
+
+	/* Fractional coordinate pair if no coordinate system */
 	    else {
-		cstr = (char *) malloc (8);
-		strcpy (cstr, "J2000");
-		syscoor = WCS_J2000;
-		eqcoor = 2000.0;
+		if (npix+1 > maxnpix) {
+		    maxnpix = 2 * maxnpix;
+		    xp1 = calloc (maxnpix, sizeof (int));
+		    yp1 = calloc (maxnpix, sizeof (int));
+		    for (i = 0; i < maxnpix; i++) {
+			xp1[i] = xpix[i];
+			yp1[i] = ypix[i];
+			}
+		    free (xpix);
+		    free (ypix);
+		    xpix = xp1;
+		    ypix = yp1;
+		    }
+		x = atof (rstr);
+		if (x > 0.0)
+		    ix = (int) (x + 0.5);
+		else if (x < 0.0)
+		    ix = (int) (x - 0.5);
+		else
+		    ix = 0;
+		y = atof (dstr);
+		if (y > 0.0)
+		    iy = (int) (y + 0.5);
+		else if (y < 0.0)
+		    iy = (int) (y - 0.5);
+		else
+		    iy = 0;
+	        xpix[npix] = ix;
+	        ypix[npix] = iy;
+	        npix++;
 		}
 	    }
 
@@ -874,4 +903,6 @@ double	dpix;	/* Current pixel value */
  *
  * Dec 20 2007	Add option to read x y coordinates from a file
  * Dec 21 2007	Fix bug reallocating coordinate list when current size exceeded
+ *
+ * Aug 14 2009	If coordinates are floating point round to appropriate pixel
  */

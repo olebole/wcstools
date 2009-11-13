@@ -1,8 +1,8 @@
 /*** File libwcs/gsc2read.c
- *** October 24, 2008
+ *** August 17, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2008
+ *** Copyright (C) 2001-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -173,8 +173,8 @@ int	nlog;		/* 1 for diagnostics */
 
     tabcatclose (starcat);
 
-    /* Zero out any proper motions for GSC 2.2 */
-    if (!strchr (refcatname, '3')) {
+    /* Zero out any proper motions for GSC 3.3 and earlier */
+    if (!strchr (refcatname, '4')) {
 	for (i = 0; i < nstar; i++) {
 	    if (i < nstarmax) {
 		gpra[i] = 0.0;
@@ -368,4 +368,6 @@ gsc2t2t (tsvbuff)
  *
  * Oct 24 2008	Reset to read from new CASB server and drop GALEX server
  * Oct 24 2008	Add gsc2t2t to drop extra characters from returned table
+ *
+ * Aug 17 2009	Set proper motion to 0.0 for all versions
  */

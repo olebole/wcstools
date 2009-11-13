@@ -1,8 +1,8 @@
 /*** File libwcs/gscread.c
- *** January 10, 2007
+ *** September 22, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2007
+ *** Copyright (C) 1996-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -37,20 +37,20 @@
 #include "wcscat.h"
 
 /* Pathname of northern hemisphere GSC CDROM  or search engine URL */
-char cdn[64]="/data/astrocat/gsc1";
+static char cdn[64]="/data/astrocat/gsc1";
 
 /* Uncomment following line to use ESO GSC server for GSC
 static char cdn[64]="http://archive.eso.org/skycat/servers/gsc-server";
  */
 
 /* Pathname of southern hemisphere GSC CDROM */
-char cds[64]="/data/astrocat/gsc2";
+static char cds[64]="/data/astrocat/gsc2";
 
 /* Pathname of northern hemisphere GSC-ACT CDROM  or search engine URL */
-char cdna[64]="/data/astrocat/gscact1";
+static char cdna[64]="/data/astrocat/gscact1";
 
 /* Pathname of southern hemisphere GSC-ACT CDROM */
-char cdsa[64]="/data/astrocat/gscact2";
+static char cdsa[64]="/data/astrocat/gscact2";
 
 static void gscpath();
 static int gscreg();
@@ -1158,15 +1158,25 @@ int	verbose;	/* 1 for diagnostics */
     strcpy (rkw[4].kname,"RA_H_HI");
     strcpy (rkw[5].kname,"RA_M_HI");
     strcpy (rkw[6].kname,"RA_S_HI");
-    strcpy (rkw[7].kname,"DECSI_LOW");
-    strcpy (rkw[8].kname,"DEC_D_LOW");
-    strcpy (rkw[9].kname,"DEC_M_LOW");
+    strcpy (rkw[7].kname,"DECSI_LO");
+    strcpy (rkw[8].kname,"DEC_D_LO");
+    strcpy (rkw[9].kname,"DEC_M_LO");
     strcpy (rkw[10].kname,"DECSI_HI");
     strcpy (rkw[11].kname,"DEC_D_HI");
     strcpy (rkw[12].kname,"DEC_M_HI");
     rkw[13].kname[0] = 0;
+
+    /* Add lengths of keywords to keyword structures */
+    for (i = 0; i < 13; i++)
+	rkw[i].lname = strlen (rkw[i].kname);
+
+    /* Initialize region list to zeroes */
     for (i = 0; i < nrmax; i++)
 	rgns[i] = 0;
+
+    /* Initialize FITS table line buffer to zeroes */
+    for (i = 0; i < 120; i++)
+	fitsline[i] = (char) 0;
 
     nrgn = 0;
 
@@ -1546,4 +1556,7 @@ char	*path;		/* Pathname of GSC region FITS file */
  *
  * Jan 10 2007	Add match=1 argument to webrnum()
  * Jan 10 2007	Rewrite web access in gscread() and gscrnum() to reduce code
+ *
+ * Sep 22 2009	Initialize lengths of FITS table columns
+ * Sep 22 2009	Change region table keywords from DEC*LOW to DEC*LO
  */

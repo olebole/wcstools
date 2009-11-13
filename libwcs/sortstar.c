@@ -2,7 +2,7 @@
  *** January 11, 2007
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2007
+ *** Copyright (C) 1996-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -59,7 +59,7 @@ typedef struct {
     double dec;		/* Declination */
     double pra;		/* Right Ascension proper motion */
     double pdec;	/* Declination proper motion */
-    double m[11];	/* Magnitude */
+    double m[MAXNMAG+1];	/* Magnitude */
     double b;		/* flux */
     double x;		/* Image X coordinate */
     double y;		/* Image Y coordinate */
@@ -1131,4 +1131,6 @@ double	rad;		/* Maximum separation in arcseconds to merge */
  * Apr 13 2006	Add sort by ID number
  *
  * Jan 11 2007	Include fitsfile.h
+ *
+ * Nov  6 2009	Set number of magnitudes from MAXNMAG parameter in wcscat.h
  */

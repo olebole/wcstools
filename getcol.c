@@ -1,9 +1,9 @@
 /* File getcol.c
- * July 1, 2008
+ * September 25, 2009
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2008
+   Copyright (C) 1999-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -446,7 +446,7 @@ char **av;
 		nop++;
 		}
 	    else
-		printf (" Constants %s, %s, or operation %s illegal\n",sop1,sop2,opi[0]);
+		printf (" Constants %s, %s, or operation %c illegal\n",sop1,sop2,opi[0]);
 	    }
 
 	/* File to read */
@@ -1148,7 +1148,7 @@ char	*lfile;		/* Name of file with lines to list */
 			for (j = nchar; j < ltok; j++);
 			    token[j] = (char) 0;
 			}
-
+		    strfix (token, 0, 1);
 		    if (isnum (token)) {
 			dval = atof (token);
 			hms[i] = 0;
@@ -1767,4 +1767,5 @@ void *pd1, *pd2;
  * Feb  7 2007	Fix bug setting up column arithmetic
  *
  * Jul  1 2008	Fix bug so columns can be compared if both are integers
+ * Sep 25 2009	Fix error message about illegal operation
  */

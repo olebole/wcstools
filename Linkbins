@@ -14,6 +14,7 @@ ln -s scat bin/ship
 ln -s scat bin/siras
 ln -s scat bin/sucac1
 ln -s scat bin/sucac2
+ln -s scat bin/sucac3
 ln -s scat bin/sty2
 ln -s scat bin/sty2e
 ln -s scat bin/stmc
@@ -38,6 +39,7 @@ ln -s imcat bin/imty2
 ln -s imcat bin/imty2e
 ln -s imcat bin/imucac1
 ln -s imcat bin/imucac2
+ln -s imcat bin/imucac3
 ln -s imcat bin/imtmc
 ln -s imcat bin/imtmce
 ln -s imcat bin/imtmx
@@ -59,6 +61,7 @@ ln -s bincat bin/binty2
 ln -s bincat bin/binty2e
 ln -s bincat bin/binucac1
 ln -s bincat bin/binucac2
+ln -s bincat bin/binucac3
 ln -s bincat bin/bintmc
 ln -s bincat bin/bintmce
 ln -s bincat bin/bintmx
@@ -80,6 +83,7 @@ ln -s imwcs bin/imwty2
 ln -s imwcs bin/imwty2e
 ln -s imwcs bin/imwucac1
 ln -s imwcs bin/imwucac2
+ln -s imwcs bin/imwucac3
 ln -s imwcs bin/imwtmc
 ln -s imwcs bin/imwtmce
 ln -s imwcs bin/imwtmx
@@ -102,6 +106,7 @@ ln -s immatch bin/immty2
 ln -s immatch bin/immty2e
 ln -s immatch bin/immucac1
 ln -s immatch bin/immucac2
+ln -s immatch bin/immucac3
 ln -s immatch bin/immtmc
 ln -s immatch bin/immtmce
 ln -s immatch bin/immtmx

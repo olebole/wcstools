@@ -1,5 +1,5 @@
 /* File sethead.c
- * September 25, 2009
+ * August 19, 2009
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -596,7 +596,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     char newname[MAXNEW];
     char *newval;
     char string[80];
-    char *ext, *namext;
+    char *ext, *namext, cext;
     char *fname;
     char *imext = NULL;
     char *imext1;
@@ -1315,19 +1315,11 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		printf ("%s: rewritten successfully.\n", newname);
 	    }
 	else {
-	    strcpy (newname, filepath);
-	    strcat (newname, ",0");
-	    if (!fitswexhead (newname, header)) {
-		if (verbose)
-		    printf ("%s: rewritten successfully.\n", newname);
+	    if (verbose) {
+		fitserr();
+		fprintf (stderr, "*** New header not written\n");
 		}
-	    else {
-		if (verbose) {
-		    fitserr();
-		    fprintf (stderr, "*** New header not written\n");
-		    }
-		errflag = 1;
-		}
+	    errflag = 1;
 	    }
 	}
 
@@ -1461,6 +1453,4 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Mar 20 2008	Clean up error handling
  *
  * Aug 19 2009	Fix bug to remove limit to the number of files on command line
- * Sep 18 2009	Call fitswexhead() with ",0" if other extension does not work
- * Sep 25 2009	Drop unused variable cext
  */

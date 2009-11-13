@@ -1,8 +1,8 @@
 /*** File libwcs/tabread.c
- *** July 23, 2007
+ *** September 30, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2007
+ *** Copyright (C) 1996-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -330,6 +330,7 @@ int	nlog;
 		if (lname > 0) {
 		    objname = (char *)calloc (lname+1, 1);
 		    strcpy (objname, star->objname);
+		    if (tkey[nstar]) free(tkey[nstar]);
 		    tkey[nstar] = objname;
 		    }
 		if (dist > maxdist) {
@@ -362,6 +363,7 @@ int	nlog;
 		    if (lname > 0) {
 			objname = (char *)calloc (lname+1, 1);
 			strcpy (objname, star->objname);
+			if (tkey[farstar]) free(tkey[farstar]);
 			tkey[farstar] = objname;
 			}
 
@@ -395,6 +397,7 @@ int	nlog;
 		if (lname > 0) {
 		    objname = (char *)calloc (lname+1, 1);
 		    strcpy (objname, star->objname);
+		    if (tkey[faintstar]) free(tkey[faintstar]);
 		    tkey[faintstar] = objname;
 		    }
 		faintmag = 0.0;
@@ -440,7 +443,8 @@ int	nlog;
 		     nstar,nstarmax);
 	}
 
-    free ((char *)tdist);
+    free ((char *) tdist);
+    free ((char *) star);
     return (nstar);
 }
 
@@ -696,6 +700,7 @@ int	nlog;
 		if (lname > 0) {
 		    objname = (char *)calloc (lname+1, 1);
 		    strcpy (objname, star->objname);
+		    if (tkey[jnum]) free(tkey[jnum]);
 		    tkey[jnum] = objname;
 		    }
 		nstar++;
@@ -734,6 +739,7 @@ int	nlog;
 	fprintf (stderr,"TABRNUM: Catalog %s : %d / %d found\n",
 		 tabcatname,nstar,nstars);
 
+    free ((char *) star);
     return (nstar);
 }
 
@@ -1178,6 +1184,7 @@ char	**tval;		/* Returned values for specified keyword */
 		}
 	    else
 		tvalue = NULL;
+	    if (tval[jnum]) free(tval[jnum]);
 	    tval[jnum] = tvalue;
 	    }
 	}
@@ -1318,7 +1325,7 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	else if ((sc->entdec = tabccol (startab, "lat")))
 	    strcpy (sc->keydec, "lat_gal");
 	else if ((sc->entdec = tabccont (startab, "lat"))) {
-	    i = sc->entdec;
+	    i = sc->entdec - 1;
 	    strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
 	    }
 	}
@@ -1328,21 +1335,21 @@ int	nbbuff;		/* Number of bytes in buffer; 0=read whole file */
 	else if ((sc->entdec = tabccol (startab, "lat")))
 	    strcpy (sc->keydec, "lat_ecl");
 	else if ((sc->entdec = tabccont (startab, "lat"))) {
-	    i = sc->entdec;
+	    i = sc->entdec - 1;
 	    strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
 	    }
 	}
     else {
 	if ((sc->entdec = tabccol (startab, "de(deg)"))) {
-	    i = sc->entdec;
+	    i = sc->entdec - 1;
 	    strcpy (sc->keydec, "dec");
 	    }
 	else if ((sc->entdec = tabccol (startab, "dec"))) {
-	    i = sc->entdec;
+	    i = sc->entdec - 1;
 	    strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
 	    }
 	else if ((sc->entdec = tabccont (startab, "dec"))) {
-	    i = sc->entdec;
+	    i = sc->entdec - 1;
 	    strncpy (sc->keydec, startab->colname[i], startab->lcol[i]);
 	    }
 	}
@@ -2889,4 +2896,8 @@ char    *filename;      /* Name of file to check */
  * Jul 19 2007	Add proper motion in arsec/hour for solar system objects
  * Jul 23 2007	Add ...obj... as possible identifier
  * Jul 23 2007	Add ...dist... as possible "magnitude"
+ *
+ * Aug 17 2009	Fix columns for declination column name
+ * Sep 25 2009	Fix memory leaks found by Douglas Burke
+ * Sep 30 2009	Fix bugs freeing object names for first pass and farthest star
  */

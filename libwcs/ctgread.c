@@ -1,8 +1,8 @@
 /*** File libwcs/ctgread.c
- *** July 13, 2007
+ *** September 30, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2007
+ *** Copyright (C) 1998-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -153,7 +153,7 @@ int	nlog;
             nstar = ubcread (catfile,distsort,cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,tnum,
 			     tra,tdec,tpra,tpdec,tmag,tc,nlog);
-        else if (refcat == UCAC1 || refcat == UCAC2)
+        else if (refcat == UCAC1 || refcat == UCAC2 || refcat == UCAC3)
             nstar = ucacread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
@@ -576,7 +576,7 @@ int	nlog;
         else if (refcat == UJC || refcat == USNO)
 	    nstar = ujcrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
-        else if (refcat == UCAC1 || refcat == UCAC2)
+        else if (refcat == UCAC1 || refcat == UCAC2 || refcat == UCAC3)
 	    nstar = ucacrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == TMPSC || refcat == TMPSCE ||
@@ -992,7 +992,7 @@ int	nlog;
             nstar = ujcbin (catfile,wcs,header,image,mag1,mag2,magscale,nlog);
         else if (refcat == UB1 || refcat == YB6)
             nstar = ubcbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
-        else if (refcat == UCAC1 || refcat == UCAC2)
+        else if (refcat == UCAC1 || refcat == UCAC2 || refcat == UCAC3)
             nstar = ucacbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == TMPSC || refcat == TMIDR2 || refcat == TMXSC)
             nstar = tmcbin (refcat,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
@@ -1383,6 +1383,10 @@ int	refcat;		/* Catalog code from wcscat.h (TXTCAT,BINCAT,TABCAT) */
 	sc->equinox = 2000.0;
 	}
 
+    /* Catalog positions are in fractional hours and fractional degrees */
+    if (strsrch (header, "/k") || strsrch (header, "/K"))
+	sc->inform = 'K';
+
     /* No magnitude */
     if (strsrch (header, "/m") || strsrch (header, "/M"))
 	sc->nmag = 0;
@@ -1686,6 +1690,10 @@ struct Star *st; /* Star data structure, updated on return */
     else if (sc->inform == 'F')
 	st->ra = ctg2ra (token);
 
+    /* Translate single-token right ascension as fractional hours */
+    else if (sc->inform == 'K')
+	st->ra = 15.0 * atof (token);
+
     /* Translate single-token right ascension as radians */
     else if (sc->inform == 'R')
 	st->ra = raddeg (atof (token));
@@ -1733,7 +1741,7 @@ struct Star *st; /* Star data structure, updated on return */
 	st->dec = atof (token);
 
     /* Translate single-token declination as degrees */
-    else if (sc->inform == 'D' || sc->inform == 'F')
+    else if (sc->inform == 'D' || sc->inform == 'F' || sc->inform == 'K')
 	st->dec = atof (token);
 
     /* Translate single-token declination as radians */
@@ -2106,4 +2114,7 @@ char	*in;	/* Character string */
  * Jan  9 2007	Drop catfile from call to sdssread()
  * Mar 13 2007	Add object name array tobj to gsc2read() call
  * Jul 13 2007	Add skybotread() for SkyBot solar system object search
+ *
+ * Aug 27 2009	Add /k option for fractional hours of RA and degrees of Dec
+ * Sep 30 2009	Add UCAC3
  */

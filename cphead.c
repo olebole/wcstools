@@ -1,9 +1,9 @@
 /* File cphead.c
- * May 28, 2008
+ * ugust 19, 2009
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2000-2008
+   Copyright (C) 2000-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -60,9 +60,10 @@ char **av;
     char **kwd, **kwdnew;
     int nkwd = 0;
     int nkwd1 = 0;
-    char **fn;
+    char **fn, **newfn;
     int ifile;
     int lfn;
+    int nbytes;
     char filename[256];
     char *infile;
     char *name;
@@ -251,7 +252,12 @@ char **av;
 	    else {
 		if (nfile >= maxnfile) {
 		    maxnfile = maxnfile * 2;
-		    fn = (char **) realloc ((void *)fn, maxnfile);
+		    nbytes = maxnfile * sizeof (char *);
+		    newfn = (char **) calloc (maxnfile, sizeof (char *));
+		    for (i = 0; i < nfile; i++)
+		    newfn[i] = fn[i];
+		    free (fn);
+		    fn = newfn;
 		    }
 		fn[nfile] = *av;
 
@@ -681,4 +687,6 @@ char	*kwd[];		/* Names of keywords for which to copy values */
  * May 15 2007	Add -a option to copy an entire header from one image to another
  *
  * May 28 2008	Clean up value string copying code
+ *
+ * Aug 19 2009	Fix bug to remove limit to the number of files on command line
  */

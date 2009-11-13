@@ -1,0 +1,1 @@
+saoimage -reg `imucac3 -n 1000 -r 10 $1` -wcscom sucac3_-Ha_%s $*

@@ -1,8 +1,8 @@
 /*** File libwcs/catutil.c
- *** November 28, 2007
+ *** October 26, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2007
+ *** Copyright (C) 1998-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -266,6 +266,14 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	*catprop = 1;
 	*nmag = 4;
 	}
+    else if (refcat == UCAC3) {
+	strcpy (title, "USNO UCAC3 Catalog Stars");
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	*catprop = 1;
+	*nmag = 8;
+	}
     else if (refcat == UJC) {
 	strcpy (title, "USNO J Catalog Stars");
 	*syscat = WCS_J2000;
@@ -499,6 +507,9 @@ char	*refcatname;	/* Name of reference catalog */
     else if (strncasecmp(refcatname,"ucac2",5)==0 &&
 	     strcsrch(refcatname, ".tab") == NULL)
 	refcat = UCAC2;
+    else if (strncasecmp(refcatname,"ucac3",5)==0 &&
+	     strcsrch(refcatname, ".tab") == NULL)
+	refcat = UCAC3;
     else if (strncasecmp(refcatname,"usa",3)==0 &&
 	     strcsrch(refcatname, ".tab") == NULL) {
 	if (strchr (refcatname, '1') != NULL)
@@ -695,6 +706,8 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "USNO-UCAC1");
     else if (refcat ==  UCAC2)	/* USNO UCAC2 Star Catalog */
 	strcpy (catname, "USNO-UCAC2");
+    else if (refcat ==  UCAC3)	/* USNO UCAC3 Star Catalog */
+	strcpy (catname, "USNO-UCAC3");
     else if (refcat ==  UA2)	/* USNO A-2.0 Star Catalog */
 	strcpy (catname, "USNO-A2.0");
     else if (refcat ==  USA1)	/* USNO SA-1.0 Star Catalog */
@@ -792,6 +805,8 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "USNO-UCAC1 Stars");
     else if (refcat ==  UCAC2)	/* USNO UCAC2 Star Catalog */
 	strcpy (catname, "USNO-UCAC2 Stars");
+    else if (refcat ==  UCAC3)	/* USNO UCAC3 Star Catalog */
+	strcpy (catname, "USNO-UCAC3 Stars");
     else if (refcat ==  UA2)	/* USNO A-2.0 Star Catalog */
 	strcpy (catname, "USNO-A2.0 Stars");
     else if (refcat ==  USA1)	/* USNO SA-1.0 Star Catalog */
@@ -856,12 +871,14 @@ int	refcat;		/* Catalog code */
 	strcpy (catid,"ucac1_id  ");
     else if (refcat == UCAC2)
 	strcpy (catid,"ucac2_id  ");
+    else if (refcat == UCAC3)
+	strcpy (catid,"ucac3_id  ");
     else if (refcat == UJC)
 	strcpy (catid,"usnoj_id     ");
     else if (refcat == TMPSC || refcat == TMPSCE)
 	strcpy (catid,"2mass_id      ");
     else if (refcat == TMXSC)
-	strcpy (catid,"2mass_id      ");
+	strcpy (catid,"2mx_id        ");
     else if (refcat == SAO)
 	strcpy (catid,"sao_id ");
     else if (refcat == PPM)
@@ -890,7 +907,8 @@ CatRad (refcat)
 int	refcat;		/* Catalog code */
 {
     if (refcat==GSC || refcat==GSCACT || refcat==UJC || refcat==USAC ||
-	refcat==USA1 || refcat==USA2 || refcat == UCAC1 || refcat == UCAC2)
+	refcat==USA1 || refcat==USA2 ||
+	refcat == UCAC1 || refcat == UCAC2 || refcat == UCAC3)
 	return (900.0);
     else if (refcat==UAC  || refcat==UA1  || refcat==UA2)
 	return (120.0);
@@ -1001,6 +1019,10 @@ char *progname;	/* Program name which might contain catalog code */
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "ucac2");
 	}
+    else if (strcsrch (progname,"ucac3") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "ucac3");
+	}
     else if (strcsrch (progname,"ujc") != NULL) {
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "ujc");
@@ -1108,6 +1130,14 @@ char	*numstr;	/* Formatted number (returned) */
 
     /* USNO-UCAC2 */
     else if (refcat == UCAC2) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%010.6f", dnum);
+	else
+	    sprintf (numstr, "%10.6f", dnum);
+	}
+
+    /* USNO-UCAC3 */
+    else if (refcat == UCAC3) {
 	if (nnfld < 0)
 	    sprintf (numstr, "%010.6f", dnum);
 	else
@@ -1288,6 +1318,10 @@ int	nndec;		/* Number of decimal places ( >= 0) */
     else if (refcat == UCAC2)
 	return (10);
 
+    /* UCAC3 Catalog */
+    else if (refcat == UCAC3)
+	return (10);
+
     /* USNO Plate Catalogs */
     else if (refcat == USNO)
 	return (7);
@@ -1414,6 +1448,10 @@ int	refcat;		/* Catalog code */
 
     /* UCAC2 Catalog */
     else if (refcat == UCAC2)
+	return (6);
+
+    /* UCAC3 Catalog */
+    else if (refcat == UCAC3)
 	return (6);
 
     /* USNO UJ 1.0 Catalog */
@@ -1927,7 +1965,7 @@ int	verbose;	/* 1 to print limits, else 0 */
 
 {
     double ra, ra1, ra2, ra3, ra4, dec1, dec2, dec3, dec4;
-    double dec, acdec, adec, adec1, adec2, dmarg, dist;
+    double dec, acdec, adec, adec1, adec2, dmarg, dist, dra1;
     int nrot;
 
     /* Deal with all or nearly all of the sky */
@@ -1955,6 +1993,24 @@ int	verbose;	/* 1 to print limits, else 0 */
     dec3 = dec2;
     dec4 = dec1;
 
+    /* Deal with south pole */
+    if (dec1 < -90.0) {
+	dec1 = 90.0 - (dec1 + 90.0);
+	if (dec1 > dec2)
+	    dec2 = dec1;
+	dec1 = -90.0;
+	dra1 = 180.0;
+	}
+
+    /* Deal with north pole */
+    if (dec2 > 90.0) {
+	dec2 = 90.0 - (dec2 - 90.0);
+	if (dec2 < dec1)
+	    dec1 = dec2;
+	dec2 = 90.0;
+	dra1 = 180.0;
+	}
+
     /* Adjust width in right ascension to that at max absolute declination */
     adec1 = fabs (dec1);
     adec2 = fabs (dec2);
@@ -1964,11 +2020,13 @@ int	verbose;	/* 1 to print limits, else 0 */
 	adec = adec2;
     acdec = fabs (cdec);
     if (adec < 90.0 && adec > acdec)
-	dra = dra * (cos (degrad(acdec)) / cos (degrad(adec)));
+	dra1 = dra * (cos (degrad(acdec)) / cos (degrad(adec)));
+    else if (adec == 90.0)
+	dra1 = 180.0;
 
     /* Set right ascension limits for search */
-    ra1 = cra - dra;
-    ra2 = cra + dra;
+    ra1 = cra - dra1;
+    ra2 = cra + dra1;
 
     /* Keep right ascension limits between 0 and 360 degrees */
     if (ra1 < 0.0) {
@@ -2007,17 +2065,9 @@ int	verbose;	/* 1 to print limits, else 0 */
 
     /* Find minimum and maximum right ascensions to search */
     *ramin = ra1;
-    if (ra2 < *ramin)
-	*ramin = ra2;
     if (ra3 < *ramin)
 	*ramin = ra3;
-    if (ra4 < *ramin)
-	*ramin = ra4;
-    *ramax = ra1;
-    if (ra2 > *ramax)
-	*ramax = ra2;
-    if (ra3 > *ramax)
-	*ramax = ra3;
+    *ramax = ra2;
     if (ra4 > *ramax)
 	*ramax = ra4;
 
@@ -2064,11 +2114,13 @@ int	verbose;	/* 1 to print limits, else 0 */
 	*ramin = 0.0;
 	*ramax = 359.99999;
 	*decmax = 90.0;
+	*wrap = 0;
 	}
     else if (dec - dist < -90.0) {
 	*ramin = 0.0;
 	*ramax = 359.99999;
 	*decmin = -90.0;
+	*wrap = 0;
 	}
 	
 
@@ -2077,11 +2129,13 @@ int	verbose;	/* 1 to print limits, else 0 */
 	*decmin = -90.0;
 	*ramin = 0.0;
 	*ramax = 359.99999;
+	*wrap = 0;
 	}
     else if (*decmax > 90.0) {
 	*decmax = 90.0;
 	*ramin = 0.0;
 	*ramax = 359.99999;
+	*wrap = 0;
 	}
     if (verbose) {
 	char rstr1[16],rstr2[16],dstr1[16],dstr2[16];
@@ -2684,6 +2738,8 @@ FILE	*fd;		/* Output file descriptor; none if NULL */
 	strcpy (headline,"usnoj_id      ");
     else if (refcat == TMPSC)
 	strcpy (headline,"2mass_id      ");
+    else if (refcat == TMXSC)
+	strcpy (headline,"2mx_id        ");
     else if (refcat == SAO)
 	strcpy (headline,"sao_id        ");
     else if (refcat == PPM)
@@ -3128,7 +3184,7 @@ double	*a;	/* Vector containing coeffiecients */
 /* MOVEB -- Copy nbytes bytes from source+offs to dest+offd (any data type) */
 
 void
-moveb (source, dest, nbytes, offs, offd)
+movebuff (source, dest, nbytes, offs, offd)
 
 char *source;	/* Pointer to source */
 char *dest;	/* Pointer to destination */
@@ -3279,4 +3335,11 @@ char *from, *last, *to;
  * Jul  8 2007	Set up 8 magnitudes for GSC 2.3 from GALEX
  * Jul 13 2007	Add SkyBot solar system object search
  * Nov 28 2006	Add moveb() from binread.c
+ *
+ * Aug 19 2009	If pole is included, set RA range to 360 degrees in RefLim()
+ * Sep 25 2009	Change name of moveb() to movebuff()
+ * Sep 28 2009	For 2MASS Extended Source catalog, use 2mx_id, not 2mass_id
+ * Sep 30 2009	Add UCAC3 catalog
+ * Oct 26 2009	Do not wrap in RefLim() if dra=360
+ * Nov  6 2009	Add UCAC3 catalog to ProgCat()
  */

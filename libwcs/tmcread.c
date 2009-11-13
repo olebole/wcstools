@@ -1,8 +1,8 @@
 /*** File libwcs/tmcread.c
- *** November 20, 2007
+ *** September 28, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2007
+ *** Copyright (C) 2001-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -236,7 +236,10 @@ int	nlog;		/* 1 for diagnostics */
     if (nstarmax < 1) {
 	char *revmessage;
 	revmessage = getrevmsg();
-	printf ("catalog	2MASS Point Source Catalog\n");
+	if (refcat == TMXSC)
+	    printf ("catalog	2MASS Extended Source Catalog\n");
+	else
+	    printf ("catalog	2MASS Point Source Catalog\n");
 	ra2str (rastr, 31, cra, 3);
 	printf ("ra	%s\n", rastr);
 	dec2str (decstr, 31, cdec, 2);
@@ -253,8 +256,14 @@ int	nlog;		/* 1 for diagnostics */
 	printf ("radecsys	%s\n", cstr);
 	printf ("equinox	%.3f\n", eqout);
 	printf ("epoch	%.3f\n", epout);
-	printf ("program	stmc %s\n", revmessage);
-	printf ("2mass_id  	ra          	dec         	");
+	if (refcat == TMXSC)
+	    printf ("program	stmx %s\n", revmessage);
+	else
+	    printf ("program	stmc %s\n", revmessage);
+	if (refcat == TMXSC)
+	    printf ("2mx_id    	ra          	dec         	");
+	else
+	    printf ("2mass_id  	ra          	dec         	");
 	printf ("magj  	magh  	magk  ");
 	if (refcat == TMPSCE)
 	    printf ("magje  	maghe  	magke ");
@@ -1524,4 +1533,6 @@ int	istar;		/* Star sequence in 2MASS zone file */
  * Jan 10 2007	Add match=1 argument to webrnum()
  * Oct 31 2007	Properly return magnitude errors from tmcrnum(), if present
  * Nov 20 2007	Fix bug which offset limit flag by one (found by Gus Muensch)
+ *
+ * Sep 28 2009	Print correct heading for n<0 Extended Source tab table
  */

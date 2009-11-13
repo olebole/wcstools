@@ -1,9 +1,9 @@
 /* File keyhead.c
- * November 9, 2007
+ * August 19, 2009
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1997-2007
+   Copyright (C) 1997-2009
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -60,9 +60,11 @@ char **av;
     char **kwd, **kwdnew;
     int nkwd = 0;
     int nkwd1 = 0;
-    char **fn;
+    char **fn, **newfn;
     int nfile = 0;
     int ifile;
+    int i;
+    int nbytes;
     int readlist = 0;
     char filename[128];
     FILE *flist = NULL;
@@ -163,7 +165,12 @@ char **av;
 	else if (isfits (*av) || isiraf (*av)) {
 	    if (nfile >= maxnfile) {
 		maxnfile = maxnfile * 2;
-		fn = (char **) realloc ((void *)fn, maxnfile);
+		nbytes = maxnfile * sizeof (char *);
+		newfn = (char **) calloc (maxnfile, sizeof (char *));
+		for (i = 0; i < nfile; i++)
+		    newfn[i] = fn[i];
+		free (fn);
+		fn = newfn;
 		}
 	    fn[nfile] = *av;
 	    nfile++;
@@ -653,4 +660,6 @@ char	*kwd[];		/* Names and values of those keywords */
  * Jun 21 2006	Clean up code
  *
  * Nov 09 2007	Add more verbosity replacing value from another keyword
+ *
+ * Aug 19 2009	Fix bug to remove limit to the number of files on command line
  */

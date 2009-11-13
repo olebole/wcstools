@@ -1,8 +1,8 @@
 /*** File libwcs/imsetwcs.c
- *** March 14, 2007
+ *** September 24, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu (based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2007
+ *** Copyright (C) 1996-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -83,6 +83,7 @@ static int sortmag = 1;		/* Magnitude by which to sort stars */
 static int minstars0 = MINSTARS;	/* Number of star matches for fit */
 static int nxydec = NXYDEC;	/* Number of decimal places in image coordinates */
 static void PrintRes();
+static void CompRes();
 extern void SetFITSPlate();
 
 static char *kwt = NULL;        /* Keyword returned by ctgread() */
@@ -269,17 +270,18 @@ int	verbose;
 getfield:
     wcs = GetFITSWCS (filename,header,verbose,&cra,&cdec,&dra,&ddec,&secpix,
 		      &imw,&imh,&refsys, &refeq);
-    refep = wcs->epoch;
     if (nowcs (wcs)) {
 	ret = 0;
 	goto out;
 	}
 
+    refep = wcs->epoch;
     if (nofit) {
 	SetFITSWCS (header, wcs);
 	ret = 1;
 	goto out;
 	}
+
     if (fitwcs) {
 	wcs->prjcode = WCS_TAN;
 	wcseqset (wcs, refeq);
@@ -700,7 +702,7 @@ match:
 	hputi4 (header, "WCSMATCH", nmatch);
 	hputi4 (header, "WCSNREF", nmax);
 	hputnr8 (header, "WCSTOL", 4, tolerance);
-	if (rprint)
+	if (rprint) {
 
 	    PrintRes (header,wcs,nmatch,sx1,sy1,sm1,gra1,gdec1,gm1,gnum1,
 		      refcat,rprint);
@@ -713,6 +715,9 @@ match:
 	    else
 		printf ("# nmatch= %d nstars= %d between %s and %s  niter= %d\n",
 			nmatch, nmax, refcatname, imcatname, niter);
+	    }
+	else
+	    CompRes (header,wcs,nmatch,sx1,sy1,sm1,gra1,gdec1,gm1,gnum1);
 
 	/* Fit the matched catalog and image stars with a polynomial */
 	if (!iterate && !recenter && fitplate && refcatname != NULL) {
@@ -726,7 +731,7 @@ match:
 		fprintf (stderr,"FitPlate cannot fit matches\n");
 
 	    /* Print the new residuals */
-	    else {
+	    else if (rprint) {
 		PrintRes (header,wcs,nmatch,sx1,sy1,sm1,gra1,gdec1,gm1,gnum1,
 			  refcat,verbose);
 		if (refcatname == NULL)
@@ -738,6 +743,10 @@ match:
 		else
 		printf ("# nmatch= %d nstars= %d between %s and %s niter= %d\n",
 			nmatch, nmax, refcatname, imcatname, niter);
+		SetFITSPlate (header, wcs);
+		}
+	    else {
+		CompRes (header,wcs,nmatch,sx1,sy1,sm1,gra1,gdec1,gm1,gnum1);
 		SetFITSPlate (header, wcs);
 		}
 	    }
@@ -778,7 +787,7 @@ match:
 	    setsecpix2 (3600.0 * wcs->yinc);
 	    setrot (wcs->rot);
 	    }
-	free (wcs); */
+	wcsfree (wcs); */
 
 	wcssize (wcs, &cra, &cdec, &dra, &ddec);
 	if (cra < 0.0) cra = cra + 360.0;
@@ -797,7 +806,7 @@ match:
 	    setsecpix2 (3600.0 * wcs->yinc);
 	    setrot (wcs->rot);
 	    }
-	free (wcs); */
+	wcsfree (wcs); */
 
 	wcssize (wcs, &cra, &cdec, &dra, &ddec);
 	tolerance = tolerance * 0.5;
@@ -818,7 +827,10 @@ match:
 	setrot (wcs->rot);
 	recenter = 0;
 	imfrac = 0.0;
-	free (wcs);
+	if (wcs) {
+	    wcsfree (wcs);
+	    wcs = NULL;
+	    }
 	goto getfield;
 	}
     if (nfiterate) {
@@ -834,7 +846,10 @@ match:
 	}
 
 done:
-    if (wcs) free (wcs);
+    if (wcs) {
+	wcsfree (wcs);
+	wcs = NULL;
+	}
 
     /* Free catalog source arrays */
     if (gra) free ((char *)gra);
@@ -851,14 +866,21 @@ done:
     if (gnum) free ((char *)gnum);
     if (gx) free ((char *)gx);
     if (gy) free ((char *)gy);
+    if (goff) free ((char *)goff);
     if (gc) free ((char *)gc);
 
     /* Free memory used for object names in reference catalog */
     if (gobj1 != NULL) {
-	for (i = 0; i < ns; i++) {
-	    if (gobj[i] != NULL) free (gobj[i]);
-	    gobj[i] = NULL;
+	for (i = 0; i < ngmax; i++) {
+	    if (gobj[i] != NULL) {
+		free (gobj[i]);
+		gobj[i] = NULL;
+		}
 	    }
+	}
+    if (gobj) {
+	free ((char *) gobj);
+	gobj = NULL;
 	}
 
     /* Free image source arrays */
@@ -1010,6 +1032,83 @@ int	verbose;	/* True for more information */
 	printf ("# Plate to catalog mag: mcoeff2=%.6f mcoeff3=%.6f sigma=%.3f\n",
 		coeff[2], coeff[3], msig);
 	}
+    hputi4 (header, "WCSMATCH", nmatch);
+    hputnr8 (header, "WCSSEP", 3, sep);
+
+    return;
+}
+
+
+static void
+CompRes (header,wcs,nmatch,sx1,sy1,sm1,gra1,gdec1,gm1,gnum1)
+
+char	*header;	/* Image FITS header */
+struct WorldCoor *wcs;	/* Image World Coordinate System */
+int	nmatch;		/* Number of image/catalog matches */
+double	*sx1, *sy1;	/* Image star pixel coordinates */
+double	*sm1;		/* Plate magnitudes */
+double	*gra1, *gdec1;	/* Reference catalog sky coordinates */
+double	*gm1;		/* Reference catalog magnitudes */
+double	*gnum1;		/* Reference catalog numbers */
+
+{
+    int i, goff;
+    double gx, gy, dx, dy, dx2, dy2, dxy, mag0;
+    double sep, sep2, rsep, rsep2, dsep, dsep2;
+    double dmatch, dmatch1, sra, sdec;
+    double sepsum = 0.0;
+    double rsepsum = 0.0;
+    double rsep2sum = 0.0;
+    double dsepsum = 0.0;
+    double dsep2sum = 0.0;
+    double sep2sum = 0.0;
+    double dxsum = 0.0;
+    double dysum = 0.0;
+    double dx2sum = 0.0;
+    double dy2sum = 0.0;
+    double dxysum = 0.0;
+
+    for (i = 0; i < nmatch; i++) {
+	wcs2pix (wcs, gra1[i], gdec1[i], &gx, &gy, &goff);
+	dx = gx - sx1[i];
+	dy = gy - sy1[i];
+	dx2 = dx * dx;
+	dy2 = dy * dy;
+	dxy = dx2 + dy2;
+	dxsum = dxsum + dx;
+	dysum = dysum + dy;
+	dx2sum = dx2sum + dx2;
+	dy2sum = dy2sum + dy2;
+	dxysum = dxysum + sqrt (dxy);
+	pix2wcs (wcs, sx1[i], sy1[i], &sra, &sdec);
+	sep = 3600.0 * wcsdist(gra1[i],gdec1[i],sra,sdec);
+	rsep = 3600.0 * ((gra1[i]-sra) * cos(degrad(sdec)));
+	if (rsep > sep)
+	    rsep = 3600.0 * ((gra1[i] - sra - 360.0) * cos(degrad(sdec)));
+	rsep2 = rsep * rsep;
+	dsep = 3600.0 * (gdec1[i] - sdec);
+	dsep2 = dsep * dsep;
+	sepsum = sepsum + sep;
+	rsepsum = rsepsum + rsep;
+	dsepsum = dsepsum + dsep;
+	rsep2sum = rsep2sum + rsep2;
+	dsep2sum = dsep2sum + dsep2;
+	sep2sum = sep2sum + (sep*sep);
+	}
+    dmatch = (double) nmatch;
+    dmatch1 = (double) (nmatch - 1);
+    dx = dxsum / dmatch;
+    dy = dysum / dmatch;
+    dx2 = sqrt (dx2sum / dmatch1);
+    dy2 = sqrt (dy2sum / dmatch1);
+    dxy = dxysum / dmatch;
+    rsep = rsepsum / dmatch;
+    dsep = dsepsum / dmatch;
+    rsep2 = sqrt (rsep2sum / dmatch1);
+    dsep2 = sqrt (dsep2sum / dmatch1);
+    sep = sepsum / dmatch;
+    sep2 = sqrt (sep2sum / dmatch1);
+
     hputi4 (header, "WCSMATCH", nmatch);
     hputnr8 (header, "WCSSEP", 3, sep);
 
@@ -1298,4 +1397,7 @@ setmagfit ()
  * Jan 10 2007	Drop setclass() and setplate(); it did not do anything
  * Jan 11 2007	Include fitsfile.h
  * Mar 14 2007	Return if -n 0 after computing WCS from match
+ *
+ * Aug  3 2009	If not printing residuals, still compute WCSSEP using CompRes()
+ * Sep 24 2009	Free pointers more carefully
  */

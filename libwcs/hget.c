@@ -1,8 +1,8 @@
 /*** File libwcs/hget.c
- *** August 22, 2007
+ *** November 12, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2007
+ *** Copyright (C) 1994-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -1690,7 +1690,8 @@ int set_saolib(hstring)
 #endif
 
 
-/* Remove exponent, leading #, and/or trailing zeroes, if reasonable */
+/* Remove exponent, leading #, surrounding parentheses,
+   and/or trailing zeroes, if reasonable */
 void
 strfix (string, fillblank, dropzero)
 
@@ -1716,6 +1717,18 @@ int	dropzero;	/* If nonzero, drop trailing zeroes */
 	    }
 	else
 	    *strend = ctemp;
+	}
+
+    /* Remove parentheses if they enclose the string */
+    if (string[0] == '(') {
+	lstr = strlen (string);
+	if (string[lstr-1] == ')') {
+	    string[lstr-1] = (char) 0;
+	    strend = string + lstr - 1;
+	    for (str = string; str < strend; str++)
+		*str = *(str+1);
+	    string[lstr-2] = (char) 0;
+	    }
 	}
 
     /* Remove positive exponent if there are enough digits given */
@@ -1880,4 +1893,6 @@ int	dropzero;	/* If nonzero, drop trailing zeroes */
  * Feb 28 2007	If header length is not set in hlength, set it to 0
  * May 31 2007	Add return value of 3 to isnum() if string has colon(s)
  * Aug 22 2007	If closing quote not found, make one up
+ *
+ * Nov 12 2009	In strfix(), if drop enclosing parantheses
  */

@@ -1,8 +1,35 @@
-Version 3.7.8 (July 24, 2009)
+Version 3.8.0 (November 12, 2009)
+getcol: Drop parentheses around single column
+imcat: Move array allocation to subroutine as suggested by Douglas Burke
+imextract: Fix bug which caused command line extension lists to be ignored
+scat, imcat, imwcs, immatch: Add UCAC3 astrometric catalog
+scat:  Print errors in UCAC2 and UCAC3 positions and proper motions in -t mode
+scat,imcat,immatch,imwcs: Fix bug so the HST Guide Star Catalog works again
+scat: Fix output of GSC2 without tabs
+binread.c, catutil.c: Change moveb() to movebuff()
+fitsfile.c: Fix binary table reading; add local moveb()
+gscread.c: Fix bug reading region limit table; initialize lengths of FITS table columns
+tabread.c: Fix memory leaks found by Douglas Burke
+ucac3read.c: Add UCAC3 catalog and add errors to UCAC2 catalog
+webread.c: Free allocated pointers before returning
+webread.c: Use movebuff() in catutil.c; reverse source/destination pointers and offsets
+
+Version 3.7.9 (September 18, 2009)
+sethead, keyhead, cphead, delhead: Fix bug so more images can be processed
+    from the command line
+sethead: Allow writing to files extracted from multi-extension files if
+    XTENSION keyword is still present
+xy2sky: Add line of documentation for -h
+catutil.c: In RefLim(), set RA range to 360 degrees if a pole is included
+
+Version 3.7.8 (August 17, 2009)
+imwcs: Fix bugs when matched stars wrap around RA=0:00 or have the same
+       image position
 nedpos: Do not print name unless asked to
-imwcs: Fix bug when matched stars wrap around RA=0:00 or have same image position
+scat: Print four magnitudes for GSC2 catalog; they have dropped Tycho B
 skycoor: Fix sign error in RA difference in -a position angle computation
 skybotread.c: Add flag to skip comets and save time
+getpix: Assume floating point coordinates to be x,y instead of RA,Dec
 
 Version 3.7.7 (April 9, 2009)
 simpos: Put back -i option which seemed to have disappeared

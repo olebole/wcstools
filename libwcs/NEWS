@@ -1,9 +1,13 @@
 WCSTools WCS subroutine release history
 
-November 21, 2008 - Release 3.7.9
-fitsfile.c: In fitswhead() do not print write error if nw = nbytes
+September 25, 2009 - Release 3.8.0
+dateutil.c: Fix possible bug in nutation subroutine
+fitsfile.c: Add subroutine moveb() and fix binary table calls to it
+            Fix lengths for ASCII numeric table entries in fitsrthead()
+fitsfile.h: Add moveb() which is used by binary FITS table code in fitsfile.c
 
-September 9, 2008 - Release 3.7.6
+November 21, 2008 - Release 3.7.6
+fitsfile.c: In fitswhead() do not print write error if nw = nbytes
 dateutil.c: Use IAU 2006 nutation for sidereal time computations
 dateutil.c: Add ang2hr(), ang2deg(), deg2ang(), and ang2hr() to
             convert betweem decimal floating point degrees and 

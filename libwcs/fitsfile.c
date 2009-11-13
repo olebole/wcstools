@@ -1,8 +1,8 @@
 /*** File libwcs/fitsfile.c
- *** November 21, 2008
+ *** September 25, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2008
+ *** Copyright (C) 1996-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -135,7 +135,6 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     int inherit = 1;	/* Value of INHERIT keyword in FITS extension header */
     int extfound = 0;	/* Set to one if desired FITS extension is found */
     int npcount;
-    int npblock;
 
     pheader = NULL;
     lprim = 0;
@@ -439,8 +438,10 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    fprintf (stderr, "FITSRHEAD: Extension %s not found in file %s\n",extnam, filename);
 	else
 	    fprintf (stderr, "FITSRHEAD: Extension %d not found in file %s\n",extnum, filename);
-	if (pheader != NULL)
+	if (pheader != NULL) {
 	    free (pheader);
+	    pheader = NULL;
+	    }
 	return (NULL);
 	}
 
@@ -503,7 +504,10 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    }
 	pheader[lprim] = 0;
 	strncpy (headend, pheader, lprim);
-	free (pheader);
+	if (pheader != NULL) {
+	    free (pheader);
+	    pheader = NULL;
+	    }
 	}
 
     ibhead = *nbhead - ibhead;
@@ -906,7 +910,7 @@ char	*header;	/* FITS header for image (previously read) */
     if (!simple) {
 	nbytes = getfilesize (filename) - nbhead;
 	if ((image = (char *) malloc (nbytes + 1)) == NULL) {
-	    snprintf (fitserrmsg,79, "FITSRFULL:  %d-byte image buffer cannot be allocated\n");
+	    snprintf (fitserrmsg,79, "FITSRFULL:  %d-byte image buffer cannot be allocated\n",nbytes+1);
 	    (void)close (fd);
 	    return (NULL);
 	    }
@@ -1124,7 +1128,7 @@ int	*nchar;		/* Number of characters in one table row (returned) */
 {
     struct Keyword *rw;	/* Structure for desired entries */
     int nfields;
-    int ifield,ik,ln, i, ikf, ltform, kl;
+    int ifield, ik, i, ikf, ltform, kl;
     char *h0, *h1, *tf1, *tf2;
     char tname[12];
     char temp[16];
@@ -1199,7 +1203,7 @@ int	*nchar;		/* Number of characters in one table row (returned) */
 	strcpy (pw[ifield].kname,temp);
 	pw[ifield].lname = strlen (pw[ifield].kname);
 
-    /* Sequence of field on line
+    /* Sequence of field on line */
 	pw[ifield].kn = ifield + 1;
 
     /* First column of field */
@@ -1227,13 +1231,13 @@ int	*nchar;		/* Number of characters in one table row (returned) */
 	    tf1 = pw[ifield].kform + 1;
 	    kl = atof (tf1);
 	    }
-	else if (tform[0] == 'I')
+	else if (!strcmp (tform,"I"))
 	    kl = 2;
-	else if (tform[0] == 'J')
+	else if (!strcmp (tform, "J"))
 	    kl = 4;
-	else if (tform[0] == 'E')
+	else if (!strcmp (tform, "E"))
 	    kl = 4;
-	else if (tform[0] == 'D')
+	else if (!strcmp (tform, "D"))
 	    kl = 8;
 	else {
 	    tf1 = tform + 1;
@@ -1367,17 +1371,17 @@ struct Keyword *kw;	/* Table column information from FITS header */
 
     if (ftgetc (entry, kw, temp, 30)) {
 	if (!strcmp (kw->kform, "I"))
-	    moveb (temp, i, 2, 0, 0);
+	    moveb (temp, (char *) &i, 2, 0, 0);
 	else if (!strcmp (kw->kform, "J")) {
-	    moveb (temp, j, 4, 0, 0);
+	    moveb (temp, (char *) &j, 4, 0, 0);
 	    i = (short) j;
 	    }
 	else if (!strcmp (kw->kform, "E")) {
-	    moveb (temp, r, 4, 0, 0);
+	    moveb (temp, (char *) &r, 4, 0, 0);
 	    i = (short) r;
 	    }
 	else if (!strcmp (kw->kform, "D")) {
-	    moveb (temp, d, 8, 0, 0);
+	    moveb (temp, (char *) &d, 8, 0, 0);
 	    i = (short) d;
 	    }
 	else
@@ -1405,17 +1409,17 @@ struct Keyword *kw;	/* Table column information from FITS header */
 
     if (ftgetc (entry, kw, temp, 30)) {
 	if (!strcmp (kw->kform, "I")) {
-	    moveb (temp, i, 2, 0, 0);
+	    moveb (temp, (char *) &i, 2, 0, 0);
 	    j = (int) i;
 	    }
 	else if (!strcmp (kw->kform, "J"))
-	    moveb (temp, j, 4, 0, 0);
+	    moveb (temp, (char *) &j, 4, 0, 0);
 	else if (!strcmp (kw->kform, "E")) {
-	    moveb (temp, r, 4, 0, 0);
+	    moveb (temp, (char *) &r, 4, 0, 0);
 	    j = (int) r;
 	    }
 	else if (!strcmp (kw->kform, "D")) {
-	    moveb (temp, d, 8, 0, 0);
+	    moveb (temp, (char *) &d, 8, 0, 0);
 	    j = (int) d;
 	    }
 	else
@@ -1443,17 +1447,17 @@ struct Keyword *kw;	/* Table column information from FITS header */
 
     if (ftgetc (entry, kw, temp, 30)) {
 	if (!strcmp (kw->kform, "I")) {
-	    moveb (temp, i, 2, 0, 0);
+	    moveb (temp, (char *) &i, 2, 0, 0);
 	    r = (float) i;
 	    }
 	else if (!strcmp (kw->kform, "J")) {
-	    moveb (temp, j, 4, 0, 0);
+	    moveb (temp, (char *) &j, 4, 0, 0);
 	    r = (float) j;
 	    }
 	else if (!strcmp (kw->kform, "E"))
-	    moveb (temp, r, 4, 0, 0);
+	    moveb (temp, (char *) &r, 4, 0, 0);
 	else if (!strcmp (kw->kform, "D")) {
-	    moveb (temp, d, 8, 0, 0);
+	    moveb (temp, (char *) &d, 8, 0, 0);
 	    r = (float) d;
 	    }
 	else
@@ -1481,19 +1485,19 @@ struct Keyword *kw;	/* Table column information from FITS header */
 
     if (ftgetc (entry, kw, temp, 30)) {
 	if (!strcmp (kw->kform, "I")) {
-	    moveb (temp, i, 2, 0, 0);
+	    moveb (temp, (char *) &i, 2, 0, 0);
 	    d = (double) i;
 	    }
 	else if (!strcmp (kw->kform, "J")) {
-	    moveb (temp, j, 4, 0, 0);
+	    moveb (temp, (char *) &j, 4, 0, 0);
 	    d = (double) j;
 	    }
 	else if (!strcmp (kw->kform, "E")) {
-	    moveb (temp, r, 4, 0, 0);
+	    moveb (temp, (char *) &r, 4, 0, 0);
 	    d = (double) r;
 	    }
 	else if (!strcmp (kw->kform, "D"))
-	    moveb (temp, d, 8, 0, 0);
+	    moveb (temp, (char *) &d, 8, 0, 0);
 	else
 	    d = atof (temp);
 	return (d);
@@ -1989,7 +1993,7 @@ char	*header;	/* FITS image header */
     fitsinherit = 0;
     oldheader = fitsrhead (filename, &lhead, &nbhead);
     if (oldheader == NULL) {
-	fprintf (stderr, "FITSWEXHEAD:  file %s cannot be read\n", filename);
+	snprintf (fitserrmsg, 79, "FITSWEXHEAD:  file %s cannot be read\n", filename);
 	return (-1);
 	}
     nbold = fitsheadsize (oldheader);
@@ -1997,7 +2001,7 @@ char	*header;	/* FITS image header */
 
     /* Return if the new header is bigger than the old header */
     if (nbnew > nbold) {
-	fprintf (stderr, "FITSWEXHEAD:  old header %d bytes, new header %d bytes\n", nbold,nbnew);
+	snprintf (fitserrmsg, 79, "FITSWEXHEAD:  old header %d bytes, new header %d bytes\n", nbold,nbnew);
 	free (oldheader);
 	oldheader = NULL;
 	return (-1);
@@ -2036,7 +2040,7 @@ char	*header;	/* FITS image header */
     if (ext != NULL)
 	*ext = cext;
     if (fd < 3) {
-	fprintf (stderr, "FITSWEXHEAD:  file %s not writeable\n", filename);
+	snprintf (fitserrmsg, 79, "FITSWEXHEAD:  file %s not writeable\n", filename);
 	return (-1);
 	}
 
@@ -2106,6 +2110,7 @@ char    *filename;      /* Name of file for which to find size */
 	}
 }
 
+
 /* FITSHEADSIZE -- Find size of FITS header */
 
 int
@@ -2124,11 +2129,32 @@ char	*header;	/* FITS header */
     return (nblocks * FITSBLOCK);
 }
 
+
 /* Print error message */
 void
 fitserr ()
 {   fprintf (stderr, "%s\n",fitserrmsg);
     return; }
+
+
+/* MOVEB -- Copy nbytes bytes from source+offs to dest+offd (any data type) */
+
+void
+moveb (source, dest, nbytes, offs, offd)
+
+char *source;	/* Pointer to source */
+char *dest;	/* Pointer to destination */
+int nbytes;	/* Number of bytes to move */
+int offs;	/* Offset in bytes in source from which to start copying */
+int offd;	/* Offset in bytes in destination to which to start copying */
+{
+char *from, *last, *to;
+        from = source + offs;
+        to = dest + offd;
+        last = from + nbytes;
+        while (from < last) *(to++) = *(from++);
+        return;
+}
 
 /*
  * Feb  8 1996	New subroutines
@@ -2250,4 +2276,9 @@ fitserr ()
  * Apr  7 2008	Drop comma from name when reading file in isfits()
  * Jun 27 2008	Do not append primary data header if it is the only header
  * Nov 21 2008	In fitswhead(), print message if too few bytes written
+ *
+ * Sep 18 2009	In fitswexhead() write to error string instead of stderr
+ * Sep 22 2009	In fitsrthead(), fix lengths for ASCII numeric table entries
+ * Sep 25 2009	Add subroutine moveb() and fix calls to it
+ * Sep 25 2009	Fix several small errors found by Douglas Burke
  */

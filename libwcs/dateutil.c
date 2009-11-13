@@ -1,8 +1,8 @@
 /*** File libwcs/dateutil.c
- *** October 8, 2008
+ *** September 24, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1999-2008
+ *** Copyright (C) 1999-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -3902,7 +3902,7 @@ double *eps0;   /* Mean obliquity in radians (returned) */
 
 /* Tables of argument and term coefficients */
 
-    /* Coefficients for fundamental arguments
+    /* Coefficients for fundamental arguments */
     /* Luni-solar argument multipliers: */
     /*       l     l'    f     d     om */
 static int nals[5*NLS]=
@@ -4452,4 +4452,6 @@ double	dnum, dm;
  * Sep  9 2008	Add ang2hr(), ang2deg(), hr2ang(), deg2ang()
  * Sep 10 2008	Add longitude to mean standard time (default = Greenwich)
  * Oct  8 2008	Clean up sidereal time computations
+ *
+ * Sep 24 2009	Add end to comment "Coefficients for fundamental arguments"
  */
