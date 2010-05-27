@@ -1,7 +1,7 @@
 /*** File libwcs/wcscat.h
- *** November 2, 2009
+ *** April 06, 2010
  *** By Doug Mink, dmink@cfa.harvard.edu
- *** Copyright (C) 1998-2009
+ *** Copyright (C) 1998-2010
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -1330,6 +1330,8 @@ extern "C" {
 	char *keyword,	/* character string containing the name of the keyword */
 	int lval,	/* Size of value in characters
 			 * If negative, value ends at end of line */
+	int fillblank,	/* If 0, leave blanks, strip trailing blanks
+			   if non-zero, replace blanks with underscores */
 	char *value);	/* String (returned) */
 
     int tmcid(		/* Return 1 if string is 2MASS ID, else 0 */
@@ -1682,12 +1684,13 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * Jul 18 2007	Add tabccol() and PM_ARCSECHR for SkyBot
  * Nov 28 2007	Add moveb() which used to be local to binread()
  *
- * Oct 24 2008	Add gsct2t() to clean up tab-separated table from STScI
-CASB
+ * Oct 24 2008	Add gsct2t() to clean up tab-separated table from STScI CASB
  *
  * Sep 25 2009	Rename moveb() to movebuff()
  * Sep 25 2009	Add UCAC3 as catalog code 32
  * Oct 30 2009	Add position and proper motion error to star structure
  * Nov  2 2009	Add numbers of images and catalogs to star structure
  * Nov  3 2009	Parameterize as MAXNMAG the maximum number of magnitudes
+ *
+ * Apr 06 2010	Add fillblank argument to agets()
  */

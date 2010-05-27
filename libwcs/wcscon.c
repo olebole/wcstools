@@ -1,8 +1,8 @@
 /*** File wcscon.c
- *** November 8, 2007
+ *** March 30, 2010
  *** Doug Mink, Harvard-Smithsonian Center for Astrophysics
  *** Some subroutines are based on Starlink subroutines by Patrick Wallace
- *** Copyright (C) 1995-2007
+ *** Copyright (C) 1995-2010
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -176,8 +176,6 @@ double	*pphi;	/* Latitude or declination proper motion in Dec degrees/year
 	if (sys1 == WCS_J2000) {
 	    if (*ptheta != 0.0 || *pphi != 0.0) {
 		fk524m (dtheta, dphi, ptheta, pphi);
-		if (ep1 == 2000.0)
-		    ep1 = 1950.0;
 		if (ep2 != 1950.0) {
 		    *dtheta = *dtheta + ((ep2 - 1950.0) * *ptheta);
 		    *dphi = *dphi + ((ep2 - 1950.0) * *pphi);
@@ -1057,7 +1055,6 @@ double *rv;		/* Rradial velocity (km/s, +ve = moving away) */
     x = v2[0];
     y = v2[1];
     z = v2[2];
-    rxyz = sqrt (x*x + y*y + z*z);
 
     /* Magnitude of position vector */
     rxyz = sqrt (x*x + y*y + z*z);
@@ -1065,7 +1062,7 @@ double *rv;		/* Rradial velocity (km/s, +ve = moving away) */
     /* Apply e-terms to position */
     w = (x * a[0]) + (y * a[1]) + (z * a[2]);
     x = x + (a[0] * rxyz) - (w * x);
-    y = y + (a[1] * rxyz) - (w * z);
+    y = y + (a[1] * rxyz) - (w * y);
     z = z + (a[2] * rxyz) - (w * z);
  
     /* Recompute magnitude of position vector */
@@ -2325,4 +2322,7 @@ double *r;	/* Distance to object in same units as pos (returned) */
  *
  * Aug 15 2007	Clean up code in rotmat()
  * Nov  8 2007	In wcsconp, make it clear that proper motion is in spherical coordinates
+ *
+ * Mar 29 2010	Fix bug in computing the magnitude of the e-terms in fk524()
+ * Mar 30 2010	Drop ep1 assignment after line 178 in wcsconp()
  */

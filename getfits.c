@@ -1,9 +1,9 @@
 /* File getfits.c
- * April 4, 2008
+ * April 13, 2010
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2002-2008
+   Copyright (C) 2002-2010
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -380,6 +380,7 @@ int	nkwd;
     char temp[80];
     int xdim = 1;
     int ydim = 1;
+    int istnx = 0;
     struct Range *xrange;    /* Column range structure */
     struct Range *yrange;    /* Row range structure */
     struct WorldCoor *wcs, *GetWCSFITS();
@@ -418,6 +419,9 @@ int	nkwd;
 
     if (ra0 > -99.0 && dec0 > -99.0) {
 	wcs = GetWCSFITS (name, header, verbose);
+	if (wcs->lngcor != NULL) {
+	    istnx = 1;
+	    }
 	if (iswcs (wcs)) {
 	    ra = ra0;
 	    dec = dec0;
@@ -528,7 +532,7 @@ int	nkwd;
     if (ifcol1 > 1 || ifrow1 > 1) {
 
 	/* If IRAF TNX image, keep all WCS keywords, but add dependency on PLATE WCS */
-	if (wcs->lngcor != NULL) {
+	if (istnx) {
 	   hputs (header, "WCSDEP", "PLATE");
 	   }
 
@@ -714,4 +718,6 @@ char *newname;
  * Jun 11 2007	Compute minimum and maximum data values in output image
  *
  * Apr  4 2008	Make extracted TNX WCS dependent on original PLATE WCS
+ *
+ * Apr 10 2010	Fix bug so WCS is not accessed after it is freed
  */

@@ -1,9 +1,9 @@
 /* File gethead.c
- * April 3, 2009
+ * April 6, 2009
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2009
+   Copyright (C) 1996-2010
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -285,32 +285,39 @@ char **av;
 		maxnfile = maxnfile * 2;
 		nbytes = maxnfile * sizeof (char *);
 		newfn = (char **) calloc (maxnfile, sizeof (char *));
-		for (i = 0; i < nfile; i++)
+		for (i = 0; i < nfile; i++) {
 		    newfn[i] = fn[i];
+		    }
 		free (fn);
 		fn = newfn;
 		newft = (int *) calloc (maxnfile*2, sizeof (int));
-		for (i = 0; i < nfile; i++)
+		for (i = 0; i < nfile; i++) {
 		    newft[i] = ft[i];
+		    }
 		free (ft);
 		ft = newft;
-		maxnfile = maxnfile * 2;
 		}
 	    fn[nfile] = *av;
-	    if (forceascii)
+	    if (forceascii) {
 		ft[nfile] = FILE_ASCII;
-	    else if (isfits (*av))
+		}
+	    else if (isfits (*av)) {
 		ft[nfile] = FILE_FITS;
-	    else
+		}
+	    else {
 		ft[nfile] = FILE_IRAF;
+		}
 
-	    if (listpath || (name = strrchr (fn[nfile],'/')) == NULL)
+	    if (listpath || (name = strrchr (fn[nfile],'/')) == NULL) {
 		name = fn[nfile];
-	    else
+		}
+	    else {
 		name = name + 1;
+		}
 	    lfn = strlen (name);
-	    if (lfn > maxlfn)
+	    if (lfn > maxlfn) {
 		maxlfn = lfn;
+		}
 	    nfile++;
 	    }
 
@@ -326,13 +333,16 @@ char **av;
 	    fn[nfile] = *av;
 	    ft[nfile] = FILE_ASCII;
 
-	    if (listpath || (name = strrchr (fn[nfile],'/')) == NULL)
+	    if (listpath || (name = strrchr (fn[nfile],'/')) == NULL) {
 		name = fn[nfile];
-	    else
+		}
+	    else {
 		name = name + 1;
+		}
 	    lfn = strlen (name);
-	    if (lfn > maxlfn)
+	    if (lfn > maxlfn) {
 		maxlfn = lfn;
+		}
 	    nfile++;
 	    }
 
@@ -346,17 +356,21 @@ char **av;
 		}
 	    cond[ncond] = *av;
 	    ccond[ncond] = strchr (*av, '=');
-	    if (ccond[ncond] == NULL)
+	    if (ccond[ncond] == NULL) {
 		ccond[ncond] = strchr (*av, '#');
-	    if (ccond[ncond] == NULL)
+		}
+	    if (ccond[ncond] == NULL) {
 		ccond[ncond] = strchr (*av, '>');
-	    if (ccond[ncond] == NULL)
+		}
+	    if (ccond[ncond] == NULL) {
 		ccond[ncond] = strchr (*av, '<');
+		}
 	    kwe = ccond[ncond];
 	    if (kwe != NULL) {
 		for (kw = cond[ncond]; kw < kwe; kw++) {
-		    if (*kw > 96 && *kw < 123)
+		    if (*kw > 96 && *kw < 123) {
 			*kw = *kw - 32;
+			}
 		    }
 		}
 	    ncond++;
@@ -366,13 +380,17 @@ char **av;
 	else {
 	    if (nkwd >= maxnkwd) {
 		maxnkwd = maxnkwd * 2;
-		kwdnew = (char **) realloc ((void *)kwd, maxnkwd);
-	 	for (ikwd = 0; ikwd < nkwd; ikwd++)
+		kwdnew = (char **) calloc (sizeof(char *), maxnkwd);
+	 	for (ikwd = 0; ikwd < nkwd; ikwd++) {
 		    kwdnew[ikwd] = kwd[ikwd];
+		    }
 		free (kwd);
 		kwd = kwdnew;
 		}
-	    kwd[nkwd] = *av;
+	    lkwd = strlen (*av);
+	    kwd[nkwd] = calloc (sizeof(char), lkwd+1);
+	    for (i = 0; i < lkwd; i++)
+		kwd[nkwd][i] = (*av)[i];
 	    nkwd++;
 	    }
 	}
@@ -399,29 +417,36 @@ char **av;
 	/* Print conditions in header */
 	for (icond = 0; icond < ncond; icond++) {
 	    if (verbose) {
-		if (condand || icond == 0)
+		if (condand || icond == 0) {
 		    printf ("%s\n",cond[icond]);
-		else
+		    }
+		else {
 		    printf (" or %s\n",cond[icond]);
+		    }
 		}
 	    else if (tabout) {
-		if (condand || icond == 0)
+		if (condand || icond == 0) {
 		    printf ("condition	%s\n", cond[icond]);
-		else
+		    }
+		else {
 		    printf ("condition	or %s\n", cond[icond]);
+		    }
 		}
 	    }
 
 	if (printfile) {
 	    printf ("FILENAME");
 	    if (maxlfn > 8) {
-		for (i = 8; i < maxlfn; i++)
+		for (i = 8; i < maxlfn; i++) {
 		    printf (" ");
+		    }
 		}
-	    if (tabout)
+	    if (tabout) {
 	    	printf ("	");
-	    else
+		}
+	    else {
 		printf (" ");
+		}
 	    }
 
 	/* Make keyword names upper case and print keyword names in header */
@@ -430,32 +455,40 @@ char **av;
 	    kwe = kwd[ikwd] + lkwd;
 	    if (ft[0] != FILE_ASCII) {
 		for (kw = kwd[ikwd]; kw < kwe; kw++) {
-		    if (*kw > 96 && *kw < 123)
+		    if (*kw > 96 && *kw < 123) {
 			*kw = *kw - 32;
+			}
 		    }
 		}
 	    printf ("%s",kwd[ikwd]);
-	    if (verbose || ikwd == nkwd - 1)
+	    if (verbose || ikwd == nkwd - 1) {
 	    	printf ("\n");
-	    else if (tabout)
+		}
+	    else if (tabout) {
 	    	printf ("	");
-	    else
+		}
+	    else {
 		printf (" ");
+		}
 	    }
 
 	/* Print field-defining hyphens if tab table output requested */
 	if (printhead && tabout) {
 	    if (printfile) {
 		strcpy (string, "-----------------------------------");
-		if (maxlfn > 8)
+		if (maxlfn > 8) {
 		    string[maxlfn] = (char) 0;
-		else
+		    }
+		else {
 		    string[8] = (char) 0;
+		    }
 		printf ("%s",string);
-		if (verbose || ikwd == nkwd - 1)
+		if (verbose || ikwd == nkwd - 1) {
 		    printf ("\n");
-		else
+		    }
+		else {
 		    printf ("	");
+		    }
 		}
 
 	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
@@ -463,10 +496,12 @@ char **av;
 		lkwd = strlen (kwd[ikwd]);
 		string[lkwd] = (char) 0;
 		printf ("%s",string);
-		if (verbose || ikwd == nkwd - 1)
+		if (verbose || ikwd == nkwd - 1) {
 		    printf ("\n");
-		else
+		    }
+		else {
 		    printf ("	");
+		    }
 		string[lkwd] = '-';
 		}
 	    }
@@ -849,6 +884,8 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		    *kw = *kw - 32;
 		}
 	    }
+	for (i = 0; i < 16; i++)
+	    keyword[i] = (char) 0;
 	strcpy (keyword, kwd[ikwd]);
 
 	/* Read keyword value from ASCII file */
@@ -856,10 +893,11 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	    lstr = -256;
 	else
 	    lstr = 256;
+	for (i = 0; i < 256; i++)
+	    string[i] = (char) 0;
 	if (filetype == FILE_ASCII &&
-	    agets (header, keyword, lstr, string)) {
+	    agets (header, keyword, lstr, fillblank, string)) {
 	    str = string;
-	    strfix (str, fillblank, 0);
 	    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 		num2str (str, atof(str), 0, ndec);
 	    if (keyeqvaln)
@@ -966,7 +1004,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	/* Read IRAF-style multiple-line keyword value */
 	else if (hgetm (header, keyword, maxml, mstring)) {
 	    if (subkwd != NULL) {
-		if (agets (mstring, subkwd, lstr, string)) {
+		if (agets (mstring, subkwd, lstr, fillblank, string)) {
 		    if (verbose) {
 			if (strchr (string,' '))
 			    printf ("%s.%s = \"%s\"\n", keyword, subkwd, string);
@@ -1166,4 +1204,6 @@ char *string;
  *
  * Jan 09 2008	Fix handling of extensions with files from listfile
  * Apr 03 2009	Increase default size of multi-line value buffer to 20000
+ *
+ * Apr 06 2010	Add fillblank argument to agets()
  */

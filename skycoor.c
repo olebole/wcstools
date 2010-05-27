@@ -1,9 +1,9 @@
 /* File skycoor.c
- * July 24, 2009
+ * March 31, 2010
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2009
+   Copyright (C) 1996-2010
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -68,6 +68,7 @@ char **av;
     char csys[32];
     char ha[32];
     char cunit;
+    char sform[16];
     int sys0;
     int sys1 = -1;
     double ra, dec, r, ra1, dec1, ra2, dec2, dra, ddec, a;
@@ -267,6 +268,10 @@ char **av;
 		    printf ("dRA = %.5f deg, dDec = %.5f deg\n",
 			    ra1 - ra, dec1 - dec);
 		    }
+		else if (ndecset) {
+		    sprintf (sform,"%%.%df\n", ndec);
+		    printf (sform, r);
+		    }
 		else
 		    printf ("%.7f\n", r);
 		}
@@ -277,6 +282,10 @@ char **av;
 		    printf ("dRA = %.5f arcsec, dDec = %.5f arcsec\n",
 			    (ra1 - ra) * 3600.0 * cosdeg (0.5 * (dec + dec1)),
 			    (dec1 - dec) * 3600.0);
+		    }
+		else if (ndecset) {
+		    sprintf (sform,"%%.%df\n", ndec);
+		    printf (sform, r);
 		    }
 		else
 		    printf ("%.3f\n", r);
@@ -304,6 +313,57 @@ char **av;
 		printf ("Time difference is %s\n", ha);
 	    else
 		printf ("%s\n", ha);
+	    break;
+
+	case 'u':	/* Less accurate angular separation between two RA Dec pairs */
+	    if (ac < 5)
+		usage("Missing coordinates for -r");
+	    ra = str2ra (*++av);
+	    ac--;
+	    dec = str2dec (*++av);
+	    ac--;
+	    ra1 = str2ra (*++av);
+	    ac--;
+	    dec1 = str2dec (*++av);
+	    ac--;
+	    ra2str (rastr0, lstr, ra, 3);
+	    dec2str (decstr0, lstr, dec, 2);
+	    if (verbose) {
+		printf ("ra1, dec1: %s %s\n", rastr0, decstr0);
+		}
+	    ra2str (rastr0, lstr, ra1, 3);
+	    dec2str (decstr0, lstr, dec1, 2);
+	    if (verbose) 
+		printf ("ra2, dec2: %s %s\n", rastr0, decstr0);
+	    r = wcsdist1 (ra, dec, ra1, dec1);
+	    if (degout) {
+		if (verbose) {
+		    printf ("Distance is %.5f degrees\n", r);
+		    printf ("dRA = %.5f deg, dDec = %.5f deg\n",
+			    ra1 - ra, dec1 - dec);
+		    }
+		else if (ndecset) {
+		    sprintf (sform,"%%.%df\n", ndec);
+		    printf (sform, r);
+		    }
+		else
+		    printf ("%.7f\n", r);
+		}
+	    else {
+		r = r * 3600.0;
+		if (verbose) {
+		    printf ("Distance is %.3f arcsec\n", r);
+		    printf ("dRA = %.5f arcsec, dDec = %.5f arcsec\n",
+			    (ra1 - ra) * 3600.0 * cosdeg (0.5 * (dec + dec1)),
+			    (dec1 - dec) * 3600.0);
+		    }
+		else if (ndecset) {
+		    sprintf (sform,"%%.%df\n", ndec);
+		    printf (sform, r);
+		    }
+		else
+		    printf ("%.3f\n", r);
+		}
 	    break;
 
     	case 'v':	/* more verbosity */
@@ -711,4 +771,7 @@ char *errstring;
  * Sep  4 2008	Clean up verbose output for offset addition
  *
  * Jul 24 2009	Fix sign error in RA difference in -a position angle computation
+ *
+ * Mar 31 2010	Add -u option to test different difference methods
+ * Mar 31 2010	Use ndec in -r and -u options
  */

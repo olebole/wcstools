@@ -1,5 +1,5 @@
 /*** File libwcs/imsetwcs.c
- *** September 24, 2009
+ *** November 13, 2009
  *** By Doug Mink, dmink@cfa.harvard.edu (based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2009
@@ -929,7 +929,7 @@ int	verbose;	/* True for more information */
     double cmax;
     int nnfld;
     int nxyfld;
-    char rstr[32], dstr[32], numstr[32], xstr[32], ystr[32];
+    char rstr[32], dstr[32], numstr[32], xstr[32], ystr[32], mstr[8];
 
     maxnum = 0.0;
     for (i = 0; i < nmatch; i++) {
@@ -939,13 +939,14 @@ int	verbose;	/* True for more information */
 	    maxnum = gnum1[i];
 	}
     nnfld = CatNumLen (refcat, maxnum, 0);
+    CatMagName (sortmag, refcat, mstr);
 
     CatID (numstr, refcat);
     if (irafout)
-	printf ("#   x      y        ra2000   dec2000  mag %s", numstr); 
+	printf ("#   x      y        ra2000   dec2000  %5s %s", mstr, numstr); 
     else
-	printf ("# %s ra2000       dec2000    magc    X      Y     magi",
-		numstr);
+	printf ("# %s ra2000       dec2000    %5s    X      Y     magi",
+		mstr, numstr);
     printf ("    dra   ddec   sep\n");
 
     /* Find maximum image coordinates and set field size accordingly */
@@ -1400,4 +1401,5 @@ setmagfit ()
  *
  * Aug  3 2009	If not printing residuals, still compute WCSSEP using CompRes()
  * Sep 24 2009	Free pointers more carefully
+ * Nov 13 2009	Print catalog magnitude name  in residual output header
  */

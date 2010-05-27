@@ -1,9 +1,9 @@
 /* File scat.c
- * November 5, 2009
+ * April 30, 2010
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2009
+   Copyright (C) 1996-2010
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -2370,9 +2370,12 @@ double	eqout;		/* Equinox for output coordinates */
 			printf ("	%5.3f	%5.3f", era, edec);
 			}
 		    if (refcat == GSC2) {
+			for (j = 0; j < 4; j++) {
+			    if (gm[j][0] > 90.0) gm[j][0] = 99.99;
+			    }
 			if (tabout)
-			    printf ("	%5.2f	%5.2f	%5.2f	%5.2f %5.2f",
-				    gm[0][0],gm[1][0],gm[2][0],gm[4][0],gm[5][0]);
+			    printf ("	%5.2f	%5.2f	%5.2f	%5.2f",
+				    gm[0][0],gm[1][0],gm[2][0],gm[3][0]);
 			else
 			    printf (" %5.2f %5.2f %5.2f %5.2f %5.2f",
 				    gm[0][0],gm[1][0],gm[2][0],gm[4][0],gm[5][0]);
@@ -3045,7 +3048,7 @@ double	eqout;		/* Equinox for output coordinates */
 		if (refcat == GSC || refcat == GSCACT)
 		    strcpy (headline, "GSC_number ");
 		else if (refcat == GSC2)
-		    strcpy (headline, "GSC2_id     ");
+		    strcpy (headline, "GSC2_id        ");
 		else if (refcat == USAC)
 		    strcpy (headline, "USNO_SA_number ");
 		else if (refcat == USA1)
@@ -3424,9 +3427,13 @@ double	eqout;		/* Equinox for output coordinates */
 			    }
 			}
 		    }
-		else if (refcat == GSC2)
+		else if (refcat == GSC2) {
+		    for (j = 0; j < 4; j++) {
+			if (gm[j][i] > 90.0) gm[j][i] = 99.99;
+			}
 		    sprintf (headline, "%s	%s	%s	%.2f	%.2f	%.2f	%.2f",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
+		    }
 		else if (refcat == IRAS) {
 		    sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
 		    for (imag = 0; imag < 4; imag++) {
@@ -3598,10 +3605,14 @@ double	eqout;		/* Equinox for output coordinates */
 			strcat (headline, temp);
 			}
 		    }
-		else if (refcat == GSC2)
+		else if (refcat == GSC2) {
+		    for (j = 0; j < 4; j++) {
+			if (gm[j][i] > 90.0) gm[j][i] = 99.99;
+			}
 		    sprintf (headline, "%s %s %s %5.2f %5.2f %5.2f %5.2f",
 			     numstr, rastr, decstr, gm[0][i], gm[1][i],
 			     gm[2][i], gm[3][i]);
+		    }
 		else if (refcat == HIP)
 		    sprintf (headline, "%s %s %s %5.2f %5.2f %5.2f %5.2f",
 			     numstr, rastr, decstr, gm[0][i], gm[1][i],
@@ -4831,4 +4842,6 @@ PrintGSClass ()
  * Sep 25 2009	Add one more format to non-tab GSC2 output magnitudes
  * Oct 22 2009	Add UCAC3 catalog headings
  * Nov  5 2009	Add UCAC3 errors and number of measurements
+ *
+ * Apr 30 2010	Set GSC2 magnitudes to 99.99 if > 90
  */

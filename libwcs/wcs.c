@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.c
- *** July 25, 2007
+ *** April 7, 2010
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2007
+ *** Copyright (C) 1994-2010
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -332,8 +332,8 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 
 {
     int i, iproj;
-    int nctype = 32;
-    char ctypes[32][4];
+    int nctype = NWCSTYPE;
+    char ctypes[NWCSTYPE][4];
     char dtypes[10][4];
 
     /* Initialize projection types */
@@ -1436,6 +1436,28 @@ double	x2,y2;	/* (RA,Dec) or (Long,Lat) in degrees */
 	/* Angle beween the vectors */
 	diff = 2.0 * atan2 (sqrt (w), sqrt (1.0 - w));
 	diff = raddeg (diff);
+	return (diff);
+}
+
+
+
+/* Compute distance in degrees between two sky coordinates */
+
+double
+wcsdist1 (x1,y1,x2,y2)
+
+double	x1,y1;	/* (RA,Dec) or (Long,Lat) in degrees */
+double	x2,y2;	/* (RA,Dec) or (Long,Lat) in degrees */
+
+{
+	double d1, d2, r, diffi;
+	double pos1[3], pos2[3], w, diff;
+	int i;
+
+	/* Convert two vectors to direction cosines */
+	r = 1.0;
+	d2v3 (x1, y1, r, pos1);
+	d2v3 (x2, y2, r, pos2);
 
 	w = 0.0;
 	d1 = 0.0;
@@ -2934,4 +2956,6 @@ char *cwcs;	/* Keyword suffix character for output WCS */
  * Feb 23 2007	Fix bug when checking for "DET" in CTYPEi
  * Apr  2 2007	Fix PC to CD matrix conversion
  * Jul 25 2007	Compute distance between two coordinates using d2v3()
+ *
+ * Apr  7 2010	In wcstype() set number of WCS projections from NWCSTYPE
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/ucacread.c
- *** November 5, 2009
+ *** <arch 26, 2010
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2003-2009
+ *** Copyright (C) 2003-2010
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -396,27 +396,33 @@ int	nlog;		/* 1 for diagnostics */
 		 	     &ra, &dec, &rapm, &decpm);
 
 			/* Compute distance from search center */
-			if (drad > 0 || distsort)
+			if (drad > 0 || distsort) {
 			    dist = wcsdist (cra,cdec,ra,dec);
-			else
+			    }
+			else {
 			    dist = 0.0;
+			    }
 
 			/* Check radial distance to search center */
 			if (drad > 0) {
-			    if (dist > drad)
+			    if (dist > drad) {
 				pass = 0;
-			    if (dradi > 0.0 && dist < dradi)
+				}
+			    if (dradi > 0.0 && dist < dradi) {
 				pass = 0;
+				}
 			    }
 
 			/* Check distance along RA and Dec axes */
 			else {
 			    ddist = wcsdist (cra,cdec,cra,dec);
-			    if (ddist > ddec)
+			    if (ddist > ddec) {
 				pass = 0;
+				}	
 			    rdist = wcsdist (cra,dec,ra,dec);
-		            if (rdist > dra)
+		            if (rdist > dra) {
 				pass = 0;
+				}
 			    }
 			}
 
@@ -1556,4 +1562,6 @@ char *string;	/* Address of Integer*4 or Real*4 vector */
  * Nov  5 2009	Return number of images and catalogs in gtype
  * Nov  5 2009	Return errors in position and proper motion as magnitudes
  * Nov  5 2009	Return UCAC2 and UCAC3 RA proper motion and error as RA degrees
+ *
+ * Mar 26 2010	Add more braces to if/else statements
  */

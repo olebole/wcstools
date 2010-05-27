@@ -1,4 +1,18 @@
-Version 3.8.0 (November 12, 2009)
+Version 3.8.1 (April 30, 2010)
+scat,imcat: Set GSC2 magnitudes > 90 to 99.99
+gethead: Fix buffer reallocation bug which crashed reading very large headers
+gethead: Fix trailing spaces on ASCII file quoted string values
+gethead: Fix problems with string value extraction changing ASCII files
+skycoor: Use number of decimal places from -n for -r difference if set
+wcscon.c: Fix bug in fk524() e-term computation; fix J<->B conversions
+catutil.c: Fix bug so searches around the south pole work
+fitsfile.c: In fitswhead(), always pad blocks to 2880 bytes with spaces
+            and fix bug dealing with large primary headers
+wcscon.c: Fix bug in computing the magnitude of the e-terms in fk524() and
+          drop ep1 assignment after line 178 in wcsconp()
+catutil.c: Add padstring argument to agets() to control trailing spaces
+
+Version 3.8.0 (November 13, 2009)
 getcol: Drop parentheses around single column
 imcat: Move array allocation to subroutine as suggested by Douglas Burke
 imextract: Fix bug which caused command line extension lists to be ignored
@@ -13,6 +27,7 @@ tabread.c: Fix memory leaks found by Douglas Burke
 ucac3read.c: Add UCAC3 catalog and add errors to UCAC2 catalog
 webread.c: Free allocated pointers before returning
 webread.c: Use movebuff() in catutil.c; reverse source/destination pointers and offsets
+imsetwcs.c: Print catalog magnitude name in residual header
 
 Version 3.7.9 (September 18, 2009)
 sethead, keyhead, cphead, delhead: Fix bug so more images can be processed

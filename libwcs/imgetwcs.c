@@ -1,8 +1,8 @@
 /*** File libwcs/imgetwcs.c
- *** March 24, 2009
+ *** April 7, 2010
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2009
+ *** Copyright (C) 1996-2010
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -56,8 +56,8 @@ static double dec0 = -99.0;		/* Initial center Dec in degrees */
 static double xref0 = -99999.0;		/* Reference pixel X coordinate */
 static double yref0 = -99999.0;		/* Reference pixel Y coordinate */
 static int ptype0 = -1;			/* Projection type to fit */
-static int  nctype = 28;		/* Number of possible projections */
-static char ctypes[32][4];		/* 3-letter codes for projections */
+static int  nctype = NWCSTYPE;		/* Number of possible projections */
+static char ctypes[NWCSTYPE][4];	/* 3-letter codes for projections */
 static int usecdelt = 0;		/* Use CDELT if 1, else CD matrix */
 static char *dateobs0 = NULL;		/* Initial DATE-OBS value in FITS date format */
 
@@ -422,7 +422,7 @@ int	verbose;	/* Extra printing if =1 */
 	else {
 	    if (hgeti4 (header, "IMAGEW", &wp) < 1)
 		return (NULL);
-	    if (hgeti4 (header, "IMAGEH", &wp) < 1)
+	    if (hgeti4 (header, "IMAGEH", &hp) < 1)
 		return (NULL);
 	    }
 	}
@@ -802,4 +802,7 @@ char *dateobs;
  * Oct 19 2007	Return NULL from GetFITSWCS() immediately if no WCS in header
  *
  * Mar 24 2009	Set dimensions from IMAGEW and IMAGEH if WCSAXES > 0
+ *
+ * Apr 06 2010	Set hp from IMAGEH in ChangeFITSWCS() (from Paul Liptack)
+ * Apr  7 2010	In ChangeFITSWCS() set number of WCS projections from NWCSTYPE
  */

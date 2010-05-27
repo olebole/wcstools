@@ -1,8 +1,8 @@
 /*** File libwcs/catutil.c
- *** October 26, 2009
+ *** April 06, 2010
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2009
+ *** Copyright (C) 1998-2010
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -77,7 +77,7 @@
  *	Read int value from a file where keyword=value, anywhere on a line
  * int agetr8 (string, keyword, dval)
  *	Read double value from a file where keyword=value, anywhere on a line
- * int agets (string, keyword, lval, value)
+ * int agets (string, keyword, lval, fillblank, value)
  *	Read value from a file where keyword=value, anywhere on a line
  * void bv2sp (bv, b, v, isp)
  *	approximate spectral type given B - V or B and V magnitudes
@@ -1595,6 +1595,34 @@ char	*magname;	/* Name of magnitude, returned */
 	else if (imag == 6)
 	    strcpy (magname, "MagKe");
 	}
+    else if (refcat==UCAC2) {
+	if (imag == 1)
+	    strcpy (magname, "MagJ");
+	else if (imag == 2)
+	    strcpy (magname, "MagH");
+	else if (imag == 3)
+	    strcpy (magname, "MagK");
+	else if (imag == 4)
+	    strcpy (magname, "MagC");
+	}
+    else if (refcat==UCAC3) {
+	if (imag == 1)
+	    strcpy (magname, "MagB");
+	else if (imag == 2)
+	    strcpy (magname, "MagR");
+	else if (imag == 3)
+	    strcpy (magname, "MagI");
+	else if (imag == 4)
+	    strcpy (magname, "MagJ");
+	else if (imag == 5)
+	    strcpy (magname, "MagH");
+	else if (imag == 6)
+	    strcpy (magname, "MagK");
+	else if (imag == 7)
+	    strcpy (magname, "MagM");
+	else if (imag == 8)
+	    strcpy (magname, "MagA");
+	}
     else if (refcat==SKYBOT)
 	strcpy (magname, "MagV");
     else
@@ -1693,6 +1721,36 @@ int	refcat;		/* Catalog code */
 	    return (2);
 	else
 	    return (3);	/* K */
+	}
+    else if (refcat==UCAC2) {
+	if (cmag == 'J')
+	    return (1);
+	else if (cmag == 'H')
+	    return (2);
+	else if (cmag == 'K')
+	    return (3);
+	else if (cmag == 'C')
+	    return (4);
+	else
+	    return (3);	/* K */
+	}
+    else if (refcat==UCAC3) {
+	if (cmag == 'R')
+	    return (2);
+	else if (cmag == 'I')
+	    return (3);
+	else if (cmag == 'J')
+	    return (4);
+	else if (cmag == 'H')
+	    return (5);
+	else if (cmag == 'K')
+	    return (6);
+	else if (cmag == 'M')
+	    return (7);
+	else if (cmag == 'A')
+	    return (8);
+	else
+	    return (1);	/* B */
 	}
     else
 	return (1);
@@ -1995,7 +2053,7 @@ int	verbose;	/* 1 to print limits, else 0 */
 
     /* Deal with south pole */
     if (dec1 < -90.0) {
-	dec1 = 90.0 - (dec1 + 90.0);
+	dec1 = -90.0 - (dec1 + 90.0);
 	if (dec1 > dec2)
 	    dec2 = dec1;
 	dec1 = -90.0;
@@ -2403,7 +2461,7 @@ int	*ival;		/* Integer value, returned */
 {
     char value[32];
 
-    if (agets (string, keyword, 31, value)) {
+    if (agets (string, keyword, 31, 0, value)) {
 	*ival = atoi (value);
 	return (1);
 	}
@@ -2425,7 +2483,7 @@ double	*dval;		/* Double value, returned */
 {
     char value[32];
 
-    if (agets (string, keyword, 31, value)) {
+    if (agets (string, keyword, 31, 0, value)) {
 	*dval = atof (value);
 	return (1);
 	}
@@ -2437,22 +2495,24 @@ double	*dval;		/* Double value, returned */
 /* AGETS -- Get keyword value from ASCII string with keyword=value anywhere */
 
 int
-agets (string, keyword0, lval, value)
+agets (string, keyword0, lval, fillblank, value)
 
-char *string;  /* character string containing <keyword>= <value> info */
-char *keyword0;  /* character string containing the name of the keyword
-                   the value of which is returned.  hget searches for a
-                   line beginning with this string.  if "[n]" or ",n" is
+char *string;	/* character string containing <keyword>= <value> info */
+char *keyword0;	/* character string containing the name of the keyword
+		   the value of which is returned.  hget searches for a
+		   line beginning with this string.  if "[n]" or ",n" is
 		   present, the n'th token in the value is returned. */
-int lval;       /* Size of value in characters
+int lval;	/* Size of value in characters
 		   If negative, value ends at end of line */
-char *value;      /* String (returned) */
+int fillblank;	/* If 0, leave blanks, strip trailing blanks
+		   if non-zero, replace blanks with underscores */
+char *value;	/* String (returned) */
 {
     char keyword[81];
     char *pval, *str, *pkey, *pv;
-    char squot[2], dquot[2], lbracket[2], rbracket[2], comma[2];
+    char cquot, squot[2], dquot[2], lbracket[2], rbracket[2], comma[2];
     char *lastval, *rval, *brack1, *brack2, *lastring, *iquot, *ival;
-    int ipar, i, lkey;
+    int ipar, i, lkey, fkey;
 
     squot[0] = (char) 39;
     squot[1] = (char) 0;
@@ -2462,6 +2522,7 @@ char *value;      /* String (returned) */
     lbracket[1] = (char) 0;
     comma[0] = (char) 44;
     comma[1] = (char) 0;
+    cquot = ' ';
     rbracket[0] = (char) 93;
     rbracket[1] = (char) 0;
     lastring = string + strlen (string);
@@ -2469,6 +2530,7 @@ char *value;      /* String (returned) */
     /* Find length of variable name */
     strncpy (keyword,keyword0, sizeof(keyword)-1);
     brack1 = strsrch (keyword,lbracket);
+    brack2 = NULL;
     if (brack1 == NULL)
 	brack1 = strsrch (keyword,comma);
     if (brack1 != NULL) {
@@ -2478,49 +2540,53 @@ char *value;      /* String (returned) */
     lkey = strlen (keyword);
 
     /* First check for the existence of the keyword in the string */
-    pkey = strcsrch (string, keyword);
+    pval = NULL;
+    str = string;
+    while (pval == NULL) {
+	pkey = strcsrch (str, keyword);
 
     /* If keyword has not been found, return 0 */
-    if (pkey == NULL)
-	return (0);
+	if (pkey == NULL) {
+	    return (0);
+	    }
 
     /* If it has been found, check for = or : and preceding characters */
-    pval = NULL;
-    while (pval == NULL) {
 
-	/* Must be at start of file or after control character or space */
+    /* Must be at start of file or after control character or space */
 	if (pkey != string && *(pkey-1) > 32) {
 	    str = pkey;
 	    pval = NULL;
 	    }
 
 	/* Must have "=" or ":" as next nonspace character */
-	else {
+	    else {
 	    pv = pkey + lkey;
-	    while (*pv == ' ')
+	    while (*pv == ' ') {
 		pv++;
+		}
 	    if (*pv != '=' && *pv != ':') {
 		str = pkey;
 		pval = NULL;
 		}
 
-	    /* If found, bump pointer past keyword, operator, and spaces */
+	/* If found, bump pointer past keyword, operator, and spaces */
 	    else {
 		pval = pv + 1;
-		while (*pval == '=' || *pval == ' ')
+		while (*pval == '=' || *pval == ' ') {
 		    pval++;
+		    }
 		break;
 		}
 	    }
 	str = str + lkey;
-	if (str > lastring)
+	if (str > lastring) {
 	    break;
-	pkey = strcsrch (str, keyword);
-	if (pkey == NULL)
-	    break;
+	    }
 	}
-    if (pval == NULL)
+
+    if (pval == NULL) {
 	return (0);
+	}
 
     /* Drop leading spaces */
     while (*pval == ' ') pval++;
@@ -2536,31 +2602,39 @@ char *value;      /* String (returned) */
 	iquot = strsrch (pval, dquot);
 	}
     if (iquot != NULL) {
+	cquot = *iquot;
 	*iquot = (char) 0;
-	for (ival = pval; ival < iquot; ival++) {
-	    if (*ival == ' ')
-		*ival = '_';
+	if (fillblank) {
+	    for (ival = pval; ival < iquot; ival++) {
+		if (*ival == ' ') {
+		    *ival = '_';
+		    }
+		}
 	    }
 	}
 
     /* If keyword has brackets, figure out which token to extract */
     if (brack1 != NULL) {
         brack2 = strsrch (brack1,rbracket);
-        if (brack2 != NULL)
+        if (brack2 != NULL) {
             *brack2 = '\0';
+	    }
         ipar = atoi (brack1);
 	}
-    else
+    else {
 	ipar = 1;
+	}
 
     /* Move to appropriate token */
     for (i = 1; i < ipar; i++) {
-	while (*pval != ' ' && *pval != '/' && pval < lastring)
+	while (*pval != ' ' && *pval != '/' && pval < lastring) {
 	    pval++;
+	    }
 
 	/* Drop leading spaces  or / */
-	while (*pval == ' ' || *pval == '/')
+	while (*pval == ' ' || *pval == '/') {
 	    pval++;
+	    }
 	}
 
     /* Transfer token value to returned string */
@@ -2568,8 +2642,9 @@ char *value;      /* String (returned) */
     if (lval < 0) {
 	lastval = value - lval - 1;
 	while (*pval != '\n' && pval < lastring && rval < lastval) {
-	    if (lval > 0 && *pval == ' ')
+	    if (lval > 0 && *pval == ' ') {
 		break;
+		}
 	    *rval++ = *pval++;
 	    }
 	}
@@ -2577,15 +2652,43 @@ char *value;      /* String (returned) */
 	lastval = value + lval - 1;
 	while (*pval != '\n' && *pval != '/' &&
 	    pval < lastring && rval < lastval) {
-	    if (lval > 0 && *pval == ' ')
+	    if (lval > 0 && *pval == ' ') {
 		break;
+		}
 	    *rval++ = *pval++;
 	    }
 	}
-    if (rval < lastval)
+    if (rval < lastval) {
 	*rval = (char) 0;
-    else
+	}
+    else {
 	*lastval = 0;
+	}
+
+    /* Drop trailing spaces/underscores */
+    if (!fillblank) {
+	lval = strlen (value);
+	for (ival = value+lval-1; ival > value; ival--) {
+	    if (*ival == '_') {
+		*ival = (char) 0;
+		}
+	    else if (*ival == ' ') {
+		*ival = (char) 0;
+		}
+	    else {
+		break;
+		}
+	    }
+	}
+    if (iquot != NULL) {
+	*iquot = cquot;
+	}
+    if (brack1 != NULL) {
+	*brack1 = lbracket[0];
+	}
+    if (brack2 != NULL) {
+	*brack2 = rbracket[0];
+	}
 
     return (1);
 }
@@ -3342,4 +3445,9 @@ char *from, *last, *to;
  * Sep 30 2009	Add UCAC3 catalog
  * Oct 26 2009	Do not wrap in RefLim() if dra=360
  * Nov  6 2009	Add UCAC3 catalog to ProgCat()
+ * Nov 13 2009	Add UCAC3 and UCAC2 to CatMagName() and CatMagNum()
+ *
+ * Mar 31 2010	Fix south pole search
+ * Apr 06 2010	Add fillblank argument to agets()
+ * Apr 06 2010	In agets() search until keyword[: or =] or end of string
  */

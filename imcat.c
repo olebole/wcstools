@@ -1,9 +1,9 @@
 /* File imcat.c
- * November 10, 2009
+ * April 30, 2010
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2009
+   Copyright (C) 1996-2010
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -1525,8 +1525,8 @@ char	**refcatname;	/* reference catalog name */
 	strcat (headline,"long_gal  	lat_gal       	");
     else
 	strcat (headline,"ra      	dec           	");
-    if (refcat == UCAC2 || refcat == UCAC3)
-	strcat (headline,"raerr 	decerr	");
+    /* if (refcat == UCAC2 || refcat == UCAC3)
+	strcat (headline,"raerr 	decerr	"); */
     if (refcat == UAC  || refcat == UA1  || refcat == UA2 ||
 	refcat == USAC || refcat == USA1 || refcat == USA2)
 	strcat (headline,"magb  	magr  	");
@@ -1588,12 +1588,14 @@ char	**refcatname;	/* reference catalog name */
 	strcat (headline,"size  	");
     else if (sptype == 1)
 	strcat (headline,"type	");
-    else if (gcset)
+    else if (gcset && refcat != UCAC2 && refcat != UCAC3)
 	strcat (headline,"peak	");
     if (mprop)
 	strcat (headline, "pmra 	pmdec	");
+    /* if (refcat == UCAC2 || refcat == UCAC3)
+	strcat (headline, "epmra 	epmdec"); */
     if (refcat == UCAC2 || refcat == UCAC3)
-	strcat (headline, "epmra 	epmdec	ni	nc	");
+	strcat (headline, "ni	nc	");
     if (refcat == GSC2)
 	strcat (headline,"class	");
     strcat (headline,"x    	y    ");
@@ -1608,9 +1610,9 @@ char	**refcatname;	/* reference catalog name */
 
     strcpy (headline,"--------------------------------");	/* ID number */
     headline[nnfld] = (char) 0;
-    strcat (headline, "	-----------	------------	-----");/* RA Dec */
-    if (refcat == UCAC2 || refcat == UCAC3)
-	strcat (headline,"	------	------");	/* RA, Dec error */
+    strcat (headline, "	-----------	------------");/* RA Dec */
+    /* if (refcat == UCAC2 || refcat == UCAC3)
+	strcat (headline,"	------	------"); */	/* RA, Dec error */
     strcat (headline, "	-----");	/* First Mag */
     if (refcat == UAC  || refcat == UA1  || refcat == UA2 || 
 	refcat == USAC || refcat == USA1 || refcat == USA2 || refcat == TYCHO ||
@@ -1652,10 +1654,10 @@ char	**refcatname;	/* reference catalog name */
 	strcat (headline,"	------");
     else if (gcset && refcat != UCAC2 && refcat != UCAC3)
 	strcat (headline, "	-----");		/* plate or peak */
-    if (mprop)
+    if (mprop )
 	strcat (headline, "	------	------");	/* Proper motion */
     if (refcat == UCAC2 || refcat == UCAC3)
-	strcat (headline, "	------	------	--	--");
+	strcat (headline, "	--	--");
     if (refcat == GSC2)
 	strcat (headline,"	-----");		/* GSC2 object class */
     strcat (headline, "	------	------");		/* X and Y */
@@ -1837,9 +1839,13 @@ char	**refcatname;	/* reference catalog name */
 		if (refcat == GSC || refcat == GSCACT)
 		    sprintf (headline, "%s	%s	%s	%5.2f	%d	%d	%d",
 		     numstr, rastr, decstr, gm[0][i], gc[i], band, ngsc);
-		else if (refcat == GSC2)
+		else if (refcat == GSC2) {
+		    for (j = 0; j < 4; j++) {
+			if (gm[j][i] > 90.0) gm[j][i] = 99.99;
+			}
 		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f	%d",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i], gc[i]);
+		    }
 		else if (refcat == HIP)
 		    sprintf (headline, "%s	%s	%s	%5.2f	%5.2f	%5.2f	%5.2f",
 		     numstr,rastr,decstr,gm[0][i],gm[1][i],gm[2][i],gm[3][i]);
@@ -1928,7 +1934,7 @@ char	**refcatname;	/* reference catalog name */
 			    sprintf (temp, "	%5.2f",gm[imag][i]);
 			strcat (headline, temp);
 			}
-		    if (gcset) {
+		    if (gcset && refcat != UCAC2 && refcat != UCAC3) {
 			sprintf (temp, "	%d", gc[i]);
 			strcat (headline, temp);
 			}
@@ -2417,5 +2423,7 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Sep 25 2009	Add FreeBuffers() and AllocBuffers() after Douglas Burke
  * Nov 10 2009	Fix image limits for 90 degree rotation
  * Nov 10 2009	Allocat MAXNMAG magnitude vectors
- * Nov 10 2009	Add UCAC3 catalog
+ * Nov 18 2009	Add UCAC3 catalog
+ *
+ * Apr 30 2010	Set GSC2 magnitudes > 90 to 99.99
  */

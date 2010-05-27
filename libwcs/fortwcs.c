@@ -1,4 +1,4 @@
-/*** File saoimage/wcslib/fortwcs.c
+/*** File wcstools/libwcs/fortwcs.c
  *** April 7, 2003
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics

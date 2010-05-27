@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.h
- *** July 25, 2007
+ *** April 7, 2010
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2007
+ *** Copyright (C) 1994-2010
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -188,6 +188,7 @@ struct WorldCoor {
 #define WCS_DSS 29	/* Digitized Sky Survey plate solution */
 #define WCS_PLT 30	/* Plate fit polynomials (SAO) */
 #define WCS_TNX 31	/* Gnomonic = Tangent Plane (NOAO with corrections) */
+#define NWCSTYPE 32	/* Number of WCS types (-1 really means no WCS)
 
 /* Coordinate systems */
 #define WCS_J2000	1	/* J2000(FK5) right ascension and declination */
@@ -332,6 +333,12 @@ extern "C" {
         int *offscl);
 
     double wcsdist(	/* Compute angular distance between 2 sky positions */
+	double ra1,	/* First longitude/right ascension in degrees */
+	double dec1,	/* First latitude/declination in degrees */
+	double ra2,	/* Second longitude/right ascension in degrees */
+	double dec2);	/* Second latitude/declination in degrees */
+
+    double wcsdist1(	/* Compute angular distance between 2 sky positions */
 	double ra1,	/* First longitude/right ascension in degrees */
 	double dec1,	/* First latitude/declination in degrees */
 	double ra2,	/* Second longitude/right ascension in degrees */
@@ -716,6 +723,7 @@ void wcssize();		/* Return RA and Dec of image center, size in RA and Dec */
 void wcsfull();		/* Return RA and Dec of image center, size in degrees */
 void wcsrange();	/* Return min and max RA and Dec of image in degrees */
 double wcsdist();	/* Distance in degrees between two sky coordinates */
+double wcsdist1();	/* Compute angular distance between 2 sky positions */
 double wcsdiff();	/* Distance in degrees between two sky coordinates */
 void wcscominit();	/* Initialize catalog search command set by -wcscom */
 void wcscom();		/* Execute catalog search command set by -wcscom */
@@ -914,4 +922,7 @@ extern int tnxpix();	/* Inverse transform (world to physical) gnomonic projectio
  * Jan 10 2007	Add ANSI prototypes for all subroutines
  * Feb  1 2007	Add wcs.wcslog for log wavelength
  * Jul 25 2007	Add v2s3(), s2v3(), d2v3(), v2d3() for coordinate-vector conversion
+ *
+ * Mar 31 2010	Add wcsdist1(), an alternate method
+ * Apr 07 2010	Add NWCSTYPE to keep it aligned with actual number of WCS types
  */

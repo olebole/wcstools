@@ -1,8 +1,8 @@
 /*** File libwcs/fitsfile.c
- *** September 25, 2009
+ *** March 31, 2010
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2009
+ *** Copyright (C) 1996-2010
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -211,7 +211,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
     /* Read FITS header from input file one FITS block at a time */
     irec = 0;
     ibhead = 0;
-    while (irec < 100) {
+    while (irec < 200) {
 	nbytes = FITSBLOCK;
 	for (ntry = 0; ntry < 10; ntry++) {
 	    for (i = 0; i < 2884; i++) fitsbuf[i] = 0;
@@ -277,7 +277,9 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 
 	/* Move current FITS record into header string */
 	for (i = 0; i < 2880; i++)
-	    if (fitsbuf[i] < 32) fitsbuf[i] = 32;
+	    if (fitsbuf[i] < 32 || i > nbr) fitsbuf[i] = 32;
+	if (nbr < 2880)
+	    nbr = 2880;
 	strncpy (headnext, fitsbuf, nbr);
 	*nbhead = *nbhead + nbr;
 	nrec = nrec + 1;
@@ -326,11 +328,12 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		    headnext = header;
 		    *headend = ' ';
 		    headend = NULL;
-		    /* nrec = 1; */
+		    nrec = 1;
 		    hdu = hdu + 1;
 		    }
-		else
+		else {
 		    break;
+		    }
 		}
 
 	    /* If this is the desired header data unit, keep it */
@@ -355,25 +358,31 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		if (naxis > 0) {
 		    ibpix = 0;
 		    hgeti4 (header,"BITPIX",&ibpix);
-		    if (ibpix < 0)
+		    if (ibpix < 0) {
 			nbpix = -ibpix / 8;
-		    else
+			}
+		    else {
 			nbpix = ibpix / 8;
+			}
 		    nax1 = 1;
 		    hgeti4 (header,"NAXIS1",&nax1);
 		    nax2 = 1;
-		    if (naxis > 1)
+		    if (naxis > 1) {
 			hgeti4 (header,"NAXIS2",&nax2);
+			}
 		    nax3 = 1;
-		    if (naxis > 2)
+		    if (naxis > 2) {
 			hgeti4 (header,"NAXIS3",&nax3);
+			}
 		    nax4 = 1;
-		    if (naxis > 3)
+		    if (naxis > 3) {
 			hgeti4 (header,"NAXIS4",&nax4);
+			}
 		    nbskip = nax1 * nax2 * nax3 * nax4 * nbpix;
 		    nblock = nbskip / 2880;
-		    if (nblock*2880 < nbskip)
+		    if (nblock*2880 < nbskip) {
 			nblock = nblock + 1;
+			}
 		    npcount = 0;
 		    hgeti4 (header,"PCOUNT", &npcount);
 		    if (npcount > 0) {
@@ -383,8 +392,9 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 			    nblock = nblock + 1;
 			}
 		    }
-		else
+		else {
 		    nblock = 0;
+		    }
 		*nbhead = *nbhead + (nblock * 2880);
 
 		/* Set file pointer to beginning of next header/data unit */
@@ -406,8 +416,9 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 				ipos = ipos + nbr;
 				break;
 				}
-			    else
+			    else {
 				ipos = ipos + nbytes;
+				}
 			    }
 			npos = nblock * 2880;
 			}
@@ -422,8 +433,9 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		headend = NULL;
 		nrec = 1;
 		}
-	    else
+	    else {
 		break;
+		}
 	    }
 	}
 
@@ -472,9 +484,6 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    strncpy (header, "SIMPLE  ", 8);
 	    hputl (header, "SIMPLE", 1);
 	    }
-	hputs (header,"COMMENT","-------------------------------------------");
-	hputs (header,"COMMENT","Information from Primary Header");
-	hputs (header,"COMMENT","-------------------------------------------");
 	headend = blsearch (header,"END");
 	if (headend == NULL)
 	    headend = ksearch (header, "END");
@@ -488,7 +497,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	hdel (pheader, "EXTEND");
 	hputl (pheader, "ROOTEND",1);
 	pheadend = ksearch (pheader,"END");
-	lprim = pheadend + 80 - pheader;
+	lprim = pheadend + 320 - pheader;
 	if (lext + lprim > nbh) {
 	    nrec = (lext + lprim) / FITSBLOCK;
 	    if (FITSBLOCK*nrec < lext+lprim)
@@ -502,6 +511,12 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 	    headend = header + lext;
 	    (void) hlength (header, *lhead);
 	    }
+	hputs (header,"COMMENT","-------------------------------------------");
+	hputs (header,"COMMENT","Information from Primary Header");
+	hputs (header,"COMMENT","-------------------------------------------");
+	headend = blsearch (header,"END");
+	if (headend == NULL)
+	    headend = ksearch (header, "END");
 	pheader[lprim] = 0;
 	strncpy (headend, pheader, lprim);
 	if (pheader != NULL) {
@@ -2281,4 +2296,7 @@ char *from, *last, *to;
  * Sep 22 2009	In fitsrthead(), fix lengths for ASCII numeric table entries
  * Sep 25 2009	Add subroutine moveb() and fix calls to it
  * Sep 25 2009	Fix several small errors found by Douglas Burke
+ *
+ * Mar 29 2010	In fitswhead(), always pad blocks to 2880 bytes with spaces
+ * Mar 31 2010	In fitsrhead(), fix bug reading long primary headers
  */

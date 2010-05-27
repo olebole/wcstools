@@ -1,8 +1,8 @@
 /*** File libwcs/fitswcs.c
- *** December 20, 2007
+ *** April 29, 2010
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2007
+ *** Copyright (C) 1996-2010
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -187,36 +187,30 @@ int verbose;
 	if (hdel (header, keyword)) {
 	    n++;
 	    if (verbose)
-		fprintf (stderr,"%s: deleted\n", flds[i]);
+		fprintf (stderr,"%s: deleted\n", keyword);
 	    }
 	sprintf (keyword, "PV2_%d", i);
 	if (hdel (header, keyword)) {
 	    n++;
 	    if (verbose)
-		fprintf (stderr,"%s: deleted\n", flds[i]);
+		fprintf (stderr,"%s: deleted\n", keyword);
 	    }
 	}
 
     /* Delete rotation matrix, if present */
-    if (hdel (header,"PC001001")) {
-	n++;
-	if (verbose)
-	    fprintf (stderr,"PC001001: deleted\n");
-	}
-    if (hdel (header,"PC001002")) {
-	n++;
-	if (verbose)
-	    fprintf (stderr,"PC001002: deleted\n");
-	}
-    if (hdel (header,"PC002001")) {
-	n++;
-	if (verbose)
-	    fprintf (stderr,"PC002001: deleted\n");
-	}
-    if (hdel (header,"PC002002")) {
-	n++;
-	if (verbose)
-	    fprintf (stderr,"PC002002: deleted\n");
+    if (ksearch (header, "PC001001")) {
+	int i, j;
+	char keyword[16];
+	for (i = 1; i < 6; i++) {
+	    for (j = 1; j < 6; j++) {
+		sprintf (keyword,"PC%03d%03d", i, j);
+		if (hdel (header, keyword)) {
+		    if (verbose)
+			fprintf (stderr,"%s deleted\n", keyword);
+		    n++;
+		    }
+		}
+	    }
 	}
 
     if (verbose && n == 0)
@@ -232,34 +226,48 @@ int verbose;
 	    n++;
 	    hchange (header, "WDEC", "DEC");
 	    }
-	if (ksearch (header,"WEPOCH")) {
+	eq = 0.0;
+	if (!hgetr8 (header, "WEQUINOX", &eq)) {
+	    if (!hgetr8 (header, "WEPOCH", &eq)) {
+		if (!hgetr8 (header, "EQUINOX", &eq)) {
+		    hgetr8 (header, "EPOCH", &eq);
+		    }
+		}
+	    }
+	if (ksearch (header,"WEQUINOX")) {
+	    hdel (header, "EPOCH");
+	    n++;
+	    hchange (header, "WEQUINOX", "EPOCH");
+	    }
+	else if (ksearch (header,"WEPOCH")) {
 	    hdel (header, "EPOCH");
 	    n++;
 	    hchange (header, "WEPOCH", "EPOCH");
 	    }
-	if (ksearch (header,"WEQUINOX")) {
-	    hdel (header, "EQUINOX");
-	    n++;
-	    hchange (header, "WEQUINOX", "EQUINOX");
+	else if (eq > 0.0) {
+	    hputr8 (header, "EPOCH", eq);
 	    }
-	if (ksearch (header, "EPOCH")) {
+	if (ksearch (header, "EQUINOX")) {
 	    hdel (header, "EQUINOX");
 	    n++;
 	    if (verbose)
 		fprintf (stderr,"EQUINOX deleted\n");
 	    }
-	hdel (header, "RADECSYS");
-	n++;
-	if (verbose)
-	    fprintf (stderr,"RADECSYS deleted\n");
-	hdel (header, "SECPIX1");
-	n++;
-	if (verbose)
-	    fprintf (stderr,"SECPIX1 deleted\n");
-	hdel (header, "SECPIX2");
-	n++;
-	if (verbose)
-	    fprintf (stderr,"SECPIX2 deleted\n");
+	if (hdel (header, "RADECSYS")) {
+	    if (verbose)
+		fprintf (stderr,"RADECSYS deleted\n");
+	    n++;
+	    }
+	if (hdel (header, "SECPIX1")) {
+	    if (verbose)
+		fprintf (stderr,"SECPIX1 deleted\n");
+	    n++;
+	    }
+	if (hdel (header, "SECPIX2")) {
+	    if (verbose)
+		fprintf (stderr,"SECPIX2 deleted\n");
+	    n++;
+	    }
 	if (verbose) {
 	    hgets (header,"RA", 31, rastr);
 	    hgets (header,"DEC", 31, decstr);
@@ -297,28 +305,15 @@ int verbose;
 
 	for (i = 1; i < 13; i++) {
 	    sprintf (keyword,"CO1_%d", i);
-	    hdel (header, keyword);
-	    if (verbose)
-		fprintf (stderr,"%s deleted\n", keyword);
-	    n++;
+	    if (hdel (header, keyword)) {
+		if (verbose)
+		    fprintf (stderr,"%s deleted\n", keyword);
+		n++;
+		}
 	    }
 	for (i = 1; i < 13; i++) {
 	    sprintf (keyword,"CO2_%d", i);
-	    hdel (header, keyword);
-	    if (verbose)
-		fprintf (stderr,"%s deleted\n", keyword);
-	    n++;
-	    }
-	}
-
-    /* Delete rotation matrix, if present */
-    if (ksearch (header, "CO1_1")) {
-	int i, j;
-	char keyword[16];
-	for (i = 1; i < 6; i++) {
-	    for (j = 1; i < 6; i++) {
-		sprintf (keyword,"PC%03d%03d", i, j);
-		hdel (header, keyword);
+	    if (hdel (header, keyword)) {
 		if (verbose)
 		    fprintf (stderr,"%s deleted\n", keyword);
 		n++;
@@ -648,4 +643,8 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Apr  2 2007	Fix DelWCSFITS() argument description at top of file
  * Apr 18 2007	Delete WCS result keywords with DelWCSFITS()
  * Dec 20 2007	Print error message set by fitsrhead()
+ *
+ * Apr 22 2010	Fix parameter deletion errors found by Paul Liptack
+ * Apr 22 2010	Only print deletion confirmation if deletion occurred
+ * Apr 29 2010	Fx loop index test bug i -> j in PC matrix deletion
  */
