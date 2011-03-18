@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.c
- *** April 7, 2010
+ *** March 17, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2010
+ *** Copyright (C) 1994-2011
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -115,6 +115,10 @@ struct WorldCoor *wcs;	/* WCS structure */
 	free (wcs->lin.imgpix);
     if (wcs->lin.piximg != NULL)
 	free (wcs->lin.piximg);
+    if (wcs->inv_x != NULL)
+	poly_end (wcs->inv_x);
+    if (wcs->inv_y != NULL)
+	poly_end (wcs->inv_y);
     free (wcs);
     return;
 }
@@ -369,6 +373,7 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
     strcpy (ctypes[29], "DSS");
     strcpy (ctypes[30], "PLT");
     strcpy (ctypes[31], "TNX");
+    strcpy (ctypes[32], "ZPX");
 
     /* Initialize distortion types */
     strcpy (dtypes[1], "SIP");
@@ -469,7 +474,7 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	    wcs->prjcode != WCS_TNX && wcs->prjcode != WCS_SIN &&
 	    wcs->prjcode != WCS_PIX && wcs->prjcode != WCS_LIN &&
 	    wcs->prjcode != WCS_CAR && wcs->prjcode != WCS_COE &&
-	    wcs->prjcode != WCS_NCP))
+	    wcs->prjcode != WCS_NCP && wcs->prjcode != WCS_ZPX))
 	    wcs->wcsproj = WCS_NEW; */
 
 	/* Handle NOAO corrected TNX as uncorrected TAN if oldwcs is set */
@@ -477,6 +482,13 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	    wcs->ctype[0][6] = 'A';
 	    wcs->ctype[0][7] = 'N';
 	    wcs->prjcode = WCS_TAN;
+	    }
+
+	/* Handle NOAO corrected ZPX as uncorrected ZPN if oldwcs is set */
+	if (wcs->wcsproj == WCS_OLD && wcs->prjcode == WCS_ZPX) {
+	    wcs->ctype[0][6] = 'P';
+	    wcs->ctype[0][7] = 'N';
+	    wcs->prjcode = WCS_ZPN;
 	    }
 	}
 
@@ -2121,6 +2133,12 @@ double	*xpos,*ypos;	/* RA and Dec in degrees (returned) */
 	    wcs->offscl = 1;
 	}
 
+    /* Use NOAO IRAF corrected zenithal projection */
+    else if (wcs->prjcode == WCS_ZPX) {
+	if (zpxpos (xpi, ypi, wcs, &xp, &yp))
+	    wcs->offscl = 1;
+	}
+
     /* Use Classic AIPS projections */
     else if (wcs->wcsproj == WCS_OLD || wcs->prjcode <= 0) {
 	if (worldpos (xpi, ypi, wcs, &xp, &yp))
@@ -2250,6 +2268,12 @@ int	*offscl;	/* 0 if within bounds, else off scale */
 	    *offscl = 1;
 	}
 
+    /* Use NOAO IRAF corrected zenithal projection */
+    else if (wcs->prjcode == WCS_ZPX) {
+	if (zpxpix (xp, yp, wcs, &xpi, &ypi))
+	    *offscl = 1;
+	}
+
     /* Use Classic AIPS projections */
     else if (wcs->wcsproj == WCS_OLD || wcs->prjcode <= 0) {
 	if (worldpix (xp, yp, wcs, &xpi, &ypi))
@@ -2283,13 +2307,6 @@ int	*offscl;	/* 0 if within bounds, else off scale */
     wcs->xpix = *xpix;
     wcs->ypix = *ypix;
 
-    /* If this WCS is converted to another WCS rather than pixels, convert now */
-    if (wcs->wcsdep != NULL) {
-	xpos = *xpix;
-	ypos = *ypix;
-	depwcs = wcs->wcsdep;
-	wcsc2pix (wcs->wcsdep, xpos, ypos, depwcs->radecin, xpix, ypix, offscl);
-	}
     return;
 }
 
@@ -2331,6 +2348,7 @@ double  *ypos;           /* y (dec) coordinate (deg) */
 	*xpos = wcscrd[wcs->wcsl.lng];
 	*ypos = wcscrd[wcs->wcsl.lat];
 	}
+
     return (offscl);
 }
 
@@ -2641,12 +2659,12 @@ char *cwcs;	/* Keyword suffix character for output WCS */
 	strcpy (kwd[++nkwd], keyword);
 	dkwd[nkwd] = 1;
 	}
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < MAXPV; i++) {
 	sprintf (keyword,"PV1_%d", i);
 	strcpy (kwd[++nkwd], keyword);
 	dkwd[nkwd] = 1;
 	}
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < MAXPV; i++) {
 	sprintf (keyword,"PV2_%d", i);
 	strcpy (kwd[++nkwd], keyword);
 	dkwd[nkwd] = 1;
@@ -2958,4 +2976,8 @@ char *cwcs;	/* Keyword suffix character for output WCS */
  * Jul 25 2007	Compute distance between two coordinates using d2v3()
  *
  * Apr  7 2010	In wcstype() set number of WCS projections from NWCSTYPE
+ *
+ * Mar 11 2011	Add NOAO ZPX projection (Frank Valdes)
+ * Mar 14 2011	Delete j<=MAXPV PVi_j parameters (for SCAMP polynomials via Ed Los)
+ * Mar 17 2011	Fix WCSDEP bug found by Ed Los
  */

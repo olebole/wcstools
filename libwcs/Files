@@ -1,4 +1,4 @@
-WCSTools libwcs Subroutines
+WCSTools libwcs Subroutines (3.9.0, March 11, 2011)
 
 actread.c
   Return stars from the USNO ACT Reference Catalog
@@ -88,6 +88,8 @@ platepos.c
   pixel X and Y given sky coordinates for such images.  Algorithms are based
   on those in dsspos.c, but go straight from pixels to angles without an
   intermediate plate coordinate.
+poly.c
+  Polynomial evaluation for SCAMP distortion correction
 proj.c
   WCSLIB spherical map projection subroutines
 sdssread.c
@@ -140,6 +142,12 @@ worldpos.c
   standard world coordinate systems.  worldpix() uses the WCS structure
   to compute image pixel X and Y given sky coordinates for the same images.
   Mostly from NRAO.
+zpxpos.c
+  zpxpos() uses the WCS keywords set up for IRAF's ZPX projection to
+  compute sky coordinates given image pixel X and Y.  zpxpix() uses
+  the WCS structure to compute image pixel X and Y given sky coordinates
+  for such images.  The projection is a tangent plane with corrections
+  between the rotation and scaling and the actual projection.
 
 fitshead.h
   Declarations of FITS header access subroutines
@@ -159,9 +167,6 @@ wcslib.h
   transformation drivers, and linear transformation subroutines
 
 * Notes:
-  slasubs.c contains unmodified subroutines from Pat Wallace's Starlink
-            astrometry library and may be omitted if that library is
-            being linked.
   WCSLIB subroutines were written by Mark Calabretta of CSIRO and have
          been modified in several ways:
          1) His distributed wcs.h has been changed to wcslib.h, and
@@ -171,3 +176,4 @@ wcslib.h
          3) ifndef's at start of headers files have been named to reflect
             the names of the header files, i.e. wcslib_h_ in wcslib.h.
          4) All header files have been combined into wcslib.h
+	 5) Emmanuel Bertin's SCAMP distortion has been added to proj.c:1

@@ -1,5 +1,27 @@
 WCSTools WCS subroutine release history
 
+March 18, 2011 - Release 3.8.2
+zpxpos.c, wcs.c, wcsinit.c: Add support for NOAO ZPX protection (Frank Valdes)
+imsetwcs.c:  Allocate NMAXMAG instead of number of magnitudes, nmag
+wcsinit.c,wcs.c,proj.c: Support SCAMP TAN distortion correction (Ed Los)
+wcsinit.c: ARSEC and DEG constants used by SCAMP replaced by S2D and D2S
+proj.c: If no PV coefficients in ZPN projection, make it ARC
+wcs.c: Fix bug involving dependent WCS's (Ed Los)
+
+April 30, 2010 - Release 3.8.1
+scat,imcat: Set GSC2 magnitudes > 90 to 99.99
+gethead: Fix buffer reallocation bug which crashed reading very large
+         headers
+gethead: Fix trailing spaces on ASCII file quoted string values
+gethead: Fix problems with string value extraction changing ASCII files
+skycoor: Use number of decimal places from -n for -r difference if set
+wcscon.c: Fix bug in fk524() e-term computation; fix J<->B conversions
+fitsfile.c: In fitswhead(), always pad blocks to 2880 bytes with spaces
+            and fix bug dealing with large primary headers
+wcscon.c: Fix bug in computing the magnitude of the e-terms in fk524()
+          and drop ep1 assignment after line 178 in wcsconp()
+
+
 November 13, 2009 - Release 3.8.0
 dateutil.c: Fix possible bug in nutation subroutine
 fitsfile.c: Add subroutine moveb() and fix binary table calls to it

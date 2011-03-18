@@ -1,8 +1,8 @@
 /*** File libwcs/fitswcs.c
- *** April 29, 2010
+ *** March 14, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2010
+ *** Copyright (C) 1996-2011
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -182,7 +182,7 @@ int verbose;
 	}
 
     /* Delete projection parameters */
-    for (i = 0; i < 10; i++) {
+    for (i = 0; i < MAXPV; i++) {
 	sprintf (keyword, "PV1_%d", i);
 	if (hdel (header, keyword)) {
 	    n++;
@@ -647,4 +647,6 @@ struct WorldCoor *wcs;	/* WCS structure */
  * Apr 22 2010	Fix parameter deletion errors found by Paul Liptack
  * Apr 22 2010	Only print deletion confirmation if deletion occurred
  * Apr 29 2010	Fx loop index test bug i -> j in PC matrix deletion
+ *
+ * Mar 14 2011	Delete up to j=MAXPV PVi_j parameters (for SCAMP from Ed Los)
  */

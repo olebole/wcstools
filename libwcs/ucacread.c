@@ -1,8 +1,8 @@
 /*** File libwcs/ucacread.c
- *** <arch 26, 2010
+ *** March 17, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2003-2010
+ *** Copyright (C) 2003-2011
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -163,6 +163,7 @@ int	nlog;		/* 1 for diagnostics */
     int jtable,iwrap, nread;
     int pass;
     int zone;
+    int pole;
     int nmag, nmag1;
     double num, ra, dec, rapm, decpm, mag;
     double rra1, rra2, rdec1, rdec2;
@@ -216,6 +217,14 @@ int	nlog;		/* 1 for diagnostics */
     wcscstr (cstr, sysout, eqout, epout);
 
     SearchLim (cra,cdec,dra,ddec,sysout,&ra1,&ra2,&dec1,&dec2,verbose);
+
+    /* Set pole flag if search crosses north or south pole */
+    if (cdec + ddec > 90.0)
+	pole = 1;
+    else if (cdec - ddec < -90.0)
+	pole = 2;
+    else
+	pole = 0;
 
     /* Make mag1 always the smallest magnitude */
     if (mag2 < mag1) {
@@ -332,26 +341,26 @@ int	nlog;		/* 1 for diagnostics */
 	    for (iwrap = 0; iwrap <= wrap; iwrap++) {
 
 		/* Find first star based on RA */
-		if (iwrap == 0 || wrap == 0) {
-		    istar1 = ucacsra (starcat, star, zone, rra1);
-		    if (istar > 5)
-			istar = istar - 5;
-		    else
-			istar = 1;
-		    }
-		else
+		if (pole || (iwrap && wrap))
 		    istar1 = 1;
+		else {
+		    istar1 = ucacsra (starcat, star, zone, rra1);
+		    if (istar1 > 5)
+			istar1 = istar1 - 5;
+		    else
+			istar1 = 1;
+		    }
 
 		/* Find last star based on RA */
-		if (iwrap == 1 || wrap == 0) {
+		if (pole || (!iwrap && wrap))
+		    istar2 = starcat->nstars;
+		else {
 		    istar2 = ucacsra (starcat, star, zone, rra2);
 		    if (istar2 < starcat->nstars - 5)
 			istar2 = istar2 + 5;
 		    else
 			istar2 = starcat->nstars;
 		    }
-		else
-		    istar2 = starcat->nstars;
 
 		if (istar1 == 0 || istar2 == 0)
 		    break;
@@ -406,9 +415,11 @@ int	nlog;		/* 1 for diagnostics */
 			/* Check radial distance to search center */
 			if (drad > 0) {
 			    if (dist > drad) {
+				if (nstarmax > 0)
 				pass = 0;
 				}
 			    if (dradi > 0.0 && dist < dradi) {
+				if (nstarmax > 0)
 				pass = 0;
 				}
 			    }
@@ -417,10 +428,12 @@ int	nlog;		/* 1 for diagnostics */
 			else {
 			    ddist = wcsdist (cra,cdec,cra,dec);
 			    if (ddist > ddec) {
+				if (nstarmax > 0)
 				pass = 0;
 				}	
 			    rdist = wcsdist (cra,dec,ra,dec);
 		            if (rdist > dra) {
+				if (nstarmax > 0)
 				pass = 0;
 				}
 			    }
@@ -1120,24 +1133,45 @@ double	rax0;		/* Right ascension in degrees for which to search */
     ra1 = st->ra;
     istar = sc->nstars;
     nrep = 0;
-    while (istar != istar1 && nrep < 20) {
-	if (ucacstar (sc, st, zone, istar))
+    while (istar != istar1 && nrep < 50) {
+	if (ucacstar (sc, st, zone, istar)) {
+	    if (debug) {
+		fprintf (stderr," no star at %d\n", istar);
+		}
 	    break;
+	    }
 	else {
 	    ra = st->ra;
-	    if (ra == ra1)
-		break;
 	    if (debug) {
 		char rastr[32];
 		ra2str (rastr, 31, ra, 3);
 		fprintf (stderr,"UCACSRA %d %d: %s (%s)\n",
 			 nrep,istar,rastr,rastrx);
 		}
+	    if (ra == ra1) {
+		if (debug) {
+		    fprintf (stderr," ra1=    %.5f ra=     %.5f rax=    %.5f\n",
+			     ra1,ra,rax);
+		    fprintf (stderr," rdiff=  %.5f rdiff1= %.5f rdiff2= %.5f\n",
+			     rdiff,rdiff1,rdiff2);
+		    fprintf (stderr, "ra == ra1 break\n");
+		    }
+		break;
+		}
 	    rdiff = ra1 - ra;
 	    rdiff1 = ra1 - rax;
 	    rdiff2 = ra - rax;
-	    if (nrep > 20 && ABS(rdiff2) > ABS(rdiff1)) {
-		istar = istar1;
+	    /* if (nrep > 20 && ABS (rdiff2) < 0.01) && ABS(rdiff2) > ABS(rdiff1)) { */
+		/* istar = istar1; */
+	    if (ABS (rdiff2) < 0.005) {
+		if (debug) {
+		    fprintf (stderr," ra1=    %.5f ra=     %.5f rax=    %.5f\n",
+			     ra1,ra,rax);
+		    fprintf (stderr," rdiff=  %.5f rdiff1= %.5f rdiff2= %.5f\n",
+			     rdiff,rdiff1,rdiff2);
+		    fprintf (stderr, "nrep= %d, abs(rdiff2) = %.5f\n",
+			     nrep, ABS(rdiff2));
+		    }
 		break;
 		}
 	    nrep++;
@@ -1564,4 +1598,7 @@ char *string;	/* Address of Integer*4 or Real*4 vector */
  * Nov  5 2009	Return UCAC2 and UCAC3 RA proper motion and error as RA degrees
  *
  * Mar 26 2010	Add more braces to if/else statements
+ *
+ * Mar 16 2011	Improve UCACSRA to get star number closest to RA
+ * Mar 17 2011	Fix bug to find stars in regions which cross a pole
  */

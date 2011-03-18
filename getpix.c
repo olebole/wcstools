@@ -1,9 +1,9 @@
 /* File getpix.c
- * August 14, 2009
+ * September 21, 2010
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2009
+   Copyright (C) 1996-2010
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -57,6 +57,8 @@ static double ddec0 = 0.0;	/* Search box height */
 static double eqcoor = 2000.0;  /* Equinox of search center */
 static int syscoor = 0;         /* Input search coordinate system */
 static int identifier = 0;	/* If 1, identifier precedes x y in file */
+static int printtab = 0;	/* If 1, separate number with tabs */
+static int procinit = 1;	/* If 1, start mean and limits */
 
 int
 main (ac, av)
@@ -188,6 +190,10 @@ char **av;
 
 		case 's':	/* Print x y value without punctuation */
 		    nopunct++;
+		    break;
+
+		case 't':	/* Separate pixels with tabs */
+		    printtab++;
 		    break;
 
 		default:
@@ -406,7 +412,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
     double dpix, dsum, dmean, dmin, dmax, dnpix;
     char *c;
     int *yi;
-    int bitpix,xdim,ydim, i, nx, ny, ix, iy, x, y;
+    int bitpix,xdim,ydim, i, nx, ny, ix, iy, x, y, pixperline;
     int ipix = 0;
     char pixname[255];
     char nform[8];
@@ -472,6 +478,10 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 	else if (gtcheck)
 	    fprintf (stderr, "pixel values > %f\n", gtval);
 	}
+    if (verbose && !pixlabel)
+	pixperline = 1;
+    else
+	pixperline = 0;
 
 /* Get value of specified pixel */
 
@@ -491,6 +501,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
     dnpix = 0.0;
     dmin = 0.0;
     dmax = 0.0;
+    procinit = 1;
 
     /* Set format if not already set */
     if (pform == NULL) {
@@ -536,7 +547,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 		if ((c = strchr (pform,'d')) != NULL)
 		    *c = 'f';
 		}
-	    if (verbose) {
+	    if (pixperline) {
 		printf ("%s[%d,%d] = ",name,xpix[i],ypix[i]);
 		if (bitpix > 0)
 		    printf (pform, ipix);
@@ -551,11 +562,13 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 		    printf (pform, dpix);
 		if ((i+1) % nline == 0)
 		    printf ("\n");
+		else if (printtab)
+		    printf ("\t");
 		else
 		    printf (" ");
 		}
 	    }
-	if (!verbose && !ltcheck && !gtcheck)
+	if (!pixperline && !ltcheck && !gtcheck)
 	    printf ("\n");
 	free (xpix);
 	free (ypix);
@@ -641,7 +654,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 		    else
 			ipix = 0;
 		    }
-		if (verbose) {
+		if (pixperline) {
 		    printf ("%s[%d,%d] = ",name,x,y);
 		    if (bitpix > 0)
 			printf (pform, ipix);
@@ -656,6 +669,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 			printf (pform, dpix);
 		    if ((y+1) % nline == 0)
 			printf ("\n");
+		    else if (printtab)
+			printf ("\t");
 		    else
 			printf (" ");
 		    }
@@ -698,7 +713,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 		    else
 			ipix = 0;
 		    }
-		if (verbose) {
+		if (pixperline) {
 		    printf ("%s[%d,%d] = ",name,x,y);
 		    if (bitpix > 0)
 			printf (pform, ipix);
@@ -713,6 +728,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 			printf (pform, dpix);
 		    if ((x+1) % nline == 0)
 			printf ("\n");
+		    else if (printtab)
+			printf ("\t");
 		    else
 			printf (" ");
 		    }
@@ -739,8 +756,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 	    }
 
 	/* Label horizontal pixels */
-	if (!verbose && pixlabel) {
-	    printf ("     ");
+	if (pixlabel) {
+	    printf ("Coord");
 	    rstart (xrange);
 	    strcpy (nform, pform);
 	    if ((c = strchr (nform,'.')) != NULL) {
@@ -752,7 +769,10 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 		}
 	    for (ix = 0; ix < nx; ix++) {
 		x = rgeti4 (xrange);
-		printf (" ");
+		if (printtab)
+		    printf ("\t");
+		else
+		    printf (" ");
 		printf (nform, x);
 		}
 	    printf ("\n");
@@ -769,8 +789,13 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 	    else
 		iy--;
 	    rstart (xrange);
-	    if (!verbose && pixlabel)
-		printf ("%4d: ",yi[iy]+1);
+	    if (pixlabel) {
+		printf ("%4d:",yi[iy]+1);
+		if (printtab)
+		    printf ("\t");
+		else
+		    printf (" ");
+		}
 
 	    /* Loop through columns */
 	    for (ix = 0; ix < nx; ix++) {
@@ -803,7 +828,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 		    if ((c = strchr (pform,'d')) != NULL)
 			*c = 'f';
 		    }
-		if (verbose) {
+		if (pixperline) {
 		    printf ("%s[%d,%d] = ",name,x+1,yi[i]+1);
 		    if (bitpix > 0)
 			printf (pform, ipix);
@@ -818,12 +843,16 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 			printf (pform, dpix);
 		    if ((ix+1) % nline == 0)
 			printf ("\n");
+		    else if (printtab)
+			printf ("\t");
 		    else
 			printf (" ");
 		    }
 		}
-	    if (!verbose && !ltcheck && !gtcheck)
-		printf ("\n");
+	    if (!pixperline && !ltcheck && !gtcheck) {
+		if (ix % nline != 0)
+		    printf ("\n");
+		}
 	    }
 	free (xrange);
 	free (yrange);
@@ -845,22 +874,29 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 
 
 static void
-procpix (dsum, dmin, dmax, dpix)
+procpix (dsum, dnpix, dmin, dmax, dpix)
 
 double	*dsum;	/* Sum of pixel values */
+double	*dnpix;	/* Number of pixels so far */
 double	*dmin;	/* Minimum pixel value */
 double	*dmax;	/* Maximum pixel value */
 double	dpix;	/* Current pixel value */
 {
-	*dsum = *dsum + dpix;
-	if (*dmin == 0.0 && *dmax == 0.0) {
+	if (procinit) {
+	    *dsum = dpix;
+	    *dnpix = 1.0;
 	    *dmin = dpix;
 	    *dmax = dpix;
 	    }
-	else if (dpix < *dmin)
-	    *dmin = dpix;
-	else if (dpix > *dmax)
-	    *dmax = dpix;
+	else {
+	    *dsum = *dsum + dpix;
+	    *dnpix = *dnpix + 1.0;
+	    if (dpix < *dmin)
+		*dmin = dpix;
+	    else if (dpix > *dmax)
+		*dmax = dpix;
+	    }
+	procinit = 0;
 }
 /* Dec  6 1996	New program
  *
@@ -905,4 +941,7 @@ double	dpix;	/* Current pixel value */
  * Dec 21 2007	Fix bug reallocating coordinate list when current size exceeded
  *
  * Aug 14 2009	If coordinates are floating point round to appropriate pixel
+ *
+ * Sep 21 2010	Add option -t to separate numbers by tabs
+ * Sep 21 2010	Fix bug in computing means and limits
  */

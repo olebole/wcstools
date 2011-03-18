@@ -1,9 +1,9 @@
 /* File sethead.c
- * September 25, 2009
+ * January 3, 2011
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2009
+   Copyright (C) 1996-2011
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -543,7 +543,7 @@ char **av;
     if (keybuff != NULL)
 	free (keybuff);
 
-    exit (0);
+    exit (errflag);
 }
 
 static void
@@ -1371,7 +1371,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	free (image);
 	image = NULL;
 	}
-    return (0);
+    return (errflag);
 }
 
 /* Oct 11 1996	New program
@@ -1463,4 +1463,6 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Aug 19 2009	Fix bug to remove limit to the number of files on command line
  * Sep 18 2009	Call fitswexhead() with ",0" if other extension does not work
  * Sep 25 2009	Drop unused variable cext
+ *
+ * Jan  3 2011	Exit with errflag value to indicate an error
  */

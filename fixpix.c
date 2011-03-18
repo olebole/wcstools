@@ -1,9 +1,9 @@
 /* File fixpix.c
- * October 9, 2007
+ * December 30, 2010
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1997-2007
+   Copyright (C) 1997-2010
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -30,7 +30,7 @@
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcs.h"
 
-#define MAXFIX 10
+#define MAXFIX 100
 #define MAXFILES 50
 
 static void FixPix();
@@ -38,6 +38,10 @@ static void FixReg();
 static void usage();
 static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
+static int rows = 0;		/* If =1, interpolate along rows */
+static int columns = 0;		/* If =1, interpolate along columns */
+static int intcol = 0;
+static int introw = 0;
 static int nfix = 0;		/* Number of regions to fix
 				   If < 0 read regions from a file */
 static int version = 0;		/* If 1, print only program name and version */
@@ -79,6 +83,14 @@ char **av;
 	switch (c) {
 	case 'v':	/* more verbosity */
 	    verbose++;
+	    break;
+
+	case 'c':	/* interpolate along columns */
+	    columns++;
+	    break;
+
+	case 'r':	/* interpolate along rows */
+	    rows++;
 	    break;
 
 	case 'n':	/* ouput new file */
@@ -201,6 +213,8 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
     char *ext, *fname;
     char newline[1];
     int bitpix,xdim,ydim;
+    char *regionfile;
+    int nreg;
 
     newline[0] = 10;
     strcpy (tempname, "fitshead.temp");
@@ -262,6 +276,12 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
 	    /* Note addition as history line in header */
 	    sprintf (history, "FIXPIX: region x: %d-%d, y: %d-%d replaced",
 		     xl[i],xr[i],yl[i],yr[i]);
+	    if (intcol) {
+		strcat (history," along columns");
+		}
+	    else if (introw) {
+		strcat (history," along rows");
+		}
 	    hputc (header,"HISTORY",history);
 	    if (verbose)
 		printf ("%s\n", history);
@@ -275,18 +295,30 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
 		     regionlist);
 		usage ();
 		}
+	nreg = 0;
 	while (fgets (line, 128, freg) != NULL) {
 	    i = 0;
 	    sscanf (line,"%d %d %d %d", &xl[i], &yl[i], &xr[i], &yr[i]);
 	    FixReg (image,bitpix,xdim,ydim,bzero,bscale,xl[i],yl[i],xr[i],yr[i]);
-
-	    /* Note addition as history line in header */
-	    sprintf (history, "FIXPIX: region x: %d-%d, y: %d-%d replaced",
-			 xl[i],xr[i],yl[i],yr[i]);
-	    hputc (header,"HISTORY",history);
-	    if (verbose)
-		printf ("%s\n", history);
+	    nreg++;
 	    }
+
+	/* Note addition as history line in header */
+	regionfile = strrchr (regionlist, '/');
+	if (regionfile != NULL)
+	    regionfile++;
+	else
+	    regionfile = regionlist;
+	sprintf (history, "FIXPIX: %d regions fixed from file %s",nreg,regionfile);
+	if (intcol) {
+	    strcat (history," along columns");
+	    }
+	else if (introw) {
+	    strcat (history," along rows");
+	    }
+	hputc (header,"HISTORY",history);
+	if (verbose)
+	    printf ("%s\n", history);
 	}
 
     /* Make up name for new FITS or IRAF output file */
@@ -398,8 +430,28 @@ int	ixr, iyr;	/* Upper right corner of region (1 based) */
     if (xdiff < 1 || ydiff < 1)
 	return;
 
-    /* If more horizontal than vertical, interpolate vertically */
-    if (xdiff > ydiff) {
+    if (columns) {
+	intcol = 1;
+	introw = 0;
+	}
+    else if (rows) {
+	intcol = 0;
+	introw = 1;
+	}
+
+    /* If region is more vertical than horizontal, interpolate horizontally */
+    else if (ydiff > xdiff) {
+	intcol = 0;
+	introw = 1;
+	}
+
+    /* Otherwise, interpolate vertically */
+    else {
+	intcol = 1;
+	introw = 0;
+	}
+
+    if (intcol) {
 	if (iyl - 1 < 0 || iyr + 1 > ydim - 1)
 	    return;
 	for (ix = ixl; ix <= ixr; ix++) {
@@ -413,7 +465,6 @@ int	ixr, iyr;	/* Upper right corner of region (1 based) */
 	    }
 	}
 
-    /* If more vertical than horizontal, interpolate horizontally */
     else {
 	if (ixl - 1 < 0 || ixr + 1 > xdim - 1)
 	    return;
@@ -455,4 +506,9 @@ int	ixr, iyr;	/* Upper right corner of region (1 based) */
  * Jun 20 2006	Clean up code
  *
  * Oct  9 2007	Fix bug reading coordinates from file found by Saurabh Jha
+ *
+ * May 27 2010	Add -c and -r options to force interpolation direction
+ * Sep 23 2010	Put only file name in header if filling regions named in file
+ * Dec 30 2010	Increase maximum number of changes from 10 to 100
+ * Dec 30 2010	Log number of regions fixed
  */

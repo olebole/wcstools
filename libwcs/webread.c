@@ -1,9 +1,9 @@
 /*** File webread.c
- *** September 25, 2008
+ *** October 29, 2010
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
- *** Copyright (C) 2000-2009
+ *** Copyright (C) 2000-2010
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -290,6 +290,7 @@ int	nnum;		/* Number of stars to find */
 int	sysout;		/* Search coordinate system */
 double	eqout;		/* Search coordinate equinox */
 double	epout;		/* Proper motion epoch (0.0 for no proper motion) */
+int	match;		/* 1 to match star number exactly, else sequence num */
 double	*unum;		/* Array of UA numbers to find */
 double	*ura;		/* Array of right ascensions (returned) */
 double	*udec;		/* Array of declinations (returned) */
@@ -1033,4 +1034,6 @@ space2tab (tabbuff)
  *
  * Sep 25 2009	Reverse movebuff() source, destination arguments for compatibility
  * Sep 25 2009	Free allocated pointers before returning after Douglas Burke
+ *
+ * Oct 29 2010	Declare match int in webrnum()
  */

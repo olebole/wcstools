@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** April 06, 2010
+ *** September 14, 2010
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2010
@@ -925,6 +925,8 @@ int	refcat;		/* Catalog code */
     else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat == SKY2K ||
 	    refcat==SKYBOT)
 	return (5000.0);
+    else if (refcat==BSC)
+	return (7200.0);
     else
 	return (1800.0);
 }
@@ -1219,12 +1221,19 @@ char	*numstr;	/* Formatted number (returned) */
 	}
 
     /* SAO, PPM, or IRAS Point Source Catalogs (TDC binary format) */
-    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC ||
-	     refcat==HIP) {
+    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==HIP) {
 	if (nnfld < 0)
 	    sprintf (numstr, "%06d", (int)(dnum+0.5));
 	else
 	    sprintf (numstr, "%6d", (int)(dnum+0.5));
+	}
+
+    /* Yale Bright Star Catalog (TDC binary format) */
+    else if (refcat==BSC) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%04d", (int)(dnum+0.5));
+	else
+	    sprintf (numstr, "%4d", (int)(dnum+0.5));
 	}
 
     /* SKY2000 Catalog (TDC binary format) */
@@ -1343,9 +1352,12 @@ int	nndec;		/* Number of decimal places ( >= 0) */
 	return (9);
 
     /* SAO, PPM, Hipparcos, or IRAS Point Source Catalogs (TDC binary format) */
-    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==BSC ||
-	     refcat==HIP)
+    else if (refcat==SAO || refcat==PPM || refcat==IRAS || refcat==HIP)
 	return (6);
+
+    /* Bright Star Catalog (TDC binary format) */
+    else if (refcat==BSC)
+	return (4);
 
     /* SKY2000 Catalog (TDC binary format) */
     else if (refcat==SKY2K)
@@ -3450,4 +3462,5 @@ char *from, *last, *to;
  * Mar 31 2010	Fix south pole search
  * Apr 06 2010	Add fillblank argument to agets()
  * Apr 06 2010	In agets() search until keyword[: or =] or end of string
+ * Sep 14 2010	Add BSC radius of 7200 to CatRad() and number field of 4
  */

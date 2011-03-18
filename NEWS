@@ -1,5 +1,24 @@
-Version 3.8.1 (April 30, 2010)
+Version 3.8.2 (March 18, 2011)
+all: Add support for NOAO ZPX projection with code from Frank Valdes
+sethead: Exit with error errflag
+fixpix: Increase maximum number of regions from 10 to 100
+fixpix: Log number of regions fixed
+remap: Keep center sky coordinates if not set on command line
+getpix: Fix mean and limits options
+getpix: Add -t option for tab separated tables
+fixpix: If filling from pixel list file, put file name in header
+tmcread.c: Fix 2MASS catalog search bug by adding last star to search
+zpxpos.c, wcs.c, wcsinit.c: Add support for NOAO ZPX protection (Frank Valdes)
+proj.c: If no PV coefficients in ZPN projection, make it ARC
+proj.c: Add code to project SCAMP polynomical TAN
+wcsinit.c: Add code to read output from SCAMP (fixed again on 2011-03-18)
+ucacread.c: Fix bug reading UCAC3 catalog
+wcs.c: Fix bug in wcsc2pix() when using WCSDEP
+
+Version 3.8.1 (May 27, 2010)
 scat,imcat: Set GSC2 magnitudes > 90 to 99.99
+imwcs, immatch: Fix for catalogs with lots of magnitudes
+fixpix: Add -c and -r options to force interpolation direction
 gethead: Fix buffer reallocation bug which crashed reading very large headers
 gethead: Fix trailing spaces on ASCII file quoted string values
 gethead: Fix problems with string value extraction changing ASCII files
@@ -11,6 +30,7 @@ fitsfile.c: In fitswhead(), always pad blocks to 2880 bytes with spaces
 wcscon.c: Fix bug in computing the magnitude of the e-terms in fk524() and
           drop ep1 assignment after line 178 in wcsconp()
 catutil.c: Add padstring argument to agets() to control trailing spaces
+imsetwcs.c: Allocate MAXNMAG instead of actual number of magnitudes
 
 Version 3.8.0 (November 13, 2009)
 getcol: Drop parentheses around single column

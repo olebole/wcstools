@@ -39,7 +39,7 @@
    is SAO), PPM_PATH (if bincat is PPM, HIP_PATH, if bincat is HIP, or
    IRAS_PATH is bincat is IRAS) environment variable */
 
-char bindir[64]="/data/stars";
+char bindir[64]="/data/astrocat";
 
 static double *tdist;	/* Array of distances to sources from search center */
 static int ndist = 0;

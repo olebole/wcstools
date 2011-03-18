@@ -1,5 +1,5 @@
 /* File imcat.c
- * April 30, 2010
+ * June 3, 2010
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -1914,12 +1914,12 @@ char	**refcatname;	/* reference catalog name */
 		else {
 		    sprintf (headline, "%s	%s	%s",
 			     numstr, rastr, decstr);
-		    if (tabout && (refcat == UCAC2 || refcat == UCAC3)) {
+		    /* if (tabout && (refcat == UCAC2 || refcat == UCAC3)) {
 			era = gm[nmag][i] * cosdeg (gdec[i]) * 3600.0;
 			edec = gm[nmag+1][i] * 3600.0;
 			sprintf (temp, "	%5.3f	%5.3f");
 			strcat (headline, temp);
-			}
+			} */
 		    for (imag = 0; imag < nmag; imag++) {
 			if (printepoch && imag == nmag-1) {
 			    temp1 = ep2fd (gm[nmag-1][i]);
@@ -1952,13 +1952,13 @@ char	**refcatname;	/* reference catalog name */
 		if (refcat == UCAC2 || refcat == UCAC3) {
 		    nim = gc[i] / 1000;
 		    nct = gc[i] % 1000;
-		    if (tabout) {
+		    /* if (tabout) {
 			epmr = gm[nmag+2][i] * cosdeg (gdec[i]) * 3600000.0;
 			epmd = gm[nmag+3][i] * 3600000.0;
 			sprintf (temp, "	%5.1f	%5.1f	%2d	%2d",
 				 epmr, epmd, nim, nct);
 			}
-		    else
+		    else */
 			sprintf (temp, "	%2d	%2d", nim, nct);
 		    strcat (headline, temp);
 		    }
@@ -2426,4 +2426,5 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Nov 18 2009	Add UCAC3 catalog
  *
  * Apr 30 2010	Set GSC2 magnitudes > 90 to 99.99
+ * Jun  3 2010	Do not print position or proper motion errors for UCAC3
  */

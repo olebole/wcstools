@@ -7,9 +7,9 @@ OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \
 	sdssread.o tabread.o binread.o ctgread.o actread.o catutil.o \
 	skybotread.o imrotate.o fitsfile.o imhfile.o \
 	hget.o hput.o imio.o dateutil.o imutil.o \
-	worldpos.o tnxpos.o dsspos.o platepos.o \
+	worldpos.o tnxpos.o zpxpos.o dsspos.o platepos.o \
 	sortstar.o platefit.o iget.o fileutil.o \
-	wcslib.o lin.o cel.o proj.o sph.o wcstrig.o distort.o
+	wcslib.o lin.o cel.o proj.o sph.o wcstrig.o distort.o poly.o
 
 libwcs.a:	$(OBJS)
 	ar rv $@ $?
@@ -43,6 +43,7 @@ lin.o:		wcslib.h
 matchstar.o:	fitshead.h wcs.h lwcs.h wcslib.h wcscat.h
 platefit.o:	wcs.h fitshead.h wcslib.h
 platepos.o:	wcs.h fitshead.h wcslib.h
+poly.o:		wcslib.h
 proj.o:		wcslib.h
 sdssread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
 skybotread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
@@ -51,6 +52,7 @@ sph.o:		wcslib.h
 tabread.o:	fitshead.h wcs.h wcslib.h wcscat.h
 tmcread.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
 tnxpos.o:	wcs.h fitshead.h wcslib.h
+zpxpos.o:	wcs.h fitshead.h wcslib.h
 ty2read.o:	fitsfile.h wcs.h wcscat.h fitshead.h wcslib.h
 uacread.o:	fitshead.h wcs.h wcscat.h wcslib.h
 ubcread.o:	fitshead.h wcs.h wcscat.h wcslib.h

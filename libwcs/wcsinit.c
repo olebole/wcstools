@@ -1,8 +1,8 @@
 /*** File libwcs/wcsinit.c
- *** March 24, 2009
+ *** March 18, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2009
+ *** Copyright (C) 1998-2011
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -244,8 +244,10 @@ char *wchar;		/* Suffix character for one of multiple WCS */
     int twod;
     int iszpx = 0;
     extern int tnxinit();
+    extern int zpxinit();
     extern int platepos();
     extern int dsspos();
+    void invert_wcs();
 
     wcs = (struct WorldCoor *) calloc (1, sizeof(struct WorldCoor));
 
@@ -399,30 +401,13 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 
     /* World coordinate system reference coordinate information */
     if (hgetsc (hstring, "CTYPE1", &mchar, 16, ctype1)) {
-	if (!strncmp (ctype1+5,"ZPX", 3)) {
-	    iszpx = 1;
-	    ctype1[7] = 'N';
-
-	    /* IRAF ZPX parameters for ZPN projection */
-	    for (i = 0; i < 10; i++) {
-		sprintf (keyword,"projp%d",i);
-		mgetr8 (hstring, "WAT1",keyword, &wcs->prj.p[i]);
-		}
-	    }
-	else
-	    iszpx = 0;
 
 	/* Read second coordinate type */
 	strcpy (ctype2, ctype1);
 	if (!hgetsc (hstring, "CTYPE2", &mchar, 16, ctype2))
 	    twod = 0;
-	else {
+	else
 	    twod = 1;
-	    if (!strncmp (ctype2+5,"ZPX", 3)) {
-		iszpx = 1;
-		ctype2[7] = 'N';
-		}
-	    }
 	strcpy (wcs->ctype[0], ctype1);
 	strcpy (wcs->ctype[1], ctype2);
 	if (strsrch (ctype2, "LAT") || strsrch (ctype2, "DEC"))
@@ -564,17 +549,14 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 		}
 	    }
 
-	/* If ZPX, read coefficients from WATi keyword */
-	if (iszpx) {
-	    char mkey[8];
-	    sprintf (mkey,"WAT%d", ilat);
-	    for (i = 0; i < 10; i++) {
-		wcs->prj.p[i] = 0.0;
-		sprintf (keyword,"projp%d",i);
-		mgetr8 (hstring, mkey, keyword, &wcs->prj.p[i]);
+	/* Initialize ZPX, defaulting to ZPN if there is a problem */
+	if (wcs->prjcode == WCS_ZPX) {
+	    if (zpxinit (hstring, wcs)) {
+		wcs->ctype[0][7] = 'N';
+		wcs->ctype[1][7] = 'N';
+		wcs->prjcode = WCS_ZPN;
 		}
 	    }
-
 
 	/* Coordinate reference frame, equinox, and epoch */
 	if (wcs->wcsproj > 0)
@@ -764,6 +746,52 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 	    wcs->rot = 0.0;
 	    wcs->rotmat = 0;
 	    setwcserr ("WCSINIT: setting CDELT to 1");
+	    }
+
+	/* SCAMP convention */
+	if (wcs->prjcode == WCS_TAN && wcs->naxis == 2) { 
+	    int n;
+	    if (wcs->inv_x) {
+		poly_end(wcs->inv_x);
+		wcs->inv_x = NULL;
+		}
+	    if (wcs->inv_y) {
+		poly_end(wcs->inv_y);
+		wcs->inv_y = NULL;
+		}
+	    wcs->pvfail = 0;
+	    for (i = 0; i < (2*MAXPV); i++) {
+		wcs->projppv[i] = 0.0;
+		wcs->prj.ppv[i] = 0.0;
+		}
+	    for (k = 0; k < 2; k++) {
+		for (j = 0; j < MAXPV; j++) {
+		    sprintf(keyword, "PV%d_%d", k+1, j);
+		    if (hgetr8c(hstring, keyword,&mchar, &wcs->projppv[j+k*MAXPV]) == 0) {
+			wcs->projppv[j+k*MAXPV] = 0.0;
+			}
+		    else
+			n++;
+		    }
+		}
+
+	    /* If any PVi_j are set, add them to the structure */
+	    if (n > 0) {
+		n = 0;
+
+		for (k = MAXPV; k >= 0; k--) {
+		    /* lat comes first for compatibility reasons */
+		    wcs->prj.ppv[k] = wcs->projppv[k+wcs->wcsl.lat*MAXPV];
+		    wcs->prj.ppv[k+MAXPV] = wcs->projppv[k+wcs->wcsl.lng*MAXPV];
+		    if (!n && (wcs->prj.ppv[k] || wcs->prj.ppv[k+MAXPV]))  {
+			n = k+1;
+			}
+		    }
+		invert_wcs(wcs);
+
+		/* Need to call tanset again */
+		wcs->cel.flag = 0;
+		}
 	    }
 
 	/* If linear or pixel WCS, print "degrees" */
@@ -1069,6 +1097,187 @@ char *wchar;		/* Suffix character for one of multiple WCS */
     setwcscom (wcs);
 
     return (wcs);
+}
+
+/******* invert_wcs ***********************************************************
+PROTO	void invert_wcs(wcsstruct *wcs)
+PURPOSE	Invert WCS projection mapping (using a polynomial).
+INPUT	WCS structure.
+OUTPUT	-.
+NOTES	.
+AUTHOR	E. Bertin (IAP)
+VERSION	06/11/2003
+ ***/
+void	invert_wcs( struct WorldCoor *wcs)
+
+{
+  polystruct		*poly;
+  double		pixin[NAXISPV],raw[NAXISPV],rawmin[NAXISPV];
+  double		*outpos,*outpost, *lngpos,*lngpost,
+    *latpos,*latpost,
+    lngstep,latstep, rawsize, epsilon;
+  int			group[] = {1,1};
+  /* Don't ask, this is needed by poly_init()! */
+  int		i,j,lng,lat,deg,  maxflag;
+  double xmin;
+  double ymin;
+  double xmax;
+  double ymax;
+  double lngmin;
+  double latmin;
+
+  /* Check first that inversion is not straightforward */
+  lng = wcs->wcsl.lng;
+  lat = wcs->wcsl.lat;
+
+  if (wcs->naxis != NAXISPV) {
+    return;
+  }
+
+  if (strcmp(wcs->wcsl.pcode, "TAN") != 0) {
+    return;
+  }
+
+  if ((wcs->projppv[1+lng*MAXPV] == 0) &&
+      (wcs->projppv[1+lat*MAXPV] == 0)) {
+    return;
+  }
+
+  if (wcs->wcs != NULL) {
+    pix2wcs(wcs->wcs,0,0,&xmin,&ymin);
+    pix2wcs(wcs->wcs,wcs->nxpix,wcs->nypix,&xmax,&ymax);
+  } else {
+    xmin = 0;
+    ymin = 0;
+    xmax = wcs->nxpix;
+    ymax = wcs->nypix;
+  }
+
+  /* We define x as "longitude" and y as "latitude" projections */
+  /* We assume that PCxx cross-terms with additional dimensions are small */
+  /* Sample the whole image with a regular grid */
+  if (lng == 0) {
+    lngstep = (xmax-xmin)/(WCS_NGRIDPOINTS-1.0);
+    lngmin  = xmin;
+    latstep = (ymax-ymin)/(WCS_NGRIDPOINTS-1.0);
+    latmin  = ymin;
+  } else {
+
+    lngstep = (ymax-ymin)/(WCS_NGRIDPOINTS-1.0);
+    lngmin = ymin;
+    latstep = (xmax-xmin)/(WCS_NGRIDPOINTS-1.0);
+    latmin - xmin;
+  }
+
+  outpos = (double *)calloc(2*WCS_NGRIDPOINTS2,sizeof(double));
+  lngpos = (double *)calloc(WCS_NGRIDPOINTS2,sizeof(double));
+  latpos = (double *)calloc(WCS_NGRIDPOINTS2,sizeof(double));
+  raw[lat] = rawmin[lat] = 0.5+latmin;
+  raw[lng] = rawmin[lng] = 0.5+lngmin;
+  outpost = outpos;
+  lngpost = lngpos;
+  latpost = latpos;
+  for (j=WCS_NGRIDPOINTS; j--; raw[lat]+=latstep) 
+    {
+      raw[lng] = rawmin[lng];
+      for (i=WCS_NGRIDPOINTS; i--; raw[lng]+=lngstep)
+        {
+          if (linrev(raw, &wcs->lin, pixin)) {
+            error(EXIT_FAILURE, "*Error*: incorrect linear conversion in ",
+                  wcs->wcsl.pcode);
+          }
+          *(lngpost++) = pixin[lng];
+          *(latpost++) = pixin[lat];
+          raw_to_pv(&wcs->prj,pixin[lng],pixin[lat], outpost, outpost+1);
+          outpost += 2;
+        }
+    }
+
+  /* Invert "longitude" */
+  /* Compute the extent of the pixel in reduced projected coordinates */
+  linrev(rawmin, &wcs->lin, pixin);
+  pixin[lng] += S2D;
+  linfwd(pixin, &wcs->lin, raw);
+  rawsize = sqrt((raw[lng]-rawmin[lng])*(raw[lng]-rawmin[lng])
+                 +(raw[lat]-rawmin[lat])*(raw[lat]-rawmin[lat]))*D2S;
+  if (!rawsize) {
+    error(EXIT_FAILURE, "*Error*: incorrect linear conversion in ",
+          wcs->wcsl.pcode);
+  }
+  epsilon = WCS_INVACCURACY/rawsize;
+  /* Find the lowest degree polynom */
+  poly = NULL;  /* to avoid gcc -Wall warnings */
+  maxflag = 1;
+  for (deg=1; deg<=WCS_INVMAXDEG && maxflag; deg++)
+    {
+      if (deg>1)
+        poly_end(poly);
+      poly = poly_init(group, 2, &deg, 1);
+      poly_fit(poly, outpos, lngpos, NULL, WCS_NGRIDPOINTS2, NULL);
+      maxflag = 0;
+      outpost = outpos;
+      lngpost = lngpos;
+      for (i=WCS_NGRIDPOINTS2; i--; outpost+=2)
+        if (fabs(poly_func(poly, outpost)-*(lngpost++))>epsilon)
+          {
+            maxflag = 1;
+            break;
+          }
+    }
+  if (maxflag) {
+#if 0
+    fprintf(stderr,"WARNING: Significant inaccuracy likely to occur in projection\n");
+#endif
+    wcs->pvfail = 1;
+  }
+  /* Now link the created structure */
+  wcs->prj.inv_x = wcs->inv_x = poly;
+
+  /* Invert "latitude" */
+  /* Compute the extent of the pixel in reduced projected coordinates */
+  linrev(rawmin, &wcs->lin, pixin);
+  pixin[lat] += S2D;
+  linfwd(pixin, &wcs->lin, raw);
+  rawsize = sqrt((raw[lng]-rawmin[lng])*(raw[lng]-rawmin[lng])
+                 +(raw[lat]-rawmin[lat])*(raw[lat]-rawmin[lat]))*D2S;
+  if (!rawsize) {
+    error(EXIT_FAILURE, "*Error*: incorrect linear conversion in ",
+          wcs->wcsl.pcode);
+  }
+  epsilon = WCS_INVACCURACY/rawsize;
+  /* Find the lowest degree polynom */
+  maxflag = 1;
+  for (deg=1; deg<=WCS_INVMAXDEG && maxflag; deg++)
+    {
+      if (deg>1)
+        poly_end(poly);
+      poly = poly_init(group, 2, &deg, 1);
+      poly_fit(poly, outpos, latpos, NULL, WCS_NGRIDPOINTS2, NULL);
+      maxflag = 0;
+      outpost = outpos;
+      latpost = latpos;
+      for (i=WCS_NGRIDPOINTS2; i--; outpost+=2)
+        if (fabs(poly_func(poly, outpost)-*(latpost++))>epsilon)
+          {
+            maxflag = 1;
+            break;
+          }
+    }
+  if (maxflag) {
+#if 0
+    fprintf(stderr,"WARNING: Significant inaccuracy likely to occur in projection");
+#endif
+    wcs->pvfail = 1;
+  }
+  /* Now link the created structure */
+  wcs->prj.inv_y = wcs->inv_y = poly;
+
+  /* Free memory */
+  free(outpos);
+  free(lngpos);
+  free(latpos);
+
+  return;
 }
 
 
@@ -1380,4 +1589,8 @@ char	*mchar;		/* Suffix character for one of multiple WCS */
  * Jun 27 2008	If NAXIS1 and NAXIS2 not present, check for IMAGEW and IMAGEH
  *
  * Mar 24 2009	Fix dimension bug if NAXISi not present (fix from John Burns)
+ *
+ * Mar 11 2011	Add NOAO ZPX projection (Frank Valdes)
+ * Mar 18 2011	Add invert_wcs() by Emmanuel Bertin for SCAMP
+ * Mar 18 2011	(change his ARCSEC/DEG to S2D and DEG/ARCSEC to D2S)
  */

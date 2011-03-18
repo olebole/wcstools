@@ -1,9 +1,9 @@
 /* File cphead.c
- * ugust 19, 2009
+ * March 14, 2011
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2000-2009
+   Copyright (C) 2000-2011
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <math.h>
 #include "libwcs/fitsfile.h"
+#include "libwcs/wcslib.h"
 
 #define MAXKWD 100
 #define MAXFILES 2000
@@ -194,14 +195,15 @@ char **av;
 			sprintf (keyword,"PROJP%d", i);
 			strcpy (kwd[++nkwd], keyword);
 			}
-		    for (i = 0; i < 10; i++) {
+		    for (i = 0; i < MAXPV; i++) {
 			sprintf (keyword,"PV1_%d", i);
 			strcpy (kwd[++nkwd], keyword);
 			}
-		    for (i = 0; i < 10; i++) {
+		    for (i = 0; i < MAXPV; i++) {
 			sprintf (keyword,"PV2_%d", i);
 			strcpy (kwd[++nkwd], keyword);
 			}
+
 		    break;
 
 		default:
@@ -689,4 +691,6 @@ char	*kwd[];		/* Names of keywords for which to copy values */
  * May 28 2008	Clean up value string copying code
  *
  * Aug 19 2009	Fix bug to remove limit to the number of files on command line
+ *
+ * Mar 14 2011	Use MAXPV from wcslib.h when copying PVi_j parameters
  */

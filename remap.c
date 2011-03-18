@@ -1,9 +1,9 @@
 /* File remap.c
- * January 10, 2007
+ * October 15, 2010
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2007
+   Copyright (C) 1999-2010
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -77,6 +77,7 @@ static int nx = 0;
 static int ny = 0;
 static int nlog = 0;
 static int undistort = 0;
+static int centerset = 0;
 
 int
 main (ac, av)
@@ -137,6 +138,7 @@ char **av;
 	    strcpy (decstr, *++av);
 	    ac--;
 	    setcenter (rastr, decstr);
+	    centerset = 1;
     	    break;
 
     	case 'e':	/* Output image center on command line in ecliptic */
@@ -149,6 +151,7 @@ char **av;
 	    strcpy (decstr, *++av);
 	    ac--;
 	    setcenter (rastr, decstr);
+	    centerset = 1;
     	    break;
 
 	case 'f':	/* Read WCS from a FITS or IRAF file */
@@ -168,6 +171,7 @@ char **av;
 	    strcpy (decstr, *++av);
 	    ac--;
 	    setcenter (rastr, decstr);
+	    centerset = 1;
     	    break;
 
 	case 'i':	/* Bits per output pixel in FITS code */
@@ -187,6 +191,7 @@ char **av;
 	    strcpy (decstr, *++av);
 	    ac--;
 	    setcenter (rastr, decstr);
+	    centerset = 1;
     	    break;
 
     	case 'l':	/* Logging interval for processing */
@@ -426,6 +431,8 @@ char	*filename;	/* FITS or IRAF file filename */
     int npix;
     int addscale = 0;
     double *dxout, *dyout;
+    char rastr[32];
+    char decstr[32];
 
     /* Read input IRAF header and image */
     if (isiraf (filename)) {
@@ -533,6 +540,14 @@ char	*filename;	/* FITS or IRAF file filename */
 		xrpix = 0.5 * (double) nx;
 		yrpix = 0.5 * (double) ny;
 		setrefpix (xrpix, yrpix);
+
+	    /* Set center ra,dec of new image to center of old image if not set */
+		if (!centerset) {
+		    wcssize (wcsin, &cra, &cdec, &dra, &ddec);
+		    ra2str (rastr, 32, cra, 4);
+		    dec2str (decstr, 32, cdec, 3);
+		    setcenter (rastr, decstr);
+		    }
 		}
 
 	    /* Set output header from command line and first image header */
@@ -925,4 +940,6 @@ double	*y2;		/* Upper right y coordinate (returned) */
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  *
  * Jan 10 2007	Drop unused variable dy
+ *
+ * Oct 15 2010	Use center coordinates of original image if not set
  */

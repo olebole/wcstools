@@ -1,9 +1,9 @@
 /* File xy2sky.c
- * September 25, 2009
+ * September 22, 2010
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2009
+   Copyright (C) 1996-2010
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -873,4 +873,6 @@ char *listfile;		/* Name of file with list of input coordinates */
  * Jul 18 2007	Call tabccol() instead of tabcol()
  *
  * Sep 25 2009	Drop unused variables; declare setting subroutines
+ *
+ * Sep 22 2010	Fix use of input list file
  */

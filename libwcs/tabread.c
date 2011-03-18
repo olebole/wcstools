@@ -1,8 +1,8 @@
 /*** File libwcs/tabread.c
- *** September 30, 2009
+ *** September 22, 2010
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2009
+ *** Copyright (C) 1996-2010
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -2530,6 +2530,8 @@ struct TabTable *tabtable;	/* Tab table structure */
     int nbytes, nba;
 
     /* Return if no column names in header */
+    if (tabtable->tabhead ==  NULL)
+	return (0);
     headlast = strchr (tabtable->tabhead, newline);
     if (headlast == tabtable->tabhead)
 	return (0);
@@ -2900,4 +2902,6 @@ char    *filename;      /* Name of file to check */
  * Aug 17 2009	Fix columns for declination column name
  * Sep 25 2009	Fix memory leaks found by Douglas Burke
  * Sep 30 2009	Fix bugs freeing object names for first pass and farthest star
+ *
+ * Sep 22 2010	Fix bug when checking file which is not tab table
  */

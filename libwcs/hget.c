@@ -1,8 +1,8 @@
 /*** File libwcs/hget.c
- *** November 12, 2009
+ *** March 11, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2009
+ *** Copyright (C) 1994-2011
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -682,6 +682,8 @@ char *str;	/* String (returned) */
 	    sprintf (keywordi, "%s_001", keyword);
 	    if (ksearch (hstring, keywordi))
 		strcpy (keyform, "%s_%03d");
+	    else if (ksearch (hstring, keywordi))
+		strcpy (keyform, "%s_%03d");
 	    else
 		return (0);
 	    }
@@ -885,9 +887,8 @@ const char *keyword0;	/* character string containing the name of the keyword
     vpos = ksearch (hstring,keyword);
 
     /* Exit if not found */
-    if (vpos == NULL) {
+    if (vpos == NULL)
 	return (NULL);
-	}
 
     /* Initialize line to nulls */
     for (i = 0; i < 100; i++)
@@ -1198,7 +1199,7 @@ const char *keyword;	/* character string containing the name of the variable
     else
 	lmax = 256000;
     for (lhead = 0; lhead < lmax; lhead++) {
-	if (hstring[lhead] == (char) 0)
+	if (hstring[lhead] <= (char) 0)
 	    break;
 	}
 

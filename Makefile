@@ -46,6 +46,9 @@ edhead: edhead.c $(LIBWCS) libwcs/fitsfile.h
 filename: filename.c
 	$(CC) $(CFLAGS) -o $(BIN)/filename filename.c
 
+filedir: filedir.c
+	$(CC) $(CFLAGS) -o $(BIN)/filedir filedir.c
+
 fileroot: fileroot.c
 	$(CC) $(CFLAGS) -o $(BIN)/fileroot fileroot.c
 

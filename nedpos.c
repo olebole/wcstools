@@ -1,5 +1,5 @@
 /*** nedpos.c - search object by its name from command line arguments
- *** June 3, 2009
+ *** October 29, 2010
  *** By Doug Mink, after IPAC byname.c
  */
 
@@ -8,6 +8,7 @@
 #include <string.h>
 #include "libned/ned_client.h"
 #include "libwcs/wcs.h"
+#include "libwcs/fitsfile.h"
 
 
 extern int ned_errno;
@@ -460,4 +461,6 @@ char	*command;	/* Command where error occurred or NULL */
  * Apr 16 2008	Fix @ option for processing a list of objects
  *
  * Jun  3 2009	Do not print object name unless asked to!
+ *
+ * Oct 29 2010	Include fitsfile.h for isfile() and getfilelines()
  */

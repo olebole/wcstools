@@ -1,8 +1,8 @@
 /*** File libwcs/tmcread.c
- *** September 28, 2009
+ *** September 23, 2010
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2009
+ *** Copyright (C) 2001-2010
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -320,7 +320,7 @@ int	nlog;		/* 1 for diagnostics */
 			istar1, istar2-1, zone);
 
 	    /* Loop through catalog for this region */
-	    for (istar = istar1; istar < istar2; istar++) {
+	    for (istar = istar1; istar <= istar2; istar++) {
 		if (tmcstar (starcat, star, zone, istar)) {
 		    fprintf (stderr,"TMCREAD: Cannot read star %d\n", istar);
 		    break;
@@ -1535,4 +1535,6 @@ int	istar;		/* Star sequence in 2MASS zone file */
  * Nov 20 2007	Fix bug which offset limit flag by one (found by Gus Muensch)
  *
  * Sep 28 2009	Print correct heading for n<0 Extended Source tab table
+ *
+ * Sep 23 2010	Add last star to search loop to fix bug
  */

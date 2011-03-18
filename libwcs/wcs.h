@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.h
- *** April 7, 2010
+ *** March 14, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2010
+ *** Copyright (C) 1994-2011
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -80,6 +80,10 @@ struct WorldCoor {
   double	cdelt[9];	/* Values of CDELTn keywords */
   double	pc[81];		/* Values of PCiiijjj keywords */
   double	projp[10];	/* Constants for various projections */
+  int		pvfail;		/* If non-zero, significant inaccuracy likely to occur in projection */
+  double	projppv[2*MAXPV]; /* SCAMP constants for the PV coordinates */
+  struct poly	*inv_x;		/* SCAMP projection correction polynom in x */
+  struct poly	*inv_y;		/* SCAMP projection correction polynom in y */
   double	longpole;	/* Longitude of North Pole in degrees */
   double	latpole;	/* Latitude of North Pole in degrees */
   double	rodeg;		/* Radius of the projection generating sphere */
@@ -88,11 +92,14 @@ struct WorldCoor {
   double	pa_east;	/* Position angle of east (0=horizontal) */
   double	radvel;		/* Radial velocity (km/sec away from observer)*/
   double	zvel;		/* Radial velocity (v/c away from observer)*/
+  double	zpzd;		/* Colat of FIP (degs) */
+  double	zpr;		/* Radius of FIP (degs) */
   int		imflip;		/* If not 0, image is reflected around axis */
   int		prjcode;	/* projection code (-1-32) */
   int		latbase;	/* Latitude base 90 (NPA), 0 (LAT), -90 (SPA) */
   int		ncoeff1;	/* Number of x-axis plate fit coefficients */
   int		ncoeff2;	/* Number of y-axis plate fit coefficients */
+  int		zpnp;		 /* ZP polynomial order (0-9) */
   int		changesys;	/* 1 for FK4->FK5, 2 for FK5->FK4 */
   				/* 3 for FK4->galactic, 4 for FK5->galactic */
   int		printsys;	/* 1 to print coordinate system, else 0 */
@@ -188,7 +195,8 @@ struct WorldCoor {
 #define WCS_DSS 29	/* Digitized Sky Survey plate solution */
 #define WCS_PLT 30	/* Plate fit polynomials (SAO) */
 #define WCS_TNX 31	/* Gnomonic = Tangent Plane (NOAO with corrections) */
-#define NWCSTYPE 32	/* Number of WCS types (-1 really means no WCS)
+#define WCS_ZPX 32	/* Gnomonic = Tangent Plane (NOAO with corrections) */
+#define NWCSTYPE 33	/* Number of WCS types (-1 really means no WCS)
 
 /* Coordinate systems */
 #define WCS_J2000	1	/* J2000(FK5) right ascension and declination */
@@ -229,7 +237,7 @@ struct WorldCoor {
 #define radhr(x)	deghr(raddeg(x))
 #define secrad(x)	((x)*AS2R)
 
-/* TNX surface fitting structure and flags */
+/* TNX/ZPX surface fitting structure and flags */
 struct IRAFsurface {
   double xrange;	/* 2. / (xmax - xmin), polynomials */
   double xmaxmin;	/* - (xmax + xmin) / 2., polynomials */
@@ -245,12 +253,12 @@ struct IRAFsurface {
   double *ybasis;	/* pointer to basis functions (all y) */
 };
 
-/* TNX permitted types of surfaces */
+/* TNX/ZPX permitted types of surfaces */
 #define  TNX_CHEBYSHEV    1
 #define  TNX_LEGENDRE     2
 #define  TNX_POLYNOMIAL   3
 
-/* TNX cross-terms flags */
+/* TNX/ZPX cross-terms flags */
 #define	TNX_XNONE	0	/* no x-terms (old no) */
 #define	TNX_XFULL	1	/* full x-terms (new yes) */
 #define	TNX_XHALF	2	/* half x-terms (new) */
@@ -698,6 +706,22 @@ extern "C" {
 	double *xpix,	/* Image X coordinate (returned) */
 	double *ypix);	/* Image Y coordinate (returned) */
 
+/* IRAF ZPN projection with higher order terms (zpxpos.c) */
+    int zpxinit (	/* initialize the zenithal forward or inverse transform */
+	const char *header, /* FITS header */
+	struct WorldCoor *wcs); /* pointer to WCS structure */
+    int zpxpos (	/* forward transform (physical to world) */
+	double xpix,	/* Image X coordinate */
+	double ypix,	/* Image Y coordinate */
+	struct WorldCoor *wcs, /* pointer to WCS descriptor */
+	double *xpos,	/* Right ascension (returned) */
+	double *ypos);	/* Declination (returned) */
+    int zpxpix (	/* Inverse transform (world to physical) */
+	double xpos,	/* Right ascension */
+	double ypos,	/* Declination */
+	struct WorldCoor *wcs, /* Pointer to WCS descriptor */
+	double *xpix,	/* Image X coordinate (returned) */
+	double *ypix);	/* Image Y coordinate (returned) */
 
 #else /* K&R prototypes */
 
@@ -742,7 +766,7 @@ int pix2wcst();		/* Convert pixel coordinates to World Coordinate string */
 void pix2wcs();		/* Convert pixel coordinates to World Coordinates */
 void wcsc2pix();	/* Convert World Coordinates to pixel coordinates */
 void wcs2pix();		/* Convert World Coordinates to pixel coordinates */
-void setdefwcs();	/* Call to use AIPS classic WCS (also not PLT or TNX */
+void setdefwcs();	/* Call to use AIPS classic WCS (also not PLT/TNX/ZPX */
 int getdefwcs();	/* Call to get flag for AIPS classic WCS */
 int wcszin();		/* Set coordinate in third dimension (face) */
 int wcszout();		/* Return coordinate in third dimension */
@@ -799,6 +823,11 @@ extern int GetPlate();	/* Return plate fit coefficients from structure in argume
 extern int tnxinit();	/* initialize the gnomonic forward or inverse transform */
 extern int tnxpos();	/* forward transform (physical to world) gnomonic projection. */
 extern int tnxpix();	/* Inverse transform (world to physical) gnomonic projection */
+
+/* IRAF ZPN projection with higher order terms (zpxpos.c) */
+extern int zpxinit();	/* initialize the gnomonic forward or inverse transform */
+extern int zpxpos();	/* forward transform (physical to world) gnomonic projection. */
+extern int zpxpix();	/* Inverse transform (world to physical) gnomonic projection */
 
 #endif	/* __STDC__ */
 
@@ -925,4 +954,7 @@ extern int tnxpix();	/* Inverse transform (world to physical) gnomonic projectio
  *
  * Mar 31 2010	Add wcsdist1(), an alternate method
  * Apr 07 2010	Add NWCSTYPE to keep it aligned with actual number of WCS types
+ *
+ * Mar 11 2011	Add NOAO ZPX projection parameters and subroutines (Frank Valdes)
+ * Mar 14 2011	Add SCAMP polynomial projection coefficients
  */

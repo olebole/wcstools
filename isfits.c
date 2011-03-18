@@ -1,9 +1,9 @@
-/* File isnum.c
- * April 25, 2008
+/* File isfits.c
+ * October 29, 2010
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 2008
+   Copyright (C) 2008-2010
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "libwcs/fitshead.h"
+#include "libwcs/fitsfile.h"
 
 
 int
@@ -52,5 +52,7 @@ char **av;
 
     exit (0);
 }
-/* Apt 25 2008	New program
+/* Apr 25 2008	New program
+ *
+ * Oct 29 2010	Include fitsfile.h instead of fitshead.h
  */
