@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** March 17, 2011
+ *** May 9, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2011
@@ -106,6 +106,12 @@ struct WorldCoor *wcs;	/* WCS structure */
 	    free (wcs);
 
 	return;
+	}
+
+    /* Free WCS on which this WCS depends */
+    if (wcs->wcs) {
+	wcsfree (wcs->wcs);
+	wcs->wcs = NULL;
 	}
 
     freewcscom (wcs);
@@ -2980,4 +2986,5 @@ char *cwcs;	/* Keyword suffix character for output WCS */
  * Mar 11 2011	Add NOAO ZPX projection (Frank Valdes)
  * Mar 14 2011	Delete j<=MAXPV PVi_j parameters (for SCAMP polynomials via Ed Los)
  * Mar 17 2011	Fix WCSDEP bug found by Ed Los
+ * May  9 2011	Free WCS structure recursively if WCSDEP is used
  */

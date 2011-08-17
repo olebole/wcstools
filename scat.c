@@ -1,9 +1,9 @@
 /* File scat.c
- * April 30, 2010
+ * April 21, 2011
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2010
+   Copyright (C) 1996-2011
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -2122,9 +2122,9 @@ double	eqout;		/* Equinox for output coordinates */
 			else if (refcat == TMPSC || refcat == TMIDR2)
 			    printf ("magj   	magh    	magk   		");
 			else if (refcat == TMPSCE)
-			    printf ("magje 	maghe  	magke  	");
+			    printf ("magje 	maghe	magke	");
 			else if (refcat == TMXSC)
-			    printf ("magj  	magh   	magk   	size  	");
+			    printf ("magj  	magh	magk	size	");
 			else if (refcat == UB1)
 			    printf ("magb1	magr1	magb2	magr2	magn 	");
 			else if (refcat == YB6)
@@ -2134,7 +2134,7 @@ double	eqout;		/* Equinox for output coordinates */
 			else if (refcat == UCAC2)
 			    printf ("raerr	decerr	magj 	magh 	magk 	magc 	");
 			else if (refcat == UCAC3)
-			    printf ("raerr	decerr	magb 	magr 	magi 	magj 	magh 	magk 	magm 	maga 	");
+			    printf ("raerr	decerr	magb 	magr 	magi 	magj 	magh 	magk 	magm 	maga	");
 			else if (nmagr > 0) {
 			    for (imag = 0; imag < nmagr; imag++) {
 				if (starcat[icat] != NULL &&
@@ -4844,4 +4844,6 @@ PrintGSClass ()
  * Nov  5 2009	Add UCAC3 errors and number of measurements
  *
  * Apr 30 2010	Set GSC2 magnitudes to 99.99 if > 90
+ *
+ * Apr 21 2011	Fix tabs in TMPSCE output
  */

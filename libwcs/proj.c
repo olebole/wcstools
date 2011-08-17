@@ -4366,7 +4366,8 @@ double *phi, *theta;
 
 /* This routine comes from E. Bertin  sextractor-2.8.6 */
 
-int raw_to_pv(struct prjprm *prj, double x, double y, double *xo, double *yo)
+int
+raw_to_pv(struct prjprm *prj, double x, double y, double *xo, double *yo)
 
 {
    int		k;

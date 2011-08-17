@@ -614,7 +614,7 @@ char	*alias[]; /* Output names of keywords if different from input */
     line = tabtable->tabdata;
     last = line + strlen (tabtable->tabdata);
 
-    /* Find column numbers for column names to speed up comparisons */
+    /* Find column numbers for condition columns to speed up comparisons */
     if (ncond > 0) {
 	ccol = (int *) calloc (ncond, sizeof (int));
 	ccol[0] = 0;
@@ -622,12 +622,13 @@ char	*alias[]; /* Output names of keywords if different from input */
             ccol[icond] = tabcol (tabtable, cond[icond]);
 	}
 
-    /* Find column numbers for column names to speed up extraction */
+    /* Find column numbers for data columns to speed up extraction */
     col = (int *) calloc (nkwd, sizeof (int));
     col[0] = 0;
     for (ikwd = 0; ikwd < nkwd; ikwd++)
 	col[ikwd] = tabcol (tabtable, kwd[ikwd]);
 
+    /* Read through lines in file */
     iline = 0;
     while (line != NULL && line < last) {
 	if (*line == (char)12)
@@ -736,6 +737,7 @@ char	*alias[]; /* Output names of keywords if different from input */
 	    for (ikwd = 0; ikwd < nkwd; ikwd++) {
 		if (!tabgetc (&tokens, col[ikwd], string, 80)) {
 		    strfix (string, 0, 0);
+		    str = string;
 		    if (ndec > -9 && isnum (str) && strchr (str, '.'))
 			num2str (str, atof(str), 0, ndec);
 		    if (verbose) {
@@ -820,4 +822,6 @@ char	*alias[]; /* Output names of keywords if different from input */
  * Jun 29 2006	Rename strclean() strfix() and move to hget.c
  *
  * Jan 10 2007	Drop unused variable numstr
+ *
+ * Mar 30 2011	Fix str/string bug so values are returned correctly
  */

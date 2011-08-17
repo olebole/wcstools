@@ -1,9 +1,9 @@
 /* File skycoor.c
- * March 31, 2010
+ * August 17, 2011
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2010
+   Copyright (C) 1996-2011
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -58,6 +58,7 @@ int ac;
 char **av;
 {
     char *str;
+    char *av1;
     FILE *fd;
     char *ln, *listname;
     char line[80];
@@ -69,6 +70,7 @@ char **av;
     char ha[32];
     char cunit;
     char sform[16];
+    char *ic;
     int sys0;
     int sys1 = -1;
     double ra, dec, r, ra1, dec1, ra2, dec2, dra, ddec, a;
@@ -461,19 +463,11 @@ char **av;
 			    sys1 = WCS_J2000;
 			}
 		    
-		    if (strncmp (rastr0, "99", 2))
-			skycons (rastr0,decstr0,sys0,rastr1,decstr1,sys1,lstr,ndec);
-		    else {
-			strcpy (rastr1, rastr0);
-			strcpy (decstr1, decstr0);
-			}
+		    skycons (rastr0,decstr0,sys0,rastr1,decstr1,sys1,lstr,ndec);
 		    wcscstr (csys0, sys0, 0.0, 0.0);
 		    wcscstr (csys1, sys1, 0.0, 0.0);
 		    if (degout) {
-			if (strncmp (rastr0, "99", 2))
-			    ra = str2ra (rastr1);
-			else
-			    ra = 99.0 * 15.0;
+			ra = str2ra (rastr1);
 			dec = str2dec (decstr1);
 			deg2str (rastr1, 32, ra, ndec);
 			deg2str (decstr1, 32, dec, ndec);
@@ -493,6 +487,14 @@ char **av;
 	    }
 	else if (ac > 0) {
 	    listname = NULL;
+	    if ((ic = strchr (*av,','))) {
+		*ic = (char) 0;
+		av1 = ic + 1;
+		if (strlen(av1) < 1)
+		    av1 = NULL;
+		}
+	    else
+		av1 = NULL;
 	    if (strlen (*av) < 32)
 		strcpy (rastr0, *av);
 	    else
@@ -505,12 +507,16 @@ char **av;
 		}
 	    ac--;
 	    av++;
-	    if (strlen (*av) < 32)
-		strcpy (decstr0, *av);
-	    else
-		strncpy (decstr0, *av, 31);
-	    decstr0[31] = (char) 0;
-	    av++;
+	    if (av1 == NULL) {
+		av1 = *av;
+		av++;
+		}
+	    if (strlen (av1) < 32)
+		strcpy (decstr0, av1);
+	    else {
+		strncpy (decstr0, av1, 31);
+		decstr0[31] = (char) 0;
+		}
 
 	/* Set coordinate system from command line */
 	    if (ac > 0) {
@@ -774,4 +780,7 @@ char *errstring;
  *
  * Mar 31 2010	Add -u option to test different difference methods
  * Mar 31 2010	Use ndec in -r and -u options
+ *
+ * Apr 19 2011	Take care of comma in coordinate input
+ * Aug 17 2011	Allow 99 in input list file for longitudes and RA
  */

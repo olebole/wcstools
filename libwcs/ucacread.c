@@ -1,5 +1,5 @@
 /*** File libwcs/ucacread.c
- *** March 17, 2011
+ *** May 20, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 2003-2011
@@ -759,7 +759,7 @@ int	nlog;		/* 1 for diagnostics */
 		else if (ucat == UCAC2) {
 		    fprintf (stderr,"UCACRNUM: %11.6f: %9.5f %9.5f %5.2f",
 			     num, ra, dec, star->xmag[0]);
-		    fprintf (stderr," %5.2f %5.2f %5.2f %d %d",
+		    fprintf (stderr," %5.2f %5.2f %5.2f",
 			     star->xmag[1],star->xmag[2],star->xmag[3]);
 		    fprintf (stderr," %d %d\n",star->nimage,star->ncat);
 		    }
@@ -1124,6 +1124,8 @@ double	rax0;		/* Right ascension in degrees for which to search */
     double rax, ra1, ra, rdiff, rdiff1, rdiff2, sdiff;
     char rastrx[32];
     int debug = 0;
+    int maxrep = 100;
+    int binary = 0;
 
     rax = rax0;
     if (debug)
@@ -1131,9 +1133,17 @@ double	rax0;		/* Right ascension in degrees for which to search */
     istar1 = 1;
     ucacstar (sc, st, zone, istar1);
     ra1 = st->ra;
-    istar = sc->nstars;
+    if (ra1 < 0.0000001)
+	ra1 = 360.0;
     nrep = 0;
-    while (istar != istar1 && nrep < 50) {
+    if (debug) {
+	char rastr[32];
+	ra2str (rastr, 31, ra1, 3);
+	fprintf (stderr,"UCACSRA %d %d: %s (%s)\n",
+		 nrep,istar1,rastr,rastrx);
+	}
+    istar = sc->nstars;
+    while (istar != istar1 && nrep < maxrep) {
 	if (ucacstar (sc, st, zone, istar)) {
 	    if (debug) {
 		fprintf (stderr," no star at %d\n", istar);
@@ -1142,6 +1152,8 @@ double	rax0;		/* Right ascension in degrees for which to search */
 	    }
 	else {
 	    ra = st->ra;
+	    if (ra < 0.0000001)
+		ra = 360.0;
 	    if (debug) {
 		char rastr[32];
 		ra2str (rastr, 31, ra, 3);
@@ -1176,22 +1188,41 @@ double	rax0;		/* Right ascension in degrees for which to search */
 		}
 	    nrep++;
 	    sdiff = (double)(istar - istar1) * rdiff1 / rdiff;
-	    istar2 = istar1 + (int) (sdiff + 0.5);
-	    ra1 = ra;
-	    istar1 = istar;
-	    istar = istar2;
+	    if (sdiff > 0)
+		istar2 = istar1 + (int) (sdiff + 0.5);
+	    else
+		istar2 = istar1 + (int) (sdiff - 0.5);
+
+	    /* If RA distribution is skewed, switch to binary search */
+	    if (binary || istar2 < 1 || istar2 > sc->nstars) {
+		binary = 1;
+		if (ABS (rdiff2) < ABS (rdiff1)) {
+		    if (ra < rax)
+			istar2 = istar1 + (ABS (istar1 - istar) / 2);
+		    else
+			istar2 = istar1 - (ABS (istar1 - istar) / 2);
+		    }
+		else {
+		    if (ra1 < rax)
+			istar2 = istar1 + (ABS (istar1 - istar) / 2);
+		    else
+			istar2 = istar1 - (ABS (istar1 - istar) / 2);
+		    }
+		}
+
 	    if (debug) {
 		fprintf (stderr," ra1=    %.5f ra=     %.5f rax=    %.5f\n",
 			 ra1,ra,rax);
 		fprintf (stderr," rdiff=  %.5f rdiff1= %.5f rdiff2= %.5f\n",
 			 rdiff,rdiff1,rdiff2);
-		fprintf (stderr," istar1= %d istar= %d istar1= %d\n",
+		fprintf (stderr," istar1= %d istar= %d istar2= %d\n",
 			 istar1,istar,istar2);
 		}
-	    if (istar < 1)
-		istar = 1;
-	    if (istar > sc->nstars)
-		istar = sc->nstars;
+	    if (istar1 == istar2)
+		break;
+	    ra1 = ra;
+	    istar1 = istar;
+	    istar = istar2;
 	    if (istar == istar1)
 		break;
 	    }
@@ -1601,4 +1632,6 @@ char *string;	/* Address of Integer*4 or Real*4 vector */
  *
  * Mar 16 2011	Improve UCACSRA to get star number closest to RA
  * Mar 17 2011	Fix bug to find stars in regions which cross a pole
+ * Apr 27 2011	Fix bug to find stars in unevenly distributed zone
+ * May 20 2011	Fix format statement with extra format items
  */

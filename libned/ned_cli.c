@@ -144,7 +144,7 @@ int *n;
 
 int
 ned_getdouble(d)
-long double *d;
+double *d;
 {
    char s[STR_LENGTH+1]; 
 
@@ -310,4 +310,6 @@ double radius;
 }
 
 /* Sep 18 2007	Modified to avoid use of vararg for portability
+ *
+ * May 20 2011	Fixed declaration of *d to double in ned_getdouble()
  */

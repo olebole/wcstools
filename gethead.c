@@ -1,9 +1,9 @@
 /* File gethead.c
- * April 6, 2009
+ * August 12, 2011
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2010
+   Copyright (C) 1996-2011
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -54,6 +54,7 @@ static int ndec = -9;
 static int maxlfn = 0;
 static int listall = 0;
 static int listpath = 0;
+static int j2000 = 0;		/* If 1, convert ra, dec keywords to J2000 */
 static int tabout = 0;
 static int tabpad = 0;
 static int logfile = 0;
@@ -75,6 +76,7 @@ static char **ccond;		/* Condition characters */
 static int nproc = 0;
 static char *extensions;	/* Extension number(s) or name to read */
 static char *extension;		/* Extension number or name to read */
+static int filekey = 0;		/* If 1, FILENAME keyword has been requested */
 
 int
 main (ac, av)
@@ -86,7 +88,7 @@ char **av;
     char **kwdnew;		/* Keywords to read */
     int nkwd = 0;
     int nkwd1 = 0;
-    char **fn, **newfn;
+    char **fn, **newfn, **newcond, **newccond;
     int *ft, *newft;
     int ifile;
     int lfn;
@@ -102,11 +104,14 @@ char **av;
     char string[80];
     char *fext, *fcomma;
     char *namext;
+    char *extroot = NULL;
+    char *extroot0;
+    char *lastroot = NULL;
     int nch;
     int nbytes;
     int filetype;
     int icond;
-    int nfext;
+    int nfext = 0;
     int nrmax=10;
     struct Range *erange = NULL;
 
@@ -176,6 +181,10 @@ char **av;
                 case 'i':       /* Log files changed */
                     logfile++;
                     break;
+
+                case 'j':       /* Convert output RA, Dec to J2000 */
+                    j2000++;
+                    break;
 	
 		case 'l': /* Return values to end of line */
 		    toeol++;
@@ -223,15 +232,48 @@ char **av;
 		case 'x': /* FITS extension to read */
 		    if (ac < 2)
 			usage();
-		    if (isnum (*(av+1)))
+		    if (isnum (*(av+1)) || isrange (*(av+1))) {
+			extroot = NULL;
 			extensions = *++av;
-		    else {
-			extensions = calloc (16, 1);
-			strcpy (extensions, "1-1000");
+			ac--;
 			}
-		    if (isrange (extensions))
+		    else {
+			extroot = *++av;
+			lastroot = extroot + strlen (extroot);
+			extensions = extroot;
+			while (extensions < lastroot) {
+			    if (isrange (extensions))
+				break;
+			    else
+				extensions++;
+			    }
+			if (extensions == lastroot) {
+			    extensions = calloc (16, 1);
+			    if (strlen (extroot) > 0)
+				strcpy (extensions, "1-1000");
+			    else
+				strcpy (extensions, "0-1000");
+			    }
+			else {
+			    extroot0 = extroot;
+			    extroot = calloc (16, 1);
+			    strncpy (extroot, extroot0, extensions-extroot0);
+			    }
+			ac--;
+			}
+		    if (isrange (extensions)) {
 			listall++;
-		    ac--;
+			erange = RangeInit (extensions, nrmax);
+			nfext = rgetn (erange);
+			extension = calloc (1, 8);
+			}
+		    else {
+			extension = extensions;
+			if (extension)
+			    nfext = 1;
+			else
+			    nfext = 0;
+			}
 		    break;
 
 		default:
@@ -272,6 +314,8 @@ char **av;
 			for (ikwd = 0; ikwd < nkwd1; ikwd++) {
 			    kwd[nkwd] = (char *) calloc (32, 1);
 			    first_token (fdk, 31, kwd[nkwd++]);
+			    if (!strcasecmp (kwd[nkwd-1], "filename"))
+				filekey++;
 			    }
 			fclose (fdk);
 			}
@@ -325,10 +369,17 @@ char **av;
 	else if (isfile (*av)) {
 	    if (nfile >= maxnfile) {
 		maxnfile = maxnfile * 2;
-		nbytes = maxnfile * sizeof (char *);
-		fn = (char **) realloc ((void *)fn, nbytes);
+		newfn = (char **) calloc (maxnfile, sizeof (char *));
+		for (i = 0; i < nfile; i++)
+		    newfn[i] = fn[i];
+		free (fn);
+		fn = newfn;
 		nbytes = maxnfile * sizeof (int);
-		ft = (int *) realloc ((void *)ft, nbytes);
+		newft = (int *) calloc (maxnfile, sizeof (int));
+		for (i = 0; i < nfile; i++)
+		    newft[i] = ft[i];
+		free (ft);
+		ft = newft;
 		}
 	    fn[nfile] = *av;
 	    ft[nfile] = FILE_ASCII;
@@ -351,8 +402,16 @@ char **av;
 		 strchr (*av, '>') != NULL || strchr (*av, '<') != NULL ) {
 	    if (ncond >= maxncond) {
 		maxncond = maxncond * 2;
-		cond = (char **)realloc((void *)cond, maxncond*sizeof(void *));
-		ccond = (char **)realloc((void *)cond, maxncond*sizeof(void *));
+		newcond = (char **) calloc(maxncond, sizeof(void *));
+		for (i = 0; i < ncond; i++)
+		    newcond[i] = cond[i];
+		free (cond);
+		cond = newcond;
+		newccond = (char **) calloc(maxncond, sizeof(void *));
+		for (i = 0; i < ncond; i++)
+		    newccond[i] = ccond[i];
+		free (ccond);
+		ccond = newccond;
 		}
 	    cond[ncond] = *av;
 	    ccond[ncond] = strchr (*av, '=');
@@ -391,6 +450,8 @@ char **av;
 	    kwd[nkwd] = calloc (sizeof(char), lkwd+1);
 	    for (i = 0; i < lkwd; i++)
 		kwd[nkwd][i] = (*av)[i];
+	    if (!strcasecmp (kwd[nkwd], "filename"))
+		filekey++;
 	    nkwd++;
 	    }
 	}
@@ -435,7 +496,10 @@ char **av;
 	    }
 
 	if (printfile) {
-	    printf ("FILENAME");
+	    if (filekey)
+		printf ("FILE_NAME");
+	    else
+		printf ("FILENAME");
 	    if (maxlfn > 8) {
 		for (i = 8; i < maxlfn; i++) {
 		    printf (" ");
@@ -516,26 +580,6 @@ char **av;
 	    }
 	}
 
-    /* Check extensions for range and set accordingly */
-    if (extensions != NULL) {
-	if (isrange (extensions)) {
-	    erange = RangeInit (extensions, nrmax);
-	    nfext = rgetn (erange);
-	    extension = calloc (1, 8);
-	    }
-	else {
-	    extension = extensions;
-	    if (extension)
-		nfext = 1;
-	    else
-		nfext = 0;
-	    }
-	}
-    else {
-	extension = NULL;
-	nfext = 0;
-	}
-
     /* Read through headers of images */
     for (ifile = 0; ifile < nfile; ifile++) {
 	if (ilistfile != NULL) {
@@ -572,15 +616,26 @@ char **av;
 		    j = rgeti4 (erange);
 		    sprintf (extension, "%d", j);
 		    nch = strlen (filename) + 2 + strlen (extension);
+		    if (extroot)
+			nch = nch + strlen (extroot);
 		    namext = (char *) calloc (1, nch);
 		    strcpy (namext, filename);
 		    strcat (namext, ",");
+		    if (extroot)
+			strcat (namext,extroot);
 		    strcat (namext, extension);
-		    sprintf (extension, "%d", j);
-		    if (PrintValues (namext, filetype, nkwd, kwd))
+		    if (PrintValues (namext, filetype, nkwd, kwd)) {
+			if (namext != NULL)
+			    free (namext);
 			break;
-		    free (namext);
+			}
+		    if (namext != NULL)
+			free (namext);
 		    }
+		if (extension != NULL)
+		    free (extension);
+		if (erange != NULL)
+		    free (erange);
 		}
 	    else
 		PrintValues (filename, filetype, nkwd, kwd);
@@ -611,15 +666,27 @@ char **av;
 		    j = rgeti4 (erange);
 		    sprintf (extension, "%d", j);
 		    nch = strlen (fn[ifile]) + 2 + strlen (extension);
+		    if (extroot)
+			nch = nch + strlen (extroot);
 		    namext = (char *) calloc (1, nch);
 		    strcpy (namext, fn[ifile]);
 		    strcat (namext, ",");
+		    if (extroot)
+			strcat (namext,extroot);
 		    strcat (namext, extension);
 		    sprintf (extension, "%d", j);
-		    if (PrintValues (namext, ft[ifile], nkwd, kwd))
+		    if (PrintValues (namext, ft[ifile], nkwd, kwd)) {
+			if (namext != NULL)
+			    free (namext);
 			break;
-		    free (namext);
+			}
+		    if (namext != NULL)
+			free (namext);
 		    }
+		if (extension != NULL)
+		    free (extension);
+		if (erange != NULL)
+		    free (erange);
 		}
 	    else
 		(void) PrintValues (fn[ifile], ft[ifile], nkwd, kwd);
@@ -658,6 +725,7 @@ usage ()
     fprintf(stderr,"  -f: Never print filenames (default is print if >1)\n");
     fprintf(stderr,"  -g: Output keyword=value's on one line per keyword\n");
     fprintf(stderr,"  -h: Print column headings\n");
+    fprintf(stderr,"  -j: Print output ra and dec in J2000\n");
     fprintf(stderr,"  -m num: Change maximum length of IRAF multi-line value\n");
     fprintf(stderr,"  -n num: Number of decimal places in numeric output\n");
     fprintf(stderr,"  -o: OR conditions instead of ANDing them\n");
@@ -685,6 +753,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
     int iraffile;
     char fnform[8];
     char string[256];
+    char estring[80];
     char temp[1028];
     char keyword[16];
     char *filename;
@@ -697,14 +766,14 @@ char	*kwd[];		/* Names of keywords for which to print values */
     char pchar;
     char *kw, *kwe, *filepath;
     char *ext, *namext, cext;
-    int ikwd, nfound, notfound, nch;
+    int ikwd, nfound, notfound, nch, iepoch;
     int lkwd = 0;
     int jval, jcond, icond, i, j, lout, lstr;
-    double dval, dcond, dnum;
+    double dval, dcond, dnum, epoch, ra, dec;
     char tcond;
     char cvalue[64], *cval;
     char numstr[32], numstr1[32];
-    int pass, iwcs, nwild;
+    int pass, iwcs, nwild, sys1, sys2, ncdec;
 
     mstring = (char *) calloc (maxml, 1);
 
@@ -742,13 +811,27 @@ char	*kwd[];		/* Names of keywords for which to print values */
 
     /* Read ASCII file into buffer */
     if (filetype == FILE_ASCII) {
-	if ((header = getfilebuff (filepath)) == NULL)
+	if ((header = getfilebuff (filepath)) == NULL) {
+	    if (mstring != NULL)
+		free (mstring);
+	    if (namext != NULL)
+		free (namext);
+	    if (filepath != NULL)
+		free (filepath);
 	    return (-1);
+	    }
 	}
 
     /* Retrieve FITS header from FITS or IRAF .imh file */
-    else if ((header = GetFITShead (filepath, verbose)) == NULL)
+    else if ((header = GetFITShead (filepath, verbose)) == NULL) {
+	if (mstring != NULL)
+	    free (mstring);
+	if (namext != NULL)
+	    free (namext);
+	if (filepath != NULL)
+	    free (filepath);
 	return (-1);
+	}
 
     if (verbose) {
 	fprintf (stderr,"Print Header Parameter Values from ");
@@ -857,11 +940,29 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		if (tcond == '#' && strcmp (cstr, cval))
 		    pass = 1;
 		}
-	    if (condand && !pass)
+	    if (condand && !pass) {
+		if (mstring != NULL)
+		    free (mstring);
+		if (namext != NULL)
+		    free (namext);
+		if (filepath != NULL)
+		    free (filepath);
+		if (header != NULL)
+		    free (header);
 		return (0);
+		}
 	    }
-	if (!pass)
+	if (!pass) {
+	    if (mstring != NULL)
+		free (mstring);
+	    if (namext != NULL)
+		free (namext);
+	    if (filepath != NULL)
+		free (filepath);
+	    if (header != NULL)
+		free (header);
 	    return (0);
+	    }
 	}
 
     /* Read keywords from header */
@@ -972,6 +1073,111 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		for (i = 0; i < lstr; i++)
 		    string[i] = string[i+1];
 		}
+
+	    /* Convert coordinates to J2000 from B1950 */
+	    if (!strcmp (keyword,"RA")) {
+		if (!isnum (string))
+		    hgets (header, "RRA", 80, string);
+		ncdec = StrNdec (string);
+		if (ncdec < 3)
+		    ncdec = 3;
+	        if (j2000) {
+		    if (!hgets (header, "EPOCH", 80, estring) ||
+			!isnum (estring)) {
+			if (!hgets (header, "REPOCH", 80, estring))
+			    strcat (estring, "2000");
+			}
+		    epoch = atof (estring);
+		    iepoch = (int) (epoch + 0.5);
+		    if (iepoch == 1950) {
+			ra = str2ra (string);
+			hgets (header, "DEC", 80, string);
+			if (!isnum (string))
+			    hgets (header, "RDEC", 80, string);
+			dec = str2dec (string);
+			fk425 (&ra, &dec);
+			ra2str (string, 80, ra, ncdec);
+			}
+		    else if (iepoch != 2000) {
+			if (iepoch < 2000)
+			    sys1 = WCS_B1950;
+			else
+			    sys1 = WCS_J2000;
+			sys2 = WCS_J2000;
+			ra = str2ra (string);
+			hgets (header, "DEC", 80, string);
+			if (!isnum (string))
+			    hgets (header, "RDEC", 80, string);
+			dec = str2dec (string);
+			wcscon (sys1, sys2,epoch,2000.0,&ra,&dec,epoch);
+			ra2str (string, 80, ra, ncdec);
+			}
+		    else {
+			ra = str2ra (string);
+			ra2str (string, 80, ra, ncdec);
+			}
+		    }
+		else {
+		    ra = str2ra (string);
+		    ra2str (string, 80, ra, ncdec);
+		    }
+		}
+	    if (!strcmp (keyword,"DEC")) {
+		if (!isnum (string))
+		    hgets (header, "RDEC", 80, string);
+		ncdec = StrNdec (string);
+		if (ncdec < 2)
+		    ncdec = 2;
+		if (j2000) {
+		    if (!hgets (header, "EPOCH", 80, estring) ||
+			!isnum (estring)) {
+			if (!hgets (header, "REPOCH", 80, estring))
+			    strcat (estring, "2000");
+			}
+		    epoch = atof (estring);
+		    iepoch = (int) (epoch + 0.5);
+		    if (iepoch == 1950) {
+			dec = str2dec (string);
+			hgets (header, "RA", 80, string);
+			if (!isnum (string))
+			    hgets (header, "RRA", 80, string);
+			ra = str2ra (string);
+			fk425 (&ra, &dec);
+			dec2str (string, 80, dec, ncdec);
+			}
+		    else if (iepoch != 2000) {
+			if (iepoch < 2000)
+			    sys1 = WCS_B1950;
+			else
+			    sys1 = WCS_J2000;
+			sys2 = WCS_J2000;
+			dec = str2dec (string);
+			hgets (header, "ra", 80, string);
+			if (!isnum (string))
+			    hgets (header, "RRA", 80, string);
+			ra = str2ra (string);
+			wcscon (sys1, sys2,epoch,2000.0,&ra,&dec,epoch);
+			dec2str (string, 80, dec, ncdec);
+			}
+		    else {
+			dec = str2dec (string);
+			dec2str (string, 80, dec, ncdec);
+			}
+		    }
+		else {
+		    dec = str2dec (string);
+		    dec2str (string, 80, dec, ncdec);
+		    }
+		}
+	    if (!strcmp (keyword,"EPOCH")) {
+		if (j2000)
+		    strcpy (string,"2000");
+		if (!isnum (string))
+		    hgets (header,"REPOCH",80,string);
+		}
+	    if (j2000 && !strcmp (keyword,"EQUINOX"))
+		strcpy (string,"2000");
+
 	    str = string;
 	    strfix (str, fillblank, 0);
 	    if (ndec > -9 && isnum (str) && strchr (str, '.')) {
@@ -1098,7 +1304,14 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	printf ("%s\n", outline);
 	}
 
-    free (header);
+    if (mstring != NULL)
+	free (mstring);
+    if (namext != NULL)
+	free (namext);
+    if (filepath != NULL)
+	free (filepath);
+    if (header != NULL)
+	free (header);
     return (0);
 }
 
@@ -1206,4 +1419,11 @@ char *string;
  * Apr 03 2009	Increase default size of multi-line value buffer to 20000
  *
  * Apr 06 2010	Add fillblank argument to agets()
+ *
+ * May 19 2011	Free all allocated memory to eliminate memory leaks
+ * May 20 2011	Add -j option to convert output RA and Dec to J2000
+ * May 20 2011	Make RA seconds output at least 3 decimal places; Dec, 2
+ * Jun 21 2011	If FILENAME keyword is requested, first column is FILE_NAME
+ * Aug 12 2011	Fix range of extensions from -x
+ * Aug 12 2011	Add prefixed range of extensions from -x
  */

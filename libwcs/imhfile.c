@@ -1,8 +1,8 @@
 /*** File imhfile.c
- *** January 8, 2007
+ *** May 20, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2007
+ *** Copyright (C) 1996-2011
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -951,6 +951,7 @@ char	*image;		/* IRAF image */
 	if (strncmp(pixn, "HDR", 3) == 0 ) {
 	    newpixname = same_path (pixn, hdrname);
 	    strcpy (pixname, newpixname);
+	    free (newpixname);
 	    }
 	else {
 	    if ((bang = strchr (pixn, '!')) != NULL )
@@ -1019,7 +1020,6 @@ char	*image;		/* IRAF image */
     nbw = write (fd, image, nbimage);
     close (fd);
 
-    free (pixname);
     return (nbw);
 }
 
@@ -1929,5 +1929,7 @@ FILE *diskfile;		/* Descriptor of file for which to find size */
  *
  * Jan  4 2007	Change hputr4() calls to send pointer to value
  * Jan  8 2007	Drop unused variable nbx in irafrimage()
- * Jan  8 2006	Align header and image buffers properly by 4 and by BITPIX
+ * Jan  8 2007	Align header and image buffers properly by 4 and by BITPIX
+ *
+ * May 20 2011	Free newpixname, not pixname in irafwimage()
  */

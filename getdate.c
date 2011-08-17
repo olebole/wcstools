@@ -1,9 +1,9 @@
 /* File getdate.c
- * April 6, 2009
+ * July 15, 2011
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2009
+   Copyright (C) 1999-2011
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -401,12 +401,12 @@ usage ()
     fprintf (stderr,"       [-dv][-n dec][-f format] itype2otype @file\n");
     fprintf(stderr,"  itype: nfd=ISOFITS fd=FITS, dt=yyyy.mmdd, hr=hh:mm:ss, deg=dd:mm:ss\n");
     fprintf(stderr,"         jd=Julian Date, mjd=Modified Julian Date\n");
-    fprintf(stderr,"         jhd=Heliocentric Julian Date, mhjd=Modified HJD\n");
+    fprintf(stderr,"         hjd=Heliocentric Julian Date, mhjd=Modified HJD\n");
     fprintf(stderr,"         ep=epoch, epj=Julian epoch, epb=Besselian epoch\n");
     fprintf(stderr,"         lt=local time, ut=UT, ts=seconds since 1950-01-01\n");
     fprintf(stderr,"         now=current time, ang=fractional degrees\n");
     fprintf(stderr,"  otype: fd=FITS, dt=yyyy.mmdd, jd=Julian Date, mjd=Modified Julian Date\n");
-    fprintf(stderr,"         jhd=Heliocentric Julian Date, mhjd=Modified HJD\n");
+    fprintf(stderr,"         hjd=Heliocentric Julian Date, mhjd=Modified HJD\n");
     fprintf(stderr,"         hr=hh:mm:ss, deg=dd:mm:ss, ang=fractional degrees\n");
     fprintf(stderr,"         ep=epoch, epj=Julian epoch, epb=Besselian epoch\n");
     fprintf(stderr,"         ts=seconds since 1950-01-01, tsu=Unix sec, tsi=IRAF sec\n");
@@ -1033,6 +1033,8 @@ char	*timestring;	/* Input time string */
 			tchar = strchr (fitsdate, 'T');
 			if (tchar == NULL)
 			    tchar = strchr (fitsdate, 'S');
+			if (tchar == NULL)
+			    tchar = fitsdate;
 			if (dateonly) {
 			    strncpy (fyear, fitsdate, 10);
 			    fyear[10] = (char) 0;
@@ -1044,7 +1046,7 @@ char	*timestring;	/* Input time string */
 				printf ("%s\n", fitsdate);
 			    }
 			else if (outtime==GST || outtime==MST || outtime==LST) {
-			    printf ("%10sS%s\n", fyear, fitsdate);
+			    printf ("%s\n", fitsdate);
 			    }
 			else {
 			    if (outtime == ET)
@@ -2248,4 +2250,7 @@ char	*timestring;	/* Input time string */
  * Jul 28 2008	Fix time system conversion but for vigesimal date/time strings
  * Sep  8 2008	Add vigesimal hour and degree to fractional degree conversions
  * Apr  6 2009	Fix bug so positions after FITS ISO dates are read correctly
+ *
+ * Jul 14 2011	Print correct help hjd instead of jhd
+ * Jul 15 2011	Fix bug so ST's print as time only withoug preceding junk
  */

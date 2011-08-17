@@ -49,6 +49,9 @@ filename: filename.c
 fileroot: fileroot.c
 	$(CC) $(CFLAGS) -o $(BIN)/fileroot fileroot.c
 
+filedir: filedir.c
+	$(CC) $(CFLAGS) -o $(BIN)/filedir filedir.c
+
 filext: filext.c
 	$(CC) $(CFLAGS) -o $(BIN)/filext filext.c
 

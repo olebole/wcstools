@@ -219,6 +219,7 @@ struct prjprm {
    int qscset(struct prjprm *);
    int qscfwd(const double, const double, struct prjprm *, double *, double *);
    int qscrev(const double, const double, struct prjprm *, double *, double *);
+   int raw_to_pv(struct prjprm *prj, double x, double y, double *xo, double *yo);
 #else
    int prjset(), prjfwd(), prjrev();
    int azpset(), azpfwd(), azprev();
@@ -247,7 +248,10 @@ struct prjprm {
    int tscset(), tscfwd(), tscrev();
    int cscset(), cscfwd(), cscrev();
    int qscset(), qscfwd(), qscrev();
+   int raw_to_pv();
 #endif
+
+
 
 extern const char *prjset_errmsg[];
 extern const char *prjfwd_errmsg[];
@@ -467,4 +471,6 @@ extern const char *wcsmix_errmsg[];
  * Mar 12 2002	Doug Mink - Update for WCSLIB 2.8.2, especially proj.h
  * Nov 29 2006	Doug Mink - Drop semicolon at end of C++ ifdef
  * Jan  4 2007	Doug Mink - Drop extra declarations of SZP subroutines
+ *
+ * Mar 30 2011	Doug Mink - Add raw_to_pv() subroutine for SCAMP from Ed Los
  */

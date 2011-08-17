@@ -1,9 +1,9 @@
 /* File getcol.c
- * September 25, 2009
+ * April 18, 2011
  * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to dmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2009
+   Copyright (C) 1999-2011
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -45,6 +45,7 @@ static int iscol();
 static double median();
 
 static int maxnfile = MAXFILES;
+static int maxq = MAXFILES;
 
 static double badval = 0.0;	/* Value to ignore */
 static int isbadval = 0;	/* 1 if badval is set */
@@ -532,6 +533,7 @@ char	*lfile;		/* Name of file with lines to list */
     double *colmin, *colmax, **med;
     double **amed = NULL;
     double *qmed = NULL;
+    double *qmed1 = NULL;
     double qsum = 0.0;
     double qsum1;
     int *nsum;
@@ -886,8 +888,8 @@ char	*lfile;		/* Name of file with lines to list */
 	    return (-1);
 	    }
 	else {
-	    nbytes = nread * sizeof (double);
-	    if (!(qmed = calloc (nread, sizeof(double)))) {
+	    nbytes = maxq * sizeof (double);
+	    if (!(qmed = calloc (maxq, sizeof(double)))) {
 		fprintf (stderr, "Could not calloc %d bytes for qmed\n", nbytes);
 		if (fd != stdin) fclose (fd);
 		return (-1);
@@ -1214,6 +1216,13 @@ char	*lfile;		/* Name of file with lines to list */
 		    nent[i]++;
 		    }
 		if (nq > 1) {
+		    if (nqsum >= maxq) {
+			maxq = maxq * 2;
+			nbytes = maxq * sizeof (double);
+			qmed1 = (double *) realloc ((void *)qmed, nbytes);
+			qmed = qmed1;
+			qmed1 = NULL;
+			}
 		    qmed[nqsum] = sqrt (qsum1);
 		    nqsum++;
 		    qsum = qsum + sqrt (qsum1);
@@ -1768,4 +1777,6 @@ void *pd1, *pd2;
  *
  * Jul  1 2008	Fix bug so columns can be compared if both are integers
  * Sep 25 2009	Fix error message about illegal operation
+ *
+ * Apr 18 2011	Fix allocation bug for median of too many entries
  */

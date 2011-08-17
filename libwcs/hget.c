@@ -1,5 +1,5 @@
 /*** File libwcs/hget.c
- *** March 11, 2011
+ *** May 19, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2011
@@ -1317,6 +1317,10 @@ const char *in;	/* Character string of sexigesimal or decimal degrees */
 	else
 	    sign = 1.0;
 
+	/* Turn comma into space */
+	if ((c1 = strsrch (value,",")) != NULL)
+	    *c1 = ' ';
+
 	/* Remove trailing spaces */
 	lval = strlen (value);
 	while (value[lval-1] == ' ')
@@ -1532,16 +1536,22 @@ const int ls1;	/* Length of string being searched */
 	if (*s == cfirst || *s == ocfirst) {
 
 	    /* If single character search, return */
-	    if (ls2 == 1)
+	    if (ls2 == 1) {
+		if (os2 != NULL)
+		    free (os2);
 		return (s);
+		}
 
 	    /* Search for last character in pattern string if first found */
 	    sl = s[ls2-1];
 	    if (sl == clast || sl == oclast) {
 
 		/* If two-character search, return */
-		if (ls2 == 2)
+		if (ls2 == 2) {
+		    if (os2 != NULL)
+			free (os2);
 		    return (s);
+		    }
 
 		/* If 3 or more characters, check for rest of search string */
 		i = 1;
@@ -1550,7 +1560,8 @@ const int ls1;	/* Length of string being searched */
 
 		/* If entire string matches, return */
 		if (i >= ls2) {
-		    free (os2);
+		    if (os2 != NULL)
+			free (os2);
 		    return (s);
 		    }
 		}
@@ -1896,4 +1907,7 @@ int	dropzero;	/* If nonzero, drop trailing zeroes */
  * Aug 22 2007	If closing quote not found, make one up
  *
  * Nov 12 2009	In strfix(), if drop enclosing parantheses
+ *
+ * Apr 19 2011	In str2dec(), change comma to space
+ * May 19 2011	In strncsrch() always free allocated memory before returning
  */
