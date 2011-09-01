@@ -1,3 +1,7 @@
+Version 3.8.4 (September 1, 2011)
+cphead, keyhead, sethead: Fix overflow bug by increasing size of history from 72 to 128
+imgetwcs.c, wcsinit.c, wcs.c, wcs.h, worldpos.c: Add TPV WCS for TAN with PV terms
+
 Version 3.8.3 (August 17, 2011)
 getdate: Print hjd in help message instead of jhd
 gethead: First column name is FILE_NAME if FILENAME keyword is used (2011-06-29)

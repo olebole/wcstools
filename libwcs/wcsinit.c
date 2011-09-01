@@ -1,5 +1,5 @@
 /*** File libwcs/wcsinit.c
- *** March 18, 2011
+ *** September 1, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2011
@@ -556,6 +556,15 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 		wcs->ctype[1][7] = 'N';
 		wcs->prjcode = WCS_ZPN;
 		}
+	    }
+
+	/* Set TPV to TAN as SCAMP coefficients will be added below */
+	if (wcs->prjcode == WCS_TPV) {
+	    wcs->ctype[0][6] = 'A';
+	    wcs->ctype[0][7] = 'N';
+	    wcs->ctype[1][6] = 'A';
+	    wcs->ctype[1][7] = 'N';
+	    wcs->prjcode = WCS_TAN;
 	    }
 
 	/* Coordinate reference frame, equinox, and epoch */
@@ -1597,4 +1606,5 @@ char	*mchar;		/* Suffix character for one of multiple WCS */
  * Mar 11 2011	Add NOAO ZPX projection (Frank Valdes)
  * Mar 18 2011	Add invert_wcs() by Emmanuel Bertin for SCAMP
  * Mar 18 2011	Change Bertin's ARCSEC/DEG to S2D and DEG/ARCSEC to D2S
+ * Sep  1 2011	Add TPV as TAN with SCAMP PVs
  */

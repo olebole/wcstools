@@ -1,8 +1,8 @@
 /*** File libwcs/imgetwcs.c
- *** April 7, 2010
+ *** September 1, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu (remotely based on UIowa code)
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2010
+ *** Copyright (C) 1996-2011
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -681,6 +681,8 @@ char*	ptype;
     strcpy (ctypes[29], "DSS");
     strcpy (ctypes[30], "PLT");
     strcpy (ctypes[31], "TNX");
+    strcpy (ctypes[32], "ZPX");
+    strcpy (ctypes[33], "TPV");
 
     ptype0 = -1;
     for (i = 0; i < nctype; i++) {
@@ -805,4 +807,6 @@ char *dateobs;
  *
  * Apr 06 2010	Set hp from IMAGEH in ChangeFITSWCS() (from Paul Liptack)
  * Apr  7 2010	In ChangeFITSWCS() set number of WCS projections from NWCSTYPE
+ *
+ * Sep  1 2011	Add ZPX and TPV projections to setproj()
  */

@@ -281,7 +281,7 @@ char	*kwd[];		/* Names and values of those keywords */
     int imageread = 0;
     char cval[24];
     int fdr, fdw, ipos, nbr, nbw, nchange;
-    char history[72];
+    char history[128];
     char comment[72];
     char *endchar;
     char *ltime;
@@ -662,4 +662,6 @@ char	*kwd[];		/* Names and values of those keywords */
  * Nov 09 2007	Add more verbosity replacing value from another keyword
  *
  * Aug 19 2009	Fix bug to remove limit to the number of files on command line
+ *
+ * Sep  1 2011	Fix overflow bug by increasing size of history from 72 to 128
  */

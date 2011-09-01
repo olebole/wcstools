@@ -1,5 +1,5 @@
 /*  worldpos.c -- WCS Algorithms from Classic AIPS.
- *  March 11, 2011
+ *  September 1, 2011
  *  Copyright (C) 1994-2011
  *  Associated Universities, Inc. Washington DC, USA.
  *  With code added by Doug Mink, Smithsonian Astrophysical Observatory
@@ -224,6 +224,7 @@ double	*ypos;		/* y (dec) coordinate (deg) */
 
     case WCS_TAN:   /* -TAN tan */
     case WCS_TNX:   /* -TNX tan with polynomial correction */
+    case WCS_TPV:   /* -TPV tan with polynomial correction */
     case WCS_ZPX:   /* -ZPX zpn with polynomial correction */
       if (sins>1.0) return 1;
       dect = cos0 - m * sin0;
@@ -477,6 +478,9 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
 	m = sins * cos(dec0) - coss * sin(dec0) * cos(ra-ra0);
 	break;
 
+    case WCS_TNX:   /* -TNX tan with polynomial correction */
+    case WCS_TPV:   /* -TPV tan with polynomial correction */
+    case WCS_ZPX:   /* -ZPX zpn with polynomial correction */
     case WCS_TAN:   /* -TAN tan */
 	if (sint<=0.0) return 1;
  	m = sins * sin(dec0) + coss * cos(dec0) * cos(ra-ra0);
@@ -685,4 +689,5 @@ double	*ypix;		/* y pixel number  (dec or lat without rotation) */
  * Jun 20 2006	Initialize uninitialized variables
  *
  * Mar 11 2011	Initialize ZPX
+ * Sep  1 2011	Add TPV projection as TAN
  */

@@ -1,5 +1,8 @@
 WCSTools WCS subroutine release history
 
+Version 3.8.4 (September 1, 2011)
+imgetwcs.c, wcsinit.c, wcs.c, wcs.h, worldpos.c: Add TPV WCS for TAN with PV terms
+
 Version 3.8.3 (May 20, 2011)
 hget.c: Free allocated memory in strnsrch() to eliminate memory leak (2011-05-19)
 imhfile.c: Free *newpixname* not pixname. (2011-05-20)

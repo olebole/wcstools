@@ -1,8 +1,8 @@
 /*** File libwcs/hput.c
- *** August 22, 2007
+ *** September 9, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1995-2007
+ *** Copyright (C) 1995-2011
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -282,8 +282,10 @@ const char *cval;	/* character string containing the value for variable
     /*  If COMMENT or HISTORY, use the same keyword on every line */
     lkw = (int) strlen (keyword);
     if (lkw == 7 && (strncmp (keyword,"COMMENT",7) == 0 ||
-	strncmp (keyword,"HISTORY",7) == 0))
+	strncmp (keyword,"HISTORY",7) == 0)) {
 	comment = 1;
+	lroot = 0;
+	}
 
     /* Set up keyword root, shortening it to 6 characters, if necessary */
     else {
@@ -687,6 +689,7 @@ hputcom (hstring,keyword,comment)
 		}
 	    else
 		q1 = NULL;
+		q2 = NULL;
 	    }
 
 	else
@@ -1308,4 +1311,6 @@ int	ndec;		/* Number of decimal places in degree string */
  * Jan 16 2007	Fix bugs in ra2str() and dec2str() so ndec=0 works
  * Aug 20 2007	Fix bug so comments after quoted keywords work
  * Aug 22 2007	If closing quote not found, make one up
+ *
+ * Sep  9 2011	Always initialize q2 and lroot
  */

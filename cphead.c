@@ -1,5 +1,5 @@
 /* File cphead.c
- * March 14, 2011
+ * September 1, 2011
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -372,7 +372,7 @@ char	*kwd[];		/* Names of keywords for which to copy values */
     char *ltime;
     int naxis, ipos, nbhead, nbr, nbw;
     int fdr, fdw;
-    char history[72];
+    char history[128];
     char echar;
     char *endchar;
     int imageread = 0;
@@ -693,4 +693,5 @@ char	*kwd[];		/* Names of keywords for which to copy values */
  * Aug 19 2009	Fix bug to remove limit to the number of files on command line
  *
  * Mar 14 2011	Use MAXPV from wcslib.h when copying PVi_j parameters
+ * Sep  1 2011	Fix overflow bug by increasing size of history from 72 to 128
  */

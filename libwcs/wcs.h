@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.h
- *** March 14, 2011
+ *** September 9, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2011
@@ -196,7 +196,8 @@ struct WorldCoor {
 #define WCS_PLT 30	/* Plate fit polynomials (SAO) */
 #define WCS_TNX 31	/* Gnomonic = Tangent Plane (NOAO with corrections) */
 #define WCS_ZPX 32	/* Gnomonic = Tangent Plane (NOAO with corrections) */
-#define NWCSTYPE 33	/* Number of WCS types (-1 really means no WCS)
+#define WCS_TPV 33	/* Gnomonic = Tangent Plane (NOAO with corrections) */
+#define NWCSTYPE 34	/* Number of WCS types (-1 really means no WCS) */
 
 /* Coordinate systems */
 #define WCS_J2000	1	/* J2000(FK5) right ascension and declination */
@@ -957,4 +958,6 @@ extern int zpxpix();	/* Inverse transform (world to physical) gnomonic projectio
  *
  * Mar 11 2011	Add NOAO ZPX projection parameters and subroutines (Frank Valdes)
  * Mar 14 2011	Add SCAMP polynomial projection coefficients
+ * Sep  1 2011	Add TPV TAN projectioin with SCAT PV terms
+ * Sep  9 2011	Fix comment on TPV declaration
  */

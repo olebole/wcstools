@@ -1,5 +1,5 @@
 /* File sethead.c
- * January 3, 2011
+ * September 1, 2011
  * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to dmink@cfa.harvard.edu
 
@@ -614,7 +614,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     int nbold, nbnew;
     int imageread = 0;
     char cval[24];
-    char history[72];
+    char history[128];
     char *endchar;
     char *ltime;
     char newkey[10];
@@ -1465,4 +1465,5 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Sep 25 2009	Drop unused variable cext
  *
  * Jan  3 2011	Exit with errflag value to indicate an error
+ * Sep  1 2011	Fix overflow bug by increasing size of history from 72 to 128
  */

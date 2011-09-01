@@ -1,5 +1,5 @@
 /*** File libwcs/wcs.c
- *** May 9, 2011
+ *** September 1, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1994-2011
@@ -380,6 +380,7 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
     strcpy (ctypes[30], "PLT");
     strcpy (ctypes[31], "TNX");
     strcpy (ctypes[32], "ZPX");
+    strcpy (ctypes[33], "TPV");
 
     /* Initialize distortion types */
     strcpy (dtypes[1], "SIP");
@@ -2987,4 +2988,5 @@ char *cwcs;	/* Keyword suffix character for output WCS */
  * Mar 14 2011	Delete j<=MAXPV PVi_j parameters (for SCAMP polynomials via Ed Los)
  * Mar 17 2011	Fix WCSDEP bug found by Ed Los
  * May  9 2011	Free WCS structure recursively if WCSDEP is used
+ * Sep  1 2011	Add TPV projection type for SCAMP TAN with PVs
  */
