@@ -1,7 +1,7 @@
 /* File imhead.c
  * December 1, 2008
- * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
- * Send bug reports to dmink@cfa.harvard.edu
+ * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
+ * Send bug reports to jmink@cfa.harvard.edu
 
    Copyright (C) 1996-2008 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA

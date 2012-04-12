@@ -1,6 +1,6 @@
 /*** simpos.c - search object by its name from command line arguments
  *** October 3, 2007
- *** By Doug Mink, sort of after IPAC byname.c
+ *** By Jessica Mink, sort of after IPAC byname.c
  */
 
 #include <stdlib.h>

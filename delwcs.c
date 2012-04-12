@@ -1,8 +1,8 @@
 /* File delwcs.c
  * June 21, 2006
- * By Doug Mink, after University of Iowa code
+ * By Jessica Mink, after University of Iowa code
  * (Harvard-Smithsonian Center for Astrophysics)
- * Send bug reports to dmink@cfa.harvard.edu
+ * Send bug reports to jmink@cfa.harvard.edu
 
    Copyright (C) 2006 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA

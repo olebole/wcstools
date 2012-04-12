@@ -1,4 +1,4 @@
-CFLAGS= -g
+CFLAGS= -g -D_FILE_OFFSET_BITS=64
 CC= cc
 LIBWCS = libwcs/libwcs.a
 LIBNED = libned/libned.a

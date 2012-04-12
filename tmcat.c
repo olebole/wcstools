@@ -1,6 +1,6 @@
 /*** File tmcat.c
  *** July 1, 2003
- *** By Doug Mink, SAO
+ *** By Jessica Mink, SAO
 
    Copyright (C) 2006 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA

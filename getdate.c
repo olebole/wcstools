@@ -1,9 +1,9 @@
 /* File getdate.c
- * July 15, 2011
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- * Send bug reports to dmink@cfa.harvard.edu
+ * March 27, 2012
+ * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
+ * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2011
+   Copyright (C) 1999-2012
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -97,6 +97,9 @@ char **av;
     int outtype = 0;	/* Output date type */
     int appdate = 0;	/* Append date to input file */
     int typeset = 0;
+    int ntok = 0;
+    struct Tokens tokens;
+    int itok;
     int lline;
     char line[82];
     FILE *fd;
@@ -246,17 +249,13 @@ char **av;
 
 	/* Set RA, Dec, and equinox if WCS-generated argument */
 	if (ac > 3 &&
-		 strsrch (*av,":") != NULL && strsrch (*(av+1),":") != NULL &&
-		 (strcsrch(*(av+2),"j")!=NULL || strcsrch(*(av+2),"b")!=NULL)) {
-	    if (ac < 3)
-		usage();
-	    else {
-		ra = str2ra (*av);
-		ac--;
-		dec = str2dec (*++av);
-		ac--;
-		coorsys = wcscsys (*++av);
-		}
+	    strsrch (*av,":") != NULL && strsrch (*(av+1),":") != NULL &&
+	    (strcsrch(*(av+2),"j")!=NULL || strcsrch(*(av+2),"b")!=NULL)) {
+	    ra = str2ra (*av);
+	    ac--;
+	    dec = str2dec (*++av);
+	    ac--;
+	    coorsys = wcscsys (*++av);
 	    }
 
 	/* Read command line parameters */
@@ -334,14 +333,34 @@ char **av;
 		timestring = (char *) calloc (80,1);
 		while (fgets (line, 80, fd)) {
 		    lline = strlen (line);
-		    if ((int)line[lline-1] < 32)
-			line[lline-1] = (char) 0;
+		    ntok = setoken (&tokens, line, NULL);
+
+		    /* Set RA, Dec, and equinox if WCS-generated argument */
+		    if (ntok > 3 &&
+			strnsrch (tokens.tok1[0],":",tokens.ltok[0])!=NULL &&
+			strnsrch (tokens.tok1[1],":",tokens.ltok[1])!=NULL &&
+			(strncsrch (tokens.tok1[2],"j",tokens.ltok[1])!=NULL ||
+			strncsrch (tokens.tok1[2],"b",tokens.ltok[1])!=NULL)){
+			ra = str2ra (tokens.tok1[0]);
+			dec = str2dec (tokens.tok1[1]);
+			coorsys = wcscsys (tokens.tok1[2]);
+			itok = 3;
+			}
+		    else
+			itok = 0;
 		    if (appdate)
 			printf ("%s ", line);
-		    if (nftok > 1)
-			sscanf (line, "%s %s", datestring, timestring);
-		    else
-			sscanf (line, "%s", datestring);
+		    if (nftok > 1) {
+			strncpy (datestring, tokens.tok1[itok],tokens.ltok[itok]);
+			datestring[tokens.ltok[itok]] = (char) 0;
+			itok++;
+			strncpy (timestring, tokens.tok1[itok],tokens.ltok[itok]);
+			timestring[tokens.ltok[itok]] = (char) 0;
+			}
+		    else {
+			strncpy (datestring, tokens.tok1[itok],tokens.ltok[itok]);
+			datestring[tokens.ltok[itok]] = (char) 0;
+			}
 		    ConvertDate (intype, outtype, datestring, timestring);
 		    }
 		free (datestring);
@@ -397,7 +416,7 @@ usage ()
     if (version)
 	exit (-1);
     fprintf (stderr,"Convert date and time between various formats\n");
-    fprintf (stderr,"Usage: [-dv][-n dec][-f format] itype2otype [date and/or time] [ra dec sys]\n");
+    fprintf (stderr,"Usage: [-dv][-n dec][-f format] [ra dec sys] itype2otype [date and/or time]\n");
     fprintf (stderr,"       [-dv][-n dec][-f format] itype2otype @file\n");
     fprintf(stderr,"  itype: nfd=ISOFITS fd=FITS, dt=yyyy.mmdd, hr=hh:mm:ss, deg=dd:mm:ss\n");
     fprintf(stderr,"         jd=Julian Date, mjd=Modified Julian Date\n");
@@ -442,7 +461,7 @@ char	*timestring;	/* Input time string */
     char *fitsdate, *newfdate, *stdate;
     char temp[64];
     char fyear[16];
-    char ts0[8];
+    char ts0[16];
     char *tchar;
     int its, its1;
     time_t lts;
@@ -566,6 +585,8 @@ char	*timestring;	/* Input time string */
 	    if (datestring != NULL) {
 		if (strcmp (datestring, "now")) {
 		    vdate = atof (datestring);
+		    if (vdate > 9999.0)
+			vdate = floor (vdate) * 0.0001;
 		    if (timestring != NULL) 
 			vtime = atof (timestring);
 		    else {
@@ -2253,4 +2274,8 @@ char	*timestring;	/* Input time string */
  *
  * Jul 14 2011	Print correct help hjd instead of jhd
  * Jul 15 2011	Fix bug so ST's print as time only withoug preceding junk
+ *
+ * Jan 24 2012	Add scale factor to convert date RFN's to  DT date
+ * Feb 15 2012	Add option to read ra dec sys before time from file
+ * Mar 27 2012	Fix bug copying string to ts0 found by Michal Szymanski
  */

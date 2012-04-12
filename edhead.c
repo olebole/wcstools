@@ -1,7 +1,7 @@
 /* File edhead.c
  * October 31, 2006
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- * Send bug reports to dmink@cfa.harvard.edu
+ * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
+ * Send bug reports to jmink@cfa.harvard.edu
 
    Copyright (C) 2006 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
@@ -21,8 +21,8 @@
    Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA
  */
 
-#include <stdio.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>

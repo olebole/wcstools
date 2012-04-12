@@ -1,9 +1,9 @@
 /*** File webread.c
- *** October 29, 2010
+ *** September 16, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code from John Roll)
- *** Copyright (C) 2000-2010
+ *** Copyright (C) 2000-2011
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -49,9 +49,15 @@
 
 #include <sys/time.h>
 #include <sys/types.h>
+
+/* for MinGW */
+#ifdef MSWIN
+#include <winsock2.h>
+#else
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netdb.h>
+#endif
 
 /* static int FileINetParse (char *file,int port,struct sockaddr_in *adrinet);*/
 static int FileINetParse();
@@ -1036,4 +1042,6 @@ space2tab (tabbuff)
  * Sep 25 2009	Free allocated pointers before returning after Douglas Burke
  *
  * Oct 29 2010	Declare match int in webrnum()
+ *
+ * Sep 16 2011	Add winsock2.h include for MinGW MSWindows C
  */

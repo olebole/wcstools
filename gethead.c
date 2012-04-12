@@ -1,7 +1,7 @@
 /* File gethead.c
- * August 12, 2011
- * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
- * Send bug reports to dmink@cfa.harvard.edu
+ * December 14, 2011
+ * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
+ * Send bug reports to jmink@cfa.harvard.edu
 
    Copyright (C) 1996-2011
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
@@ -816,6 +816,19 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		free (mstring);
 	    if (namext != NULL)
 		free (namext);
+	    if (verbose) fprintf (stderr, "GETHEAD: file %s has no content\n",
+				   filepath);
+	    if (filepath != NULL)
+		free (filepath);
+	    return (-1);
+	    }
+	else if (strlen (header) == 0) {
+	    if (mstring != NULL)
+		free (mstring);
+	    if (namext != NULL)
+		free (namext);
+	    if (verbose) fprintf (stderr, "GETHEAD: file %s has null at start\n",
+				   filepath);
 	    if (filepath != NULL)
 		free (filepath);
 	    return (-1);
@@ -1426,4 +1439,5 @@ char *string;
  * Jun 21 2011	If FILENAME keyword is requested, first column is FILE_NAME
  * Aug 12 2011	Fix range of extensions from -x
  * Aug 12 2011	Add prefixed range of extensions from -x
+ * Dec 14 2011	If length of header/file content string is zero, exit with error
  */

@@ -1,6 +1,6 @@
 /*** nedpos.c - search object by its name from command line arguments
  *** October 29, 2010
- *** By Doug Mink, after IPAC byname.c
+ *** By Jessica Mink, after IPAC byname.c
  */
 
 #include <stdlib.h>

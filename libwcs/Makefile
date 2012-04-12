@@ -1,4 +1,4 @@
-CFLAGS= -g
+CFLAGS= -g -D_FILE_OFFSET_BITS=64
 CC= cc
 
 OBJS =	imsetwcs.o imgetwcs.o matchstar.o findstar.o daoread.o wcscon.o \

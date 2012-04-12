@@ -1,7 +1,7 @@
 /* File sp2char.c
  * April 3, 2006
- * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
- * Send bug reports to dmink@cfa.harvard.edu
+ * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
+ * Send bug reports to jmink@cfa.harvard.edu
 
    Copyright (C) 2006 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA

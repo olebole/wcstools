@@ -53,7 +53,9 @@
   tsu = UT seconds since 1970-01-01T00:00 (used as Unix system time)
   tsd = UT seconds of current day
    ut = Universal Time (UTC)
-   et = Ephemeris Time (or TDB or TT)
+   et = Ephemeris Time (or TDB or TT) = TAI + 32.184 seconds
+  tai = International Atomic Time (Temps Atomique International) = ET - 32.184 seconds
+  gps = GPS time = TAI - 19 seconds
   mst = Mean Greenwich Sidereal Time
   gst = Greenwich Sidereal Time (includes nutation)
   lst = Local Sidereal Time (includes nutation) (longitude must be set)
@@ -122,6 +124,10 @@
  *	Convert date (yyyy.ddmm) and time (hh.mmsss) to ephemeris time
  * edt2dt (date, time)
  *	Convert ephemeris date (yyyy.ddmm) and time (hh.mmsss) to UT
+ * dt2tai (date, time)
+ *	Convert date (yyyy.ddmm) and time (hh.mmsss) to TAI date and time
+ * tai2dt (date, time)
+ *	Convert TAI date (yyyy.ddmm) and time (hh.mmsss) to UT
  * ts2ets (tsec)
  *	Convert from UT in seconds since 1950-01-01 to ET in same format
  * ets2ts (tsec)
@@ -2005,12 +2011,14 @@ char *string;	/* FITS date string, which may be:
 
 /* TAI-UTC from the U.S. Naval Observatory */
 /* ftp://maia.usno.navy.mil/ser7/tai-utc.dat */
-static double taijd[23]={2441317.5, 2441499.5, 2441683.5, 2442048.5, 2442413.5,
+static double taijd[26]={2441317.5, 2441499.5, 2441683.5, 2442048.5, 2442413.5,
 	      2442778.5, 2443144.5, 2443509.5, 2443874.5, 2444239.5, 2444786.5,
 	      2445151.5, 2445516.5, 2446247.5, 2447161.5, 2447892.5, 2448257.5,
-	      2448804.5, 2449169.5, 2449534.5, 2450083.5, 2450630.5, 2451179.5};
-static double taidt[23]={10.0,11.0,12.0,13.0,14.0,15.0,16.0,17.0,18.0,19.0,
-	   20.0,21.0,22.0,23.0,24.0,25.0,26.0,27.0,28.0,29.0,30.0,31.0,32.0};
+	      2448804.5, 2449169.5, 2449534.5, 2450083.5, 2450630.5, 2451179.5,
+	      2453736.5, 2454832.5, 2456293.5};
+static double taidt[26]={10.0,11.0,12.0,13.0,14.0,15.0,16.0,17.0,18.0,19.0,
+	   20.0,21.0,22.0,23.0,24.0,25.0,26.0,27.0,28.0,29.0,30.0,31.0,32.0,
+	   33.0,34.0,35.0};
 static double dttab[173]={13.7,13.4,13.1,12.9,12.7,12.6,12.5,12.5,12.5,12.5,
 	   12.5,12.5,12.5,12.5,12.5,12.5,12.5,12.4,12.3,12.2,12.0,11.7,11.4,
 	   11.1,10.6,10.2, 9.6, 9.1, 8.6, 8.0, 7.5, 7.0, 6.6, 6.3, 6.0, 5.8,
@@ -2027,6 +2035,93 @@ static double dttab[173]={13.7,13.4,13.1,12.9,12.7,12.6,12.5,12.5,12.5,12.5,
 	  29.15,29.57,29.97,30.36,30.72,31.07,31.35,31.68,32.18,32.68,33.15,
 	  33.59,34.00,34.47,35.03,35.73,36.54,37.43,38.29,39.20,40.18,41.17,
 	  42.23};
+
+
+/* TAI2FD-- convert from TAI in FITS format to UT in FITS format */
+
+char *
+tai2fd (string)
+
+char *string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+{
+    double dj0, dj, tsec, dt;
+
+    dj0 = fd2jd (string);
+    dt = utdt (dj0);
+    dj = dj0 - (dt / 86400.0);
+    dt = utdt (dj);
+    tsec = fd2ts (string);
+    tsec = tsec - dt + 32.184;
+    return (ts2fd (tsec));
+}
+
+
+/* FD2TAI-- convert from UT in FITS format to TAI in FITS format */
+
+char *
+fd2tai (string)
+
+char *string;	/* FITS date string, which may be:
+			fractional year
+			dd/mm/yy (FITS standard before 2000)
+			dd-mm-yy (nonstandard use before 2000)
+			yyyy-mm-dd (FITS standard after 1999)
+			yyyy-mm-ddThh:mm:ss.ss (FITS standard after 1999) */
+{
+    double dj, tsec, dt;
+
+    dj = fd2jd (string);
+    dt = utdt (dj);
+    tsec = fd2ts (string);
+    tsec = tsec + dt - 32.184;
+    return (ts2fd (tsec));
+}
+
+
+/* DT2TAI-- convert from UT as yyyy.mmdd hh.mmssss to TAI in same format */
+
+void
+dt2tai (date, time)
+double	*date;	/* Date as yyyy.mmdd */
+double	*time;	/* Time as hh.mmssxxxx
+		 *if time<0, it is time as -(fraction of a day) */
+{
+    double dj, dt, tsec;
+
+    dj = dt2jd (*date, *time);
+    dt = utdt (dj);
+    tsec = dt2ts (*date, *time);
+    tsec = tsec + dt - 32.184;
+    ts2dt (tsec, date, time);
+    return;
+}
+
+
+/* TAI2DT-- convert from TAI as yyyy.mmdd hh.mmssss to UT in same format */
+
+void
+tai2dt (date, time)
+double	*date;	/* Date as yyyy.mmdd */
+double	*time;	/* Time as hh.mmssxxxx
+		 *if time<0, it is time as -(fraction of a day) */
+{
+    double dj, dt, tsec, tsec0;
+
+    dj = dt2jd (*date, *time);
+    dt = utdt (dj);
+    tsec0 = dt2ts (*date, *time);
+    tsec = tsec0 + dt;
+    dj = ts2jd (tsec);
+    dt = utdt (dj);
+    tsec = tsec0 + dt + 32.184;
+    ts2dt (tsec, date, time);
+    return;
+}
 
 
 /* ET2FD-- convert from ET (or TDT or TT) in FITS format to UT in FITS format */
@@ -2196,7 +2291,7 @@ double dj;	/* Julian Date (UT) */
 	    if (dj >= taijd[i])
 		dt = taidt[i];
 	    }
-	dt = dt + 32.84;
+	dt = dt + 32.184;
 	}
 
     /* For 1800-01-01 to 1972-01-01, use table of ET-UT from AE */
@@ -4454,4 +4549,6 @@ double	dnum, dm;
  * Oct  8 2008	Clean up sidereal time computations
  *
  * Sep 24 2009	Add end to comment "Coefficients for fundamental arguments"
+ *
+ * Jan 11 2012	Add TAI, TT, GPS time
  */

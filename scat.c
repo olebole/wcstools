@@ -1,7 +1,7 @@
 /* File scat.c
  * April 21, 2011
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- * Send bug reports to dmink@cfa.harvard.edu
+ * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
+ * Send bug reports to jmink@cfa.harvard.edu
 
    Copyright (C) 1996-2011
    Smithsonian Astrophysical Observatory, Cambridge, MA USA

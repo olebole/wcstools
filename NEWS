@@ -1,3 +1,12 @@
+Version 3.8.5 (April 12, 2012)
+getdate: Fix string overflow in ts0 assignment (2012-03-27)
+gethead: If length of header/file content string is zero, exit with error
+sumpix: Improve argument parsing so order doesn't matter (2012-02-01)
+matchstar.c: Fix bug in WCSMatch() which miscomputed means
+fitsfile.c: Always check first 8 characters of FITS files for "SIMPLE"
+imhfile.c: Fix potential overflow in newpixfile assignment (2012-03-27)
+imio.c: Change 8-bit pixel values from char to unsigned char
+
 Version 3.8.4 (September 1, 2011)
 cphead, keyhead, sethead: Fix overflow bug by increasing size of history from 72 to 128
 imgetwcs.c, wcsinit.c, wcs.c, wcs.h, worldpos.c: Add TPV WCS for TAN with PV terms

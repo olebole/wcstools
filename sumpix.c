@@ -1,9 +1,9 @@
 /* File sumpix.c
- * January 11, 2007
- * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
- * Send bug reports to dmink@cfa.harvard.edu
+ * February 1, 2012
+ * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
+ * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2007
+   Copyright (C) 1999-2012
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -135,8 +135,11 @@ char **av;
         else if (isnum (*av) || isrange (*av)) {
 	    if (crange == NULL)
 		crange = *av;
-	    else
+	    else {
 		rrange = *av;
+		if (fn != NULL)
+		    SumPix (fn, crange, rrange);
+		}
 	    }
 
 	/* read filename */
@@ -151,8 +154,14 @@ char **av;
 		SumPix (fn, crange, "0");
 	    else if (rrange)
 		SumPix (fn, "0", rrange);
-	    else
-		SumPix (fn, "0", "0");
+	    else {
+		if (ac > 0) {
+		    if (!isnum (*(av+1)) && !isrange (*(av+1)))
+			SumPix (fn, "0", "0");
+		    }
+		else
+		    SumPix (fn, "0", "0");
+		}
 	    }
         }
 
@@ -518,4 +527,6 @@ char *rrange;	/* Row range string */
  *
  * Jan 10 2007	Include wcs.h
  * Jan 11 2007	Add PhotPix to compute circular aperture photometry
+ *
+ * Feb  1 2012	Improve argument parsing so order doesn't matter
  */

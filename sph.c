@@ -224,11 +224,11 @@ double *lng, *lat;
 
    return 0;
 }
-/* Dec 20 1999	Doug Mink - Change cosd() and sind() to cosdeg() and sindeg()
- * Dec 20 1999	Doug Mink - Include wcslib.h, which includes wcstrig.h, sph.h
- * Dec 20 1999	Doug Mink - Define copysign only if it is not already defined
+/* Dec 20 1999	Jessica Mink - Change cosd() and sind() to cosdeg() and sindeg()
+ * Dec 20 1999	Jessica Mink - Include wcslib.h, which includes wcstrig.h, sph.h
+ * Dec 20 1999	Jessica Mink - Define copysign only if it is not already defined
  *
- * Jan  5 2000	Doug Mink - Drop copysign
+ * Jan  5 2000	Jessica Mink - Drop copysign
  *
- * Sep 19 2001	Doug Mink - No change for WCSLIB 2.7
+ * Sep 19 2001	Jessica Mink - No change for WCSLIB 2.7
  */

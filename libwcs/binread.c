@@ -1,8 +1,8 @@
 /*** File libwcs/binread.c
- *** September 25, 2009
+ *** September 16, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2009
+ *** Copyright (C) 1998-2011
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -44,14 +44,15 @@ char bindir[64]="/data/astrocat";
 static double *tdist;	/* Array of distances to sources from search center */
 static int ndist = 0;
 
-#include <unistd.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <stdio.h>
-#include <math.h>
-#include <string.h>
-#include <strings.h>
-#include <sys/types.h>
 #include <fcntl.h>
+#include <sys/file.h>
+#include <math.h>
+#include <errno.h>
+#include <string.h>
+#include <sys/types.h>
 #include "wcs.h"
 #include "fitsfile.h"
 #include "wcscat.h"
@@ -1312,15 +1313,15 @@ int istar;	/* Star sequence number in binary catalog */
 	    st->num = (double) st->xno;
 	    break;
 	case 2:
-	    bcopy ((char *)&st->xno, (char *) &ino, 4);
+	    memcpy ((char *) &ino, (char *)&st->xno, 4);
 	    st->num = 0.0001 * (double) ino;
 	    break;
 	case 3:
-	    bcopy ((char *)&st->xno, (char *) &ino, 4);
+	    memcpy ((char *) &ino, (char *)&st->xno, 4);
 	    st->num = 0.00001 * (double) ino;
 	    break;
 	case 4:
-	    bcopy ((char *)&st->xno, (char *) &ino, 4);
+	    memcpy ((char *) &ino, (char *)&st->xno, 4);
 	    st->num = (double) ino;
 	    break;
 	default:
@@ -1595,4 +1596,6 @@ char    *filename;      /* Name of file to check */
  * Nov 28 2007	Move moveb() to catutil.c
  *
  * Sep 25 2009	Call movebuff() instead of moveb() and move mvebuff() to catutil.c
+ *
+ * Sep 16 2011	Change depricated bcopy() to memcpy()
  */

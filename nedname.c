@@ -1,6 +1,6 @@
 /*** nedname.c - Find name of object from its position as command line arguments
  *** February 25, 2009
- *** By Doug Mink, after IPAC nearposn.c
+ *** By Jessica Mink, after IPAC nearposn.c
  */
 
 #include <stdlib.h>

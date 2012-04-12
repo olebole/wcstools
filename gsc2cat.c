@@ -1,6 +1,6 @@
 /*** File gsc2cat.c
  *** November 28, 2007
- *** By Doug Mink, SAO
+ *** By Jessica Mink, SAO
 
    Copyright (C) 2007 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA

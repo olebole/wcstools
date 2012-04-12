@@ -1,7 +1,7 @@
 /* File imstack.c
  * August 30, 2007
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- * Send bug reports to dmink@cfa.harvard.edu
+ * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
+ * Send bug reports to jmink@cfa.harvard.edu
 
    Copyright (C) 1997-2007
    Smithsonian Astrophysical Observatory, Cambridge, MA USA

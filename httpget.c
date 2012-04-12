@@ -1,6 +1,6 @@
 /* File httpget.c
  * July 17, 2007
- * By Doug Mink and John Roll
+ * By Jessica Mink and John Roll
 
  * Test http access to scat
  * Load with -lnsl -lsocket

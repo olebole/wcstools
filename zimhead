@@ -2,7 +2,7 @@
 
 # zimhead:
 # Get header from compressed FITS files
-# By Doug Mink, November 24, 2008
+# By Jessica Mink, November 24, 2008
 
 if test -z $1
     then

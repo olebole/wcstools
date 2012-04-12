@@ -1,7 +1,7 @@
 /* File testrot.c
  * June 19, 2002
- * By Doug Mink Harvard-Smithsonian Center for Astrophysics)
- * Send bug reports to dmink@cfa.harvard.edu
+ * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
+ * Send bug reports to jmink@cfa.harvard.edu
  */
 
 #include <stdio.h>

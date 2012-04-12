@@ -1,8 +1,8 @@
 /*** File libwcs/matchstar.c
- *** July 20, 2009
+ *** December 13, 2011
  *** By Doug Mink, dmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2009
+ *** Copyright (C) 1996-2011
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -969,7 +969,6 @@ int	debug;		/* Printed debugging information if not zero */
     extern double getsecpix();
     extern void getcenter(),getrefpix(),setdcenter(),setrefpix(),setsecpix();
 
-    dmatch = (double) nmatch;
 
     /* Too few hits */
     if (nmatch < 2) {
@@ -1045,11 +1044,16 @@ int	debug;		/* Printed debugging information if not zero */
 		}
 	    }
 	}
+    tx = tx + sbx[nmatch-1];
+    ty = ty + sby[nmatch-1];
+    tra = tra + gbra[nmatch-1];
+    tdec = tdec + gbdec[nmatch-1];
     
     /* Reset image center based on star matching */
     cra = -99.0;
     cdec = -99.0;
     getcenter (&cra, &cdec);
+    dmatch = (double) nmatch;
     if (cra == -99.0 && cdec == -99.0) {
 	cra = tra / dmatch;
 	cdec = tdec / dmatch;
@@ -2039,4 +2043,6 @@ int nitmax;
  *
  * Jul 20 2009	Fixed matched star wrap around RA = 0:00:00
  * Jul 20 2009	Fixed matched star wrap for bad matches
+ *
+ * Dec 13 2009	In WCSMatch(), add last x,y,ra,dec so means are means of all
  */ 

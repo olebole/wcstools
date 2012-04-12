@@ -1,4 +1,4 @@
-WCSTools 3.8.4
+WCSTools 3.8.5
 
 WCSTools is a set of software utilities, written in C, which create,
 display and manipulate the world coordinate system of a FITS or IRAF
@@ -14,8 +14,8 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.8.4 of the WCSTools package developed by Doug Mink
-(dmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
+This is version 3.8.5 of the WCSTools package developed by Jessica Mink
+(jmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code or algorithms from
 
 Mark Calabretta of CSIRO (projection),
@@ -39,9 +39,14 @@ all of the variables initialized.
 
 Details of updates are in the NEWS file, but here is what is new:
 
-Version 3.8.4 (September 1, 2011)
-cphead, keyhead, sethead: Fix overflow bug by increasing size of history from 72 to 128
-imgetwcs.c, wcsinit.c, wcs.c, wcs.h, worldpos.c: Add TPV WCS for TAN with PV terms
+Version 3.8.5 (April 12, 2012)
+getdate: Fix string overflow in ts0 assignment (2012-03-27)
+gethead: If length of header/file content string is zero, exit with error
+sumpix: Improve argument parsing so order doesn't matter (2012-02-01)
+matchstar.c: Fix bug in WCSMatch() which miscomputed means
+fitsfile.c: Always check first 8 characters of FITS files for "SIMPLE"
+imhfile.c: Fix potential overflow in newpixfile assignment (2012-03-27)
+imio.c: Change 8-bit pixel values from char to unsigned char
 
 Documentation, with examples and installation directions, is on the
 World Wide Web at
@@ -60,38 +65,45 @@ The paper presented at ADASS in 1996 is the best published description
 of the IMWCS world coordinate system fitting program: 
      "WCSTools: Putting Image World Coordinate Systems to Use",
      Douglas J. Mink, 1997, in Astronomical Data Analysis Software and
-     Systems VI, A.S.P. Conference Series, Vol. 125, Gareth Hunt and
-     H. E. Payne, eds., pp.  249-252. 
+     Systems VI, A.S.P. Conference Series, Vol. 125. Edited by Gareth Hunt
+     and H. E. Payne.
+     San Francisco: Astronomical Society of the Pacific, pp. 249-252. 
 
 The 1998 ADASS paper is the best published description of the other tools
 in the WCSTools package, including SAOimage when used for WCS work: 
      "WCSTools: An Image Astrometry Toolkit",
-     Douglas J. Mink (1998), in Astronomical Data Analysis Software and
-     Systems VIII, A.S.P. Conference Series, Vol. 172, 1999, Dave Mehringer,
-     Ray Plante, Doug Roberts, eds., pp.  498-501. 
+     Douglas J. Mink, 1999, in Astronomical Data Analysis Software and
+     Systems VIII A.S.P. Conference Series, Vol. 172.  Edited by Dave
+     Mehringer, Ray Plante, and Doug Roberts.
+     San Francisco: Astronomical Society of the Pacific, pp.  498-501. 
 
 A paper presented at the 2001 ADASS conference describes how the
 WCSTools package uses the web, among other new features:
      "WCSTools 3.0: More Tools for Image Astrometry and Catalog Searching",
-     Douglas J. Mink, 2001, to be published in Astronomical Data Analysis
-     Software and Systems XI, whenever it comes out.
+     Douglas J. Mink, in Astronomical Data Analysis Software and Systems XI,
+     A.S.P. Conference Series, Vol. 281, 2002. Edited by David
+     Bohlender, Daniel Durand, and T.H. Handley.
+     San Francisco: Astronomical Society of the Pacific, pp. 169-172.
 
 This paper presented at the 2002 ADASS conference describes interesting
 ways to use the SCAT program:
      "Federating Catalogs and Interfacing Them with Archives: A VO Prototype",
-     Douglas J. Mink and Michael J. Kurtz, 2002, to be published in
-     Astronomical Data Analysis Software and Systems XII, whenever it comes out.
+     Douglas J. Mink and Michael J. Kurtz, 2003, in Astronomical Data Analysis
+     Software and Systems XII, A.S.P. Conference Proceedings, Vol. 295.
+     Edited by Harry Payne, Robert Jedrzejewski, and Richard Hook.
+     San Francisco: Astronomical Society of the Pacific, pp. 51-54.
 
 To assist users in selecting the best catalog to use, we tested the accuracy of
 the various catalogs one is likely to use with imwcs, showing how well it works
 in a pipeline mode on 1728 images. This ADASS paper is an improved version of
 our AAS/DDA paper, adding the UCAC2 catalog and emphasizing usefulness more than
 astrometry:
-     "A Comparison of Large All-Sky Catalogs" Douglas J. Mink, Warren R. Brown,
-and Michael J. Kurtz in Astronomical Data Analysis Software and Systems XIII,
-ASP Conference Proceedings, Vol. 314. Edited by Francois Oschenbein, Mark Allen,
-and Daniel Egret. San Francisco: Astronomical Society of the Pacific,
-ISSN: 1080-7926, 2004., p. 141. 
+     "A Comparison of Large All-Sky Catalogs",
+     Douglas J. Mink, Warren R. Brown, and Michael J. Kurtz, 2004, in
+     Astronomical Data Analysis Software and Systems XIII, A.S.P. Conference
+     Proceedings, Vol. 314. Edited by Francois Oschenbein, Mark Allen,
+     and Daniel Egret.
+     San Francisco: Astronomical Society of the Pacific, pp. 141-144. 
 
 Program Descriptions
 
@@ -155,4 +167,4 @@ wcshead	Print basic world coordinate system information on one line per image
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
 
--Doug Mink, SAO, 2011-09-01
+-Jessica Mink, SAO, 2012-04-12

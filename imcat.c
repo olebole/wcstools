@@ -1,7 +1,7 @@
 /* File imcat.c
  * June 3, 2010
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- * Send bug reports to dmink@cfa.harvard.edu
+ * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
+ * Send bug reports to jmink@cfa.harvard.edu
 
    Copyright (C) 1996-2010
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
@@ -2420,7 +2420,7 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Jul  9 2008	Free catalog arrays at end of program not of image
  * Nov 17 2008	Drop computed spectral type from Tycho and Tycho-2 catalogs
  *
- * Sep 25 2009	Add FreeBuffers() and AllocBuffers() after Douglas Burke
+ * Sep 25 2009	Add FreeBuffers() and AllocBuffers() after Jessicalas Burke
  * Nov 10 2009	Fix image limits for 90 degree rotation
  * Nov 10 2009	Allocat MAXNMAG magnitude vectors
  * Nov 18 2009	Add UCAC3 catalog

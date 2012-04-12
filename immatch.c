@@ -1,8 +1,8 @@
 /* File immatch.c
  * April 6, 2007
- * By Doug Mink, after Elwood Downey
+ * By Jessica Mink, after Elwood Downey
  * (Harvard-Smithsonian Center for Astrophysics)
- * Send bug reports to dmink@cfa.harvard.edu
+ * Send bug reports to jmink@cfa.harvard.edu
 
    Copyright (C) 1997-2007 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA

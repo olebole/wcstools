@@ -1,9 +1,9 @@
 /* File isfits.c
- * October 29, 2010
- * By Doug Mink, Harvard-Smithsonian Center for Astrophysics
- * Send bug reports to dmink@cfa.harvard.edu
+ * December 14, 2011
+ * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
+ * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2008-2010
+   Copyright (C) 2008-2011
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -46,7 +46,7 @@ char **av;
 	exit (1);
 	}
 
-    /* check to see if this is a number */
+    /* check to see if this is a FITS file */
     else
 	printf ("%d\n", isfits (str));
 
@@ -55,4 +55,6 @@ char **av;
 /* Apr 25 2008	New program
  *
  * Oct 29 2010	Include fitsfile.h instead of fitshead.h
+ *
+ * Dec 14 2011	Fix comments
  */
