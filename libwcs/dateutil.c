@@ -1,6 +1,6 @@
 /*** File libwcs/dateutil.c
  *** September 24, 2009
- *** By Doug Mink, dmink@cfa.harvard.edu
+ *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1999-2009
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -20,8 +20,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
+           Internet email: jmink@cfa.harvard.edu
+           Postal address: Jessica Mink
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
@@ -3868,7 +3868,7 @@ double	dj;	/* Julian Date */
 
 /*  COMPNUT - Compute nutation using the IAU 2000b model */
 /*  Translated from Pat Wallace's Fortran subroutine iau_nut00b (June 26 2007)
-    into C by Doug Mink on September 5, 2008 */
+    into C by Jessica Mink on September 5, 2008 */
 
 #define NLS	77 /* number of terms in the luni-solar nutation model */
 

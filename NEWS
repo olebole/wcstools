@@ -1,3 +1,13 @@
+Version 3.8.6 (August 10, 2012)
+sumpix: Add options i to print index and e to compute medians
+gethead: Call fk425e() instead of fk425()
+imcat: Drop declaration of unused fk425e()
+imutil.c: Add medpix() and meanpix() to generalize across pixel size
+imutil.c: Add medpixi1() and meanpixi1() to handle 8-bit images
+imio.c:  Fix 8-bit variables to be unsigned char
+ctgread.c: Allow up to 9 magnitudes (/9) instead of 4
+catutil.c, polfit.c: Fix xterm computation in polcomp() from + to *
+
 Version 3.8.5 (April 12, 2012)
 getdate: Fix string overflow in ts0 assignment (2012-03-27)
 gethead: If length of header/file content string is zero, exit with error

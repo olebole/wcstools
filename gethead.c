@@ -1,9 +1,9 @@
 /* File gethead.c
- * December 14, 2011
+ * August 10, 2012
  * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2011
+   Copyright (C) 1996-2012
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -1108,7 +1108,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 			if (!isnum (string))
 			    hgets (header, "RDEC", 80, string);
 			dec = str2dec (string);
-			fk425 (&ra, &dec);
+			fk425e (&ra, &dec, epoch);
 			ra2str (string, 80, ra, ncdec);
 			}
 		    else if (iepoch != 2000) {
@@ -1155,7 +1155,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 			if (!isnum (string))
 			    hgets (header, "RRA", 80, string);
 			ra = str2ra (string);
-			fk425 (&ra, &dec);
+			fk425e (&ra, &dec, epoch);
 			dec2str (string, 80, dec, ncdec);
 			}
 		    else if (iepoch != 2000) {
@@ -1440,4 +1440,6 @@ char *string;
  * Aug 12 2011	Fix range of extensions from -x
  * Aug 12 2011	Add prefixed range of extensions from -x
  * Dec 14 2011	If length of header/file content string is zero, exit with error
+ *
+ * Aug 10 2012	Call fk425e() instead of fk425()
  */

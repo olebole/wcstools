@@ -1,6 +1,6 @@
 /*** File libwcs/tabread.c
  *** September 22, 2010
- *** By Doug Mink, dmink@cfa.harvard.edu
+ *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2010
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -20,8 +20,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-	   Internet email: dmink@cfa.harvard.edu
-	   Postal address: Doug Mink
+	   Internet email: jmink@cfa.harvard.edu
+	   Postal address: Jessica Mink
 	                   Smithsonian Astrophysical Observatory
 	                   60 Garden St.
 	                   Cambridge, MA 02138 USA
@@ -2900,7 +2900,7 @@ char    *filename;      /* Name of file to check */
  * Jul 23 2007	Add ...dist... as possible "magnitude"
  *
  * Aug 17 2009	Fix columns for declination column name
- * Sep 25 2009	Fix memory leaks found by Douglas Burke
+ * Sep 25 2009	Fix memory leaks found by Jessicalas Burke
  * Sep 30 2009	Fix bugs freeing object names for first pass and farthest star
  *
  * Sep 22 2010	Fix bug when checking file which is not tab table

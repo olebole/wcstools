@@ -1,8 +1,8 @@
 /*** File libwcs/catutil.c
- *** September 14, 2010
- *** By Doug Mink, dmink@cfa.harvard.edu
+ *** July 23, 2012
+ *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2010
+ *** Copyright (C) 1998-2012
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -20,8 +20,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
+           Internet email: jmink@cfa.harvard.edu
+           Postal address: Jessica Mink
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
@@ -2253,6 +2253,8 @@ int	ndef;		/* Maximum allowable range value */
     range->irange = -1;
     range->nvalues = 0;
     range->nranges = 0;
+    range->valmax = -1000000000000.0;
+    range->valmin = 1000000000000.0;
 
     for (irange = 0; irange < MAXRANGE; irange++) {
 
@@ -2347,6 +2349,18 @@ int	ndef;		/* Maximum allowable range value */
 	range->ranges[irange*3 + 2] = step;
 	range->nvalues = range->nvalues + ((last-first+(0.1*step)) / step + 1);
 	range->nranges++;
+	if (step > 0.0) {
+	    if (first < range->valmin)
+		range->valmin = first;
+	    if (last > range->valmax)
+		range->valmax = last;
+	    }
+	else {
+	    if (first > range->valmax)
+		range->valmax = first;
+	    if (last < range->valmin)
+		range->valmin = last;
+	    }
 	}
 
     return (range);
@@ -3291,7 +3305,7 @@ double	*a;	/* Vector containing coeffiecients */
     xterm = 1.0;
     for (iterm = 0; iterm < norder; iterm++) {
 	y = y + a[iterm] * xterm;
-	xterm = xterm + x;
+	xterm = xterm * x;
 	}
     return (y);
 }
@@ -3463,4 +3477,8 @@ char *from, *last, *to;
  * Apr 06 2010	Add fillblank argument to agets()
  * Apr 06 2010	In agets() search until keyword[: or =] or end of string
  * Sep 14 2010	Add BSC radius of 7200 to CatRad() and number field of 4
+ *
+ * May 16 2012	Save maximum value in range data structure
+ * Jul 26 2012	Fix xterm computation in polcomp() from + to *
+ *		(found by Raymond Carlberg of U.Toronto)
  */

@@ -1,6 +1,6 @@
 /*** File libwcs/fitsfile.c
  *** September 15, 2011
- *** By Doug Mink, dmink@cfa.harvard.edu
+ *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2011
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
@@ -20,8 +20,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
+           Internet email: jmink@cfa.harvard.edu
+           Postal address: Jessica Mink
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
@@ -2297,7 +2297,7 @@ char *from, *last, *to;
  * Sep 18 2009	In fitswexhead() write to error string instead of stderr
  * Sep 22 2009	In fitsrthead(), fix lengths for ASCII numeric table entries
  * Sep 25 2009	Add subroutine moveb() and fix calls to it
- * Sep 25 2009	Fix several small errors found by Douglas Burke
+ * Sep 25 2009	Fix several small errors found by Jessicalas Burke
  *
  * Mar 29 2010	In fitswhead(), always pad blocks to 2880 bytes with spaces
  * Mar 31 2010	In fitsrhead(), fix bug reading long primary headers

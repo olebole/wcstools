@@ -1,7 +1,7 @@
 /*** File libwcs/wcscat.h
- *** April 06, 2010
- *** By Doug Mink, dmink@cfa.harvard.edu
- *** Copyright (C) 1998-2010
+ *** May 16, 2012
+ *** By Jessica Mink, jmink@cfa.harvard.edu
+ *** Copyright (C) 1998-2012
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -19,8 +19,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
+           Internet email: jmink@cfa.harvard.edu
+           Postal address: Jessica Mink
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
@@ -225,6 +225,8 @@ struct Range {
     double last;	/* Current maximum value */
     double step;	/* Current step in value */
     double value;	/* Current value */
+    double valmin;	/* Minimum value in all ranges */
+    double valmax;	/* Maximum value in all ranges */
     double ranges[MAXRANGE*3];	/* nranges sets of first, last, step */
     int nvalues;	/* Total number of values in all ranges */
     int nranges;	/* Number of ranges */
@@ -1693,4 +1695,6 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * Nov  3 2009	Parameterize as MAXNMAG the maximum number of magnitudes
  *
  * Apr 06 2010	Add fillblank argument to agets()
+ *
+ * May 16 2012	Add valmin and valmax to Range data structure
  */

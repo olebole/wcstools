@@ -1,8 +1,8 @@
 /*** File libwcs/ctgread.c
- *** September 30, 2009
- *** By Doug Mink, dmink@cfa.harvard.edu
+ *** May 22, 2012
+ *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2009
+ *** Copyright (C) 1998-2012
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -20,8 +20,8 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
     Correspondence concerning WCSTools should be addressed as follows:
-           Internet email: dmink@cfa.harvard.edu
-           Postal address: Doug Mink
+           Internet email: jmink@cfa.harvard.edu
+           Postal address: Jessica Mink
                            Smithsonian Astrophysical Observatory
                            60 Garden St.
                            Cambridge, MA 02138 USA
@@ -1396,6 +1396,16 @@ int	refcat;		/* Catalog code from wcscat.h (TXTCAT,BINCAT,TABCAT) */
 	sc->nmag = 3;
     else if (strsrch (header, "/4"))
 	sc->nmag = 4;
+    else if (strsrch (header, "/5"))
+	sc->nmag = 5;
+    else if (strsrch (header, "/6"))
+	sc->nmag = 6;
+    else if (strsrch (header, "/7"))
+	sc->nmag = 7;
+    else if (strsrch (header, "/8"))
+	sc->nmag = 8;
+    else if (strsrch (header, "/9"))
+	sc->nmag = 9;
 
     /* No number in first column, RA or object name first */
     if (strsrch (header, "/n") || strsrch (header, "/N"))
@@ -2117,4 +2127,6 @@ char	*in;	/* Character string */
  *
  * Aug 27 2009	Add /k option for fractional hours of RA and degrees of Dec
  * Sep 30 2009	Add UCAC3
+ *
+ * May 22 2012	Accept up to 9 magnitudes per entry instead of 4
  */

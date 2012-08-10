@@ -1,9 +1,9 @@
 /* File imcat.c
- * June 3, 2010
+ * August 10, 2012
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2010
+   Copyright (C) 1996-2012
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -54,7 +54,6 @@ static void PrintUsage();
 static void FreeBuffers();
 static int AllocBuffers();
 static void ListCat();
-extern void fk524e();
 extern struct WorldCoor *GetFITSWCS();
 extern char *GetFITShead();
 extern void setsys();
@@ -2427,4 +2426,6 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  *
  * Apr 30 2010	Set GSC2 magnitudes > 90 to 99.99
  * Jun  3 2010	Do not print position or proper motion errors for UCAC3
+ *
+ * Aug 10 2012	Drop declaration of fk425e(); it's not used.
  */
