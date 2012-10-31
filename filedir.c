@@ -1,9 +1,9 @@
 /* File filedir.c
- * June 30, 2010
+ * October 2, 2012
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2010
+   Copyright (C) 2010 - 2012
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -40,7 +40,7 @@ char **av;
     char *fn;
     char *str;
     char *ext;
-    int i, lroot;
+    int i, lroot, lfn;
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
@@ -64,11 +64,22 @@ char **av;
 
     while (ac-- > 0) {
 	fn = *av++;
+	lfn = strlen (fn);
 	if (verbose)
     	    printf ("%s -> ", fn);
 	ext = strrchr (fn, '/');
 	if (ext != NULL) {
-	    *ext = 0;
+	    *ext = (char) 0;
+	    if (ext == (fn + lfn - 1)) {
+		ext = strrchr (fn, '/');
+		if  (ext != NULL)
+		    *ext = (char) 0;
+		else {
+		    fn[0] = '.';
+		    fn[1] = '/';
+		    fn[2] = (char) 0;
+		    }
+		}
 	    printf ("%s\n", fn);
 	    }
 	else
@@ -86,4 +97,6 @@ usage ()
     exit (1);
 }
 /* Jun 30 2000	New program
+ *
+ * Oct 02 2012	If pathname ends in "/", drop last directory
  */

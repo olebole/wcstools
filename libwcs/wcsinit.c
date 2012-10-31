@@ -1,8 +1,8 @@
 /*** File libwcs/wcsinit.c
- *** September 1, 2011
+ *** October 19, 2012
  *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2011
+ *** Copyright (C) 1998-2012
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -242,7 +242,6 @@ char *wchar;		/* Suffix character for one of multiple WCS */
     double ut;
     int nax;
     int twod;
-    int iszpx = 0;
     extern int tnxinit();
     extern int zpxinit();
     extern int platepos();
@@ -1179,7 +1178,7 @@ invert_wcs( struct WorldCoor *wcs)
 	lngstep = (ymax-ymin)/(WCS_NGRIDPOINTS-1.0);
 	lngmin = ymin;
 	latstep = (xmax-xmin)/(WCS_NGRIDPOINTS-1.0);
-	latmin - xmin;
+	latmin = xmin;
 	}
 
     outpos = (double *)calloc(2*WCS_NGRIDPOINTS2,sizeof(double));
@@ -1607,4 +1606,6 @@ char	*mchar;		/* Suffix character for one of multiple WCS */
  * Mar 18 2011	Add invert_wcs() by Emmanuel Bertin for SCAMP
  * Mar 18 2011	Change Bertin's ARCSEC/DEG to S2D and DEG/ARCSEC to D2S
  * Sep  1 2011	Add TPV as TAN with SCAMP PVs
+ *
+ * Oct 19 2012	Drop unused variable iszpx; fix bug in latmin assignment
  */

@@ -1,8 +1,8 @@
 /*** File libwcs/dateutil.c
- *** September 24, 2009
+ *** October 19, 2012
  *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1999-2009
+ *** Copyright (C) 1999-2012
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -3294,7 +3294,7 @@ jd2lst (dj)
 
 double dj;	/* Julian Date */
 {
-    double gst, lst, l0;
+    double gst, lst;
 
     /* Compute Greenwich Sidereal Time at this epoch */
     gst = jd2gst (dj);
@@ -3837,7 +3837,6 @@ jd2mst (dj)
 double	dj;	/* Julian Date */
 {
     double dt, t, mst;
-    double ts2ss = 1.00273790935;
 
     dt = dj - 2451545.0;
     t = dt / 36525.0;
@@ -4551,4 +4550,5 @@ double	dnum, dm;
  * Sep 24 2009	Add end to comment "Coefficients for fundamental arguments"
  *
  * Jan 11 2012	Add TAI, TT, GPS time
+ * Oct 19 2012	Unused l0 dropped from jd2lst(); ts2ss from jd2mst()
  */

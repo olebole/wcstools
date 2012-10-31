@@ -12,20 +12,17 @@ Brief descriptions of file contents are in the Programs file.
 A history of this software is in the NEWS file.
 
 The complete source code is in
-ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-3.8.6.tar.gz and
-ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstls37.zip and
-http://tdc-www.harvard.edu/software/wcstools/wcstools-3.8.6.tar.gz
+ftp://cfa-ftp.harvard.edu/pub/gsc/WCSTools/wcstools-3.8.7.tar.gz and
+http://tdc-www.harvard.edu/software/wcstools/wcstools-3.8.7.tar.gz
 
 Documentation, with examples and installation directions, is on the
 World Wide Web at http://tdc-www.harvard.edu/software/wcstools/
 
 To install the code, create a directory for it, download it, and run
 
-        gzcat wcstools-3.8.6.tar.gz | tar xvf -
-or
-        unzip wcstls37.zip
+        gzcat wcstools-3.8.7.tar.gz | tar xvf -
 
-The directory wcstools-3.8.6 will contain the source code for the programs,
+The directory wcstools-3.8.7 will contain the source code for the programs,
 and a subdirectory, libwcs, will contain the source code for the subroutines.
 
 Catalog access subroutines, gscread.c, actread, uacread.c, ubcread.c,
@@ -73,5 +70,5 @@ systems, and even that has been minimized. The package even compiles and runs
 under Windows using the free Cygwin environment. If you have any problems,
 feel free to write the author. 
 
--Jessica Mink, SAO, 2012-08-10
+-Jessica Mink, SAO, 2012-10-19
 http://tdc-www.harvard.edu/mink/

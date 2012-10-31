@@ -1,3 +1,14 @@
+Version 3.8.7 (October 31, 2012)
+Rename Man to man to avoid problems with Mac OSX file name convention
+filedir: If pathname ends in "/", drop last directory
+catutil.c:  Skip trailing right bracket in aget*()
+dateutil.c:  Unused l0 dropped from jd2lst(); ts2ss from jd2mst()
+imio.c:  Fix errors with short and character images in minvec(), maxvec()
+wcs.c:  Drop d1 and d2 from wcsdist(); diffi from wcsdist1()
+wcs.c:  Drop depwcs; it's in main wcs structure
+wcsinit.c: Drop unused variable iszpx; fix bug in latmin assignment
+zpxpos.c: Fix code for quadratic near pole
+
 Version 3.8.6 (August 10, 2012)
 sumpix: Add options i to print index and e to compute medians
 gethead: Call fk425e() instead of fk425()

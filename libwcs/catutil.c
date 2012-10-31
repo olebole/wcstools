@@ -1,5 +1,5 @@
 /*** File libwcs/catutil.c
- *** July 23, 2012
+ *** October 23, 2012
  *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1998-2012
@@ -2473,7 +2473,7 @@ struct Range *range;	/* Range structure */
 }
 
 
-/* AGETI4 -- Read int value from a file where keyword=value, anywhere */
+/* AGETI4 -- Get integer value from ASCII string where keyword=value anywhere */
 
 int
 ageti4 (string, keyword, ival)
@@ -2494,9 +2494,9 @@ int	*ival;		/* Integer value, returned */
     else
 	return (0);
 }
-	
 
-/* AGETR8 -- Read double value from a file where keyword=value, anywhere */
+
+/* AGETR8 -- Get double value from ASCII string where keyword=value anywhere */
 int
 agetr8 (string, keyword, dval)
 
@@ -2584,13 +2584,13 @@ char *value;	/* String (returned) */
 	    pval = NULL;
 	    }
 
-	/* Must have "=" or ":" as next nonspace character */
+	/* Must have "=" or ":" as next nonspace and nonbracket character */
 	    else {
 	    pv = pkey + lkey;
-	    while (*pv == ' ') {
+	    while (*pv == ' ' || *pv == ']' || *pv == 'o') {
 		pv++;
 		}
-	    if (*pv != '=' && *pv != ':') {
+	    if (*pv != '=' && *pv != ':' && *pv != 'f') {
 		str = pkey;
 		pval = NULL;
 		}
@@ -3481,4 +3481,6 @@ char *from, *last, *to;
  * May 16 2012	Save maximum value in range data structure
  * Jul 26 2012	Fix xterm computation in polcomp() from + to *
  *		(found by Raymond Carlberg of U.Toronto)
+ * Oct 02 2012	Skip trailing right bracket in aget*()
+ * Oct 23 2012	Add "of" as possible connector in aget*()
  */

@@ -1,5 +1,5 @@
 /*** File wcslib/imio.c
- *** April 12, 2012
+ *** October 30, 2012
  *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2012
@@ -661,10 +661,10 @@ int	npix;		/* Number of pixels to check */
     switch (bitpix) {
 
 	case 8:
-	    imc = (unsigned char *)(image + pix1);
-	    imaxc = *(im2+ipix);
+	    imc = (unsigned char *)(image);
+	    imaxc = *(imc + pix1);
 	    for (ipix = pix1; ipix < pix2; ipix++) {
-		ipc = *(image + ipix);
+		ipc = *(imc + ipix);
 		if (ipc > imaxc)
 		    imaxc = ipc;
 		}
@@ -750,7 +750,7 @@ int	pix1;		/* Offset of first pixel to check */
 int	npix;		/* Number of pixels to check */
 
 {
-    short *im2, imin2, *ip2, *il2;
+    short *im2, imin2, ip2;
     int *im4, imin4, ip4;
     unsigned short *imu, iminu, ipu;
     float *imr, iminr, ipr;
@@ -764,10 +764,10 @@ int	npix;		/* Number of pixels to check */
     switch (bitpix) {
 
 	case 8:
-	    cmin = *(image + pix1);
 	    imc = (unsigned char *)image;
+	    cmin = *(imc + pix1);
 	    for (ipix = pix1; ipix < pix2; ipix++) {
-		cp = *(image + ipix);
+		cp = *(imc + ipix);
 		if (cp < cmin)
 		    cmin = cp;
 		}
@@ -777,12 +777,10 @@ int	npix;		/* Number of pixels to check */
 	case 16:
 	    im2 = (short *)image + pix1;
 	    imin2 = *im2;
-	    il2 = im2 + npix;
-	    ip2 = im2;
-	    while (ip2 < il2) {
-		if (*ip2 < imin2)
-		    imin2 = *ip2;
-		ip2++;
+	    for (ipix = pix1; ipix < pix2; ipix++) {
+		ip2 = *(im2 + ipix);
+		if (ip2 < imin2)
+		    imin2 = ip2;
 		}
 	    dmin = (double) imin2;
 	    break;
@@ -1540,4 +1538,7 @@ imswapped ()
  * Jun 11 2007	Add minvec() and speed up maxvec()
  *
  * Apr 12 2012	Fix 8-bit variables to be unsigned char
+ * Oct 19 2012	Fix errors with character images in minvec() and maxvec()
+ * Oct 31 2012	Fix errors with short images in minvec() and maxvec()
+ * Oct 31 2012	Drop unused variable il2 from minvec()
  */

@@ -1,5 +1,15 @@
 WCSTools WCS subroutine library release history
 
+Version 3.8.7 (October 31, 2012)
+dateutil.c:  Unused l0 dropped from jd2lst(); ts2ss from jd2mst()
+imio.c:  Fix errors with short and character images in minvec(), maxvec()
+wcs.c:  Drop d1 and d2 from wcsdist(); diffi from wcsdist1()
+wcs.c:  Drop depwcs; it's in main wcs structure
+wcsinit.c: Drop unused variable iszpx; fix bug in latmin assignment
+zpxpos.c: Fix code for quadratic near pole
+
+catutil.c:  Skip trailing right bracket in aget*()
+
 Version 3.8.6 (August 10, 2012)
 All: Update author name
 imio.c:  Fix 8-bit variables to be unsigned char
