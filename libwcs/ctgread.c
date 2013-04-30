@@ -1,8 +1,8 @@
 /*** File libwcs/ctgread.c
- *** May 22, 2012
+ *** February 15, 2013
  *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2012
+ *** Copyright (C) 1998-2013
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -153,7 +153,7 @@ int	nlog;
             nstar = ubcread (catfile,distsort,cra,cdec,dra,ddec,drad,dradi,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,tnum,
 			     tra,tdec,tpra,tpdec,tmag,tc,nlog);
-        else if (refcat == UCAC1 || refcat == UCAC2 || refcat == UCAC3)
+        else if (refcat == UCAC1 || refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
             nstar = ucacread (catfile,cra,cdec,dra,ddec,drad,dradi,distsort,
 			     sysout,eqout,epout,mag1,mag2,sortmag,nsmax,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
@@ -576,7 +576,7 @@ int	nlog;
         else if (refcat == UJC || refcat == USNO)
 	    nstar = ujcrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tmag,tc,nlog);
-        else if (refcat == UCAC1 || refcat == UCAC2 || refcat == UCAC3)
+        else if (refcat == UCAC1 || refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
 	    nstar = ucacrnum (catfile,nnum,sysout,eqout,epout,
 			     tnum,tra,tdec,tpra,tpdec,tmag,tc,nlog);
         else if (refcat == TMPSC || refcat == TMPSCE ||
@@ -992,7 +992,7 @@ int	nlog;
             nstar = ujcbin (catfile,wcs,header,image,mag1,mag2,magscale,nlog);
         else if (refcat == UB1 || refcat == YB6)
             nstar = ubcbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
-        else if (refcat == UCAC1 || refcat == UCAC2 || refcat == UCAC3)
+        else if (refcat == UCAC1 || refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
             nstar = ucacbin (catfile,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
         else if (refcat == TMPSC || refcat == TMIDR2 || refcat == TMXSC)
             nstar = tmcbin (refcat,wcs,header,image,mag1,mag2,sortmag,magscale,nlog);
@@ -2129,4 +2129,6 @@ char	*in;	/* Character string */
  * Sep 30 2009	Add UCAC3
  *
  * May 22 2012	Accept up to 9 magnitudes per entry instead of 4
+ *
+ * Feb 15 2013	Add UCAC4
  */

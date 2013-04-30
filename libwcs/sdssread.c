@@ -1,8 +1,8 @@
 /*** File libwcs/sdssread.c
- *** October 22, 2007
+ *** September 16, 2013
  *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2004-2007
+ *** Copyright (C) 2004-2013
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -56,9 +56,17 @@ char sdssburl[64]="http://cas.sdss.org/dr5/en/tools/search/x_rect.asp"; */
 char sdssrurl[64]="http://cas.sdss.org/dr6/en/tools/search/x_radial.asp";
 char sdssburl[64]="http://cas.sdss.org/dr6/en/tools/search/x_rect.asp"; */
 
-/* SDSS DR7 search engine URL */
-char sdssrurl[64]="http://cas.sdss.org/dr7/en/tools/search/x_radial.asp";
-char sdssburl[64]="http://cas.sdss.org/dr7/en/tools/search/x_rect.asp";
+/* SDSS DR7 search engine main server URL */
+/* char sdssrurl[64]="http://cas.sdss.org/dr7/en/tools/search/x_radial.asp";
+char sdssburl[64]="http://cas.sdss.org/dr7/en/tools/search/x_rect.asp"; */
+
+/* SDSS DR7 search engine US alternate URL */
+char sdssrurl[64]="http://sdss.lib.uchicago.edu/dr7/en/tools/search/x_radial.asp";
+char sdssburl[64]="http://sdss.lib.uchicago.edu/dr7/en/tools/search/x_rect.asp";
+
+/* SDSS DR7 search engine UK alternate URL */
+/* char sdssrurl[64]="http://www.sdss.org.uk/dr7/en/tools/search/x_radial.asp";
+char sdssburl[64]="http://www.sdss.org.uk/dr7/en/tools/search/x_rect.asp"; */
 
 /* SDSS magnitudes */
 char sdssmag[6]="ugriz";
@@ -259,4 +267,8 @@ sdssc2t (csvbuff)
  * Jan  9 2007	Drop refcatname from argument list; it is not used
  * Jan 10 2007	Drop gnum argument from sdssread(); gobj replaced it
  * Oct 22 2007	Change path to Data Release 6
+ *
+ * May 01 2012	Change path to Data Release 7
+ *
+ * Sep 16 2013	Add alternate servers for SDASS
  */

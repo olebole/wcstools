@@ -1,9 +1,9 @@
 /* File scat.c
- * April 21, 2011
+ * February 1, 2013
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2011
+   Copyright (C) 1996-2013
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -1061,6 +1061,7 @@ char	*command;	/* Command where error occurred or NULL */
     fprintf(dev,"  -mx mag1[,mag2]: Magnitude #x limit(s) (only one set allowed, default none) \n");
     fprintf(dev,"  -n num: Number of brightest stars to print (-1=all as found)\n");
     fprintf(dev,"  -o name: Object name \n");
+    fprintf(dev,"  -p: Sort by distance from search center\n");
     fprintf(dev,"  -q year: Equinox of output positions in FITS date format or years\n");
     fprintf(dev,"  -r rad: Search radius (<0=-half-width) in arcsec\n");
     fprintf(dev,"  -r radi-rado: Inner and outer edges of search annulus in arcsec\n");
@@ -2135,6 +2136,8 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("raerr	decerr	magj 	magh 	magk 	magc 	");
 			else if (refcat == UCAC3)
 			    printf ("raerr	decerr	magb 	magr 	magi 	magj 	magh 	magk 	magm 	maga	");
+			else if (refcat == UCAC4)
+			    printf ("raerr	decerr	magb 	magr 	magi 	magj 	magh 	magk 	magm 	maga	");
 			else if (nmagr > 0) {
 			    for (imag = 0; imag < nmagr; imag++) {
 				if (starcat[icat] != NULL &&
@@ -2150,7 +2153,7 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("spt   	");
 			if (mprop == 1)
 			    printf ("pmra  	pmdec 	");
-			if (refcat == UCAC2 || refcat == UCAC3)
+			if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
 			    printf ("epmra	epmdec	ni	nc	");
 			if (refcat == UB1)
 			    printf ("pm	ni	sg	");
@@ -2198,7 +2201,7 @@ double	eqout;		/* Equinox for output coordinates */
 			headline[nnfld] = (char) 0;
 			printf ("%s", headline);
 			printf ("	------------	------------	");
-			if (refcat == UCAC2 || refcat == UCAC3)
+			if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
 			    printf ("-----	-----	");
 			if (refcat == GSC2)
 			    printf ("-----	-----	-----	-----	");
@@ -2221,7 +2224,7 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("---------	");
 			if (mprop == 1)
 			    printf ("------	------	");
-			if (refcat == UCAC2 || refcat == UCAC3)
+			if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
 			    printf ("-----	-----	--	--	");
 			if (refcat == UB1)
 			    printf ("--	--	--	");
@@ -2364,7 +2367,7 @@ double	eqout;		/* Equinox for output coordinates */
 		    else
 			printf (" %s %s %s",
 			        numstr, rastr, decstr);
-		    if (refcat == UCAC2 || refcat == UCAC3) {
+		    if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4) {
 			era = gm[nmagr][0] * cosdeg (gdec[i]) * 3600.0;
 			edec = gm[nmagr+1][0] * 3600.0;
 			printf ("	%5.3f	%5.3f", era, edec);
@@ -2477,7 +2480,7 @@ double	eqout;		/* Equinox for output coordinates */
 			else
 			    printf (" %6.1f %6.1f", pra, pdec);
 			}
-		    if (refcat == UCAC2 || refcat == UCAC3) {
+		    if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4) {
 			epmr = gm[nmagr+2][0] * cosdeg (gdec[i]) * 3600000.0;
 			epmd = gm[nmagr+3][0] * 3600000.0;
 			nim = gc[0] / 1000;
@@ -2895,7 +2898,7 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline,"	ra1950      	dec1950  ");
 	    else
 		strcat (headline,"	ra      	dec      ");
-	    if (refcat == UCAC2 || refcat == UCAC3)
+	    if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
 		strcat (headline,"	raerr	decerr");
 	    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
 		refcat == UAC  || refcat == UA1  || refcat == UA2)
@@ -2917,6 +2920,8 @@ double	eqout;		/* Equinox for output coordinates */
 	    else if (refcat == UCAC2)
 		strcat (headline,"	magj	magh	magk  	magc ");
 	    else if (refcat == UCAC3)
+		strcat (headline,"	magb 	magr 	magi 	magj 	magh 	magk 	magm 	maga ");
+	    else if (refcat == UCAC4)
 		strcat (headline,"	magb 	magr 	magi 	magj 	magh 	magk 	magm 	maga ");
 	    else if (refcat == SKYBOT)
 		strcat (headline,"	magv	gdist	hdist ");
@@ -2958,7 +2963,7 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline," 	velocity");
 	    if (mprop == 1)
 		strcat (headline,"	pmra  	pmdec ");
-	    if (refcat == UCAC2 || refcat == UCAC3)
+	    if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
 		strcat (headline,"	epmra	epmdec	ni	nc");
 	    if (refcat == GSC2)
 		strcat (headline,"	class");
@@ -2985,7 +2990,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    strcpy (headline, "-------------------------");
 	    headline[nnfld] = (char) 0;
 	    strcat (headline,"	------------	------------");
-	    if (refcat == UCAC2 || refcat == UCAC3)
+	    if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
 		strcat (headline,"	-----	-----");
 	    if (refcat == TMPSC || refcat == TMIDR2)
 		strcat (headline,"	-------	-------	-------");
@@ -3017,7 +3022,7 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline,"	--------");
 	    if (mprop == 1)
 		strcat (headline,"	------	------");
-	    if (refcat == UCAC2 || refcat == UCAC3)
+	    if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
 		strcat (headline,"	-----	-----	--	--");
 	    if (refcat == GSC2)
 		strcat (headline,"	-----");
@@ -3073,6 +3078,10 @@ double	eqout;		/* Equinox for output coordinates */
 		    strcpy (headline, "UCAC1_num    ");
 		else if (refcat == UCAC2)
 		    strcpy (headline, "UCAC2_num    ");
+		else if (refcat == UCAC3)
+		    strcpy (headline, "UCAC3_num    ");
+		else if (refcat == UCAC4)
+		    strcpy (headline, "UCAC4_num    ");
 		else if (refcat == TMPSC || refcat == TMPSCE)
 		    strcpy (headline, "2MASS_num.  ");
 		else if (refcat == TMXSC)
@@ -3169,6 +3178,8 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, "   MagJ   MagH   MagK   MagC");
 	    else if (refcat == UCAC3)
 		strcat (headline,"    MagB   MagR   MagI   MagJ   MagH   MagK   MagM   MagA");
+	    else if (refcat == UCAC4)
+		strcat (headline,"    MagB   MagR   MagI   MagJ   MagH   MagK   MagM   MagA");
 	    else if (refcat==SKYBOT)
 		strcat (headline, "     MagV   GDist  HDist");
 	    else if (refcat==TMPSC || refcat == TMIDR2)
@@ -3217,7 +3228,7 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, "   Size");
 	    else if (typecol == 1)
 		strcat (headline, " Type");
-	    else if (gcset && refcat != UCAC2 && refcat != UCAC3)
+	    else if (gcset && refcat != UCAC2 && refcat != UCAC3 && refcat != UCAC4)
 		strcat (headline, "     Peak");
 	    if (printepoch)
 		strcat (headline, "   Epoch   ");
@@ -3225,7 +3236,7 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, "   pmRA  pmDec"); */
 	    if (mprop == 2)
 		strcat (headline, " Velocity");
-	    if (refcat == UCAC2 || refcat == UCAC3)
+	    if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
 		strcat (headline, " nim ncat");
 	    if (ranges == NULL)
 		strcat (headline, "  Arcsec");
@@ -3301,7 +3312,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    }
 
 	/* For USNO UCAC2 and UCAC3 catalogs, set errors and number of epochs */
-	if (refcat == UCAC2 || refcat == UCAC3) {
+	if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4) {
 	    era = gm[nmagr][i] * cosdeg (gdec[i]) * 3600.0;
 	    edec = gm[nmagr+1][i] * 3600.0;
 	    epmr = gm[nmagr+2][i] * cosdeg (gdec[i]) * 3600000.0;
@@ -3359,7 +3370,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    if (votab) {
 		sprintf (headline, "<tr>\n<td>%s</td><td>%s</td><td>%s</td>",
 			numstr,rastr,decstr);
-		if (refcat == UCAC2 || refcat == UCAC3) {
+		if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4) {
 		    sprintf (temp,"<td>%5.1f</td><td>%5.1f</td>", era, edec);
 	            strcat (headline, temp);
 		    }
@@ -3389,7 +3400,7 @@ double	eqout;		/* Equinox for output coordinates */
 	            sprintf (temp, "<td>%6.1f</td><td>%6.1f</td>", pra, pdec);
 	            strcat (headline, temp);
 		    }
-		if (refcat == UCAC2 || refcat == UCAC3) {
+		if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4) {
 		    sprintf (temp,"<td>%5.1f</td><td>%5.1f</td><td>%2d</td><td>%2d</td>",
 				epmr, epmd, nim, nct);
 	            strcat (headline, temp);
@@ -3475,7 +3486,7 @@ double	eqout;		/* Equinox for output coordinates */
 		     numstr, rastr, decstr, gm[0][i], gm[1][i], gm[2][i], gm[3][i]);
 		else {
 	            sprintf (headline, "%s	%s	%s", numstr, rastr, decstr);
-		    if (refcat == UCAC2 || refcat == UCAC3) {
+		    if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4) {
 			sprintf (temp,"	%5.3f	%5.3f", era, edec);
 	        	strcat (headline, temp);
 			}
@@ -3523,7 +3534,7 @@ double	eqout;		/* Equinox for output coordinates */
 	            sprintf (temp, "	%d  ", gc[i]);
 		    strcat (headline, temp);
 		    }
-		else if (refcat == UCAC2 || refcat == UCAC3) {
+		else if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4) {
 		    sprintf (temp, "	%5.1f	%5.1f	%2d	%2d",
 			    epmr, epmd, nim, nct);
 		    strcat (headline, temp);
@@ -3630,6 +3641,14 @@ double	eqout;		/* Equinox for output coordinates */
 		    sprintf (headline,"%s  %s %s %6.2f %6.2f %6.2f %6.2f",
 			     numstr,rastr,decstr,gm[0][i],
 			     gm[1][i], gm[2][i], gm[3][i]);
+		else if (refcat == UCAC3)
+		    sprintf (headline,"%s  %s %s %6.2f %6.2f %6.2f %6.2f",
+			     numstr,rastr,decstr,gm[0][i],
+			     gm[1][i], gm[2][i], gm[3][i]);
+		else if (refcat == UCAC4)
+		    sprintf (headline,"%s  %s %s %6.2f %6.2f %6.2f %6.2f",
+			     numstr,rastr,decstr,gm[0][i],
+			     gm[1][i], gm[2][i], gm[3][i]);
 		else if (refcat==SAO || refcat==PPM || refcat == BSC)
 		    sprintf (headline,"  %s  %s %s %6.2f",
 			     numstr,rastr,decstr,gm[0][i]);
@@ -3673,7 +3692,7 @@ double	eqout;		/* Equinox for output coordinates */
 		    sprintf (temp," %6.1f", ((double)gc[i])* 0.1);
 		    strcat (headline, temp);
 		    }
-		else if (gcset && refcat != UCAC2 && refcat != UCAC3) {
+		else if (gcset && refcat != UCAC2 && refcat != UCAC3 && refcat != UCAC4) {
 		    sprintf (temp," %7d",gc[i]);
 		    strcat (headline, temp);
 		    }
@@ -3696,7 +3715,7 @@ double	eqout;		/* Equinox for output coordinates */
 	    	    strcat (headline, temp);
 		    } */
 
-		if (refcat == UCAC2 || refcat == UCAC3) {
+		if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4) {
 		    sprintf (temp, "  %2d   %2d", nim, nct);
 		    strcat (headline, temp);
 		    }
@@ -4846,4 +4865,8 @@ PrintGSClass ()
  * Apr 30 2010	Set GSC2 magnitudes to 99.99 if > 90
  *
  * Apr 21 2011	Fix tabs in TMPSCE output
+ *
+ * Feb  1 2013	Add -p option to Usage()
+ *
+ * Feb 15 2013	Add UCAC4 catalog
  */

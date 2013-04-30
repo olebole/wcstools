@@ -1,9 +1,9 @@
 /* File getpix.c
- * September 21, 2010
+ * February 22, 2013
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2010
+   Copyright (C) 1996-2013
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -814,6 +814,8 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 		    }
 		else
 		    procpix (&dsum, &dnpix, &dmin, &dmax, dpix);
+		if (printrange || printmean)
+		    continue;
 	        if (bitpix > 0) {
 		    if ((c = strchr (pform,'f')) != NULL)
 			*c = 'd';
@@ -850,7 +852,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 		    }
 		}
 	    if (!pixperline && !ltcheck && !gtcheck) {
-		if (ix % nline != 0)
+		if (!printrange && !printmean && ix % nline != 0)
 		    printf ("\n");
 		}
 	    }
@@ -860,12 +862,25 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 
     if (printmean) {
 	dmean = dsum / dnpix;
-	printf ("Mean= %.4f ", dmean);
+	if (verbose)
+	    printf ("Mean= %.4f ", dmean);
+	else
+	    printf ("%.4f", dmean);
 	}
-    if (printrange)
-	printf ("Range = %.4f - %.4f ", dmin, dmax);
-    if (printmean || printrange)
-	printf ("for %d pixels\n", (int) dnpix);
+    if (printrange) {
+	if (printmean)
+	    printf (" ");
+	if (verbose)
+	    printf ("Range = %.4f - %.4f ", dmin, dmax);
+	else
+	    printf ("%.4f %.4f", dmin, dmax);
+	}
+    if (printmean || printrange) {
+	if (verbose)
+	    printf ("for %d pixels\n", (int) dnpix);
+	else
+	    printf ("\n");
+	}
 
     free (header);
     free (image);
@@ -944,4 +959,7 @@ double	dpix;	/* Current pixel value */
  *
  * Sep 21 2010	Add option -t to separate numbers by tabs
  * Sep 21 2010	Fix bug in computing means and limits
+ *
+ * Feb 22 2012	Print descriptors for mean and limits only in verbose mode
+ * Feb 22 2012	Fix bug to avoid printing all pixels if printing mean and/or limits
  */

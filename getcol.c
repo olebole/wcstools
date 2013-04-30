@@ -1,9 +1,9 @@
 /* File getcol.c
- * April 18, 2011
+ * August 12, 2013
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2011
+   Copyright (C) 1999-2013
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -759,7 +759,7 @@ char	*lfile;		/* Name of file with lines to list */
 	    /* Check conditions */
 	    ntok = setoken (&tokens, line, cwhite);
 	    if (counttok) {
-		printf ("%d", ntok);
+		printf ("%d", ntok-1);
 		if (verbose)
 		    printf (" columns in %s", filename);
 		else
@@ -1779,4 +1779,6 @@ void *pd1, *pd2;
  * Sep 25 2009	Fix error message about illegal operation
  *
  * Apr 18 2011	Fix allocation bug for median of too many entries
+ * 
+ * Aug 12 2013	Subtract one from returned token count for accuracy
  */

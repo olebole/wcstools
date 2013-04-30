@@ -1,9 +1,9 @@
 /* File getdate.c
- * March 27, 2012
+ * April 30, 3013
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2012
+   Copyright (C) 1999-2013
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -84,6 +84,7 @@ static double dec = 0.0;
 static int coorsys = WCS_J2000;
 extern void sdatedec();
 static double longitude = -1.0;
+static double nsub = 0;	/* Number of days to subtract */
 
 int
 main (ac, av)
@@ -307,6 +308,13 @@ char **av;
 		    ac--;
 		    break;
 
+		case 's':	/* Subtract days from command line date */
+		    if (ac < 2)
+			usage();
+		    nsub = (int) (atof (*++av));
+		    ac--;
+		    break;
+
 		case 't':	/* Print time without date */
 		    timeonly++;
 		    break;
@@ -438,7 +446,8 @@ usage ()
     fprintf(stderr,"     -f: Format for output number (C printf)\n");
     fprintf(stderr,"     -h hours: Longitude in hours, west positive\n");
     fprintf(stderr,"     -l degrees: Longitude in degrees, west positive\n");
-    fprintf(stderr,"     -n: Number of decimal places in sec, epoch, JD\n");
+    fprintf(stderr,"     -n num: Number of decimal places in sec, epoch, JD\n");
+    fprintf(stderr,"     -s days: Number of days to subtract\n");
     fprintf(stderr,"     -t: Print time without date\n");
     fprintf(stderr,"     -v: Verbose\n");
     exit (1);
@@ -594,6 +603,11 @@ char	*timestring;	/* Input time string */
 			vtime = 0.0;
 			}
 		    }
+		if (nsub != 0) {
+		    jd = dt2jd (vdate, vtime);
+		    jd1 = jd - (double) nsub;
+		    jd2dt (jd1, &vdate, &vtime);
+		    }
 		if (verbose)
 		    printf ("%s %s -> ", datestring, timestring);
 
@@ -725,6 +739,11 @@ char	*timestring;	/* Input time string */
 		    }
 		else
 		    fitsdate = datestring;
+		if (nsub != 0) {
+		    jd = fd2jd (fitsdate);
+		    jd1 = jd - (double) nsub;
+		    fitsdate = jd2fd (jd1);
+		    }
 		if (verbose)
 		    printf ("%s -> ", fitsdate);
 		switch (outtype) {
@@ -1004,6 +1023,8 @@ char	*timestring;	/* Input time string */
 		    vtime = str2dec (timestring);
 		    jd = jd + vtime / 24.0;
 		    }
+		if (nsub != 0)
+		    jd = jd - (double) nsub;
 		if (verbose)
 		    printf ("%.5f -> ", jd);
 		switch (outtype) {
@@ -1018,6 +1039,9 @@ char	*timestring;	/* Input time string */
 		    case DTEPJ:
 			epoch = jd2epj (jd);
 			printf (outform, epoch);
+			break;
+		    case DTJD:
+			printf (outform, jd);
 			break;
 		    case DTHJD:
 			jd = jd2hjd (jd, ra, dec, coorsys);
@@ -1109,6 +1133,8 @@ char	*timestring;	/* Input time string */
 		    }
 		if (verbose)
 		    printf ("%.5f -> ", jd);
+		if (nsub != 0)
+		    jd = jd - (double) nsub;
 		switch (outtype) {
 		    case DTEP:
 			epoch = mjd2ep (jd);
@@ -1134,6 +1160,9 @@ char	*timestring;	/* Input time string */
 			break;
 		    case DTMHJD:
 			jd = mjd2mhjd (jd, ra, dec, coorsys);
+			printf (outform, jd);
+			break;
+		    case DTMJD:
 			printf (outform, jd);
 			break;
 		    case DTVIG:
@@ -1204,6 +1233,8 @@ char	*timestring;	/* Input time string */
 		    }
 		if (verbose)
 		    printf ("%.5f -> ", jd);
+		if (nsub != 0)
+		    jd = jd - (double) nsub;
 		switch (outtype) {
 		    case DTEP:
 			jd = hjd2jd (jd, ra, dec, coorsys);
@@ -1227,6 +1258,9 @@ char	*timestring;	/* Input time string */
 		    case DTMJD:
 			jd = hjd2jd (jd, ra, dec, coorsys);
 			jd = jd2mjd (jd);
+			printf (outform, jd);
+			break;
+		    case DTHJD:
 			printf (outform, jd);
 			break;
 		    case DTMHJD:
@@ -1312,6 +1346,8 @@ char	*timestring;	/* Input time string */
 		    }
 		if (verbose)
 		    printf ("%.5f -> ", jd);
+		if (nsub != 0)
+		    jd = jd - (double) nsub;
 		switch (outtype) {
 		    case DTEP:
 			jd = mhjd2mjd (jd, ra, dec, coorsys);
@@ -1330,6 +1366,9 @@ char	*timestring;	/* Input time string */
 			break;
 		    case DTHJD:
 			jd = mjd2jd (jd);
+			printf (outform, jd);
+			break;
+		    case DTMHJD:
 			printf (outform, jd);
 			break;
 		    case DTJD:
@@ -1615,6 +1654,11 @@ char	*timestring;	/* Input time string */
 	    if (datestring != NULL) {
     		if (strcmp (datestring, "now"))
 		    ts = atof (datestring);
+		if (nsub != 0) {
+		    jd = ts2jd (ts);
+		    jd1 = jd - (double) nsub;
+		    ts = jd2ts (jd1);
+		    }
 		if (verbose)
 		    printf ("%.3f -> ", ts);
 		switch (outtype) {
@@ -1695,6 +1739,9 @@ char	*timestring;	/* Input time string */
 	    break;
 	case DTDSEC:
 	    ts = atof (datestring);
+	    if (nsub != 0) {
+		ts = ts - ((double) nsub * 86400.0);
+		}
 	    switch (outtype) {
 		case DTFITS:
 		    fitsdate = tsd2fd (ts);
@@ -1710,8 +1757,12 @@ char	*timestring;	/* Input time string */
 	    if (datestring != NULL) {
     		if (strcmp (datestring, "now"))
 		    its = atoi (datestring);
+		if (nsub != 0) {
+		    its = its - (nsub * 86400);
+		    }
 		if (verbose)
 		    printf ("%d -> ", its);
+		ts = (double) its;
 		switch (outtype) {
 		    case DTEP:
 			ts = tsi2ts (ts);
@@ -1803,6 +1854,10 @@ char	*timestring;	/* Input time string */
 		    }
 		else
 		    its = (int) ts;
+		if (nsub != 0) {
+		    its = its - (nsub * 86400);
+		    ts = (double) its;
+		    }
 		if (verbose)
 		    printf ("%d -> ", its);
 		switch (outtype) {
@@ -2142,6 +2197,11 @@ char	*timestring;	/* Input time string */
 		    break;
 		case DTVIG:
 		    ut2dt (&vdate, &vtime);
+		    if (nsub != 0) {
+			jd = dt2jd (vdate, vtime);
+			jd1 = jd - (double) nsub;
+			jd2dt (jd1, &vdate, &vtime);
+			}
 		    if (outtime == ET) dt2et (&vdate, &vtime);
 		    if (outtime == GST) dt2gst (&vdate, &vtime);
 		    if (outtime == MST) dt2mst (&vdate, &vtime);
@@ -2154,6 +2214,11 @@ char	*timestring;	/* Input time string */
 		    break;
 		case DTFITS:
 		    newfdate = ut2fd ();
+		    if (nsub != 0) {
+			jd = fd2jd (newfdate);
+			jd1 = jd - (double) nsub;
+			newfdate = jd2fd (jd1);
+			}
 		    if (outtime == ET) newfdate = fd2et (newfdate);
 		    if (outtime == GST) newfdate = fd2gst (newfdate);
 		    if (outtime == MST) newfdate = fd2mst (newfdate);
@@ -2182,20 +2247,32 @@ char	*timestring;	/* Input time string */
 		    break;
 		case DTJD:
 		    jd = ut2jd ();
+		    if (nsub != 0) {
+			jd = jd - (double) nsub;
+			}
 		    if (outtime == ET) jd = jd2jed (jd);
 		    printf (outform, jd);
 		    break;
 		case DTMJD:
 		    jd = ut2mjd ();
+		    if (nsub != 0) {
+			jd = jd - (double) nsub;
+			}
 		    printf (outform, jd);
 		    break;
 		case DTHJD:
 		    jd = ut2jd ();
+		    if (nsub != 0) {
+			jd = jd - (double) nsub;
+			}
 		    jd = jd2hjd (jd, ra, dec, coorsys);
 		    printf (outform, jd);
 		    break;
 		case DT1950:
 		    ts = ut2ts ();
+		    if (nsub != 0) {
+			ts = ts - (86400.0 * (double) nsub);
+			}
 		    if (outtime == ET) ts = ts2ets (ts);
 		    if (outtime == GST) ts = ts2gst (ts);
 		    if (outtime == MST) ts = ts2mst (ts);
@@ -2203,14 +2280,25 @@ char	*timestring;	/* Input time string */
 		    break;
 		case DTIRAF:
 		    its = ut2tsi ();
+		    if (nsub != 0) {
+			its = its - (86400 * nsub);
+			}
 		    printf (outform, its);
 		    break;
 		case DTUNIX:
 		    lts = ut2tsu ();
+		    if (nsub != 0) {
+			its = its - (86400 * nsub);
+			}
 		    printf (outform, lts);
 		    break;
 		case DTDOY:
 		    ut2doy (&year, &doy);
+		    if (nsub != 0) {
+			jd = doy2jd (year, doy);
+			jd1 = jd - (double) nsub;
+			jd2doy (jd1, &year, &doy);
+			}
 		    sprintf (temp, outform, doy);
 		    printf ("%04d %s\n", year, temp);
 		    break;
@@ -2278,4 +2366,7 @@ char	*timestring;	/* Input time string */
  * Jan 24 2012	Add scale factor to convert date RFN's to  DT date
  * Feb 15 2012	Add option to read ra dec sys before time from file
  * Mar 27 2012	Fix bug copying string to ts0 found by Michal Szymanski
+ *
+ * Jan  3 2013	Add -s option to subtract days
+ * Apr 30 2013	Add self-conversion options for JDs
  */

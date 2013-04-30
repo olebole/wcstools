@@ -144,7 +144,8 @@ char *av[];
 	if (verbose)
 	    printf ("%s -> ", objname);
 
-	strcpy (url, "http://vizier.u-strasbg.fr/cgi-bin/nph-sesame?");
+	/* strcpy (url, "http://vizier.u-strasbg.fr/cgi-bin/nph-sesame?"); */
+	strcpy (url, "http://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-ol?");
 	strcat (url, objname);
 	buff = webbuff (url, verbose, &lbuff);
 

@@ -1,8 +1,8 @@
 /*** File libwcs/catutil.c
- *** October 23, 2012
+ *** September 23, 2013
  *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2012
+ *** Copyright (C) 1998-2013
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -274,6 +274,14 @@ int	*nmag;		/* Number of magnitudes in catalog (returned) */
 	*catprop = 1;
 	*nmag = 8;
 	}
+    else if (refcat == UCAC4) {
+	strcpy (title, "USNO UCAC4 Catalog Stars");
+	*syscat = WCS_J2000;
+	*eqcat = 2000.0;
+	*epcat = 2000.0;
+	*catprop = 1;
+	*nmag = 8;
+	}
     else if (refcat == UJC) {
 	strcpy (title, "USNO J Catalog Stars");
 	*syscat = WCS_J2000;
@@ -510,6 +518,9 @@ char	*refcatname;	/* Name of reference catalog */
     else if (strncasecmp(refcatname,"ucac3",5)==0 &&
 	     strcsrch(refcatname, ".tab") == NULL)
 	refcat = UCAC3;
+    else if (strncasecmp(refcatname,"ucac4",5)==0 &&
+	     strcsrch(refcatname, ".tab") == NULL)
+	refcat = UCAC4;
     else if (strncasecmp(refcatname,"usa",3)==0 &&
 	     strcsrch(refcatname, ".tab") == NULL) {
 	if (strchr (refcatname, '1') != NULL)
@@ -708,6 +719,8 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "USNO-UCAC2");
     else if (refcat ==  UCAC3)	/* USNO UCAC3 Star Catalog */
 	strcpy (catname, "USNO-UCAC3");
+    else if (refcat ==  UCAC4)	/* USNO UCAC4 Star Catalog */
+	strcpy (catname, "USNO-UCAC4");
     else if (refcat ==  UA2)	/* USNO A-2.0 Star Catalog */
 	strcpy (catname, "USNO-A2.0");
     else if (refcat ==  USA1)	/* USNO SA-1.0 Star Catalog */
@@ -807,6 +820,8 @@ char	*refcatname;	/* Catalog file name */
 	strcpy (catname, "USNO-UCAC2 Stars");
     else if (refcat ==  UCAC3)	/* USNO UCAC3 Star Catalog */
 	strcpy (catname, "USNO-UCAC3 Stars");
+    else if (refcat ==  UCAC4)	/* USNO UCAC4 Star Catalog */
+	strcpy (catname, "USNO-UCAC4 Stars");
     else if (refcat ==  UA2)	/* USNO A-2.0 Star Catalog */
 	strcpy (catname, "USNO-A2.0 Stars");
     else if (refcat ==  USA1)	/* USNO SA-1.0 Star Catalog */
@@ -873,6 +888,8 @@ int	refcat;		/* Catalog code */
 	strcpy (catid,"ucac2_id  ");
     else if (refcat == UCAC3)
 	strcpy (catid,"ucac3_id  ");
+    else if (refcat == UCAC4)
+	strcpy (catid,"ucac4_id  ");
     else if (refcat == UJC)
 	strcpy (catid,"usnoj_id     ");
     else if (refcat == TMPSC || refcat == TMPSCE)
@@ -908,7 +925,7 @@ int	refcat;		/* Catalog code */
 {
     if (refcat==GSC || refcat==GSCACT || refcat==UJC || refcat==USAC ||
 	refcat==USA1 || refcat==USA2 ||
-	refcat == UCAC1 || refcat == UCAC2 || refcat == UCAC3)
+	refcat == UCAC1 || refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
 	return (900.0);
     else if (refcat==UAC  || refcat==UA1  || refcat==UA2)
 	return (120.0);
@@ -1025,6 +1042,10 @@ char *progname;	/* Program name which might contain catalog code */
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "ucac3");
 	}
+    else if (strcsrch (progname,"ucac4") != NULL) {
+	refcatname = (char *) calloc (1,8);
+	strcpy (refcatname, "ucac4");
+	}
     else if (strcsrch (progname,"ujc") != NULL) {
 	refcatname = (char *) calloc (1,8);
 	strcpy (refcatname, "ujc");
@@ -1140,6 +1161,14 @@ char	*numstr;	/* Formatted number (returned) */
 
     /* USNO-UCAC3 */
     else if (refcat == UCAC3) {
+	if (nnfld < 0)
+	    sprintf (numstr, "%010.6f", dnum);
+	else
+	    sprintf (numstr, "%10.6f", dnum);
+	}
+
+    /* USNO-UCAC4 */
+    else if (refcat == UCAC4) {
 	if (nnfld < 0)
 	    sprintf (numstr, "%010.6f", dnum);
 	else
@@ -1331,6 +1360,10 @@ int	nndec;		/* Number of decimal places ( >= 0) */
     else if (refcat == UCAC3)
 	return (10);
 
+    /* UCAC4 Catalog */
+    else if (refcat == UCAC4)
+	return (10);
+
     /* USNO Plate Catalogs */
     else if (refcat == USNO)
 	return (7);
@@ -1464,6 +1497,10 @@ int	refcat;		/* Catalog code */
 
     /* UCAC3 Catalog */
     else if (refcat == UCAC3)
+	return (6);
+
+    /* UCAC4 Catalog */
+    else if (refcat == UCAC4)
 	return (6);
 
     /* USNO UJ 1.0 Catalog */
@@ -1635,6 +1672,24 @@ char	*magname;	/* Name of magnitude, returned */
 	else if (imag == 8)
 	    strcpy (magname, "MagA");
 	}
+    else if (refcat==UCAC4) {
+	if (imag == 1)
+	    strcpy (magname, "MagB");
+	else if (imag == 2)
+	    strcpy (magname, "MagR");
+	else if (imag == 3)
+	    strcpy (magname, "MagI");
+	else if (imag == 4)
+	    strcpy (magname, "MagJ");
+	else if (imag == 5)
+	    strcpy (magname, "MagH");
+	else if (imag == 6)
+	    strcpy (magname, "MagK");
+	else if (imag == 7)
+	    strcpy (magname, "MagM");
+	else if (imag == 8)
+	    strcpy (magname, "MagA");
+	}
     else if (refcat==SKYBOT)
 	strcpy (magname, "MagV");
     else
@@ -1747,6 +1802,24 @@ int	refcat;		/* Catalog code */
 	    return (3);	/* K */
 	}
     else if (refcat==UCAC3) {
+	if (cmag == 'R')
+	    return (2);
+	else if (cmag == 'I')
+	    return (3);
+	else if (cmag == 'J')
+	    return (4);
+	else if (cmag == 'H')
+	    return (5);
+	else if (cmag == 'K')
+	    return (6);
+	else if (cmag == 'M')
+	    return (7);
+	else if (cmag == 'A')
+	    return (8);
+	else
+	    return (1);	/* B */
+	}
+    else if (refcat==UCAC4) {
 	if (cmag == 'R')
 	    return (2);
 	else if (cmag == 'I')
@@ -3483,4 +3556,7 @@ char *from, *last, *to;
  *		(found by Raymond Carlberg of U.Toronto)
  * Oct 02 2012	Skip trailing right bracket in aget*()
  * Oct 23 2012	Add "of" as possible connector in aget*()
+ *
+ * Feb 15 2013	Add UCAC4 catalog
+ * Sep 23 2013	Finish adding UCAC4 catalog
  */

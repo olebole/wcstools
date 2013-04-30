@@ -1,9 +1,9 @@
 /* File getfits.c
- * April 13, 2010
+ * September 17, 2013
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2002-2010
+   Copyright (C) 2002-2013
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -28,8 +28,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitsfile.h"
-#include "libwcs/wcs.h"
+#include "libwcs/fitswcs.h"
 #include "libwcs/wcscat.h"
 
 #define MAXRANGE 20
@@ -292,13 +291,13 @@ char **av;
     if (listfile && isimlist (listfile)) {
 	nfile = getfilelines (listfile);
 	if ((flist = fopen (listfile, "r")) == NULL) {
-	    fprintf (stderr,"I2F: Image list file %s cannot be read\n",
+	    fprintf (stderr,"GETFITS: Image list file %s cannot be read\n",
 		     listfile);
 	    usage ();
 	    }
 	for (ifile = 0; ifile < nfile; ifile++) {
 	    first_token (flist, 254, filename);
-	    ExtractFITS (filename,kwd,nkwd);
+	    (void) ExtractFITS (filename,kwd,nkwd);
 	    }
 	fclose (flist);
 	}
@@ -323,12 +322,15 @@ char *errmsg;	/* Error message */
     if (*errmsg)
 	fprintf (stderr, "*** %s ***\n", errmsg);
     fprintf (stderr,"Extract FITS files from FITS image files\n");
-    fprintf(stderr,"Usage: getfits -sv [-i num] [-o name] [-d dir] file.fits [xrange yrange] [x y dx [dy]] ...\n");
-    fprintf(stderr,"  or : getfits [-sv1][-i num][-o name] [-d path] @fitslist [xrange yrange] [x y dx [dy]]\n");
+    fprintf(stderr,"Usage: getfits -sv [-i num] [-o name] [-d dir] file.fits xrange yrange...\n");
+    fprintf(stderr,"  or : getfits -sv [-i num] [-o name] [-d dir] file.fits [x y dx [dy] ...\n");
+    fprintf(stderr,"  or : getfits [-sv1][-i num][-o name] [-d path] @fitslist xrange yrange\n");
+    fprintf(stderr,"  or : getfits [-sv1][-i num][-o name] [-d path] @fitslist x y dx [dy]\n");
     fprintf(stderr,"  xrange: Columns to extract in format x1-x2\n");
     fprintf(stderr,"  yrange: Rows to extract in format y1-y2\n");
-    fprintf(stderr,"  x y: Center pixel (column row) of region to extract\n");
-    fprintf(stderr,"  hh:mm:ss dd:mm:ss sys: Center pixel in sky coordintes\n");
+    fprintf(stderr,"  x y: Center pixel of region to extract\n");
+    fprintf(stderr,"       column row or\n");
+    fprintf(stderr,"       hh:mm:ss dd:mm:ss system (sky coordinates)\n");
     fprintf(stderr,"  dx dy: Width and height in pixels of region to extract\n");
     fprintf(stderr,"         (Height is same as width if omitted)\n");
     fprintf(stderr,"  -d dir: write FITS file(s) to this directory\n");
@@ -464,6 +466,15 @@ int	nkwd;
 	ifrow1 = 1;
 	ifrow2 = nrows;
 	}
+
+    /* Return with error if both first and last row off image */
+    if ((ifrow1 < 1 && ifrow2 < 1) ||
+	(ifrow1 > nrows && ifrow2 > nrows)) {
+	fprintf (stderr,"GETFITS: Rows %d-%d off image %s\n",
+		 ifrow1, ifrow2, name);
+	return (1);
+	}
+
     if (ifrow1 < 1)
 	ifrow1 = 1;
     if (ifrow2 < 1)
@@ -489,6 +500,15 @@ int	nkwd;
 	ifcol1 = 1;
 	ifcol2 = ncols;
 	}
+
+    /* Return with error if both first and last column off image */
+    if ((ifcol1 < 1 && ifcol2 < 1) ||
+	(ifcol1 > ncols && ifcol2 > ncols)) {
+	fprintf (stderr,"GETFITS: Columns %d-%d off image %s\n",
+		 ifcol1, ifcol2, name);
+	return (1);
+	}
+
     if (ifcol1 < 1)
 	ifcol1 = 1;
     if (ifcol2 < 1)
@@ -720,4 +740,7 @@ char *newname;
  * Apr  4 2008	Make extracted TNX WCS dependent on original PLATE WCS
  *
  * Apr 10 2010	Fix bug so WCS is not accessed after it is freed
+ *
+ * Jan 22 2012	Print error, not blank file, if requested region is off image
+ * Sep 17 2013	Include fitswcs.h
  */

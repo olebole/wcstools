@@ -1,3 +1,13 @@
+Version 3.8.9 (September 16, 2013)
+imcat, imwcs, immatch, scat: Work around SDSS server failure
+sdssread.c: Add alternate UK and US catalog servers
+
+Version 3.8.8 (April 30, 2013)
+getdate: Add -s option to subtract (or add) days
+getdate: Add self-conversion for *JD's
+getfits: Print error, not blank file, if requested region is off image
+simpos: Update URL for SIMBAD query
+
 Version 3.8.7 (October 31, 2012)
 Rename Man to man to avoid problems with Mac OSX file name convention
 filedir: If pathname ends in "/", drop last directory

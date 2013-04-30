@@ -1,9 +1,9 @@
 /* File remap.c
- * October 15, 2010
+ * September 17, 2013
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2010
+   Copyright (C) 1999-2013
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -28,8 +28,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/fitsfile.h"
-#include "libwcs/wcs.h"
+#include "libwcs/fitswcs.h"
 
 #define REMAP_CLOSEST	1
 #define REMAP_FLUX	2
@@ -57,7 +56,6 @@ static double secpix2 = 0;
 static int bitpix0 = 0; /* Output BITPIX, =input if 0 */
 static int RemapImage();
 static void getsection();
-extern struct WorldCoor *GetFITSWCS();
 static struct WorldCoor *wcsout = NULL;
 static char *irafheader;	/* IRAF image header */
 static char *headout;		/* FITS output header */
@@ -942,4 +940,6 @@ double	*y2;		/* Upper right y coordinate (returned) */
  * Jan 10 2007	Drop unused variable dy
  *
  * Oct 15 2010	Use center coordinates of original image if not set
+ *
+ * Sep 17 2013  Include fitswcs.h
  */

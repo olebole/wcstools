@@ -1,9 +1,9 @@
 /* File isfits.c
- * December 14, 2011
+ * August 12, 2013
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2008-2011
+   Copyright (C) 2008-2013
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -39,7 +39,7 @@ char **av;
     /* Check for version or help command first */
     str = *(av+1);
     if (!str || !strcmp (str, "help") || !strcmp (str, "-help")) {
-	fprintf (stderr,"Usage: Return 1 if argument is a FITS file, else 0");
+	fprintf (stderr,"Usage: Return 1 if argument is a FITS file, else 0\n");
 	exit (1);
 	}
     else if (!strcmp (str, "version") || !strcmp (str, "-version")) {
@@ -57,4 +57,6 @@ char **av;
  * Oct 29 2010	Include fitsfile.h instead of fitshead.h
  *
  * Dec 14 2011	Fix comments
+ *
+ * Aug 12 2013	Add linefeed to usage
  */

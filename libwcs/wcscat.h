@@ -1,7 +1,7 @@
 /*** File libwcs/wcscat.h
- *** May 16, 2012
+ *** February 15, 2013
  *** By Jessica Mink, jmink@cfa.harvard.edu
- *** Copyright (C) 1998-2012
+ *** Copyright (C) 1998-2013
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -206,11 +206,12 @@ struct TabTable {
 #define SKY2K		30	/* SKY2000 Master Catalog */
 #define SKYBOT		31	/* SKYBOT Solar System Objects */
 #define UCAC3		32	/* USNO CCD Astrograph Catalog 3.0 (2009) */
+#define UCAC4		33	/* USNO CCD Astrograph Catalog 3.0 (2009) */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */
 #define WEBCAT		-4	/* Tab catalog via the web */
-#define NUMCAT		31	/* Number of predefined catalogs */
+#define NUMCAT		33	/* Number of predefined catalogs */
 
 #define EP_EP   1	/* Output epoch as fractional year */
 #define EP_JD   2	/* Output epoch as Julian Date */
@@ -1697,4 +1698,6 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * Apr 06 2010	Add fillblank argument to agets()
  *
  * May 16 2012	Add valmin and valmax to Range data structure
+ *
+ * Feb 15 2013	Add UCAC4 to list of catalog codes
  */

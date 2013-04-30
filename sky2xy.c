@@ -1,5 +1,5 @@
 /* File sky2xy.c
- * September 25, 2009
+ * September 24, 2013
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
@@ -28,15 +28,12 @@
 #include <errno.h>
 #include <unistd.h>
 #include <math.h>
-#include "libwcs/wcs.h"
-#include "libwcs/fitsfile.h"
+#include "libwcs/fitswcs.h"
 
 static void PrintUsage();
 extern void setrot(),setsys(),setcenter(),setsecpix(),setrefpix(),setdateobs();
 extern void setnpix();
 extern struct WorldCoor *GetFITSWCS ();	/* Read WCS from FITS or IRAF header */
-extern struct WorldCoor *GetWCSFITS ();	/* Read WCS from FITS or IRAF file */
-extern char *GetFITShead();
 static int version = 0;		/* If 1, print only program name and version */
 
 
@@ -550,4 +547,6 @@ char	*command;
  * Jul  5 2007	Use command line argument if no system with coordinates
  *
  * Sep 25 2009	Declare setnpix()
+ *
+ * Sep 24 2013	Use fitswcs.h
  */
