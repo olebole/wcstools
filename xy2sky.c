@@ -418,6 +418,7 @@ char **av;
 	    ln = listname;
 	    while (*ln++)
 		*(ln-1) = *ln;
+	    *ln = (char) 0;
 	    if (strcmp (listname,"STDIN")==0 || strcmp (listname,"stdin")==0) {
 		fd = stdin;
 		nlines = 10000;

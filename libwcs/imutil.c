@@ -1,8 +1,8 @@
 /*** File libwcs/imutil.c
- *** May 16, 2012
+ *** June 17, 2014
  *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2006-2012
+ *** Copyright (C) 2006-2014
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
  */
 
@@ -1183,7 +1183,7 @@ int	ndy;	/* Number of rows over which to compute the median */
     for (jy = jy1; jy < jy2; jy++) {
 	img = x + (jy * nx) + jx1;
 	for (jx = jx1; jx < jx2; jx++) {
-	    if (*img != bpvalr4) {
+	    if (*img != bpvalr4 && !isnan(*img)) {
 		*vecj++ = *img;
 		n++;
 		}
@@ -1269,7 +1269,7 @@ int	ndy;	/* Number of rows over which to compute the median */
     for (jy = jy1; jy < jy2; jy++) {
 	img = x + (jy * nx) + jx1;
 	for (jx = jx1; jx < jx2; jx++) {
-	    if (*img != bpval) {
+	    if (*img != bpval && !isnan(*img)) {
 		*vecj++ = *img;
 		n++;
 		}
@@ -1812,7 +1812,7 @@ int	ndy;	/* Number of rows over which to compute the median */
     for (jy = jy1; jy < jy2; jy++) {
 	img = x + (jy * nx) + jx1;
 	for (jx = jx1; jx < jx2; jx++) {
-	    if (*img != bpvalr4) {
+	    if (*img != bpvalr4 && !isnan (*img)) {
 		sum = sum + (double) *img;
 		n++;
 		}
@@ -1873,7 +1873,7 @@ int	ndy;	/* Number of rows over which to compute the median */
     for (jy = jy1; jy < jy2; jy++) {
 	img = x + (jy * nx) + jx1;
 	for (jx = jx1; jx < jx2; jx++) {
-	    if (*img != bpval) {
+	    if (*img != bpval && !isnan (*img)) {
 		sum = sum + (double) *img;
 		n++;
 		}
@@ -2225,9 +2225,9 @@ int	nx,ny;	/* Number of columns and rows in image */
 	ixi = ix + ixbox[i];
 	iyi = iy + iybox[i];
 	if (ixi > -1 && iyi > -1 && ixi < nx && iyi < ny) {
-	    img = image + (iyi * ny) + ixi;
+	    img = image + (iyi * nx) + ixi;
 	    if (*img != bpvali2) {
-		flux = (double) *img;
+		flux = (double) image[ixi + (iyi * nx)];
 		twt = twt + gwt[i];
 		tpix = tpix + gwt[i] * flux;
 		np++;
@@ -2270,9 +2270,9 @@ int	nx,ny;	/* Number of columns and rows in image */
 	ixi = ix + ixbox[i];
 	iyi = iy + iybox[i];
 	if (ixi > -1 && iyi > -1 && ixi < nx && iyi < ny) {
-	    img = image + (iyi * ny) + ixi;
+	    img = image + (iyi * nx) + ixi;
 	    if (*img != bpvali4) {
-		flux = (double) *img;
+		flux = (double) image[ixi + (iyi * nx)];
 		twt = twt + gwt[i];
 		tpix = tpix + gwt[i] * flux;
 		np++;
@@ -2315,9 +2315,10 @@ int	nx,ny;	/* Number of columns and rows in image */
 	ixi = ix + ixbox[i];
 	iyi = iy + iybox[i];
 	if (ixi > -1 && iyi > -1 && ixi < nx && iyi < ny) {
-	    img = image + (iyi * ny) + ixi;
-	    if (*img != bpvalr4) {
-		flux = (double) image[ixi + (iyi * ny)];
+	    img = image + (iyi * nx) + ixi;
+	    /* printf ("%04d,%04d %04d,%04d: %g\n", ix, iy, ixi, iyi, *img); */
+	    if (*img != bpvalr4 && !isnan (*img)) {
+		flux = (double) image[ixi + (iyi * nx)];
 		twt = twt + gwt[i];
 		tpix = tpix + gwt[i] * flux;
 		np++;
@@ -2360,9 +2361,9 @@ int	nx,ny;	/* Number of columns and rows in image */
 	ixi = ix + ixbox[i];
 	iyi = iy + iybox[i];
 	if (ixi > -1 && iyi > -1 && ixi < nx && iyi < ny) {
-	    img = image + (iyi * ny) + ixi;
-	    if (*img != bpval) {
-		flux = image[ixi + (iyi * ny)];
+	    img = image + (iyi * nx) + ixi;
+	    if (*img != bpval && !isnan (*img)) {
+		flux = image[ixi + (iyi * nx)];
 		twt = twt + gwt[i];
 		tpix = tpix + gwt[i] * flux;
 		np++;
@@ -3042,4 +3043,6 @@ double	rad;
  *
  * May 15 2012	Add medpix() and meanpix() to generalize across pixel size
  * May 16 2012	Add medpixi1() and meanpixi1() to handle 8-bit images
+ *
+ * Jun 17 2014	Ignore NaN pixels
  */

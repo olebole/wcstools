@@ -228,7 +228,7 @@ char **av;
 		}
     	    }
 
-        /* center or center and size of section to extract */
+        /* Center or center and size of section to extract */
         else if (isnum (*av)) {
 	    if (ac > 2 && isnum (*(av+1)) && (syscoor = wcscsys (*(av+2))) > 0) {
 		ra0 = str2ra (*av++);
@@ -251,7 +251,7 @@ char **av;
 		}
 	    }
 
-        /* range of pixels to extract */
+        /* Range of pixels to extract */
         else if (isrange (*av)) {
 	    if (crange == NULL)
 		crange = str;
@@ -259,12 +259,13 @@ char **av;
 		rrange = str;
 	    }
 
+	/* File with list of image files */
  	else if (*av[0] == '@') {
 	    listfile = *av + 1;
 	    }
 
         /* Image file */
-        else if (isfits (*av)) {
+        else if (isfits (*av) || isiraf (*av)) {
             if (nfile >= maxnfile) {
                 maxnfile = maxnfile * 2;
                 nbytes = maxnfile * sizeof (char *);
@@ -287,7 +288,7 @@ char **av;
     if (xdpix && !ydpix)
 	ydpix = xdpix;
 
-    /* now there are ac remaining file names starting at av[0] */
+    /* Process files from listfile one at a time */
     if (listfile && isimlist (listfile)) {
 	nfile = getfilelines (listfile);
 	if ((flist = fopen (listfile, "r")) == NULL) {
@@ -420,7 +421,7 @@ int	nkwd;
 	}
 
     if (ra0 > -99.0 && dec0 > -99.0) {
-	wcs = GetWCSFITS (name, header, verbose);
+	wcs = GetWCSFITS (name, verbose);
 	if (wcs->lngcor != NULL) {
 	    istnx = 1;
 	    }

@@ -1,9 +1,9 @@
 /* File remap.c
- * September 17, 2013
+ * February 19, 2014
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2013
+   Copyright (C) 1999-2014
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -370,8 +370,8 @@ char	*message;	/* Error message */
     if (message != NULL)
 	fprintf (stderr, "ERROR: %c %s\n", arg, message);
     fprintf (stderr,"Remap FITS or IRAF images into single FITS image using WCS\n");
-    fprintf(stderr,"Usage: remap [-vf][-a rot][[-b][-j] ra dec][-i bits][-l num] file1.fit file2.fit ... filen.fit\n");
-    fprintf(stderr,"  or : remap [-vf][-a rot][[-b][-j] ra dec][-i bits][-l num] @filelist\n");
+    fprintf(stderr,"Usage: remap [-v][-f WCSfile][-a rot][[-b][-j] ra dec][-i bits][-l num] file1.fit file2.fit ... filen.fit\n");
+    fprintf(stderr,"  or : remap [-v][-f WCSfile][-a rot][[-b][-j] ra dec][-i bits][-l num] @filelist\n");
     fprintf(stderr,"  -a: Output rotation angle in degrees (default 0)\n");
     fprintf(stderr,"  -b ra dec: Output center in B1950 (FK4) RA and Dec\n");
     fprintf(stderr,"  -e long lat: Output center in ecliptic longitude and latitude\n");
@@ -942,4 +942,6 @@ double	*y2;		/* Upper right y coordinate (returned) */
  * Oct 15 2010	Use center coordinates of original image if not set
  *
  * Sep 17 2013  Include fitswcs.h
+ *
+ * Feb 19 2014	Update usage to -f WCSfile suggested by Steve Willner
  */

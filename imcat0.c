@@ -1,9 +1,9 @@
 /* File imcat.c
- * July 2, 2014
+ * August 10, 2012
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2014
+   Copyright (C) 1996-2012
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -715,14 +715,14 @@ int    ngmax;	  /* Number of entries to allocate */
     nalloc = ngmax;
 
     if (!(gm = (double **) calloc (nbuffer, sizeof(double *)))) {
-	fprintf (stderr, "Could not calloc %zu bytes for gm\n",
+	fprintf (stderr, "Could not calloc %d bytes for gm\n",
 	    nbuffer*sizeof(double *));
 	FreeBuffers();
 	return (0);
     }
     for (imag = 0; imag < nbuffer; imag++) {
 	if (!(gm[imag] = (double *) calloc (ngmax, sizeof(double)))) {
-	   fprintf (stderr, "Could not calloc %zu bytes for gm\n",
+	   fprintf (stderr, "Could not calloc %d bytes for gm\n",
 		    ngmax*sizeof(double));
 	    FreeBuffers();
 	    return (0);
@@ -730,55 +730,55 @@ int    ngmax;	  /* Number of entries to allocate */
     }
 
     if (!(gra = (double *) calloc (ngmax, sizeof(double)))) {
-	fprintf (stderr, "Could not calloc %zu bytes for gra\n",
+	fprintf (stderr, "Could not calloc %d bytes for gra\n",
 	    ngmax*sizeof(double));
 	FreeBuffers();
 	return (0);
     }
     if (!(gdec = (double *) calloc (ngmax, sizeof(double)))) {
-	fprintf (stderr, "Could not calloc %zu bytes for gdec\n",
+	fprintf (stderr, "Could not calloc %d bytes for gdec\n",
 	    ngmax*sizeof(double));
 	FreeBuffers();
 	return (0);
     }
     if (!(gpra = (double *) calloc (ngmax, sizeof(double)))) {
-	fprintf (stderr, "Could not calloc %zu bytes for gpra\n",
+	fprintf (stderr, "Could not calloc %d bytes for gpra\n",
 	    ngmax*sizeof(double));
 	FreeBuffers();
 	return (0);
     }
     if (!(gpdec = (double *) calloc (ngmax, sizeof(double)))) {
-	fprintf (stderr, "Could not calloc %zu bytes for gpdec\n",
+	fprintf (stderr, "Could not calloc %d bytes for gpdec\n",
 	    ngmax*sizeof(double));
 	FreeBuffers();
 	return (0);
     }
     if (!(gnum = (double *) calloc (ngmax, sizeof(double)))) {
-	fprintf (stderr, "Could not calloc %zu bytes for gnum\n",
+	fprintf (stderr, "Could not calloc %d bytes for gnum\n",
 	   ngmax*sizeof(double));
        FreeBuffers();
 	return (0);
     }
     if (!(gc = (int *) calloc (ngmax, sizeof(int)))) {
-	fprintf (stderr, "Could not calloc %zu bytes for gc\n",
+	fprintf (stderr, "Could not calloc %d bytes for gc\n",
 	    ngmax*sizeof(int));
 	FreeBuffers();
 	return (0);
     }
     if (!(gx = (double *) calloc (ngmax, sizeof(double)))) {
-	fprintf (stderr, "Could not calloc %zu bytes for gx\n",
+	fprintf (stderr, "Could not calloc %d bytes for gx\n",
 	    ngmax*sizeof(double));
 	FreeBuffers();
 	return (0);
     }
     if (!(gy = (double *) calloc (ngmax, sizeof(double)))) {
-	fprintf (stderr, "Could not calloc %zu bytes for gy\n",
+	fprintf (stderr, "Could not calloc %d bytes for gy\n",
 	    ngmax*sizeof(double));
 	FreeBuffers();
 	return (0);
     }
     if (!(gobj = (char **) calloc (ngmax, sizeof(char *)))) {
-	fprintf (stderr, "Could not calloc %zu bytes for obj\n",
+	fprintf (stderr, "Could not calloc %d bytes for obj\n",
 	    ngmax*sizeof(char *));
 	FreeBuffers();
 	return (0);
@@ -1539,7 +1539,7 @@ char	**refcatname;	/* reference catalog name */
 	strcat (headline,"magf  	magj 	magv	magn	");
     else if (refcat == UCAC2)
 	strcat (headline,"magj 	magh 	magk 	magc 	");
-    else if (refcat == UCAC3 || refcat == UCAC4)
+    else if (refcat == UCAC3)
 	strcat (headline,"magb 	magr 	magi 	magj 	magh 	magk 	magm 	maga 	");
     else if (refcat == UB1)
 	strcat (headline,"magb1 	magr1	magb2	magr2	magn 	");
@@ -1587,13 +1587,13 @@ char	**refcatname;	/* reference catalog name */
 	strcat (headline,"size  	");
     else if (sptype == 1)
 	strcat (headline,"type	");
-    else if (gcset && refcat != UCAC2 && refcat != UCAC3 && refcat != UCAC4)
+    else if (gcset && refcat != UCAC2 && refcat != UCAC3)
 	strcat (headline,"peak	");
     if (mprop)
 	strcat (headline, "pmra 	pmdec	");
     /* if (refcat == UCAC2 || refcat == UCAC3)
 	strcat (headline, "epmra 	epmdec"); */
-    if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
+    if (refcat == UCAC2 || refcat == UCAC3)
 	strcat (headline, "ni	nc	");
     if (refcat == GSC2)
 	strcat (headline,"class	");
@@ -1651,11 +1651,11 @@ char	**refcatname;	/* reference catalog name */
 	strcat (headline,"	--	--	--");
     else if (refcat == TMXSC)
 	strcat (headline,"	------");
-    else if (gcset && refcat != UCAC2 && refcat != UCAC3 && refcat != UCAC4)
+    else if (gcset && refcat != UCAC2 && refcat != UCAC3)
 	strcat (headline, "	-----");		/* plate or peak */
     if (mprop )
 	strcat (headline, "	------	------");	/* Proper motion */
-    if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4)
+    if (refcat == UCAC2 || refcat == UCAC3)
 	strcat (headline, "	--	--");
     if (refcat == GSC2)
 	strcat (headline,"	-----");		/* GSC2 object class */
@@ -1725,7 +1725,7 @@ char	**refcatname;	/* reference catalog name */
 		printf ("MagF  MagJ  MagV  MagN   Class   X       Y   \n");
 	    else if (refcat == UCAC2)
 		printf (" MagJ   MagH   MagK   MagC   NIm NCt   X      Y   \n");
-	    else if (refcat == UCAC3 || refcat == UCAC4)
+	    else if (refcat == UCAC3)
 		printf (" MagB   MagR   MagI   MagJ   MagH   MagK   MagM   MagA   NIm NCt   X      Y   \n");
 	    else if (refcat == UB1)
 		printf ("MagB1 MagR1 MagB2 MagR2 MagN  PM NI SG    X       Y   \n");
@@ -1764,7 +1764,7 @@ char	**refcatname;	/* reference catalog name */
 			sprintf (temp, "    mag  ");
 		    strcat (headline, temp);
 		    }
-		if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4) {
+		if (refcat == UCAC2 || refcat == UCAC3) {
 		    nim = gc[i] / 1000;
 		    nct = gc[i] % 1000;
 		    sprintf (temp, "  ni  nc", nim, nct);
@@ -1933,7 +1933,7 @@ char	**refcatname;	/* reference catalog name */
 			    sprintf (temp, "	%5.2f",gm[imag][i]);
 			strcat (headline, temp);
 			}
-		    if (gcset && refcat != UCAC2 && refcat != UCAC3 && refcat != UCAC4) {
+		    if (gcset && refcat != UCAC2 && refcat != UCAC3) {
 			sprintf (temp, "	%d", gc[i]);
 			strcat (headline, temp);
 			}
@@ -1948,7 +1948,7 @@ char	**refcatname;	/* reference catalog name */
 		    sprintf (temp, "	%5.1f	%5.1f", pra,pdec);
 		    strcat (headline, temp);
 		    }
-		if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4) {
+		if (refcat == UCAC2 || refcat == UCAC3) {
 		    nim = gc[i] / 1000;
 		    nct = gc[i] % 1000;
 		    /* if (tabout) {
@@ -2072,7 +2072,7 @@ char	**refcatname;	/* reference catalog name */
 			strcat (headline, temp);
 			}
 		    }
-		if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4) {
+		if (refcat == UCAC2 || refcat == UCAC3) {
 		    nim = gc[i] / 1000;
 		    nct = gc[i] % 1000;
 		    sprintf (temp, "  %2d  %2d", nim, nct);
@@ -2152,10 +2152,6 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
     int i;
 
     /* Find sky coordinates of corners and middles of sides */
-    /*  2  4  7   UP = +NAXIS2 ^
-     *  1     6                |
-     *  0  3  5                +-> RIGHT = +NAXIS1
-     */
     pix2wcs (wcs, xmin, ymin, &ra[0], &dec[0]);
     pix2wcs (wcs, xmin, ycen, &ra[1], &dec[1]);
     pix2wcs (wcs, xmin, ymax, &ra[2], &dec[2]);
@@ -2165,17 +2161,8 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
     pix2wcs (wcs, xmax, ycen, &ra[6], &dec[6]);
     pix2wcs (wcs, xmax, ymax, &ra[7], &dec[7]);
 
-#define NXRA2(III,JJJ,OP) (ra[III] OP ra[JJJ] ? ra[III] : ra[JJJ])
-#define NXRA3(II,JJ,KK,OP) (ra[II] OP ra[JJ] ? NXRA2(II,KK,OP) : NXRA2(JJ,KK,OP))
-#define MXRA3(I,J,K) NXRA3(I,J,K,>)
-#define MNRA3(I,J,K) NXRA3(I,J,K,>)
-
-    /* Find minimum and maximum right ascensionsand watch for wrap-around */
+    /* Find minimum and maximum right ascensions watch for wrap-around */
     if (wcs->rot > 315.0 || wcs->rot <= 45.0) {
-        /*  2  4  7          ^+DEC  +NAXIS2 ^
-         *  1     6          |              |
-         *  0  3  5   +RA <--+              +--> +NAXIS1
-         */
 	*ramin = ra[5];
 	if (ra[6] < *ramin)
 	    *ramin = ra[6];
@@ -2188,34 +2175,20 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
 	   *ramax = ra[2];
 	}
     else if (wcs->rot > 45.0 && wcs->rot <= 135.0) {
-        /*  0  1  2          ^+DEC          +--> +NAXIS2
-         *  3     4          |              |
-         *  5  6  7   +RA <--+      +NAXIS1 V
-         */
-	*ramin = MNRA3(2,4,7);
-	*ramax = MXRA3(0,3,5);
-
-        /* OLD:
-        *ramin = ra[0];
-        if (ra[3] < *ramin)
-            *ramin = ra[3];
-        if (ra[5] < *ramin)
-            *ramin = ra[5];
-        *ramax = ra[1];
-        if (ra[2] > *ramax)
-           *ramax = ra[2];
-        if (ra[4] > *ramax)
-           *ramax = ra[4];
-        if (ra[7] > *ramax)
-           *ramax = ra[7];
-         */
-
+	*ramin = ra[0];
+	if (ra[3] < *ramin)
+	    *ramin = ra[3];
+	if (ra[5] < *ramin)
+	    *ramin = ra[5];
+	*ramax = ra[1];
+	if (ra[2] > *ramax)
+	   *ramax = ra[2];
+	if (ra[4] > *ramax)
+	   *ramax = ra[4];
+	if (ra[7] > *ramax)
+	   *ramax = ra[7];
 	}
     else if (wcs->rot > 225.0 && wcs->rot <= 315.0) {
-        /*  7  6  5          ^+DEC             ^ +NAXIS1
-         *  4     3          |                 |
-         *  2  1  0   +RA <--+      +NAXIS2 <--+
-         */
 	*ramin = ra[0];
 	if (ra[3] < *ramin)
 	    *ramin = ra[3];
@@ -2227,15 +2200,7 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
 	if (ra[7] > *ramax)
 	   *ramax = ra[7];
 	}
-    else { /* 135 - 225 */
-        /*  5  3  0          ^+DEC   +NAXIS1 <--+
-         *  6     1          |                  |
-         *  7  4  2   +RA <--+                  V +NAXIS2
-         */
-	*ramin = MNRA3(0,1,2);
-	*ramax = MXRA3(5,6,7);
-
-        /* OLD:
+    else {
 	*ramin = ra[2];
 	if (ra[4] < *ramin)
 	   *ramin = ra[4];
@@ -2246,8 +2211,6 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
 	    *ramax = ra[3];
 	if (ra[5] > *ramax)
 	    *ramax = ra[5];
-         */
-
 	}
 
     /* Find minimum and maximum declinations */
@@ -2465,8 +2428,4 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Jun  3 2010	Do not print position or proper motion errors for UCAC3
  *
  * Aug 10 2012	Drop declaration of fk425e(); it's not used.
- * 
- * Oct 20 2013	Fix limit setting code with lots of help from Brian Carcich
- *
- * Jul  2 2014	Add UCAC4 catalog
  */

@@ -1,9 +1,9 @@
 /* File sethead.c
- * September 1, 2011
+ * May 6, 2014
  * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2011
+   Copyright (C) 1996-2014
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -222,7 +222,7 @@ char **av;
 		case 'x': /* FITS extension to read */
 		    if (ac < 2)
 			usage();
-		    if (isnum (*(av+1)))
+		    if (isnum (*(av+1)) || isrange (*(av+1)))
 			extensions = *++av;
 		    else {
 			extensions = calloc (16, 1);
@@ -516,8 +516,8 @@ char **av;
 		    namext = (char *) calloc (1, nch);
 		    strcpy (namext, fn[ifile]);
 		    strcat (namext, ",");
-		    strcat (namext, extension);
 		    sprintf (extension, "%d", j);
+		    strcat (namext, extension);
 		    if (SetValues (namext, nkwd, kwd, comment))
 			break;
 		    free (namext);
@@ -1466,4 +1466,6 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  *
  * Jan  3 2011	Exit with errflag value to indicate an error
  * Sep  1 2011	Fix overflow bug by increasing size of history from 72 to 128
+ *
+ * May  6 2014	Fix bug so headers for multiple extensions can be changed
  */

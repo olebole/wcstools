@@ -1,9 +1,9 @@
 /* File getpix.c
- * February 22, 2013
+ * January 10, 2014
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2013
+   Copyright (C) 1996-2014
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -32,6 +32,11 @@
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcscat.h"
 
+#define MAXFILES 2000
+static int maxnfile = MAXFILES;
+#define MAXNPIX	100;
+static int maxnpix = MAXNPIX;
+
 static void usage();
 static void PrintPix();
 static void procpix();
@@ -46,7 +51,8 @@ static int gtcheck = 0;		/* If 1, list pixels greater than gtval */
 static int ltcheck = 0;		/* If 1, list pixels less than ltval */
 static int nopunct=0;		/* If 1, print output with no punctuation */
 static int printrange = 0;	/* If 1, print range of values, not values */
-static int printmean = 0;	/* If 1, print mean of values, not values*/
+static int printmean = 0;	/* If 1, print mean of values, not values */
+static int printname = 0;	/* If 1, print file name */
 static double gtval = 0.0;
 static double ltval = 0.0;
 static double ra0 = -99.0;	/* Initial center RA in degrees */
@@ -66,8 +72,12 @@ main (ac, av)
 int ac;
 char **av;
 {
-    char *str;
-    char *fn;
+    char *str, *str1;
+    char listfile[256];
+    char **fn;
+    char filename[256];
+    int ifile, nbytes;
+    FILE *flist;
     char *rrange;       /* Row range string */
     char *crange;       /* Column range string */
     char *rstr;
@@ -76,7 +86,7 @@ char **av;
     int systemp;
     int i;
     int npix = 0;
-    int maxnpix = 100;
+    int nfile;
     char linebuff[1024];
     char listname[256];
     char *line;
@@ -88,8 +98,10 @@ char **av;
     int *xp1, *yp1;
     double x, y;
 
-    xpix = calloc (maxnpix, sizeof (int));
-    ypix = calloc (maxnpix, sizeof (int));
+    nfile = 0;
+    fn = (char **)calloc (maxnfile, sizeof(char *));
+    xpix = (int *)calloc (maxnpix, sizeof (int));
+    ypix = (int *)calloc (maxnpix, sizeof (int));
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -102,11 +114,14 @@ char **av;
 
     crange = NULL;
     rrange = NULL;
-    fn = NULL;
 
     /* crack arguments */
     for (av++; --ac > 0; av++) {
 	str = *av;
+	if (ac > 0)
+	    str1 = *(av+1);
+	else
+	    str1 = NULL;
 
 	/* Output format */
 	if (str[0] == '%') {
@@ -133,6 +148,10 @@ char **av;
 		    gtval = atof (*++av);
 		    gtcheck++;
 		    ac--;
+		    break;
+
+		case 'h':	/* Print file name above pixel values */
+		    printname++;
 		    break;
 
 		case 'i':	/* Identifier precedes x y in file */
@@ -203,13 +222,14 @@ char **av;
 	    }
 
 	/* Set search RA, Dec, and equinox if colon in argument */
-	else if (strsrch (*av,":") != NULL) {
+	else if (isnum (str) == 3 && isnum (str1) == 3) {
 	    if (ac < 2)
 		usage ();
 	    else {
-		strcpy (rstr, *av);
+		strcpy (rstr, str);
 		ac--;
-		strcpy (dstr, *++av);
+		av++;
+		strcpy (dstr, str1);
 		ra0 = str2ra (rstr);
 		dec0 = str2dec (dstr);
 		ac--;
@@ -227,11 +247,12 @@ char **av;
 	    }
 
 	/* Search coordinates in degrees if coordinate system specified */
-	else if (isnum (str) == 2 && ac > 1 && isnum (*(av+1)) == 2) {
-	    rstr = *av++;
+	else if (isnum (str) == 2 && isnum (str) == 2) {
+	    rstr = str;
+	    dstr = str1;
 	    ac--;
-	    dstr = *av++;
-	    ac--;
+	    av++;
+	    av++;
 	    if (ac > 0 && (systemp = wcscsys (*av)) > 0) {
 		ra0 = atof (rstr);
 		dec0 = atof (dstr);
@@ -276,7 +297,7 @@ char **av;
 	    }
 
 	/* Coordinate pairs for pixels to print */
-        else if (isnum (str) && ac > 1 && isnum (*(av+1))) {
+        else if (isnum (str) && isnum (str1)) {
 	    if (npix+1 > maxnpix) {
 		maxnpix = 2 * maxnpix;
 		xp1 = calloc (maxnpix, sizeof (int));
@@ -290,77 +311,114 @@ char **av;
 		xpix = xp1;
 		ypix = yp1;
 		}
-	    ix = atoi (*av);
-	    iy = atoi (*(av+1));
+	    ix = atoi (str);
+	    iy = atoi (str1);
 	    if (ix == 0 || iy == 0) {
-		crange = *av++;
-		rrange = *av;
+		crange = str1;
+		rrange = str;
 		}
 	    else {
 	        xpix[npix] = ix;
 	        ypix[npix] = iy;
 	        npix++;
-		av++;
 		}
-	    ac--;
+	    av++;
 	    ac--;
 	    }
 
 	/* Range of pixels to print (only one allowed) */
-        else if (isrange (str) && ac > 1 && isrange (*(av+1))) {
-	    crange = *av++;
+        else if (isrange (str) && isrange (str1)) {
+	    rrange = str;
+	    crange = str1;
 	    ac--;
-	    rrange = *av;
+	    av++;
 	    }
 
-	/* File containing a list of image coordinates */
+	/* File containing a list of files or image coordinates */
 	else if (str[0] == '@') {
 	    strcpy (listname, str+1);
-	    nlines = getfilelines (listname);
-	    fd = fopen (listname, "r");
-	    if (fd == NULL) {
-		fprintf (stderr, "Cannot read file %s\n", listname);
-		nlines = 0;
+	    if (isimlist (listname)) {
+		strcpy (listfile, listname);
+		listname[0] = (char) 0;
 		}
-	    for (iline = 0; iline < nlines; iline++) {
-		if (!fgets (linebuff, 1023, fd))
-		    break;
-		line = linebuff;
-		if (line[0] == '#')
-		    continue;
-		if (identifier)
-		    sscanf (line,"%s %s %s", temp, xstr, ystr);
-		else
-		    sscanf (line,"%s %s", xstr, ystr);
-		if (npix+1 > maxnpix) {
-		    maxnpix = 2 * maxnpix;
-		    xp1 = calloc (maxnpix, sizeof (int));
-		    yp1 = calloc (maxnpix, sizeof (int));
-		    for (i = 0; i < maxnpix; i++) {
-			xp1[i] = xpix[i];
-			yp1[i] = ypix[i];
-			}
-		    free (xpix);
-		    free (ypix);
-		    xpix = xp1;
-		    ypix = yp1;
+	    else {
+		nlines = getfilelines (listname);
+		fd = fopen (listname, "r");
+		if (fd == NULL) {
+		    fprintf (stderr, "GETPIX: Cannot read file %s\n", listname);
+		    nlines = 0;
 		    }
-		xpix[npix] = atoi (xstr);
-		ypix[npix] = atoi (ystr);
-		npix++;
+		for (iline = 0; iline < nlines; iline++) {
+		    if (!fgets (linebuff, 1023, fd))
+			break;
+		    line = linebuff;
+		    if (line[0] == '#')
+			continue;
+		    if (identifier)
+			sscanf (line,"%s %s %s", temp, xstr, ystr);
+		    else
+			sscanf (line,"%s %s", xstr, ystr);
+		    if (npix+1 > maxnpix) {
+			maxnpix = 2 * maxnpix;
+			xp1 = calloc (maxnpix, sizeof (int));
+			yp1 = calloc (maxnpix, sizeof (int));
+			for (i = 0; i < maxnpix; i++) {
+			    xp1[i] = xpix[i];
+			    yp1[i] = ypix[i];
+			    }
+			free (xpix);
+			free (ypix);
+			xpix = xp1;
+			ypix = yp1;
+			}
+		    xpix[npix] = atoi (xstr);
+		    ypix[npix] = atoi (ystr);
+		    npix++;
+		    }
 		}
 	    ac--;
 	    }
 
-	/* file name */
-	else
-	    fn = str;
-
+	/* Image file name */
+	else if (isfits (str) || isiraf (str)) {
+	    if (nfile >= maxnfile) {
+		maxnfile = maxnfile * 2;
+		nbytes = maxnfile * sizeof (char *);
+		fn = (char **) realloc ((void *)fn, nbytes);
+		}
+	    fn[nfile] = str;
+	    nfile++;
+	    }
 	}
 
-    if (fn && ((crange && rrange) || npix > 0))
-        PrintPix (fn, crange, rrange, npix, xpix, ypix);
+    if ((crange && rrange) || npix > 0) {
 
+	/* Process files already read from the command line */
+	if (fn) {
+	    for (ifile = 0; ifile < nfile; ifile++) {
+		PrintPix (fn[ifile], crange, rrange, npix, xpix, ypix);
+		}
+	    }
+
+	/* Process files from listfile one at a time */
+	else if (isimlist (listfile)) {
+	    nfile = getfilelines (listfile);
+	    if ((flist = fopen (listfile, "r")) == NULL) {
+		fprintf (stderr,"GETPIX: Image list file %s cannot be read\n",
+			 listfile);
+		usage ();
+		}
+	    for (ifile = 0; ifile < nfile; ifile++) {
+		first_token (flist, 254, filename);
+		PrintPix (filename, crange, rrange, npix, xpix, ypix);
+		}
+	    fclose (flist);
+	    }
+	}
+
+    free (xpix);
+    free (ypix);
+    free (fn);
     return (0);
 }
 
@@ -378,6 +436,7 @@ usage ()
     fprintf(stderr,"  -d: Print range of pixel values in specified image region\n");
     fprintf(stderr,"  -f name: Write specified region to a FITS file\n");
     fprintf(stderr,"  -g num: keep pixels with values greater than this\n");
+    fprintf(stderr,"  -h: print file name on line above pixel values\n");
     fprintf(stderr,"  -i: Ignore first token per line of coordinate file\n");
     fprintf(stderr,"  -l num: keep pixels with values less than this\n");
     fprintf(stderr,"  -m: Print mean of pixel values in specified image region\n");
@@ -458,6 +517,16 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 	    return;
 	    }
 	}
+    if (printname) {
+	if (ltcheck & gtcheck)
+	    fprintf (stderr, "%s: %f < pixel values < %f\n", name, gtval, ltval);
+	else if (ltcheck)
+	    fprintf (stderr, "%s: pixel values < %f\n", name, ltval);
+	else if (gtcheck)
+	    fprintf (stderr, "%s: pixel values > %f\n", name, gtval);
+	else
+	    fprintf (stderr,"%s:\n", name);
+	}
     if (verbose) {
 	if (npix > 0)
 	    fprintf (stderr,"Print pixels in ");
@@ -517,7 +586,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 
 	/* Loop through rows starting with the last one */
 	for (i = 0; i < npix; i++) {
-            dpix = getpix1(image,bitpix,xdim,ydim,bzero,bscale,xpix[i],ypix[i]);
+	    dpix = getpix1(image,bitpix,xdim,ydim,bzero,bscale,xpix[i],ypix[i]);
 	    if (gtcheck || ltcheck) {
 		if ((gtcheck && dpix > gtval) ||
 		    (ltcheck && dpix < ltval)) {
@@ -570,8 +639,6 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 	    }
 	if (!pixperline && !ltcheck && !gtcheck)
 	    printf ("\n");
-	free (xpix);
-	free (ypix);
 	}
 
 /* Print entire image */
@@ -962,4 +1029,7 @@ double	dpix;	/* Current pixel value */
  *
  * Feb 22 2012	Print descriptors for mean and limits only in verbose mode
  * Feb 22 2012	Fix bug to avoid printing all pixels if printing mean and/or limits
+ *
+ * Jan 10 2014	Get same pixels from multiple files
+ * Jan 10 2014	Add command line option @listfile as list of files
  */

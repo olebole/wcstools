@@ -206,7 +206,7 @@ struct TabTable {
 #define SKY2K		30	/* SKY2000 Master Catalog */
 #define SKYBOT		31	/* SKYBOT Solar System Objects */
 #define UCAC3		32	/* USNO CCD Astrograph Catalog 3.0 (2009) */
-#define UCAC4		33	/* USNO CCD Astrograph Catalog 3.0 (2009) */
+#define UCAC4		33	/* USNO CCD Astrograph Catalog 4.0 (2013) */
 #define TABCAT		-1	/* StarBase tab table catalog */
 #define BINCAT		-2	/* TDC binary catalog */
 #define TXTCAT		-3	/* TDC ASCII catalog */

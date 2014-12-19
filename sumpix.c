@@ -1,9 +1,9 @@
 /* File sumpix.c
- * May 16, 2012
+ * January 10, 2014
  * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2012
+   Copyright (C) 1999-2014
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -31,6 +31,9 @@
 #include "libwcs/wcs.h"
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcscat.h"
+
+#define MAXFILES 2000
+static int maxnfile = MAXFILES;
 
 static void usage();
 static void SumPix();
@@ -61,9 +64,17 @@ int ac;
 char **av;
 {
     char *str;
-    char *fn;
+    char *listfile = NULL;
+    char **fn;
+    char filename[256];
+    int ifile, nbytes;
+    FILE *flist;
+
     char *rrange;	/* Row range string */
     char *crange;	/* Column range string */
+    char *zrange;
+
+    int nfile = 0;
 
     /* Check for help or version command first */
     str = *(av+1);
@@ -76,7 +87,9 @@ char **av;
 
     crange = NULL;
     rrange = NULL;
-    fn = NULL;
+    zrange = (char *)calloc (4, sizeof(char));
+    strcpy (zrange, "0");
+    fn = (char **)calloc (maxnfile, sizeof(char *));
 
     /* crack arguments */
     for (av++; --ac > 0; av++) {
@@ -160,36 +173,55 @@ char **av;
         else if (isnum (*av) || isrange (*av)) {
 	    if (crange == NULL)
 		crange = *av;
-	    else {
+	    else
 		rrange = *av;
-		if (fn != NULL) {
-		    SumPix (fn, crange, rrange);
-		    }
-		}
 	    }
 
-	/* read filename */
-	else {
-	    fn = *av;
+	/* File with list of image files */
+	else if (*av[0] == '@') {
+	    listfile = *av + 1;
+	    }
 
-	    if (!compmean && !compvar && !compstd)
-		compsum++;
-	    if (crange && rrange)
-		SumPix (fn, crange, rrange);
-	    else if (crange)
-		SumPix (fn, crange, "0");
-	    else if (rrange)
-		SumPix (fn, "0", rrange);
-	    else {
-		if (ac > 0) {
-		    if (!isnum (*(av+1)) && !isrange (*(av+1)))
-			SumPix (fn, "0", "0");
-		    }
-		else
-		    SumPix (fn, "0", "0");
+        /* Image file */
+        else if (isfits (*av) || isiraf (*av)) {
+	    if (nfile >= maxnfile) {
+		maxnfile = maxnfile * 2;
+		nbytes = maxnfile * sizeof (char *);
+		fn = (char **) realloc ((void *)fn, nbytes);
 		}
+	    fn[nfile] = *av;
+	    nfile++;
 	    }
         }
+
+    if (crange == NULL)
+	crange = zrange;
+    if (rrange == NULL)
+	rrange = zrange;
+    if (!compmean && !compvar && !compstd)
+	compsum++;
+
+    /* Process files from listfile one at a time */
+    if (listfile && isimlist (listfile)) {
+	nfile = getfilelines (listfile);
+	if ((flist = fopen (listfile, "r")) == NULL) {
+	    fprintf (stderr,"SUMPIX: Image list file %s cannot be read\n",
+		     listfile);
+	    usage ();
+	    }
+	for (ifile = 0; ifile < nfile; ifile++) {
+	    first_token (flist, 254, filename);
+	    SumPix (filename, crange, rrange);
+	    }
+	fclose (flist);
+	}
+
+    /* Process files already read from the command line */
+    else if (fn) {
+	for (ifile = 0; ifile < nfile; ifile++) {
+	    SumPix (fn[ifile], crange, rrange);
+	    }
+	}
 
     return (0);
 }
@@ -799,4 +831,6 @@ char *rrange;	/* Row range string */
  * May 16 2012	Add options i to print index and e to compute medians
  * May 16 2012	Add option t to separate values by tabs
  * May 16 2012	Add option h to print headings
+ *
+ * Jan 10 2014	Add list file with @ as command line option
  */

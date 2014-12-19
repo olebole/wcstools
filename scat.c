@@ -2919,9 +2919,7 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline,"	magf	magj	magn  	magv ");
 	    else if (refcat == UCAC2)
 		strcat (headline,"	magj	magh	magk  	magc ");
-	    else if (refcat == UCAC3)
-		strcat (headline,"	magb 	magr 	magi 	magj 	magh 	magk 	magm 	maga ");
-	    else if (refcat == UCAC4)
+	    else if (refcat == UCAC3 || refcat == UCAC4)
 		strcat (headline,"	magb 	magr 	magi 	magj 	magh 	magk 	magm 	maga ");
 	    else if (refcat == SKYBOT)
 		strcat (headline,"	magv	gdist	hdist ");
@@ -3176,10 +3174,8 @@ double	eqout;		/* Equinox for output coordinates */
 		strcat (headline, "   MagB   MagV  MagPh  MagPv");
 	    else if (refcat==UCAC2)
 		strcat (headline, "   MagJ   MagH   MagK   MagC");
-	    else if (refcat == UCAC3)
-		strcat (headline,"    MagB   MagR   MagI   MagJ   MagH   MagK   MagM   MagA");
-	    else if (refcat == UCAC4)
-		strcat (headline,"    MagB   MagR   MagI   MagJ   MagH   MagK   MagM   MagA");
+	    else if (refcat == UCAC3 || refcat == UCAC4)
+		strcat (headline,"  MagB  MagR  MagI  MagJ  MagH  MagK  MagM  MagA");
 	    else if (refcat==SKYBOT)
 		strcat (headline, "     MagV   GDist  HDist");
 	    else if (refcat==TMPSC || refcat == TMIDR2)
@@ -3203,15 +3199,15 @@ double	eqout;		/* Equinox for output coordinates */
 		    if (starcat != NULL &&
 			strlen(starcat[icat]->keymag[imag]) > 0) {
 			strcat (headline," ");
-			sprintf (temp, " %s ", starcat[icat]->keymag[imag]);
+			sprintf (temp, "%s", starcat[icat]->keymag[imag]);
 			strcat (headline, temp);
 			}
 		    else if (nmagr > 1) {
-			sprintf (temp, "   Mag%d", imag+1);
+			sprintf (temp, " Mag%d", imag+1);
 			strcat (headline, temp);
 			}
 		    else
-			strcat (headline, "  Mag");
+			strcat (headline, " Mag");
 		    }
 		}
 	    if (refcat == USAC || refcat == USA1 || refcat == USA2 ||
@@ -3641,14 +3637,13 @@ double	eqout;		/* Equinox for output coordinates */
 		    sprintf (headline,"%s  %s %s %6.2f %6.2f %6.2f %6.2f",
 			     numstr,rastr,decstr,gm[0][i],
 			     gm[1][i], gm[2][i], gm[3][i]);
-		else if (refcat == UCAC3)
-		    sprintf (headline,"%s  %s %s %6.2f %6.2f %6.2f %6.2f",
-			     numstr,rastr,decstr,gm[0][i],
-			     gm[1][i], gm[2][i], gm[3][i]);
-		else if (refcat == UCAC4)
-		    sprintf (headline,"%s  %s %s %6.2f %6.2f %6.2f %6.2f",
-			     numstr,rastr,decstr,gm[0][i],
-			     gm[1][i], gm[2][i], gm[3][i]);
+		else if (refcat == UCAC3 || refcat == UCAC4) {
+		    sprintf (headline,"%s  %s %s", numstr,rastr,decstr);
+		    for (imag = 0; imag < nmagr; imag++) {
+			sprintf (temp, " %.2f", gm[imag][i]);
+			strcat (headline, temp);
+			}
+		    }
 		else if (refcat==SAO || refcat==PPM || refcat == BSC)
 		    sprintf (headline,"  %s  %s %s %6.2f",
 			     numstr,rastr,decstr,gm[0][i]);

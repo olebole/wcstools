@@ -1,9 +1,9 @@
 /* File gethead.c
- * August 10, 2012
+ * August 25, 2014
  * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2012
+   Copyright (C) 1996-2014
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -71,12 +71,13 @@ static int ncond=0;		/* Number of keyword conditions to check */
 static int condand=1;		/* If 1, AND comparisons, else OR */
 static int toeol = 0;		/* If 1, return values from ASCII file to EOL */
 static int maxml = 20000;	/* Maximum length of IRAF multi-line keyword */
-static char **cond;		/* Conditions to check */
-static char **ccond;		/* Condition characters */
+static char **cond, **newcond;	/* Conditions to check */
+static char **ccond, **newccond; /* Condition characters */
 static int nproc = 0;
 static char *extensions;	/* Extension number(s) or name to read */
 static char *extension;		/* Extension number or name to read */
 static int filekey = 0;		/* If 1, FILENAME keyword has been requested */
+static char *mstring;		/* IRAF keyword multi-line value */
 
 int
 main (ac, av)
@@ -84,12 +85,13 @@ int ac;
 char **av;
 {
     char *str;
-    char **kwd;		/* Keywords to read */
+    char **kwd;			/* Keywords to read */
     char **kwdnew;		/* Keywords to read */
     int nkwd = 0;
     int nkwd1 = 0;
-    char **fn, **newfn, **newcond, **newccond;
-    int *ft, *newft;
+    char **fn, **newfn;		/* File name arrays */
+    char wcond, **newccond;
+    int *ft, *newft;		/* File type vectors to match fn[] */
     int ifile;
     int lfn;
     char filename[256];
@@ -115,10 +117,13 @@ char **av;
     int nrmax=10;
     struct Range *erange = NULL;
 
+    mstring = (char *) calloc (maxml, 1);
+
     ilistfile = NULL;
     klistfile = NULL;
     extension = NULL;
     extensions = NULL;
+    namext = NULL;
     ncond = 0;
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
@@ -194,6 +199,8 @@ char **av;
 		    if (ac < 2)
 			usage();
 		    maxml = (int) (atof (*++av));
+		    free (mstring);
+		    mstring = (char *) calloc (maxml, 1);
 		    ac--;
 		    break;
 	
@@ -265,7 +272,8 @@ char **av;
 			listall++;
 			erange = RangeInit (extensions, nrmax);
 			nfext = rgetn (erange);
-			extension = calloc (1, 8);
+			if (verbose)
+			    fprintf (stderr, "Searching extensions %s\n", extensions);
 			}
 		    else {
 			extension = extensions;
@@ -273,6 +281,8 @@ char **av;
 			    nfext = 1;
 			else
 			    nfext = 0;
+			if (verbose)
+			    fprintf (stderr, "Searching extension %s\n", extension);
 			}
 		    break;
 
@@ -612,6 +622,7 @@ char **av;
 		filetype = FILE_ASCII;
 	    if (nfext > 1) {
 		rstart (erange);
+		extension = calloc (1, 8);
 		for (i = 0; i < nfext; i++) {
 		    j = rgeti4 (erange);
 		    sprintf (extension, "%d", j);
@@ -625,17 +636,23 @@ char **av;
 			strcat (namext,extroot);
 		    strcat (namext, extension);
 		    if (PrintValues (namext, filetype, nkwd, kwd)) {
-			if (namext != NULL)
+			if (namext != NULL) {
 			    free (namext);
+			    namext = NULL;
+			    }
 			break;
 			}
-		    if (namext != NULL)
+		    if (namext != NULL) {
 			free (namext);
+			namext = NULL;
+			}
 		    }
-		if (extension != NULL)
+		if (extension != NULL) {
 		    free (extension);
-		if (erange != NULL)
-		    free (erange);
+		    extension = NULL;
+		    }
+		/* if (erange != NULL)
+		    free (erange); */
 		}
 	    else
 		PrintValues (filename, filetype, nkwd, kwd);
@@ -662,6 +679,7 @@ char **av;
 	    /* If there is a range of extensions, use them */
 	    if (nfext > 1) {
 		rstart (erange);
+		extension = calloc (1, 8);
 		for (i = 0; i < nfext; i++) {
 		    j = rgeti4 (erange);
 		    sprintf (extension, "%d", j);
@@ -676,17 +694,23 @@ char **av;
 		    strcat (namext, extension);
 		    sprintf (extension, "%d", j);
 		    if (PrintValues (namext, ft[ifile], nkwd, kwd)) {
-			if (namext != NULL)
+			if (namext != NULL) {
 			    free (namext);
+			    namext = NULL;
+			    }
 			break;
 			}
-		    if (namext != NULL)
+		    if (namext != NULL) {
 			free (namext);
+			namext = NULL;
+			}
 		    }
-		if (extension != NULL)
+		if (extension != NULL) {
 		    free (extension);
-		if (erange != NULL)
-		    free (erange);
+		    extension = NULL;
+		    }
+		/* if (erange != NULL)
+		    free (erange); */
 		}
 	    else
 		(void) PrintValues (fn[ifile], ft[ifile], nkwd, kwd);
@@ -704,6 +728,7 @@ char **av;
     if (ilistfile != NULL)
 	fclose (flist);
 
+    free (mstring);
     return (0);
 }
 
@@ -759,7 +784,6 @@ char	*kwd[];		/* Names of keywords for which to print values */
     char *filename;
     char outline[1000];
     char padline[1000];
-    char *mstring;
     char ctab = (char) 9;
     char cspace = (char) 32;
     char *subkwd;
@@ -775,9 +799,11 @@ char	*kwd[];		/* Names of keywords for which to print values */
     char numstr[32], numstr1[32];
     int pass, iwcs, nwild, sys1, sys2, ncdec;
 
-    mstring = (char *) calloc (maxml, 1);
-
+    ext = NULL;
     namext = NULL;
+    filepath = NULL;
+    header = NULL;
+    mstring[0] = (char) 0;
     ext = strchr (name, ',');
     if (extension && !ext) {
 	nch = strlen (name) + 2 + strlen (extension);
@@ -805,6 +831,8 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	filepath = (char *) calloc (1, nch);
 	strcpy (filepath, namext);
 	}
+    if (verbose)
+	fprintf (stderr, "Reading from file %s\n", filepath); 
 
     if (!tabout && listall)
 	printfill = 1;
@@ -812,37 +840,42 @@ char	*kwd[];		/* Names of keywords for which to print values */
     /* Read ASCII file into buffer */
     if (filetype == FILE_ASCII) {
 	if ((header = getfilebuff (filepath)) == NULL) {
-	    if (mstring != NULL)
-		free (mstring);
 	    if (namext != NULL)
 		free (namext);
 	    if (verbose) fprintf (stderr, "GETHEAD: file %s has no content\n",
 				   filepath);
 	    if (filepath != NULL)
 		free (filepath);
+	    ext = NULL;
+	    namext = NULL;
+	    filepath = NULL;
 	    return (-1);
 	    }
 	else if (strlen (header) == 0) {
-	    if (mstring != NULL)
-		free (mstring);
 	    if (namext != NULL)
 		free (namext);
 	    if (verbose) fprintf (stderr, "GETHEAD: file %s has null at start\n",
 				   filepath);
 	    if (filepath != NULL)
 		free (filepath);
+	    free (header);
+	    ext = NULL;
+	    namext = NULL;
+	    filepath = NULL;
+	    header = NULL;
 	    return (-1);
 	    }
 	}
 
     /* Retrieve FITS header from FITS or IRAF .imh file */
     else if ((header = GetFITShead (filepath, verbose)) == NULL) {
-	if (mstring != NULL)
-	    free (mstring);
 	if (namext != NULL)
 	    free (namext);
 	if (filepath != NULL)
 	    free (filepath);
+	ext = NULL;
+	namext = NULL;
+	filepath = NULL;
 	return (-1);
 	}
 
@@ -954,26 +987,30 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		    pass = 1;
 		}
 	    if (condand && !pass) {
-		if (mstring != NULL)
-		    free (mstring);
 		if (namext != NULL)
 		    free (namext);
 		if (filepath != NULL)
 		    free (filepath);
 		if (header != NULL)
 		    free (header);
+		ext = NULL;
+		namext = NULL;
+		filepath = NULL;
+		header = NULL;
 		return (0);
 		}
 	    }
 	if (!pass) {
-	    if (mstring != NULL)
-		free (mstring);
 	    if (namext != NULL)
 		free (namext);
 	    if (filepath != NULL)
 		free (filepath);
 	    if (header != NULL)
 		free (header);
+	    ext = NULL;
+	    namext = NULL;
+	    filepath = NULL;
+	    header = NULL;
 	    return (0);
 	    }
 	}
@@ -1317,14 +1354,16 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	printf ("%s\n", outline);
 	}
 
-    if (mstring != NULL)
-	free (mstring);
     if (namext != NULL)
 	free (namext);
     if (filepath != NULL)
 	free (filepath);
     if (header != NULL)
 	free (header);
+    ext = NULL;
+    namext = NULL;
+    filepath = NULL;
+    header = NULL;
     return (0);
 }
 
@@ -1442,4 +1481,8 @@ char *string;
  * Dec 14 2011	If length of header/file content string is zero, exit with error
  *
  * Aug 10 2012	Call fk425e() instead of fk425()
+ *
+ * May  7 2014	Fix bug with unallocated extension
+ * May 29 2014	Fix bugs dealing with freeing allocated memory
+ * Aug 25 2014	Fix bug dealing with ranges of extensions
  */
