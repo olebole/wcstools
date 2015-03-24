@@ -1,9 +1,9 @@
 /* File cphead.c
- * September 1, 2011
+ * March 3, 2015
  * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2000-2011
+   Copyright (C) 2000-2015
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -657,8 +657,13 @@ char	*kwd[];		/* Names of keywords for which to copy values */
 	    }
 	}
 
-    free (header);
-    free (headout);
+    if (header == headout) {
+	free (header);
+	}
+    else {
+	free (header);
+	free (headout);
+	}
     return;
 }
 
@@ -694,4 +699,6 @@ char	*kwd[];		/* Names of keywords for which to copy values */
  *
  * Mar 14 2011	Use MAXPV from wcslib.h when copying PVi_j parameters
  * Sep  1 2011	Fix overflow bug by increasing size of history from 72 to 128
+ *
+ * Mar  3 2015	Only free headout if it is different from header
  */

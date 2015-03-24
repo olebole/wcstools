@@ -1,4 +1,13 @@
-Version 3.9.0 (August 29, 2014)
+Version 3.9.1 (March 19, 2015)
+remap: Declare GetFITSWCS() as well as GetWCSFITS()
+cphead: Fix bug freeing header string more than once
+imcat,scat,immatch,imwcs: Fix bugs with web access to GSC2 and SDSS catalogs
+webread.c: Fix bug in URL filtering
+
+Version 3.9.0 (December 19, 2014)
+gethead: Add -r option to return multiple values as a single word separated
+         by the first character of the keyword the value of which follows
+         (2014-12-19)
 remap: Update usage to -f WCSfile suggested by Steve Willner (2014-02-19)
 sethead: Fix bug dealing with setting the same keyword in multiple file extensions
 imcat, scat, immatch, imwcs: Implement UCAC4 catalog
@@ -6,6 +15,7 @@ fileutil.c: Add next_line() to return one line of file
 fitfile.c: fix buffer reallocation bug in fitsrhead()
 tabread.c: fix file tests
 gsc2read.c and tabread.c: adjust to GSC2.3.3 format
+webbuff.c: Add filter to convert characters in web URLs
 
 Version 3.8.9 (September 16, 2013)
 imcat, imwcs, immatch, scat: Work around SDSS server failure

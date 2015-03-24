@@ -56,13 +56,13 @@ char sdssburl[64]="http://cas.sdss.org/dr5/en/tools/search/x_rect.asp"; */
 char sdssrurl[64]="http://cas.sdss.org/dr6/en/tools/search/x_radial.asp";
 char sdssburl[64]="http://cas.sdss.org/dr6/en/tools/search/x_rect.asp"; */
 
-/* SDSS DR7 search engine main server URL */
+/* SDSS DR7 search engine US URL */
+char sdssrurl[64]="http://skyserver.sdss.org/dr7/en/tools/search/x_radial.asp";
+char sdssburl[64]="http://skyserver.sdss.org/dr7/en/tools/search/x_rect.asp";
+
+/* SDSS DR7 search engine former main server URL */
 /* char sdssrurl[64]="http://cas.sdss.org/dr7/en/tools/search/x_radial.asp";
 char sdssburl[64]="http://cas.sdss.org/dr7/en/tools/search/x_rect.asp"; */
-
-/* SDSS DR7 search engine US alternate URL */
-char sdssrurl[64]="http://sdss.lib.uchicago.edu/dr7/en/tools/search/x_radial.asp";
-char sdssburl[64]="http://sdss.lib.uchicago.edu/dr7/en/tools/search/x_rect.asp";
 
 /* SDSS DR7 search engine UK alternate URL */
 /* char sdssrurl[64]="http://www.sdss.org.uk/dr7/en/tools/search/x_radial.asp";
@@ -270,5 +270,7 @@ sdssc2t (csvbuff)
  *
  * May 01 2012	Change path to Data Release 7
  *
- * Sep 16 2013	Add alternate servers for SDASS
+ * Sep 16 2013	Add alternate servers for SDSS
+ *
+ * Jan 13 2015	Add new main server for SDSS DR7
  */

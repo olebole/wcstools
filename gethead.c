@@ -1,9 +1,9 @@
 /* File gethead.c
- * August 25, 2014
+ * January 20, 2015
  * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2014
+   Copyright (C) 1996-2015
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -57,6 +57,7 @@ static int listpath = 0;
 static int j2000 = 0;		/* If 1, convert ra, dec keywords to J2000 */
 static int tabout = 0;
 static int tabpad = 0;
+static int tabchar = 0;		/* If 1, separate values by 1st keyward char */
 static int logfile = 0;
 static int printhead = 0;
 static int fillblank=0;		/* If 1, replace blanks in strings with _ */
@@ -218,6 +219,10 @@ char **av;
 		case 'p': /* List file pathnames, not just file names */
 		    listall++;
 		    listpath++;
+		    break;
+	
+		case 'r': /* Separate output values by single character */
+		    tabchar = 1;
 		    break;
 	
 		case 's': /* Do not pad output tab table */
@@ -1054,11 +1059,18 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	    if (keyeqvaln)
 		printf ("%s = %s\n", keyword, str);
 	    else if (keyeqval) {
-		sprintf (temp, " %s=%s", keyword, str);
+		if (strchr (str,' '))
+		    sprintf (temp, "%s=\'%s\'", keyword, str);
+		else
+		    sprintf (temp, "%s=%s", keyword, str);
 		strcat (outline, temp);
 		}
 	    else if (verbose) {
 		sprintf (temp, " %s = %s", keyword, str);
+		strcat (outline, temp);
+		}
+	    else if (tabchar) {
+		sprintf (temp, "%c%s", keyword[0], str);
 		strcat (outline, temp);
 		}
 	    else
@@ -1098,7 +1110,14 @@ char	*kwd[];		/* Names of keywords for which to print values */
 			    printf ("%s=%s\n", keyword, str);
 			}
 		    else if (keyeqval) {
-			sprintf (temp, " %s=%s", keyword, str);
+			if (strchr (str,' '))
+			    sprintf (temp, "%s=\'%s\'", keyword, str);
+			else
+			    sprintf (temp, "%s=%s", keyword, str);
+			strcat (outline, temp);
+			}
+		    else if (tabchar) {
+			sprintf (temp, "%c%s", keyword[0], str);
 			strcat (outline, temp);
 			}
 		    else {
@@ -1247,7 +1266,14 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		    printf ("%s=%s\n", keyword, str);
 		}
 	    else if (keyeqval) {
-		sprintf (temp, " %s=%s", keyword, str);
+		if (strchr (str,' '))
+		    sprintf (temp, "%s=\'%s\'", keyword, str);
+		else
+		    sprintf (temp, "%s=%s", keyword, str);
+		strcat (outline, temp);
+		}
+	    else if (tabchar) {
+		sprintf (temp, "%c%s", keyword[0], str);
 		strcat (outline, temp);
 		}
 	    else if (strlen (str) < 1)
@@ -1274,7 +1300,10 @@ char	*kwd[];		/* Names of keywords for which to print values */
 			    printf ("%s.%s=%s\n", keyword, subkwd, string);
 			}
 		    else if (keyeqval) {
-			sprintf (temp, " %s=%s", keyword, string);
+			if (strchr (str,' '))
+			    sprintf (temp, "%s=\'%s\'", keyword, str);
+			else
+			    sprintf (temp, "%s=%s", keyword, str);
 			strcat (outline, temp);
 			}
 		    else
@@ -1300,7 +1329,10 @@ char	*kwd[];		/* Names of keywords for which to print values */
 		    printf ("%s=%s\n", keyword, mstring);
 		}
 	    else if (keyeqval) {
-		sprintf (temp, " %s=%s", keyword, mstring);
+		if (strchr (mstring, ' '))
+		    sprintf (temp, " %s=\'%s\'", keyword, mstring);
+		else
+		    sprintf (temp, " %s=%s", keyword, mstring);
 		strcat (outline, temp);
 		}
 	    else {
@@ -1319,7 +1351,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	else
 	    notfound = 1;
 
-	if (!keyeqvaln && ikwd < nkwd-1) {
+	if (!keyeqvaln && !tabchar && ikwd < nkwd-1) {
 	    if (tabout)
 		strcat (outline, "	");
 	    else
@@ -1485,4 +1517,7 @@ char *string;
  * May  7 2014	Fix bug with unallocated extension
  * May 29 2014	Fix bugs dealing with freeing allocated memory
  * Aug 25 2014	Fix bug dealing with ranges of extensions
+ * Dec 19 2014	Add option to separate values by first character of keyword
+ *  
+ * Jan 20 2015	Add quotes to string values with spaces in -e option 
  */

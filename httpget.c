@@ -1,5 +1,5 @@
 /* File httpget.c
- * July 17, 2007
+ * February 6, 2015
  * By Jessica Mink and John Roll
 
  * Test http access to scat
@@ -7,13 +7,16 @@
  */
 
 #include <stdio.h>
-#include <strings.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <string.h>
 
 #define CHUNK	8192
 #define LINE	1024
 
 FILE *gethttp();
 static int all = 0;
+static int verbose = 0;
 
 main (ac, av)
 int ac;
@@ -34,11 +37,15 @@ char **av;
 	all = 1;
 	url = *(av+2);
 	}
+    if (url[0] == '-' && url[1] == 'v') {
+	verbose = 1;
+	url = *(av+2);
+	}
     if ( !(fp = gethttp (url)) ) {
 	fprintf(stderr, "Can't read URL %s\n", url);
-	exit(1);
+	exit (1);
 	}
-
+    exit (0);
 }
 
 
@@ -68,19 +75,22 @@ char	*url;
     char *fpage;
     char *port;
     char *cbcont;
+    char *newpage;
     int  nport = 80;
     int  chunked = 0;
     int  lchunk;
     int  status;
     int  red;
-    int  diag = 1;
     int  nbcont = 0;
     int  nbr;
     int  i;
+    char *strcsrch();
+    char *encodeURL();
 
     port = NULL;
     strcpy (hosturl, url);
-        
+ 
+    /* Extract server name and path from URL */
     if ( !strncmp(hosturl, "http://", 7) ) {
 	strcpy(hosturl, url+7);
 	}
@@ -99,6 +109,7 @@ char	*url;
 	page[1] = '\0';
 	}
 
+    /* Open port to HTTP server */
     if ( !(sok = SokOpen (hosturl, nport, XFREAD | XFWRITE)) ) {
 	if (port != NULL)
 	    fprintf(stderr, "Can't read URL %s:%s\n", hosturl, port);
@@ -106,8 +117,12 @@ char	*url;
 	    fprintf(stderr, "Can't read URL %s\n", hosturl);
 	abort();
 	}
-        
-    fprintf(sok, "GET %s HTTP/1.1\nHost: %s\n\n", page, hosturl);
+
+    /* Make sure that URL contains only legal characters */
+    /* newpage = encodeURL (page); */
+    newpage = page;
+
+    fprintf(sok, "GET %s HTTP/1.1\nHost: %s\n\n", newpage, hosturl);
     fflush(sok);
 
     fscanf(sok, "%*s %d %*s\n", &status);
@@ -120,11 +135,21 @@ char	*url;
 	    fprintf (stdout, "%s", linebuf);
 	else
 	    fprintf (stderr, "%s", linebuf);
-	if (strsrch (linebuf, "chunked") != NULL)
+	if (strcsrch (linebuf, "chunked") != NULL) {
 	    chunked = 1;
-	if (strsrch (linebuf, "Content-length") != NULL) {
-	    if ((cbcont = strchr (linebuf, ':')) != NULL)
+	    if (all)
+		fprintf (stdout, "chunked return\n");
+	    else if (verbose)
+		fprintf (stderr, "chunked return\n");
+	    }
+	if (strcsrch (linebuf, "Content-length") != NULL) {
+	    if ((cbcont = strchr (linebuf, ':')) != NULL) {
 		nbcont = atoi (cbcont+1);
+		if (all)
+		    fprintf (stdout, "%d bytes\n", nbcont);
+		else if (verbose)
+		    fprintf (stderr, "%d bytes\n", nbcont);
+		}
 	    }
 	if ( *linebuf == '\n' ) break;
 	if ( *linebuf == '\r' ) break;
@@ -134,7 +159,7 @@ char	*url;
 	fgets (linebuf, LINE, sok);
 	if (all)
 	    fprintf (stdout, "%s", linebuf);
-	else if (diag)
+	else if (verbose)
 	    fprintf (stderr, "%s", linebuf);
 	}
 
@@ -150,12 +175,12 @@ char	*url;
 	    fgets (linebuf, LINE, sok);
 	    if (all)
 		fprintf (stdout, "%s", linebuf);
-	    else if (diag)
+	    else if (verbose)
 		fprintf (stderr, "%s", linebuf);
 	    fgets (linebuf, LINE, sok);
 	    if (all)
 		fprintf (stdout, "%s", linebuf);
-	    else if (diag)
+	    else if (verbose)
 		fprintf (stderr, "%s", linebuf);
 	    if (strlen (linebuf) < 1)
 		break;
@@ -347,4 +372,7 @@ static char *iaddrstr(addr, addrlen)
  * Mar 27 2001	Fix so colons can be in query part of URL for coordinates
  * Mar 27 2001	Add option to read entire contents at once
  * Jul 12 2001	Make line buffer large enough to read a chunk of data
+ *
+ * Feb 03 2015	Add more diagnostics
+ * Feb 06 2015	Add more comments and character translation
  */

@@ -115,7 +115,7 @@ int	nlog;		/* 1 for diagnostics */
 	ddra = dra * cos (degrad (cdec));
 	dr = sqrt (ddra*ddra + ddec*ddec);
 	}
-    sprintf (temp, "EQ=2000&SR=%.3f&SRCH=Radius&FORMAT=TSV&CAT=GSC23&", dr);
+    sprintf (temp, "EQ=2000&SR=%.3f&FORMAT=tsv&CAT=gsc23&", dr);
     strcat (srchurl, temp);
 
     if (nlog > 0)

@@ -1,9 +1,9 @@
 /* File remap.c
- * February 19, 2014
+ * March 19, 2015
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2014
+   Copyright (C) 1999-2015
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -425,6 +425,7 @@ char	*filename;	/* FITS or IRAF file filename */
     char history[80];
     char wcstemp[16];
     struct WorldCoor *GetWCSFITS();
+    struct WorldCoor *GetFITSWCS();
     double *imvec;
     int npix;
     int addscale = 0;
@@ -944,4 +945,6 @@ double	*y2;		/* Upper right y coordinate (returned) */
  * Sep 17 2013  Include fitswcs.h
  *
  * Feb 19 2014	Update usage to -f WCSfile suggested by Steve Willner
+ *
+ * Mar 19 2015	Declare GetFITSWCS()
  */
