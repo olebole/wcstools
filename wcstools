@@ -1,5 +1,5 @@
 #!/bin/sh
-echo "WCSTools 3.7.7 Programs
+echo "WCSTools 3.9.2 Programs
 http://tdc-www.harvard.edu/software/wcstools/
 
 addpix:    Add a constant value(s) to specified pixel(s)
@@ -37,14 +37,12 @@ isfits:    Return 1 if argument is a FITS file, else 0
 isnum:     Return 1 if argument is an integer, 2 if it is floating point, else 0
 isrange:   Return 1 if argument is a range of the format n1[-n2[xs]],...
 keyhead:   Change keyword names in headers of FITS or IRAF images
-nedname:   Return object name(s) from RA(s) and Dec(s) using NED
-nedpos:    Return RA and Dec for object name(s) from NED
 newfits:   Create blank FITS files (dataless by default with BITPIX=0)
 remap      Rebin an image from its current WCS to a new one
 scat:      Search a source catalog given a region on the sky
 sethead:   Set header keyword values in FITS or IRAF images
 setpix:    Set specified pixel(s) to specified value(s)
-simpos:    Return RA and Dec for object name(s) from SIMBAD
+simpos:    Return RA and Dec for object name(s) from SIMBAD, NED, and/or VizieR
 sky2xy:    Print image pixel coordinates for given sky coordinates
 skycoor:   Convert between J2000, B1950, galactic, and ecliptic coordinates
 sp2char:   Replaces space in string with specified character (default=_)

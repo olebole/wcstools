@@ -1,7 +1,16 @@
-Version 3.9.1 (March 19, 2015)
+Version 3.9.2 (May 15, 2015)
+imcat, imstar: Print two decimal places on PROS region file coordinates
+simpos: Switch to CfA Vizier server as default (2015-05-05)
+simpos: Use NED name resolver if called as nedpos or using -n argument
+simpos: Look up in VIZIER catalogs if called as vizpos or using -z argument
+simpos: Use CDS server if called as cdspos or using -c argument
+nedpos,nedname: Drop tasks because IPAC has dropped interface; use simpos -n
+
+Version 3.9.1 (March 24, 2015)
 remap: Declare GetFITSWCS() as well as GetWCSFITS()
 cphead: Fix bug freeing header string more than once
 imcat,scat,immatch,imwcs: Fix bugs with web access to GSC2 and SDSS catalogs
+gsc2read.c: Drop concatenation of "blank" string in middle of search URL
 webread.c: Fix bug in URL filtering
 
 Version 3.9.0 (December 19, 2014)

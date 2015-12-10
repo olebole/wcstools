@@ -1,8 +1,8 @@
 /*** File libwcs/gsc2read.c
- *** August 29, 2014
+ *** March 24, 2015
  *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 2001-2014
+ *** Copyright (C) 2001-2015
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -107,7 +107,6 @@ int	nlog;		/* 1 for diagnostics */
 	wcscon (sysout, WCS_J2000, eqout, 2000.0, &ra, &dec, epout);
 
     sprintf (srchurl, "?RA=%.6f&DEC=%.6f&", ra, dec);
-    strcat (srchurl, temp);
     if (drad != 0.0) {
 	dr = drad;
 	}
@@ -389,4 +388,6 @@ gsc2t2t (tsvbuff)
  *
  * Aug 29 2014	Update to read GSC2.3.3
  * Aug 29 2014	Add line of dashes after header to returned table
+ *
+ * Mar 24 2015	Drop concatenation of "empty" string to search URL
  */

@@ -1,4 +1,4 @@
-WCSTools 3.9.1
+WCSTools 3.9.2
 
 WCSTools is a set of software utilities, written in C, which create,
 display and manipulate the world coordinate system of a FITS or IRAF
@@ -14,7 +14,7 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.9.1 of the WCSTools package developed by Jessica Mink
+This is version 3.9.2 of the WCSTools package developed by Jessica Mink
 (jmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code or algorithms from
 
@@ -39,10 +39,19 @@ all of the variables initialized.
 
 The update history is in the NEWS file, but here is what is new:
 
-Version 3.9.1 (March 19, 2015)
+Version 3.9.2 (May 15, 2015)
+imcat, imstar: Print two decimal places on PROS region file coordinates
+simpos: Switch to CfA Vizier server as default (2015-05-05)
+simpos: Use NED name resolver if called as nedpos or using -n argument
+simpos: Look up in VIZIER catalogs if called as vizpos or using -z argument
+simpos: Use CDS server if called as cdspos or using -c argument
+nedpos,nedname: Drop tasks because IPAC has dropped interface; use simpos -n
+
+Version 3.9.1 (March 24, 2015)
 remap: Declare GetFITSWCS() as well as GetWCSFITS()
 cphead: Fix bug freeing header string more than once
 imcat,scat,immatch,imwcs: Fix bugs with web access to GSC2 and SDSS catalogs
+gsc2read.c: Drop concatenation of "blank" string in middle of search URL
 webread.c: Fix bug in URL filtering
 
 Version 3.9.0 (December 19, 2014)
@@ -164,9 +173,6 @@ imwcs	Automaticaly find stars in a FITS or IRAF image, match them to any
 	of the supported catalogs, compute the relation between sky coordinates
 	and image coordinates, and write it into the image header.
 keyhead	Change keyword names in headers of FITS or IRAF images.
-nedname	Return object name(s) from RA(s) and Dec(s) using NED (the NASA
-	Extragalactic Database)
-nedpos  Return RA and Dec for object name (or list of them) using NED
 newfits	Create blank FITS image files (dataless by default, with BITPIX=0)
 remap	Remap an image from one WCS into another, rebinning as necessary
 scat	Search a source catalog given a region on the sky.
@@ -186,5 +192,5 @@ wcshead	Print basic world coordinate system information on one line per image
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
 
--Jessica Mink, SAO, 2015-03-19
+-Jessica Mink, SAO, 2015-05-15
  http://tdc-www.harvard.edu/mink/

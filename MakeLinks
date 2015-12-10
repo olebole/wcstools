@@ -1,3 +1,5 @@
+ln -s simpos nedpos
+ln -s simpos cdspos
 ln -s scat sgsc
 ln -s scat sgsca
 ln -s scat sgsc2

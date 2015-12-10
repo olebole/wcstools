@@ -1,5 +1,5 @@
 /*** simpos.c - search object by its name from command line arguments
- *** February 1, 2013
+ *** May 15, 2015
  *** By Jessica Mink, sort of after IPAC byname.c for searching NED
  */
 
@@ -11,7 +11,7 @@
 #include "libwcs/wcscat.h"
 
 extern int   ned_errno;
-static char *searchorder = NULL;
+static char searchorder[4];
 static int printall = 0;
 static void PrintUsage();
 
@@ -30,6 +30,10 @@ char *av[];
     int nid = 0;
     int nobj = 0;
     int nfobj = 0;
+    int cds = 0;
+    int ned = 0;
+    int viz = 0;
+    int simbad = 0;
     int outsys = WCS_J2000;
     int sysj = WCS_J2000;
     int tabout = 0;
@@ -40,6 +44,7 @@ char *av[];
     char newobj[32];
     char *buff, *buffid, *idline, *posline, *errline, *id, *errend;
     char url[256];
+    char *xbuff;
     int lbuff;
     FILE *flist;
     char cr, lf, eq;
@@ -48,6 +53,21 @@ char *av[];
     cr = (char) 13;
     lf = (char) 10;
     eq = '=';
+    searchorder[0] = (char) 0;
+    searchorder[1] = (char) 0;
+    searchorder[2] = (char) 0;
+    searchorder[3] = (char) 0;
+
+    if ( !strcmp (*av, "cdspos") )
+	cds = 1;
+    if ( !strcmp (*av, "nedpos") ) {
+	searchorder[0]='N';
+	ned = 1;
+	}
+    if ( !strcmp (*av, "vizpos") ) {
+	searchorder[0]='V';
+	viz = 1;
+	}
 
     str = *(av+1);
     if (!str || !strcmp (str, "help") || !strcmp (str, "-help"))
@@ -73,6 +93,10 @@ char *av[];
 	            outsys = WCS_B1950;
 		    break;
 
+        	case 'c':       /* Use CDS server in France */
+	            cds = 1;
+		    break;
+
 		case 'd':       /* Print coordinates in degrees */
 		    printdeg++;
 		    break;
@@ -89,23 +113,31 @@ char *av[];
 		    printid++;
 		    break;
 
-		case 'n':       /* Print object name */
+		case 'n':       /* Search NED database */
+		    ned++;
+		    strcat (searchorder, "N");
+		    break;
+
+		case 'o':       /* Print object name */
 		    printname++;
 		    break;
 
 		case 's':       /* Database search order */
-		    if (ac < 2)
-			PrintUsage(NULL);
-		    searchorder = uppercase (*++av);
-		    ac--;
+		    simbad++;
+		    strcat (searchorder, "S");
 		    break;
 
 		case 't':       /* Print output in tab-separated table */
 		    tabout++;
 		    break;
 
-		case 'v':       /* more verbosity, including first ID */
+		case 'v':       /* More verbosity, including first ID */
 		    verbose++;
+		    break;
+
+		case 'z':       /* Search Vizier catalogs */
+		    viz++;
+		    strcat (searchorder, "V");
 		    break;
 
 		default:
@@ -140,6 +172,9 @@ char *av[];
     if (ac == 0 && !listfile)
         PrintUsage (NULL);
 
+    /* Set searches to SNV if not otherwise set */
+    if ( searchorder[0] == (char) 0 )
+	strcpy (searchorder, "SNV");
     if (listfile) {
 	ac = nfobj;
 	objname = newobj;
@@ -167,27 +202,41 @@ char *av[];
 	if (verbose)
 	    printf ("%s -> ", objname);
 
-	/* strcpy (url, "http://vizier.u-strasbg.fr/cgi-bin/nph-sesame?"); */
-	strcpy (url, "http://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oI/~");
-	if (searchorder)
-	    strcat (url, searchorder);
+	for (i = 0; i < 256; i++) {
+	    url[i] = (char) 0;
+	    }
+	if (cds)
+	    strcpy (url, "http://cdsweb.u-strasbg.fr/cgi-bin/nph-sesame/-oI/");
 	else
-	    strcat (url, "NSV");
-	if (printid || printall)
+	    strcpy (url, "http://vizier.cfa.harvard.edu/viz-bin/nph-sesame/-oI/");
+	strcat (url, searchorder);
+	if ((printid || printall) && !strcmp (searchorder, "V"))
 	    strcat (url, "A");
 	strcat (url, "?");
 	strcat (url, objname);
+	if (verbose)
+	    printf ("%s\n", url);
 	buff = webbuff (url, verbose, &lbuff);
 
 	if (buff == NULL) {
 	    if (verbose)
 		printf ("no return from SIMBAD\n");
-	    else
-		fprintf (stderr,"*** No return from SIMBAD for %s\n",objname);
+	    else {
+		if (ned)
+		    fprintf (stderr,"*** No return from NED for %s\n",objname);
+		if (viz)
+		    fprintf (stderr,"*** No return from Vizier for %s\n",objname);
+		if (simbad)
+		    fprintf (stderr,"*** No return from SIMBAD for %s\n",objname);
+		}
 	    continue;
 	    }
 	else if (printall) {
+	    buff[lbuff] = (char) 0;
+	    xbuff = buff + lbuff - 20;
+	    (void) printf ("%s\n", xbuff);
 	    (void) printf ("%s\n", buff);
+	    (void) printf ("End of Buffer\n");
 	    continue;
 	    }
 
@@ -214,8 +263,14 @@ char *av[];
 	    else {
 		if (verbose)
 		    printf ("no position from SIMBAD\n");
-		else
-		    fprintf (stderr,"*** No SIMBAD position for %s\n",objname);
+		else  {
+		    if (ned)
+		        fprintf (stderr,"*** No NED position for %s\n",objname);
+		    if (viz)
+		        fprintf (stderr,"*** No Vizier position for %s\n",objname);
+		    if (simbad)
+		        fprintf (stderr,"*** No SIMBAD position for %s\n",objname);
+		    }
 		continue;
 		}
 	    }
@@ -235,7 +290,15 @@ char *av[];
 
 	if (nid > 0) {
 	    if (verbose) {
-		if (nid == 1)
+		if (ned && nid == 1)
+		    fprintf (stdout, "%d object found in NED: \n", nid);
+		else if (ned)
+		    fprintf (stdout, "%d objects found in NED: \n", nid);
+		else if (viz && nid == 1)
+		    fprintf (stdout, "%d object found by VIZIER: \n", nid);
+		else if (viz)
+		    fprintf (stdout, "%d objects found by VIZIER: \n", nid);
+		else if (nid == 1)
 		    fprintf (stdout, "%d object found by SIMBAD: \n", nid);
 		else
 		    fprintf (stdout, "%d objects found by SIMBAD: \n", nid);
@@ -244,7 +307,12 @@ char *av[];
 	/* Print Starbase header if requested */
 	    nobj++;
 	    if (tabout && nobj == 1) {
-		printf ("catalog	SIMBAD\n");
+		if (ned)
+		    printf ("catalog	NED\n");
+		else if (viz)
+		    printf ("catalog	VIZIER\n");
+		else
+		    printf ("catalog	SIMBAD\n");
 		if (outsys == WCS_GALACTIC)
 		    printf ("radecsys	galactic\n");
 		else if (outsys == WCS_ECLIPTIC)
@@ -366,20 +434,23 @@ PrintUsage (command)
 char	*command;	/* Command where error occurred or NULL */
 
 {
-    fprintf (stderr,"Return RA and Dec for object name using SIMBAD\n");
+    fprintf (stderr,"Return RA and Dec for object name using SIMBAD, NED, Vizier\n");
     fprintf (stderr,"Usage:  simpos [-idtv][b|e|g] name1 name2 ...\n");
     fprintf (stderr,"        simpos [-idtv][b|e|g] @namelist ...\n");
     fprintf (stderr,"name(n): Objects for which to search (space -> _)\n");
     fprintf (stderr,"namelist: File with one object name per line\n");
     fprintf (stderr,"-a: Print all information returned\n");
     fprintf (stderr,"-b: Print coordinates in B1950 instead of J2000\n");
+    fprintf (stderr,"-c: Use CDS server in France, default is CfA in US\n");
     fprintf (stderr,"-d: Print coordinates in degrees instead of sexigesimal\n");
     fprintf (stderr,"-e: Print coordinates in ecliptic instead of J2000\n");
     fprintf (stderr,"-g: Print coordinates in galactic instead of J2000\n");
     fprintf (stderr,"-i: Print ID(s) returned from SIMBAD\n");
-    fprintf (stderr,"-s [N][S][V]: Search order NED SIMBAD Vizier\n");
+    fprintf (stderr,"-n: Find coordinates using the NED database\n");
+    fprintf (stderr,"-s: Find coordinates using SIMBAD\n");
     fprintf (stderr,"-t: Print output as tab-separated table\n");
     fprintf (stderr,"-v: Print extra descriptive info\n");
+    fprintf (stderr,"-z: Find coordinates in Vizier catalog\n");
     exit (1);
 }
 
@@ -400,4 +471,7 @@ char	*command;	/* Command where error occurred or NULL */
  * Feb  1 2013	Add -s NSV option to allow users to change search order
  * Feb  1 2013	Add -a option to print everything which is returned
  * Feb  1 2013	Fix -i option to print list of catalog IDs returned
+ *
+ * May  5 2015	Switch to CfA Vizier server as default
+ * May 15 2015	Explicitly search SIMBAD, NED, or Vizier (nedpos or vizpos)
  */

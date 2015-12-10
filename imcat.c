@@ -1,9 +1,9 @@
 /* File imcat.c
- * July 2, 2014
+ * May 13, 2015
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2014
+   Copyright (C) 1996-2015
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -1368,8 +1368,6 @@ char	**refcatname;	/* reference catalog name */
 		    }
 		else
 		    radius = 20;
-		ix = (int)(gx[i] + 0.5);
-		iy = (int)(gy[i] + 0.5);
 		printobj = 0;
 		if (obname[icat] && gobj1 != NULL) {
 		    if (gobj1[i] != NULL) {
@@ -1391,11 +1389,19 @@ char	**refcatname;	/* reference catalog name */
 			strcpy (rstr, "EX");
 		    }
 		if (printobj)
+		    fprintf (fd, "%s(%.2f,%.2f,%d) # %s\n",
+			     rstr, gx[i], gy[i], radius, snum);
+		else
+		    fprintf (fd, "%s(%.2f,%.2f,%d) # %s %s\n",
+			     rstr, gx[i], gy[i], radius, refcatname[icat], snum);
+		/* ix = (int)(gx[i] + 0.5);
+		iy = (int)(gy[i] + 0.5);
+		if (printobj)
 		    fprintf (fd, "%s(%d,%d,%d) # %s\n",
 			     rstr, ix, iy, radius, snum);
 		else
 		    fprintf (fd, "%s(%d,%d,%d) # %s %s\n",
-			     rstr, ix, iy, radius, refcatname[icat], snum);
+			     rstr, ix, iy, radius, refcatname[icat], snum); */
 		}
 	    }
 	if (icat == ncat-1)
@@ -2469,4 +2475,6 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Oct 20 2013	Fix limit setting code with lots of help from Brian Carcich
  *
  * Jul  2 2014	Add UCAC4 catalog
+ *
+ * May 13 2015	Print two decimal place, not integer, pixel coordinates
  */

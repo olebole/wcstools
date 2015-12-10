@@ -1,7 +1,6 @@
 CFLAGS= -g -D_FILE_OFFSET_BITS=64
 CC= cc
 LIBWCS = libwcs/libwcs.a
-LIBNED = libned/libned.a
 LIBS = $(LIBWCS) -lm
 #LIBS = $(LIBWCS) -lm -lnsl -lsocket
 BIN = bin
@@ -14,7 +13,7 @@ all:	cphead delwcs delhead edhead fixpix gethead i2f imcat imhead immatch \
 	keyhead skycoor subpix xy2sky wcshead conpix gettab newfits getfits \
 	imstack imextract sumpix remap getcol getdate imfill imsmooth imresize \
 	fileroot filename filext char2sp sp2char crlf isnum isrange isfits \
-	isfile simpos nedpos bincat
+	isfile simpos bincat
 
 addpix: addpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/addpix addpix.c $(LIBS)
@@ -139,12 +138,6 @@ keyhead: keyhead.c $(LIBWCS) libwcs/fitsfile.h libwcs/wcs.h
 matchcat: matchcat.c $(LIBWCS) libwcs/wcscat.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/matchcat matchcat.c $(LIBS)
 
-nedname: nedname.c $(LIBWCS) $(LIBNED) libwcs/wcs.h libned/ned_client.h
-	$(CC) $(CFLAGS) -o $(BIN)/nedname nedname.c $(LIBS) $(LIBNED)
-
-nedpos: nedpos.c $(LIBWCS) $(LIBNED) libwcs/wcs.h libned/ned_client.h
-	$(CC) $(CFLAGS) -o $(BIN)/nedpos nedpos.c $(LIBS) $(LIBNED)
-
 newfits: newfits.c $(LIBWCS) libwcs/fitshead.h libwcs/wcs.h
 	$(CC) $(CFLAGS) -o $(BIN)/newfits newfits.c $(LIBS)
 
@@ -196,12 +189,8 @@ tmcate: tmcate.c
 $(LIBWCS): libwcs/*.c libwcs/*.h
 	cd libwcs; make
 
-$(LIBNED): libned/*.c libned/*.h
-	cd libned; make
-
 objclean:
 	cd libwcs; make clean
-	cd libned; make clean
 
 binclean:
 	rm -f ./bin/*

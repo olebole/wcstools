@@ -1,9 +1,9 @@
 /* File imstar.c
- * October 15, 2007
+ * May 13, 2015
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2007
+   Copyright (C) 1996-2015
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -684,13 +684,18 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	radius = region_radius;
 	for (i = 0; i < ns; i++) {
-	    ix = (int)(sx[i] + 0.5);
+	    fprintf (fd, "%s(%.2f,%.2f,%d) # %s %d\n",
+		     rstr, sx[i], sy[i], radius, filename, i);
+	    if (verbose)
+		printf ("%s(%.2f,%.2f,%d) # %s %d\n",
+			rstr, sx[i], sy[i], radius, filename, i);
+	    /* ix = (int)(sx[i] + 0.5);
 	    iy = (int)(sy[i] + 0.5);
 	    fprintf (fd, "%s(%d,%d,%d) # %s %d\n",
 		     rstr, ix, iy, radius, filename, i);
 	    if (verbose)
 		printf ("%s(%d,%d,%d) # %s %d\n",
-			rstr, ix, iy, radius, filename, i);
+			rstr, ix, iy, radius, filename, i); */
 	    }
 	printf ("%s\n", outfile);
 	}
@@ -932,4 +937,6 @@ char	*filename;	/* FITS or IRAF file filename */
  * Apr  6 2007	Add -g command to not rotate image WCS with image
  * Apr 27 2007	Set magoff to zero only if greater than 89, not 20
  * Oct 15 2007	Add -c option to print total flux in counts
+ *
+ * May 13 2015	Print two decimal place, not integer, pixel coordinates
  */
