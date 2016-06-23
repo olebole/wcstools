@@ -1,9 +1,9 @@
 /* File imextract.c
- * November 12, 2009
+ * June 9, 2016
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2009 
+   Copyright (C) 1999-2016 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -102,7 +102,7 @@ char **av;
 	    }
 
 	/* Number argument is either specific image number or range */
-	else if (isrange (*av) || isnum (*av)) {
+	else if (isrange (*av) || isnum (*av) == 1) {
 
 	    /* Set range and make a list of extraction numbers from it */
 	    if (ranges) {
@@ -663,4 +663,6 @@ char	*kwd[];		/* Names and values of those keywords */
  *
  * Mar 27 2009	Set extension to 0 if not specified
  * Nov 12 2009	Only set extension to 0 if not specified in any way
+ *
+ * Jun  9 2016	Fix isnum() tests for added coloned times and dashed dates
  */

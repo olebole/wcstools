@@ -1,8 +1,8 @@
 /*** File libwcs/wcs.c
- *** October 19, 2012
+ *** June 23, 2016
  *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1994-2012
+ *** Copyright (C) 1994-2016
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -389,20 +389,25 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 	strncpy (ctype1, "XLON",4);
 
     strcpy (wcs->ctype[0], ctype1);
-    strcpy (wcs->c1type, ctype1);
     strcpy (wcs->ptype, ctype1);
 
     /* Linear coordinates */
-    if (!strncmp (ctype1,"LINEAR",6))
+    if (!strncmp (ctype1,"LINEAR",6)) {
 	wcs->prjcode = WCS_LIN;
+	strcpy (wcs->c1type, "LIN");
+	}
 
     /* Pixel coordinates */
-    else if (!strncmp (ctype1,"PIXEL",6))
+    else if (!strncmp (ctype1,"PIXEL",6)) {
 	wcs->prjcode = WCS_PIX;
+	strcpy (wcs->c1type, "PIX");
+	}
 
     /*Detector pixel coordinates */
-    else if (strsrch (ctype1,"DET"))
+    else if (strsrch (ctype1,"DET")) {
 	wcs->prjcode = WCS_PIX;
+	strcpy (wcs->c1type, "PIX");
+	}
 
     /* Set up right ascension, declination, latitude, or longitude */
     else if (ctype1[0] == 'R' || ctype1[0] == 'D' ||
@@ -502,6 +507,7 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
     /* If not sky coordinates, assume linear */
     else {
 	wcs->prjcode = WCS_LIN;
+	strcpy (wcs->c1type, "LIN");
 	return (0);
 	}
 
@@ -523,15 +529,24 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
     else
 	wcs->latbase = 0;
     strcpy (wcs->ctype[1], ctype2);
-    strcpy (wcs->c2type, ctype2);
 
     /* Linear coordinates */
-    if (!strncmp (ctype2,"LINEAR",6))
+    if (!strncmp (ctype2,"LINEAR",6)) {
 	wcs->prjcode = WCS_LIN;
+	strcpy (wcs->c2type, "LIN");
+	}
 
     /* Pixel coordinates */
-    else if (!strncmp (ctype2,"PIXEL",6))
+    else if (!strncmp (ctype2,"PIXEL",6)) {
 	wcs->prjcode = WCS_PIX;
+	strcpy (wcs->c2type, "PIX");
+	}
+
+    /* Detector coordinates */
+    else if (!strncmp (ctype2,"DET",3)) {
+	wcs->prjcode = WCS_PIX;
+	strcpy (wcs->c2type, "PIX");
+	}
 
     /* Set up right ascension, declination, latitude, or longitude */
     else if (ctype2[0] == 'R' || ctype2[0] == 'D' ||
@@ -582,6 +597,7 @@ char	*ctype2;	/* FITS WCS projection for axis 2 */
 
     /* If not sky coordinates, assume linear */
     else {
+	strcpy (wcs->c2type, "LIN");
 	wcs->prjcode = WCS_LIN;
 	}
 
@@ -2580,7 +2596,7 @@ char **header;	/* Pointer to start of FITS header */
 char *cwcs;	/* Keyword suffix character for output WCS */
 {
     double tnum;
-    int dkwd[100];
+    int dkwd[MAXNKWD];
     int i, maxnkwd, ikwd, nleft, lbuff, lhead, nkwd, nbytes;
     int nkwdw;
     char **kwd;
@@ -2589,7 +2605,7 @@ char *cwcs;	/* Keyword suffix character for output WCS */
     char tstr[80];
 
     /* Allocate array of keywords to be transferred */
-    maxnkwd = 100;
+    maxnkwd = MAXNKWD;
     kwd = (char **)calloc (maxnkwd, sizeof(char *));
     for (ikwd = 0; ikwd < maxnkwd; ikwd++)
 	kwd[ikwd] = (char *) calloc (16, 1);
@@ -2991,4 +3007,7 @@ char *cwcs;	/* Keyword suffix character for output WCS */
  *
  * Oct 19 2012	Drop d1 and d2 from wcsdist(); diffi from wcsdist1()
  * Oct 19 2012	Drop depwcs; it's in main wcs structure
+ *
+ * Jun  8 2016	Increase ctype, ctype1, and ctype2 to 16 characters for distortion
+ * Jun 23 2016	Set initial allocation of keyword arrays to MAXNKWD instead of 100 in cpwcs()
  */

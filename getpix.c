@@ -1,9 +1,9 @@
 /* File getpix.c
- * January 10, 2014
+ * June 9, 2016
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2014
+   Copyright (C) 1996-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -297,7 +297,7 @@ char **av;
 	    }
 
 	/* Coordinate pairs for pixels to print */
-        else if (isnum (str) && isnum (str1)) {
+        else if (isnum (str) == 1 && isnum (str1) == 1) {
 	    if (npix+1 > maxnpix) {
 		maxnpix = 2 * maxnpix;
 		xp1 = calloc (maxnpix, sizeof (int));
@@ -1032,4 +1032,6 @@ double	dpix;	/* Current pixel value */
  *
  * Jan 10 2014	Get same pixels from multiple files
  * Jan 10 2014	Add command line option @listfile as list of files
+ *
+ * Jun  9 2016	Fix isnum() tests for added coloned times and dashed dates
  */

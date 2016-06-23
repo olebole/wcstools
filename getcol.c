@@ -1,9 +1,9 @@
 /* File getcol.c
- * August 12, 2013
+ * June 9, 2016
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2013
+   Copyright (C) 1999-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -210,7 +210,7 @@ char **av;
 	    }
 
 	/* Negative numbers aren't ranges, but positive ones are */
-	else if (isnum (*av)) {
+	else if (isnum (*av) == 1) {
 	    if (ranges) {
 		newbytes = strlen(ranges) + strlen(*av) + 2;
 		newbytes = ((newbytes / 16) + 1) * 16;
@@ -369,7 +369,7 @@ char **av;
 		    lfile = *++av + 1;
 		    ac--;
 		    }
-		else if (isrange (*(av+1)) || isnum (*(av+1))) {
+		else if (isrange (*(av+1)) || isnum (*(av+1)) == 1) {
 		    lranges = (char *) calloc (strlen(*av) + 1, 1);
 		    strcpy (lranges, *++av);
 		    ac--;
@@ -441,7 +441,7 @@ char **av;
 		sop2[i] = (char) 0;
 	    strncpy (sop1, cop[nop], lc[nop]);
 	    strcpy (sop2, op[nop]+1);
-	    if (isnum (sop1) && isnum (sop2)) {
+	    if (isnum (sop1) == 1 && isnum (sop2) == 1) {
 		if (verbose)
 		    printf (" Column %s %c %s\n", sop1, opi[0], sop2);
 		nop++;
@@ -536,6 +536,10 @@ char	*lfile;		/* Name of file with lines to list */
     double *qmed1 = NULL;
     double qsum = 0.0;
     double qsum1;
+    int ncstr;		/* Argument isnum() value */
+    int ncstr0;		/* Original argument isnum() value */
+    int ncval;		/* Column isnum() value */
+    int ncval0;		/* Column isnum() before any conversion */
     int *nsum;
     int *nent;
     int *hms;		/* Flag for hh:mm:ss or dd:mm:ss format */
@@ -773,35 +777,43 @@ char	*lfile;		/* Name of file with lines to list */
 			pass = 0;
 	
 		    /* Extract test value from comparison string */
+		    tcond = *ccond[icond];
 		    cstr = ccond[icond]+1;
-		    if (strchr (cstr, ':')) {
+		    ncstr0 = isnum (cstr);
+
+		    /* If test value is sexigesimal, convert it to decimal */
+		    if (ncstr0 == 3) {
 			dnum = str2dec (cstr);
 			num2str (numstr, dnum, 0, 7);
 			cstr = numstr;
 			}
-		    else if (isnum (cstr) == 1) {
+
+		    /* If test value is integer, use value for that column */
+		    else if (ncstr0 == 1) {
 			itok = atoi (cstr);
 			getoken (&tokens, itok, token1, MAX_LTOK);
 			cstr = token1;
 			}
 		    strfix (cstr, 0, 1);
+		    ncstr = isnum (cstr);
 	
 		    /* Read comparison value from header */
-		    tcond = *ccond[icond];
-		    *ccond[icond] = (char) 0;
 		    itok = atoi (cond[icond]);
-		    *ccond[icond] = tcond;
 		    getoken (&tokens, itok, token, MAX_LTOK);
 		    cval = token;
-		    if (strchr (cval, ':')) {
+		    ncval0 = isnum (cval);
+
+		    /* If column value is sexigesimal, convert it to decimal */
+		    if (ncval0 == 3) {
 			dnum = str2dec (cval);
 			num2str (numstr1, dnum, 0, 7);
 			cval = numstr1;
 			}
 		    strfix (cval, 0, 1);
+		    ncval = isnum (cval);
 	
 		    /* Compare floating point numbers */
-		    if (isnum (cstr) == 2 && isnum (cval)) {
+		    if (ncstr == 2 && ncval) {
 			dcond = atof (cstr);
 			dval = atof (cval);
 			if (tcond == '=' && dval == dcond)
@@ -815,7 +827,7 @@ char	*lfile;		/* Name of file with lines to list */
 			}
 	
 		    /* Compare integers */
-		    else if (isnum (cstr) == 1 && isnum (cval)) {
+		    else if (ncstr == 1 && ncval) {
 			jcond = (int) atof (cstr);
 			jval = (int) atof (cval);
 			if (tcond == '=' && jval == jcond)
@@ -827,7 +839,14 @@ char	*lfile;		/* Name of file with lines to list */
 			if (tcond == '<' && jval < jcond)
 			    pass = 1;
 			}
-	
+
+		    /* Check number type */
+		    else if (cstr[0] == 'n' && ncval0) {
+			ncstr = atoi (cstr+1);
+			if (ncval0 == ncstr)
+			    pass = 1;
+			}
+
 		    /* Compare strings (only equal or not equal */
 		    else {
 			if (tcond == '=' && !strcmp (cstr, cval))
@@ -835,6 +854,7 @@ char	*lfile;		/* Name of file with lines to list */
 			if (tcond == '#' && strcmp (cstr, cval))
 			    pass = 1;
 			}
+
 		    if (condand && !pass)
 			break;
 		    }
@@ -1018,35 +1038,51 @@ char	*lfile;		/* Name of file with lines to list */
 			pass = 0;
 	
 		    /* Extract test value from comparison string */
+		    tcond = *ccond[icond];
 		    cstr = ccond[icond]+1;
-		    if (strchr (cstr, ':')) {
+		    ncstr0 = isnum (cstr);
+
+		    /* Convert sexigesimal test value to decimal */
+		    if (ncstr0 == 3) {
 			dnum = str2dec (cstr);
 			num2str (numstr, dnum, 0, 7);
 			cstr = numstr;
 			}
-		    else if (isnum (cstr) == 1) {
+
+		    /* Get column value if integer test value */
+		    else if (ncstr0 == 1 && atoi (cstr) != 0) {
 			itok = atoi (cstr);
 			getoken (&tokens, itok, token1, MAX_LTOK);
 			cstr = token1;
+			ncstr = isnum (cstr);
+
+			/* Convert sexigesimal column value to decimal */
+			if (ncstr == 3) {
+			    dnum = str2dec (cstr);
+			    num2str (numstr, dnum, 0, 7);
+			    cstr = numstr;
+			    }
 			}
 		    strfix (cstr, 0, 1);
+		    ncstr = isnum (cstr);
 	
-		    /* Read comparison value from header */
-		    tcond = *ccond[icond];
-		    *ccond[icond] = (char) 0;
+		    /* Read value to check against from line */
 		    itok = atoi (cond[icond]);
-		    *ccond[icond] = tcond;
 		    getoken (&tokens, itok, token, MAX_LTOK);
 		    cval = token;
-		    if (strchr (cval, ':')) {
+		    ncval0 = isnum (cval);
+
+		    /* Convert sexigesimal column value to decimal */
+		    if (ncval0 == 3) {
 			dnum = str2dec (cval);
 			num2str (numstr, dnum, 0, 7);
 			cval = numstr;
 			}
 		    strfix (cval, 0, 1);
+		    ncval = isnum (cval);
 	
 		    /* Compare floating point numbers */
-		    if (isnum (cstr) == 2 && isnum (cval)) {
+		    if (ncstr == 2 && ncval > 0 && ncval < 3) {
 			dcond = atof (cstr);
 			dval = atof (cval);
 			if (tcond == '=' && dval == dcond)
@@ -1060,7 +1096,7 @@ char	*lfile;		/* Name of file with lines to list */
 			}
 	
 		    /* Compare integers */
-		    else if (isnum (cstr) == 1 && isnum (cval)) {
+		    else if (ncstr == 1 && ncval > 0 && ncval < 3) {
 			jcond = atoi (cstr);
 			jval = atoi (cval);
 			if (tcond == '=' && jval == jcond)
@@ -1070,6 +1106,13 @@ char	*lfile;		/* Name of file with lines to list */
 			if (tcond == '>' && jval > jcond)
 			    pass = 1;
 			if (tcond == '<' && jval < jcond)
+			    pass = 1;
+			}
+
+		    /* Check number type */
+		    else if (cstr[0] == 'n' && ncval0) {
+			ncstr = atoi (cstr+1);
+			if (ncval0 == ncstr)
 			    pass = 1;
 			}
 	
@@ -1151,12 +1194,12 @@ char	*lfile;		/* Name of file with lines to list */
 			    token[j] = (char) 0;
 			}
 		    strfix (token, 0, 1);
-		    if (isnum (token)) {
+		    if (isnum (token) > 0 && isnum (token) < 2) {
 			dval = atof (token);
 			hms[i] = 0;
 			idnum = 1;
 			}
-		    else if (strchr (token, ':')) {
+		    else if (isnum (token) == 3) {
 			dval = str2dec (token);
 			hms[i] = 1;
 			idnum = 1;
@@ -1244,7 +1287,7 @@ char	*lfile;		/* Name of file with lines to list */
 		for (j = 0; j< 16; j++)
 		    colstr[j] = (char) 0;
 		strncpy (colstr, cop[iop], lc[iop]);
-		if (isnum (colstr) > 1) {
+		if (isnum (colstr) == 2) {
 		    dnum = atof (colstr);
 		    ndnum = numdec (colstr);
 		    }
@@ -1781,4 +1824,10 @@ void *pd1, *pd2;
  * Apr 18 2011	Fix allocation bug for median of too many entries
  * 
  * Aug 12 2013	Subtract one from returned token count for accuracy
+ *
+ * Nov 19 2015	Add test <col>=n[0][1][2][3][4] to check for numericness
+ *
+ * Dec 10 2015	Fix tests
+ *
+ * Jun  9 2016	Fix isnum() tests for added coloned times and dashed dates 
  */

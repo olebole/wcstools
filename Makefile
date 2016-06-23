@@ -120,6 +120,9 @@ isfits: isfits.c $(LIBWCS) libwcs/fitshead.h
 isnum: isnum.c $(LIBWCS) libwcs/fitshead.h
 	$(CC) $(CFLAGS) -o $(BIN)/isnum isnum.c $(LIBS)
 
+isimlist: isimlist.c $(LIBWCS) libwcs/fitsfile.h
+	$(CC) $(CFLAGS) -o $(BIN)/isimlist isimlist.c $(LIBS)
+
 isrange: isrange.c
 	$(CC) $(CFLAGS) -o $(BIN)/isrange isrange.c
 

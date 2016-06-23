@@ -1,9 +1,9 @@
 /* File sumpix.c
- * January 10, 2014
+ * June 9, 2016
  * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2014
+   Copyright (C) 1999-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -170,7 +170,7 @@ char **av;
 	    }
 
 	/* Read range in x or y */
-        else if (isnum (*av) || isrange (*av)) {
+        else if (isnum (*av) == 1 || isrange (*av)) {
 	    if (crange == NULL)
 		crange = *av;
 	    else
@@ -833,4 +833,6 @@ char *rrange;	/* Row range string */
  * May 16 2012	Add option h to print headings
  *
  * Jan 10 2014	Add list file with @ as command line option
+ *
+ * Jun  9 2016	Fix isnum() tests for added coloned times and dashed dates
  */

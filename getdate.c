@@ -1,9 +1,9 @@
 /* File getdate.c
- * April 30, 3013
+ * August 24, 2015
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2013
+   Copyright (C) 1999-2015
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -792,10 +792,10 @@ char	*timestring;	/* Input time string */
 			break;
 		    case DTFITS:
 			newfdate = fd2fd (fitsdate);
-			if (oldfits && timestring) {
+			/* if (oldfits && timestring) {
 			    strcat (newfdate, "T");
 			    strcat (newfdate, timestring);
-			    }
+			    } */
 			strncpy (fyear, newfdate, 10);
 			fyear[10] = (char) 0;
 			if (outtime == ET) newfdate = fd2et (newfdate);
@@ -2369,4 +2369,6 @@ char	*timestring;	/* Input time string */
  *
  * Jan  3 2013	Add -s option to subtract days
  * Apr 30 2013	Add self-conversion options for JDs
+ *
+ * Aug 24 2015	Fix bug with FITS date conversion
  */

@@ -1,9 +1,9 @@
 /* File setpix.c
- * January 10, 2007
+ * June 9, 2016
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2007
+   Copyright (C) 1996-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -133,12 +133,12 @@ char **av;
 	    }
 
 	/* Set x or y range or new pixel value */
-	else if (isnum (str) || isrange (str)) {
+	else if (isnum (str) == 1 || isrange (str)) {
 	    if (crange[iv] == NULL)
 		crange[iv] = str;
 	    else if (rrange[iv] == NULL)
 		rrange[iv] = str;
-	    else if (isnum (str)) {
+	    else if (isnum (str) == 1) {
 		value[iv] = str;
 		iv++;
 		if (iv >= nrange) {
@@ -444,7 +444,7 @@ char	**value;	/* value to insert into pixel */
 			}
 		    }
 		}
-	    if (isnum (crange[i]))
+	    if (isnum (crange[i]) == 1)
 		sprintf (history, "SETPIX: pixels in column %s %s %s",
 		     crange[i],opstring,value[i]);
 	    else
@@ -495,7 +495,7 @@ char	**value;	/* value to insert into pixel */
 			}
 		    }
 		}
-	    if (isnum (rrange[i]))
+	    if (isnum (rrange[i]) == 1)
 		sprintf (history, "SETPIX: pixels in row %s %s %s",
 		     rrange[i],opstring,value[i]);
 	    else
@@ -563,13 +563,13 @@ char	**value;	/* value to insert into pixel */
 		}
 
 	    /* Note addition as history line in header */
-	    if (isnum (crange[i]) && isnum (rrange[i]))
+	    if (isnum (crange[i]) == 1 && isnum (rrange[i]) == 1)
 		sprintf (history, "SETPIX: pixel at row %s, column %s %s %s",
 		     rrange[i], crange[i], opstring, value[i]);
-	    else if (isnum (rrange[i]))
+	    else if (isnum (rrange[i]) == 1)
 		sprintf (history, "SETPIX: pixels in row %s, columns %s %s %s",
 		     rrange[i], crange[i], opstring, value[i]);
-	    else if (isnum (crange[i]))
+	    else if (isnum (crange[i]) == 1)
 		sprintf (history, "SETPIX: pixels in column %s, rows %s %s %s",
 		     crange[i], rrange[i], opstring, value[i]);
 	    else
@@ -702,4 +702,6 @@ char	**value;	/* value to insert into pixel */
  * Feb 19 2003	Fix bug which caused pixels to always be set as integers
  *
  * Nov 17 2004	Check for arguments after numbers so negative pixel values work
+ *
+ * Jun  9 2016	Fix isnum() tests for added coloned times and dashed dates
  */

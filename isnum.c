@@ -1,9 +1,9 @@
 /* File isnum.c
- * January 10, 2007
+ * December 9, 2015
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2001-2007
+   Copyright (C) 2001-2015
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -35,21 +35,35 @@ int ac;
 char **av;
 {
     char *str;
+    int arg;
 
     /* Check for version or help command first */
     str = *(av+1);
     if (!str || !strcmp (str, "help") || !strcmp (str, "-help")) {
-	fprintf (stderr,"Usage: Return 1 if argument is an integer, ");
-	fprintf (stderr,"2 if it is floating point, else 0\n");
+	fprintf (stderr,"Usage: Return 1 if argument is an integer,\n");
+	fprintf (stderr,"       Return 2 if it is floating point\n");
+	fprintf (stderr,"       Return 3 if it is a time with colons\n");
+	fprintf (stderr,"       Return 4 if it is a date with dashes\n");
+	fprintf (stderr,"       Return 0 otherwise\n");
 	exit (1);
 	}
     else if (!strcmp (str, "version") || !strcmp (str, "-version")) {
 	exit (1);
 	}
 
-    /* check to see if this is a number */
-    else
+    /* If -n, do not print linefeed after number (for scripting) */
+    if ( !strcmp (str, "-n") ) {
+	arg = 1;
+	str = *(av+2);
+	}
+
+    /* Check to see if this is a number */
+    if (arg) {
+	printf ("%d", isnum (str));
+	}
+    else {
 	printf ("%d\n", isnum (str));
+	}
 
     exit (0);
 }
@@ -60,4 +74,8 @@ char **av;
  * Apr  3 2006	Declare main to be int
  *
  * Jan 10 2007	Drop unused variable fn
+ *
+ * Nov  6, 2015	Add return definition for 3 and 4
+ *
+ * Dec  9, 2015	Add -n option to output number without linefeed
  */

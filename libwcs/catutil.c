@@ -1,8 +1,8 @@
 /*** File libwcs/catutil.c
- *** September 23, 2013
+ *** November 25, 2015
  *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1998-2013
+ *** Copyright (C) 1998-2015
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -2663,7 +2663,7 @@ char *value;	/* String (returned) */
 	    while (*pv == ' ' || *pv == ']' || *pv == 'o') {
 		pv++;
 		}
-	    if (*pv != '=' && *pv != ':' && *pv != 'f') {
+	    if (*pv != '=' && *pv != ':' && *pv != 10 && *pv != 'f') {
 		str = pkey;
 		pval = NULL;
 		}
@@ -3559,4 +3559,6 @@ char *from, *last, *to;
  *
  * Feb 15 2013	Add UCAC4 catalog
  * Sep 23 2013	Finish adding UCAC4 catalog
+ *
+ * Nov 25 2015	Add tab as an assignment character in agets()
  */

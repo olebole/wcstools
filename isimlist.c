@@ -1,9 +1,9 @@
 /* File isimlist.c
- * January 30, 2009
+ * March 30, 2016
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2009
+   Copyright (C) 2009-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -26,7 +26,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "libwcs/fitshead.h"
+#include "libwcs/fitsfile.h"
 
 
 int
@@ -39,7 +39,7 @@ char **av;
     /* Check for version or help command first */
     str = *(av+1);
     if (!str || !strcmp (str, "help") || !strcmp (str, "-help")) {
-	fprintf (stderr,"Usage: Return file if argument is a list of FITS files, else NULL");
+	fprintf (stderr,"Usage: Return file if argument is a list of FITS files, else NULL\n");
 	exit (1);
 	}
     else if (!strcmp (str, "version") || !strcmp (str, "-version")) {
@@ -53,4 +53,6 @@ char **av;
     exit (0);
 }
 /* Jan 30 2009	New program
+ *
+ * Mar 30 2016	Include fitsfile.h which includes fitshead.h
  */

@@ -1,9 +1,9 @@
 /* File getfits.c
- * September 17, 2013
+ * June 9, 2016
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2002-2013
+   Copyright (C) 2002-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -208,7 +208,7 @@ char **av;
 		    ac--;
 		    if (ac > 1) {
 			nextarg = *(av+1);
-			if (isnum (nextarg)) {
+			if (isnum (nextarg) == 1) {
 			    ydpix = atoi (nextarg);
 			    av++;
 			    ac--;
@@ -744,4 +744,6 @@ char *newname;
  *
  * Jan 22 2012	Print error, not blank file, if requested region is off image
  * Sep 17 2013	Include fitswcs.h
+ *
+ * Jun  9 2916	Fix isnum() tests for added coloned times and dashed dates
  */

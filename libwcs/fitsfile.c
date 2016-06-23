@@ -1,8 +1,8 @@
 /*** File libwcs/fitsfile.c
- *** July 25, 2014
+ *** June 9, 2016
  *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
- *** Copyright (C) 1996-2014
+ *** Copyright (C) 1996-2016
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -174,7 +174,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 #endif
 
     if (ext != NULL) {
-	if (isnum (ext+1))
+	if (isnum (ext+1) == 1)
 	    extnum = atoi (ext+1);
 	else {
 	    extnum = -2;
@@ -2322,4 +2322,6 @@ char *from, *last, *to;
  * Sep 15 2011	Declare global variable ibhead off_t
  *
  * Jul 25 2014	Fix bug when reallocating buffer for long headers
+ *
+ * Jun  9 2016	Fix isnum() tests for added coloned times and dashed dates
  */

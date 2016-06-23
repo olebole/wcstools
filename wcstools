@@ -10,8 +10,9 @@ cphead:    Copy keyword values between FITS or IRAF images
 crlf:      Change CR's to newlines in text file (for imwcs, imstar logs)
 delhead:   Delete specified keywords from FITS or IRAF image file headers
 delwcs:    Delete the WCS keywords from an image
-filename:  Drop directory from pathname, if present
-fileroot:  Drop file name extension, if present
+filename:  Drop directory from pathname, returning just the file name
+filedir:   Drop filename from path name, returning directory path
+fileroot:  Drop file name extension, returning path name without it
 edhead:    Edit the header of a FITS or IRAF file
 getcol:    Extract specified fields from an space-separated ASCII table file
 getdate:   Convert between two date formats

@@ -90,16 +90,17 @@ for file in `cat $fromfile`
 	else
 	   filein=$file
 	fi
-	file=`echo $file | sed s/\.bz2//`
-	file=`echo $file | sed s/\\\//_/`
-	sedarg1=`echo -e s/stdin/$file/`
-	sedarg2=`echo -e s/_/\\\//`
+#	file=`echo $file | sed s/\.bz2//`
+#	file=`echo $file | sed s/\\\//_/`
+#	sedarg1=`echo -e s/stdin/$file/`
+#	sedarg2=`echo -e s/_/\\\//`
 	if test $vb
 	    then
 	    echo bzcat $filein to read header
-	    echo sed $sedarg before writing output
+#	    echo sed $sedarg before writing output
 	    fi
-	bzcat $filein | gethead stdin $args | sed $sedarg1 | sed $sedarg2
+#	bzcat $filein | gethead stdin $args | sed $sedarg1 | sed $sedarg2
+	bzcat $filein | gethead stdin $args
     elif test $gzcomp
 	then
 	if test $dir

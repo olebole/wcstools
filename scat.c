@@ -1,9 +1,9 @@
 /* File scat.c
- * February 1, 2013
+ * June 23, 2016
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2013
+   Copyright (C) 1996-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -2489,7 +2489,7 @@ double	eqout;		/* Equinox for output coordinates */
 			    printf ("	%5.1f	%5.1f	%2d	%2d",
 				    epmr, epmd, nim, nct);
 			else
-			    printf (" %5.1f %5.1f $3d $3d",
+			    printf (" %5.1f %5.1f %3d %3d",
 				    epmr, epmd, nim, nct);
 			}
 		    if (refcat == UB1) {
@@ -4864,4 +4864,6 @@ PrintGSClass ()
  * Feb  1 2013	Add -p option to Usage()
  *
  * Feb 15 2013	Add UCAC4 catalog
+ *
+ * Jun 23 2016	Fix typos in format ($ for %) (via Ole Streicher)
  */

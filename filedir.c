@@ -1,9 +1,9 @@
 /* File filedir.c
- * October 2, 2012
+ * September 22, 2015
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2010 - 2012
+   Copyright (C) 2010 - 2015
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -41,6 +41,9 @@ char **av;
     char *str;
     char *ext;
     int i, lroot, lfn;
+    FILE *fd = NULL;
+    char line[4096];
+    int ReadStdin;
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
@@ -61,12 +64,27 @@ char **av;
     /* There are ac remaining file names starting at av[0] */
     if (ac == 0)
         usage ();
+    ReadStdin = 0;
 
     while (ac-- > 0) {
-	fn = *av++;
+	if (!ReadStdin) {
+	    fn = *av++;
+	    if (!strcmp (fn, "stdin")) {
+		ReadStdin = 1;
+		fd = stdin;
+		}
+	    }
+	if (ReadStdin) {
+	    if (fgets (line, 1023, fd) == NULL)
+                break;
+	    ac++;
+	    lfn = strlen (line);
+	    line[lfn-1] = (char) 0;
+	    fn = line;
+	    }
 	lfn = strlen (fn);
 	if (verbose)
-    	    printf ("%s -> ", fn);
+    	    printf ("%s ( %d) -> ", fn, lfn);
 	ext = strrchr (fn, '/');
 	if (ext != NULL) {
 	    *ext = (char) 0;
@@ -99,4 +117,6 @@ usage ()
 /* Jun 30 2000	New program
  *
  * Oct 02 2012	If pathname ends in "/", drop last directory
+ *
+ * Sep 22 2015	Read filepath from STDIN if filepath is "stdin"
  */

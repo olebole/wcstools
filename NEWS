@@ -1,10 +1,26 @@
-Version 3.9.2 (May 15, 2015)
+WCSTools Package updates
+
+Version 3.9.3 (June 23, 2016)
+wcs.h, wcs.c: Increase ctype string length to 15 (+null=16) for distortion
+wcslib.h, wcslib.c: Increase ctype string length to 15 (+null=16) for distortion
+scat.c, ucacread.c: Typos in code fixed
+matchstar.c, hget.c, fitsfile.c: Fix isnum() tests for added coloned times and dashed date
+
+Version 3.9.2 (December 10, 2015)
+isnum: Add return of 4 for yyyy-mm-dd dates (2015-11-06)
+isnum: Add -n option to output number without linefeed
 imcat, imstar: Print two decimal places on PROS region file coordinates
+remap: Declare GetFITSWCS()
 simpos: Switch to CfA Vizier server as default (2015-05-05)
 simpos: Use NED name resolver if called as nedpos or using -n argument
 simpos: Look up in VIZIER catalogs if called as vizpos or using -z argument
 simpos: Use CDS server if called as cdspos or using -c argument
+sky2xy: Add xy option to -o to print only computed x and y coordinates
 nedpos,nedname: Drop tasks because IPAC has dropped interface; use simpos -n
+getdate: Fix bug with FITS date conversion (2015-08-24)
+filedir: Add option to read file pathnames from stdin
+catutil.c: Add tab as an assignment character in agets()
+hget.c: Add return of 4 for yyyy-mm-dd dates to isnum() (2015-11-06)
 
 Version 3.9.1 (March 24, 2015)
 remap: Declare GetFITSWCS() as well as GetWCSFITS()

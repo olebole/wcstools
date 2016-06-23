@@ -1,9 +1,9 @@
 /* File sky2xy.c
- * September 24, 2013
+ * July 22, 2015
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2009
+   Copyright (C) 1996-2015
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -435,6 +435,8 @@ char **av;
 		printf ("%s", xstr);
 	    else if (printonly == 'y')
 		printf ("%s", ystr);
+	    else if (printonly == 'z')
+		printf ("%s %s", xstr, ystr);
 	    else
 		printf ("%s %s %s -> %s %s",rastr, decstr, csys, xstr, ystr);
 	    if (wcs->wcsl.cubeface > -1)
@@ -474,7 +476,7 @@ char	*command;
     fprintf (stderr,"  -g [long lat]: input in galactic [image reference sky position]\n");
     fprintf (stderr,"  -j [ra dec]: input in J2000 [image reference sky position]\n");
     fprintf (stderr,"  -n num: number of decimal places in output\n");
-    fprintf (stderr,"  -o x|y: print only x or y coordinate\n");
+    fprintf (stderr,"  -o x|y|z: print only x, y, or x and y coordinate\n");
     fprintf (stderr,"  -p scale: plate scale in arcsec/pixel\n");
     fprintf (stderr,"  -s nx ny: size of image in pixels\n");
     fprintf (stderr,"  -x x y: reference image position in pixels\n");
@@ -549,4 +551,6 @@ char	*command;
  * Sep 25 2009	Declare setnpix()
  *
  * Sep 24 2013	Use fitswcs.h
+ *
+ * Jul 22 2015	Add z option to print only x and y coordinates
  */

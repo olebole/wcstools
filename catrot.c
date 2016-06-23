@@ -99,7 +99,7 @@ char **av;
 	    }
 
 	/* Set image shifts */
-	else if (isnum (str)) {
+	else if (isnum (str) > 0 && isnum (str) < 2) {
 	    if (shifted) {
 		dy = atof (str);
 		if (dy < 0)
