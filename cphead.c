@@ -1,9 +1,9 @@
 /* File cphead.c
- * March 3, 2015
+ * June 24, 2016
  * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2000-2015
+   Copyright (C) 2000-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -41,6 +41,7 @@ static void CopyValues();
 extern char *GetFITShead();
 
 static int verbose = 0;		/* verbose/debugging flag */
+static char *RevMsg = "CPHEAD WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 static int copyall = 0;		/* Copy entire header, overwriting old one */
 static int nfile = 0;
 static int ndec0 = -9;
@@ -136,7 +137,7 @@ char **av;
 		    break;
 	
 		case 'w': /* Copy entire WCS */
-		    nkwd1 = 87;
+		    nkwd1 = 236;
 		    if (nkwd + nkwd1 > maxnkwd) {
 			maxnkwd = nkwd + nkwd1 + 32;
 			kwdnew = (char **) calloc (maxnkwd, sizeof (void *));
@@ -147,7 +148,7 @@ char **av;
 			free (kwd);
 			kwd = kwdnew;
 			}
-		    for (ikwd = nkwd; i < nkwd+nkwd1; i++) {
+		    for (ikwd = nkwd; i < nkwd+nkwd1+32; i++) {
 			kwd[ikwd] = (char *) calloc (32, 1);
 			}
 		    strcpy (kwd[nkwd], "RA");
@@ -327,6 +328,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Copy FITS or IRAF header keyword values from first file to others\n");
@@ -449,6 +451,7 @@ char	*kwd[];		/* Names of keywords for which to copy values */
 	}
 
     if (verbose) {
+	fprintf (stderr,"%s\n",RevMsg);
 	if (copyall)
 	    fprintf (stderr,"Copy Header from ");
 	else
@@ -575,6 +578,7 @@ char	*kwd[];		/* Names of keywords for which to copy values */
     if (keyset || histset) {
 	if (hgets (headout, "CPHEAD", 72, history))
 	    hputc (headout, "HISTORY", history);
+	strcpy (history, RevMsg);
 	endchar = strchr (history, ',');
 	*endchar = (char) 0;
 	strcat (history, " ");
@@ -597,6 +601,7 @@ char	*kwd[];		/* Names of keywords for which to copy values */
 			history[lhist-2] = (char) 0;
 		    strcat (history, " updated");
 		    hputc (headout, "HISTORY", history);
+		    strcpy (history, RevMsg);
 		    endchar = strchr (history, ',');
 		    *endchar = (char) 0;
 		    strcat (history, " ");
@@ -701,4 +706,6 @@ char	*kwd[];		/* Names of keywords for which to copy values */
  * Sep  1 2011	Fix overflow bug by increasing size of history from 72 to 128
  *
  * Mar  3 2015	Only free headout if it is different from header
+ *
+ * Jun 24 2016	Increase number of keywords to handle distortion polynomials
  */

@@ -39,6 +39,7 @@ static void usage();
 static void SumPix();
 extern double PhotPix();
 
+static char *RevMsg = "SUMPIX WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;	/* If 1, print only program name and version */
@@ -229,6 +230,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Sum row, column, or region of a FITS or IRAF image\n");
@@ -326,6 +328,7 @@ char *rrange;	/* Row range string */
 	    }
 	}
     if (verbose) {
+	fprintf (stderr,"%s\n",RevMsg);
 	if (!strcmp (crange, "0"))
 	    fprintf (stderr,"Sum rows %s in ", rrange);
 	else if (!strcmp (rrange, "0"))
@@ -824,6 +827,7 @@ char *rrange;	/* Row range string */
  *
  * Jun 21 2006	Clean up code
  *
+ * Jan 10 2007	Declare RevMsg static, not const
  * Jan 10 2007	Include wcs.h
  * Jan 11 2007	Add PhotPix to compute circular aperture photometry
  *

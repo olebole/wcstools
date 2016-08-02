@@ -1,5 +1,5 @@
 /* File getfits.c
- * June 9, 2016
+ * June 24, 2016
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
@@ -43,6 +43,7 @@ static void nextname();	/* Find next available name (namea, nameb, ...) */
 static int ExtractFITS();
 
 static int verbose = 0;		/* verbose/debugging flag */
+static char *RevMsg = "GETFITS WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 static int version = 0;		/* If 1, print only program name and version */
 static char outname[128];	/* Name for output image */
 static char outdir[256];	/* Output directory pathname */
@@ -107,6 +108,7 @@ char **av;
 		usage ("Right ascension given but no declination");
 	    else {
 		strcpy (rastr, *av);
+		ac--;
 		strcpy (decstr, *++av);
 		ra0 = str2ra (rastr);
 		dec0 = str2dec (decstr);
@@ -318,6 +320,7 @@ usage (errmsg)
 
 char *errmsg;	/* Error message */
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     if (*errmsg)
@@ -417,6 +420,7 @@ int	nkwd;
 
 
     if (verbose && first) {
+	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr, "Extract from FITS image file %s\n", name);
 	}
 
@@ -607,6 +611,7 @@ int	nkwd;
 
     /* Add HISTORY notice of this conversion */
     if (ra0 > -99.0 && dec0 > -99.0) {
+	strcpy (history, RevMsg);
 	endchar = strchr (history, ',');
 	*endchar = (char) 0;
 	strcat (history, " ");
@@ -623,6 +628,7 @@ int	nkwd;
 	hputc (header, "HISTORY", history);
 	}
     if (xcpix && ycpix) {
+	strcpy (history, RevMsg);
 	endchar = strchr (history, ',');
 	*endchar = (char) 0;
 	strcat (history, " ");
@@ -636,6 +642,7 @@ int	nkwd;
 	hputc (header, "HISTORY", history);
 	}
     else if (crange && rrange) {
+	strcpy (history, RevMsg);
 	endchar = strchr (history, ',');
 	*endchar = (char) 0;
 	strcat (history, " ");
@@ -745,5 +752,6 @@ char *newname;
  * Jan 22 2012	Print error, not blank file, if requested region is off image
  * Sep 17 2013	Include fitswcs.h
  *
- * Jun  9 2916	Fix isnum() tests for added coloned times and dashed dates
+ * Jun  9 2016	Fix isnum() tests for added coloned times and dashed dates
+ * Jun 24 2016	Decrement argument counter after reading center RA
  */

@@ -1,4 +1,4 @@
-.TH imwcs(1) WCSTools "30 January 2003"
+.TH imwcs 1 WCSTools "30 January 2003"
 .SH Name
 imwcs \- Set WCS in FITS and IRAF image files
 .SH Synopsis
@@ -47,13 +47,13 @@ Erase image WCS keywords, getting initial WCS from command line
 Write FITS output no matter what input
 .TP
 .B \-g <class>
-Guide Star Catalog class (-1=all,0,3) (default -1)
+Guide Star Catalog class (\-1=all,0,3) (default \-1)
 .TP
 .B \-h <number>
 Change the maximum number of reference stars to match from 25 to
 .TP
 .B \-i <counts>
-Minimum peak value for star in image.  If negative, use -<counts> standard
+Minimum peak value for star in image.  If negative, use \-<counts> standard
 deviations as minimum.
 .TP
 .B \-j <RA> <Dec>
@@ -66,7 +66,7 @@ Use this magnitude to sort brightest catalog stars.
 Reflect left<->right before rotating and fitting
 .TP
 .B \-m [<bright magnitude>] <faint magnitude>
-Limiting catalog magnitude(s) (default none, bright -2 if only faint is given)
+Limiting catalog magnitude(s) (default none, bright \-2 if only faint is given)
 .TP
 .B \-n <number>
 Number of parameters to fit (1-8, or digit string). The default is 2 (RA+Dec)
@@ -99,7 +99,7 @@ Use this fraction extra stars (default 1.0)
 Offset tolerance in pixels (default 20)
 .TP
 .B \-u <file>
--u: File of X Y RA Dec assignments for initial WCS
+File of X Y RA Dec assignments for initial WCS
 .TP
 .B \-v
 Verbose listing of processing intermediate results
@@ -118,4 +118,4 @@ instead of polynomial solution.
 http://tdc-www.harvard.edu/software/wcstools/imwcs/
 
 .SH Author
-Doug Mink, SAO (dmink@cfa.harvard.edu)
+Jessica Mink, SAO (jmink@cfa.harvard.edu)

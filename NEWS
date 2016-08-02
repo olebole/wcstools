@@ -1,5 +1,20 @@
 WCSTools Package updates
 
+Version 3.9.4 (August 2, 2016) (after Ole Streicher)
+getdate: Fix input list so it works correctly (2016-08-02 for Armin Rest)
+imstar: Append to output line rather than overwriting it
+bincatc: Fix mis-reading of coordinates from command line
+cphead: Increase number of keywords to handle distortion polynomials
+filext: If no file extension, print null string, avoiding seg fault
+getfits: Decrement argument counter after reading center RA
+imcat: Fix typo in UCAC output format
+imstar: Fix sprintf of headline
+findstar.c: Fix but in trim section parsing
+fitsfile.c: Add one to header string length for trailing NULL
+wcs.c: Clean up use of ptype so it is always 3 characters long
+sortstar.c: Initialize haspm flag if zero
+Update all man pages
+
 Version 3.9.3 (June 23, 2016)
 wcs.h, wcs.c: Increase ctype string length to 15 (+null=16) for distortion
 wcslib.h, wcslib.c: Increase ctype string length to 15 (+null=16) for distortion

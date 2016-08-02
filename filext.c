@@ -1,9 +1,9 @@
 /* File filext.c
- * January 10, 2007
+ * June 24, 2016
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2002-2007
+   Copyright (C) 2002-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -80,7 +80,7 @@ char **av;
 		    ext = ext + 1;
 		}
 	    }
-	printf ("%s\n", ext);
+	printf ("%s\n", (ext)?ext:"");
 	}
 
     return (0);
@@ -96,4 +96,6 @@ usage ()
 /* Apr 29 2002	New program
  *
  * Jan 10 2007	Drop unused variables
+ *
+ * Jun 24 2016	If no extension, print null string, avoiding seg fault
  */

@@ -47,6 +47,7 @@ extern void setcdelt();
 extern void setproj();
 extern struct WorldCoor *GetFITSWCS();
 
+static char *RevMsg = "NEWFITS WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 static int verbose = 0;	/* verbose/debugging flag */
 static int bitpix = 0;	/* number of bits per pixel (FITS code, 0=no image) */
 static int version = 0;	/* If 1, print only program name and version */
@@ -283,6 +284,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Make dataless FITS image header files\n");
@@ -333,6 +335,7 @@ char *name;
     char extname[16];
 
     if (verbose) {
+	fprintf (stderr,"%s\n",RevMsg);
 	if (bitpix != 0)
 	    fprintf (stderr,"Create ");
 	else

@@ -1,9 +1,9 @@
 /* File bincat.c
- * January 10, 2007
+ * June 24, 2017
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2003-2007
+   Copyright (C) 2003-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -48,6 +48,7 @@ extern void setrefpix();
 extern void setcdelt();
 extern struct WorldCoor *GetFITSWCS();
 
+static char *RevMsg = "BINCAT WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 static int verbose = 0;		/* verbose flag */
 static int debug = 0;		/* debugging flag */
 static int bitpix = 0;	/* number of bits per pixel (FITS code, 0=no image) */
@@ -106,6 +107,7 @@ char **av;
     newname = NULL;
     starcat = NULL;
 
+    setrevmsg (RevMsg);
 
     /* Check name used to execute program and set catalog name accordingly */
     progname = ProgName (av[0]);
@@ -154,7 +156,7 @@ char **av;
 	    if (ac < 3)
 		usage((char)0, "3 arguments needed for center coordinate");
 	    else {
-		strcpy (rastr, *++av);
+		strcpy (rastr, *av);
 		ac--;
 		strcpy (decstr, *++av);
 		setcenter (rastr, decstr);
@@ -381,6 +383,7 @@ char	arg;		/* single character command line argument */
 char	*message;	/* Error message */
 {
     char *catname;
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     if (message != NULL)
@@ -438,6 +441,7 @@ char *name;
     int nmag;
 
     if (verbose)
+	fprintf (stderr,"%s\n",RevMsg);
 
     /* Skip this catalog if no name is given */
     if (refcatname == NULL || strlen (refcatname) == 0) {
@@ -591,4 +595,6 @@ char *parstring;
  * Nov 16 2006	Do not write image if no catalog objects are found
  *
  * Jan 10 2007	Drop unused variables
+ *
+ * Jun 24 2016	Fix mis-reading of coordinates from command line (found by Ole Streicher)
  */

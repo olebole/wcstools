@@ -49,6 +49,7 @@ static int printhead = 0;
 static char printonly = 'n';
 static int version = 0;		/* If 1, print only program name and version */
 
+static char *RevMsg = "XY2SKY WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -664,6 +665,7 @@ PrintUsage (command)
 char	*command;
 
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     if (command != NULL) {
@@ -722,6 +724,7 @@ char *listfile;		/* Name of file with list of input coordinates */
 	    printf ("listfile	%s\n", listfile);
 	printf ("radecsys	%s\n",wcs->radecout);
 	printf ("epoch	%.4f\n",wcs->epoch);
+	printf ("program	%s\n",RevMsg);
 	if (wcs->sysout == WCS_B1950 || wcs->sysout == WCS_J2000)
 	    printf ("ra         	dec         	");
 	else if (wcs->sysout == WCS_GALACTIC)
@@ -789,6 +792,7 @@ char *listfile;		/* Name of file with list of input coordinates */
 	printf ("\n");
 	}
     else {
+        fprintf (stderr,"%s\n",RevMsg);
 	if (listfile == NULL)
 	    fprintf (stderr,
 		"Print sky coordinates from %s image coordinates\n", fn);
@@ -868,6 +872,7 @@ char *listfile;		/* Name of file with list of input coordinates */
  * Feb 23 2006	Allow appended headers in TIFF, JPEG, and GIF files
  * Jun 21 2006	Initialize uninitialized variables
  *
+ * Jan 10 2007	Declare RevMsg static, not const
  * Jan 10 2007	Add buffer size=0 to tabopen() call
  * May  2 2007	Add heading for radecsys column in tab table output
  * Jul  5 2007	Parse command line arguments to initialize a WCS without a file

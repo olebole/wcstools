@@ -34,6 +34,7 @@
 static void usage();
 static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
+static char *RevMsg = "ADDPIX WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 static void AddPix();
 static int version = 0;		/* If 1, print only program name and version */
 
@@ -97,6 +98,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Add to pixel of FITS or IRAF image file\n");
@@ -179,6 +181,7 @@ char	**value;	/* value to insert into pixel */
 	    }
 	}
     if (verbose)
+	fprintf (stderr,"%s\n",RevMsg);
 
     /* Add specified value to specified pixel */
     hgeti4 (header,"BITPIX",&bitpix);

@@ -37,6 +37,7 @@ static int StackImage();
 static int verbose = 0;		/* verbose flag */
 static int wfits = 1;		/* if 1, write FITS header before data */
 static char *newname = NULL;
+static char *RevMsg = "IMSTACK WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 static int nfiles = 0;
 static int nbstack = 0;
 static int extend = 0;		/* If 1, output multi-extension FITS file */
@@ -211,6 +212,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Stack FITS or IRAF images into single FITS image\n");
@@ -298,6 +300,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	}
     if (ifile < 1 && verbose)
+	fprintf (stderr,"%s\n",RevMsg);
 
     /* Compute size of input image in bytes from header parameters */
     naxis = 0;

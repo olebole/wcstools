@@ -46,6 +46,7 @@ static int bitpix = 0;	/* number of bits per pixel (FITS code) */
 static int fitsout = 0;	/* Output FITS file from IRAF input if 1 */
 static int nsplit = 0;	/* Output multiple FITS files from n-extension file */
 static int overwrite = 0;	/* allow overwriting of input image file */
+static char *RevMsg = "IMROT WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 static int version = 0;		/* If 1, print only program name and version */
 static int xshift = 0;
 static int yshift = 0;
@@ -203,6 +204,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Rotate and/or Reflect catalog of objects in an image\n");

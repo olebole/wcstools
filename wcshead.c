@@ -47,6 +47,7 @@ static int restwave = 0;	/* If 1, print first dimension limits */
 static int printhead = 1;	/* 1 until header has been printed */
 static char *rootdir=NULL;	/* Root directory for input files */
 
+static char *RevMsg = "WCSHEAD WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -214,6 +215,7 @@ char **av;
 	usage();
 
     if (verbose)
+	fprintf (stderr,"%s\n",RevMsg);
 
     nf = 0;
     while (ac-- > 0) {
@@ -263,6 +265,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Print WCS part of FITS or IRAF image header\n");

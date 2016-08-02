@@ -44,6 +44,7 @@ static char coorsys[8];
 static double size = 0.0;
 static double frac = 0.0;
 
+static char *RevMsg = "IMSIZE WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int dss = 0;		/* Flag to drop extra stuff for DSS */
@@ -349,6 +350,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Print size of image in WCS and pixels\n");
@@ -422,6 +424,7 @@ char *name;
     fileroot[nc] = 0;
 
     if (verbose) {
+	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr,"Print World Coordinate System from ");
 	if (isiraf (name))
 	    fprintf (stderr,"IRAF image file %s\n", name);
@@ -677,6 +680,7 @@ char *name;
  * Jun 21 2006	Clean up code
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  *
+ * Jan 10 2007	Declare RevMsg static, not const
  * Dec 21 2007	Add option to put range of extensions in filenames
  * 
  * May 23 2008	Add y option to print FITS ISO format date of image

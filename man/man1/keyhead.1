@@ -1,13 +1,13 @@
-.TH keyhead(1) WCSTools "6 July 2001"
+.TH keyhead 1 WCSTools "6 July 2001"
 .SH Name
 keyhead \- Change FITS or IRAF header keyword names
 .SH Synopsis
-sethead [-hknv] <FITS or IRAF file> kw1=kw1a kw2=kwd2a ... kwn=kwdna
+sethead [\-hknv] <FITS or IRAF file> kw1=kw1a kw2=kwd2a ... kwn=kwdna
 .SH Description
 Change the names of keywords in FITS or IRAF image headers.  Each current
 image keyword whose entry is to be modified should be followed by an
 equal sign and a second keyword, with no intervening spaces.
-If the -r option is used, the value of the second keyword is transfered
+If the \-r option is used, the value of the second keyword is transfered
 to that of the first. Otherwise, the name of the first keyword is changed
 to the second keyword.
 To change keywords in a list of files, substitute @<listfile> for the file
@@ -47,4 +47,4 @@ Print confirmations of each keyword change.
 http://tdc-www.harvard.edu/software/wcstools/keyhead.html
 
 .SH Author
-Doug Mink, SAO (dmink@cfa.harvard.edu)
+Jessica Mink, SAO (jmink@cfa.harvard.edu)

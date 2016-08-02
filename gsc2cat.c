@@ -37,6 +37,7 @@ static int nlog = 10000;
 static void usage();
 void SaveGSC2();
 
+static char *RevMsg = "GSC2CAT WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 main (ac, av)
 int ac;
@@ -151,6 +152,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
         exit (-1);
     fprintf (stderr,"Resort the GSC2 file from FITS tables\n");

@@ -1,12 +1,12 @@
-.TH xy2sky(1) WCSTools "6 July 2001"
+.TH xy2sky 1  WCSTools "6 July 2001"
 .SH Name
 xy2sky \- Compute RA Dec from X Y using WCS in FITS and IRAF image files
 .SH Synopsis
-xy2sky [-vbjg] [-n ndec] file.fts x1 y1 ... xn yn
+xy2sky [\-vbjg] [\-n ndec] file.fts x1 y1 ... xn yn
 .br
 or
 .br
-xy2sky [-bdjgv] [-n ndec] file.fts @listfile
+xy2sky [\-bdjgv] [\-n ndec] file.fts @listfile
 .SH Description
 .I xy2sky
 (pronounced X-Y-to-sky) is a utility for getting the world coordinates of
@@ -31,7 +31,7 @@ B1950 (FK4) output
 RA and Dec output in degrees
 .TP
 .B \-e
-Ouput in ecliptic longitude and latitude in degrees.
+Output in ecliptic longitude and latitude in degrees.
 .TP
 .B \-f <number>
 Set third dimension for 3-D projections such as CSC
@@ -54,7 +54,7 @@ Set mode for output of LINEAR WCS coordinates:  0: x y linear
 Number of decimal places in output RA seconds
 .TP
 .B \-q <year>
-Output equinox if not 2000 (-j) or 1950 (-b)
+Output equinox if not 2000 (\-j) or 1950 (\-b)
 .TP
 .B \-t
 Output as tab-separated table
@@ -67,4 +67,4 @@ Use AIPS classic projections instead of WCSLIB
 .SH See Also
 sky2xy(1)
 .SH Author
-Doug Mink, SAO (dmink@cfa.harvard.edu)
+Jessica Mink, SAO (jmink@cfa.harvard.edu)

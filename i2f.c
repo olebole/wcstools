@@ -34,6 +34,7 @@ static void usage();
 static void IRAFtoFITS ();
 
 static int verbose = 0;		/* verbose/debugging flag */
+static char *RevMsg = "I2F WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 static int version = 0;		/* If 1, print only program name and version */
 static int delirafkey = 0;	/* If 1, delete IRAF .imh keywords */
 static int deliraffile = 0;	/* If 1, delete IRAF .imh files */
@@ -136,6 +137,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Write FITS files from IRAF image files\n");
@@ -200,6 +202,7 @@ char *name;
 	ext = strsrch (fitsname,".imh");
 	strcpy (ext,".fits");
 	if (verbose && first) {
+	    fprintf (stderr,"%s\n",RevMsg);
 	    if (outname[0] == (char) 0)
 		fprintf (stderr, "Write FITS file from IRAF image file %s\n",
 			 name);
@@ -235,6 +238,7 @@ char *name;
 	strcpy (fitsname, name);
 	strcat (fitsname,".fits");
 	if (verbose && first) {
+	    fprintf (stderr,"%s\n",RevMsg);
 	    fprintf (stderr,"Write FITS files from IRAF image file %s\n", irafname);
 	    }
 	}
@@ -245,6 +249,7 @@ char *name;
 	filename = filename + 1;
     else
 	filename = name;
+    strcpy (history, RevMsg);
     endchar = strchr (history, ',');
     *endchar = (char) 0;
     strcat (history, " ");

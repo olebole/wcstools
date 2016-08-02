@@ -1,9 +1,9 @@
 /* File imcat.c
- * May 13, 2015
+ * June 24, 2016
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2015
+   Copyright (C) 1996-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -64,6 +64,7 @@ extern void setdateobs();
 extern void setparm();
 extern void setnpix();
 
+static char *RevMsg = "IMCAT WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */
@@ -163,6 +164,7 @@ char **av;
 	region_char[i] = 0;
 	obname[i] = 0;
 	}
+    setrevmsg (RevMsg);
 
     /* Check name used to execute programe and set catalog name accordingly */
     progname = ProgName (av[0]);
@@ -642,6 +644,7 @@ char	*command;
     char *srcname;
     char *catname;
 
+    fprintf (stderr,"%s %s\n", progname, RevMsg);
     if (version)
 	exit (0);
 
@@ -920,6 +923,7 @@ char	**refcatname;	/* reference catalog name */
     isp[2] = 0;
     isp[3] = 0;
     if (verbose || printhead)
+	printf ("\n%s %s\n", progname, RevMsg);
     for (i = 0; i < 255; i++)
 	blanks[i] = ' ';
     blanks[255] = (char) 0;
@@ -1504,6 +1508,7 @@ char	**refcatname;	/* reference catalog name */
 	    }
 	}
 
+    sprintf (headline, "program	%s %s", progname, RevMsg);
     if (wfile)
 	fprintf (fd, "%s\n", headline);
     if (tabout)
@@ -1771,9 +1776,7 @@ char	**refcatname;	/* reference catalog name */
 		    strcat (headline, temp);
 		    }
 		if (refcat == UCAC2 || refcat == UCAC3 || refcat == UCAC4) {
-		    nim = gc[i] / 1000;
-		    nct = gc[i] % 1000;
-		    sprintf (temp, "  ni  nc", nim, nct);
+		    sprintf (temp, "  ni  nc");
 		    strcat (headline, temp);
 		    }
 		else if (gcset)
@@ -2454,6 +2457,7 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Sep 26 2006	Increase length of rastr and destr from 16 to 32
  * Nov  6 2006	Print SDSS number as character string; it is now 18 digits long
  *
+ * Jan 10 2007	Declare RevMsg static, not const
  * Jul  5 2007	Add -l command to set image size
  * Jul  5 2007	Modify code to use WCS info from command line without image
  * Jul 24 2007	Add SkyBot format for output
@@ -2477,4 +2481,6 @@ double	*decmin, *decmax;	/* Declination limits in degrees (returned) */
  * Jul  2 2014	Add UCAC4 catalog
  *
  * May 13 2015	Print two decimal place, not integer, pixel coordinates
+ *
+ * Jun 24 2016	Fix typo in UCAC output format
  */

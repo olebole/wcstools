@@ -47,6 +47,7 @@ extern char *GetFITShead();
 static char nextnsp();
 static int PrintValues();
 
+static char *RevMsg = "GETHEAD WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;
@@ -740,6 +741,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF header keyword values\n");
@@ -885,6 +887,7 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	}
 
     if (verbose) {
+	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr,"Print Header Parameter Values from ");
 	hgeti4 (header, "IMHVER", &iraffile );
 	if (filetype == FILE_ASCII)
@@ -1496,6 +1499,7 @@ char *string;
  * Jul 12 2006	Add option using : to read a sub-keyword from IRAF multi-line
  * Jul 13 2006	Print only first 999 characters of multiline keyword value
  *
+ * Jan 10 2007	Declare RevMsg static, not const
  * Jul 25 2007	Fix bug which badly reset sexigesimal decimal places to ndec
  * Dec 21 2007	Add option to put range of extensions in filenames
  *

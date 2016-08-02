@@ -40,6 +40,7 @@ static int maxnfile = MAXFILES;
 static void PrintUsage();
 static void FitWCS();
 
+static char *RevMsg = "IMWCS WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int writeheader = 0;	/* write header fields; else read-only */
@@ -119,6 +120,7 @@ char **av;
     matchfile = NULL;
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
+    setrevmsg (RevMsg);
 
     /* Check name used to execute programe and set catalog name accordingly */
     progname = ProgName (av[0]);
@@ -521,6 +523,7 @@ PrintUsage (command)
 char    *command;
 
 {
+    fprintf (stderr,"%s %s\n", progname, RevMsg);
     if (version)
 	exit (-1);
 
@@ -675,6 +678,7 @@ char	*name;		/* FITS or IRAF image filename */
 	}
 
     if (verbose) {
+	fprintf (stderr,"%s %s\n", progname, RevMsg);
 	fprintf (stderr,"Set World Coordinate System in ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", name);
@@ -794,6 +798,7 @@ char	*name;		/* FITS or IRAF image filename */
 		(void) PrintWCS (header, verbose);	/* print new WCS */
 
 	/* Log WCS program version in the image header */
+	    hputs (header,"IMWCS",RevMsg);
 	    hgeti4 (header, "BITPIX", &bpix);
 
 	    if (fitsout) {

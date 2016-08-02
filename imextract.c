@@ -37,6 +37,7 @@
 static void usage();
 static int ExtractImage();
 
+static char *RevMsg = "IMEXTRACT WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose flag */
 static int krename = 0;
@@ -224,6 +225,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Extract one FITS or IRAF image from compound image\n");
@@ -308,6 +310,7 @@ char	*kwd[];		/* Names and values of those keywords */
 	    }
 	}
     if (verbose && !ifile)
+	fprintf (stderr,"%s\n",RevMsg);
 
     /* Compute size of input image in bytes from header parameters */
     hgeti4 (header,"NAXIS",&naxis0);
@@ -660,6 +663,7 @@ char	*kwd[];		/* Names and values of those keywords */
  * Jul 18 2005	Fix bug so 1-D images can be extracted from spectrum stacks
  *
  * Jan  5 2007	Pass pointer to space-padding character, not character
+ * Jan 10 2007	Declare RevMsg static, not const
  *
  * Mar 27 2009	Set extension to 0 if not specified
  * Nov 12 2009	Only set extension to 0 if not specified in any way

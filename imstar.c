@@ -1,9 +1,9 @@
 /* File imstar.c
- * May 13, 2015
+ * June 24, 2016
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2015
+   Copyright (C) 1996-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -41,6 +41,7 @@
 #define MAXFILES 1000
 static int maxnfile = MAXFILES;
 
+static char *RevMsg = "IMSTAR WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose flag */
 static int debug = 0;		/* debugging flag */
@@ -398,6 +399,7 @@ PrintUsage (command)
 char	*command;	/* Name of program being executed */
 
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
 
@@ -516,6 +518,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	}
     if (verbose && printhead)
+	fprintf (stderr,"%s\n",RevMsg);
 
     /* Set image to unsigned integer if 16-bit and flag set */
     if (setuns) {
@@ -762,6 +765,7 @@ char	*filename;	/* FITS or IRAF file filename */
 		fprintf (fd, "%s\n", headline);
 	    else
 		printf ("%s\n", headline);
+	    sprintf (headline, "program	%s", RevMsg);
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
 	    else
@@ -781,12 +785,14 @@ char	*filename;	/* FITS or IRAF file filename */
 		printf ("%s\n", headline);
 	    }
 	else if (outform == CAT_ASCII) {
+	    sprintf (headline, "Stars extracted by %s", RevMsg);
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
 	    else
 		printf ("%s\n", headline);
 	    }
 	else if (outform == CAT_DAOFIND) {
+	    sprintf (headline, "#Stars extracted by %s", RevMsg);
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
 	    else
@@ -812,7 +818,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    sprintf (headline, "%7.2f %7.2f %6.2f  %d",
 		    sx[i],sy[i],smag[i],sp[i]);
 	    if (iswcs (wcs))
-		sprintf (headline, "%s %s %s", headline, rastr, decstr);
+		sprintf (headline+strlen(headline), " %s %s", rastr, decstr);
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
 	    else
@@ -821,14 +827,11 @@ char	*filename;	/* FITS or IRAF file filename */
 	else {
 	    sprintf (headline, "%3d %s %s %6.2f", i+1,rastr,decstr,smag[i]);
 	    if (wcs->nxpix < 100.0 && wcs->nypix > 100.0)
-		sprintf (headline, "%s  %5.2f %5.2f %d",
-		headline, sx[i],sy[i], sp[i]);
+		sprintf (headline+strlen(headline), " %5.2f %5.2f %d", sx[i],sy[i], sp[i]);
 	    else if (wcs->nxpix < 1000.0 && wcs->nypix < 1000.0)
-		sprintf (headline, "%s  %6.2f %6.2f %d",
-		headline, sx[i],sy[i], sp[i]);
+		sprintf (headline+strlen(headline), " %6.2f %6.2f %d", sx[i],sy[i], sp[i]);
 	    else
-		sprintf (headline, "%s  %7.2f %7.2f %d",
-		headline, sx[i],sy[i], sp[i]);
+		sprintf (headline+strlen(headline), " %7.2f %7.2f %d", sx[i],sy[i], sp[i]);
 	    if (wfile)
 		fprintf (fd, "%s\n", headline);
 	    else
@@ -934,9 +937,12 @@ char	*filename;	/* FITS or IRAF file filename */
  * Jun 21 2006	Clean up code
  *
  * Jan 10 2007	Fix arguments to MagSortStars() and RASortStars()
+ * Jan 10 2007	Declare RevMsg static, not const
  * Apr  6 2007	Add -g command to not rotate image WCS with image
  * Apr 27 2007	Set magoff to zero only if greater than 89, not 20
  * Oct 15 2007	Add -c option to print total flux in counts
  *
  * May 13 2015	Print two decimal place, not integer, pixel coordinates
+ *
+ * Jun 24 2016	Fix sprintf of headline after Ole Streicher
  */

@@ -49,6 +49,7 @@ static char *outname0 = "remap.fits";
 static char *outname;
 static char *wcsproj;           /* WCS projection name */
 
+static char *RevMsg = "REMAP WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 static int nfiles = 0;
 static int fitsout = 1;
 static double secpix = 0;
@@ -365,6 +366,7 @@ char	arg;	/* single character command line argument */
 char	*message;	/* Error message */
 
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     if (message != NULL)
@@ -473,6 +475,7 @@ char	*filename;	/* FITS or IRAF file filename */
 	    }
 	}
     if (ifile < 1 && verbose)
+	fprintf (stderr,"%s\n",RevMsg);
 
     /* Set input world coordinate system from first image header */
     wcsin = wcsinit (header);

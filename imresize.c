@@ -62,6 +62,7 @@ static int bitpix = 0;		/* Bits per output pixel */
 static int mean = 0;		/* 1 if mean for regrouped pixels */
 static int northup = 0;		/* 1 to rotate to north up, east left */
 
+static char *RevMsg = "IMRESIZE WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -280,6 +281,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Resize FITS and IRAF image files\n");
@@ -479,6 +481,7 @@ char *name;
 	strcpy (newname, name);
 
     if (verbose) {
+	fprintf (stderr,"%s\n",RevMsg);
 	if (resize)
 	    fprintf (stderr,"%d x %d dimension reduction ", xfactor, yfactor);
 	if (filter == GAUSSIAN)

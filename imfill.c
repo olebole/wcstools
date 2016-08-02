@@ -63,6 +63,7 @@ static char *badheader;		/* FITS bad pixel header */
 static double minpixval = -9999.0;	/* Minimum good pixel value */
 static double maxpixval = -9999.0;	/* Maximum good pixel value */
 
+static char *RevMsg = "IMFILL WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -280,6 +281,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Fill bad pixels in FITS and IRAF image files\n");
@@ -468,6 +470,7 @@ char *name;
 
 
     if (verbose) {
+	fprintf (stderr,"%s\n",RevMsg);
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s", name);
 	else

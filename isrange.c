@@ -27,6 +27,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+static char *RevMsg = "ISRANGE WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int isrange();
 
@@ -40,12 +41,14 @@ char **av;
     /* Check for help or version command first */
     str = *(av+1);
     if (!str || !strcmp (str, "help") || !strcmp (str, "-help")) {
+	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr,"Usage:  Return 1 if argument is a range of numbers: n1[-n2[xs]],...\n");
 	fprintf (stderr,"        where n1=first number, n2=last number, and s=step size.\n");
 	exit (1);
 	}
 
     else if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	fprintf (stderr,"%s\n",RevMsg);
 	exit (1);
 	}
 
@@ -86,4 +89,5 @@ char *string;		/* String which might be a range of numbers */
  * Mar  3 2006	Declare main to be int
  * Jun 20 2006	Drop unused variable fn
  *
+ * Jan 10 2007	Declare RevMsg static, not const
  */

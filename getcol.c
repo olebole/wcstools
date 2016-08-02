@@ -37,6 +37,7 @@
 #define MAXFILES	2000
 #define MAXLINES	100000
 
+static char *RevMsg = "GETCOL WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static void usage();
 static int ListFile();
@@ -471,6 +472,7 @@ static void
 usage ()
 
 {
+    fprintf (stderr,"%s\n", RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Extract specified columns from an ASCII table file\n");
@@ -578,6 +580,7 @@ char	*lfile;		/* Name of file with lines to list */
     limset = NULL;
 
     if (verbose)
+	printf ("\n%s\n", RevMsg);
 
     if (listpath)
 	printf ("%s ", filename);

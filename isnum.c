@@ -28,6 +28,7 @@
 #include <string.h>
 #include "libwcs/fitshead.h"
 
+static char *RevMsg = "ISNUM WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -40,6 +41,7 @@ char **av;
     /* Check for version or help command first */
     str = *(av+1);
     if (!str || !strcmp (str, "help") || !strcmp (str, "-help")) {
+	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr,"Usage: Return 1 if argument is an integer,\n");
 	fprintf (stderr,"       Return 2 if it is floating point\n");
 	fprintf (stderr,"       Return 3 if it is a time with colons\n");
@@ -48,6 +50,7 @@ char **av;
 	exit (1);
 	}
     else if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	fprintf (stderr,"%s\n",RevMsg);
 	exit (1);
 	}
 

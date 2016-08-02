@@ -36,6 +36,7 @@ static double matchrad = 5.0;	/* Initial match radius is 5 arcseconds */
 int version = 0;		/* If 1, print only program name and version */
 static void usage();
 
+static char *RevMsg = "MATCHCAT WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 main (ac, av)
 int ac;
@@ -206,6 +207,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
         exit (-1);
     fprintf (stderr,"Match catalog entries after combining, RA-sorting them\n");
@@ -215,4 +217,5 @@ usage ()
     exit (1);
 }
 /*
+ * Jan 10 2007	Declare RevMsg static, not const
  */

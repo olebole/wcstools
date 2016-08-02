@@ -14,6 +14,7 @@ extern int   ned_errno;
 static char searchorder[4];
 static int printall = 0;
 static void PrintUsage();
+static char *RevMsg = "SIMPOS 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -329,6 +330,7 @@ char *av[];
 		    printf ("equinox	2000.0\n");
 		    printf ("epoch	2000.0\n");
 		    }
+		printf ("program	%s\n",RevMsg);
 		if (printname)
 		    printf ("id    	");
 		printf ("ra      	dec       ");
@@ -434,6 +436,7 @@ PrintUsage (command)
 char	*command;	/* Command where error occurred or NULL */
 
 {
+    fprintf (stderr,"%s\n", RevMsg);
     fprintf (stderr,"Return RA and Dec for object name using SIMBAD, NED, Vizier\n");
     fprintf (stderr,"Usage:  simpos [-idtv][b|e|g] name1 name2 ...\n");
     fprintf (stderr,"        simpos [-idtv][b|e|g] @namelist ...\n");
@@ -458,6 +461,7 @@ char	*command;	/* Command where error occurred or NULL */
  *
  * Jun 20 2006	Clean up code
  *
+ * Jan 10 2007	Declare RevMsg static, not const
  * Jan 10 2007	exit(0) if successful
  * Jan 11 2007	Include fitsfile.h instead of fitshead.h
  * Jan 16 2007	Fix leading space bug

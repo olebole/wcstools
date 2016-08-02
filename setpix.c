@@ -48,6 +48,7 @@ static int version = 0;		/* If 1, print only program name and version */
 static int logrange = 1;	/* Log pixel change in image header */
 static char *pform = NULL;	/* Format in which to print pixels */
 
+static char *RevMsg = "SETPIX WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -225,6 +226,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Edit pixels of FITS or IRAF image file\n");
@@ -327,6 +329,7 @@ char	**value;	/* value to insert into pixel */
 	    }
 	}
     if (verbose)
+	fprintf (stderr,"%s\n",RevMsg);
 
     /* Change value of specified pixel */
     hgeti4 (header,"BITPIX",&bitpix);

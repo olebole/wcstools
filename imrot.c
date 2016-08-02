@@ -38,6 +38,7 @@ static int inverted = 0;	/* If 1, invert intensity (-1 * (z-zmax)) */
 static int deletewcs = 0;	/* If 1, delete FITS WCS keywords in image */
 static int rotatewcs = 1;	/* If 1, rotate FITS WCS keywords in image */
 static int extnum = 0;		/* Use extension number instead of EXTNAME for output */
+static char *RevMsg = "IMROT WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -266,6 +267,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Shift, Rotate, and/or Reflect FITS and IRAF image files\n");
@@ -466,6 +468,7 @@ char *name;
 	strcpy (newname, name);
 
     if (verbose) {
+	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr,"Shift, rotate, and/or reflect ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s", name);

@@ -24,6 +24,7 @@ static int hms = 0;		/* 1 for output in hh:mm:ss dd:mm:ss */
 static int nf = 0;
 static int version = 0;		/* If 1, print only program name and version */
 
+static char *RevMsg = "TESTROT WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 main (ac, av)
 int ac;
@@ -108,6 +109,7 @@ char **av;
 	usage ();
 
     if (verbose)
+	fprintf (stderr,"%s\n",RevMsg);
 
     nf = 0;
     while (ac-- > 0) {
@@ -122,6 +124,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Print WCS part of FITS or IRAF image header\n");

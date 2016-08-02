@@ -1,18 +1,18 @@
-.TH scat(1) WCSTools "30 January 2003"
+.TH scat 1 WCSTools "30 January 2003"
 .SH Name
 scat \- Find catalog stars in a square or circle on the sky
 .SH Synopsis
-scat [options] [-b or -j] ra dec
+scat [options] [\-b or \-j] ra dec [equinox]
 .SH Description
 .I scat
 is a utility for finding all of the Hubble Space Telescope Guide Star
 Catalog (GSC), U.S. Naval Observatory A2.0 (UA2), B1.0 (UB1), SA2.0 (USA2),
 or UJ (UJC) Catalogs, or locally catalogued objects in a specified region
-of the sky and listing their sky coordinates to standard output. If the -w
+of the sky and listing their sky coordinates to standard output. If the \-w
 flag is set, they are written to a file objectname.catalogname, where objectname
-is given by the argument to -o on the command line, defaulting to "search",
-and catalogname is given by the argument to -c on the command line. The
-catalog defaults to the GSC, if no -c argument is present. scat resembles
+is given by the argument to \-o on the command line, defaulting to "search",
+and catalogname is given by the argument to \-c on the command line. The
+catalog defaults to the GSC, if no \-c argument is present. scat resembles
 rgsc(1) and star(1), which can search from lists of coordinates but
 cannot sort the output.  sgsc, suac, and susac are links to this program.1
 .SH Options
@@ -37,7 +37,7 @@ Output ecliptic coordinates
 Output search center for other programs
 .TP
 .B \-g <class>
-HST Guide Star Catalog object class (0=stars 3=galaxies -1=all)
+HST Guide Star Catalog object class (0=stars 3=galaxies \-1=all)
 .TP
 .B \-h
 Print search and column heading, else do not 
@@ -55,7 +55,7 @@ Add value of this keyword to end of output lines from a tab table search
 Print search center and closest star on one line
 .TP
 .B \-m [<bright magnitude>] <faint magnitude>
-Limiting catalog magnitude(s) (default none, bright -2 if only faint is given)
+Limiting catalog magnitude(s) (default none, bright \-2 if only faint is given)
 .TP
 .B \-n <num>
 Number of brightest stars to print 
@@ -84,10 +84,10 @@ add x and y columns to end of tab output line
 Verbose listing of processing intermediate results
 .TP
 .B \-w
-Write output file objectname.catalog or search.catalog if -o is not used.
+Write output file objectname.catalog or search.catalog if \-o is not used.
 .TP
 .B \-x <type>
-GSC object type (0=stars 3=galaxies -1=all -2=bands)
+GSC object type (0=stars 3=galaxies \-1=all \-2=bands)
 .TP
 .B \-y <year>
 Epoch of output positions in fractional years (for proper motion only)
@@ -103,4 +103,4 @@ imcat()
 http://tdc-www.harvard.edu/software/wcstools/scat/
 
 .SH Author
-Doug Mink, SAO (dmink@cfa.harvard.edu)
+Jessica Mink, SAO (jmink@cfa.harvard.edu)

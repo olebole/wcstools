@@ -38,6 +38,7 @@ static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
 static int version = 0;		/* If 1, print only program name and version */
 
+static char *RevMsg = "SUBPIX WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -99,6 +100,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Subtract from pixel of FITS or IRAF image file\n");
@@ -181,6 +183,7 @@ char	**value;	/* value to insert into pixel */
 	    }
 	}
     if (verbose)
+	fprintf (stderr,"%s\n",RevMsg);
 
     /* Add specified value to specified pixel */
     hgeti4 (header,"BITPIX",&bitpix);

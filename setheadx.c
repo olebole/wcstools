@@ -66,6 +66,7 @@ static int addwcs = 0;
 static int errflag = 0;		/* Error return from program */
 static char *rootdir=NULL;	/* Root directory for input files */
 
+static char *RevMsg = "SETHEAD WCSTools 3.7.8, 17 August 2009, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -549,6 +550,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (0);
     fprintf (stderr,"Set FITS or IRAF header keyword values\n");
@@ -693,6 +695,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 	    }
 	}
     if (verbose && first_file) {
+	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr,"Set Header Parameter Values in ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", filepath);
@@ -1128,6 +1131,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
     if (keyset || histset) {
 	if (hgets (header, "SETHEAD", 72, history))
 	    hputc (header, "HISTORY", history);
+	strcpy (history, RevMsg);
 	endchar = strchr (history, ',');
 	*endchar = (char) 0;
 	strcat (history, " ");
@@ -1170,6 +1174,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		if (histset) {
 		    strcat (history, " updated");
 		    hputc (header, "HISTORY", history);
+		    strcpy (history, RevMsg);
 		    endchar = strchr (history, ',');
 		    *endchar = (char) 0;
 		    strcat (history, " ");

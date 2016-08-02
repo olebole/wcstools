@@ -31,6 +31,7 @@ static int verbose = 0;         /* verbose/debugging flag */
 static int replace = 0;         /* character replacement flag */
 static char c1, c2;
 static void usage();
+static char *RevMsg = "FILEDIR WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -110,6 +111,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr, "%s\n", RevMsg);
     fprintf (stderr,"FILEDIR: Return directory part of file pathname\n");
     fprintf(stderr,"Usage:  filedir file1 file2 file3 ...\n");
     exit (1);

@@ -53,6 +53,7 @@ static int nproc = 0;
 static int overwrite = 0;	/* If 1, overwrite input image */
 static int first_file = 1;
 
+static char *RevMsg = "DELHEAD WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -241,6 +242,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Delete FITS or IRAF header keyword entries\n");
@@ -315,6 +317,7 @@ char	*kwd[];		/* Names of those keywords */
 	    }
 	}
     if (verbose && first_file) {
+	fprintf (stderr,"%s\n",RevMsg);
 	if (delwcs)
 	    fprintf (stderr,"Delete Header WCS Parameter Entries from ");
 	else if (delcom)

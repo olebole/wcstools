@@ -38,6 +38,7 @@ extern int DelWCSFITS ();
 static int verbose = 0;		/* Verbose/debugging flag */
 static int newimage = 0;	/* New image flag */
 static int readimage = 1;	/* Read and write image as well as header */
+static char *RevMsg = "DELWCS WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 static int version = 0;		/* If 1, print only program name and version */
 
 int
@@ -94,6 +95,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Delete WCS in FITS and IRAF image files\n");
@@ -234,6 +236,7 @@ char *filename;
 	}
 
     if (verbose) {
+	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr,"Remove World Coordinate System from ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", filename);

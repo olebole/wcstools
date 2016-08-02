@@ -47,6 +47,7 @@ static int nfix = 0;		/* Number of regions to fix
 static int version = 0;		/* If 1, print only program name and version */
 static int xl[MAXFIX],yl[MAXFIX]; /* Lower left corners of regions (1 based) */
 static int xr[MAXFIX],yr[MAXFIX]; /* Upper right corners of regions (1 based) */
+static char *RevMsg = "FIXPIX WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -173,6 +174,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Fix pixel regions of FITS or IRAF image file\n");
@@ -258,6 +260,7 @@ char	*regionlist;	/* Name of file of regions to fix, if nfix < 0 */
 	    }
 	}
     if (verbose)
+	fprintf (stderr,"%s\n",RevMsg);
 
     /* Fix values of specified area */
     hgeti4 (header,"BITPIX",&bitpix);

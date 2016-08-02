@@ -1,4 +1,4 @@
-WCSTools 3.9.3
+WCSTools 3.9.4
 
 WCSTools is a set of software utilities, written in C, which create,
 display and manipulate the world coordinate system of a FITS or IRAF
@@ -14,7 +14,7 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.9.3 of the WCSTools package developed by Jessica Mink
+This is version 3.9.4 of the WCSTools package developed by Jessica Mink
 (jmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code or algorithms from
 
@@ -39,6 +39,21 @@ all of the variables initialized.
 
 The update history is in the NEWS file, but here is what is new:
 
+Version 3.9.4 (August 2, 2016) (after Ole Streicher)
+getdate: Fix input list so it works correctly (2016-08-02 for Armin Rest)
+imstar: Append to output line rather than overwriting it
+bincatc: Fix mis-reading of coordinates from command line
+cphead: Increase number of keywords to handle distortion polynomials
+filext: If no file extension, print null string, avoiding seg fault
+getfits: Decrement argument counter after reading center RA
+imcat: Fix typo in UCAC output format
+imstar: Fix sprintf of headline
+findstar.c: Fix but in trim section parsing
+fitsfile.c: Add one to header string length for trailing NULL
+wcs.c: Clean up use of ptype so it is always 3 characters long
+sortstar.c: Initialize haspm flag if zero
+Update all man pages
+
 Version 3.9.3 (June 23, 2016)
 wcs.h, wcs.c: Increase ctype string length to 15 (+null=16) for distortion
 wcslib.h, wcslib.c: Increase ctype string length to 15 (+null=16) for distortion
@@ -60,13 +75,6 @@ getdate: Fix bug with FITS date conversion (2015-08-24)
 filedir: Add option to read file pathnames from stdin
 catutil.c: Add tab as an assignment character in agets()
 hget.c: Add return of 4 for yyyy-mm-dd dates to isnum() (2015-11-06)
-
-Version 3.9.1 (March 24, 2015)
-remap: Declare GetFITSWCS() as well as GetWCSFITS()
-cphead: Fix bug freeing header string more than once
-imcat,scat,immatch,imwcs: Fix bugs with web access to GSC2 and SDSS catalogs
-gsc2read.c: Drop concatenation of "blank" string in middle of search URL
-webread.c: Fix bug in URL filtering
 
 Documentation, with examples and installation directions, is on the
 World Wide Web at
@@ -184,5 +192,5 @@ wcshead	Print basic world coordinate system information on one line per image
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
 
--Jessica Mink, SAO, 2016-06-23
+-Jessica Mink, SAO, 2016-08-02
  http://tdc-www.harvard.edu/mink/

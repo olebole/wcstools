@@ -55,6 +55,7 @@ static double ghwidth = 1.0;	/* Gaussian half-width */
 static int filter = 0;		/* Filter code */
 static int nlog = 100;		/* Number of lines between log messages */
 
+static char *RevMsg = "IMSMOOTH WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -233,6 +234,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Filter FITS and IRAF image files\n");
@@ -407,6 +409,7 @@ char *name;
 	strcpy (newname, name);
 
     if (verbose) {
+	fprintf (stderr,"%s\n",RevMsg);
 	if (filter == GAUSSIAN)
 	    fprintf (stderr,"%d x %d Gaussian Filter ", xsize, ysize);
 	else if (filter == MEDIAN)

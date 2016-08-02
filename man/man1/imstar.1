@@ -1,4 +1,4 @@
-.TH imstar(1) WCSTools "6 July 2001"
+.TH imstar 1 WCSTools "6 July 2001"
 .SH Name
 imstar \- Find stars in FITS and IRAF image files
 .SH Synopsis
@@ -7,7 +7,7 @@ imstar  [options] [FITS or IRAF filename] or [@file of image file names]
 .SH Options
 .TP
 .B <hh:mm:ss> <dd:mm:ss> [J2000, B1950]
-Coordinates for center (or reference pixel if -x is used).
+Coordinates for center (or reference pixel if \-x is used).
 .TP
 .B \-a <angle>
 Image rotation angle in degrees (default 0).  If multiple of 90, rotate
@@ -34,7 +34,7 @@ Print heading, else do not
 .B \-i <num>
 Minimum peak value for star in image (<0=-sigma)
 Setting this to reject all but 10-15 stars is a good way to speed up the
-star-finding process.  If num is less than zero, the minimum peak is -num
+star-finding process.  If num is less than zero, the minimum peak is \-num
 image pixel standard deviations.  Setting this number rejects faint stars
 early in the selection process for a significant saving in computing time.
 .TP
@@ -45,7 +45,7 @@ Output J2000 (FK5) coordinates (default=image equinox)
 Print each star as it is found for debugging 
 .TP
 .B \-l
-Reflect the image left <-> right before rotating (-a) and searching for stars.
+Reflect the image left <\-> right before rotating (\-a) and searching for stars.
 .TP
 .B \-m <magnitude>
 Magnitude offset
@@ -81,20 +81,20 @@ Verbose listing of processing intermediate results
 .TP
 .B \-w
 Write output to a file in addition to standard out.
-If DAO format (-o), create the name by adding .dao to the image file name.
-If Starbase format (-t), create the name by adding .tab to the image file name.
-If ASCII format (-f), create the name by adding .stars to the image file name.
+If DAO format (\-o), create the name by adding .dao to the image file name.
+If Starbase format (\-t), create the name by adding .tab to the image file name.
+If ASCII format (\-f), create the name by adding .stars to the image file name.
 .TP
 .B \-x <X> <Y>
 X and Y coordinates of reference pixel (if not in header or image center)
 .TP
 .B \-z
-Use AIPS classic projection code (for "-SIN", "-TAN", "-ARC", "-NCP",
-"-GLS", "-MER", "-AIT" and "-STG" only) instead of WCSLIB proposed
+Use AIPS classic projection code (for "\-SIN", "\-TAN", "\-ARC", "\-NCP",
+"\-GLS", "\-MER", "\-AIT" and "\-STG" only) instead of WCSLIB proposed
 standard projection code.
 
 .SH Web Page
 http://tdc-www.harvard.edu/software/wcstools/imstar/
 
 .SH Author
-Doug Mink, SAO (dmink@cfa.harvard.edu)
+Jessica Mink, SAO (jmink@cfa.harvard.edu)

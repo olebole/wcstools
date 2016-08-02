@@ -1,5 +1,5 @@
 /*** File libwcs/fitsfile.c
- *** June 9, 2016
+ *** June 24, 2016
  *** By Jessica Mink, jmink@cfa.harvard.edu
  *** Harvard-Smithsonian Center for Astrophysics
  *** Copyright (C) 1996-2016
@@ -328,7 +328,7 @@ int	*nbhead;	/* Number of bytes before start of data (returned) */
 		nbprim = nrec * FITSBLOCK;
 		headend = ksearch (header,"END");
 		lprim = headend + 80 - header;
-		pheader = (char *) calloc ((unsigned int) nbprim, 1);
+		pheader = (char *) calloc ((unsigned int) (nbprim + 1), 1);
 		for (i = 0; i < lprim; i++)
 		    pheader[i] = header[i];
 		for (i = lprim; i < nbprim; i++)
@@ -2324,4 +2324,5 @@ char *from, *last, *to;
  * Jul 25 2014	Fix bug when reallocating buffer for long headers
  *
  * Jun  9 2016	Fix isnum() tests for added coloned times and dashed dates
+ * Jun 24 2016	Add 1 to allocation of pheader for trailing null, fix by Ole Streicher
  */

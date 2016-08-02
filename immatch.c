@@ -41,6 +41,7 @@ static void MatchCat();
 #define MAXFILES 1000
 static int maxnfile = MAXFILES;
 
+static char *RevMsg = "WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int rot = 0;
@@ -106,6 +107,7 @@ char **av;
     setfitwcs (0);
     nfile = 0;
     fn = (char **)calloc (maxnfile, sizeof(char *));
+    setrevmsg (RevMsg);
 
     /* Check name used to execute programe and set catalog name accordingly */
     progname = ProgName (av[0]);
@@ -426,6 +428,7 @@ PrintUsage (command)
 char	*command;		/* Name of program being executed */
 
 {
+    fprintf (stderr,"%s %s\n", progname, RevMsg);
     if (version)
 	exit (-1);
 
@@ -568,6 +571,7 @@ char	*name;			/* Name of FITS or IRAF image file */
 	}
 
     if (verbose) {
+	fprintf (stderr,"%s %s\n", progname, RevMsg);
 	fprintf (stderr,"Matching catalog to ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", name);
@@ -665,6 +669,7 @@ char	*name;			/* Name of FITS or IRAF image file */
  *
  * Jan 10 2007	Call setgsclass() instead of setclass()
  * Jan 10 2007	Call setuplate() instead of setplate()
+ * Jan 10 2007	Declare RevMsg static, not const
  * Jan 10 2007	Drop unused variable cs
  * Apr  6 2007	Rotate the image WCS unless -w is set
  */

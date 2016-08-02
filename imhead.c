@@ -39,6 +39,7 @@ static int nfiles = 0;		/* Nuber of files for headers */
 static int verbose = 0;		/* verbose/debugging flag */
 static int fitsout = 0;		/* If 1, write exact FITS header */
 static int zbitpix = 0;		/* If 1, set BITPIX to 0 for dataless header */
+static char *RevMsg = "IMHEAD WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 static int version = 0;		/* If 1, print only program name and version */
 
 int
@@ -142,6 +143,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF image header\n");
@@ -169,6 +171,7 @@ char *name;
 	return;
 
     if (verbose)
+	fprintf (stderr,"%s\n",RevMsg);
 
     if (verbose || nfiles > 1) {
 	if (isiraf (name))

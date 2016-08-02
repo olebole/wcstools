@@ -50,6 +50,7 @@ static int logfile = 0;
 static int nproc = 0;
 static int first_file = 1;
 
+static char *RevMsg = "KEYHEAD WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -231,6 +232,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Change FITS or IRAF header keyword names\n");
@@ -325,6 +327,7 @@ char	*kwd[];		/* Names and values of those keywords */
 	    }
 	}
     if (verbose && first_file) {
+	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr,"Change Header Keyword Names from ");
 	if (iraffile)
 	    fprintf (stderr,"IRAF image file %s\n", filename);
@@ -463,6 +466,7 @@ char	*kwd[];		/* Names and values of those keywords */
     if (keyset || histset) {
 	if (hgets (header, "KEYHEAD", 72, history))
 	    hputc (header, "HISTORY", history);
+	strcpy (history, RevMsg);
 	endchar = strchr (history, ',');
 	*endchar = (char) 0;
 	strcat (history, " ");
@@ -480,6 +484,7 @@ char	*kwd[];		/* Names and values of those keywords */
 		if (histset) {
 		    strcat (history, " updated");
 		    hputc (header, "HISTORY", history);
+		    strcpy (history, RevMsg);
 		    endchar = strchr (history, ',');
 		    *endchar = (char) 0;
 		    strcat (history, " ");

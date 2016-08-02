@@ -40,6 +40,7 @@ static void usage();
 static void PrintValues();
 static int maxncond = 100;
 
+static char *RevMsg = "GETFTAB WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;
@@ -530,6 +531,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF header keyword values\n");
@@ -595,6 +597,7 @@ char	*alias[]; /* Output names of keywords if different from input */
 	}
 
     if (verbose) {
+	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr,"Print table Values from tab table file %s\n", name);
 	}
 
@@ -818,4 +821,5 @@ char	*alias[]; /* Output names of keywords if different from input */
  *
  * Jun 29 2006	Rename strclean() strfix() and move to hget.c
  *
+ * Jan 10 2007	Declare RevMsg static, not const
  */

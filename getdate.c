@@ -1,9 +1,9 @@
 /* File getdate.c
- * August 24, 2015
+ * August 2, 1016
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2015
+   Copyright (C) 1999-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -66,6 +66,7 @@
 #define MST	3
 #define LST	4
 
+static char *RevMsg = "GETDATE WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static void usage();
 static void ConvertDate();
@@ -345,29 +346,29 @@ char **av;
 
 		    /* Set RA, Dec, and equinox if WCS-generated argument */
 		    if (ntok > 3 &&
-			strnsrch (tokens.tok1[0],":",tokens.ltok[0])!=NULL &&
-			strnsrch (tokens.tok1[1],":",tokens.ltok[1])!=NULL &&
-			(strncsrch (tokens.tok1[2],"j",tokens.ltok[1])!=NULL ||
-			strncsrch (tokens.tok1[2],"b",tokens.ltok[1])!=NULL)){
-			ra = str2ra (tokens.tok1[0]);
-			dec = str2dec (tokens.tok1[1]);
-			coorsys = wcscsys (tokens.tok1[2]);
-			itok = 3;
+			strnsrch (tokens.tok1[1],":",tokens.ltok[0])!=NULL &&
+			strnsrch (tokens.tok1[2],":",tokens.ltok[1])!=NULL &&
+			(strncsrch (tokens.tok1[3],"j",tokens.ltok[1])!=NULL ||
+			strncsrch (tokens.tok1[3],"b",tokens.ltok[1])!=NULL)){
+			ra = str2ra (tokens.tok1[1]);
+			dec = str2dec (tokens.tok1[2]);
+			coorsys = wcscsys (tokens.tok1[3]);
+			itok = 4;
 			}
 		    else
-			itok = 0;
+			itok = 1;
 		    if (appdate)
 			printf ("%s ", line);
-		    if (nftok > 1) {
+		    if (nftok > 1 && ntok > itok) {
 			strncpy (datestring, tokens.tok1[itok],tokens.ltok[itok]);
 			datestring[tokens.ltok[itok]] = (char) 0;
 			itok++;
-			strncpy (timestring, tokens.tok1[itok],tokens.ltok[itok]);
+			strncpy (timestring, tokens.tok1[2],tokens.ltok[itok]);
 			timestring[tokens.ltok[itok]] = (char) 0;
 			}
 		    else {
 			strncpy (datestring, tokens.tok1[itok],tokens.ltok[itok]);
-			datestring[tokens.ltok[itok]] = (char) 0;
+			datestring[tokens.ltok[1]] = (char) 0;
 			}
 		    ConvertDate (intype, outtype, datestring, timestring);
 		    }
@@ -421,6 +422,7 @@ static void
 usage ()
 
 {
+    fprintf (stderr,"%s\n", RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Convert date and time between various formats\n");
@@ -2351,6 +2353,7 @@ char	*timestring;	/* Input time string */
  * Oct  2 2006	Add conversions from sidereal time to UT
  * Oct  2 2006	Add time to old FITS date conversions
  *
+ * Jan 10 2007	Declare RevMsg static, not const
  * Jan 10 2007	Drop ignored argument from ut2jd() call
  * Jan 10 2007	Fix unix time output format
  * Dec 12 2007	Implement time only output for all 2FD options
@@ -2371,4 +2374,6 @@ char	*timestring;	/* Input time string */
  * Apr 30 2013	Add self-conversion options for JDs
  *
  * Aug 24 2015	Fix bug with FITS date conversion
+ *
+ * Aug  2 2016	Fix bug handling input files
  */

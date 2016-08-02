@@ -33,6 +33,7 @@
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcscat.h"
 
+static char *RevMsg = "SCAT WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static void PrintUsage();
 	static int scatparm();
@@ -182,6 +183,7 @@ char **av;
     gc = NULL;
     gobj = NULL;
     gobj1 = NULL;
+    setrevmsg (RevMsg);
     coorout[0] = (char) 0;
 
     /* Check name used to execute program and set catalog name accordingly */
@@ -1021,6 +1023,7 @@ char	*command;	/* Command where error occurred or NULL */
 	dev = stderr;
 
     /* Print program name and version */
+    fprintf (dev,"%s %s\n", progname, RevMsg);
     if (command != NULL && !strncasecmp (command, "ver", 3))
 	exit (0);
 
@@ -1318,7 +1321,9 @@ double	eqout;		/* Equinox for output coordinates */
 
         if (printprog && notprinted) {
 	    if (closest)
+	        printf ("\n%s %s  Find closest star\n", progname, RevMsg);
 	    else
+	        printf ("\n%s %s\n", progname, RevMsg);
 	    }
 
 	/* Figure out which catalog we are searching */
@@ -2042,6 +2047,7 @@ double	eqout;		/* Equinox for output coordinates */
 				printf ("dpmunit	mas/yr\n");
 				}
 			    }
+		        printf ("program	%s %s\n", progname, RevMsg);
 
 		        /* Write column headings */
 		        if (srch != NULL) {
@@ -2876,7 +2882,9 @@ double	eqout;		/* Equinox for output coordinates */
 		}
 
 	    if (wfile)
+		fprintf (fd, "program	%s %s\n", progname, RevMsg);
 	    else
+		printf ("program	%s %s\n", progname, RevMsg);
 
 	    /* Print column headings */
 	    if (refcat == TABCAT && strlen(starcat[icat]->keyid) > 0)
@@ -4479,6 +4487,7 @@ PrintWebHelp ()
 	}
     else
 	out = stderr;
+    fprintf (out, "Web catalog searching using WCSTools %s %s\n", progname, RevMsg);
     fprintf (out, "Results will be returned as a tab-separated Starbase table\n");
     fprintf (out, "Enter a sequence of keyword=value, separated by &, in one line\n");
     fprintf (out, "Help at http://tdc-www.harvard.edu/software/wcstools/scat/\n");
@@ -4763,6 +4772,7 @@ PrintGSClass ()
  * Sep 18 2002	Add VOTable output option
  * Sep 27 2002	Fix bug which printed only one line of results for spaced output
  * Sep 27 2002	Fix bug which mischecked proper motions
+ * Oct 18 2002	Never print RevMsg when outputting VOTable format
  * Oct 26 2002	Clean up output
  * Oct 30 2002	Print out coordinate epoch
  * Nov  4 2002	Add entry-by-entry epoch filter
@@ -4842,6 +4852,7 @@ PrintGSClass ()
  * Sep 26 2006	Allow coordinates on command line to be any length
  * Nov  6 2006	Print SDSS number as character string; it is now 18 digits long
  *
+ * Jan 10 2007	Declare RevMsg static, not const
  * Jan 10 2007	Drop extra argument to IDSortStars (last one)
  * Mar 13 2007	Print GSC2 ID from object name, not number
  * May 21 2007	Raise maximum object name length from 32 to 79

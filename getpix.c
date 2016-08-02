@@ -41,6 +41,7 @@ static void usage();
 static void PrintPix();
 static void procpix();
 
+static char *RevMsg = "GETPIX WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;		/* If 1, print only program name and version */
@@ -425,6 +426,7 @@ char **av;
 static void
 usage ()
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
     fprintf (stderr,"Print FITS or IRAF pixel values\n");
@@ -528,6 +530,7 @@ int *xpix, *ypix;	/* Vectors of x,y coordinate pairs */
 	    fprintf (stderr,"%s:\n", name);
 	}
     if (verbose) {
+	fprintf (stderr,"%s\n",RevMsg);
 	if (npix > 0)
 	    fprintf (stderr,"Print pixels in ");
 	else if (!strcmp (crange, "0"))
@@ -1019,6 +1022,7 @@ double	dpix;	/* Current pixel value */
  *
  * Jun 21 2006	Clean up code
  *
+ * Jan 10 2007	Declare RevMsg static, not const
  * Dec 20 2007	Add option to read x y coordinates from a file
  * Dec 21 2007	Fix bug reallocating coordinate list when current size exceeded
  *

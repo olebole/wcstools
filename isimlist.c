@@ -28,6 +28,7 @@
 #include <string.h>
 #include "libwcs/fitsfile.h"
 
+static char *RevMsg = "ISIMLIST WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -39,10 +40,12 @@ char **av;
     /* Check for version or help command first */
     str = *(av+1);
     if (!str || !strcmp (str, "help") || !strcmp (str, "-help")) {
+	fprintf (stderr,"%s\n",RevMsg);
 	fprintf (stderr,"Usage: Return file if argument is a list of FITS files, else NULL\n");
 	exit (1);
 	}
     else if (!strcmp (str, "version") || !strcmp (str, "-version")) {
+	fprintf (stderr,"%s\n",RevMsg);
 	exit (1);
 	}
 

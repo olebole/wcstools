@@ -1,4 +1,4 @@
-.TH imcat(1) WCSTools "30 January 2003"
+.TH imcat 1 WCSTools "30 January 2003"
 .SH Name
 imcat \- List catalog stars in FITS and IRAF image files
 .SH Synopsis
@@ -41,13 +41,13 @@ in image header
 Add this keyword to output from tab table search
 .TP
 .B \-m [<bright magnitude>] <faint magnitude>
-Limiting catalog magnitude(s) (default none, bright -2 if only faint is given)
+Limiting catalog magnitude(s) (default none, bright \-2 if only faint is given)
 .TP
 .B \-n <num>
 Number of brightest stars to print 
 .TP
 .B \-o <type>
-Set HST Guide Star object class to print (0=stars, 3=nonstars, -1=all, -2=band)
+Set HST Guide Star object class to print (0=stars, 3=nonstars, \-1=all, -2=band)
 .TP
 .B \-p <scale>
 Initial plate scale in arcsec per pixel (default from file)
@@ -55,9 +55,9 @@ Initial plate scale in arcsec per pixel (default from file)
 .B \-q <c|d|o|s|x|v|+>
 Write SAOimage region file with this shape, o=circle, s=square, d=diamond,
 +=cross, and x=X, with the radius scaled with magnitude unless specified
-with a -r command line entry. v will cause stellar Guide Stars to plot with
+with a \-r command line entry. v will cause stellar Guide Stars to plot with
 a + and nonstellar Guide Stars to plot with an x. If character is is preceded
-by p, the size specified by the -r command is assumed to be in pixels, not
+by p, the size specified by the \-r command is assumed to be in pixels, not
 arcseconds. A p alone specifies a circle in pixels. 
 .TP
 .B \-r <radius>
@@ -65,7 +65,7 @@ Write SAOimage region file with shapes (default CIRCLE) of this radius in
 arcseconds. SAOimage can then read this file, with will have positions and
 radii in pixels and plot it over an image. If the radius is specified as
 zero, the output radii will scale between 5 and dim/100 over the range of
-magnitudes of sources found in the image area. If the -q option is specified
+magnitudes of sources found in the image area. If the \-q option is specified
 with a 'p' in it, this number is assumed to be in pixels instead of arcseconds.
 .TP
 .B \-s d|m|n|p|r|x|y
@@ -100,4 +100,4 @@ scat()
 http://tdc-www.harvard.edu/software/wcstools/imcat/
 
 .SH Author
-Doug Mink, SAO (dmink@cfa.harvard.edu)
+Jessica Mink, SAO (jmink@cfa.harvard.edu)

@@ -51,6 +51,7 @@ static double decpm = 0.0;	/* Declination proper motion in mas/year */
 static int epset = 0;
 static int inhours = 0;
 
+static char *RevMsg = "SKYCOOR WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -128,6 +129,7 @@ char **av;
 	    ra2str (rastr0, lstr, ra1, 3);
 	    dec2str (decstr0, lstr, dec1, 2);
 	    if (verbose) {
+		fprintf (stderr,"%s\n",RevMsg);
 		printf ("ra1, dec1: %s %s\n", rastr0, decstr0);
 		}
 	    ra2str (rastr0, lstr, ra2, 3);
@@ -257,6 +259,7 @@ char **av;
 	    ra2str (rastr0, lstr, ra, 3);
 	    dec2str (decstr0, lstr, dec, 2);
 	    if (verbose) {
+		fprintf (stderr,"%s\n",RevMsg);
 		printf ("ra1, dec1: %s %s\n", rastr0, decstr0);
 		}
 	    ra2str (rastr0, lstr, ra1, 3);
@@ -331,6 +334,7 @@ char **av;
 	    ra2str (rastr0, lstr, ra, 3);
 	    dec2str (decstr0, lstr, dec, 2);
 	    if (verbose) {
+		fprintf (stderr,"%s\n",RevMsg);
 		printf ("ra1, dec1: %s %s\n", rastr0, decstr0);
 		}
 	    ra2str (rastr0, lstr, ra1, 3);
@@ -423,6 +427,7 @@ char **av;
     }
 
     if (verbose && ac > 0)
+	fprintf (stderr,"%s\n",RevMsg);
 
     while (ac-- > 0 || listname) {
 	if (!listname)
@@ -687,6 +692,7 @@ static void
 usage (errstring)
 char *errstring;
 {
+    fprintf (stderr,"%s\n",RevMsg);
     if (errstring)
 	fprintf (stderr,"%s\n",errstring);
     if (version || errstring)
