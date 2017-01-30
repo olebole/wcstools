@@ -536,6 +536,14 @@ char *wchar;		/* Suffix character for one of multiple WCS */
 		hgetr8c (hstring, keyword, &mchar, &wcs->prj.p[i]);
 		}
 	    }
+	else if (wcs->prjcode == WCS_HPX) {
+		hgetr8c (hstring, "PV2_1", &mchar, &wcs->prj.p[1]);
+		hgetr8c (hstring, "PV2_2", &mchar, &wcs->prj.p[2]);
+	    }
+
+	else if (wcs->prjcode == WCS_TOA) {
+		hgetr8c (hstring, "PV2_1", &mchar, &wcs->prj.p[1]);
+	    }
 
 	/* Initialize TNX, defaulting to TAN if there is a problem */
 	if (wcs->prjcode == WCS_TNX) {
