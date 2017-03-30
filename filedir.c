@@ -31,7 +31,7 @@ static int verbose = 0;         /* verbose/debugging flag */
 static int replace = 0;         /* character replacement flag */
 static char c1, c2;
 static void usage();
-static char *RevMsg = "FILEDIR WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "FILEDIR WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)

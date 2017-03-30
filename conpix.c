@@ -52,7 +52,7 @@ static int version = 0;		/* If 1, print only program name and version */
 static int setgnoise = 0;	/* If 1, pixels have been set to random noise */
 static int addgnoise = 0;	/* If 1, pixels have random noise added */
 
-static char *RevMsg = "CONPIX WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "CONPIX WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)

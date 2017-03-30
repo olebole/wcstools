@@ -51,7 +51,7 @@ static double decpm = 0.0;	/* Declination proper motion in mas/year */
 static int epset = 0;
 static int inhours = 0;
 
-static char *RevMsg = "SKYCOOR WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "SKYCOOR WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)

@@ -1,9 +1,9 @@
 /* File scat.c
- * June 23, 2016
+ * January 24, 2017
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2016
+   Copyright (C) 1996-2017
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -33,7 +33,7 @@
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcscat.h"
 
-static char *RevMsg = "SCAT WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "SCAT WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static void PrintUsage();
 	static int scatparm();
@@ -106,6 +106,8 @@ static double *gy;		/* Catalog star Y positions on image */
 static int *gc;			/* Catalog star object classes */
 static char **gobj;		/* Catalog star object names */
 static char **gobj1;		/* Catalog star object names */
+static char **gpath;		/* Catalog star data pathnames */
+static char **gpath1;		/* Catalog star data pathnames */
 static int nalloc = 0;
 static struct StarCat *starcat[5]; /* Star catalog data structure */
 static double eqout = 0.0;	/* Equinox for output coordinates */
@@ -183,6 +185,8 @@ char **av;
     gc = NULL;
     gobj = NULL;
     gobj1 = NULL;
+    gpath = NULL;
+    gpath1 = NULL;
     setrevmsg (RevMsg);
     coorout[0] = (char) 0;
 
@@ -1001,6 +1005,14 @@ char **av;
 	free ((char *)gobj);
 	gobj = NULL;
 	}
+    if (gpath) {
+	for (i = 0; i < nalloc; i++) {
+	    if (gpath[i] != NULL)
+		free ((char *)gpath[i]);
+	    }
+	free ((char *)gpath);
+	gpath = NULL;
+	}
 
     return (0);
 }
@@ -1200,6 +1212,13 @@ double	eqout;		/* Equinox for output coordinates */
 		    }
 		free ((char *)gobj);
 		}
+	    if (gpath) {
+		for (is = 1; is < nalloc; is++) {
+		    if (gpath[is] != NULL)
+			free ((char *)gpath[is]);
+		    }
+		free ((char *)gpath);
+		}
 	    }
 	gm = NULL;
 	gra = NULL;
@@ -1211,6 +1230,7 @@ double	eqout;		/* Equinox for output coordinates */
 	gx = NULL;
 	gy = NULL;
 	gobj = NULL;
+	gpath = NULL;
 
 	if (!(gnum = (double *) calloc (ngmax, sizeof(double))))
 	    fprintf (stderr, "Could not calloc %d bytes for gnum\n",
@@ -1246,6 +1266,13 @@ double	eqout;		/* Equinox for output coordinates */
 	else {
 	    for (i = 0; i < ngmax; i++)
 		gobj[i] = NULL;
+	    }
+	if (!(gpath = (char **) calloc (ngmax, sizeof(char *))))
+	    fprintf (stderr, "Could not calloc %d bytes for path\n",
+		     ngmax*sizeof(char *));
+	else {
+	    for (i = 0; i < ngmax; i++)
+		gpath[i] = NULL;
 	    }
 	if (!(gpra = (double *) calloc (ngmax, sizeof(double))))
 	    fprintf (stderr, "Could not calloc %d bytes for gpra\n",
@@ -1285,6 +1312,14 @@ double	eqout;		/* Equinox for output coordinates */
 		free ((char *)gobj);
 		}
 	    gobj = NULL;
+	    if (gpath) {
+		for (is = 1; is < nalloc; is++) {
+		    if (gpath[is] != NULL)
+			free ((char *)gpath[is]);
+		    }
+		free ((char *)gpath);
+		}
+	    gpath = NULL;
 	    nalloc = 0;
 	    return (0);
 	    }
@@ -1443,7 +1478,7 @@ double	eqout;		/* Equinox for output coordinates */
 		nlog = -1;
 	    ng = ctgrnum (refcatname[icat], refcat,
 		      nfind, sysout, eqout, epout, match, &starcat[icat],
-		      gnum, gra, gdec, gpra, gpdec, gm, gc, gobj, nlog);
+		      gnum, gra, gdec, gpra, gpdec, gm, gc, gobj, gpath, nlog);
 	    if (nlog < 0)
 		return (ng);
 
@@ -1453,10 +1488,13 @@ double	eqout;		/* Equinox for output coordinates */
 		gobj1 = NULL;
 	    else
 		gobj1 = gobj;
-	    /* if (ng > nfind)
-		ns = nfind;
-	    else */
-		ns = ng;
+	    if (gpath == NULL)
+		gpath1 = NULL;
+	    else if (gpath[0] == NULL)
+		gpath1 = NULL;
+	    else
+		gpath1 = gpath;
+	    ns = ng;
 
 	    /* Set flag if any proper motions are non-zero */
 	    if (mprop == 1 && !oneline) {
@@ -2986,6 +3024,9 @@ double	eqout;		/* Equinox for output coordinates */
 		    (starcat[icat] != NULL && starcat[icat]->stnum > 0))
 		    strcat (headline,"	object");
 		}
+	    if (gobj1 != NULL && refcat == TXTCAT) {
+		strcat (headline,"	pathname");
+		}
 	    if (printxy)
 		strcat (headline, "	X      	Y      ");
 	    if (wfile)
@@ -3042,6 +3083,9 @@ double	eqout;		/* Equinox for output coordinates */
 		if (starcat[icat] == NULL ||
 		    starcat[icat]->stnum > 0)
 		     strcat (headline,"	------");
+		}
+	    if (gobj1 != NULL && refcat == TXTCAT) {
+		strcat (headline,"	--------------");
 		}
 	    if (printxy)
 		strcat (headline, "	-------	-------");
@@ -3247,6 +3291,9 @@ double	eqout;		/* Equinox for output coordinates */
 	    if (gobj1 != NULL && refcat != GSC2 && refcat != SDSS && refcat != SKYBOT) {
 		if (starcat[icat] == NULL || starcat[icat]->stnum > 0)
 		    strcat (headline,"  Object");
+		}
+	    if (gobj1 != NULL && refcat == TXTCAT) {
+		strcat (headline,"  Pathname");
 		}
 	    if (catsort == SORT_MERGE)
 	        strcat (headline, "  Nmatch");
@@ -3566,6 +3613,10 @@ double	eqout;		/* Equinox for output coordinates */
 			strcat (headline, gobj[i]);
 			}
 		    }
+		if (refcat == TXTCAT && gpath1 != NULL && gpath[i] != NULL) {
+		    strcat (headline, "	");
+		    strcat (headline, gpath[i]);
+		    }
 		if (printxy) {
 		    strcat (headline, "	");
 		    strcat (numstr, xstr);
@@ -3752,6 +3803,12 @@ double	eqout;		/* Equinox for output coordinates */
 			sprintf (temp, "  %s", gobj[i]);
 			strcat (headline, temp);
 			}
+		    }
+
+		/* Add data pathname if present */
+		if (refcat == TXTCAT && gpath1 != NULL && gpath[i] != NULL) {
+		    sprintf (temp, " %s", gpath[i]);
+		    strcat (headline, temp);
 		    }
 
 		/* Add number of original entries in merged output */
@@ -4877,4 +4934,6 @@ PrintGSClass ()
  * Feb 15 2013	Add UCAC4 catalog
  *
  * Jun 23 2016	Fix typos in format ($ for %) (via Ole Streicher)
+ *
+ * Jan 24 2017	Add data pathname to output line from text catalogs
  */

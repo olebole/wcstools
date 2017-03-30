@@ -49,7 +49,7 @@ static char *outname0 = "remap.fits";
 static char *outname;
 static char *wcsproj;           /* WCS projection name */
 
-static char *RevMsg = "REMAP WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "REMAP WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
 static int nfiles = 0;
 static int fitsout = 1;
 static double secpix = 0;

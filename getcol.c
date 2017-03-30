@@ -1,9 +1,9 @@
 /* File getcol.c
- * June 9, 2016
+ * March 30, 2017
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2016
+   Copyright (C) 1999-2017
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -35,9 +35,9 @@
 #define	MAX_LTOK	256
 #define	MAX_NTOK	1024
 #define MAXFILES	2000
-#define MAXLINES	100000
+#define MAXLINES	500000
 
-static char *RevMsg = "GETCOL WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "GETCOL WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static void usage();
 static int ListFile();
@@ -66,6 +66,7 @@ static int version = 0;		/* If 1, print only program name and version */
 static int nread = 0;		/* Number of lines to read (0=all) */
 static int nskip = 0;		/* Number of lines to skip */
 static int tabout = 0;		/* If 1, separate output fields with tabs */
+static int linout = 0;		/* If 1, put each output field on a new line */
 static int counttok = 0;	/* If 1, print number of columns on line */
 static int printhead = 0;	/* If 1, print Starbase tab table header */
 static int intcompare();
@@ -388,6 +389,10 @@ char **av;
 		tabout++;
 		break;
 
+	    case 'u':	/* Line-separated output */
+		linout++;
+		break;
+
 	    case 'v':	/* More verbosity */
 		verbose++;
 		break;
@@ -501,6 +506,7 @@ usage ()
     fprintf(stderr,"  -r: Range or @file of lines to read, if not all\n");
     fprintf(stderr,"  -s: Number of lines to skip\n");
     fprintf(stderr,"  -t: Starbase tab table output\n");
+    fprintf(stderr,"  -u: Each field on a new line\n");
     fprintf(stderr,"  -v: Verbose\n");
     fprintf(stderr,"  -w: Print file pathnames\n");
     fprintf(stderr,"  -x num: Set value to ignore\n");
@@ -1235,6 +1241,8 @@ char	*lfile;		/* Name of file with lines to list */
 			if (i > 0) {
 			    if (tabout)
 				printf ("	");
+			    else if (linout)
+				printf ("\n");
 			    else
 				printf (" ");
 			    }
@@ -1281,6 +1289,8 @@ char	*lfile;		/* Name of file with lines to list */
 		    if (printcol) {
 			if (tabout)
 			    printf ("	");
+			else if (linout)
+			    printf ("\n");
 			else
 			    printf (" ");
 			}
@@ -1833,4 +1843,7 @@ void *pd1, *pd2;
  * Dec 10 2015	Fix tests
  *
  * Jun  9 2016	Fix isnum() tests for added coloned times and dashed dates 
+ * Aug 10 2016	Add -u argument to print each field on a new line
+ *
+ * Mar 30 2017	Increase default maximum number of lines to process to 500000
  */

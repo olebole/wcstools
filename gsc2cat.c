@@ -37,7 +37,7 @@ static int nlog = 10000;
 static void usage();
 void SaveGSC2();
 
-static char *RevMsg = "GSC2CAT WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "GSC2CAT WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
 
 main (ac, av)
 int ac;

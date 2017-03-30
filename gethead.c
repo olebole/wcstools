@@ -47,7 +47,7 @@ extern char *GetFITShead();
 static char nextnsp();
 static int PrintValues();
 
-static char *RevMsg = "GETHEAD WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "GETHEAD WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;

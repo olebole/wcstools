@@ -1,9 +1,9 @@
 /* File isnum.c
- * December 9, 2015
+ * August 23, 2016
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2001-2015
+   Copyright (C) 2001-2016
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -28,7 +28,7 @@
 #include <string.h>
 #include "libwcs/fitshead.h"
 
-static char *RevMsg = "ISNUM WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "ISNUM WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -42,7 +42,9 @@ char **av;
     str = *(av+1);
     if (!str || !strcmp (str, "help") || !strcmp (str, "-help")) {
 	fprintf (stderr,"%s\n",RevMsg);
-	fprintf (stderr,"Usage: Return 1 if argument is an integer,\n");
+	fprintf (stderr,"Usage: isnum [-n] <string>\n");
+	fprintf (stderr,"       -n Do not return linefeed (for scripting)\n");
+	fprintf (stderr,"       Return 1 if argument is an integer,\n");
 	fprintf (stderr,"       Return 2 if it is floating point\n");
 	fprintf (stderr,"       Return 3 if it is a time with colons\n");
 	fprintf (stderr,"       Return 4 if it is a date with dashes\n");
@@ -78,7 +80,9 @@ char **av;
  *
  * Jan 10 2007	Drop unused variable fn
  *
- * Nov  6, 2015	Add return definition for 3 and 4
+ * Nov  6 2015	Add return definition for 3 and 4
  *
- * Dec  9, 2015	Add -n option to output number without linefeed
+ * Dec  9 2015	Add -n option to output number without linefeed
+ *
+ * Aug 23 2016	Document -n option
  */

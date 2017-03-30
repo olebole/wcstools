@@ -53,7 +53,7 @@ static int nproc = 0;
 static int overwrite = 0;	/* If 1, overwrite input image */
 static int first_file = 1;
 
-static char *RevMsg = "DELHEAD WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "DELHEAD WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)

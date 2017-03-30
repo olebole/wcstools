@@ -1,4 +1,4 @@
-WCSTools 3.9.4
+WCSTools 3.9.5
 
 WCSTools is a set of software utilities, written in C, which create,
 display and manipulate the world coordinate system of a FITS or IRAF
@@ -14,7 +14,7 @@ in the main directory or, on Solaris machines
 
 make -f Makefile.solaris
 
-This is version 3.9.4 of the WCSTools package developed by Jessica Mink
+This is version 3.9.5 of the WCSTools package developed by Jessica Mink
 (jmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code or algorithms from
 
@@ -38,6 +38,11 @@ Sergio Pascual of the Universidad Complutense de Madrid helped me get
 all of the variables initialized.
 
 The update history is in the NEWS file, but here is what is new:
+
+Version 3.9.5 (March 30, 2017)
+sethead: Fix bug so that coordinates with : and dates with - are strings
+getcol: Set default maximum number of lines to process from 100000 to 500000
+ty2read: Add fifth digit to star numbers because 256 are over 9999
 
 Version 3.9.4 (August 2, 2016) (after Ole Streicher)
 getdate: Fix input list so it works correctly (2016-08-02 for Armin Rest)
@@ -192,5 +197,5 @@ wcshead	Print basic world coordinate system information on one line per image
 xy2sky	Print sky coordinates for given image pixel coordinates on the command
 	line or in a list file.
 
--Jessica Mink, SAO, 2016-08-02
+-Jessica Mink, SAO, 2017-04-13
  http://tdc-www.harvard.edu/mink/

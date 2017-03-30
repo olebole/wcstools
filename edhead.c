@@ -39,7 +39,7 @@ static void EditHead();
 static int newimage = 0;
 static int verbose = 0;		/* verbose flag */
 static char *editcom0;		/* Editor command from command line */
-static char *RevMsg = "EDHEAD WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "EDHEAD WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
 static int version = 0;		/* If 1, print only program name and version */
 
 

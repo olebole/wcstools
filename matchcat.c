@@ -36,7 +36,7 @@ static double matchrad = 5.0;	/* Initial match radius is 5 arcseconds */
 int version = 0;		/* If 1, print only program name and version */
 static void usage();
 
-static char *RevMsg = "MATCHCAT WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "MATCHCAT WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
 
 main (ac, av)
 int ac;

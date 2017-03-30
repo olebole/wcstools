@@ -1,9 +1,9 @@
 /* File sethead.c
- * May 6, 2014
+ * March 30, 2017
  * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2014
+   Copyright (C) 1996-2017
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -66,7 +66,7 @@ static int addwcs = 0;
 static int errflag = 0;		/* Error return from program */
 static char *rootdir=NULL;	/* Root directory for input files */
 
-static char *RevMsg = "SETHEAD WCSTools 3.9.4, 2 August 2016, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "SETHEAD WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -1016,7 +1016,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		}
 
 	    /* Write numeric value to keyword */
-	    else if (isnum (kwv)) {
+	    else if (isnum (kwv) > 0 && isnum (kwv) < 3) {
 		i = 21 - lkwv;
 		for (v = kwv; v < kwv+lkwv; v++)
 		    cval[i++] = *v;
@@ -1473,4 +1473,6 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * Sep  1 2011	Fix overflow bug by increasing size of history from 72 to 128
  *
  * May  6 2014	Fix bug so headers for multiple extensions can be changed
+ *
+ * Mar 30 2017	If isnum() returns >2, quote value as string
  */

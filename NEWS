@@ -1,5 +1,10 @@
 WCSTools Package updates
 
+Version 3.9.5 (March 30, 2017)
+sethead: Fix bug so that coordinates with : and dates with - are strings
+getcol: Set default maximum number of lines to process from 100000 to 500000
+ty2read: Add fifth digit to star numbers because 256 are over 9999
+
 Version 3.9.4 (August 2, 2016) (after Ole Streicher)
 getdate: Fix input list so it works correctly (2016-08-02 for Armin Rest)
 imstar: Append to output line rather than overwriting it
@@ -9,7 +14,7 @@ filext: If no file extension, print null string, avoiding seg fault
 getfits: Decrement argument counter after reading center RA
 imcat: Fix typo in UCAC output format
 imstar: Fix sprintf of headline
-findstar.c: Fix but in trim section parsing
+findstar.c: Fix bug in trim section parsing
 fitsfile.c: Add one to header string length for trailing NULL
 wcs.c: Clean up use of ptype so it is always 3 characters long
 sortstar.c: Initialize haspm flag if zero
