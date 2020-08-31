@@ -1,9 +1,9 @@
 /* File sethead.c
- * March 30, 2017
+ * August 10, 2020
  * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2017
+   Copyright (C) 1996-2020
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -66,7 +66,7 @@ static int addwcs = 0;
 static int errflag = 0;		/* Error return from program */
 static char *rootdir=NULL;	/* Root directory for input files */
 
-static char *RevMsg = "SETHEAD WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "SETHEAD WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -891,27 +891,27 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 
 	    /* Add, subtract, multiply, or divide keyword value by constant */
 	    if (keyop) {
-		if (!hgets (header, opkey, 72,string)) {
+		if (!hgets (header, opkey, 72, string)) {
 		    if (verbose)
 			printf ("* %s %c %s keyword not in header.\n",
 			    opkey, ops[keyop], kwv);
 		    continue;
 		    }
-		if (!isnum (string) && !strchr (string,':')) {
+		if (!isnum (string)) {
 		    if (verbose) 
 			printf ("* %s %c = %s in header is not a number.\n",
 			    opkey, ops[keyop], string);
 		    continue;
 		    }
-		if (!isnum (kwv) && !strchr (kwv, ':')) {
+		if (!isnum (kwv)) {
 		    if (verbose) 
 			printf ("* %s %c %s not a number.\n",
 			    opkey, ops[keyop], kwv);
 		    continue;
 		    }
 
-		/* Make sexagesimal output */
-		if (strchr (string, ':')) {
+		/* Write sexagesimal output as a string */
+		if (isnum (string) == 3) {
 		    if (strsrch (opkey, "RA") || strsrch (opkey, "HA")) {
 			isra = 1;
 			dval0 = str2ra (string);
@@ -920,14 +920,16 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 			isra = 0;
 			dval0 = str2dec (string);
 			}
-		    if (strchr (kwv, ':')) {
+		    if (isnum (kwv) == 3) {
 			if (isra)
 			    dval1 = str2ra (kwv);
 			else
 			    dval1 = str2dec (kwv);
 			}
-		    else
+		    else if (kwv > 0)
 			dval1 = atof (kwv);
+		    else
+			dval1 = 0.0;
 		    
 		    if (keyop == KEY_ADD)
 			dval0 = dval0 + dval1;
@@ -935,7 +937,7 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 			dval0 = dval0 - dval1;
 		    else if (keyop == KEY_MUL)
 			dval0 = dval0 * dval1;
-		    else if (keyop == KEY_DIV && dval1 != 0)
+		    else if (keyop == KEY_DIV && dval1 != 0.0)
 			dval0 = dval0 / dval1;
 		    ndec = numdec (string);
 		    if (isra)
@@ -945,7 +947,29 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		    hputs (header, opkey, string);
 		    }
 
-		/* Make integer output */
+		/* Write yyyy-mm-dd date output as a string */
+                if (isnum (string) == 3) {
+		    dval0 = fd2jd (string);
+		    if (isnum (kwv) == 1 || isnum (kwv) == 2)
+			dval1 = atof (kwv);
+		    else if (isnum (kwv) == 4)
+			dval1 = atof (kwv);
+		    else
+			dval1 = 0.0;
+		    if (keyop == KEY_ADD)
+			dval0 = dval0 + dval1;
+		    else if (keyop == KEY_SUB)
+			dval0 = dval0 - dval1;
+		    else if (keyop == KEY_MUL && dval1 != 0.0)
+			dval0 = dval0 * dval1;
+		    else if (keyop == KEY_DIV && dval1 != 0.0)
+			dval0 = dval0 / dval1;
+		    strncpy (jd2fd (dval0), string, 10);
+		    string[10]= (char) 0;
+		    hputs (header, opkey, string);
+		    }
+
+		/* Write right-aligned integer output */
 		else if (isnum (string) == 1) {
 		    if (kwv[0] == '-')
 			ival1 = (int) (atof (kwv) - 0.5);
@@ -963,8 +987,8 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
 		    hputi4 (header, kwd[ikwd], ival0);
 		    }
 
-		/* Make floating point output */
-		else {
+		/* Write right-aligned floating point output */
+		else if (isnum (string) == 2) {
 		    dval0 = atof (string);
 		    ndec = numdec (string);
 		    dval1 = atof (kwv);
@@ -1475,4 +1499,6 @@ char	*comment[];	/* Comments for those keywords (none if NULL) */
  * May  6 2014	Fix bug so headers for multiple extensions can be changed
  *
  * Mar 30 2017	If isnum() returns >2, quote value as string
+ *
+ * Aug 10 2020	If isnum is 3, allow addition or subtraction of days from date
  */

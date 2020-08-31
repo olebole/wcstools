@@ -48,7 +48,7 @@ extern void setrefpix();
 extern void setcdelt();
 extern struct WorldCoor *GetFITSWCS();
 
-static char *RevMsg = "BINCAT WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "BINCAT WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 static int verbose = 0;		/* verbose flag */
 static int debug = 0;		/* debugging flag */
 static int bitpix = 0;	/* number of bits per pixel (FITS code, 0=no image) */

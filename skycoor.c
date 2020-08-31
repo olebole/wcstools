@@ -1,9 +1,9 @@
 /* File skycoor.c
- * August 17, 2011
+ * September 27, 2019
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2011
+   Copyright (C) 1996-2019
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -51,7 +51,7 @@ static double decpm = 0.0;	/* Declination proper motion in mas/year */
 static int epset = 0;
 static int inhours = 0;
 
-static char *RevMsg = "SKYCOOR WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "SKYCOOR WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -74,7 +74,7 @@ char **av;
     char *ic;
     int sys0;
     int sys1 = -1;
-    double ra, dec, r, ra1, dec1, ra2, dec2, dra, ddec, a;
+    double ra, dec, r, ra1, dec1, ra2, dec2, dra, ddec, mra, mdec, a;
     double offra = 0.0;
     double offdec = 0.0;
     double t1, t2, tdiff;
@@ -199,6 +199,63 @@ char **av;
 	case 'j':	/* Output in J2000/FK5 coordinates */
 	    sys1 = WCS_J2000;
     	    break;
+
+	case 'k':	/* RA and Dec angular separation between two RA Dec pairs */
+	    if (ac < 5)
+		usage("Missing coordinates for -k");
+	    ra = str2ra (*++av);
+	    ac--;
+	    dec = str2dec (*++av);
+	    ac--;
+	    ra1 = str2ra (*++av);
+	    ac--;
+	    dec1 = str2dec (*++av);
+	    ac--;
+	    ra2str (rastr0, lstr, ra, 3);
+	    dec2str (decstr0, lstr, dec, 2);
+	    if (verbose) {
+		fprintf (stderr,"%s\n",RevMsg);
+		printf ("ra1, dec1: %s %s\n", rastr0, decstr0);
+		}
+	    ra2str (rastr0, lstr, ra1, 3);
+	    dec2str (decstr0, lstr, dec1, 2);
+	    if (verbose) 
+		printf ("ra2, dec2: %s %s\n", rastr0, decstr0);
+	    mdec = 0.5 * (dec + dec1);
+	    dra = wcsdist (ra, mdec, ra1, mdec);
+	    mra = 0.5 * (ra + ra1);
+	    ddec = wcsdist (mra, dec, mra, dec1);
+	    if (degout) {
+		if (verbose) {
+		    printf ("dRA = %.5f deg, dDec = %.5f deg\n",
+			    dra, ddec);
+		    }
+		else if (ndecset) {
+		    sprintf (sform,"%%.%df ", ndec);
+		    printf (sform, dra);
+		    sprintf (sform,"%%.%df\n", ndec);
+		    printf (sform, ddec);
+		    }
+		else
+		    printf ("%.7f %.7f\n", dra, ddec);
+		}
+	    else {
+		dra = dra * 3600.0;
+		ddec = ddec * 3600.0;
+		if (verbose) {
+		    printf ("dRA = %.5f arcsec, dDec = %.5f arcsec\n",
+			    dra, ddec);
+		    }
+		else if (ndecset) {
+		    sprintf (sform,"%%.%df ", ndec);
+		    printf (sform, dra);
+		    sprintf (sform,"%%.%df\n", ndec);
+		    printf (sform, ddec);
+		    }
+		else
+		    printf ("%.3f %.3f\n", dra, ddec);
+		}
+	    break;
 
 	case 'n':	/* Number of decimal places in output */
 	    if (ac < 2)
@@ -713,6 +770,7 @@ char *errstring;
     fprintf (stderr,"  -h: Input RA in fractional hours instead of degrees\n");
     fprintf (stderr,"  -i code: Input units (r=radians, d=degrees, ...\n");
     fprintf (stderr,"  -j: J2000 (FK5) output\n");
+    fprintf (stderr,"  -k ra dec ra dec: Return separate RA and DEC angular differences\n");
     fprintf (stderr,"  -n num: Number of decimal places in output RA seconds\n");
     fprintf (stderr,"  -o num1[,num2] : Add arcseconds to position (both same if 1 arg)\n");
     fprintf (stderr,"  -p rapm decpm: RA and Dec proper motion in milliarcseconds/year\n");
@@ -789,4 +847,6 @@ char *errstring;
  *
  * Apr 19 2011	Take care of comma in coordinate input
  * Aug 17 2011	Allow 99 in input list file for longitudes and RA
+ *
+ * Sep 27 2011	Add -k to return separate RA and DEC differences
  */

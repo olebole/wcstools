@@ -1,9 +1,9 @@
 /* File filedir.c
- * September 22, 2015
+ * August 18, 2020
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2010 - 2015
+   Copyright (C) 2010 - 2020
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -29,9 +29,10 @@
 
 static int verbose = 0;         /* verbose/debugging flag */
 static int replace = 0;         /* character replacement flag */
+static int nonl = 0;         /* character replacement flag */
 static char c1, c2;
 static void usage();
-static char *RevMsg = "FILEDIR WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "FILEDIR WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -54,6 +55,10 @@ char **av;
 
         case 'v':       /* more verbosity */
             verbose++;
+            break;
+
+        case 'z':       /* drop newline from end of output for scripting */
+            nonl++;
             break;
 
         default:
@@ -99,10 +104,14 @@ char **av;
 		    fn[2] = (char) 0;
 		    }
 		}
-	    printf ("%s\n", fn);
+	    printf ("%s", fn);
 	    }
 	else
-	    printf ("./\n");
+	    printf ("./");
+	if (nonl)
+	    printf ("%c",(char)0);
+	else
+	    printf ("\n");
 	}
 
     return (0);
@@ -113,7 +122,9 @@ usage ()
 {
     fprintf (stderr, "%s\n", RevMsg);
     fprintf (stderr,"FILEDIR: Return directory part of file pathname\n");
-    fprintf(stderr,"Usage:  filedir file1 file2 file3 ...\n");
+    fprintf(stderr,"Usage: filedir [-v][-n]file1 file2 file3 ...\n");
+    fprintf(stderr,"       -n: Drop newline for scripting\n");
+    fprintf(stderr,"       -v: Print input as well as output\n");
     exit (1);
 }
 /* Jun 30 2000	New program
@@ -121,4 +132,6 @@ usage ()
  * Oct 02 2012	If pathname ends in "/", drop last directory
  *
  * Sep 22 2015	Read filepath from STDIN if filepath is "stdin"
+ *
+ * Aug 18 2020	Add -z option to drop newline for scripting
  */

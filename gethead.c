@@ -47,7 +47,7 @@ extern char *GetFITShead();
 static char nextnsp();
 static int PrintValues();
 
-static char *RevMsg = "GETHEAD WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "GETHEAD WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;
@@ -762,6 +762,7 @@ usage ()
     fprintf(stderr,"  -n num: Number of decimal places in numeric output\n");
     fprintf(stderr,"  -o: OR conditions instead of ANDing them\n");
     fprintf(stderr,"  -p: Print full pathnames of files\n");
+    fprintf(stderr,"  -r: Precede each value by first keyword character\n");
     fprintf(stderr,"  -s: Do not pad tab-separated table with spaces\n");
     fprintf(stderr,"  -t: Output in tab-separated table format\n");
     fprintf(stderr,"  -u: Always print ___ if keyword not found or null value\n");
@@ -1135,6 +1136,13 @@ char	*kwd[];		/* Names of keywords for which to print values */
 			}
 		    nfound++;
 		    }
+		else if (tabchar) {
+		    if (keyword[0] == 'B')
+			sprintf (temp, "%c_", keyword[0], str);
+		    else
+			sprintf (temp, "%c___", keyword[0], str);
+		    strcat (outline, temp);
+		    }
 		}
 	    }
 
@@ -1284,6 +1292,13 @@ char	*kwd[];		/* Names of keywords for which to print values */
 	    else
 		strcat (outline, str);
 	    nfound++;
+	    }
+	else if (tabchar) {
+	    if (keyword[0] == 'B')
+		sprintf (temp, "%c_", keyword[0], str);
+	    else
+		sprintf (temp, "%c___", keyword[0], str);
+	    strcat (outline, temp);
 	    }
 
 	/* Read IRAF-style multiple-line keyword value */
@@ -1524,4 +1539,6 @@ char *string;
  * Dec 19 2014	Add option to separate values by first character of keyword
  *  
  * Jan 20 2015	Add quotes to string values with spaces in -e option 
+ *
+ * Mar 12 2019	Fill in single-character null returns
  */

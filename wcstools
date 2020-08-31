@@ -1,6 +1,5 @@
 #!/bin/sh
-echo "WCSTools 3.9.4 Programs
-http://tdc-www.harvard.edu/software/wcstools/
+echo "WCSTools 3.9.5 Programs
 
 addpix:    Add a constant value(s) to specified pixel(s)
 bincat:    Bin a catalog into a FITS image in flux or number

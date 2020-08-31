@@ -47,7 +47,7 @@ static int nfix = 0;		/* Number of regions to fix
 static int version = 0;		/* If 1, print only program name and version */
 static int xl[MAXFIX],yl[MAXFIX]; /* Lower left corners of regions (1 based) */
 static int xr[MAXFIX],yr[MAXFIX]; /* Upper right corners of regions (1 based) */
-static char *RevMsg = "FIXPIX WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "FIXPIX WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)

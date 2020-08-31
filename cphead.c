@@ -41,7 +41,7 @@ static void CopyValues();
 extern char *GetFITShead();
 
 static int verbose = 0;		/* verbose/debugging flag */
-static char *RevMsg = "CPHEAD WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "CPHEAD WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 static int copyall = 0;		/* Copy entire header, overwriting old one */
 static int nfile = 0;
 static int ndec0 = -9;

@@ -1,9 +1,9 @@
 /* File fileroot.c
- * January 10, 2007
+ * August 17, 2018
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2000-2007
+   Copyright (C) 2000-2018
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -29,6 +29,7 @@
 
 static int verbose = 0;         /* verbose/debugging flag */
 static int replace = 0;         /* character replacement flag */
+static int twoext = 0;		/* double extension flag */
 static char c1, c2;
 static void usage();
 
@@ -39,7 +40,7 @@ char **av;
 {
     char *fn;
     char *str;
-    char *ext;
+    char *ext, *ext2;
     int i, lroot;
 
     /* crack arguments */
@@ -64,6 +65,10 @@ char **av;
             replace++;
             break;
 
+	case '2':	/* remove double extension */
+	    twoext++;
+	    break;
+
         default:
             usage();
             break;
@@ -80,11 +85,19 @@ char **av;
     	    printf ("%s -> ", fn);
 	ext = strrchr (fn, ',');
 	if (ext != NULL)
-	    *ext = 0;
+	    *ext = (char) 0;
 	else {
 	    ext = strrchr (fn, '.');
-	    if (ext != NULL)
-		*ext = 0;
+	    if (ext != NULL) {
+		*ext = (char) 0;
+		if (twoext) {
+		    ext2 = strrchr (fn, '.');
+		    if (ext2 != NULL) {
+			*ext = '.';
+			*ext2 = (char) 0;
+			}
+		    }
+		}
 	    }
 	if (replace) {
 	    lroot= strlen (fn);
@@ -101,9 +114,10 @@ static void
 usage ()
 {
     fprintf (stderr,"FILEROOT: Drop file name extension\n");
-    fprintf(stderr,"Usage:  fileroot file1 file2 file3 ...\n");
-    fprintf(stderr,"        fileroot -r c1 c2 file1 file2 file3 ...\n");
-    fprintf(stderr,"        -r replaces c1 with c2 in file name\n");
+    fprintf (stderr,"Usage:  fileroot file1 file2 file3 ...\n");
+    fprintf (stderr,"        fileroot -r c1 c2 file1 file2 file3 ...\n");
+    fprintf (stderr,"        -r replaces c1 with c2 in file name\n");
+    fprintf (stderr,"        -2 drops two extensions at once\n");
     exit (1);
 }
 /* May  3 2000	New program
@@ -114,4 +128,6 @@ usage ()
  * Jun 21 2006	Clean up code
  *
  * Jan 10 2007	Add second parentheses around character check
+ *
+ * Aug 17 2018	Add -2 to drop two-par extensions such as ".ms.fits"
  */

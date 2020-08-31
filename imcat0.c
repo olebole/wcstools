@@ -64,7 +64,7 @@ extern void setdateobs();
 extern void setparm();
 extern void setnpix();
 
-static char *RevMsg = "WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */

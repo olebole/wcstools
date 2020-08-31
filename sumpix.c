@@ -39,7 +39,7 @@ static void usage();
 static void SumPix();
 extern double PhotPix();
 
-static char *RevMsg = "SUMPIX WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "SUMPIX WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;	/* If 1, print only program name and version */

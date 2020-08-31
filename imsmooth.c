@@ -55,7 +55,7 @@ static double ghwidth = 1.0;	/* Gaussian half-width */
 static int filter = 0;		/* Filter code */
 static int nlog = 100;		/* Number of lines between log messages */
 
-static char *RevMsg = "IMSMOOTH WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "IMSMOOTH WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)

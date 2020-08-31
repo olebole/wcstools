@@ -28,7 +28,7 @@
 #include <string.h>
 #include "libwcs/fitsfile.h"
 
-static char *RevMsg = "ISFILE WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "ISFILE WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)

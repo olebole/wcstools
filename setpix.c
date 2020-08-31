@@ -1,9 +1,9 @@
 /* File setpix.c
- * June 9, 2016
+ * August 31, 2020
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1996-2016
+   Copyright (C) 1996-2020
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -48,7 +48,7 @@ static int version = 0;		/* If 1, print only program name and version */
 static int logrange = 1;	/* Log pixel change in image header */
 static char *pform = NULL;	/* Format in which to print pixels */
 
-static char *RevMsg = "SETPIX WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "SETPIX WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -146,17 +146,17 @@ char **av;
 		    nrange0 = nrange;
 		    nrange = nrange + 500;
 		    rtemp = (char **) calloc (nrange, sizeof (char **));
-		    for (j = 0; j < nrange0; i++)
+		    for (j = 0; j < nrange0; j++)
 			rtemp[j] = rrange[j];
 		    free (rrange);
 		    rrange = rtemp;
 		    rtemp = (char **) calloc (nrange, sizeof (char **));
-		    for (j = 0; j < nrange0; i++)
+		    for (j = 0; j < nrange0; j++)
 			rtemp[j] = crange[j];
 		    free (crange);
 		    crange = rtemp;
 		    rtemp = (char **) calloc (nrange, sizeof (char **));
-		    for (j = 0; j < nrange0; i++)
+		    for (j = 0; j < nrange0; j++)
 			rtemp[j] = value[j];
 		    free (value);
 		    value = rtemp;
@@ -707,4 +707,6 @@ char	**value;	/* value to insert into pixel */
  * Nov 17 2004	Check for arguments after numbers so negative pixel values work
  *
  * Jun  9 2016	Fix isnum() tests for added coloned times and dashed dates
+ *
+ * Aug 31 2020	Fix bug which wrongly reallocated buffers (found by David Binderman)
  */

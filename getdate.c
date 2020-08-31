@@ -1,9 +1,9 @@
 /* File getdate.c
- * August 2, 1016
+ * September 24, 2019
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2016
+   Copyright (C) 1999-2019
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -59,6 +59,7 @@
 #define DTANG	25	/* Angle in fractional degrees */
 #define DTHR	26	/* Angle in sexigesimal hours (hh:mm:ss.ss) */
 #define DTDEG	27	/* Angle in sexigesimal degrees (dd:mm:ss.ss) */
+#define DTSEC	28	/* Angle in fractional arcseconds */
 
 #define UT	0
 #define ET	1
@@ -66,7 +67,7 @@
 #define MST	3
 #define LST	4
 
-static char *RevMsg = "GETDATE WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "GETDATE WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static void usage();
 static void ConvertDate();
@@ -132,6 +133,8 @@ char **av;
 		intype = DTVIG;
 	    else if (!strncmp (*av, "ang2", 4))
 		intype = DTANG;
+	    else if (!strncmp (*av, "sec2", 4))
+		intype = DTSEC;
 	    else if (!strncmp (*av, "deg2", 4))
 		intype = DTDEG;
 	    else if (!strncmp (*av, "hr2", 3))
@@ -198,6 +201,8 @@ char **av;
 	    /* Set output date format */
 	    if (strsrch (*av, "2dt"))
 		outtype = DTVIG;
+	    else if (strsrch (*av, "2sec"))
+		outtype = DTSEC;
 	    else if (strsrch (*av, "2ang"))
 		outtype = DTANG;
 	    else if (strsrch (*av, "2deg"))
@@ -440,6 +445,7 @@ usage ()
     fprintf(stderr,"         ep=epoch, epj=Julian epoch, epb=Besselian epoch\n");
     fprintf(stderr,"         ts=seconds since 1950-01-01, tsu=Unix sec, tsi=IRAF sec\n");
     fprintf(stderr,"         gst=Greenwich Sidereal Time, lst=Local Sidereal Time\n");
+    fprintf(stderr,"         sec=fractional arcseconds\n");
     fprintf(stderr,"  @file: First one or two columns are in itype format\n");
     fprintf(stderr,"  ra dec sys:  Need for Heliocentric conversions\n");
     fprintf(stderr,"     -a: Append date to input file, if there is one\n");
@@ -547,6 +553,10 @@ char	*timestring;	/* Input time string */
 		    ang2deg (vtime, 64, temp);
 		    printf ("%s\n", temp);
 		    break;
+		case DTSEC:
+		    vtime = ang2sec (atof (datestring));
+		    printf (outform, vtime);
+		    break;
 		default:
 		    printf ("*** Unknown output type %d\n", outtype);
 		}
@@ -566,6 +576,10 @@ char	*timestring;	/* Input time string */
 		    ang2hr (vtime, 64, temp);
 		    printf ("%s\n", temp);
 		    break;
+		case DTSEC:
+		    vtime = deg2sec (datestring);
+		    printf (outform, vtime);
+		    break;
 		default:
 		    printf ("*** Unknown output type %d\n", outtype);
 		}
@@ -584,6 +598,10 @@ char	*timestring;	/* Input time string */
 		    vtime = hr2ang (datestring);
 		    ang2deg (vtime, 64, temp);
 		    printf ("%s\n", temp);
+		    break;
+		case DTSEC:
+		    vtime = hr2sec (datestring);
+		    printf (outform, vtime);
 		    break;
 		default:
 		    printf ("*** Unknown output type %d\n", outtype);
@@ -2376,4 +2394,6 @@ char	*timestring;	/* Input time string */
  * Aug 24 2015	Fix bug with FITS date conversion
  *
  * Aug  2 2016	Fix bug handling input files
+ *
+ * Sep 24 2019	Add DTSEC=28 and ang2sec, hr2sec, and dec2sec conversions
  */

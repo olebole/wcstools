@@ -1,9 +1,9 @@
 /* File getfits.c
- * June 24, 2016
+ * July 26, 2018
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2002-2016
+   Copyright (C) 2002-2018
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -43,7 +43,7 @@ static void nextname();	/* Find next available name (namea, nameb, ...) */
 static int ExtractFITS();
 
 static int verbose = 0;		/* verbose/debugging flag */
-static char *RevMsg = "GETFITS WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "GETFITS WCSTools 3.9.6, 28 July 2018, Jessica Mink (jmink@cfa.harvard.edu)";
 static int version = 0;		/* If 1, print only program name and version */
 static char outname[128];	/* Name for output image */
 static char outdir[256];	/* Output directory pathname */
@@ -74,11 +74,12 @@ char **av;
     FILE *flist;
     char *nextarg;
     char rastr[32], decstr[32];
+    int lstr;
     int nkwd = 0;		/* Number of keywords to delete */
     int nkwd1 = 0;		/* Number of keywords in delete file */
+    int ikwd;
     char **kwd = NULL;		/* List of keywords to be deleted */
     char **kwdnew;
-    int ikwd;
     FILE *fdk;
     char *klistfile;
 
@@ -102,16 +103,39 @@ char **av;
     /* crack arguments */
     for (av++; --ac > 0; av++) {
 
+        /* Set range of pixels to extract */
+        if (isrange (*av)) {
+	    if (crange == NULL) {
+		lstr = strlen (*av);
+		crange = (char *) calloc (lstr+1, sizeof (char) );
+		strcpy (crange, *av);
+		}
+	    else {
+		lstr = strlen (*av);
+		rrange = (char *) calloc (lstr+1, sizeof (char));
+		strcpy (rrange, *av);
+		if (verbose) {
+		    printf ("GETFITS: rows %s, columns %s\n",rrange,crange);
+		    }
+		}
+	    }
+
 	/* Set center RA, Dec, and equinox if colon in argument */
-	if (strsrch (*av,":") != NULL) {
+	else if (isnum (*av) == 3) {
 	    if (ac < 2)
 		usage ("Right ascension given but no declination");
 	    else {
 		strcpy (rastr, *av);
 		ac--;
-		strcpy (decstr, *++av);
-		ra0 = str2ra (rastr);
-		dec0 = str2dec (decstr);
+		av++;
+		if (isnum (*av) == 3) {
+		    strcpy (decstr, *av);
+		    ra0 = str2ra (rastr);
+		    dec0 = str2dec (decstr);
+		    }
+		else {
+		    usage ("Declination not in sexigesimal");
+		    }
 		ac--;
 		if (ac < 1) {
 		    syscoor = WCS_J2000;
@@ -177,7 +201,7 @@ char **av;
 			}
 		    else {
 			for (ikwd = nkwd; ikwd < nkwd+nkwd1; ikwd++) {
-			    kwd[ikwd] = (char *) calloc (32, 1);
+			    kwd[ikwd] = (char *) calloc (32, sizeof (char));
 			    first_token (fdk, 31, kwd[ikwd]);
 			    }
 			fclose (fdk);
@@ -253,14 +277,6 @@ char **av;
 		}
 	    }
 
-        /* Range of pixels to extract */
-        else if (isrange (*av)) {
-	    if (crange == NULL)
-		crange = str;
-	    else
-		rrange = str;
-	    }
-
 	/* File with list of image files */
  	else if (*av[0] == '@') {
 	    listfile = *av + 1;
@@ -284,6 +300,11 @@ char **av;
 	    xdpix = 500;
 	if (xcpix && ycpix && ydpix == 0)
 	    ydpix = xdpix;
+	}
+
+    /* If column range is set, but not row range, set them to be the same */
+    else if (!rrange && ydpix == 0) {
+	rrange = crange;
 	}
 
     /* If one side is set, set the other */
@@ -480,6 +501,7 @@ int	nkwd;
 	return (1);
 	}
 
+    /* Keep extracted region within image height (nrows) */
     if (ifrow1 < 1)
 	ifrow1 = 1;
     if (ifrow2 < 1)
@@ -514,6 +536,7 @@ int	nkwd;
 	return (1);
 	}
 
+    /* Keep extracted region within image width (ncols) */
     if (ifcol1 < 1)
 	ifcol1 = 1;
     if (ifcol2 < 1)
@@ -523,6 +546,11 @@ int	nkwd;
     if (ifcol2 > ncols)
 	ifcol2 = ncols;
     wp = ifcol2 - ifcol1 + 1;
+
+    if (verbose) {
+	printf ("GETFITS: Extracting %d rows %d - %d, %d columns %d - %d\n",
+	        hp, ifrow1, ifrow2, wp, ifcol1, ifcol2);
+	}
 
     /* Extract image */
     newimage = fitsrsect (name, header, nbhead, ifcol1, ifrow1, wp, hp, nlog);
@@ -754,4 +782,6 @@ char *newname;
  *
  * Jun  9 2016	Fix isnum() tests for added coloned times and dashed dates
  * Jun 24 2016	Decrement argument counter after reading center RA
+
+ * Jul 26 2018	Add statement of limits in verbose mode 
  */

@@ -1,5 +1,15 @@
 WCSTools Package updates
 
+Version 3.9.6 (August 31, 2020)
+getcol: Fix bug so stats on floating point numbers are computed (2019-07-25)
+getfits: Fix command line parsing so ranges work (2018-07-26)
+getpix: Fix a variety of bugs; add -d option for decimal places; add -y
+setpix: Fix bug which filled new copies wrong when reallocating buffers (2020-08-31)
+option to print columns as lines (2020-05-12)
+webread.c: Always use "\r\n" instead of \n" when writing to or reading from socket (2018-01-19)
+ucacread.c: Correct bug to read UCAC 4 high proper motion stars correctly using local path (2018-08-03)
+gsc2read.c: Read GSC2 ID as extra tab-separated-table keyword (2018-08-07)
+
 Version 3.9.5 (March 30, 2017)
 sethead: Fix bug so that coordinates with : and dates with - are strings
 getcol: Set default maximum number of lines to process from 100000 to 500000

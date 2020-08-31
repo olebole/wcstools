@@ -24,7 +24,7 @@ static int hms = 0;		/* 1 for output in hh:mm:ss dd:mm:ss */
 static int nf = 0;
 static int version = 0;		/* If 1, print only program name and version */
 
-static char *RevMsg = "TESTROT WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "TESTROT WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 main (ac, av)
 int ac;

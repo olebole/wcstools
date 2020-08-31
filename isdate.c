@@ -1,9 +1,9 @@
-/* File isnum.c
- * August 23, 2016
+/* File isdate.c
+ * July 23, 2020
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2001-2016
+   Copyright (C) 2020
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -28,7 +28,7 @@
 #include <string.h>
 #include "libwcs/fitshead.h"
 
-static char *RevMsg = "ISNUM WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "ISDATE WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -37,17 +37,18 @@ char **av;
 {
     char *str;
     int arg;
+    int idate;
+    int lstr, istr;
 
     /* Check for version or help command first */
+    arg = 0;
     str = *(av+1);
     if (!str || !strcmp (str, "help") || !strcmp (str, "-help")) {
 	fprintf (stderr,"%s\n",RevMsg);
-	fprintf (stderr,"Usage: isnum [-n] <string>\n");
+	fprintf (stderr,"Usage: isdate [-n] <string>\n");
 	fprintf (stderr,"       -n Do not return linefeed (for scripting)\n");
-	fprintf (stderr,"       Return 1 if argument is an integer,\n");
-	fprintf (stderr,"       Return 2 if it is floating point\n");
-	fprintf (stderr,"       Return 3 if it is a time with colons\n");
-	fprintf (stderr,"       Return 4 if it is a date with dashes\n");
+	fprintf (stderr,"       Return 1 if argument is date as yyyy-mm-dd\n");
+	fprintf (stderr,"       Return 2 if argument is date as yyyy.mmdd\n");
 	fprintf (stderr,"       Return 0 otherwise\n");
 	exit (1);
 	}
@@ -63,26 +64,36 @@ char **av;
 	}
 
     /* Check to see if this is a number */
+    idate = 0;
+    lstr = strlen (str);
+    istr = isnum (str);
+    if (istr > 1) {
+	if (lstr == 10 && str[4] == '-' && str[7] == '-') {
+	    idate = 1;
+	    }
+	else if (lstr == 9 && str[4] == '.') {
+	    idate = 2;
+	    }
+	else if (lstr == 7) {
+	    if (str[4] = '-') {
+		idate = 1;
+		}
+	    else if (str[4] == '.') {
+		idate = 2;
+		}
+	    }
+	}
+    else if (istr == 1 && lstr == 4) {
+	idate = 1;
+	}
     if (arg) {
-	printf ("%d", isnum (str));
+	printf ("%d", idate);
 	}
     else {
-	printf ("%d\n", isnum (str));
+	printf ("%d\n", idate);
 	}
 
     exit (0);
 }
-/* Nov  7 2001	New program
- *
- * Apr 11 2005	Print version
- *
- * Apr  3 2006	Declare main to be int
- *
- * Jan 10 2007	Drop unused variable fn
- *
- * Nov  6 2015	Add return definition for 3 and 4
- *
- * Dec  9 2015	Add -n option to output number without linefeed
- *
- * Aug 23 2016	Document -n option
+/* Jul 23 2020	New program based on ISNUM
  */

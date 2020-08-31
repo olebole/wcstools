@@ -33,7 +33,7 @@
 #include "libwcs/fitsfile.h"
 #include "libwcs/wcscat.h"
 
-static char *RevMsg = "SCAT WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "SCAT WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static void PrintUsage();
 	static int scatparm();

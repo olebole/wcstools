@@ -1,9 +1,9 @@
-/* File char2sp.c
- * June 20, 2006
+/* File html2sp.c
+ * November 5, 2018
  * By Jessica Mink Harvard-Smithsonian Center for Astrophysics)
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2006 
+   Copyright (C) 2018 
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -39,7 +39,7 @@ static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;		/* If 1, print only program name and version */
 static char spchar = '_';
 
-static char *RevMsg = "CHAR2SP WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "CHAR2SP WCSTools 3.9.6, 28 August 2018, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)
@@ -105,11 +105,108 @@ char **av;
     if (nkwd <= 0 )
 	usage ();
     else if (nkwd <= 0) {
-	fprintf (stderr, "CHAR2SP: no string components specified\n");
+	fprintf (stderr, "HTML2SP: no string components specified\n");
 	exit (1);
 	}
+    else stripHTMLTags (
 
-    for (ikwd = 0; ikwd < nkwd; ikwd++) {
+
+int
+stripHTMLTags (char *instring, size_t size)
+{
+int i=0,j=0,k=0;
+int flag = 0; // 0: searching for < or & (& as in &bspn; etc), 1: searching for >, 2: searching for ; after &, 3: searching for </script>,</style>, -->
+char tempbuf[1024*1024] = "";
+char searchbuf[1024] =  "";
+
+while(i<size) {
+
+    if (flag == 0) {
+	if (instring[i] == '<') {
+	    flag = 1;
+	    tempbuf[0] = '\0';
+	    k=0; // track for <script>,<style>, <!-- --> etc
+	    }
+	else if (instring[i] == '&') {
+	    flag = 2;
+	    }
+	else {
+	    instring[j] = instring[i];
+	    j++;
+	    }
+	}
+
+    else if (flag == 1) {
+	tempbuf[k] = instring[i];
+	k++;
+	tempbuf[k] = '\0';
+
+	//printf("DEBUG: %s\n",tempbuf);
+
+	if ((0 == strcmp(tempbuf,"script"))) {
+	    flag = 3;
+	    strcpy(searchbuf,"</script>");
+	    //printf("DEBUG: Detected %s\n",tempbuf);
+	    tempbuf[0] = '\0';
+	    k = 0;
+	    }
+	else if ((0 == strcmp(tempbuf,"style"))) {
+	    flag = 3;
+	    strcpy(searchbuf,"</style>");
+	    //printf("DEBUG: Detected %s\n",tempbuf);
+	    tempbuf[0] = '\0';
+	    k = 0;
+	    }
+	else if((0 == strcmp(tempbuf,"!--"))) {
+	    flag = 3;
+	    strcpy(searchbuf,"-->");
+	    //printf("DEBUG: Detected %s\n",tempbuf);
+	    tempbuf[0] = '\0';
+	    k = 0;
+	    }
+
+	if (instring[i] == '>') {
+	    instring[j] = ' ';
+	    j++;
+	    flag = 0;
+	    }
+
+	}
+
+    else if (flag == 2) {
+	if(instring[i] == ';') {
+	    sToClean[j] = ' ';
+	    j++;
+	    flag = 0;
+	    }
+	}
+
+    else if(flag == 3) {
+	tempbuf[k] = sToClean[i];
+	k++;
+	tempbuf[k] = '\0';
+
+	//printf("DEBUG: %s\n",tempbuf);
+	//printf("DEBUG: Searching for %s\n",searchbuf);
+
+	if (0 == strcmp(&tempbuf[0] + k - strlen(searchbuf),searchbuf)) {
+	    flag = 0;
+	    //printf("DEBUG: Detected END OF %s\n",searchbuf);
+
+	    searchbuf[0] = '\0';
+	    tempbuf[0] = '\0';
+	    k = 0;
+	    }
+	}
+
+    i++;
+    }
+
+instring[j] = '\0';
+
+return j;
+}
+s
 	lstr = strlen (kwd[ikwd]);
 	for (i = 0; i < lstr; i++) {
 	    if (kwd[ikwd][i] == spchar)
@@ -133,7 +230,7 @@ usage ()
     fprintf (stderr,"%s\n",RevMsg);
     if (version)
 	exit (-1);
-    fprintf (stderr,"Replaces a specified character in a string with spaces (def=_)\n");
+    fprintf (stderr,"Removes HTML code from a string with spaces (def=_)\n");
     fprintf(stderr,"Usage: [-v][-s char] string [string2][...][string n]\n");
     fprintf(stderr,"  -s [char]: Replace this character with spaces in output\n");
     fprintf(stderr,"  -v: Verbose\n");

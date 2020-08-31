@@ -1,9 +1,9 @@
 /* File filename.c
- * February 6, 2008
+ * August 18, 2020
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2006-2008
+   Copyright (C) 2006-2020
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -31,6 +31,7 @@ static int verbose = 0;         /* Verbose/debugging flag */
 static int getroot = 0;         /* Return file root */
 static int nslash = 1;		/* Start this many slashes from end of name */
 static int keepdir = 0;		/* Return directory(ies) as part of name */
+static int nonl = 0;		/* Output null at end of string for scripting */
 static void usage();
 
 int
@@ -133,7 +134,7 @@ char **av;
 			 	*(is[i]) = '/';
 			    }
 			}
-		    printf ("%s\n", name);
+		    printf ("%s", name);
 		    for (i = 0; i < nslash; i++) {
 			if (is[i] != NULL) {
 			    if (keepdir)
@@ -155,8 +156,12 @@ char **av;
 		}
 	    }
 
-	printf ("%s\n", name);
+	printf ("%s", name);
 	}
+    if (nonl)
+	printf ("%c",(char)0);
+    else
+	printf ("\n");
 
     return (0);
 }
@@ -170,6 +175,7 @@ usage ()
     fprintf(stderr,"  -n: Prepend one more end directory with .\n");
     fprintf(stderr,"  -r: Root of file name (before first .)\n");
     fprintf(stderr,"  -v: Verbose\n");
+    fprintf(stderr,"  -z: Add null instead of nl to output for scripting\n");
     exit (1);
 }
 /* Aug  3 1998	New program
@@ -181,4 +187,6 @@ usage ()
  *
  * Feb  6 2008	Add -n option to keep directory with "."
  * Feb  6 2008	Allow more than one -r command
+ *
+ * Aug 18 2020	Add -z option to end name with null instead of newline
  */

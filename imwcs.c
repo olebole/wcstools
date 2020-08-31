@@ -40,7 +40,7 @@ static int maxnfile = MAXFILES;
 static void PrintUsage();
 static void FitWCS();
 
-static char *RevMsg = "IMWCS WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "IMWCS WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int writeheader = 0;	/* write header fields; else read-only */

@@ -1,9 +1,9 @@
 /* File getcol.c
- * March 30, 2017
+ * January 22, 2020
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 1999-2017
+   Copyright (C) 1999-2020
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -37,13 +37,14 @@
 #define MAXFILES	2000
 #define MAXLINES	500000
 
-static char *RevMsg = "GETCOL WCSTools 3.9.5, 30 March 2017, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "GETCOL WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static void usage();
 static int ListFile();
 static char *iscolop();
 static int iscol();
 static double median();
+static double stdev();
 
 static int maxnfile = MAXFILES;
 static int maxq = MAXFILES;
@@ -58,6 +59,8 @@ static int verbose = 0;		/* Verbose/debugging flag */
 static int sumcol = 0;		/* True to sum column values */
 static int ameancol = 0;	/* True for absolute mean of column values */
 static int meancol = 0;		/* True to compute mean of column values */
+static int adevcol = 0;		/* True for stdev of absolute mean of column values */
+static int devcol = 0;		/* True for stdev of mean of column values */
 static int amedcol = 0;		/* True for absolute median of column values */
 static int medcol = 0;		/* True to compute median of column values */
 static int countcol = 0;	/* True to count entries in columns */
@@ -409,6 +412,14 @@ char **av;
 		ac--;
 		break;
 
+	    case 'y':	/* Compute standard deviation of means of selected columns */
+		devcol++;
+		break;
+
+	    case 'z':	/* Compute standard deviation of absolute means of selected columns */
+		adevcol++;
+		break;
+
 	    default:
 		usage ();
 		break;
@@ -510,6 +521,8 @@ usage ()
     fprintf(stderr,"  -v: Verbose\n");
     fprintf(stderr,"  -w: Print file pathnames\n");
     fprintf(stderr,"  -x num: Set value to ignore\n");
+    fprintf(stderr,"  -y: Print stdev of means of selected numeric column(s)\n");
+    fprintf(stderr,"  -z: Print stdev of means of absolute values of selected column(s)\n");
     exit (1);
 }
 
@@ -561,7 +574,7 @@ char	*lfile;		/* Name of file with lines to list */
     char tcond, *cstr, *cval, top;
     char colstr[16];
     char numstr[32], numstr1[32];
-    double dcond, dval;
+    double dcond, dval, dmean;
     int pass;
     int nchar, k;
     int iapp;
@@ -588,8 +601,8 @@ char	*lfile;		/* Name of file with lines to list */
     if (verbose)
 	printf ("\n%s\n", RevMsg);
 
-    if (listpath)
-	printf ("%s ", filename);
+    /* if (listpath)
+	printf ("%s ", filename); */
 
     if (nread < 1)
 	nread = MAXLINES;
@@ -867,11 +880,19 @@ char	*lfile;		/* Name of file with lines to list */
 		    if (condand && !pass)
 			break;
 		    }
-		if (pass)
-		    printf ("%s\n", line);
+		if (pass) {
+		    printf ("%s", line);
+		    if (listpath)
+			printf ("%s", filename);
+		    printf ("\n");
+		    }
 		}
-	    else
-		printf ("%s\n", line);
+	    else {
+		printf ("%s", line);
+		if (listpath)
+		    printf ("%s", filename);
+		printf ("\n");
+		}
 	    }
 	}
 
@@ -1203,7 +1224,7 @@ char	*lfile;		/* Name of file with lines to list */
 			    token[j] = (char) 0;
 			}
 		    strfix (token, 0, 1);
-		    if (isnum (token) > 0 && isnum (token) < 2) {
+		    if (isnum (token) > 0 && isnum (token) < 3) {
 			dval = atof (token);
 			hms[i] = 0;
 			idnum = 1;
@@ -1376,8 +1397,18 @@ char	*lfile;		/* Name of file with lines to list */
 		    qsum = qsum + sqrt (qsum1);
 		    }
 		}
-	    if (nt > 0 && printcol)
+	    if (nt > 0 && printcol) {
+		if (listpath) {
+		    if (tabout)
+			printf ("	");
+		    else if (linout)
+			printf ("\n");
+		    else
+			printf (" ");
+		    printf ("%s", filename);
+		    }
 		printf ("\n");
+		}
 	    }
         }
 
@@ -1439,6 +1470,46 @@ char	*lfile;		/* Name of file with lines to list */
 	    printf ("\n");
 	}
 
+    /* Standard deviation of mean absolute value */
+    if (adevcol) {
+	for (i = 0; i < ncol; i++) {
+	    if (nsum[i] > 0) {
+		dmean = asum[i] / (double)nsum[i];
+		dval = stdev (amed[i], nsum[i], dmean);
+		if (hms[i]) {
+		    if (ndec > -1)
+			dec2str (numstr, 32, dval, ndec);
+		    else
+			dec2str (numstr, 32, dval, 3);
+		    }
+		else if (ndec > -1)
+		    num2str (numstr, dval, 0, ndec);
+		else {
+		    sprintf (numstr, "%f", dval);
+		    strfix (numstr, 0, 1);
+		    }
+		if (i < ncol-1)
+		    printf ("%s ", numstr);
+		else
+		    printf ("%s", numstr);
+		}
+	    else if (i < ncol-1)
+		printf ("___ ");
+	    else
+		printf ("___");
+	    }
+	if (countcol) {
+	    for (i = 0; i < ncol; i++) {
+		if (nent[i] > 0)
+		    printf (" %d", nent[i]);
+		}
+	    }
+	if (lranges != NULL)
+	    printf (" %s", lranges);
+	if (ncol > 0)
+	    printf ("\n");
+	}
+
     /* Print means of values in numeric columns */
     if (meancol) {
 	for (i = 0; i < ncol; i++) {
@@ -1460,6 +1531,46 @@ char	*lfile;		/* Name of file with lines to list */
 		    printf ("%s ", numstr);
 		else
 		    printf ("%s ", numstr);
+		}
+	    else if (i < ncol-1)
+		printf ("___ ");
+	    else
+		printf ("___");
+	    }
+	if (countcol) {
+	    for (i = 0; i < ncol; i++) {
+		if (nent[i] > 0)
+		    printf (" %d", nent[i]);
+		}
+	    }
+	if (lranges != NULL)
+	    printf (" %s", lranges);
+	if (ncol > 0)
+	    printf ("\n");
+	}
+
+    /* Standard deviation of mean values */
+    if (devcol) {
+	for (i = 0; i < ncol; i++) {
+	    if (nsum[i] > 0) {
+		dmean = sum[i] / (double)nsum[i];
+		dval = stdev (med[i], nsum[i], dmean);
+		if (hms[i]) {
+		    if (ndec > -1)
+			dec2str (numstr, 32, dval, ndec);
+		    else
+			dec2str (numstr, 32, dval, 3);
+		    }
+		else if (ndec > -1)
+		    num2str (numstr, dval, 0, ndec);
+		else {
+		    sprintf (numstr, "%f", dval);
+		    strfix (numstr, 0, 1);
+		    }
+		if (i < ncol-1)
+		    printf ("%s ", numstr);
+		else
+		    printf ("%s", numstr);
 		}
 	    else if (i < ncol-1)
 		printf ("___ ");
@@ -1702,6 +1813,32 @@ double	*x;
 	return ((x[lhs] + x[rhs]) / 2.0);
 }
 
+static double
+stdev (x, n, dmean)
+
+double	*x;
+int	n;
+double	dmean;
+{
+    double diff, sqdiff;
+    double sumsq = 0.0;
+    double dn = (double) n;
+    int i;
+
+    if (n < 2) {
+	return (0.0);
+	}
+
+    for (i = 0; i < n; i++) {
+	diff = (x[i] - dmean);
+	sqdiff = diff * diff;
+	sumsq = sumsq + sqdiff;
+	}
+
+    return (sqrt (sumsq / dn));
+}
+
+
 static int
 iscol (string)
 
@@ -1846,4 +1983,9 @@ void *pd1, *pd2;
  * Aug 10 2016	Add -u argument to print each field on a new line
  *
  * Mar 30 2017	Increase default maximum number of lines to process to 500000
+ *
+ * Jul 25 2019	Fix bug so stats on floating point numbers are computed
+ * Jul 25 2019	Add standard deviations of means of selected columns
+ *
+ * Jan 22 2020	Change path option to append path at end of each line
  */
