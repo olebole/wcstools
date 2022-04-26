@@ -63,7 +63,7 @@ static char *badheader;		/* FITS bad pixel header */
 static double minpixval = -9999.0;	/* Minimum good pixel value */
 static double maxpixval = -9999.0;	/* Maximum good pixel value */
 
-static char *RevMsg = "IMFILL WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "IMFILL WCSTools 3.9.7, 26 April 2022, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)

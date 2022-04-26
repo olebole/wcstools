@@ -47,7 +47,7 @@ extern char *GetFITShead();
 static char nextnsp();
 static int PrintValues();
 
-static char *RevMsg = "GETHEAD WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "GETHEAD WCSTools 3.9.7, 26 April 2022, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int nfile = 0;
@@ -383,6 +383,8 @@ char **av;
 
 	/* Text file */
 	else if (isfile (*av)) {
+
+	/* Increase size of file name/path buffer, if necessary */
 	    if (nfile >= maxnfile) {
 		maxnfile = maxnfile * 2;
 		newfn = (char **) calloc (maxnfile, sizeof (char *));

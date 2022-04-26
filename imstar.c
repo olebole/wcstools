@@ -41,7 +41,7 @@
 #define MAXFILES 1000
 static int maxnfile = MAXFILES;
 
-static char *RevMsg = "IMSTAR WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "IMSTAR WCSTools 3.9.7, 26 April 2022, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose flag */
 static int debug = 0;		/* debugging flag */

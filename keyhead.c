@@ -50,7 +50,7 @@ static int logfile = 0;
 static int nproc = 0;
 static int first_file = 1;
 
-static char *RevMsg = "KEYHEAD WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "KEYHEAD WCSTools 3.9.7, 26 April 2022, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)

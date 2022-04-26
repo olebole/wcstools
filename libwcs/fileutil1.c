@@ -1,5 +1,5 @@
 /* File wcstools/libwcs/fileutil.c
- * February 2, 2022
+ * February 1, 2022
  * By Jessica Mink, SAO Telescope Data Center
 
  * Copyright (C) 1999-2022
@@ -1229,8 +1229,7 @@ int lline;	/* Maximum length for line */
     int icr = 13;
     char clf = (char) 10;
     char ccr = (char) 13;
-    int ieos = 0;
-    char ceos = (char) 0;
+    char eos = (char) 0;
 
 /* If first line is desired, simply start at beginning of string */
     line1 = string;
@@ -1265,7 +1264,7 @@ int lline;	/* Maximum length for line */
 	    lastchar = line + lline;
 	    cchar2 = line + strlen (line);
 	    while (cchar2 < lastchar) {
-		*cchar2 = ceos;
+		*cchar2 = eos;
 		cchar2++;
 		}
 	    return (0);
@@ -1277,7 +1276,7 @@ int lline;	/* Maximum length for line */
     cchar2 = line;
     lastchar = line + lline - 1;	/* Leave space for terminating 0 */
     while (*cchar1 != clf && *cchar1 != ccr &&
-	   *cchar1 != ceos && cchar2 < lastchar) {
+	   *cchar1 != eos && cchar2 < lastchar) {
 	*cchar2 = *cchar1;
 	cchar1++;
 	cchar2++;
@@ -1286,7 +1285,7 @@ int lline;	/* Maximum length for line */
 /* Pad out returned line with zeroes */
     lastchar = line + lline;
     do {
-	*cchar2 = ceos;
+	*cchar2 = eos;
 	cchar2++;
 	} while (cchar2 < lastchar);
     return (1);
@@ -1388,14 +1387,7 @@ char *value;	/* String (returned) */
     char *pval, *str, *pkey, *pv;
     char cquot, squot[2], dquot[2], lbracket[2], rbracket[2], comma[2];
     char *lastval, *rval, *brack1, *brack2, *lastring, *iquot, *ival;
-    char cend, *lineend;
     int ipar, i, lkey, fkey;
-    int ntok, ltok;
-    struct Tokens valtok;
-
-    char ceos = (char) 0;
-    char clf = (char) 10;
-    char ccr = (char) 13;
 
     squot[0] = (char) 39;
     squot[1] = (char) 0;
@@ -1410,7 +1402,7 @@ char *value;	/* String (returned) */
     rbracket[1] = (char) 0;
     lastring = string + strlen (string);
 
-/* Find length of variable name, eliminating token choice */
+    /* Find length of variable name */
     strncpy (keyword,keyword0, sizeof(keyword)-1);
     brack1 = strsrch (keyword,lbracket);
     if (brack1 == keyword) {
@@ -1419,46 +1411,32 @@ char *value;	/* String (returned) */
     brack2 = NULL;
     if (brack1 == NULL)
 	brack1 = strsrch (keyword,comma);
-    else {
-        brack2 = strsrch (brack1,rbracket);
-        if (brack2 != NULL)
-            *brack2 = '\0';
-	}
-
     if (brack1 != NULL) {
 	*brack1 = '\0';
 	brack1++;
 	}
     lkey = strlen (keyword);
 
-/* If keyword has brackets, figure out which token to extract */
-    if (brack1 != NULL) {
-        ipar = atoi (brack1);
-	}
-    else {
-	ipar = 1;
-	}
-
-/* First check for the existence of the keyword in the string */
+    /* First check for the existence of the keyword in the string */
     pval = NULL;
     str = string;
     while (pval == NULL) {
 	pkey = strcsrch (str, keyword);
 
-/* If keyword has not been found, return 0 */
+    /* If keyword has not been found, return 0 */
 	if (pkey == NULL) {
 	    return (0);
 	    }
 
-/* If it has been found, check for = or : and preceding characters */
+    /* If it has been found, check for = or : and preceding characters */
 
-/* Must be at start of file or after control character or space */
+    /* Must be at start of file or after control character or space */
 	if (pkey != string && *(pkey-1) > 32) {
 	    str = pkey;
 	    pval = NULL;
 	    }
 
-/* Must have "=" or ":" as next nonspace and nonbracket character */
+	/* Must have "=" or ":" as next nonspace and nonbracket character */
 	    else {
 	    pv = pkey + lkey;
 	    while (*pv == ' ' || *pv == ']' || *pv == 'o') {
@@ -1469,7 +1447,7 @@ char *value;	/* String (returned) */
 		pval = NULL;
 		}
 
-/* If found, bump pointer past keyword, operator, and spaces */
+	/* If found, bump pointer past keyword, operator, and spaces */
 	    else {
 		pval = pv + 1;
 		while (*pval == '=' || *pval == ' ') {
@@ -1484,56 +1462,115 @@ char *value;	/* String (returned) */
 	    }
 	}
 
-/* If no value, return */
     if (pval == NULL) {
 	return (0);
 	}
 
-/* Parse value */
-
-/* Drop leading spaces */
+    /* Drop leading spaces */
     while (*pval == ' ') pval++;
 
-/* Change end of line to EOS */
-    cend = ceos;
-    if ((lineend = strchr (pval, clf))) {
-	cend = *lineend;
-	*lineend = ceos;
+    /* Pad quoted material with _; drop leading and trailing quotes */
+    iquot = NULL;
+    if (*pval == squot[0]) {
+	pval++;
+	iquot = strsrch (pval, squot);
 	}
-    else if ((lineend = strchr (pval, ccr))) {
-	cend = *lineend;
-	*lineend = ceos;
+    if (*pval == dquot[0]) {
+	pval++;
+	iquot = strsrch (pval, dquot);
 	}
-    else if ((lineend = strchr (pval, ceos))) {
-	cend = *lineend;
-	}
-
-/* Parse string */
-    ntok = setoken (&valtok, pval, "");
-
-/* Exit if requested token of value is beyond actual number */
-    if (ipar > ntok) {
-	return (0);
-	}
-
-/* Extract appropriate token */
-    ltok = getoken (&valtok, ipar, value, lval);
-
-/* Change blanks to underscores if requested */
-    if (fillblank) {
-	for (ival = pval; ival < value+ltok; ival++) {
-	    if (*ival == ' ') {
-		*ival = '_';
+    if (iquot != NULL) {
+	cquot = *iquot;
+	*iquot = (char) 0;
+	if (fillblank) {
+	    for (ival = pval; ival < iquot; ival++) {
+		if (*ival == ' ') {
+		    *ival = '_';
+		    }
 		}
 	    }
 	}
 
-/* Fix input string */
-    if (lineend) {
-	*lineend = cend;
+    /* If keyword has brackets, figure out which token to extract */
+    if (brack1 != NULL) {
+        brack2 = strsrch (brack1,rbracket);
+        if (brack2 != NULL) {
+            *brack2 = '\0';
+	    }
+        ipar = atoi (brack1);
+	}
+    else {
+	ipar = 1;
 	}
 
-/* Fix keyword */
+    /* Move to appropriate token */
+    for (i = 1; i < ipar; i++) {
+	if (cquot == ' ') {
+	    while (*pval != ' ' && *pval != '/' && pval < lastring) {
+		pval++;
+		}
+	    }
+	else {
+	    while (*pval != ' ' && pval < lastring) {
+		pval++;
+		}
+	    }
+
+	/* Drop leading spaces  or / */
+	while (*pval == ' ' && (cquot == ' ' && *pval == '/')) {
+	    pval++;
+	    }
+	}
+
+    /* Transfer token value to returned string */
+    rval = value;
+    if (lval < 0) {
+	lastval = value - lval - 1;
+	while (*pval != '\n' && pval < lastring && rval < lastval) {
+	    if (lval > 0 && *pval == ' ') {
+		break;
+		}
+	    *rval++ = *pval++;
+	    }
+	}
+    else {
+	lastval = value + lval - 1;
+	while (*pval != '\n' && *pval != '/' &&
+	    pval < lastring && rval < lastval) {
+	    if (lval > 0 && *pval == ' ') {
+		break;
+		}
+	    *rval++ = *pval++;
+	    }
+	}
+    if (rval < lastval) {
+	*rval = (char) 0;
+	}
+    else {
+	*lastval = 0;
+	}
+
+    /* Drop trailing spaces/underscores/commas */
+    if (!fillblank) {
+	lval = strlen (value);
+	for (ival = value+lval-1; ival > value; ival--) {
+	    if (*ival == '_') {
+		*ival = (char) 0;
+		}
+	    else if (*ival == ',') {
+		*ival = (char) 0;
+		}
+	    else if (*ival == ' ') {
+		*ival = (char) 0;
+		}
+	    else {
+		break;
+		}
+	    }
+	}
+    if (iquot != NULL) {
+	*iquot = cquot;
+	}
     if (brack1 != NULL) {
 	*brack1 = lbracket[0];
 	}
@@ -1751,5 +1788,4 @@ double	*a;	/* Vector containing coeffiecients */
  * Jan 20 2022	Add agetw() to read arbitrarily-sized space-less string
  * Jan 20 2022	Separate subroutine list by topic at top of file
  * Feb  1 2022	Add putfilebuff() and agetl()
- * Feb  2 2022	Use token subroutines to parse value strings in agets()
  */

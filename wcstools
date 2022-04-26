@@ -1,5 +1,6 @@
 #!/bin/sh
-echo "WCSTools 3.9.5 Programs
+echo "WCSTools 3.9.7 World Coordinate System Tools
+(Jessica Mink, SAO, April 26, 2022)
 
 addpix:    Add a constant value(s) to specified pixel(s)
 bincat:    Bin a catalog into a FITS image in flux or number
@@ -9,10 +10,11 @@ cphead:    Copy keyword values between FITS or IRAF images
 crlf:      Change CR's to newlines in text file (for imwcs, imstar logs)
 delhead:   Delete specified keywords from FITS or IRAF image file headers
 delwcs:    Delete the WCS keywords from an image
+edhead:    Edit the header of a FITS or IRAF file
 filename:  Drop directory from pathname, returning just the file name
 filedir:   Drop filename from path name, returning directory path
 fileroot:  Drop file name extension, returning path name without it
-edhead:    Edit the header of a FITS or IRAF file
+fixhead:   Clean up FITS or IRAF by removing excessive blank lines
 getcol:    Extract specified fields from an space-separated ASCII table file
 getdate:   Convert between two date formats
 getfits:   Extract portion of a FITS file into a new FITS file, preserving WCS
@@ -33,6 +35,7 @@ imsmooth:  Filter FITS and IRAF image files with 2-D Gaussian, mean, or median
 imstack    Stack 1-dimensional images into a 2-dimensional image
 imstar:    Find and list stars in an IRAF or FITS image
 imwcs:     Match FITS or IRAF image stars to catalog stars and fit a WCS
+isdate:    Return 1 if argument is date as yyyy-mm-dd, 2 if yyyy.mmdd, else 0
 isfits:    Return 1 if argument is a FITS file, else 0
 isnum:     Return 1 if argument is an integer, 2 if it is floating point, else 0
 isrange:   Return 1 if argument is a range of the format n1[-n2[xs]],...
@@ -50,6 +53,7 @@ subpix:    Subtract a constant value(s) from specified pixel(s)
 sumpix     Total pixel values in row, column, or specified area
 wcshead:   Print basic world coordinate system information for images
 xy2sky:    Print sky coordinates for given image pixel coordinates
+
 * <program name> help    lists possible arguments
 * <program name> version lists version of program
 " | more

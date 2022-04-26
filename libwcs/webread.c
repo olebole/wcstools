@@ -1,9 +1,9 @@
 /*** File webread.c
- *** November 5, 2018
- *** By Jessica Mink, jmink@cfa.harvard.edu
+ *** February 4, 2022
+ *** By Jessica Mink, SAO Telescope Data Center
  *** Harvard-Smithsonian Center for Astrophysics
  *** (http code originally from John Roll)
- *** Copyright (C) 2000-2018
+ *** Copyright (C) 2000-2022
  *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
 
     This library is free software; you can redistribute it and/or
@@ -33,6 +33,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <math.h>
+#include <ctype.h>
 #include "wcs.h"
 #include "fitsfile.h"
 #include "wcscat.h"
@@ -638,7 +639,7 @@ int	*lbuff;	/* Length of buffer (returned) */
 	    return (NULL);
 	strncpy (server, servurl, lserver);
 	server[lserver] = (char) 0;
-	if ( port = strchr (servurl,':') ) {
+	if ( (port = strchr (servurl,':')) ) {
 	    *port = '\0';
 	    port++;
 	    nport = atoi (port);
@@ -1131,4 +1132,7 @@ char *encodeURL (char *str) {
  *
  * Jan 19 2018	Always use "\r\n" instead of "\n" when writing to socket (from Robert Wiegand)
  * Nov  5 2018	Fix bug that failed to set lbuff when tab table returned by scat
+ *
+ * Feb  4 2022	Include ctype.h, which is needed on some systems
+ * 		Add extra parentheses in if statement on line 642
  */

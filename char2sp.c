@@ -39,7 +39,7 @@ static int verbose = 0;		/* verbose/debugging flag */
 static int version = 0;		/* If 1, print only program name and version */
 static char spchar = '_';
 
-static char *RevMsg = "CHAR2SP WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "CHAR2SP WCSTools 3.9.7, 26 April 2022, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)

@@ -1,19 +1,66 @@
 WCSTools Package updates
 
+Version 3.9.7 (April 26, 2022)
+fileroot: Add -3 - -6 to drop more extensions (2021-07-02)
+fixhead: New program based on cphead (2021-10-14)
+getdate: Add -m option to output English month abbreviation, not number (2021-06-11)
+getdate: Allow fractional day subtraction (and addition) with -s (2021-07-08)
+getpix: Add -x argument to pull pixel values from the same extension of multiple files (2021-02-10)
+getpix: Fix bug when reading filename(s) from command line (2021-03-17) 
+
+catutil.c: If keyword is surrounded by brackets, keep them. (2021-07-06)
+catutil.c: Move range and string-parsing subroutines to fileutil.c (2021-08-05)
+catutil.c: Move polynomial-fitting to fileutil.c (2022-02-01)
+dateutil.c: Add fd2mfd() to replace month number with month name (2021-06-11)
+dateutil.c: Add hjd2lst() for rvtools. (2021-06-11)
+dateutil.c: Add lt2mfd() for logging time in RVTools (2021-07-27)
+fileutil.c: Add range, aget*, and polynomial subroutines from catutil.c (2021-08-31) 
+fileutil.c: Add agetw() to get first space-less word from keyword=value string (2022-01-20)
+fileutil.c: Separate subroutine list by topic at top of file (2022-01-20)
+fileutil.c: Add putfilebuff() and agetl() (2022-02-01)
+fileutil.c: Parse value strings using tokens in agets() (2022-02-02)
+range.c: If keyword is surrounded by brackets, keep them. (2021-07-06) 
+webread.c: Include ctype.h, which is needed on some systems (2022-02-04)
+webread.c: Add extra parentheses in if statement on line 642 (2022-02-04)
+
+fitsfile.h: Move declarations of range, token, and ASCII file subroutines here
+fitsfile.h: Add lt2mfd() to convert local time to ISO format with month name(2022-02-21)
+fitsfile.h: Add putfilebuff(), aget*(), polynomial routines from fileutil.c (2022-01-31)
+fitsfile.h: Add range, string parsing, and polynomial-fitting subroutine declarations (2022-02-02)
+wcscat.h: Move range, string parsing, and polynomial-fitting subroutines to fitsfile.h (2022-02-02)
+
 Version 3.9.6 (August 31, 2020)
+filedir: Add -z option to drop newline for scripting (2020-08-18)
+filename: Add -z option to end name with null instead of newline (2020-08-18)
+filename: Add -e option to append newline after each output string (2020-01-16)
+getcol: Add standard deviations of means of selected columns (2019-07-25) 
 getcol: Fix bug so stats on floating point numbers are computed (2019-07-25)
+getdate: Add DTSEC=28 and ang2sec, hr2sec, and dec2sec conversions (2019-09-24)
 getfits: Fix command line parsing so ranges work (2018-07-26)
+gethead: Fill in single-character null returns (2019-03-12) 
 getpix: Fix a variety of bugs; add -d option for decimal places; add -y
+isdate: New program to return date string style (2020-07-23)
+sethead: If isnum is 3, allow addition or subtraction of days from date (2020-08-10) 
 setpix: Fix bug which filled new copies wrong when reallocating buffers (2020-08-31)
-option to print columns as lines (2020-05-12)
-webread.c: Always use "\r\n" instead of \n" when writing to or reading from socket (2018-01-19)
-ucacread.c: Correct bug to read UCAC 4 high proper motion stars correctly using local path (2018-08-03)
+
+catutil.c: Keep RA limits to +- 180 (2018-07-31)
+catutil.c: Drop trailing commas as well as underscores and spaces (2019-10-29)
+dateutil.c: Add ang2sec() and deg2sec() to convert to arcseconds (2019-09-24)
+fitsfile.c: Increase header length default to 288000 = 100 blocks (2019-09-23)
 gsc2read.c: Read GSC2 ID as extra tab-separated-table keyword (2018-08-07)
+hget.c: Add -1 argument to hlen() (2019-09-23)
+hput.c: Allow arbitrary length keywords up to 64 characters (2018-08028)
+range.c: Drop trailing commas as well as underscores and spaces (2019-10-29)
+ucacread.c: Correct bug to read UCAC 4 high proper motion stars correctly using local path (2018-08-03)
+wcsinit.c: Read up to 16 characters for ctype[2] and ctype[3], too (2018-05-21)
+webread.c: Always use "\r\n" instead of "\n" when writing to or reading from socket (2018-01-19)
+webread.c: Fix bug that failed to set lbuff when tab table returned by scat (2018-11-05) 
 
 Version 3.9.5 (March 30, 2017)
 sethead: Fix bug so that coordinates with : and dates with - are strings
 getcol: Set default maximum number of lines to process from 100000 to 500000
-ty2read: Add fifth digit to star numbers because 256 are over 9999
+
+ty2read.c: Add fifth digit to star numbers because 256 are over 9999
 
 Version 3.9.4 (August 2, 2016) (after Ole Streicher)
 getdate: Fix input list so it works correctly (2016-08-02 for Armin Rest)

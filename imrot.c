@@ -38,7 +38,7 @@ static int inverted = 0;	/* If 1, invert intensity (-1 * (z-zmax)) */
 static int deletewcs = 0;	/* If 1, delete FITS WCS keywords in image */
 static int rotatewcs = 1;	/* If 1, rotate FITS WCS keywords in image */
 static int extnum = 0;		/* Use extension number instead of EXTNAME for output */
-static char *RevMsg = "IMROT WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "IMROT WCSTools 3.9.7, 26 April 2022, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)

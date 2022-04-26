@@ -47,7 +47,7 @@ static int restwave = 0;	/* If 1, print first dimension limits */
 static int printhead = 1;	/* 1 until header has been printed */
 static char *rootdir=NULL;	/* Root directory for input files */
 
-static char *RevMsg = "WCSHEAD WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "WCSHEAD WCSTools 3.9.7, 26 April 2022, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)

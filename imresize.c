@@ -62,7 +62,7 @@ static int bitpix = 0;		/* Bits per output pixel */
 static int mean = 0;		/* 1 if mean for regrouped pixels */
 static int northup = 0;		/* 1 to rotate to north up, east left */
 
-static char *RevMsg = "IMRESIZE WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "IMRESIZE WCSTools 3.9.7, 26 April 2022, Jessica Mink (jmink@cfa.harvard.edu)";
 
 int
 main (ac, av)

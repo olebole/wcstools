@@ -44,7 +44,7 @@ static char coorsys[8];
 static double size = 0.0;
 static double frac = 0.0;
 
-static char *RevMsg = "IMSIZE WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "IMSIZE WCSTools 3.9.7, 26 April 2022, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int dss = 0;		/* Flag to drop extra stuff for DSS */

@@ -1,9 +1,9 @@
 /* File filename.c
- * August 18, 2020
+ * January 16, 2021
  * By Jessica Mink, Harvard-Smithsonian Center for Astrophysics
  * Send bug reports to jmink@cfa.harvard.edu
 
-   Copyright (C) 2006-2020
+   Copyright (C) 2006-2021
    Smithsonian Astrophysical Observatory, Cambridge, MA USA
 
    This program is free software; you can redistribute it and/or
@@ -32,6 +32,7 @@ static int getroot = 0;         /* Return file root */
 static int nslash = 1;		/* Start this many slashes from end of name */
 static int keepdir = 0;		/* Return directory(ies) as part of name */
 static int nonl = 0;		/* Output null at end of string for scripting */
+static int newline = 0;		/* Output linefeed at end of string for listing */
 static void usage();
 
 int
@@ -52,21 +53,25 @@ char **av;
         while ((c = *++str))
         switch (c) {
 
-        case 'v':       /* More verbosity */
-            verbose++;
+        case '/':       /* Keep one more directory in path */
+            nslash++;
+            break;
+
+        case 'e':       /* Append endline after each file name */
+            newline++;
+            break;
+
+        case 'n':       /* Prepend directory to name with . */
+            keepdir++;
+	    nslash++;
             break;
 
         case 'r':       /* Return root of filename */
             getroot++;
             break;
 
-        case '/':       /* Keep one more directory in path */
-            nslash++;
-            break;
-
-        case 'n':       /* Prepend directory to name with . */
-            keepdir++;
-	    nslash++;
+        case 'v':       /* More verbosity */
+            verbose++;
             break;
 
         default:
@@ -157,6 +162,8 @@ char **av;
 	    }
 
 	printf ("%s", name);
+	if (newline)
+	    printf ("\n");
 	}
     if (nonl)
 	printf ("%c",(char)0);
@@ -172,6 +179,7 @@ usage ()
     fprintf (stderr,"FILENAME: Drop directory from pathname\n");
     fprintf(stderr,"Usage:  filename [-v/] path1 path2 path3 ...\n");
     fprintf(stderr,"  -/: Keep one more end directory for each /\n");
+    fprintf(stderr,"  -e: Append endline after each file name\n");
     fprintf(stderr,"  -n: Prepend one more end directory with .\n");
     fprintf(stderr,"  -r: Root of file name (before first .)\n");
     fprintf(stderr,"  -v: Verbose\n");
@@ -189,4 +197,6 @@ usage ()
  * Feb  6 2008	Allow more than one -r command
  *
  * Aug 18 2020	Add -z option to end name with null instead of newline
+ *
+ * Jan 16 2020	Add -e option to append newline after each output string
  */

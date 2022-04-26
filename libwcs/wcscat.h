@@ -1,8 +1,7 @@
 /*** File libwcs/wcscat.h
- *** February 15, 2013
- *** By Jessica Mink, jmink@cfa.harvard.edu
- *** Copyright (C) 1998-2013
- *** Smithsonian Astrophysical Observatory, Cambridge, MA, USA
+ *** August 2, 2021
+ *** By Jessica Mink, SAO Telescope Data Center
+ *** Copyright (C) 1998-2021
 
     This library is free software; you can redistribute it and/or
     modify it under the terms of the GNU Lesser General Public
@@ -220,21 +219,6 @@ struct TabTable {
 #define EP_MJD  3	/* Ouput epoch as Modified Julian Date */
 #define EP_FD   4	/* Output epoch in FITS format (yyyy-mm-dd) */
 #define EP_ISO  5	/* Output epoch in ISO format (yyyy-mm-ddThh:mm:ss) */
-
-/* Structure for dealing with ranges */
-#define MAXRANGE 20
-struct Range {
-    double first;	/* Current minimum value */
-    double last;	/* Current maximum value */
-    double step;	/* Current step in value */
-    double value;	/* Current value */
-    double valmin;	/* Minimum value in all ranges */
-    double valmax;	/* Maximum value in all ranges */
-    double ranges[MAXRANGE*3];	/* nranges sets of first, last, step */
-    int nvalues;	/* Total number of values in all ranges */
-    int nranges;	/* Number of ranges */
-    int irange;		/* Index of current range */
-};
 
 /* Flags for sorting catalog search results */
 #define SORT_UNSET	-1	/* Catalog sort flag not set yet */
@@ -1304,42 +1288,6 @@ extern "C" {
 	int offs,	/* Offset in bytes in source from which to start copying */
 	int offd);	/* Offset in bytes in destination to which to start copying */
 
-/* Subroutines for dealing with ranges */
-    struct Range *RangeInit(	/* Initialize range structure from string */
-	char *string,	/* String containing numbers separated by , and - */
-	int ndef);	/* Maximum allowable range value */
-    int isrange(	/* Return 1 if string is a range of numbers, else 0 */
-	char *string);	/* String which might be a range of numbers */
-    void rstart(	/* Restart range */
-	struct Range *range); /* Range structure */
-    int rgetn(		/* Return number of values in all ranges */
-	struct Range *range); /* Range structure */
-    int rgeti4(		/* Return next number in range as integer */
-	struct Range *range); /* Range structure */
-    double rgetr8(	/* Return next number in range as double */
-	struct Range *range); /* Range structure */
-
-/* Subroutines for read values from keyword=value in blocks of text */
-    int ageti4(		/* Extract int value from keyword= value in string */
-	char *string,	/* character string containing <keyword>= <value> */
-	char *keyword,	/* character string containing the name of the keyword
-			 * the value of which is returned.  hget searches for a
-			 * line beginning with this string.  if "[n]" or ",n" is
-			 * present, the n'th token in the value is returned. */
-	int *ival);	/* Integer value, returned */
-    int agetr8(		/* Extract double value from keyword= value in string */
-	char *string,	/* character string containing <keyword>= <value> */
-	char *keyword,	/* character string containing the name of the keyword */
-	double *dval);	/* Double value, returned */
-    int agets(		/* Extract value from keyword= value in string */
-	char *string,	/* character string containing <keyword>= <value> */
-	char *keyword,	/* character string containing the name of the keyword */
-	int lval,	/* Size of value in characters
-			 * If negative, value ends at end of line */
-	int fillblank,	/* If 0, leave blanks, strip trailing blanks
-			   if non-zero, replace blanks with underscores */
-	char *value);	/* String (returned) */
-
     int tmcid(		/* Return 1 if string is 2MASS ID, else 0 */
 	char *string,	/* Character string to check */
 	double *ra,	/* Right ascension (returned) */
@@ -1361,21 +1309,6 @@ extern "C" {
     void setrevmsg(	/* Set version/date string */
 	char *revmsg);	/* Version/date string */
     char *getrevmsg(void); /* Return version/date string */
-
-/* Subroutines for fitting and evaluating polynomials */
-    void polfit(	/* Fit polynomial coefficients */
-	double *x,	/* Array of independent variable points */
-	double *y,	/* Array of dependent variable points */
-	double x0,	/* Offset to independent variable */
-	int npts,	/* Number of data points to fit */
-	int nterms,	/* Number of parameters to fit */
-	double *a,	/* Vector containing current fit values */
-	double *stdev);	/* Standard deviation of fit (returned) */
-    double polcomp(	/* Evaluate polynomial from polfit coefficients */
-	double xi,	/* Independent variable */
-	double x0,	/* Offset to independent variable */
-	int norder,	/* Number of coefficients */
-	double *a);	/* Vector containing coeffiecients */
 
 #else /* K&R prototypes */
 
@@ -1528,19 +1461,8 @@ void setlimdeg();	/* Limit output in degrees (1) or hh:mm:ss dd:mm:ss (0) */
 char *DateString();		/* Convert epoch to output format */
 void SearchLim();	/* Compute limiting RA and Dec */
 void RefLim();		/* Compute limiting RA and Dec in new system */
-int ageti4();		/* Extract int value from keyword= value in string */
-int agetr8();		/* Extract double value from keyword= value in string */
-int agets();		/* Extract value from keyword= value in string */
 void bv2sp();		/* Approximate main sequence spectral type from B - V */
-void moveb();		/* Copy nbytes bytes from source+offs to dest+offd */
-
-/* Subroutines for dealing with ranges */
-struct Range *RangeInit();	/* Initialize range structure from string */
-int isrange();		/* Return 1 if string is a range of numbers, else 0 */
-int rgetn();		/* Return number of values in all ranges */
-int rgeti4();		/* Return next number in range as integer */
-double rgetr8();	/* Return next number in range as double */
-void rstart();		/* Restart range */
+void movebuff();	/* Copy nbytes bytes from source+offs to dest+offd */
 
 /* Subroutines for VOTable output */
 int vothead();		/* Print heading for VOTable SCAT output */
@@ -1549,10 +1471,6 @@ void vottail();		/* Terminate VOTable SCAT output */
 /* Subroutines for version/date string */
 void setrevmsg();	/* Set version/date string */
 char *getrevmsg();	/* Return version/date string */
-
-/* Subroutines for fitting and evaluating polynomials */
-void polfit();		/* Fit polynomial coefficients */
-double polcomp();	/* Evaluate polynomial from polfit coefficients */
 
 #endif  /* __STDC__ */
 
@@ -1703,4 +1621,6 @@ double polcomp();	/* Evaluate polynomial from polfit coefficients */
  * May 16 2012	Add valmin and valmax to Range data structure
  *
  * Feb 15 2013	Add UCAC4 to list of catalog codes
+ *
+ * Aug  2 2021	Move range, string-parsing, and polynomial-fitting subroutines to wcs.h
  */

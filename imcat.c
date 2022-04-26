@@ -64,7 +64,7 @@ extern void setdateobs();
 extern void setparm();
 extern void setnpix();
 
-static char *RevMsg = "IMCAT WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "IMCAT WCSTools 3.9.7, 26 April 2022, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static int verbose = 0;		/* verbose/debugging flag */
 static int wfile = 0;		/* True to print output file */

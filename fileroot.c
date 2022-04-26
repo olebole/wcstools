@@ -29,7 +29,7 @@
 
 static int verbose = 0;         /* verbose/debugging flag */
 static int replace = 0;         /* character replacement flag */
-static int twoext = 0;		/* double extension flag */
+static int extn = 0;		/* double extension flag */
 static char c1, c2;
 static void usage();
 
@@ -40,8 +40,8 @@ char **av;
 {
     char *fn;
     char *str;
-    char *ext, *ext2;
-    int i, lroot;
+    char *ext, *extc;
+    int i, lroot, extl;
 
     /* crack arguments */
     for (av++; --ac > 0 && *(str = *av) == '-'; av++) {
@@ -65,8 +65,28 @@ char **av;
             replace++;
             break;
 
-	case '2':	/* remove double extension */
-	    twoext++;
+	case '2':	/* remove 2 extensions */
+	    extn = 2;
+	    break;
+
+	case '3':	/* remove 3 extensions */
+	    extn = 3;
+	    break;
+
+	case '4':	/* remove 4 extensions */
+	    extn = 4;
+	    break;
+
+	case '5':	/* remove 5 extensions */
+	    extn = 5;
+	    break;
+
+	case '6':	/* remove 6 extensions */
+	    extn = 6;
+	    break;
+
+	case 'a':	/* remove all extensions */
+	    extn = -1;
 	    break;
 
         default:
@@ -90,12 +110,17 @@ char **av;
 	    ext = strrchr (fn, '.');
 	    if (ext != NULL) {
 		*ext = (char) 0;
-		if (twoext) {
-		    ext2 = strrchr (fn, '.');
-		    if (ext2 != NULL) {
+		extl = extn;
+		while (extl > 1) {
+		    extc = strrchr (fn, '.');
+		    if (extc != NULL) {
 			*ext = '.';
-			*ext2 = (char) 0;
+			*extc = (char) 0;
 			}
+		    else {
+			extl = 1;
+			}
+		    extl--;
 		    }
 		}
 	    }
@@ -113,11 +138,12 @@ char **av;
 static void
 usage ()
 {
-    fprintf (stderr,"FILEROOT: Drop file name extension\n");
+    fprintf (stderr,"FILEROOT: Drop file name extension(s)\n");
     fprintf (stderr,"Usage:  fileroot file1 file2 file3 ...\n");
     fprintf (stderr,"        fileroot -r c1 c2 file1 file2 file3 ...\n");
+    fprintf (stderr,"        fileroot -2 file1 file2 file3 ...\n");
     fprintf (stderr,"        -r replaces c1 with c2 in file name\n");
-    fprintf (stderr,"        -2 drops two extensions at once\n");
+    fprintf (stderr,"        -n drops n extensions at once\n");
     exit (1);
 }
 /* May  3 2000	New program
@@ -130,4 +156,6 @@ usage ()
  * Jan 10 2007	Add second parentheses around character check
  *
  * Aug 17 2018	Add -2 to drop two-par extensions such as ".ms.fits"
+ *
+ * Jul  2 2021	Add -3 - -6 to drop more extensions
  */

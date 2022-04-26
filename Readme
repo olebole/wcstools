@@ -1,4 +1,4 @@
-WCSTools 3.9.6
+WCSTools 3.9.7
 
 WCSTools is a set of software utilities, written in C, which create,
 display and manipulate the world coordinate system of a FITS or IRAF
@@ -10,7 +10,7 @@ To make the entire package, type
 
 make all
 
-This is version 3.9.6 of the WCSTools package developed by Jessica Mink
+This is version 3.9.7 of the WCSTools package developed by Jessica Mink
 (jmink@cfa.harvard.edu) at the Smithsonian Astrophysical Observatory,
 with significant code or algorithms from
 
@@ -35,15 +35,34 @@ all of the variables initialized.
 
 The update history is in the NEWS file, but here is what is new:
 
-Version 3.9.6 (August 31, 2020)
-getcol: Fix bug so stats on floating point numbers are computed (2019-07-25)
-getfits: Fix command line parsing so ranges work (2018-07-26)
-getpix: Fix a variety of bugs; add -d option for decimal places; add -y
-setpix: Fix bug which filled new copies wrong when reallocating buffers (2020-08-31)
-option to print columns as lines (2020-05-12)
-webread.c: Always use "\r\n" instead of \n" when writing to or reading from socket (2018-01-19)
-ucacread.c: Correct bug to read UCAC 4 high proper motion stars correctly using local path (2018-08-03)
-gsc2read.c: Read GSC2 ID as extra tab-separated-table keyword (2018-08-07)
+Version 3.9.7 (April 26, 2022)
+fileroot: Add -3 - -6 to drop more extensions (2021-07-02)
+fixhead: New program based on cphead (2021-10-14)
+getdate: Add -m option to output English month abbreviation, not number (2021-06-11)
+getdate: Allow fractional day subtraction (and addition) with -s (2021-07-08)
+getpix: Add -x argument to pull pixel values from the same extension of multiple files (2021-02-10)
+getpix: Fix bug when reading filename(s) from command line (2021-03-17) 
+
+catutil.c: If keyword is surrounded by brackets, keep them. (2021-07-06)
+catutil.c: Move range and string-parsing subroutines to fileutil.c (2021-08-05)
+catutil.c: Move polynomial-fitting to fileutil.c (2022-02-01)
+dateutil.c: Add fd2mfd() to replace month number with month name (2021-06-11)
+dateutil.c: Add hjd2lst() for rvtools. (2021-06-11)
+dateutil.c: Add lt2mfd() for logging time in RVTools (2021-07-27)
+fileutil.c: Add range, aget*, and polynomial subroutines from catutil.c (2021-08-31) 
+fileutil.c: Add agetw() to get first space-less word from keyword=value string (2022-01-20)
+fileutil.c: Separate subroutine list by topic at top of file (2022-01-20)
+fileutil.c: Add putfilebuff() and agetl() (2022-02-01)
+fileutil.c: Parse value strings using tokens in agets() (2022-02-02)
+range.c: If keyword is surrounded by brackets, keep them. (2021-07-06)
+webread.c: Include ctype.h, which is needed on some systems (2022-02-04)
+webread.c: Add extra parentheses in if statement on line 642 (2022-02-04)
+
+fitsfile.h: Move declarations of range, token, and ASCII file subroutines here
+fitsfile.h: Add lt2mfd() to convert local time to ISO format with month name(2022-02-21)
+fitsfile.h: Add putfilebuff(), aget*(), polynomial routines from fileutil.c (2022-01-31)
+fitsfile.h: Add range, string parsing, and polynomial-fitting subroutine declarations (2022-02-02)
+wcscat.h: Move range, string parsing, and polynomial-fitting subroutines to fitsfile.h (2022-02-02)
 
 Documentation, with examples and installation directions, is on the
 World Wide Web at
@@ -104,62 +123,57 @@ astrometry:
 
 Program Descriptions
 
-addpix	Add a constant value(s) to specified pixel(s)
-bincat	Bin a catalog into a FITS image in flux or number
-conpix	Operate on all of the pixels of an image
-cphead	Copy keyword values between FITS or IRAF images
-delhead	Delete specified keywords from FITS or IRAF image file headers
-delwcs	Delete the WCS keywords from an image. If both EPOCH and EQUINOX
-	are present, EQUINOX is also deleted. 
-edhead	Edit the header of a FITS file or the user parameters of an IRAF
-	image file using a the text editor specified by the EDITOR environment
-	variable.
-getcol	Extract specified fields from an space-separated ASCII table file
-getdate Convert dates and times between various formats
-getfits	Extract portion of a FITS file into a new FITS file, preserving WCS
-gethead	Return values for keyword(s) specified after filename.
-getpix	Return value(s) of specified pixel(s)
-gettab	Extract values from tab table data base files
-i2f	Read two-dimensional IRAF image file and write FITS image file
-imcat	List catalog sources which should be found in the area of the sky
-	covered by a specific image.
-	Specific catalogs supported include the GSC II, the 2MASS Point
-	Source Catalog, the HST Guide Star Catalog, the USNO-A2.0 Catalog,
-	the Tycho-2 Catalog, the PPM Catalog, the IRAS Point Source Catalog,
-	and the SAO Catalog.
-imextract Extract 1- or 2-dimensional images from 2- or 3-dimensional images
-imfill	 Replace bad pixels using a box median, mean, or Gaussian filter
-imhead	Print FITS or IRAF header
-immatch	Match catalog and image stars using the WCS in the image file.
-imresize Shrink an image by an integral factor keeping WCS intact
-imrot	Rotate and/or reflect FITS or IRAF image files
-imsize	Print center and size of image using WCS keywords in header
-imsmooth Run a box median, mean, or Gaussian filter over an image
-imstack	Stack 1-dimensional images into a 2-dimensional image
-imstar	Find and list the n brightest stars in an IRAF or FITS image, with
-	their sky coordinates if there is WCS information in the image header. 
-imwcs	Automaticaly find stars in a FITS or IRAF image, match them to any
-	of the supported catalogs, compute the relation between sky coordinates
-	and image coordinates, and write it into the image header.
-keyhead	Change keyword names in headers of FITS or IRAF images.
-newfits	Create blank FITS image files (dataless by default, with BITPIX=0)
-remap	Remap an image from one WCS into another, rebinning as necessary
-scat	Search a source catalog given a region on the sky.
-	Specific catalogs supported include the GSC II, the USNO-B1.0 Catalog,
-	the 2MASS Point Source Catalog, the HST Guide Star Catalog, the
-	USNO-A2.0 Catalog, the USNO UCAC2 Catalog, the Tycho-2 Catalog,
-	the PPM Catalog, the IRAS Point Source Catalog, and the SAO Catalog.
-sethead	Set header keyword values in FITS or IRAF images.
-setpix	Set specified pixel(s) to specified value(s)
-simpos  Return RA and Dec for object name (or list of them) using SIMBAD
-sky2xy	Print image pixel coordinates for given sky coordinates on the
-	command line or in a list file. 
-skycoor	Convert between J2000, B1950, and Galactic coordinates from the
-	command line or a file.
-sumpix	Total pixel values over an image row or column or a specified area
-wcshead	Print basic world coordinate system information on one line per image
-xy2sky	Print sky coordinates for given image pixel coordinates on the command
-	line or in a list file.
+addpix:    Add a constant value(s) to specified pixel(s)
+bincat:    Bin a catalog into a FITS image in flux or number
+char2sp:   Replace this character with spaces in output (default=_)
+conpix:    Operate on all of the pixels of an image
+cphead:    Copy keyword values between FITS or IRAF images
+crlf:      Change CR's to newlines in text file (for imwcs, imstar logs)
+delhead:   Delete specified keywords from FITS or IRAF image file headers
+delwcs:    Delete the WCS keywords from an image
+edhead:    Edit the header of a FITS or IRAF file
+filename:  Drop directory from pathname, returning just the file name
+filedir:   Drop filename from path name, returning directory path
+fileroot:  Drop file name extension, returning path name without it
+fixhead:   Clean up FITS or IRAF by removing excessive blank lines
+getcol:    Extract specified fields from an space-separated ASCII table file
+getdate:   Convert between two date formats
+getfits:   Extract portion of a FITS file into a new FITS file, preserving WCS
+gethead:   Return values for keyword(s) specified after filename
+getpix:    Return value(s) of specified pixel(s)
+gettab:    Extract values from tab table data base files
+httpget:   Send contents returned from URL to standard output
+i2f:       Read two-dimensional IRAF image file and write FITS image file
+imcat:     List catalog sources in the area of the sky covered by an image.
+imextract: Extract 1D file from 2D file or 2D file from 3D file
+imfill:    Replace bad pixels in image files with 2-D Gaussian, mean, or median
+imhead:    Print FITS or IRAF header
+immatch:   Match catalog and image stars using the WCS in the image file.
+imrot:     Rotate and/or reflect FITS or IRAF image files
+imresize:  Block sum or average a file by integral numbers of columns and rows
+imsize:    Print center and size of image using WCS keywords in header
+imsmooth:  Filter FITS and IRAF image files with 2-D Gaussian, mean, or median
+imstack    Stack 1-dimensional images into a 2-dimensional image
+imstar:    Find and list stars in an IRAF or FITS image
+imwcs:     Match FITS or IRAF image stars to catalog stars and fit a WCS
+isdate:    Return 1 if argument is date as yyyy-mm-dd, 2 if yyyy.mmdd, else 0
+isfits:    Return 1 if argument is a FITS file, else 0
+isnum:     Return 1 if argument is an integer, 2 if it is floating point, else 0
+isrange:   Return 1 if argument is a range of the format n1[-n2[xs]],...
+keyhead:   Change keyword names in headers of FITS or IRAF images
+newfits:   Create blank FITS files (dataless by default with BITPIX=0)
+remap      Rebin an image from its current WCS to a new one
+scat:      Search a source catalog given a region on the sky
+sethead:   Set header keyword values in FITS or IRAF images
+setpix:    Set specified pixel(s) to specified value(s)
+simpos:    Return RA and Dec for object name(s) from SIMBAD, NED, and/or VizieR
+sky2xy:    Print image pixel coordinates for given sky coordinates
+skycoor:   Convert between J2000, B1950, galactic, and ecliptic coordinates
+sp2char:   Replaces space in string with specified character (default=_)
+subpix:    Subtract a constant value(s) from specified pixel(s)
+sumpix     Total pixel values in row, column, or specified area
+wcshead:   Print basic world coordinate system information for images
+xy2sky:    Print sky coordinates for given image pixel coordinates
 
--Jessica Mink, SAO, 2020-05-12
+-Jessica Mink, SAO, 2022-04-26
  http://tdc-www.harvard.edu/mink/

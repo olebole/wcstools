@@ -37,7 +37,7 @@
 #define MAXFILES	2000
 #define MAXLINES	500000
 
-static char *RevMsg = "GETCOL WCSTools 3.9.6, 31 August 2020, Jessica Mink (jmink@cfa.harvard.edu)";
+static char *RevMsg = "GETCOL WCSTools 3.9.7, 26 April 2022, Jessica Mink (jmink@cfa.harvard.edu)";
 
 static void usage();
 static int ListFile();

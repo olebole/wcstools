@@ -54,6 +54,9 @@ fileroot: fileroot.c
 filext: filext.c
 	$(CC) $(CFLAGS) -o $(BIN)/filext filext.c
 
+fixhead: fixhead.c $(LIBWCS) libwcs/fitsfile.h
+	$(CC) $(CFLAGS) -o $(BIN)/fixhead fixhead.c $(LIBS)
+
 fixpix: fixpix.c $(LIBWCS) libwcs/fitsfile.h
 	$(CC) $(CFLAGS) -o $(BIN)/fixpix fixpix.c $(LIBS)
 
