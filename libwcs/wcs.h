@@ -191,14 +191,17 @@ struct WorldCoor {
 #define WCS_CSC 24	/* COBE quadrilateralized Spherical Cube */
 #define WCS_QSC 25	/* Quadrilateralized Spherical Cube */
 #define WCS_TSC 26	/* Tangential Spherical Cube */
-#define WCS_NCP 27	/* Special case of SIN from AIPS*/
-#define WCS_GLS 28	/* Same as SFL from AIPS*/
-#define WCS_DSS 29	/* Digitized Sky Survey plate solution */
-#define WCS_PLT 30	/* Plate fit polynomials (SAO) */
-#define WCS_TNX 31	/* Tangent Plane (NOAO corrections) */
-#define WCS_ZPX 32	/* Zenithal Azimuthal Polynomial (NOAO corrections) */
-#define WCS_TPV 33	/* Tangent Plane (SCAMP corrections) */
-#define NWCSTYPE 34	/* Number of WCS types (-1 really means no WCS) */
+#define WCS_HPX 27	/* Tangential Spherical Cube */
+#define WCS_XPH 28	/* Tangential Spherical Cube */
+#define WCS_NCP 29	/* Special case of SIN from AIPS*/
+#define WCS_GLS 30	/* Same as SFL from AIPS*/
+#define WCS_DSS 31	/* Digitized Sky Survey plate solution */
+#define WCS_PLT 32	/* Plate fit polynomials (SAO) */
+#define WCS_TNX 33	/* Tangent Plane (NOAO corrections) */
+#define WCS_ZPX 34	/* Zenithal Azimuthal Polynomial (NOAO corrections) */
+#define WCS_TPV 35	/* Tangent Plane (SCAMP corrections) */
+#define WCS_TOA 36	/* TOAST */
+#define NWCSTYPE 37	/* Number of WCS types (-1 really means no WCS) */
 
 /* Coordinate systems */
 #define WCS_J2000	1	/* J2000(FK5) right ascension and declination */
